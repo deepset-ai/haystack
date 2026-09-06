@@ -172,7 +172,11 @@ class ChatPromptBuilder:
         if template and not variables:
             if isinstance(template, list):
                 for message in template:
-                    if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                    if (
+                        message.is_from(ChatRole.USER)
+                        or message.is_from(ChatRole.SYSTEM)
+                        or message.is_from(ChatRole.DEVELOPER)
+                    ):
                         # infer variables from template
                         if message.text is None:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
@@ -259,7 +263,11 @@ class ChatPromptBuilder:
         processed_messages = []
         if isinstance(template, list):
             for message in template:
-                if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                if (
+                    message.is_from(ChatRole.USER)
+                    or message.is_from(ChatRole.SYSTEM)
+                    or message.is_from(ChatRole.DEVELOPER)
+                ):
                     self._validate_variables(set(template_variables_combined.keys()))
                     if message.text is None:
                         raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
