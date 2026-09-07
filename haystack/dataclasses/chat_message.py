@@ -27,6 +27,11 @@ class ChatRole(str, Enum):
     #: The system role. A message from the system contains only text.
     SYSTEM = "system"
 
+    #: The developer role. OpenAI's counterpart to `system` whose instructions can't be overridden by end users
+    #: in ChatGPT. Supported in the OpenAI dict format round-trip; messages are converted to `SYSTEM` for generat-
+    #: ors that only implement the basic roles via `from_system`.
+    DEVELOPER = "developer"
+
     #: The assistant role. A message from the assistant can contain text and Tool calls. It can also store metadata.
     ASSISTANT = "assistant"
 
@@ -479,6 +484,21 @@ class ChatMessage:
         return cls(_role=ChatRole.SYSTEM, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
 
     @classmethod
+    def from_developer(cls, text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> "ChatMessage":
+        """
+        Create a message from the developer.
+
+        OpenAI distinguishes this role from `system`: developer instructions survive end-user overrides in ChatGPT.
+        Generators that don't understand the `developer` role may fall back to treating it as `system`.
+
+        :param text: The text content of the message.
+        :param meta: Additional metadata associated with the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :returns: A new ChatMessage instance.
+        """
+        return cls(_role=ChatRole.DEVELOPER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
+
+    @classmethod
     def from_assistant(
         cls,
         text: str | None = None,
@@ -729,7 +749,7 @@ class ChatMessage:
     def _system_assistant_message_to_openai(
         self, openai_msg: dict[str, Any], require_tool_call_ids: bool
     ) -> dict[str, Any]:
-        """Build OpenAI dict for system and assistant messages."""
+        """Build OpenAI dict for system, developer, and assistant messages."""
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
@@ -828,8 +848,10 @@ class ChatMessage:
 
         if role == "user":
             return cls.from_user(text=content, name=name)
-        if role in ["system", "developer"]:
+        if role == "system":
             return cls.from_system(text=content, name=name)
+        if role == "developer":
+            return cls.from_developer(text=content, name=name)
 
         if isinstance(content, list):
             if not all("text" in el for el in content):

@@ -33,6 +33,9 @@ class TestChatRole:
         with pytest.raises(ValueError):
             ChatRole.from_str("function")
 
+    def test_developer_role_from_str(self):
+        assert ChatRole.from_str("developer") == ChatRole.DEVELOPER
+
 
 class TestContentParts:
     def test_tool_call_init(self):
@@ -426,7 +429,20 @@ class TestChatMessage:
         with pytest.raises(ValueError):
             ChatMessage.from_user(content_parts=[])
 
+    def test_from_developer_with_valid_content(self):
+        text = "Follow the developer instructions strictly."
+        message = ChatMessage.from_developer(text=text)
+
+        assert message.role == ChatRole.DEVELOPER
+        assert message._content == [TextContent(text)]
+
+        assert message.text == text
+        assert message.texts == [text]
+
     def test_from_system_with_valid_content(self):
+        text = "I have a question."
+        message = ChatMessage.from_system(text=text)
+
         text = "I have a question."
         message = ChatMessage.from_system(text=text)
 
@@ -841,6 +857,19 @@ class TestToOpenaiDictFormat:
     def test_to_openai_dict_format_system_message(self):
         message = ChatMessage.from_system("You are good assistant")
         assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
+
+    def test_to_openai_dict_format_developer_message(self):
+        message = ChatMessage.from_developer("You are good assistant")
+        assert message.to_openai_dict_format() == {"role": "developer", "content": "You are good assistant"}
+
+    def test_from_openai_dict_format_developer_role_is_preserved(self):
+        message = ChatMessage.from_openai_dict_format({"role": "developer", "content": "Do not leak secrets"})
+        assert message.role == ChatRole.DEVELOPER
+        assert message.text == "Do not leak secrets"
+
+    def test_openai_dict_format_developer_role_roundtrip(self):
+        original = {"role": "developer", "content": "Non-overridable instructions"}
+        assert ChatMessage.from_openai_dict_format(original).to_openai_dict_format() == original
 
     def test_to_openai_dict_format_user_message(self):
         message = ChatMessage.from_user("I have a question")
