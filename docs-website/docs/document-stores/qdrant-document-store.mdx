@@ -53,7 +53,7 @@ print(document_store.count_documents())
 
 :::warning[Collections Created Outside Haystack]
 
-When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
+When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. The [sparse migration helper](#migrating-to-sparse-embeddings) upgrades existing Haystack document stores; it is not a general importer for collections created by other clients.
 :::
 
 You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login). Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
@@ -95,8 +95,16 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
-If you want to use Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+For collections created with sparse embedding support disabled, see [Migrating to sparse embeddings](#migrating-to-sparse-embeddings).
 :::
+
+### Migrating to sparse embeddings
+
+Use [`migrate_to_sparse_embeddings_support`](/reference/integrations-qdrant#migrate_to_sparse_embeddings_support) to copy an existing `QdrantDocumentStore` to a new collection with sparse embedding support. The helper supports Qdrant server and Cloud instances, but not local in-memory or disk-persisted instances.
+
+Choose an unused collection name for `new_index`, different from the source collection. The helper recreates the destination collection, deleting any documents already stored there.
+
+Migration copies the existing documents and dense vectors; it does not compute sparse embeddings. After migration, connect to the new collection with `use_sparse_embeddings=True`, compute sparse embeddings with a sparse document embedder, and write the updated documents before using sparse or hybrid retrieval.
 
 ## Additional References
 
