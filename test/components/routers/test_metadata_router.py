@@ -82,6 +82,14 @@ class TestMetadataRouter:
         with pytest.raises(ValueError):
             MetadataRouter(rules=rules)
 
+    def test_unmatched_reserved_rule_name_raises_value_error(self):
+        """'unmatched' is a reserved output name — using it as a rule key must raise a clear ValueError."""
+        rules = {
+            "unmatched": {"field": "meta.language", "operator": "==", "value": "en"},
+        }
+        with pytest.raises(ValueError, match="reserved output name"):
+            MetadataRouter(rules=rules)
+
     def test_run_datetime_with_timezone(self):
         rules = {
             "edge_1": {

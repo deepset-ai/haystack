@@ -18,7 +18,7 @@ from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
 
-# Environment variable to control pipeline snapshot file saving (enabled by default)
+# Environment variable to control pipeline snapshot file saving (disabled by default)
 HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED"
 
 # Type alias for snapshot callback function
@@ -175,7 +175,7 @@ def _save_pipeline_snapshot(
                 raise
             return None
 
-    # Check if snapshot saving is enabled via environment variable (enabled by default)
+    # Check if snapshot saving is enabled via environment variable (disabled by default)
     if not _is_snapshot_save_enabled():
         logger.debug("Pipeline snapshot file saving is disabled via HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED env var.")
         return None
