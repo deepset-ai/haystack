@@ -7,8 +7,9 @@ import re
 
 import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline, component
 from haystack.components.joiners.document_joiner import DocumentJoiner, JoinMode
+from haystack.components.routers import ConditionalRouter
 
 
 class TestDocumentJoiner:
@@ -355,3 +356,89 @@ class TestDocumentJoiner:
         documents_2 = [Document(content="d", score=0.2)]
         output = joiner.run([documents_1, documents_2])
         assert output["documents"] == documents_1 + documents_2
+
+
+@component
+class _EmitDocuments:
+    """Test helper that emits a fixed document list."""
+
+    def __init__(self, documents: list[Document]) -> None:
+        self._documents = documents
+
+    @component.output_types(documents=list[Document])
+    def run(self) -> dict[str, list[Document]]:
+        return {"documents": self._documents}
+
+
+@component
+class _EmitDocumentsFromChoice:
+    """Test helper that emits documents tagged by a routed choice string."""
+
+    @component.output_types(documents=list[Document])
+    def run(self, choice: str) -> dict[str, list[Document]]:
+        return {"documents": [Document(content=f"from-{choice}", score=1.0)]}
+
+
+class TestDocumentJoinerPipelineWeightsOrder:
+    def test_merge_weights_follow_connect_order_not_alphabetical_component_names(self):
+        """
+        Positional weights must bind to connect()/sender order.
+
+        Component names are chosen so alphabetical execution order (dense < sparse)
+        differs from connect order (sparse then dense). Without a fix, sync run applies
+        weights in alphabetical arrival order and corrupts hybrid scores.
+        """
+        pipeline = Pipeline()
+        pipeline.add_component("dense", _EmitDocuments([Document(content="shared", score=10.0)]))
+        pipeline.add_component("sparse", _EmitDocuments([Document(content="shared", score=1.0)]))
+        pipeline.add_component("joiner", DocumentJoiner(join_mode="merge", weights=[0.9, 0.1], sort_by_score=False))
+        pipeline.connect("sparse", "joiner")
+        pipeline.connect("dense", "joiner")
+
+        result = pipeline.run({})
+        fused = result["joiner"]["documents"][0]
+        # connect order: sparse@1.0 * 0.9 + dense@10.0 * 0.1 == 1.9
+        # alphabetical arrival would yield dense@10.0 * 0.9 + sparse@1.0 * 0.1 == 9.1
+        assert fused.score == pytest.approx(1.9)
+
+    def test_rrf_weights_follow_connect_order_not_alphabetical_component_names(self):
+        pipeline = Pipeline()
+        pipeline.add_component("dense", _EmitDocuments([Document(content="only-dense"), Document(content="shared")]))
+        pipeline.add_component("sparse", _EmitDocuments([Document(content="only-sparse"), Document(content="shared")]))
+        pipeline.add_component(
+            "joiner", DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.9, 0.1], sort_by_score=True)
+        )
+        pipeline.connect("sparse", "joiner")
+        pipeline.connect("dense", "joiner")
+
+        result = pipeline.run({})
+        contents = [doc.content for doc in result["joiner"]["documents"]]
+        # Heavy weight on sparse (first connect) should rank only-sparse above only-dense.
+        assert contents.index("only-sparse") < contents.index("only-dense")
+
+    def test_merge_weights_tolerate_skipped_conditional_router_branch(self):
+        """
+        When a ConditionalRouter branch skips a sender, DocumentJoiner used to raise
+        zip(..., strict=True) because len(document_lists) < len(weights). Missing
+        senders must be padded as empty lists so weights stay aligned.
+        """
+        routes = [
+            {"condition": "{{choice == 'a'}}", "output": "{{choice}}", "output_name": "a", "output_type": str},
+            {"condition": "{{choice == 'b'}}", "output": "{{choice}}", "output_name": "b", "output_type": str},
+        ]
+        pipeline = Pipeline()
+        pipeline.add_component("router", ConditionalRouter(routes))
+        pipeline.add_component("branch_a", _EmitDocumentsFromChoice())
+        pipeline.add_component("branch_b", _EmitDocumentsFromChoice())
+        pipeline.add_component("joiner", DocumentJoiner(join_mode="merge", weights=[0.7, 0.3], sort_by_score=False))
+        pipeline.connect("router.a", "branch_a.choice")
+        pipeline.connect("router.b", "branch_b.choice")
+        pipeline.connect("branch_a", "joiner")
+        pipeline.connect("branch_b", "joiner")
+
+        result = pipeline.run({"router": {"choice": "a"}})
+        docs = result["joiner"]["documents"]
+        assert len(docs) == 1
+        assert docs[0].content == "from-a"
+        # Only branch_a contributed; weight 0.7 applies to its score 1.0
+        assert docs[0].score == pytest.approx(0.7)

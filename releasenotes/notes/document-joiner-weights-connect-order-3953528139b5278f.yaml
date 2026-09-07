@@ -1,0 +1,11 @@
+﻿---
+fixes:
+  - |
+    Fix ``DocumentJoiner`` positional ``weights`` binding to Variadic arrival/execution
+    order instead of ``Pipeline.connect()`` / sender order. Sync runs previously applied
+    weights in alphabetical component-name order; ``run_async`` used nondeterministic
+    completion order — so the same graph and weights could produce different hybrid
+    scores. Variadic inputs are now aligned to connect/sender order. Missing senders
+    (for example a skipped ``ConditionalRouter`` branch) are padded with empty lists
+    for list-typed Variadic sockets, avoiding ``zip(..., strict=True)`` crashes when
+    ``len(document_lists) < len(weights)``.
