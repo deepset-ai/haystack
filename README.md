@@ -123,8 +123,8 @@
 | haystack/components/routers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/routers/conditional\_router.py                        |      178 |        8 |     96% |481-482, 518, 536, 578, 596, 606, 618 |
 | haystack/components/routers/document\_length\_router.py                   |       15 |        0 |    100% |           |
-| haystack/components/routers/document\_type\_router.py                     |       46 |        0 |    100% |           |
-| haystack/components/routers/file\_type\_router.py                         |       72 |        6 |     92% |   182-187 |
+| haystack/components/routers/document\_type\_router.py                     |       48 |        0 |    100% |           |
+| haystack/components/routers/file\_type\_router.py                         |       77 |        6 |     92% |   196-201 |
 | haystack/components/routers/llm\_messages\_router.py                      |       87 |        1 |     99% |       192 |
 | haystack/components/routers/metadata\_router.py                           |       36 |        0 |    100% |           |
 | haystack/components/samplers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17210** |  **773** | **96%** |           |
+| **TOTAL**                                                                 | **17217** |  **773** | **96%** |           |
 
 
 ## Setup coverage badge
