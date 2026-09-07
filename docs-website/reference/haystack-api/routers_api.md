@@ -830,7 +830,7 @@ Initializes the MetadataRouter component.
 **Parameters:**
 
 - **rules** (<code>dict\[str, dict\]</code>) – A dictionary defining how to route documents or byte streams to output connections based on their
-  metadata. Keys are output connection names, and values are dictionaries of
+  metadata. Keys are output connection names (`"unmatched"` is reserved), and values are dictionaries of
   [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
   For example:
 
@@ -870,6 +870,10 @@ Initializes the MetadataRouter component.
 - **output_type** (<code>type</code>) – The type of the output produced. Lists of Documents or ByteStreams can be specified.
 - **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other.
   If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
+
+**Raises:**
+
+- <code>ValueError</code> – If `rules` contains the reserved output name `"unmatched"` or an invalid filter.
 
 #### run
 
