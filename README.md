@@ -109,7 +109,7 @@
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py              |       38 |        0 |    100% |           |
 | haystack/components/retrievers/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/retrievers/auto\_merging\_retriever.py                |       86 |        0 |    100% |           |
-| haystack/components/retrievers/filter\_retriever.py                       |       28 |        1 |     96% |        55 |
+| haystack/components/retrievers/filter\_retriever.py                       |       30 |        1 |     97% |        55 |
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17208** |  **773** | **96%** |           |
+| **TOTAL**                                                                 | **17210** |  **773** | **96%** |           |
 
 
 ## Setup coverage badge
