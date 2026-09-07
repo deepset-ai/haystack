@@ -10,6 +10,7 @@ import uuid
 from collections import Counter
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
@@ -455,7 +456,8 @@ class InMemoryDocumentStore:
             docs = list(self.storage.values())
 
         if not self.return_embedding:
-            docs = [replace(doc, embedding=None) for doc in docs]
+            # deepcopy meta so returned docs do not alias store mutables via replace()
+            docs = [replace(doc, embedding=None, meta=deepcopy(doc.meta)) for doc in docs]
 
         return docs
 

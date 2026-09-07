@@ -396,6 +396,26 @@ class TestMemoryDocumentStore(
         filtered_docs = docstore.filter_documents()
         assert all(doc.embedding is None for doc in filtered_docs)
 
+    def test_filter_documents_return_embedding_false_isolates_meta(self):
+        # When return_embedding=False, filter_documents uses dataclasses.replace to strip
+        # embeddings. Without copying meta, the returned Document aliases the stored meta
+        # (including nested mutables), so mutating the returned doc corrupts the store.
+        docstore = InMemoryDocumentStore(return_embedding=False)
+        docstore.write_documents(
+            [Document(content="hello", embedding=[0.1, 0.2], meta={"label": "keep", "tags": ["a"]})]
+        )
+
+        returned = docstore.filter_documents()[0]
+        assert returned.embedding is None
+
+        returned.meta["label"] = "mutated"
+        returned.meta["tags"].append("extra")
+
+        stored = list(docstore.storage.values())[0]
+        assert stored.meta["label"] == "keep"
+        assert stored.meta["tags"] == ["a"]
+        assert returned.meta is not stored.meta
+
     def test_embedding_retrieval_override_return_embedding(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
         docs = [

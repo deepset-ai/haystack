@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``InMemoryDocumentStore.filter_documents`` so that when ``return_embedding=False``,
+    returned Documents no longer share ``meta`` (including nested mutables) with the stored
+    Documents. ``dataclasses.replace`` was used to strip embeddings, which is a shallow copy;
+    mutating ``doc.meta`` on a returned Document could therefore corrupt the store. Meta is now
+    deep-copied when constructing the returned Document.
