@@ -56,7 +56,11 @@ print(document_store.count_documents())
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
 :::
 
-You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login). Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
+You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login). Set the `QDRANT_API_KEY` environment variable to your API key from the Qdrant dashboard before running the example, and replace the URL and index name with your cluster URL and collection name.
+
+This example uses five-dimensional sample vectors. For an existing collection, `embedding_dim` and the document embeddings must match its configured vector dimension. In a real application, use embeddings from your embedding model and set `embedding_dim` to the model's output dimension.
+
+`recreate_index` defaults to `False`, which preserves an existing collection when connecting. Set it to `True` only when you intentionally want to delete and recreate the collection, discarding its documents.
 
 ```python
 from haystack.dataclasses.document import Document
@@ -67,8 +71,8 @@ document_store = QdrantDocumentStore(
     url="https://XXXXXXXXX.us-east4-0.gcp.cloud.qdrant.io:6333",
     index="your_index_name",
     embedding_dim=5,  # based on the embedding model
-    recreate_index=True,  # enable only to recreate the index and not connect to the existing one
-    api_key=Secret.from_token("YOUR_TOKEN"),
+    recreate_index=False,  # False (default): preserve the collection; True: delete and recreate it
+    api_key=Secret.from_env_var("QDRANT_API_KEY"),
 )
 
 document_store.write_documents(
