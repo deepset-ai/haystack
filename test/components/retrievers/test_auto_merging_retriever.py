@@ -42,6 +42,25 @@ class TestAutoMergingRetriever:
         ):
             retriever.run(documents=docs)
 
+    def test_run_accepts_zero_level_and_block_size(self, in_memory_doc_store):
+        """Hierarchical roots use __level=0 and __block_size=0; presence must not be confused with falsiness."""
+        parent = Document(
+            content="parent content with enough text",
+            id="parent1",
+            meta={"__level": 0, "__block_size": 0, "__children_ids": ["leaf1", "leaf2"]},
+        )
+        in_memory_doc_store.write_documents([parent])
+        leaf = Document(
+            content="leaf content",
+            id="leaf1",
+            meta={"__parent_id": "parent1", "__level": 0, "__block_size": 0, "__children_ids": []},
+        )
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        # One of two children matched -> score 0.5 is not > threshold, so the leaf is returned as-is.
+        result = retriever.run([leaf])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == "leaf1"
+
     def test_run_missing_block_size(self, in_memory_doc_store):
         docs = [Document(content="test", meta={"__parent_id": "parent1", "__level": 1})]
 
