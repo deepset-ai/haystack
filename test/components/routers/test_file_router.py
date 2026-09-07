@@ -46,7 +46,7 @@ class TestFileTypeRouter:
             FileTypeRouter(mime_types=[])
 
     @pytest.mark.parametrize("reserved", ["unclassified", "failed"])
-    def test_init_rejects_reserved_output_name(self, reserved: str):
+    def test_init_rejects_reserved_output_name(self, reserved: str) -> None:
         with pytest.raises(ValueError, match=f"'{reserved}'.*reserved"):
             FileTypeRouter(mime_types=[reserved, "text/plain"])
 
