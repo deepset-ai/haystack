@@ -33,6 +33,8 @@ Once we have the relevant sentences, we can retrieve neighboring sentences to pr
 
 This component is meant to be used with other Retrievers, such as the `InMemoryEmbeddingRetriever`. These Retrievers find relevant sentences by comparing a query against indexed sentences using a similarity metric. Then, the `SentenceWindowRetriever` component retrieves neighboring sentences around the relevant ones by leveraging metadata stored in the `Document` object.
 
+When all neighboring chunks include `split_idx_start` metadata, overlapping text appears only once in each context window, including when one chunk is fully contained in another. Without this metadata, the component concatenates the chunk contents as they are.
+
 ## Usage
 
 ### On its own

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevent ``SentenceWindowRetriever`` from duplicating overlapping text when a
+    context window contains a chunk fully contained within an earlier chunk.
