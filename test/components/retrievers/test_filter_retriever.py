@@ -122,6 +122,14 @@ class TestFilterRetriever:
         assert len(result["documents"]) == 2
         assert TestFilterRetriever._documents_equal(result["documents"], sample_docs["de_docs"])
 
+    def test_retriever_init_filter_run_empty_filter_override(self, sample_document_store, sample_docs):
+        retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "en"})
+        result = retriever.run(filters={})
+
+        assert "documents" in result
+        assert len(result["documents"]) == 5
+        assert TestFilterRetriever._documents_equal(result["documents"], sample_docs["all_docs"])
+
     @pytest.mark.integration
     def test_run_with_pipeline(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "de"})
@@ -145,6 +153,14 @@ class TestFilterRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["en_docs"])
+
+        result: dict[str, Any] = pipeline.run(data={"retriever": {"filters": {}}})
+
+        assert result
+        assert "retriever" in result
+        results_docs = result["retriever"]["documents"]
+        assert results_docs
+        assert TestFilterRetriever._documents_equal(results_docs, sample_docs["all_docs"])
 
     def test_close(self):
         closable_document_store = Mock(spec=["close"])
