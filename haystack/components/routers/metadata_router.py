@@ -103,6 +103,11 @@ class MetadataRouter:
             If `True`, timezone-naive and timezone-aware datetimes never match each other.
             If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
         """
+        if "unmatched" in rules:
+            raise ValueError(
+                "'unmatched' is a reserved output name in MetadataRouter and cannot be used as a rule name. "
+                "Documents that do not match any rule are automatically routed to 'unmatched'."
+            )
         self.rules = rules
         self.output_type = output_type
         self.strict_datetime_comparison = strict_datetime_comparison
