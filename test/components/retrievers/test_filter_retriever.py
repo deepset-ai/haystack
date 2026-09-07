@@ -152,7 +152,7 @@ class TestFilterRetriever:
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["en_docs"])
 
-        result: dict[str, Any] = pipeline.run(data={"retriever": {"filters": {}}})
+        result = pipeline.run(data={"retriever": {"filters": {}}})
 
         assert result
         assert "retriever" in result
