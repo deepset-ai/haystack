@@ -91,7 +91,7 @@ Also see directory-specific guidelines:
 - Keep inline comments and private-helper docs to what is non-obvious — remove restatements, keep durable caveats and rationale
 - Keep docstrings current with signatures and behavior, in the existing Haystack style: each public `:param` by meaning, default, and constraints; `:returns:` contracts; exceptions in the existing `:raises ValueError:` style; aliases like `ToolsType` reflected — stale docs mislead users and assistants
 - Keep doc examples minimal, runnable, and local: default constructors with required env vars like `OPENAI_API_KEY` noted nearby, only the imports the snippet uses, no restated defaults (name a model only for model-specific behavior), expected output as `# ...` comments
-- When behavior, fields, or names change, update every surface in the same PR: `haystack/components/` docstrings and examples, `docs-website/docs/` plus the current `versioned_docs/version-*/` page (e.g. `concepts/data-classes.mdx`), `MIGRATION.md` for user-visible changes (what, why, required action), and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
+- When behavior, fields, or names change, update every surface in the same PR: `haystack/components/` docstrings and examples, `docs-website/docs/` plus the current `versioned_docs/version-*/` page (e.g. `concepts/data-classes.mdx`), and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
 
 ## Code Style
 
@@ -118,7 +118,6 @@ Also see directory-specific guidelines:
 ## Config
 
 - Pass `allowed_modules=` or set `HAYSTACK_DESERIALIZATION_ALLOWLIST` for YAML loads — never widen `haystack/core/serialization_security.py` allowlists in library code
-- Remove dead config in `.github/workflows/` — keeps CI behavior accurate and maintainable
 
 ## Testing
 
@@ -128,4 +127,3 @@ Also see directory-specific guidelines:
 
 - Define package exports in `__init__.py` via `__all__`; avoid `__all__` in implementation modules — keeps public APIs intentional
 - Update `pyproject.toml` for new package APIs — declare deps and minimum versions used
-- State concrete deprecation timelines and status — helps users plan migrations
