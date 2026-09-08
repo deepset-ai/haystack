@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``TopPSampler`` now rejects negative, boolean, and non-integer ``min_top_k``
+    values during initialization with a clear ``ValueError``.

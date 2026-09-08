@@ -283,6 +283,37 @@ class TestLLMMetadataExtractor:
         assert result["documents"] == []
         assert result["failed_documents"] == []
 
+    def test_run_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = extractor.run(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = extractor.run(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = await extractor.run_async(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = await extractor.run_async(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
+
     def test_run_with_document_content_none(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         # Mock the chat generator to prevent actual LLM calls
