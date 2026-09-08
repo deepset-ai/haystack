@@ -22,18 +22,26 @@ from haystack.utils.type_serialization import _is_union_type
 logger = logging.getLogger(__name__)
 
 
-def _output_type_accepts_str(output_type: Any) -> bool:
+def _output_type_accepts_value(output_type: Any, value: Any) -> bool:
     """
-    Returns True if `str` is a valid value for `output_type`.
+    Returns True if `value`'s type satisfies `output_type`.
 
-    Either `output_type` is `str` itself, or `output_type` is a Union (e.g. `str | None`,
-    `Optional[str]`) that includes `str` as a member.
+    Used to decide whether an `ast.literal_eval` result should replace the original rendered
+    string. This checks the actual evaluated value against `output_type`, rather than asking
+    whether `output_type` merely permits `str` — that distinction matters for Unions like
+    `str | None`, where a rendered "None" must still be restored to the real `None` object.
     """
-    if output_type is str:
+    if output_type is Any:
         return True
-    if _is_union_type(get_origin(output_type)):
-        return str in get_args(output_type)
-    return False
+    if output_type is type(None):
+        return value is None
+    origin = get_origin(output_type)
+    if _is_union_type(origin):
+        return any(_output_type_accepts_value(arg, value) for arg in get_args(output_type))
+    check_type = origin if origin is not None else output_type
+    if not isinstance(check_type, type):
+        return False
+    return isinstance(value, check_type)
 
 
 class OutputAdaptationException(Exception):
@@ -156,8 +164,10 @@ class OutputAdapter:
             # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
             # another type, which would violate the declared output_type.
             with contextlib.suppress(Exception):
-                if not self._unsafe and not _output_type_accepts_str(self.output_type):
-                    output_result = ast.literal_eval(output_result)
+                if not self._unsafe:
+                    evaluated_value = ast.literal_eval(output_result)
+                    if _output_type_accepts_value(self.output_type, evaluated_value):
+                        output_result = evaluated_value
 
             adapted_outputs["output"] = output_result
         except Exception as e:
