@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for haystack/components/extractors/llm_metadata_extractor.py: 91%</title>
+    <title>Coverage for haystack/components/extractors/llm_metadata_extractor.py: 93%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>components<span class="sep">/</span>extractors<span class="sep">/</span>llm_metadata_extractor.py</b>:
-            <span class="pc_cov">91%</span>
+            <span class="pc_cov">93%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">173 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">157<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">16<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">161<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">12<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_6598777588f40fcb_regex_text_extractor_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-08 09:08 +0000
+            created at 2026-09-08 10:03 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -452,16 +452,16 @@
     <p class="pln"><span class="n"><a id="t370" href="#t370">370</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t371" href="#t371">371</a></span><span class="t">            <span class="nam">parsed_metadata</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_extract_metadata</span><span class="op">(</span><span class="nam">result</span><span class="op">[</span><span class="str">&quot;replies&quot;</span><span class="op">]</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">.</span><span class="nam">text</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t372" href="#t372">372</a></span><span class="t">            <span class="key">if</span> <span class="str">&quot;error&quot;</span> <span class="key">in</span> <span class="nam">parsed_metadata</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t373" href="#t373">373</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">[</span><span class="str">&quot;metadata_extraction_error&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">parsed_metadata</span><span class="op">[</span><span class="str">&quot;error&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t374" href="#t374">374</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">[</span><span class="str">&quot;metadata_extraction_response&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">result</span><span class="op">[</span><span class="str">&quot;replies&quot;</span><span class="op">]</span><span class="op">[</span><span class="num">0</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t375" href="#t375">375</a></span><span class="t">                <span class="nam">failed_documents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">replace</span><span class="op">(</span><span class="nam">document</span><span class="op">,</span> <span class="nam">meta</span><span class="op">=</span><span class="nam">new_meta</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t376" href="#t376">376</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t373" href="#t373">373</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">[</span><span class="str">&quot;metadata_extraction_error&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">parsed_metadata</span><span class="op">[</span><span class="str">&quot;error&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t374" href="#t374">374</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">[</span><span class="str">&quot;metadata_extraction_response&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">result</span><span class="op">[</span><span class="str">&quot;replies&quot;</span><span class="op">]</span><span class="op">[</span><span class="num">0</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t375" href="#t375">375</a></span><span class="t">                <span class="nam">failed_documents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">replace</span><span class="op">(</span><span class="nam">document</span><span class="op">,</span> <span class="nam">meta</span><span class="op">=</span><span class="nam">new_meta</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t376" href="#t376">376</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t377" href="#t377">377</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t378" href="#t378">378</a></span><span class="t">            <span class="key">for</span> <span class="nam">key</span> <span class="key">in</span> <span class="nam">parsed_metadata</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t379" href="#t379">379</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span> <span class="op">=</span> <span class="nam">parsed_metadata</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t380" href="#t380">380</a></span><span class="t">                <span class="com"># Remove metadata_extraction_error and metadata_extraction_response if present from previous runs</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t381" href="#t381">381</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">.</span><span class="nam">pop</span><span class="op">(</span><span class="str">&quot;metadata_extraction_error&quot;</span><span class="op">,</span> <span class="key">None</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t382" href="#t382">382</a></span><span class="t">                <span class="nam">new_meta</span><span class="op">.</span><span class="nam">pop</span><span class="op">(</span><span class="str">&quot;metadata_extraction_response&quot;</span><span class="op">,</span> <span class="key">None</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t380" href="#t380">380</a></span><span class="t">            <span class="com"># Remove metadata_extraction_error and metadata_extraction_response if present from previous runs.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t381" href="#t381">381</a></span><span class="t">            <span class="nam">new_meta</span><span class="op">.</span><span class="nam">pop</span><span class="op">(</span><span class="str">&quot;metadata_extraction_error&quot;</span><span class="op">,</span> <span class="key">None</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t382" href="#t382">382</a></span><span class="t">            <span class="nam">new_meta</span><span class="op">.</span><span class="nam">pop</span><span class="op">(</span><span class="str">&quot;metadata_extraction_response&quot;</span><span class="op">,</span> <span class="key">None</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t383" href="#t383">383</a></span><span class="t">            <span class="nam">successful_documents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">replace</span><span class="op">(</span><span class="nam">document</span><span class="op">,</span> <span class="nam">meta</span><span class="op">=</span><span class="nam">new_meta</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t384" href="#t384">384</a></span><span class="t">        <span class="key">return</span> <span class="nam">successful_documents</span><span class="op">,</span> <span class="nam">failed_documents</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t385" href="#t385">385</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -579,7 +579,7 @@
             <a class="nav" href="z_6598777588f40fcb_regex_text_extractor_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-08 09:08 +0000
+            created at 2026-09-08 10:03 +0000
         </p>
     </div>
 </footer>
