@@ -36,8 +36,8 @@ class TestMemoryEmbeddingRetriever:
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
-        document_store.to_dict = lambda: {"type": "test_module.MyFakeStore", "init_parameters": {}}
-        component = InMemoryEmbeddingRetriever(document_store=document_store)
+        document_store.to_dict = lambda: {"type": "test_module.MyFakeStore", "init_parameters": {}}  # type: ignore[method-assign]
+        component = InMemoryEmbeddingRetriever(document_store=document_store)  # type: ignore[arg-type]
 
         data = component.to_dict()
         assert data == {
@@ -55,9 +55,9 @@ class TestMemoryEmbeddingRetriever:
     def test_to_dict_with_custom_init_parameters(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
-        document_store.to_dict = lambda: {"type": "test_module.MyFakeStore", "init_parameters": {}}
+        document_store.to_dict = lambda: {"type": "test_module.MyFakeStore", "init_parameters": {}}  # type: ignore[method-assign]
         component = InMemoryEmbeddingRetriever(
-            document_store=document_store,
+            document_store=document_store,  # type: ignore[arg-type]
             filters={"name": "test.txt"},
             top_k=5,
             scale_score=True,
@@ -205,7 +205,7 @@ class TestMemoryEmbeddingRetriever:
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
-            InMemoryEmbeddingRetriever(SomeOtherDocumentStore())
+            InMemoryEmbeddingRetriever(SomeOtherDocumentStore())  # type: ignore[arg-type]
 
     @pytest.mark.integration
     def test_run_with_pipeline(self):
