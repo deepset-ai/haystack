@@ -1,7 +1,5 @@
 ---
-fixes:
+enhancements:
   - |
     ``TopPSampler`` now rejects negative, boolean, and non-integer ``min_top_k``
-    values during initialization with a clear ``ValueError``. ``None`` and zero
-    retain their existing behavior, and a minimum larger than the number of scored
-    documents still returns all scored documents.
+    values during initialization with a clear ``ValueError``.
