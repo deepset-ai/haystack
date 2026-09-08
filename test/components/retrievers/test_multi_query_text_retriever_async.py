@@ -123,11 +123,15 @@ class TestMultiQueryTextRetrieverAsync:
         @component
         class MockRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
                 nonlocal slow_cancelled
                 if query == "slow":
                     slow_started.set()
@@ -141,7 +145,7 @@ class TestMultiQueryTextRetrieverAsync:
                 await slow_started.wait()
                 raise RuntimeError("boom")
 
-        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())  # type: ignore[arg-type]
+        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())
 
         with pytest.raises(RuntimeError):
             await multi_retriever.run_async(queries=["slow", "failing"])

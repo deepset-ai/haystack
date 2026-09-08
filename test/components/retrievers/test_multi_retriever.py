@@ -17,6 +17,7 @@ from haystack.components.retrievers import (
     MultiRetriever,
     TextEmbeddingRetriever,
 )
+from haystack.components.retrievers.types import TextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -103,8 +104,8 @@ def embedding_retriever(document_store_with_embeddings):
 
 class TestMultiRetriever:
     def test_init_default_parameters(self):
-        retrievers = {"mock": MockRetriever()}
-        retriever = MultiRetriever(retrievers=retrievers)  # type: ignore[arg-type]
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
         assert retriever.top_k_per_retriever is None
@@ -113,13 +114,9 @@ class TestMultiRetriever:
         assert retriever.join_mode == "reciprocal_rank_fusion"
 
     def test_init_custom_parameters(self):
-        retrievers = {"mock": MockRetriever()}
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
         retriever = MultiRetriever(
-            retrievers=retrievers,  # type: ignore[arg-type]
-            filters={"field": "meta.category"},
-            top_k=5,
-            max_workers=2,
-            join_mode="concatenate",
+            retrievers=retrievers, filters={"field": "meta.category"}, top_k=5, max_workers=2, join_mode="concatenate"
         )
         assert retriever.retrievers == retrievers
         assert retriever.filters == {"field": "meta.category"}

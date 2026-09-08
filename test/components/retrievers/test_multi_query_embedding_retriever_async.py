@@ -161,14 +161,26 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         @component
         class MockRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+            def run(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+            async def run_async(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())  # type: ignore[arg-type]
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())
 
         with pytest.raises(RuntimeError):
             await multi_retriever.run_async(queries=["slow", "failing"])
