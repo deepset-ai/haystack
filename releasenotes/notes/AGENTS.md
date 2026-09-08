@@ -5,10 +5,6 @@
 ## Documentation
 
 - Add `upgrade` notes for breaking/user-visible changes in `releasenotes/notes/` — explain affected users, old/new behavior, and migration steps
-- Add `releasenotes/notes/` entries only for in-scope user-facing PR changes — keeps release notes accurate and low-noise; leave unrelated note files untouched.
-- Name affected APIs/configs in `releasenotes/notes/` — clarifies scope and impact for users
-- Write bug/security notes around public impact, not private helpers — clarifies user risk
+- Write one concise, user-facing note file per PR, only for in-scope changes and only under sections from `releasenotes/config.yaml`; name the affected APIs/configs and the old and new behavior, describe impact in user terms rather than private helpers, and leave unrelated note files untouched
 - Highlight APIs in `releasenotes/notes/` only with examples or clear use cases — shows practical value
-- Keep `releasenotes/notes/` reno notes synced with shipped behavior — prevents misleading release docs
-- Use one `releasenotes/notes/` file per PR — group related change notes together
-- Proofread `releasenotes/notes/` entries — catches API typos and formatting issues
+- Keep notes synced with shipped behavior and proofread them — API names, and reStructuredText formatting with double backticks for inline code

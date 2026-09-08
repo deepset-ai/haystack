@@ -4,14 +4,8 @@
 
 ## Documentation
 
-- Keep `docs-website/docs/pipeline-components/generators/` examples concise and `Agent`-level — improves copyability and keeps docs focused
-- Edit `docs-website/docs/pipeline-components/` pages only for outdated, incorrect, or materially useful user-facing guidance — avoids docs churn
+- Edit `docs-website/docs/pipeline-components/` pages only for outdated, incorrect, or materially useful guidance; keep examples concise and `Agent`-level and polish prose before merge — avoids churn while keeping docs copyable
 - Add `## Overview` near the top of `docs-website/docs/pipeline-components/**` pages — explains what the component does and why to use it before details
-- Document component outputs and link producers/API refs — keeps docs ecosystem-connected
-- Use `ChatPromptBuilder`, `ChatMessage`, and chat generators in new docs LLM pipelines — match wiring, edge names like `prompt`, and declared variables to real chat interfaces.
-- Polish `docs-website/docs/pipeline-components/**/*.mdx` prose before merge — keeps docs clear and consistent
-- Sync `docs-website/docs/pipeline-components` YAML examples with current defaults — stale model names cause config errors
-- Mark joiners/adapters optional when smart pipeline connections make them optional — Prevents docs from implying extra pipeline components are mandatory when smart connections already handle the composition.
-- Document extractor side effects and exact `doc.meta` keys — clarifies pipeline data flow
-- Prefer `result["last_message"]` for Haystack agent final responses — highlights the intended API
-- Link partial config/API summaries to authoritative references — helps users find full details
+- Document component outputs, extractor side effects, and exact `doc.meta` keys; link producers, API references, and the authoritative reference for any partial config summary
+- Use current chat APIs in new docs pipelines — `ChatPromptBuilder`, `ChatMessage`, chat generators, and `result["last_message"]` for agent output — matching wiring, edge names like `prompt`, and declared variables; keep YAML examples on current default model names
+- Mark joiners/adapters optional where smart pipeline connections already handle the composition

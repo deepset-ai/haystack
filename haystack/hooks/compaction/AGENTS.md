@@ -5,9 +5,8 @@
 ## API Design
 
 - Use provider-compatible roles in `haystack/hooks/compaction/` — prefer `user` for synthetic markers
-- Name compaction retention by semantic unit (`turns`/`steps`), not `messages` — matches what is actually preserved
+- Name and document compaction settings by their real semantics — retention in `turns`/`steps`, not `messages`; state when compaction runs, what is retained, and which tool-call context is preserved
 
 ## General
 
-- Document `haystack/hooks/compaction/` APIs by real semantics — prevents compaction misuse
 - Keep `haystack/hooks/compaction/` compactors narrative — move shared indexing, grouping, token counting, and helpers into focused utils
