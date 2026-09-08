@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``Pipeline.run_async`` now lets a ``BreakpointException`` or ``PipelineRuntimeError`` raised by a
+    nested component propagate unchanged, instead of wrapping it in another ``PipelineRuntimeError``.
+    This matches the synchronous ``Pipeline.run`` and preserves the original error context (for example an
+    agent snapshot) when a component internally runs a pipeline.
