@@ -596,6 +596,13 @@ class TestRun:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
+    def test_run_with_empty_tools_override(self, tools: list[Tool], openai_mock_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
+
+        assert "tools" not in openai_mock_responses.call_args.kwargs
+
     def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
 
         component = OpenAIResponsesChatGenerator(
