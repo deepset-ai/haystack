@@ -7,7 +7,9 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document, Pipeline
+from haystack.components.preprocessors.document_cleaner import DocumentCleaner
 from haystack.components.preprocessors.document_preprocessor import DocumentPreprocessor
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 
 
 class TestDocumentPreprocessor:
@@ -33,12 +35,14 @@ class TestDocumentPreprocessor:
         assert preprocessor.output_mapping == {"cleaner.documents": "documents"}
 
         cleaner = preprocessor.pipeline.get_component("cleaner")
+        assert isinstance(cleaner, DocumentCleaner)
         assert cleaner.remove_empty_lines is True
         assert cleaner.remove_extra_whitespaces is True
         assert cleaner.remove_repeated_substrings is False
         assert cleaner.keep_id is True
 
         splitter = preprocessor.pipeline.get_component("splitter")
+        assert isinstance(splitter, DocumentSplitter)
         assert splitter.split_by == "word"
         assert splitter.split_length == 3
         assert splitter.split_overlap == 1
@@ -65,6 +69,7 @@ class TestDocumentPreprocessor:
                 "language": "en",
                 "use_split_rules": True,
                 "extend_abbreviations": True,
+                "tokenizer_encoding": "o200k_base",
             },
             "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
         }
@@ -91,10 +96,19 @@ class TestDocumentPreprocessor:
                 "language": "en",
                 "use_split_rules": True,
                 "extend_abbreviations": True,
+                "tokenizer_encoding": "o200k_base",
             },
             "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
         }
         assert preprocessor.to_dict() == expected
+
+    def test_init_token(self) -> None:
+        preprocessor = DocumentPreprocessor(split_by="token", split_length=10, tokenizer_encoding="cl100k_base")
+        splitter = preprocessor.pipeline.get_component("splitter")
+        assert isinstance(splitter, DocumentSplitter)
+        assert splitter.split_by == "token"
+        assert splitter.split_length == 10
+        assert splitter.tokenizer_encoding == "cl100k_base"
 
     def test_warm_up(self, preprocessor: DocumentPreprocessor) -> None:
         with patch.object(preprocessor.pipeline, "warm_up") as mock_warm_up:
@@ -116,9 +130,17 @@ class TestDocumentPreprocessor:
 
         # Check that the content was cleaned and split
         for doc in processed_docs:
+            assert doc.content is not None
             assert doc.content.strip() == doc.content
             assert len(doc.content.split()) <= 3  # Split length of 3 words
             assert doc.id is not None
+
+    @pytest.mark.integration
+    def test_run_token(self) -> None:
+        preprocessor = DocumentPreprocessor(split_by="token", split_length=5)
+        docs = [Document(content="one two three four five six seven eight nine ten")]
+        result = preprocessor.run(documents=docs)
+        assert len(result["documents"]) > 1
 
     def test_run_with_custom_splitting_function(self) -> None:
         def custom_split(text: str) -> list[str]:
@@ -131,4 +153,6 @@ class TestDocumentPreprocessor:
 
         processed_docs = result["documents"]
         assert len(processed_docs) == 3  # Should be split into 3 sentences
-        assert all("." not in doc.content for doc in processed_docs)  # Each doc should be a single sentence
+        for doc in processed_docs:
+            assert doc.content is not None
+            assert "." not in doc.content  # Each doc should be a single sentence

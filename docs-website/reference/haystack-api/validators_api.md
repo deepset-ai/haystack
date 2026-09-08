@@ -131,5 +131,5 @@ the "validation_error" output.
 
 **Raises:**
 
-- <code>ValueError</code> – If no JSON schema is provided or if the message content is not a dictionary or a list of
-  dictionaries.
+- <code>ValueError</code> – If the last message has no text content, or if no JSON schema is provided either in
+  the `run` method or in the component init.

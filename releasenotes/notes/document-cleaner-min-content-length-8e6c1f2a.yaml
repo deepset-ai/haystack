@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add the ``min_content_length`` parameter to ``DocumentCleaner``. After the
+    configured cleaning steps run, text documents shorter than the threshold
+    (ignoring leading and trailing whitespace) are omitted from the output.

@@ -1,0 +1,183 @@
+---
+title: "AgentTool"
+id: agenttool
+slug: "/agenttool"
+description: "Wraps a Haystack Agent so another Agent can call it as a tool."
+---
+
+# AgentTool
+
+Wraps a Haystack Agent so another Agent can call it as a tool.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `agent`: The Haystack Agent to wrap  <br /> <br />`name`: The name of the tool  <br /> <br />`description`: Description of the tool |
+| **API reference** | [AgentTool](/reference/tools-api#agenttool) |
+| **GitHub link**  | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/agent_tool.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`AgentTool` turns a Haystack [`Agent`](../pipeline-components/agents-1/agent.mdx) into a tool that another `Agent` can call. This is the basis for multi-agent systems: one agent specializes in a task, and a coordinator delegates to it instead of doing the work itself.
+
+The main benefit is context isolation. A specialist may search the web several times and read a few pages before it answers, and all of that stays inside the specialist. The coordinator sends a task and receives an answer, so its context stays small.
+
+Besides the `Agent` itself, the only required configuration is a name and a description. The coordinator's model sends the task as plain text and receives the specialist's reply as text.
+
+If the specialist needs more than a task, for example a variable in its system prompt, `AgentTool` adds it to the tool's inputs, or takes it from the coordinator's state. See [Prompt Variables](#prompt-variables).
+
+### Parameters
+
+- `agent` is mandatory and must be an `Agent` instance.
+- `name` is mandatory and specifies the tool name.
+- `description` is mandatory. It should tell the calling LLM what the wrapped Agent is specialized in and when to delegate to it.
+- `parameters` is optional and lets you override the generated JSON schema for the tool's inputs. It must cover every mandatory input of the wrapped Agent that is not supplied through `inputs_from_state`, otherwise a `ValueError` is raised.
+- `outputs_to_string` is optional and controls how the wrapped Agent's output is converted to a string for the calling LLM. By default, the text of the final reply is returned, or the serialized message if the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+- `inputs_from_state` is optional and maps the calling Agent's state keys to inputs of the wrapped Agent. Example: `{"subject": "topic"}` passes the state value at `"subject"` as the wrapped Agent's `"topic"` input. Inputs mapped this way are not added to the generated schema, since the calling Agent provides them.
+- `outputs_to_state` is optional and maps the wrapped Agent's output keys to the calling Agent's state keys. Example: `{"notes": {"source": "last_message"}}` writes the wrapped Agent's `"last_message"` output to `"notes"` in state.
+
+## Usage
+
+### Basic Usage
+
+This example uses the SerperDev web search component (`serperdev-haystack` package). Install it to run the example:
+
+```shell
+pip install serperdev-haystack
+```
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import AgentTool, ComponentTool
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
+
+researcher = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+    system_prompt="You are a research specialist. Investigate the task and report your findings.",
+    tools=[
+        ComponentTool(
+            component=SerperDevWebSearch(top_k=3),
+            name="web_search",
+            description="Search the web for current information on any topic",
+        ),
+    ],
+)
+
+research = AgentTool(
+    agent=researcher,
+    name="research",
+    description="Research a question on the web and report the findings",
+)
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4"),
+    tools=[research],
+    system_prompt="You coordinate specialists. Delegate research questions, then answer the user.",
+)
+
+result = coordinator.run(
+    [
+        ChatMessage.from_user(
+            "What are the latest developments in the Haystack framework?",
+        ),
+    ],
+)
+
+print(result["last_message"].text)
+```
+
+The coordinator sees a single `research` tool that takes the task to delegate as one user message. The searches the researcher runs and the results it reads never enter the coordinator's context, only the final report does.
+
+### Prompt Variables
+
+If the wrapped Agent has variables in its `system_prompt` or `user_prompt`, written as [Jinja templates](../concepts/jinja-templates.mdx), they are mandatory inputs. `AgentTool` adds a string parameter for each of them to the generated schema, and the calling LLM fills them in.
+
+The reviewer below is specialized by language, and the coordinator picks the language for each review it delegates:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import AgentTool
+
+SNIPPET = """
+def load_config(path):
+    return json.loads(open(path).read())
+"""
+
+reviewer = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+    system_prompt=(
+        "You are a senior {{language}} engineer. Review the code you are given and reply with the single "
+        "most important issue, in one sentence."
+    ),
+)
+
+review_tool = AgentTool(
+    agent=reviewer,
+    name="code_review",
+    description="Ask a senior engineer to review a code snippet",
+)
+
+print(review_tool.parameters["required"])
+# ['messages', 'language']
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+    tools=[review_tool],
+    system_prompt="You triage code snippets. Delegate every review to the code_review tool, then answer the user.",
+)
+
+result = coordinator.run(
+    [ChatMessage.from_user(f"Review this Python snippet:\n{SNIPPET}")],
+)
+
+print(result["last_message"].text)
+```
+
+Use `inputs_from_state` when the value should come from the calling Agent's [state](../pipeline-components/agents-1/state.mdx) instead of from the LLM. Inputs mapped this way are not added to the generated schema:
+
+```python
+review_tool = AgentTool(
+    agent=reviewer,
+    name="code_review",
+    description="Ask a senior engineer to review a code snippet",
+    # the state key "project_language" fills the reviewer's "language" input
+    inputs_from_state={"project_language": "language"},
+)
+
+print(review_tool.parameters["required"])
+# ['messages']
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+    tools=[review_tool],
+    system_prompt="You triage code snippets. Delegate every review to the code_review tool, then answer the user.",
+    state_schema={"project_language": {"type": str}},
+)
+
+result = coordinator.run(
+    [ChatMessage.from_user(f"Review this snippet:\n{SNIPPET}")],
+    project_language="Python",
+)
+
+print(result["last_message"].text)
+```
+
+## Additional References
+
+📖 Related docs:
+
+- [Multi-Agent Systems](../concepts/agents/multi-agent-systems.mdx)
+- [ComponentTool](componenttool.mdx)
+- [State](../pipeline-components/agents-1/state.mdx)
+
+📚 Tutorials:
+
+- [Creating a Multi-Agent System with Haystack](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)

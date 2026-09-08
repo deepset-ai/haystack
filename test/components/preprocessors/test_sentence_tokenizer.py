@@ -64,7 +64,7 @@ def test_read_abbreviations_existing_file(tmp_path, mock_file_content):
         assert result == ["Mr.", "Dr.", "Prof."]
 
 
-def test_read_abbreviations_missing_file(caplog: LogCaptureFixture):
+def test_read_abbreviations_missing_file(caplog: LogCaptureFixture) -> None:
     with patch("haystack.components.preprocessors.sentence_tokenizer.Path") as mock_path:
         mock_path.return_value.parent.parent = Path("/nonexistent")
         result = SentenceSplitter._read_abbreviations("pt")

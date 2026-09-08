@@ -100,3 +100,33 @@ if __name__ == "__main__":
     config = config.replace(f"label: '{target_unstable}'", f"label: '{next_unstable}'")
     with open("docs-website/docusaurus.config.js", "w") as f:
         f.write(config)
+
+    # Stable versions outside the build budget are not reachable on the website: redirect them to the current version
+    max_versions_match = re.search(r"const MAX_TOTAL_VERSIONS = (\d+);", config)
+    if max_versions_match is None:
+        sys.exit("Can't find MAX_TOTAL_VERSIONS in docs-website/docusaurus.config.js")
+
+    unstable_versions = [v for v in versions_list if v.endswith("-unstable")]
+    stable_versions = [v for v in versions_list if not v.endswith("-unstable")]
+    # the current version (docs/) always takes one slot, each unstable version takes one more
+    active_stable_count = max(0, int(max_versions_match.group(1)) - 1 - len(unstable_versions))
+    inactive_versions = stable_versions[active_stable_count:]
+
+    with open("docs-website/vercel.json") as f:
+        vercel_config = json.load(f)
+    existing_redirects = vercel_config.get("redirects", [])
+    existing_sources = {r.get("source") for r in existing_redirects}
+
+    added = 0
+    for v in inactive_versions:
+        for base in ("docs", "reference"):
+            source = f"/{base}/{v}/:slug*"
+            if source not in existing_sources:
+                existing_redirects.append({"source": source, "destination": f"/{base}/:slug*", "permanent": True})
+                added += 1
+
+    vercel_config["redirects"] = existing_redirects
+    with open("docs-website/vercel.json", "w") as f:
+        json.dump(vercel_config, f, indent=2)
+        f.write("\n")
+    print(f"Updated vercel.json with {added} redirect(s) for inactive versions: {inactive_versions}")

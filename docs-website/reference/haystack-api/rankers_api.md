@@ -387,7 +387,7 @@ if a score is present.
   If not provided, the weight provided at initialization time is used.
 - **ranking_mode** (<code>Literal['reciprocal_rank_fusion', 'linear_score'] | None</code>) – (optional) The mode used to combine the Retriever's and Ranker's scores.
   Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-  Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+  Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
   If not provided, the ranking_mode provided at initialization time is used.
 - **sort_order** (<code>Literal['ascending', 'descending'] | None</code>) – Whether to sort the meta field by ascending or descending order.
   Possible values are `descending` (default) and `ascending`.

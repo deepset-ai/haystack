@@ -377,9 +377,9 @@ class LLMMetadataExtractor:
 
             for key in parsed_metadata:
                 new_meta[key] = parsed_metadata[key]
-                # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
-                new_meta.pop("metadata_extraction_error", None)
-                new_meta.pop("metadata_extraction_response", None)
+            # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs.
+            new_meta.pop("metadata_extraction_error", None)
+            new_meta.pop("metadata_extraction_response", None)
             successful_documents.append(replace(document, meta=new_meta))
         return successful_documents, failed_documents
 

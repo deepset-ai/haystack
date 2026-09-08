@@ -97,6 +97,34 @@ class TestJsonSchemaValidator:
         # we need this recursive json conversion to validate the message
         assert result["key"][0]["function"]["arguments"]["basehead"] == "main...amzn_chat"
 
+    @pytest.mark.parametrize("scalar", ["hello", 42, 3.14, True, None])
+    def test_recursive_json_to_object_with_top_level_scalar(self, scalar):
+        validator = JsonSchemaValidator()
+
+        assert validator._recursive_json_to_object(scalar) == scalar
+
+    def test_recursive_json_to_object_with_list_of_scalars(self):
+        validator = JsonSchemaValidator()
+
+        assert validator._recursive_json_to_object([1, "two", None]) == [1, "two", None]
+
+    def test_validates_message_with_top_level_json_scalar(self):
+        validator = JsonSchemaValidator(json_schema={"type": "string"})
+
+        result = validator.run([ChatMessage.from_assistant('"hello"')])
+
+        assert "validated" in result
+        assert len(result["validated"]) == 1
+
+    @pytest.mark.parametrize("message_text", ["42", "true", "null"])
+    def test_validation_error_for_top_level_json_scalar(self, message_text):
+        validator = JsonSchemaValidator(json_schema={"type": "string"})
+
+        result = validator.run([ChatMessage.from_assistant(message_text)])
+
+        assert "validation_error" in result
+        assert len(result["validation_error"]) == 1
+
     #  Validates multiple messages against a provided JSON schema successfully.
     def test_validates_multiple_messages_against_json_schema(self, json_schema_github_compare, genuine_fc_message):
         validator = JsonSchemaValidator()

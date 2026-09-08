@@ -36,11 +36,20 @@ class SpyingSpan(Span):
 
 
 class SpyingTracer(Tracer):
+    """
+    A tracer that records every span it creates, in creation order, in `spans`.
+
+    Open spans are also kept on a stack, so `current_span` returns the innermost span whose `trace` block has not
+    exited yet. The stack lives on the tracer instance rather than in a ContextVar, mirroring tracing backends such
+    as Langfuse: code that opens a span while sibling spans are open concurrently sees a sibling as the current span.
+    """
+
     def current_span(self) -> Span | None:
-        return self.spans[-1] if self.spans else None
+        return self._open_spans[-1] if self._open_spans else None
 
     def __init__(self) -> None:
         self.spans: list[SpyingSpan] = []
+        self._open_spans: list[SpyingSpan] = []
 
     @contextlib.contextmanager
     def trace(
@@ -52,7 +61,11 @@ class SpyingTracer(Tracer):
 
         self.spans.append(new_span)
 
-        yield new_span
+        self._open_spans.append(new_span)
+        try:
+            yield new_span
+        finally:
+            self._open_spans.remove(new_span)
 
 
 @dataclasses.dataclass
@@ -69,16 +82,31 @@ class EagerSpyingSpan(Span):
     parent_span: Span | None = None
     tags: dict[str, Any] = dataclasses.field(default_factory=dict)
 
+    trace_id: str | None = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
+    span_id: str | None = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
+
     def set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = coerce_tag_value(value)
 
+    def get_correlation_data_for_logs(self) -> dict[str, Any]:
+        return {"trace_id": self.trace_id, "span_id": self.span_id}
+
 
 class EagerSpyingTracer(Tracer):
+    """
+    A tracer that records every span it creates, in creation order, in `spans`, coercing tag values eagerly.
+
+    Open spans are also kept on a stack, so `current_span` returns the innermost span whose `trace` block has not
+    exited yet. The stack lives on the tracer instance rather than in a ContextVar, mirroring tracing backends such
+    as Langfuse: code that opens a span while sibling spans are open concurrently sees a sibling as the current span.
+    """
+
     def current_span(self) -> Span | None:
-        return self.spans[-1] if self.spans else None
+        return self._open_spans[-1] if self._open_spans else None
 
     def __init__(self) -> None:
         self.spans: list[EagerSpyingSpan] = []
+        self._open_spans: list[EagerSpyingSpan] = []
 
     @contextlib.contextmanager
     def trace(
@@ -90,4 +118,8 @@ class EagerSpyingTracer(Tracer):
 
         self.spans.append(new_span)
 
-        yield new_span
+        self._open_spans.append(new_span)
+        try:
+            yield new_span
+        finally:
+            self._open_spans.remove(new_span)

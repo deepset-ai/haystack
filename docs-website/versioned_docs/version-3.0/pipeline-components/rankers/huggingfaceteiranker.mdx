@@ -52,24 +52,29 @@ This example uses the `HuggingFaceTEIRanker` to rank two simple documents. To ru
 
 ```python
 from haystack import Document
-from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker
+from haystack_integrations.components.rankers.huggingface_api import (
+    HuggingFaceTEIRanker,
+)
 from haystack.utils import Secret
 
 reranker = HuggingFaceTEIRanker(
     url="http://localhost:8080",
     top_k=5,
     timeout=30,
-    token=Secret.from_token("my_api_token")
+    token=Secret.from_token("my_api_token"),
 )
 
-docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
+docs = [
+    Document(content="The capital of France is Paris"),
+    Document(content="The capital of Germany is Berlin"),
+]
 
 result = reranker.run(query="What is the capital of France?", documents=docs)
 
 ranked_docs = result["documents"]
 print(ranked_docs)
->> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
->>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+# >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+# >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
 ```
 
 ### In a pipeline

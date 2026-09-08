@@ -50,6 +50,7 @@ class TestSASEvaluator:
 
         assert evaluator._model == "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
         assert evaluator._batch_size == 32
+        assert evaluator._device is not None
         assert evaluator._device.to_torch_str() == "cuda:0"
         assert evaluator._token.resolve_value() == "fake-token"
 
@@ -87,7 +88,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         with pytest.raises(ValueError):
-            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
+            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)  # type: ignore[arg-type]
 
     @pytest.mark.integration
     @pytest.mark.slow

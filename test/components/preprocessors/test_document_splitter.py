@@ -3,11 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from unittest.mock import Mock
 
 import pytest
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.retrievers import SentenceWindowRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import deserialize_callable, serialize_callable
 
 
@@ -48,7 +51,7 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_single_doc(self):
         with pytest.raises(TypeError, match="DocumentSplitter expects a List of Documents as input."):
             splitter = DocumentSplitter()
-            splitter.run(documents=Document())
+            splitter.run(documents=Document())  # type: ignore[arg-type]
 
     def test_empty_list(self):
         splitter = DocumentSplitter()
@@ -57,7 +60,7 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_unsupported_split_by(self):
         with pytest.raises(ValueError, match="split_by must be one of "):
-            DocumentSplitter(split_by="unsupported")
+            DocumentSplitter(split_by="unsupported")  # type: ignore[arg-type]
 
     def test_undefined_function(self):
         with pytest.raises(ValueError, match="When 'split_by' is set to 'function', a valid 'splitting_function'"):
@@ -107,6 +110,19 @@ class TestSplittingByFunctionOrCharacterRegex:
             result["documents"][0].content
             == "This is a text with some words. There is a second sentence. And there is a third sentence."
         )
+
+    def test_split_by_word_with_threshold_and_overlap_does_not_duplicate_overlap(self):
+        # When ``split_threshold`` merges a small trailing segment into the previous split and
+        # ``split_overlap`` is set, the overlapping units must not be duplicated: every chunk must
+        # remain a substring of the source. Regression test.
+        text = "a b c d e f"
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1, split_threshold=3)
+        result = splitter.run(documents=[Document(content=text)])
+        contents = [doc.content for doc in result["documents"]]
+        for content in contents:
+            assert content is not None
+            assert content in text, f"chunk {content!r} is not present in the source text"
+        assert contents == ["a b c ", "c d e f"]
 
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
@@ -205,13 +221,19 @@ class TestSplittingByFunctionOrCharacterRegex:
 
         assert len(docs) == 4
         assert docs[0].content == "This"
-        assert docs[0].meta == {"key": "value", "source_id": "1"}
+        assert docs[0].meta == {"key": "value", "source_id": "1", "split_id": 0, "split_idx_start": 0, "page_number": 1}
         assert docs[1].content == "Is"
-        assert docs[1].meta == {"key": "value", "source_id": "1"}
+        assert docs[1].meta == {"key": "value", "source_id": "1", "split_id": 1, "split_idx_start": 5, "page_number": 1}
         assert docs[2].content == "A"
-        assert docs[2].meta == {"key": "value", "source_id": "1"}
+        assert docs[2].meta == {"key": "value", "source_id": "1", "split_id": 2, "split_idx_start": 8, "page_number": 1}
         assert docs[3].content == "Test"
-        assert docs[3].meta == {"key": "value", "source_id": "1"}
+        assert docs[3].meta == {
+            "key": "value",
+            "source_id": "1",
+            "split_id": 3,
+            "split_idx_start": 10,
+            "page_number": 1,
+        }
 
         splitting_function = lambda s: re.split(r"[\s]{2,}", s)
         splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
@@ -219,14 +241,89 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[Document(id="1", content=text, meta={"key": "value"})])
         docs = result["documents"]
         assert len(docs) == 4
-        assert docs[0].content == "This"
-        assert docs[0].meta == {"key": "value", "source_id": "1"}
-        assert docs[1].content == "Is"
-        assert docs[1].meta == {"key": "value", "source_id": "1"}
-        assert docs[2].content == "A"
-        assert docs[2].meta == {"key": "value", "source_id": "1"}
-        assert docs[3].content == "Test"
-        assert docs[3].meta == {"key": "value", "source_id": "1"}
+        for split_id, (content, doc) in enumerate(zip(["This", "Is", "A", "Test"], docs, strict=True)):
+            assert doc.content == content
+            assert doc.meta["key"] == "value"
+            assert doc.meta["source_id"] == "1"
+            assert doc.meta["split_id"] == split_id
+            assert doc.meta["split_idx_start"] == text.index(content)
+            assert doc.meta["page_number"] == 1
+
+    def test_split_by_function_tracks_page_numbers(self):
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: s.split("\f"))
+        chunks = ["First chunk.", "Second chunk.", "Third chunk."]
+        text = "\f".join(chunks)
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == chunks
+        assert [doc.meta["page_number"] for doc in docs] == [1, 2, 3]
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [text.index(chunk) for chunk in chunks]
+
+    def test_split_by_function_with_transformed_splits(self):
+        # The splits don't appear verbatim in the source, so they cannot be located in it
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: [t.upper() for t in s.split(".")])
+        docs = splitter.run(documents=[Document(content="one.two")])["documents"]
+
+        assert [doc.content for doc in docs] == ["ONE", "TWO"]
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 3]
+        assert [doc.meta["page_number"] for doc in docs] == [1, 1]
+
+    def test_split_by_function_skips_empty_splits(self):
+        splitting_function = lambda s: s.split("\f")
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
+        docs = splitter.run(documents=[Document(content="a\f\fb")])["documents"]
+
+        assert [doc.content for doc in docs] == ["a", "b"]
+        assert [doc.meta["page_number"] for doc in docs] == [1, 3]
+
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=splitting_function, skip_empty_documents=False
+        )
+        docs = splitter.run(documents=[Document(content="a\f\fb")])["documents"]
+
+        assert [doc.content for doc in docs] == ["a", "", "b"]
+
+    def test_split_by_function_output_usable_by_sentence_window_retriever(self):
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: s.split("|"))
+        text = "first part|second part|third part"
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=document_store, window_size=1)
+        result = retriever.run(retrieved_documents=[docs[1]])
+
+        assert result["context_windows"] == ["first partsecond partthird part"]
+        assert [doc.content for doc in result["context_documents"]] == ["first part", "second part", "third part"]
+
+    def test_split_by_function_with_overlapping_sliding_window(self):
+        # Hand-rolled sliding-window splitting function: each split shares words with the next one,
+        # so the splits genuinely overlap in the source text.
+        def sliding_window(text):
+            words = text.split(" ")
+            return [" ".join(words[i : i + 3]) for i in range(0, len(words), 2)]
+
+        text = "the quick brown fox jumps"
+        assert sliding_window(text) == ["the quick brown", "brown fox jumps", "jumps"]
+        # "brown fox jumps" really starts at index 10 in the source text
+        assert text.find("brown fox jumps") == 10
+
+        splitter = DocumentSplitter(split_by="function", splitting_function=sliding_window, split_overlap=1)
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == ["the quick brown", "brown fox jumps", "jumps"]
+
+        # content.find(split, cur_start_idx) only searches forward from the end of the previous
+        # split, so a split that genuinely starts *before* that point (as any overlapping split
+        # does) can never be located, and silently falls back to the wrong cumulative offset.
+        assert docs[1].meta["split_idx_start"] == 10  # real index of "brown fox jumps" in the source
+        assert docs[2].meta["split_idx_start"] == 20  # real index of "jumps" in the source
+
+        # The real overlap ("brown") between docs[0] and docs[1] should be detected since
+        # split_overlap=1 was requested.
+        assert docs[1].meta["_split_overlap"] != []
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
@@ -239,6 +336,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
         assert docs[0].meta["_split_overlap"][0]["range"] == (0, 5)
+        assert docs[1].content is not None
         assert docs[1].content[0:5] == "is a "
         # doc 1
         assert docs[1].content == "is a second sentence. And there is a third sentence."
@@ -397,6 +495,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)  # 0
         assert docs[0].meta["_split_overlap"][0]["range"] == (0, 23)
+        assert docs[1].content is not None
         assert docs[1].content[0:23] == "some words. There is a "
         # doc 1
         assert docs[1].content == "some words. There is a second sentence. And a third "
@@ -405,6 +504,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[1].meta["_split_overlap"][0]["range"] == (20, 43)
         assert docs[1].meta["_split_overlap"][1]["range"] == (0, 29)
         assert docs[0].content[20:43] == "some words. There is a "
+        assert docs[2].content is not None
         assert docs[2].content[0:29] == "second sentence. And a third "
         # doc 2
         assert docs[2].content == "second sentence. And a third sentence."
@@ -735,7 +835,9 @@ class TestSplittingNLTKSentenceSplitter:
             documents[0].content
             == "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
         )
+        assert documents[1].content is not None
         assert "This is a test sentence with many many words" not in documents[1].content
+        assert documents[2].content is not None
         assert "This is a test sentence with many many words" not in documents[2].content
 
     def test_run_split_by_word_respect_sentence_boundary_with_split_overlap_and_page_breaks(self) -> None:
@@ -834,3 +936,196 @@ class TestSplittingNLTKSentenceSplitter:
         result = splitter.run(documents=[doc1])
 
         assert len({doc.id for doc in result["documents"]}) == 4
+
+
+@pytest.fixture
+def mock_tiktoken_tokenizer():
+    def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+        full_text = "".join(tokens)
+        offsets: list[int] = []
+        idx = 0
+        for tok in tokens:
+            offsets.append(idx)
+            idx += len(tok)
+        return full_text, offsets
+
+    mock_tokenizer = Mock()
+    mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+    mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
+    return mock_tokenizer
+
+
+class TestSplittingByToken:
+    """Unit tests for split_by="token" mode that do not require external network access."""
+
+    def test_init(self):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=50, split_overlap=10, tokenizer_encoding="cl100k_base"
+        )
+        assert splitter.split_by == "token"
+        assert splitter.split_length == 50
+        assert splitter.split_overlap == 10
+        assert splitter.tokenizer_encoding == "cl100k_base"
+        assert splitter._tiktoken_tokenizer is None
+
+    def test_warm_up_is_idempotent(self, monkeypatch):
+        import haystack.components.preprocessors.document_splitter as mod
+
+        sentinel = Mock()
+        get_encoding = Mock(return_value=sentinel)
+        monkeypatch.setattr(mod.tiktoken, "get_encoding", get_encoding)
+
+        splitter = DocumentSplitter(split_by="token", split_length=10)
+        splitter.warm_up()
+        splitter.warm_up()
+
+        assert get_encoding.call_count == 1
+        assert splitter._tiktoken_tokenizer is sentinel
+
+    def test_to_dict(self):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=100, split_overlap=20, tokenizer_encoding="cl100k_base"
+        )
+        serialized = splitter.to_dict()
+        assert serialized["type"] == "haystack.components.preprocessors.document_splitter.DocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "token"
+        assert serialized["init_parameters"]["split_length"] == 100
+        assert serialized["init_parameters"]["split_overlap"] == 20
+        assert serialized["init_parameters"]["tokenizer_encoding"] == "cl100k_base"
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
+            "init_parameters": {
+                "split_by": "token",
+                "split_length": 100,
+                "split_overlap": 20,
+                "tokenizer_encoding": "cl100k_base",
+            },
+        }
+        splitter = DocumentSplitter.from_dict(data)
+        assert splitter.split_by == "token"
+        assert splitter.split_length == 100
+        assert splitter.split_overlap == 20
+        assert splitter.tokenizer_encoding == "cl100k_base"
+
+    @pytest.mark.parametrize(
+        "split_length,split_overlap,split_threshold,content,expected_splits",
+        [
+            (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
+            (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
+            (10, 0, 5, "t1 t2", ["t1 t2"]),
+            (3, 2, 2, "t1 t2 t3", ["t1 t2 t3", " t2 t3"]),
+        ],
+    )
+    def test_split_by_token_mock(
+        self, mock_tiktoken_tokenizer, split_length, split_overlap, split_threshold, content, expected_splits
+    ):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold
+        )
+        splitter._tiktoken_tokenizer = mock_tiktoken_tokenizer
+        doc = Document(content=content)
+        docs = splitter._split_by_token(doc)
+        assert [d.content for d in docs] == expected_splits
+
+    @pytest.mark.parametrize("skip_empty_documents,expected_count", [(True, 0), (False, 1)])
+    def test_split_by_token_skip_empty_documents_mock(self, skip_empty_documents, expected_count):
+        mock_tokenizer = Mock()
+        mock_tokenizer.encode.return_value = []
+
+        splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=skip_empty_documents)
+        splitter._tiktoken_tokenizer = mock_tokenizer
+
+        doc = Document(content="")
+        docs = splitter._split_by_token(doc)
+        assert len(docs) == expected_count
+        if not skip_empty_documents:
+            assert docs[0].content == ""
+            assert docs[0].meta["source_id"] == doc.id
+            assert docs[0].meta["split_id"] == 0
+            assert docs[0].meta["page_number"] == 1
+
+
+@pytest.mark.integration
+class TestSplittingByTokenIntegration:
+    """Integration tests for split_by="token" mode requiring real tiktoken."""
+
+    def test_basic_chunking(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        doc = Document(content="one two three four five six seven eight nine ten")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 1
+        assert splitter._tiktoken_tokenizer is not None
+        for chunk in result:
+            assert chunk.content is not None
+            tokens = splitter._tiktoken_tokenizer.encode(chunk.content)
+            assert len(tokens) <= 5
+
+    def test_custom_encoding(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, tokenizer_encoding="cl100k_base")
+        doc = Document(content="one two three four five six seven eight")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 0
+        assert splitter.tokenizer_encoding == "cl100k_base"
+
+    def test_pipeline_integration(self):
+        from haystack import Pipeline
+
+        pipeline = Pipeline()
+        pipeline.add_component("splitter", DocumentSplitter(split_by="token", split_length=10, split_overlap=2))
+        doc = Document(content="Haystack is an open source framework for building search and LLM applications.")
+        result = pipeline.run({"splitter": {"documents": [doc]}})
+        assert len(result["splitter"]["documents"]) > 0
+
+    def test_add_split_overlap_information_token(self):
+        splitter = DocumentSplitter(split_by="token", split_length=10, split_overlap=3)
+        text = "This is a text with some words. There is a second sentence. And a third sentence."
+        doc = Document(content=text)
+        docs = splitter.run(documents=[doc])["documents"]
+
+        assert len(docs) > 1
+        for i in range(len(docs)):
+            if i > 0:
+                assert len(docs[i].meta["_split_overlap"]) >= 1
+                # Overlap between docs[i-1] and docs[i]
+                prev_overlap = docs[i - 1].meta["_split_overlap"]
+                curr_overlap = docs[i].meta["_split_overlap"]
+                assert any(entry["doc_id"] == docs[i].id for entry in prev_overlap)
+                assert any(entry["doc_id"] == docs[i - 1].id for entry in curr_overlap)
+
+        # Reconstruct the original document content from the split documents
+        assert doc.content == merge_documents(docs)
+
+    def test_unicode_and_emojis_no_corruption(self):
+        splitter = DocumentSplitter(split_by="token", split_length=3, split_overlap=1)
+        doc = Document(content="I love 🍕 and 🍣 so much! 🌍🚀")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 1
+        for chunk in result:
+            assert chunk.content is not None
+            assert "\ufffd" not in chunk.content
+        assert doc.content == merge_documents(result)
+
+    def test_add_page_number_to_metadata_with_no_overlap_token_split(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        text = "one two three four five\fsix seven eight nine ten\feleven twelve thirteen fourteen fifteen"
+        doc = Document(content=text)
+        docs = splitter.run(documents=[doc])["documents"]
+        assert len(docs) > 1
+        assert docs[0].meta["page_number"] == 1
+        for d in docs:
+            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.meta["page_number"] == expected_page
+        assert docs[-1].meta["page_number"] == 3
+
+    def test_add_page_number_to_metadata_with_overlap_token_split(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=2)
+        text = "one two three four five\fsix seven eight nine ten\feleven twelve thirteen fourteen fifteen"
+        doc = Document(content=text)
+        docs = splitter.run(documents=[doc])["documents"]
+        assert len(docs) > 1
+        for d in docs:
+            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.meta["page_number"] == expected_page
+        assert docs[-1].meta["page_number"] == 3

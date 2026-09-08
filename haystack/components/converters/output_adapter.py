@@ -136,8 +136,12 @@ class OutputAdapter:
             # we try to evaluate it and would fail.
             # This must be done cause the output could be different literal structures.
             # This doesn't support any user types.
+            # When the declared output_type is str we skip literal evaluation so that a
+            # rendered string that happens to be a valid Python literal (e.g. "1,000" -> (1, 0),
+            # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
+            # another type, which would violate the declared output_type.
             with contextlib.suppress(Exception):
-                if not self._unsafe:
+                if not self._unsafe and self.output_type is not str:
                     output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result
@@ -182,9 +186,16 @@ class OutputAdapter:
                 "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
             )
 
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters and not _is_unsafe_deserialization():
+            raise DeserializationError(
+                "Refusing to deserialize an OutputAdapter with custom filters while loading in safe mode. "
+                "Custom filters are arbitrary callables that can execute during pipeline loading. "
+                "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
+            )
+
         init_params["output_type"] = deserialize_type(init_params["output_type"])
 
-        custom_filters = init_params.get("custom_filters", {})
         if custom_filters:
             init_params["custom_filters"] = {
                 name: deserialize_callable(filter_func) if filter_func else None

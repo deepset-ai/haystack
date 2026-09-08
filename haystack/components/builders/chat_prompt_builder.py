@@ -234,7 +234,7 @@ class ChatPromptBuilder:
         :returns: A dictionary with the following keys:
             - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
         :raises ValueError:
-            If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+            If `template` is empty or contains elements that are not instances of `ChatMessage`.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}

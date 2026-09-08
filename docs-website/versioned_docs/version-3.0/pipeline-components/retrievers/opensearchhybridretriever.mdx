@@ -91,8 +91,13 @@ pip install sentence-transformers-haystack
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack_integrations.components.retrievers.opensearch import OpenSearchHybridRetriever
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+from haystack_integrations.components.retrievers.opensearch import (
+    OpenSearchHybridRetriever,
+)
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 
 # Initialize the document store
@@ -112,12 +117,16 @@ docs = [
 ]
 
 # Embed the documents and add them to the document store
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2"
+)
 docs = doc_embedder.run(docs)
-doc_store.write_documents(docs['documents'])
+doc_store.write_documents(docs["documents"])
 
 # Initialize some haystack text embedder, in this case the SentenceTransformersTextEmbedder
-embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+embedder = SentenceTransformersTextEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2"
+)
 
 # Initialize the hybrid retriever
 retriever = OpenSearchHybridRetriever(
@@ -125,15 +134,16 @@ retriever = OpenSearchHybridRetriever(
     embedder=embedder,
     top_k_bm25=3,
     top_k_embedding=3,
-    join_mode="reciprocal_rank_fusion"
+    join_mode="reciprocal_rank_fusion",
 )
 
 # Run the retriever
-results = retriever.run(query="What is reinforcement learning?", filters_bm25=None, filters_embedding=None)
-
->> results['documents']
-{'documents': [Document(id=..., content: 'Reinforcement learning is a type of machine learning.', score: 1.0),
-  Document(id=..., content: 'Supervised learning is a type of machine learning.', score: 0.9760624679979518),
-  Document(id=..., content: 'Deep learning is a subset of machine learning.', score: 0.4919354838709677),
-  Document(id=..., content: 'Machine learning is a subset of artificial intelligence.', score: 0.4841269841269841)]}
+results = retriever.run(
+    query="What is reinforcement learning?", filters_bm25=None, filters_embedding=None
+)
+print(results)
+# >> {'documents': [Document(id=..., content: 'Reinforcement learning is a type of machine learning.', score: 1.0),
+# >>   Document(id=..., content: 'Supervised learning is a type of machine learning.', score: 0.9760624679979518),
+# >>   Document(id=..., content: 'Deep learning is a subset of machine learning.', score: 0.4919354838709677),
+# >>   Document(id=..., content: 'Machine learning is a subset of artificial intelligence.', score: 0.4841269841269841)]}
 ```

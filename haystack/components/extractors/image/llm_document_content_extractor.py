@@ -422,7 +422,10 @@ class LLMDocumentContentExtractor:
 
         await self.warm_up_async()
 
-        image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
+        # Reading the files and rendering PDF pages is blocking work and `DocumentToImageContent` has no
+        # `run_async`, so it runs in a thread instead of on the event loop.
+        conversion_result = await _execute_component_async(self._document_to_image_content, documents=documents)
+        image_contents = conversion_result["image_contents"]
 
         # Capture the current span here so concurrent tasks nest their generator spans under the component span.
         parent_span = tracing.tracer.current_span()

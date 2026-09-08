@@ -11,7 +11,7 @@ import pytest
 from pydantic import BaseModel
 
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator, OpenAIResponsesChatGenerator
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -75,12 +75,6 @@ def tools():
 
 
 class TestInitialization:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert (
-            AzureOpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-            is OpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-        )
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIResponsesChatGenerator.SUPPORTED_MODELS

@@ -13,6 +13,8 @@ from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import deserialize_chatgenerator_inplace
 from haystack.utils.async_utils import _execute_component_async
 
+_RESERVED_OUTPUT_NAMES = ("chat_generator_text", "unmatched")
+
 
 @component
 class LLMMessagesRouter:
@@ -67,17 +69,27 @@ class LLMMessagesRouter:
 
         :param chat_generator: A ChatGenerator instance which represents the LLM.
         :param output_names: A list of output connection names. These can be used to connect the router to other
-            components.
+            components. `"chat_generator_text"` and `"unmatched"` are reserved output names and cannot be used here.
         :param output_patterns: A list of regular expressions to be matched against the output of the LLM. Each pattern
             corresponds to an output name. Patterns are evaluated in order.
             When using moderation models, refer to the model card to understand the expected outputs.
         :param system_prompt: An optional system prompt to customize the behavior of the LLM.
             For moderation models, refer to the model card for supported customization options.
 
-        :raises ValueError: If output_names and output_patterns are not non-empty lists of the same length.
+        :raises ValueError: If output_names and output_patterns are not non-empty lists of the same length, or if
+            output_names uses the reserved names `"chat_generator_text"` or `"unmatched"`.
         """
         if not output_names or not output_patterns or len(output_names) != len(output_patterns):
             raise ValueError("`output_names` and `output_patterns` must be non-empty lists of the same length")
+
+        collisions = set(_RESERVED_OUTPUT_NAMES).intersection(output_names)
+        if collisions:
+            names = ", ".join(repr(name) for name in sorted(collisions))
+            raise ValueError(
+                f"Output name(s) {names} are reserved output names in LLMMessagesRouter "
+                "('chat_generator_text' for the LLM reply, 'unmatched' for messages matching no pattern). "
+                "Rename the output to something else."
+            )
 
         self._chat_generator = chat_generator
         self._system_prompt = system_prompt

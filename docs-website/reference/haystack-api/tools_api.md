@@ -100,7 +100,8 @@ Create a Tool instance from a Haystack Agent.
   for every other mandatory input of the Agent, if not provided.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
-  the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+  the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,
+  reached the model's output limit, or had its response stopped by a content filter.
 
 `outputs_to_string` supports two formats:
 
@@ -901,7 +902,7 @@ Initialize the SearchableToolset.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
 Adding new tools after initialization is not supported for SearchableToolset.
@@ -1092,7 +1093,7 @@ first are no-ops.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
 Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store.
@@ -1442,28 +1443,19 @@ to the tools' own idempotent `warm_up()`.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
-Add a new Tool or merge another Toolset.
-
-Note: adding a Toolset flattens it into its individual tools, so this is only recommended
-for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
-For example, combining with an `MCPToolset`, which owns a shared connection, is not
-recommended: the connection's lifecycle would no longer be managed by the original
-Toolset.
-
-Adding a Toolset is deprecated and will be removed in Haystack 3.2.0: pass Toolsets as a
-list wherever tools are accepted instead, e.g. `Agent(tools=[toolset_a, toolset_b])`.
+Add a new Tool to this Toolset.
 
 **Parameters:**
 
-- **tool** (<code>Tool | Toolset</code>) – A Tool instance or another Toolset to add
+- **tool** (<code>Tool</code>) – A Tool instance to add
 
 **Raises:**
 
 - <code>ValueError</code> – If adding the tool would result in duplicate tool names
-- <code>TypeError</code> – If the provided object is not a Tool or Toolset
+- <code>TypeError</code> – If the provided object is not a Tool
 
 #### to_dict
 
