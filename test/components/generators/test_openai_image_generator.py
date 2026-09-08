@@ -102,7 +102,7 @@ class TestOpenAIImageGenerator:
             api_key=Secret.from_env_var("EXAMPLE_API_KEY"),
             api_base_url="https://api.openai.com",
             organization="test-org",
-            timeout=60,
+            timeout=60.0,
             max_retries=10,
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
@@ -116,7 +116,7 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["EXAMPLE_API_KEY"], "strict": True},
                 "api_base_url": "https://api.openai.com",
                 "organization": "test-org",
-                "timeout": 60,
+                "timeout": 60.0,
                 "max_retries": 10,
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
