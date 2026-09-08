@@ -1,5 +1,3 @@
-<!-- Mined from deepset PR reviews; see the repo-root AGENTS.md. -->
-
 # docs-website/ Guidelines
 
 ## Documentation

@@ -1,5 +1,3 @@
-<!-- Mined from deepset PR reviews; see the repo-root AGENTS.md. -->
-
 # haystack/hooks/compaction/ Guidelines
 
 ## API Design
