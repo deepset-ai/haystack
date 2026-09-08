@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 
 import jsonschema
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from haystack.components.agents.state import State
 from haystack.tools.errors import SchemaGenerationError
@@ -424,13 +424,22 @@ def test_remove_title_from_schema_definition_named_title_draft_07_spelling():
 
 
 def test_remove_title_from_schema_keeps_instance_data():
-    """Test that 'title' keys inside instance data are left untouched."""
+    """Test that 'title' keys inside instance data are left untouched.
+
+    Covers JSON Schema ``default``/``const``/``enum``/``examples`` and the OpenAPI 3.0
+    singular ``example`` spelling (Pydantic ``json_schema_extra={"example": ...}``).
+    """
     schema = {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}, "title": "Cfg"},
             "mode": {"const": {"title": "fast", "workers": 2}, "title": "Mode"},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}], "title": "Choice"},
-            "example": {"examples": [{"title": "Example", "id": 1}], "title": "Example"},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+                "title": "Sample",
+            },
         },
         "title": "configure",
         "type": "object",
@@ -438,14 +447,18 @@ def test_remove_title_from_schema_keeps_instance_data():
 
     _remove_title_from_schema(schema)
 
-    # A 'title' key in a default/const/enum/examples is part of the *value*, not a schema keyword:
-    # removing it would silently change the tool's contract.
+    # A 'title' key in a default/const/enum/examples/example is part of the *value*, not a
+    # schema keyword: removing it would silently change the tool's contract.
     assert schema == {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}},
             "mode": {"const": {"title": "fast", "workers": 2}},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}]},
-            "example": {"examples": [{"title": "Example", "id": 1}]},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+            },
         },
         "type": "object",
     }
@@ -519,6 +532,22 @@ def test_from_function_with_default_containing_title_key():
     tool = create_tool_from_function(function=render)
 
     assert tool.parameters["properties"]["options"]["default"] == {"title": "Untitled", "width": 80}
+
+
+def test_from_function_with_openapi_example_containing_title_key():
+    """OpenAPI 3.0 singular ``example`` values must keep nested ``title`` keys."""
+
+    def render(
+        options: Annotated[dict, "rendering options"] = Field(  # noqa: B008
+            default={}, json_schema_extra={"example": {"title": "Untitled", "width": "80"}}
+        ),
+    ) -> str:
+        """Render a document."""
+        return ""
+
+    tool = create_tool_from_function(function=render)
+
+    assert tool.parameters["properties"]["options"]["example"] == {"title": "Untitled", "width": "80"}
 
 
 def test_remove_title_from_schema_handle_no_title_in_top_level():

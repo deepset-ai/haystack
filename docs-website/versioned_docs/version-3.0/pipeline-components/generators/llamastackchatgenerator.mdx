@@ -43,11 +43,17 @@ This allows you to organize related tools into logical groups while also includi
 
 ```python
 from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+from haystack_integrations.components.generators.llama_stack import (
+    LlamaStackChatGenerator,
+)
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -55,7 +61,7 @@ math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
 # Pass mixed tools and toolsets to the generator
 generator = LlamaStackChatGenerator(
     model="ollama/llama3.2:3b",
-    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+    tools=[math_toolset, weather_tool, news_tool],  # Mix of Toolset and Tool objects
 )
 ```
 

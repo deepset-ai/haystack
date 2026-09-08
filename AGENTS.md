@@ -45,6 +45,8 @@ hatch run test:integration
 ### Type checking with mypy
 hatch run test:types
 
+Type checking targets Python 3.12, above the 3.10 floor in `requires-python`, because numpy's stubs use PEP 695 `type` statements that mypy rejects below 3.12. So mypy will not catch code that breaks on 3.10; the unit test matrix runs on 3.10 and covers that.
+
 To fix type issues, avoid `type: ignore`, casts, or assertions when possible. If they are necessary, explain why.
 
 ### Format and lint

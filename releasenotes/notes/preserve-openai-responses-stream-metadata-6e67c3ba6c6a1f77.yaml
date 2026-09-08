@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Preserve finish reasons and usage metadata when an OpenAI Responses API stream emits events after the completed
+    response event.

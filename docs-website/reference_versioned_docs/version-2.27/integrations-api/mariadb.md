@@ -21,7 +21,7 @@ with MHNSW indexing for efficient approximate nearest-neighbour search.
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
 from haystack_integrations.components.retrievers.mariadb import MariaDBEmbeddingRetriever
 
-store = MariaDBDocumentStore(host="localhost", database="haystack", embedding_dimension=768)
+store = MariaDBDocumentStore(host="127.0.0.1", database="haystack", embedding_dimension=768)
 retriever = MariaDBEmbeddingRetriever(document_store=store, top_k=5)
 result = retriever.run(query_embedding=[0.1] * 768)
 documents = result["documents"]
@@ -109,7 +109,7 @@ backed by a FULLTEXT index on the `content` column.
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
 from haystack_integrations.components.retrievers.mariadb import MariaDBKeywordRetriever
 
-store = MariaDBDocumentStore(host="localhost", database="haystack", embedding_dimension=768)
+store = MariaDBDocumentStore(host="127.0.0.1", database="haystack", embedding_dimension=768)
 retriever = MariaDBKeywordRetriever(document_store=store, top_k=5)
 result = retriever.run(query="climate change")
 documents = result["documents"]
@@ -191,7 +191,7 @@ vector search, and `MATCH ... AGAINST` for full-text keyword search.
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
 
 store = MariaDBDocumentStore(
-    host="localhost",
+    host="127.0.0.1",
     port=3306,
     database="haystack",
     embedding_dimension=768,
@@ -204,7 +204,7 @@ store.write_documents(documents)
 ```python
 __init__(
     *,
-    host: str = "localhost",
+    host: str = "127.0.0.1",
     port: int = 3306,
     database: str = "haystack",
     user: Secret = Secret.from_env_var("MARIADB_USER"),

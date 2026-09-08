@@ -65,6 +65,19 @@ class TestAgentResultToString:
             "\n\n[The Agent reached max_agent_steps and stopped, so this result may be incomplete.]"
         )
 
+    def test_exit_reason_length(self):
+        result = {"last_message": ChatMessage.from_assistant("Partial response"), "exit_reason": "length"}
+        assert agent_result_to_string(result=result) == "Partial response" + (
+            "\n\n[The Agent reached the model's output limit and stopped, so this result may be incomplete.]"
+        )
+
+    def test_exit_reason_content_filter(self):
+        message = ChatMessage.from_assistant("")
+        result = {"last_message": message, "exit_reason": "content_filter"}
+        assert agent_result_to_string(result=result) == json.dumps(message.to_dict()) + (
+            "\n\n[The Agent's response was stopped by a content filter, so this result may be incomplete.]"
+        )
+
 
 class TestAgentTool:
     def test_init(self):

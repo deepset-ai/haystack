@@ -238,5 +238,5 @@ try:
     result = generator.run(messages=[ChatMessage.from_user("Hello")])
 except RuntimeError as e:
     print(f"All generators failed: {e}")
-    # Output: All 2 chat generators failed. Last error: ... Failed chat generators: [OpenAIChatGenerator, OpenAIChatGenerator]
+    # >> All 2 chat generators failed. Last error: ... Failed chat generators: [OpenAIChatGenerator, OpenAIChatGenerator]
 ```

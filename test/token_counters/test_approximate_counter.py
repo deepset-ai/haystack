@@ -80,6 +80,7 @@ class TestApproximateTokenCounter:
             "init_parameters": {"chars_per_token": 3.5, "tokens_per_image": 200, "tokens_per_file": 3000},
         }
         restored = ApproximateTokenCounter.from_dict(data)
+        assert isinstance(restored, ApproximateTokenCounter)
         assert restored.chars_per_token == 3.5
         assert restored.tokens_per_file == 3000
 

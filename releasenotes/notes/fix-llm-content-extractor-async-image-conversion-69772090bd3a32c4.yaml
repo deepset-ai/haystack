@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``LLMDocumentContentExtractor.run_async`` converting documents to images on the event loop.
+    ``DocumentToImageContent`` reads every file and renders the requested PDF pages, and it has no
+    ``run_async``, so calling it directly blocked the loop for the whole batch before any LLM call
+    started. It now runs through ``_execute_component_async``, which hands the synchronous work to a
+    thread.

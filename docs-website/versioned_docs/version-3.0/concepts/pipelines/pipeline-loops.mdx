@@ -201,8 +201,18 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
    ```python
    router = ConditionalRouter(
        routes=[
-           {"condition": "{{ is_valid }}", "output": "{{ text }}", "output_name": "valid", ...},
-           {"condition": "{{ not is_valid }}", "output": "{{ text }}", "output_name": "invalid", ...},
+           {
+               "condition": "{{ is_valid }}",
+               "output": "{{ text }}",
+               "output_name": "valid",
+               "output_type": str,
+           },
+           {
+               "condition": "{{ not is_valid }}",
+               "output": "{{ text }}",
+               "output_name": "invalid",
+               "output_type": str,
+           },
        ]
    )
    ```

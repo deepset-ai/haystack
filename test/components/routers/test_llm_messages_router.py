@@ -158,6 +158,7 @@ class TestLLMMessagesRouter:
 
         router = LLMMessagesRouter.from_dict(data)
 
+        assert isinstance(router._chat_generator, MockChatGenerator)
         assert router._chat_generator.to_dict() == chat_generator.to_dict()
         assert router._output_names == ["safe", "unsafe"]
         assert router._output_patterns == ["safe", "unsafe"]
@@ -182,6 +183,7 @@ class TestLLMMessagesRouter:
         print(result)
 
         assert result["safe"] == messages
+        assert isinstance(result["chat_generator_text"], str)
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result
@@ -280,6 +282,7 @@ class TestLLMMessagesRouterAsync:
         result = await router.run_async(messages)
 
         assert result["safe"] == messages
+        assert isinstance(result["chat_generator_text"], str)
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result

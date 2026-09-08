@@ -72,13 +72,12 @@ from haystack_integrations.components.generators.togetherai import TogetherAIGen
 client = TogetherAIGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo")
 response = client.run("What's Natural Language Processing? Be brief.")
 print(response)
-
->> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence
->> that focuses on enabling computers to understand, interpret, and generate human language
->> in a way that is meaningful and useful.'],
->> 'meta': [{'model': 'meta-llama/Llama-3.3-70B-Instruct-Turbo', 'index': 0,
->> 'finish_reason': 'stop', 'usage': {'prompt_tokens': 15, 'completion_tokens': 36,
->> 'total_tokens': 51}}]}
+# >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence
+# >> that focuses on enabling computers to understand, interpret, and generate human language
+# >> in a way that is meaningful and useful.'],
+# >> 'meta': [{'model': 'meta-llama/Llama-3.3-70B-Instruct-Turbo', 'index': 0,
+# >> 'finish_reason': 'stop', 'usage': {'prompt_tokens': 15, 'completion_tokens': 36,
+# >> 'total_tokens': 51}}]}
 ```
 
 With streaming:
@@ -119,10 +118,12 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.generators.togetherai import TogetherAIGenerator
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents([
-    Document(content="Rome is the capital of Italy"),
-    Document(content="Paris is the capital of France")
-])
+docstore.write_documents(
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ]
+)
 
 query = "What is the capital of France?"
 
@@ -140,18 +141,16 @@ Question: {{ query }}?
 pipe = Pipeline()
 pipe.add_component("retriever", InMemoryBM25Retriever(document_store=docstore))
 pipe.add_component("prompt_builder", PromptBuilder(template=template))
-pipe.add_component("llm", TogetherAIGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo"))
+pipe.add_component(
+    "llm", TogetherAIGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo")
+)
 
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-result = pipe.run({
-    "prompt_builder": {"query": query},
-    "retriever": {"query": query}
-})
+result = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
 
 print(result)
-
->> {'llm': {'replies': ['The capital of France is Paris.'],
->> 'meta': [{'model': 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...}]}}
+# >> {'llm': {'replies': ['The capital of France is Paris.'],
+# >> 'meta': [{'model': 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...}]}}
 ```

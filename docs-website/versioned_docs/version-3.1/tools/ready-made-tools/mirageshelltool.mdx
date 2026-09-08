@@ -1,0 +1,172 @@
+---
+title: "MirageShellTool"
+id: mirageshelltool
+slug: "/mirageshelltool"
+description: "A Tool that gives Agents a bash shell over a Mirage unified virtual filesystem, mounting backends like S3, Google Drive, and Postgres as one file tree."
+---
+
+# MirageShellTool
+
+A Tool that gives Agents a bash shell over a [Mirage](https://github.com/strukto-ai/mirage) unified virtual filesystem, mounting backends like S3, Google Drive, and Postgres as one file tree.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `workspace`: A `MirageWorkspace` describing the mount tree the Agent can access. |
+| **API reference**            | [Mirage](/reference/integrations-mirage) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mirage |
+| **Package name**             | `mirage-haystack` |
+
+</div>
+
+## Overview
+
+`MirageShellTool` hands an [Agent](../../pipeline-components/agents-1/agent.mdx) a single shell over a [Mirage](https://github.com/strukto-ai/mirage) *unified virtual filesystem*: one directory tree that mounts heterogeneous backends — object storage, databases, SaaS apps, and local disk — side by side. Instead of pre-loading file contents into the prompt, the Agent explores the mounted data itself by running ordinary bash commands (`ls`, `cat`, `grep`, `wc`, …). Command output is normalized to text and truncated before it reaches the model.
+
+The tool is backed by two serializable helpers you compose the workspace with:
+
+- **`MirageWorkspace`**: A description of the mount tree that lazily builds a live Mirage workspace. It is the shared backend behind the tool, and you can also use it directly — without an Agent — through its `run()` / `run_async()` methods.
+- **`MirageMount`**: A declarative description of a single backend: *where* it is mounted (`path`), *which* backend it is (`resource`, a Mirage registry name such as `"s3"`, `"gdrive"`, `"postgres"`, `"disk"`, or `"ram"`), and *how* it is configured (`config`). Credentials can be passed as Haystack `Secret`s and are resolved only when the live workspace is built.
+
+Because every backend is mounted the same way, one tool gives the Agent uniform access to S3, Google Drive, Slack, Gmail, Redis, Postgres, local disk, and more — swap a `MirageMount` and the Agent's commands stay the same. Mirage never shells out to the host, so the Agent's blast radius is confined to the mounts you attach (see [Security model](#security-model)).
+
+### Parameters
+
+- `workspace` is _mandatory_ and must be a `MirageWorkspace` describing the mounts the Agent can access.
+- `name` is _optional_ and defaults to `"mirage_shell"`. Sets the tool name exposed to the LLM.
+- `description` is _optional_. A custom tool description; when not set, one is generated from the mount tree.
+- `invocation_timeout` is _optional_ and defaults to `60.0`. Maximum seconds to wait for a command to finish.
+- `max_output_chars` is _optional_ and defaults to `20000`. Command output is truncated to this many characters before being returned to the model.
+- `allowed_commands` is _optional_. If set, only these command names may run (for example `["ls", "cat", "grep"]`). See [Security model](#security-model).
+- `denied_paths` is _optional_. If set, any command referencing one of these path substrings is rejected.
+
+## Usage
+
+Install the Mirage integration to use `MirageShellTool`:
+
+```shell
+pip install mirage-haystack
+```
+
+### With an Agent
+
+You can use `MirageShellTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent starts the workspace on `warm_up()`, then drives the tool with bash to answer questions by exploring the mounted files itself.
+
+The example below builds a small "log triage" Agent. A directory of log files is mounted read-only, and the Agent inspects it with bash to answer a question. It uses a local `disk` mount so it is fully self-contained; swap the `MirageMount` for `s3`, `gdrive`, `postgres`, … to point the same Agent at a different backend.
+
+```python
+import os
+import tempfile
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tools.mirage import (
+    MirageMount,
+    MirageShellTool,
+    MirageWorkspace,
+)
+
+# Create some sample data on disk (in a real setup this already exists).
+data_dir = tempfile.mkdtemp(prefix="mirage-logs-")
+with open(os.path.join(data_dir, "api.log"), "w") as fh:
+    fh.write(
+        "INFO  request /health 200\nERROR db connection timeout\nERROR db connection timeout\n",
+    )
+with open(os.path.join(data_dir, "worker.log"), "w") as fh:
+    fh.write("INFO  job 41 done\nERROR job 42 failed: OutOfMemory\n")
+
+# Describe the workspace. The read-only mount is the authoritative write boundary:
+# Mirage refuses any write to it regardless of the command the model chooses.
+workspace = MirageWorkspace(
+    mounts=[
+        MirageMount(
+            path="/logs",
+            resource="disk",
+            config={"root": data_dir},
+            read_only=True,
+        ),
+    ],
+)
+
+tool = MirageShellTool(workspace, allowed_commands=["ls", "cat", "grep", "head", "wc"])
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[tool],
+    system_prompt=(
+        "You are a log-triage assistant. A virtual filesystem is available through the `mirage_shell` "
+        "tool. Use bash commands (ls, cat, grep, wc, ...) to inspect the mounted files under /logs before "
+        "answering. Base your answer only on what the files actually show."
+    ),
+)
+
+response = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Across all files in /logs, what is the single most common ERROR message, "
+            "and how many times does it occur?",
+        ),
+    ],
+)
+print(response["last_message"].text)
+
+tool.close()
+```
+
+### Running commands without an Agent
+
+`MirageWorkspace` can be used on its own, which is handy for testing a mount tree or building non-agentic pipelines. When using it standalone, call `warm_up()` before the first invocation (or let the first `run()` build it lazily) and `close()` when you are done to release resources.
+
+```python
+from haystack_integrations.tools.mirage import MirageMount, MirageWorkspace
+
+workspace = MirageWorkspace(
+    mounts=[
+        MirageMount(path="/data", resource="ram"),  # in-memory scratch space
+        MirageMount(
+            path="/s3",
+            resource="s3",
+            config={"bucket": "my-bucket"},
+            read_only=True,
+        ),
+    ],
+)
+print(workspace.run("ls /s3"))
+print(workspace.run("grep -r alert /s3/logs | wc -l"))
+workspace.close()
+```
+
+### Mounting credentialed backends
+
+Backends that need credentials take them through `config`. Pass secrets as Haystack `Secret`s so they are resolved only when the live workspace is built and are never serialized in plaintext:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.tools.mirage import MirageMount
+
+MirageMount(path="/data", resource="ram")  # in-memory scratch
+MirageMount(path="/local", resource="disk", config={"root": "/srv/data"})  # local disk
+MirageMount(path="/s3", resource="s3", config={"bucket": "my-bucket"}, read_only=True)
+MirageMount(
+    path="/drive",
+    resource="gdrive",
+    config={
+        "client_id": "...",
+        "refresh_token": Secret.from_env_var("GDRIVE_REFRESH_TOKEN"),
+    },
+    read_only=True,
+)
+```
+
+Discover the backend names available in your Mirage install with `MirageMount.available_resources()`; the config keys each backend expects come from that backend's Mirage config class.
+
+## Security model
+
+Mirage never shells out to the host: every command runs inside Mirage's own virtual-filesystem interpreter, so an Agent's blast radius is confined to the mounts you attach. Two controls shape what an Agent can do:
+
+- **Per-mount read-only mode** (`MirageMount(..., read_only=True)`) is the authoritative write boundary. Mirage refuses any write to a read-only mount regardless of the command used — this is how you prevent modification or deletion. Mount anything the Agent should not change as read-only.
+- **The command allowlist** (`allowed_commands`) restricts *which* commands may run. It is enforced against every command Mirage would execute, including commands nested inside `$(...)`, backticks, `<(...)`, and subshells, so `ls "$(rm x)"` is rejected unless `rm` is also allowed. Treat it as a best-effort filter to steer the Agent, not a sandbox: allowing a command that itself runs other commands (`eval`, `bash`, `sh`, `source`, `xargs`, `timeout`) effectively allows anything, so do not list those for untrusted or hosted use.
+- **`denied_paths`** rejects any command whose text references one of the given path substrings.

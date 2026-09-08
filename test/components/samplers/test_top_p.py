@@ -65,7 +65,10 @@ class TestTopPSampler:
         sampler = TopPSampler(top_p=0.99)
         docs = documents_with_score
         random.shuffle(docs)
-        sorted_scores = sorted([doc.score for doc in docs], reverse=True)
+        sorted_scores = sorted([doc.score for doc in docs if doc.score is not None], reverse=True)
+        # The filter narrows `float | None` for mypy. This guard keeps the test sensitive to a
+        # document losing its score, which the unfiltered `sorted()` used to catch via TypeError.
+        assert len(sorted_scores) == len(docs)
 
         # top_p = 0.99 will get the top 1 document
         output = sampler.run(documents=docs)
@@ -84,7 +87,9 @@ class TestTopPSampler:
         docs_filtered = output["documents"]
         assert len(docs_filtered) == len(docs)
         assert docs_filtered[0].content == "Sarajevo"
-        assert [doc.score for doc in docs_filtered] == sorted([doc.score for doc in docs], reverse=True)
+        assert [doc.score for doc in docs_filtered] == sorted(
+            [doc.score for doc in docs if doc.score is not None], reverse=True
+        )
 
     def test_run_top_p_0(self, caplog: pytest.LogCaptureFixture, documents_with_score: list[Document]) -> None:
         sampler = TopPSampler(top_p=0.0)

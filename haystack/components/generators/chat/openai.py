@@ -97,8 +97,6 @@ class OpenAIChatGenerator:
     ```
     """
 
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
-
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
         "gpt-5-nano",
@@ -358,8 +356,9 @@ class OpenAIChatGenerator:
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -440,8 +439,9 @@ class OpenAIChatGenerator:
             A callback function that is called when a new token is received from the stream. Async callbacks are
             preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             If set, it will override the `tools` parameter provided during initialization.
@@ -522,7 +522,8 @@ class OpenAIChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        flattened_tools = flatten_tools_or_toolsets(tools or self.tools)
+        resolved_tools = tools if tools is not None else self.tools
+        flattened_tools = flatten_tools_or_toolsets(resolved_tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(flattened_tools)
 

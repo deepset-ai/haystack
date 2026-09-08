@@ -87,6 +87,22 @@ Initialize the CohereDocumentEmbedder.
 - **embedding_type** (<code>EmbeddingTypes | None</code>) – the type of embeddings to return. Defaults to float embeddings.
   Note that int8, uint8, binary, and ubinary are only valid for v3 models.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Cohere client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Cohere client.
+
 #### to_dict
 
 ```python
@@ -251,6 +267,22 @@ Creates a CohereDocumentImageEmbedder component.
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar or not. Can be helpful to disable in production deployments
   to keep the logs clean.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Cohere client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Cohere client.
+
 #### to_dict
 
 ```python
@@ -381,6 +413,22 @@ Initialize the CohereTextEmbedder.
 - **timeout** (<code>float</code>) – request timeout in seconds.
 - **embedding_type** (<code>EmbeddingTypes | None</code>) – the type of embeddings to return. Defaults to float embeddings.
   Note that int8, uint8, binary, and ubinary are only valid for v3 models.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Cohere client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Cohere client.
 
 #### to_dict
 
@@ -697,6 +745,22 @@ Initialize the CohereChatGenerator instance.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Cohere client.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Cohere client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Cohere client.
+
 #### to_dict
 
 ```python
@@ -742,8 +806,9 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
-  potentially override the parameters passed in the __init__ method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These are merged per key
+  with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For more details on the parameters supported by the Cohere API, refer to the
   Cohere [documentation](https://docs.cohere.com/reference/chat).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -773,8 +838,9 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
-  potentially override the parameters passed in the __init__ method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These are merged per key
+  with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For more details on the parameters supported by the Cohere API, refer to the
   Cohere [documentation](https://docs.cohere.com/reference/chat).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -785,111 +851,6 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: a list of `ChatMessage` instances representing the generated responses.
-
-## haystack_integrations.components.generators.cohere.generator
-
-### CohereGenerator
-
-Bases: <code>CohereChatGenerator</code>
-
-Generates text using Cohere's models through Cohere's `generate` endpoint.
-
-NOTE: Cohere discontinued the `generate` API, so this generator is a mere wrapper
-around `CohereChatGenerator` provided for backward compatibility.
-
-### Usage example
-
-```python
-from haystack_integrations.components.generators.cohere import CohereGenerator
-
-generator = CohereGenerator(api_key="test-api-key")
-generator.run(prompt="What's the capital of France?")
-```
-
-#### SUPPORTED_MODELS
-
-```python
-SUPPORTED_MODELS: list[str] = [
-    "command-a-03-2025",
-    "command-r7b-12-2024",
-    "command-a-translate-08-2025",
-    "command-a-reasoning-08-2025",
-    "command-a-vision-07-2025",
-    "command-r-08-2024",
-    "command-r-plus-08-2024",
-    "command-r-03-2024",
-    "command-r-plus-04-2024",
-    "command-r-plus",
-    "command-r",
-    "command-light",
-    "command",
-]
-
-```
-
-A non-exhaustive list of chat models supported by this component.
-See https://docs.cohere.com/docs/models#command for the full list.
-
-#### __init__
-
-```python
-__init__(
-    api_key: Secret = Secret.from_env_var(["COHERE_API_KEY", "CO_API_KEY"]),
-    model: str = "command-a-03-2025",
-    streaming_callback: Callable | None = None,
-    api_base_url: str | None = None,
-    **kwargs: Any
-) -> None
-```
-
-Instantiates a `CohereGenerator` component.
-
-**Parameters:**
-
-- **api_key** (<code>Secret</code>) – Cohere API key.
-- **model** (<code>str</code>) – Cohere model to use for generation.
-- **streaming_callback** (<code>Callable | None</code>) – Callback function that is called when a new token is received from the stream.
-  The callback function accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk)
-  as an argument.
-- **api_base_url** (<code>str | None</code>) – Cohere base URL.
-- \*\***kwargs** (<code>Any</code>) – Additional arguments passed to the model. These arguments are specific to the model.
-  You can check them in model's documentation.
-
-#### run
-
-```python
-run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Queries the LLM with the prompts to produce replies.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – the prompt to be sent to the generative model.
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary with the following keys:
-- `replies`: A list of replies generated by the model.
-- `meta`: Information about the request.
-
-#### run_async
-
-```python
-run_async(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Queries the LLM asynchronously with the prompts to produce replies.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – the prompt to be sent to the generative model.
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary with the following keys:
-- `replies`: A list of replies generated by the model.
-- `meta`: Information about the request.
 
 ## haystack_integrations.components.rankers.cohere.ranker
 
@@ -944,6 +905,22 @@ Creates an instance of the 'CohereRanker'.
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not > 0.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Cohere client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Cohere client.
 
 #### to_dict
 

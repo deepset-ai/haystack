@@ -300,18 +300,35 @@ Update documents that match the provided filters.
 #### get_metadata_field_unique_values
 
 ```python
-get_metadata_field_unique_values(field: str) -> list[Any]
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Get all unique values for a given metadata field.
+Get unique values for a given metadata field, optionally filtered by a search term.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python
+or share a textual form (e.g. the int `1`, the bool `True` and the str `"1"` are returned as
+three separate values, and a whole-number float like `1.0` stays distinct from the int `1`).
 
 **Parameters:**
 
-- **field** (<code>str</code>) – The metadata field name (can include 'meta.' prefix)
+- **metadata_field** (<code>str</code>) – The metadata field name (can include or omit the 'meta.' prefix).
+- **search_term** (<code>str | None</code>) – Optional term to filter the returned values by, matching as a case-insensitive
+  substring of the metadata field's own value (not the document content). If None, all values
+  are considered.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – The number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – List of unique values for the field
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values in their original JSON type, total count of
+  unique values matching `search_term`).
 
 #### get_metadata_field_min_max
 

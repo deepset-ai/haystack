@@ -137,11 +137,7 @@ class SearchableToolset(Toolset):
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
 
-    def __add__(self, other: Tool | Toolset | list[Tool]) -> "Toolset":
-        """Concatenation is not supported for SearchableToolset."""
-        raise NotImplementedError("SearchableToolset does not support concatenation.")
-
-    def add(self, tool: Tool | Toolset) -> None:
+    def add(self, tool: Tool) -> None:
         """Adding new tools after initialization is not supported for SearchableToolset."""
         raise NotImplementedError("SearchableToolset does not support adding new tools after initialization.")
 

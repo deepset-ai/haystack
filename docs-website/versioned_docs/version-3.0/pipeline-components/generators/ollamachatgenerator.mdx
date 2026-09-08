@@ -48,8 +48,12 @@ from haystack.tools import Tool, Toolset
 from haystack_integrations.components.generators.ollama import OllamaChatGenerator
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -57,7 +61,7 @@ math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
 # Pass mixed tools and toolsets to the generator
 generator = OllamaChatGenerator(
     model="llama2",
-    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+    tools=[math_toolset, weather_tool, news_tool],  # Mix of Toolset and Tool objects
 )
 ```
 
@@ -180,39 +184,43 @@ pip install ollama-haystack
 from haystack_integrations.components.generators.ollama import OllamaChatGenerator
 from haystack.dataclasses import ChatMessage
 
-generator = OllamaChatGenerator(model="zephyr",
-                            url = "http://localhost:11434",
-                            generation_kwargs={
-                              "num_predict": 100,
-                              "temperature": 0.9,
-                              })
+generator = OllamaChatGenerator(
+    model="zephyr",
+    url="http://localhost:11434",
+    generation_kwargs={
+        "num_predict": 100,
+        "temperature": 0.9,
+    },
+)
 
-messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-ChatMessage.from_user("What's Natural Language Processing?")]
+messages = [
+    ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+    ChatMessage.from_user("What's Natural Language Processing?"),
+]
 
 print(generator.run(messages=messages))
->> {
-    "replies": [
-        ChatMessage(
-            _role=<ChatRole.ASSISTANT: 'assistant'>,
-            _content=[
-                TextContent(
-                    text=(
-                        "Natural Language Processing (NLP) is a subfield of "
-                        "Artificial Intelligence that deals with understanding, "
-                        "interpreting, and generating human language in a meaningful "
-                        "way. It enables tasks such as language translation, sentiment "
-                        "analysis, and text summarization."
-                    )
-                )
-            ],
-            _name=None,
-            _meta={
-                "model": "zephyr",...
-            }
-        )
-    ]
-}
+# >> {
+# >>     "replies": [
+# >>         ChatMessage(
+# >>             _role=<ChatRole.ASSISTANT: 'assistant'>,
+# >>             _content=[
+# >>                 TextContent(
+# >>                     text=(
+# >>                         "Natural Language Processing (NLP) is a subfield of "
+# >>                         "Artificial Intelligence that deals with understanding, "
+# >>                         "interpreting, and generating human language in a meaningful "
+# >>                         "way. It enables tasks such as language translation, sentiment "
+# >>                         "analysis, and text summarization."
+# >>                     )
+# >>                 )
+# >>             ],
+# >>             _name=None,
+# >>             _meta={
+# >>                 "model": "zephyr",...
+# >>             }
+# >>         )
+# >>     ]
+# >> }
 ```
 
 With multimodal inputs:
@@ -244,40 +252,54 @@ from haystack import Pipeline
 
 # no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
-generator = OllamaChatGenerator(model="zephyr",
-                            url = "http://localhost:11434",
-                            generation_kwargs={
-                              "temperature": 0.9,
-                              })
+generator = OllamaChatGenerator(
+    model="zephyr",
+    url="http://localhost:11434",
+    generation_kwargs={
+        "temperature": 0.9,
+    },
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", generator)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [ChatMessage.from_system("Always respond in Spanish even if some input data is in other languages."),
-            ChatMessage.from_user("Tell me about {{location}}")]
-print(pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}}))
-
->> {
-    "llm": {
-        "replies": [
-            ChatMessage(
-                _role=<ChatRole.ASSISTANT: 'assistant'>,
-                _content=[
-                    TextContent(
-                        text=(
-                            "Berlín es la capital y la mayor ciudad de Alemania. "
-                            "Está ubicada en el estado federado de Berlín, y tiene más..."
-                        )
-                    )
-                ],
-                _name=None,
-                _meta={
-                    "model": "zephyr",...
-                }
-            )
-        ]
-    }
-}
+messages = [
+    ChatMessage.from_system(
+        "Always respond in Spanish even if some input data is in other languages."
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+print(
+    pipe.run(
+        data={
+            "prompt_builder": {
+                "template_variables": {"location": location},
+                "template": messages,
+            }
+        }
+    )
+)
+# >> {
+# >>     "llm": {
+# >>         "replies": [
+# >>             ChatMessage(
+# >>                 _role=<ChatRole.ASSISTANT: 'assistant'>,
+# >>                 _content=[
+# >>                     TextContent(
+# >>                         text=(
+# >>                             "Berlín es la capital y la mayor ciudad de Alemania. "
+# >>                             "Está ubicada en el estado federado de Berlín, y tiene más..."
+# >>                         )
+# >>                     )
+# >>                 ],
+# >>                 _name=None,
+# >>                 _meta={
+# >>                     "model": "zephyr",...
+# >>                 }
+# >>             )
+# >>         ]
+# >>     }
+# >> }
 ```

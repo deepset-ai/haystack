@@ -1,0 +1,106 @@
+---
+title: "GoogleDriveRetriever"
+id: googledriveretriever
+slug: "/googledriveretriever"
+description: "Retrieves files from Google Drive via the Drive API v3 search endpoint."
+---
+
+# GoogleDriveRetriever
+
+Retrieves files from Google Drive via the Drive API v3 search endpoint.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the start of a query pipeline, after an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) that provides the `access_token` |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `query`: The search query string  <br /> <br />`access_token`: A delegated Google OAuth bearer token, typically wired from an upstream `OAuthTokenResolver` |
+| **Output variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx) holding file metadata (and optionally exported text) |
+| **API reference** | [Google Drive](/reference/integrations-google-drive) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_drive |
+| **Package name** | `google-drive-haystack` |
+
+</div>
+
+## Overview
+
+`GoogleDriveRetriever` runs a full-text search over a user's Google Drive (and optionally shared drives) through the [Drive API v3](https://developers.google.com/drive/api/reference/rest/v3/files/list) `files.list` endpoint and maps each matching file to a Haystack `Document`.
+
+By default, each `Document` carries resource metadata (`file_name`, `file_id`, `web_url`, `mime_type`, `file_extension`, author, and timestamps) and uses the file `description` or `name` as `content`, because the Drive search API does not return a text snippet. Set `include_content=True` to additionally export native Google Docs/Sheets/Slides to text and use that as the `Document` content. Binary files (PDF, DOCX, ...) are never downloaded by the retriever.
+
+To download the full content of the matching files, compose it with [`GoogleDriveFetcher`](../fetchers/googledrivefetcher.mdx) on the returned `web_url`/`file_id`, followed by a converter.
+
+### Authentication
+
+The retriever takes a per-user `access_token` as a run input. The token must carry a delegated Google OAuth scope that allows search, for example `https://www.googleapis.com/auth/drive.readonly`. The metadata-only `drive.metadata.readonly` scope cannot search file content or export documents. Typically you wire the token from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+
+### Scoping and filtering the search
+
+- `query_filter`: an optional Drive query clause AND-ed with the full-text search term, for example `"mimeType != 'application/vnd.google-apps.folder'"` or `"'<folderId>' in parents"`.
+- `include_shared_drives`: when `True`, the search spans shared drives as well as the user's My Drive.
+- `order_by`: an optional Drive `orderBy` expression, for example `"modifiedTime desc"`.
+
+### Installation
+
+Install the Google Drive integration with:
+
+```shell
+pip install google-drive-haystack
+```
+
+## Usage
+
+### On its own
+
+`access_token` below is a per-user delegated Google OAuth bearer token. In production you would obtain it from an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) rather than pasting it in.
+
+```python
+from haystack_integrations.components.retrievers.google_drive import (
+    GoogleDriveRetriever,
+)
+
+retriever = GoogleDriveRetriever(top_k=5)
+
+result = retriever.run(
+    query="quarterly roadmap",
+    access_token="my-delegated-google-token",
+)
+
+for doc in result["documents"]:
+    print(doc.meta["file_name"], "-", doc.meta["web_url"])
+```
+
+### In a pipeline
+
+The following pipeline obtains a token from an `OAuthTokenResolver` and feeds it into the retriever, so that running the pipeline requires only the query:
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+from haystack_integrations.components.retrievers.google_drive import (
+    GoogleDriveRetriever,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=OAuthRefreshTokenSource(
+            token_url="https://oauth2.googleapis.com/token",
+            client_id="aaa-bbb-ccc",
+            refresh_token=Secret.from_env_var("GOOGLE_REFRESH_TOKEN"),
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        ),
+    ),
+)
+pipeline.add_component("retriever", GoogleDriveRetriever(top_k=5))
+pipeline.connect("resolver.access_token", "retriever.access_token")
+
+result = pipeline.run({"retriever": {"query": "quarterly roadmap"}})
+documents = result["retriever"]["documents"]
+```
+
+To download and convert the full content of the retrieved files, connect the retriever's `documents` output to a [`GoogleDriveFetcher`](../fetchers/googledrivefetcher.mdx). See that page for an end-to-end retrieve-fetch-convert example.

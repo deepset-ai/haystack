@@ -190,11 +190,6 @@ def tools():
 
 
 class TestOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS == {
-            "max_output_tokens": "max_completion_tokens"
-        }
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIChatGenerator.SUPPORTED_MODELS
@@ -506,6 +501,27 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    def test_run_with_empty_tools_override(self, tools: list[Tool], openai_mock_chat_completion: MagicMock) -> None:
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
+
+        assert "tools" not in openai_mock_chat_completion.call_args.kwargs
+
+    def test_run_with_generation_kwargs(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        component.run(chat_messages, generation_kwargs={"temperature": 0.9})
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_completion_tokens"] == 10
 
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
@@ -880,8 +896,9 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run(self) -> None:
-
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -898,7 +915,6 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
-
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -1291,6 +1307,22 @@ class TestOpenAIChatGenerator:
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
 
+# The OpenAI SDK regularly adds fields to its usage models and `_serialize_object` picks up all of them,
+# so hardcoded expected dicts go stale on every additive release. Deriving them from the same model the
+# fixtures stream keeps the assertions exact without needing an update each time.
+STREAMED_USAGE = CompletionUsage(
+    completion_tokens=42,
+    prompt_tokens=282,
+    total_tokens=324,
+    completion_tokens_details=CompletionTokensDetails(
+        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0, text_tokens=42
+    ),
+    prompt_tokens_details=PromptTokensDetails(
+        audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+    ),
+)
+
+
 @pytest.fixture
 def chat_completion_chunks():
     return [
@@ -1506,21 +1538,7 @@ def chat_completion_chunks():
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
-            usage=CompletionUsage(
-                completion_tokens=42,
-                prompt_tokens=282,
-                total_tokens=324,
-                completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0,
-                    audio_tokens=0,
-                    reasoning_tokens=0,
-                    rejected_prediction_tokens=0,
-                    text_tokens=42,
-                ),
-                prompt_tokens_details=PromptTokensDetails(
-                    audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
-                ),
-            ),
+            usage=STREAMED_USAGE,
         ),
     ]
 
@@ -1712,30 +1730,7 @@ def streaming_chunks():
             finish_reason="tool_calls",
         ),
         StreamingChunk(
-            content="",
-            meta={
-                "model": "gpt-5-mini",
-                "received_at": ANY,
-                "usage": {
-                    "completion_tokens": 42,
-                    "prompt_tokens": 282,
-                    "total_tokens": 324,
-                    "completion_tokens_details": {
-                        "accepted_prediction_tokens": 0,
-                        "audio_tokens": 0,
-                        "reasoning_tokens": 0,
-                        "rejected_prediction_tokens": 0,
-                        "text_tokens": 42,
-                    },
-                    "prompt_tokens_details": {
-                        "audio_tokens": 0,
-                        "cached_tokens": 0,
-                        "cache_write_tokens": 0,
-                        "image_tokens": 0,
-                        "text_tokens": 282,
-                    },
-                },
-            },
+            content="", meta={"model": "gpt-5-mini", "received_at": ANY, "usage": STREAMED_USAGE.model_dump()}
         ),
     ]
 
@@ -2006,25 +2001,7 @@ class TestChatCompletionChunkConversion:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
-        assert result.meta["usage"] == {
-            "completion_tokens": 42,
-            "prompt_tokens": 282,
-            "total_tokens": 324,
-            "completion_tokens_details": {
-                "accepted_prediction_tokens": 0,
-                "audio_tokens": 0,
-                "reasoning_tokens": 0,
-                "rejected_prediction_tokens": 0,
-                "text_tokens": 42,
-            },
-            "prompt_tokens_details": {
-                "audio_tokens": 0,
-                "cached_tokens": 0,
-                "cache_write_tokens": 0,
-                "image_tokens": 0,
-                "text_tokens": 282,
-            },
-        }
+        assert result.meta["usage"] == STREAMED_USAGE.model_dump()
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 

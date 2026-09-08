@@ -1,0 +1,49 @@
+---
+features:
+  - |
+    Added the experimental ``SummarizationCompactor`` (use with ``CompactionHook``), which progressively summarizes a
+    conversation until it fits a target token budget, preserving useful context from long-running Agents instead of
+    dropping older messages.
+
+    It uses four summarization tiers in order until the target token budget is reached:
+
+    1. ``historical_turns``: Starting with the oldest, summarize as few complete historical turns as needed.
+    2. ``historical_summaries``: When no complete historical turns remain, combine as few of the oldest historical
+       summaries as needed.
+    3. ``current_task_steps``: Summarize the fewest oldest steps needed to reach the target while preserving the
+       ``min_keep_steps`` newest steps.
+    4. ``current_task_summaries``: When no more steps can be summarized, combine as few of the current task's oldest
+       summaries as needed to reach the target.
+
+    .. code-block:: python
+
+        from typing import Annotated
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+        from haystack.tools import tool
+
+        @tool
+        def web_search(query: Annotated[str, "The search query"]) -> str:
+            """Search the web for current information."""
+            return f"Search results for: {query}"
+
+        agent_generator = OpenAIResponsesChatGenerator(model="gpt-5.4")
+        summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+
+        compaction_hook = CompactionHook(
+            compactor=SummarizationCompactor(
+                chat_generator=summary_generator,
+                min_keep_steps=2,
+                approximate_summary_tokens=1_024,
+            ),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
+
+        agent = Agent(
+            chat_generator=agent_generator,
+            tools=[web_search],
+            hooks={"before_llm": [compaction_hook]},
+        )

@@ -1,0 +1,128 @@
+---
+title: "TwelveLabsVideoConverter"
+id: twelvelabsvideoconverter
+slug: "/twelvelabsvideoconverter"
+description: "`TwelveLabsVideoConverter` converts videos to Haystack Documents using the TwelveLabs Pegasus video-language model. Pegasus analyzes each video on the fly — its visuals and its own audio (via ASR) — and returns text, so each video becomes a Document whose content is the analysis."
+---
+
+# TwelveLabsVideoConverter
+
+`TwelveLabsVideoConverter` converts videos to Haystack Documents using the TwelveLabs Pegasus video-language model. Pegasus analyzes each video on the fly — its visuals **and** its own audio (via ASR) — and returns text, so each source video becomes one Document whose content is Pegasus's analysis (for example, a description plus a transcript). There is no frame extraction or separate transcription step.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the beginning of an indexing pipeline, before [PreProcessors](../preprocessors.mdx) or an embedder |
+| **Mandatory init variables** | `api_key`: The TwelveLabs API key. Can be set with `TWELVELABS_API_KEY` env var. |
+| **Mandatory run variables** | `sources`: A list of video URLs or local file paths |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [TwelveLabs](/reference/integrations-twelvelabs) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/twelvelabs |
+| **Package name** | `twelvelabs-haystack` |
+
+</div>
+
+## Overview
+
+The `TwelveLabsVideoConverter` takes a list of video sources and produces one [`Document`](../../concepts/data-classes.mdx#document) per source, with the Document content set to Pegasus's text analysis. Sources may be publicly accessible direct video URLs or local file paths (uploaded to TwelveLabs, up to 200 MB). Sources that fail to process are skipped with a warning logged, so one bad source does not fail the whole batch.
+
+Each produced Document carries metadata about the request, including `source`, `asset_id`, `analysis_id`, `model`, and `provider`. The default model is `pegasus1.5`.
+
+You can steer the analysis with a custom `prompt` and tune `temperature` and `max_tokens`.
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install twelvelabs-haystack
+```
+
+The component uses a `TWELVELABS_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`. To get an API key, head to [playground.twelvelabs.io](https://playground.twelvelabs.io).
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.converters.twelvelabs import (
+    TwelveLabsVideoConverter,
+)
+
+converter = TwelveLabsVideoConverter()
+result = converter.run(sources=["https://example.com/clip.mp4"])
+
+document = result["documents"][0]
+print(document.content)  # Pegasus's description + transcript of the video
+print(document.meta)  # includes source, asset_id, analysis_id, model, provider
+```
+
+:::info
+We recommend setting `TWELVELABS_API_KEY` as an environment variable instead of setting it as a parameter.
+:::
+
+### With a custom prompt
+
+```python
+from haystack_integrations.components.converters.twelvelabs import (
+    TwelveLabsVideoConverter,
+)
+
+converter = TwelveLabsVideoConverter(
+    prompt="Summarize this video in three bullet points and list any products shown.",
+    temperature=0.2,
+    max_tokens=1024,
+)
+result = converter.run(sources=["https://example.com/clip.mp4"])
+print(result["documents"][0].content)
+```
+
+### In a pipeline
+
+This indexing pipeline analyzes videos with Pegasus, embeds the resulting analysis with the [`TwelveLabsDocumentEmbedder`](../embedders/twelvelabsdocumentembedder.mdx), and writes the documents to a document store:
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.converters.twelvelabs import (
+    TwelveLabsVideoConverter,
+)
+from haystack_integrations.components.embedders.twelvelabs import (
+    TwelveLabsDocumentEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("converter", TwelveLabsVideoConverter())
+indexing_pipeline.add_component("embedder", TwelveLabsDocumentEmbedder())
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("converter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"converter": {"sources": ["https://example.com/clip.mp4"]}})
+```
+
+### Attaching metadata
+
+Pass a single dictionary to apply metadata to all output Documents, or a list to set metadata per source:
+
+```python
+from haystack_integrations.components.converters.twelvelabs import (
+    TwelveLabsVideoConverter,
+)
+
+converter = TwelveLabsVideoConverter()
+
+# Same metadata for all sources
+result = converter.run(
+    sources=["https://example.com/a.mp4", "https://example.com/b.mp4"],
+    meta={"campaign": "demo"},
+)
+
+# Per-source metadata
+result = converter.run(
+    sources=["https://example.com/a.mp4", "https://example.com/b.mp4"],
+    meta=[{"title": "Clip A"}, {"title": "Clip B"}],
+)
+```

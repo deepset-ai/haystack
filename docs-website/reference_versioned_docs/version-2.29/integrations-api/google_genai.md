@@ -119,6 +119,38 @@ Creates an GoogleGenAIDocumentEmbedder component.
 - **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
 - **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Google Gen AI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Google Gen AI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Google Gen AI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Google Gen AI client.
+
 #### to_dict
 
 ```python
@@ -285,7 +317,10 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the file to embed.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+  document metadata will be resolved relative to this path and are guaranteed to stay within it.
+  If None, file paths are treated as absolute paths with no containment check.
+  If document metadata, in particular `file_path_meta_field`, may be influenced by untrusted input,
+  set `root_path` to a dedicated data directory so that path-traversal beyond it is rejected.
 - **image_size** (<code>tuple\[int, int\] | None</code>) – Only used for images and PDF pages. If provided, resizes the image to fit within the specified dimensions
   (width, height) while maintaining aspect ratio. This reduces file size, memory usage, and processing time,
   which is beneficial when working with models that have resolution constraints or when transmitting images
@@ -301,6 +336,38 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   for the available options.
 - **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
 - **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Google Gen AI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Google Gen AI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Google Gen AI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Google Gen AI client.
 
 #### to_dict
 
@@ -348,6 +415,13 @@ Embeds a list of documents.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
+
 #### run_async
 
 ```python
@@ -367,6 +441,13 @@ Embeds a list of documents asynchronously.
 - <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
 
 ## haystack_integrations.components.embedders.google_genai.text_embedder
 
@@ -475,6 +556,38 @@ Creates an GoogleGenAITextEmbedder component.
 - **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
 - **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Google Gen AI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Google Gen AI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Google Gen AI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Google Gen AI client.
+
 #### to_dict
 
 ```python
@@ -548,10 +661,10 @@ but can be used with `await` in async code.
 
 A component for generating chat completions using Google's Gemini models via the Google Gen AI SDK.
 
-Supports models like gemini-2.5-flash and other Gemini variants. For Gemini 2.5 series models,
+Supports models like gemini-3.7-flash and other Gemini variants. For Gemini 2.5 series models,
 enables thinking features via `generation_kwargs={"thinking_budget": value}`.
 
-### Thinking Support (Gemini 2.5 Series)
+### Thinking Support (Gemini 2.5 and Gemini 3 Series)
 
 - **Reasoning transparency**: Models can show their reasoning process
 - **Thought signatures**: Maintains thought context across multi-turn conversations with tools
@@ -581,7 +694,7 @@ context across turns. Include previous assistant responses in chat history for c
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAIChatGenerator(model="gemini-2.5-flash")
+chat_generator = GoogleGenAIChatGenerator(model="gemini-3.7-flash")
 ```
 
 **2. Vertex AI (Application Default Credentials)**
@@ -594,7 +707,7 @@ chat_generator = GoogleGenAIChatGenerator(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
 )
 ```
 
@@ -606,7 +719,7 @@ from haystack_integrations.components.generators.google_genai import GoogleGenAI
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator(
     api="vertex",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
 )
 ```
 
@@ -619,7 +732,7 @@ from haystack_integrations.components.generators.google_genai import GoogleGenAI
 
 # Initialize the chat generator with thinking support
 chat_generator = GoogleGenAIChatGenerator(
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     generation_kwargs={"thinking_budget": 1024}  # Enable thinking with 1024 token budget
 )
 
@@ -647,7 +760,7 @@ weather_tool = Tool(
 
 # Can use either List[Tool] or Toolset
 chat_generator_with_tools = GoogleGenAIChatGenerator(
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     tools=[weather_tool],  # or tools=Toolset([weather_tool])
     generation_kwargs={"thinking_budget": -1}  # Dynamic thinking allocation
 )
@@ -669,7 +782,7 @@ class City(BaseModel):
     population: int
 
 chat_generator = GoogleGenAIChatGenerator(
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     generation_kwargs={"response_format": City}
 )
 
@@ -694,6 +807,9 @@ response = chat_generator.run(messages=[chat_message])
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
     "gemini-3.1-pro-preview",
     "gemini-3-flash-preview",
     "gemini-3.1-flash-lite-preview",
@@ -719,7 +835,7 @@ __init__(
     api: Literal["gemini", "vertex"] = "gemini",
     vertex_ai_project: str | None = None,
     vertex_ai_location: str | None = None,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-3.7-flash",
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -742,7 +858,7 @@ Initialize a GoogleGenAIChatGenerator instance.
   Application Default Credentials.
 - **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
   Required when using Vertex AI with Application Default Credentials.
-- **model** (<code>str</code>) – Name of the model to use (e.g., "gemini-2.5-flash")
+- **model** (<code>str</code>) – Name of the model to use (e.g., "gemini-3.7-flash")
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation (temperature, max_tokens, etc.).
   For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior:
 - `thinking_budget`: int, controls thinking token allocation
@@ -766,6 +882,38 @@ Initialize a GoogleGenAIChatGenerator instance.
   client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Google GenAI client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Google Gen AI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Google Gen AI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Google Gen AI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Google Gen AI client.
 
 #### to_dict
 
@@ -813,8 +961,10 @@ Run the Google Gen AI chat generator on the given input data.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
@@ -851,8 +1001,10 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
@@ -871,3 +1023,135 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 - <code>RuntimeError</code> – If there is an error in the async Google Gen AI chat generation.
 - <code>ValueError</code> – If a ChatMessage does not contain at least one of TextContent, ToolCall, or
   ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
+
+## haystack_integrations.token_counters.google_genai.token_counter
+
+### GoogleGenAITokenCounter
+
+Counts input tokens for Gemini models with Google's token counting API.
+
+Unlike local token counters, this counter sends the input to the `countTokens` endpoint of the Google Gen AI
+SDK, so the returned count includes the model-specific formatting Gemini applies to messages.
+
+Inputs are assembled exactly as `GoogleGenAIChatGenerator` sends them: a leading system message becomes the
+system instruction and the remaining messages become the request contents.
+
+### Backend support for system instructions and tools
+
+The Google Gen AI SDK only accepts a system instruction and tool schemas on `countTokens` when the client
+targets Vertex AI. On the Gemini Developer API, a leading system message is therefore measured as a user turn,
+which gives a close approximation rather than the exact count, and tools raise a `ValueError` instead of
+silently returning a count that omits their schemas. Counting plain messages works on either backend.
+
+## Usage Example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.google_genai import GoogleGenAITokenCounter
+
+counter = GoogleGenAITokenCounter("gemini-3.7-flash")
+messages = [ChatMessage.from_user("Hello, how are you?")]
+token_count = counter.count(messages)
+print(f"Token count: {token_count}")
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
+) -> None
+```
+
+Initialize the counter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The model whose tokenization should be used. Token counts are model-specific, so count
+  against the same model you intend to generate with.
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment
+  variables. Not needed if using Vertex AI with Application Default Credentials.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either `gemini` for the Gemini Developer API or `vertex` for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., `us-central1`, `europe-west1`).
+  Required when using Vertex AI with Application Default Credentials.
+- **timeout** (<code>float | None</code>) – Timeout for Google Gen AI client calls. If not set, it defaults to the default set by the
+  Google Gen AI client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to
+  the default set by the Google Gen AI client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Google Gen AI client.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Return the number of input tokens Gemini will use for the given messages and tools.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The messages to measure. A leading system message is measured as the system instruction on
+  Vertex AI and as a user turn on the Gemini Developer API, which cannot measure system instructions.
+- **tools** (<code>ToolsType | None</code>) – Tools whose schemas are sent alongside the messages, and so consume tokens too.
+
+**Returns:**
+
+- <code>int</code> – The token count, or `0` when there is nothing to measure.
+
+**Raises:**
+
+- <code>ValueError</code> – If tools are passed while targeting the Gemini Developer API, which cannot measure them.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Google Gen AI client and its underlying HTTP resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> GoogleGenAITokenCounter
+```
+
+Deserialize the counter.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>GoogleGenAITokenCounter</code> – The deserialized counter.

@@ -1,0 +1,110 @@
+---
+title: "PerplexityChatGenerator"
+id: perplexitychatgenerator
+slug: "/perplexitychatgenerator"
+description: "`PerplexityChatGenerator` enables chat completion using models via the Perplexity Agent API."
+---
+
+# PerplexityChatGenerator
+
+`PerplexityChatGenerator` enables chat completion using models via the Perplexity Agent API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Perplexity API key. Can be set with `PERPLEXITY_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat |
+| **Output variables** | `replies`: A list of alternative replies of the LLM to the input chat |
+| **API reference** | [Integrations](/reference/integrations-perplexity) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/perplexity/src/haystack_integrations/components/generators/perplexity/chat/chat_generator.py |
+| **Package name** | `perplexity-haystack` |
+
+</div>
+
+## Overview
+
+`PerplexityChatGenerator` is built on top of `OpenAIResponsesChatGenerator` and communicates with the [Perplexity Agent API](https://docs.perplexity.ai/) (`POST /v1/agent`), which uses an OpenAI Responses-compatible interface.
+
+It supports the following models:
+
+- `openai/gpt-5.5`
+- `openai/gpt-5.4` (default)
+- `anthropic/claude-sonnet-4-6`
+- `xai/grok-4.3`
+- `google/gemini-3-flash-preview`
+
+See the [Perplexity Agent API models page](https://docs.perplexity.ai/docs/agent-api/models) for the current list.
+
+`PerplexityChatGenerator` needs a Perplexity API key to work. It uses a `PERPLEXITY_API_KEY` environment variable by default.
+
+The component accepts a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (such as `user`, `assistant`, or `system`), and optional metadata. See the [usage](#usage) section for an example.
+
+You can pass any parameters supported by the Perplexity Agent API using the `generation_kwargs` parameter, both at initialization and in the `run()` method.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+chat_generator = PerplexityChatGenerator()
+response = chat_generator.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
+print(response["replies"][0].text)
+```
+
+With streaming — pass any callable to `streaming_callback`, or use the built-in `print_streaming_chunk`:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+chat_generator = PerplexityChatGenerator(streaming_callback=print_streaming_chunk)
+response = chat_generator.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+prompt_builder = ChatPromptBuilder(
+    template=[
+        ChatMessage.from_system("You are a helpful assistant."),
+        ChatMessage.from_user("Tell me about {{topic}}"),
+    ],
+    required_variables="*",
+)
+llm = PerplexityChatGenerator(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+    model="openai/gpt-5.4",
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+result = pipe.run(
+    data={"prompt_builder": {"topic": "large language models"}},
+)
+print(result["llm"]["replies"][0].text)
+```
