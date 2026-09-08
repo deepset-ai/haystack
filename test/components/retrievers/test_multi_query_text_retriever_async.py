@@ -149,6 +149,30 @@ class TestMultiQueryTextRetrieverAsync:
         assert slow_cancelled is True
 
     @pytest.mark.asyncio
+    async def test_run_async_bounds_concurrency_to_max_workers(self):
+        state = {"current": 0, "peak": 0}
+
+        @component
+        class TrackingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+                state["current"] += 1
+                state["peak"] = max(state["peak"], state["current"])
+                await asyncio.sleep(0.02)
+                state["current"] -= 1
+                return {"documents": []}
+
+        multi_retriever = MultiQueryTextRetriever(retriever=TrackingRetriever(), max_workers=2)
+        await multi_retriever.run_async(queries=[f"q{i}" for i in range(8)])
+
+        assert state["peak"] <= 2
+        assert state["peak"] > 1  # the queries do overlap; they are not serialized
+
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_run_async_with_filters(self, document_store_with_docs):
         in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
