@@ -128,7 +128,7 @@
 | haystack/components/routers/llm\_messages\_router.py                      |       87 |        1 |     99% |       192 |
 | haystack/components/routers/metadata\_router.py                           |       38 |        0 |    100% |           |
 | haystack/components/samplers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
-| haystack/components/samplers/top\_p.py                                    |       65 |        0 |    100% |           |
+| haystack/components/samplers/top\_p.py                                    |       67 |        0 |    100% |           |
 | haystack/components/validators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/validators/json\_schema.py                            |       71 |        7 |     90% |23-24, 137, 139, 154, 242, 248 |
 | haystack/components/writers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17221** |  **773** | **96%** |           |
+| **TOTAL**                                                                 | **17223** |  **773** | **96%** |           |
 
 
 ## Setup coverage badge
