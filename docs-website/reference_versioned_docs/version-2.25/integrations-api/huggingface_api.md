@@ -129,6 +129,38 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 - <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
   or the `api_type` is unknown.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Hugging Face client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Hugging Face client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Hugging Face client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Hugging Face client.
+
 #### to_dict
 
 ```python
@@ -502,6 +534,38 @@ Creates a HuggingFaceAPITextEmbedder component.
 - <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
   or the `api_type` is unknown.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Hugging Face client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Hugging Face client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Hugging Face client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Hugging Face client.
+
 #### to_dict
 
 ```python
@@ -605,7 +669,7 @@ api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
 api_type = "serverless_inference_api" # this is equivalent to the above
 
 generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
+                                        api_params={"model": "Qwen/Qwen3.5-9B",
                                                     "provider": "together"},
                                         token=Secret.from_token("<your-api-key>"))
 
@@ -630,8 +694,8 @@ messages = [ChatMessage.from_user(content_parts=["Describe this image in detail"
 generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
     api_params={
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic"
+        "model": "Qwen/Qwen3.5-9B",  # Vision Language Model
+        "provider": "together"
     },
     token=Secret.from_token("<your-api-key>")
 )
@@ -730,8 +794,31 @@ warm_up() -> None
 
 Warm up the Hugging Face API chat generator.
 
-This will warm up the tools registered in the chat generator.
-This method is idempotent and will only warm up the tools once.
+This creates the synchronous client and warms up the configured tools.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Hugging Face client and warm up the configured tools.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Hugging Face client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Hugging Face client.
 
 #### to_dict
 
