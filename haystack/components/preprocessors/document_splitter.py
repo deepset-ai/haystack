@@ -268,6 +268,7 @@ class DocumentSplitter:
 
         Encodes the full document text to tokens, slices into chunks of `split_length` tokens
         with `split_overlap` overlap, then decodes each chunk back to a string.
+        Stops once a chunk reaches the end of the document, avoiding overlap-only trailing chunks.
         """
         tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
         if not tokens:
@@ -301,6 +302,9 @@ class DocumentSplitter:
                 text_splits.append(full_text[chunk_start:chunk_end])
                 splits_pages.append(cur_page)
                 splits_start_idxs.append(chunk_start)
+
+            if i + chunk_token_count == len(tokens):
+                break
 
             non_overlap_end = offsets[min(i + step, len(tokens))]
             cur_page += full_text[prev_end:non_overlap_end].count("\f")
