@@ -56,7 +56,11 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
-        scores = [doc.score for doc in result["documents"]]
+        docs = result["documents"]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
@@ -157,11 +161,23 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         @component
         class MockRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+            def run(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+            async def run_async(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())
