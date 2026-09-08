@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``OpenAIDocumentEmbedder.run_async`` (and ``AzureOpenAIDocumentEmbedder``) now request
+    ``encoding_format="float"`` from the embeddings endpoint, matching the synchronous ``run``. The async
+    batch path was missed when this was added in #9655, so ``run_async`` let the OpenAI SDK negotiate the
+    ``base64`` wire format, which some OpenAI-compatible endpoints do not support.

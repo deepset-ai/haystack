@@ -297,7 +297,7 @@ class OpenAIDocumentEmbedder:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
-            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
