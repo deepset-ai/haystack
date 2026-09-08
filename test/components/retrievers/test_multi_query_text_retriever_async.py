@@ -123,11 +123,15 @@ class TestMultiQueryTextRetrieverAsync:
         @component
         class MockRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
                 nonlocal slow_cancelled
                 if query == "slow":
                     slow_started.set()
