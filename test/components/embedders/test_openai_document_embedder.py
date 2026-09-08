@@ -287,10 +287,12 @@ class TestOpenAIDocumentEmbedder:
 
         if method == "_embed_batch":
             embedder.warm_up()
+            assert embedder.client is not None
             with patch.object(embedder.client.embeddings, "create", return_value=response) as mock_create:
                 embedder._embed_batch(texts_to_embed=texts, batch_size=10)
         else:
             await embedder.warm_up_async()
+            assert embedder.async_client is not None
             with patch.object(
                 embedder.async_client.embeddings, "create", new=AsyncMock(return_value=response)
             ) as mock_create:
