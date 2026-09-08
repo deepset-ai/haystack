@@ -19,7 +19,7 @@ from haystack_integrations.components.embedders.nvidia import NvidiaDocumentEmbe
 
 doc = Document(content="I love pizza!")
 
-text_embedder = NvidiaDocumentEmbedder(model="nvidia/nv-embedqa-e5-v5", api_url="https://integrate.api.nvidia.com/v1")
+text_embedder = NvidiaDocumentEmbedder(model="nvidia/nemotron-3-embed-1b", api_url="https://integrate.api.nvidia.com/v1")
 # Components warm up automatically on first run.
 
 result = document_embedder.run([doc])
@@ -89,6 +89,14 @@ warm_up() -> None
 ```
 
 Initializes the component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the backend and release its resources.
 
 #### to_dict
 
@@ -166,7 +174,7 @@ from haystack_integrations.components.embedders.nvidia import NvidiaTextEmbedder
 
 text_to_embed = "I love pizza!"
 
-text_embedder = NvidiaTextEmbedder(model="nvidia/nv-embedqa-e5-v5", api_url="https://integrate.api.nvidia.com/v1")
+text_embedder = NvidiaTextEmbedder(model="nvidia/nemotron-3-embed-1b", api_url="https://integrate.api.nvidia.com/v1")
 # Components warm up automatically on first run.
 
 print(text_embedder.run(text_to_embed))
@@ -226,6 +234,14 @@ warm_up() -> None
 ```
 
 Initializes the component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the backend and release its resources.
 
 #### to_dict
 
@@ -355,7 +371,7 @@ print(response)
 __init__(
     *,
     api_key: Secret = Secret.from_env_var("NVIDIA_API_KEY"),
-    model: str = "meta/llama-3.1-8b-instruct",
+    model: str = "nvidia/nemotron-3.5-lightning-30b-a3b",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
     generation_kwargs: dict[str, Any] | None = None,
@@ -424,147 +440,6 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-## haystack_integrations.components.generators.nvidia.generator
-
-### NvidiaGenerator
-
-Generates text using generative models hosted with [NVIDIA NIM](https://ai.nvidia.com).
-
-Available via the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
-
-### Usage example
-
-```python
-from haystack_integrations.components.generators.nvidia import NvidiaGenerator
-
-generator = NvidiaGenerator(
-    model="meta/llama3-8b-instruct",
-    model_arguments={
-        "temperature": 0.2,
-        "top_p": 0.7,
-        "max_tokens": 1024,
-    },
-)
-# Components warm up automatically on first run.
-
-result = generator.run(prompt="What is the answer?")
-print(result["replies"])
-print(result["meta"])
-print(result["usage"])
-```
-
-You need an NVIDIA API key for this component to work.
-
-#### __init__
-
-```python
-__init__(
-    model: str | None = None,
-    api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-    api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
-    model_arguments: dict[str, Any] | None = None,
-    timeout: float | None = None,
-) -> None
-```
-
-Create a NvidiaGenerator component.
-
-**Parameters:**
-
-- **model** (<code>str | None</code>) – Name of the model to use for text generation.
-  See the [NVIDIA NIMs](https://ai.nvidia.com)
-  for more information on the supported models.
-  `Note`: If no specific model along with locally hosted API URL is provided,
-  the system defaults to the available model found using /models API.
-  Check supported models at [NVIDIA NIM](https://ai.nvidia.com).
-- **api_key** (<code>Secret | None</code>) – API key for the NVIDIA NIM. Set it as the `NVIDIA_API_KEY` environment
-  variable or pass it here.
-- **api_url** (<code>str</code>) – Custom API URL for the NVIDIA NIM.
-- **model_arguments** (<code>dict\[str, Any\] | None</code>) – Additional arguments to pass to the model provider. These arguments are
-  specific to a model.
-  Search your model in the [NVIDIA NIM](https://ai.nvidia.com)
-  to find the arguments it accepts.
-- **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
-  or set to 60 by default.
-
-#### class_name
-
-```python
-class_name() -> str
-```
-
-Return the class name identifier for serialization.
-
-#### default_model
-
-```python
-default_model() -> None
-```
-
-Set default model in local NIM mode.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### available_models
-
-```python
-available_models: list[Model]
-```
-
-Get a list of available models that work with ChatNVIDIA.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> NvidiaGenerator
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>NvidiaGenerator</code> – Deserialized component.
-
-#### run
-
-```python
-run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Queries the model with the provided prompt.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – Text to be sent to the generative model.
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary with the following keys:
-- `replies` - Replies generated by the model.
-- `meta` - Metadata for each reply.
-
 ## haystack_integrations.components.rankers.nvidia.ranker
 
 ### NvidiaRanker
@@ -579,7 +454,7 @@ from haystack import Document
 from haystack.utils import Secret
 
 ranker = NvidiaRanker(
-    model="nvidia/nv-rerankqa-mistral-4b-v3",
+    model="nvidia/llama-nemotron-rerank-vl-1b-v2",
     api_key=Secret.from_env_var("NVIDIA_API_KEY"),
 )
 # Components warm up automatically on first run.
@@ -681,6 +556,14 @@ Initialize the ranker.
 **Raises:**
 
 - <code>ValueError</code> – If the API key is required for hosted NVIDIA NIMs.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the backend and release its resources.
 
 #### run
 
