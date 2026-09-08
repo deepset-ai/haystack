@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` now deep-copies the metadata of the document it splits, matching the other
+    splitters. Previously it copied it shallowly, so nested values such as a list under ``meta["tags"]``
+    were shared between every chunk and with the input document, and editing one chunk's metadata
+    changed all the others. The secondary line-based split of oversized units had the same problem.
