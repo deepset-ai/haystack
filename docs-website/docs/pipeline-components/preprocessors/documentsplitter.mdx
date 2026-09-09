@@ -31,8 +31,6 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 - `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks.
 - `split_threshold` is an integer indicating the minimum number of words, sentences, or passages that the document fragment should have. If the fragment is below the threshold, it will be attached to the previous one.
 
-When `split_by="token"`, splitting stops as soon as a chunk reaches the end of the document. No additional chunks containing only overlap from that final chunk are emitted. Documents that fit within `split_length` tokens produce a single chunk, even when `split_overlap` is set.
-
 A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document to keep track of the page it belonged to in the original document. Other metadata are copied from the original document.
 
 The DocumentSplitter is compatible with the following DocumentStores:

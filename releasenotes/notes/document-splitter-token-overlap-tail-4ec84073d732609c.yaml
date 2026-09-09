@@ -1,8 +1,6 @@
 ---
 fixes:
   - |
-    Fix ``DocumentSplitter`` with ``split_by="token"`` emitting trailing chunks
-    that contain only overlap from an earlier chunk. Splitting now stops as soon
-    as a chunk reaches the end of the document, including when the whole document
-    fits in one chunk. This reduces the chunk count for affected inputs while
-    preserving document content and overlap between chunks with new content.
+    Fix ``DocumentSplitter`` with ``split_by="token"`` generating redundant
+    trailing chunks containing only overlap. The splitter now stops creating
+    chunks after reaching the end of the document.

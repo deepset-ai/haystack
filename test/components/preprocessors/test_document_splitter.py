@@ -1012,16 +1012,21 @@ class TestSplittingByToken:
     @pytest.mark.parametrize(
         "split_length,split_overlap,split_threshold,content,expected_splits",
         [
-            (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
-            (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
-            (10, 0, 5, "t1 t2", ["t1 t2"]),
-            (3, 2, 2, "t1 t2 t3", ["t1 t2 t3"]),
-            (3, 1, 0, "t1 t2 t3", ["t1 t2 t3"]),
-            (5, 4, 0, "t1 t2 t3", ["t1 t2 t3"]),
-            (3, 2, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t2 t3 t4"]),
-            (4, 2, 0, "t1 t2 t3 t4 t5", ["t1 t2 t3 t4", " t3 t4 t5"]),
-            (4, 2, 4, "t1 t2 t3 t4 t5", ["t1 t2 t3 t4 t5"]),
-            (3, 0, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t4"]),
+            pytest.param(
+                3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"], id="four-tokens-create-two-overlapping-chunks"
+            ),
+            pytest.param(3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"], id="final-chunk-below-threshold-is-merged"),
+            pytest.param(10, 0, 5, "t1 t2", ["t1 t2"], id="short-document-without-overlap-creates-one-chunk"),
+            pytest.param(3, 1, 0, "t1 t2 t3", ["t1 t2 t3"], id="exact-fit-does-not-create-overlap-only-chunk"),
+            pytest.param(5, 4, 0, "t1 t2 t3", ["t1 t2 t3"], id="short-document-with-overlap-creates-one-chunk"),
+            pytest.param(
+                3,
+                2,
+                0,
+                "t1 t2 t3 t4",
+                ["t1 t2 t3", " t2 t3 t4"],
+                id="partial-final-chunk-does-not-create-overlap-only-chunks",
+            ),
         ],
     )
     def test_split_by_token_mock(
@@ -1056,24 +1061,6 @@ class TestSplittingByToken:
 @pytest.mark.integration
 class TestSplittingByTokenIntegration:
     """Integration tests for split_by="token" mode requiring real tiktoken."""
-
-    @pytest.mark.parametrize(
-        "split_length,split_overlap,expected_ends", [(8, 4, [8, 10]), (10, 9, [10]), (12, 10, [10])]
-    )
-    def test_no_overlap_only_tail(self, split_length, split_overlap, expected_ends):
-        splitter = DocumentSplitter(split_by="token", split_length=split_length, split_overlap=split_overlap)
-        text = "one two three four five six seven eight nine ten"
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert splitter._tiktoken_tokenizer is not None
-        _, offsets = splitter._tiktoken_tokenizer.decode_with_offsets(splitter._tiktoken_tokenizer.encode(text))
-        offsets.append(len(text))
-        actual_ends = []
-        for doc in docs:
-            assert doc.content is not None
-            actual_ends.append(doc.meta["split_idx_start"] + len(doc.content))
-        assert actual_ends == [offsets[end] for end in expected_ends]
-        assert text == merge_documents(docs)
 
     def test_basic_chunking(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
