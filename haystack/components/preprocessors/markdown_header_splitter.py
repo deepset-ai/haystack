@@ -248,8 +248,7 @@ class MarkdownHeaderSplitter:
                 if header_match:
                     content_for_splitting = doc.content[header_match.end() :]
 
-            # The page this header chunk starts on. The secondary splitter numbers its own splits
-            # starting from page 1, so those numbers are offsets relative to this chunk.
+            # the page this header chunk starts on; its splits are numbered relative to it
             chunk_start_page = doc.meta.get("page_number", 1)
 
             # create a clean meta dict without split_id for secondary splitting
@@ -261,14 +260,13 @@ class MarkdownHeaderSplitter:
 
             # split processing
             for split in secondary_splits:
-                # DocumentSplitter already records the page each split *starts* on, advancing only
-                # over the units it consumes rather than over whole split contents. Re-deriving the
-                # page here by counting page breaks in the previous split's full content would
-                # double-count any break that falls inside an overlap window, because overlapping
-                # text appears in two consecutive splits. Rebase its 1-based number onto the page
-                # this chunk starts on instead. DocumentSplitter always sets "page_number", so this
-                # reads a value it is guaranteed to have written.
-                split.meta["page_number"] = chunk_start_page + (split.meta["page_number"] - 1)
+                # Count the page breaks before the split starts. Scanning each split's whole content
+                # instead would count a break inside an overlap window once per split it appears in.
+                # DocumentSplitter's own page_number cannot be reused here: it only counts "\f".
+                breaks_before_split = content_for_splitting.count(
+                    self.page_break_character, 0, split.meta["split_idx_start"]
+                )
+                split.meta["page_number"] = chunk_start_page + breaks_before_split
                 split.meta["split_id"] = current_split_id
                 # ensure source_id is preserved from the original document
                 if "source_id" in doc.meta:

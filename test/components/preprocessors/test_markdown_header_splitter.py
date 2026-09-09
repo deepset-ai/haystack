@@ -931,39 +931,30 @@ def test_page_break_inside_overlap_is_not_counted_twice():
     assert [doc.meta["page_number"] for doc in split_docs] == [1, 1, 2]
 
 
-def test_page_numbers_unchanged_without_overlap():
-    # regression: with split_overlap=0 no content is shared between splits, so page numbers
-    # were already correct and must stay exactly as they were
-    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5, split_overlap=0)
-    split_docs = splitter.run(documents=[Document(content=text)])["documents"]
+@pytest.mark.parametrize("page_break_character", ["\f", "<PAGE>"], ids=["form_feed", "custom"])
+def test_page_numbers_in_chunk_starting_after_a_page_break(page_break_character):
+    # the "# H2" chunk starts on page 2, so its splits must be offset by that chunk's start page.
+    # A custom page break character must give exactly the same numbers as the default "\f".
+    pb = page_break_character
+    text = f"# H1\nw1 w2 {pb} w3 w4\n# H2\nw5 w6 {pb} w7 w8"
 
-    baseline_docs = DocumentSplitter(split_by="word", split_length=5, split_overlap=0).run(
-        documents=[Document(content=text)]
-    )["documents"]
+    def page_numbers(split_overlap):
+        docs = MarkdownHeaderSplitter(
+            page_break_character=pb, secondary_split="word", split_length=4, split_overlap=split_overlap
+        ).run(documents=[Document(content=text)])["documents"]
+        assert [doc.content for doc in docs] == expected_contents[split_overlap]
+        return [doc.meta["page_number"] for doc in docs]
 
-    assert [doc.content for doc in split_docs] == [doc.content for doc in baseline_docs]
-    assert [doc.meta["page_number"] for doc in split_docs] == [doc.meta["page_number"] for doc in baseline_docs]
-    assert [doc.meta["page_number"] for doc in split_docs] == [1, 2, 2]
+    expected_contents = {
+        0: [f"# H1\nw1 w2 {pb} ", "w3 w4\n", f"# H2\nw5 w6 {pb} ", "w7 w8"],
+        2: [f"# H1\nw1 w2 {pb} ", f"w2 {pb} w3 w4\n", f"# H2\nw5 w6 {pb} ", f"w6 {pb} w7 w8"],
+    }
 
-
-def test_page_numbers_with_overlap_in_chunk_starting_after_a_page_break():
-    # the "# H2" chunk starts on page 2, so its splits must be offset by that chunk's start page
-    # while still not double-counting the page break inside its own overlap window
-    text = "# H1\nw1 w2 \f w3 w4\n# H2\nw5 w6 \f w7 w8"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2)
-    split_docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-    assert [doc.content for doc in split_docs] == ["# H1\nw1 w2 \f ", "w2 \f w3 w4\n", "# H2\nw5 w6 \f ", "w6 \f w7 w8"]
-    # splits 1 and 3 start on the word right before a page break, so they stay on the page
+    # without overlap the text advances a page at every break
+    assert page_numbers(split_overlap=0) == [1, 2, 2, 3]
+    # with overlap, splits 1 and 3 start on the word before a break, so they stay on the page
     # their text begins on rather than advancing to the next one
-    assert [doc.meta["page_number"] for doc in split_docs] == [1, 1, 2, 2]
-
-    # with no overlap the same text advances a page at every break
-    no_overlap_docs = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=0).run(
-        documents=[Document(content=text)]
-    )["documents"]
-    assert [doc.meta["page_number"] for doc in no_overlap_docs] == [1, 2, 2, 3]
+    assert page_numbers(split_overlap=2) == [1, 1, 2, 2]
 
 
 def test_trailing_header_without_content_is_not_dropped():
