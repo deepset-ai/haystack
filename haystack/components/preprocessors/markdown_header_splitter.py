@@ -260,12 +260,10 @@ class MarkdownHeaderSplitter:
 
             # split processing
             for i, split in enumerate(secondary_splits):
-                # calculate page number for this split
-                if i > 0 and secondary_splits[i - 1].content:
-                    current_page = self._update_page_number_with_breaks(secondary_splits[i - 1].content, current_page)
-
-                # set page number and split_id to meta
-                split.meta["page_number"] = current_page
+                # DocumentSplitter accurately tracks page breaks inside the chunk. It returns page numbers starting from 1.
+                # We calculate the absolute page number by offsetting it by the chunk's starting page number (current_page).
+                split_relative_page = split.meta.get("page_number", 1)
+                split.meta["page_number"] = current_page + split_relative_page - 1
                 split.meta["split_id"] = current_split_id
                 # ensure source_id is preserved from the original document
                 if "source_id" in doc.meta:

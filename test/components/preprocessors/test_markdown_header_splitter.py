@@ -775,6 +775,18 @@ def test_page_break_handling_in_secondary_split():
     assert actual_page_numbers == expected_page_numbers
 
 
+def test_page_break_handling_with_overlap():
+    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5, split_overlap=2)
+    docs = [Document(content=text)]
+    result = splitter.run(documents=docs)
+    split_docs = result["documents"]
+
+    expected_page_numbers = [1, 1, 2]
+    actual_page_numbers = [doc.meta.get("page_number") for doc in split_docs]
+    assert actual_page_numbers == expected_page_numbers
+
+
 def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks):
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)
     docs = [Document(content=sample_text_with_page_breaks)]
