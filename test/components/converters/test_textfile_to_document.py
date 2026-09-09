@@ -39,7 +39,7 @@ class TestTextfileToDocument:
 
     def test_run_with_store_full_path(self, test_files_path: Path) -> None:
         """
-        Test if the component runs correctly with store_full_path= False.
+        Test if the component runs correctly with store_full_path=False.
         """
         bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_3.txt")
         bytestream.meta["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
