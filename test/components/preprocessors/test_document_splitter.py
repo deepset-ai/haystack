@@ -1012,10 +1012,21 @@ class TestSplittingByToken:
     @pytest.mark.parametrize(
         "split_length,split_overlap,split_threshold,content,expected_splits",
         [
-            (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
-            (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
-            (10, 0, 5, "t1 t2", ["t1 t2"]),
-            (3, 2, 2, "t1 t2 t3", ["t1 t2 t3", " t2 t3"]),
+            pytest.param(
+                3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"], id="four-tokens-create-two-overlapping-chunks"
+            ),
+            pytest.param(3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"], id="final-chunk-below-threshold-is-merged"),
+            pytest.param(10, 0, 5, "t1 t2", ["t1 t2"], id="short-document-without-overlap-creates-one-chunk"),
+            pytest.param(3, 1, 0, "t1 t2 t3", ["t1 t2 t3"], id="exact-fit-does-not-create-overlap-only-chunk"),
+            pytest.param(5, 4, 0, "t1 t2 t3", ["t1 t2 t3"], id="short-document-with-overlap-creates-one-chunk"),
+            pytest.param(
+                3,
+                2,
+                0,
+                "t1 t2 t3 t4",
+                ["t1 t2 t3", " t2 t3 t4"],
+                id="partial-final-chunk-does-not-create-overlap-only-chunks",
+            ),
         ],
     )
     def test_split_by_token_mock(
