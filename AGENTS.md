@@ -77,10 +77,9 @@ Also see directory-specific guidelines:
 - Target the 3.0 API: `ToolInvoker`, `AsyncPipeline`, and non-chat generators were removed — let `Agent` own tool calls, use `Pipeline.run()`/`Pipeline.run_async()`, and use ChatGenerators like `OpenAIChatGenerator`
 - Serialize with the Haystack helpers (`component_to_dict`, `default_from_dict`): in `from_dict()` pass only the fields present to `__init__()` so defaults stay centralized, shallow-copy the payload instead of `deepcopy()`, and keep tools/toolsets nested under `data` — preserves wire compatibility and round-trip fidelity
 - Keep public signatures explicit and compatible: optional params keyword-only after `*` and appended rather than inserted, mirrored constructor params spelled out instead of `*args`/`**kwargs`, and chat generators keeping the `run(messages, *, streaming_callback, generation_kwargs, tools)` order — avoids breaking positional callers
-- Create API clients and load models in `warm_up()`, not `__init__`; implement `warm_up()` only for real setup, make it idempotent, and run it before tool access — keeps components constructible and serializable without credentials or network
-- Keep `run_async`/`warm_up_async`/`close_async` genuinely async with separate async state and hooks, sharing sync/async logic through private helpers; treat a component's `run_async` as optional and fall back to `asyncio.to_thread(component.run, ...)` with a log line — prevents event-loop blocking and sync/async drift
+- Create API clients and load models in `warm_up()`, not `__init__`; implement `warm_up()` only for real setup and make it idempotent — keeps components constructible and serializable without credentials or network
+- Implement `run_async` only when there is a real async execution path — `Pipeline.run_async()` already falls back to `asyncio.to_thread(component.run, ...)` when it is missing; where it exists, keep `run_async`/`warm_up_async`/`close_async` genuinely async with separate async state and hooks, and share sync/async logic through private helpers — prevents event-loop blocking and sync/async drift
 - Pass explicit `required_variables` for optional prompt vars — avoids requiring optional inputs
-- Make `AgentTool` output contracts explicit — the default result is the final reply text; when downstream needs the full message or non-text artifacts, configure `outputs_to_string` (`source`, `handler`, `raw_result`) and document `last_message`, text-only output, and `exit_reason` when narrowing the payload
 - Subclass `Toolset` only when inherited collection APIs match — prefer composition or raise `NotImplementedError`
 - Read live Haystack `State` resources via `state.data.get(...)` or `state.data[...]` — avoids deep-copy bugs
 - Prefer existing `haystack/core/pipeline` APIs or inline logic — avoid duplicate or one-off public APIs
@@ -90,7 +89,7 @@ Also see directory-specific guidelines:
 
 - Keep inline comments and private-helper docs to what is non-obvious — remove restatements, keep durable caveats and rationale
 - Keep docstrings current with signatures and behavior, in the existing Haystack style: each public `:param` by meaning, default, and constraints; `:returns:` contracts; exceptions in the existing `:raises ValueError:` style; aliases like `ToolsType` reflected — stale docs mislead users and assistants
-- Keep doc examples minimal, runnable, and local: default constructors with required env vars like `OPENAI_API_KEY` noted nearby, only the imports the snippet uses, no restated defaults (name a model only for model-specific behavior), expected output as `# ...` comments
+- Keep doc examples minimal, runnable, and local: default constructors with required env vars like `OPENAI_API_KEY` noted nearby, only the imports the snippet uses, no restated defaults (name a model only for model-specific behavior), expected output as comments, generally `# >> ...`
 - When behavior, fields, or names change, update every surface in the same PR: `haystack/components/` docstrings and examples, `docs-website/docs/` plus the current `versioned_docs/version-*/` page (e.g. `concepts/data-classes.mdx`), and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
 
 ## Code Style
