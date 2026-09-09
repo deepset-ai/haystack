@@ -14,6 +14,7 @@ from jinja2.nativetypes import NativeEnvironment
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import _is_unsafe_deserialization
+from haystack.core.type_utils import _contains_type
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
@@ -141,7 +142,7 @@ class OutputAdapter:
             # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
             # another type, which would violate the declared output_type.
             with contextlib.suppress(Exception):
-                if not self._unsafe and self.output_type is not str:
+                if not self._unsafe and not _contains_type(self.output_type, str):
                     output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result
