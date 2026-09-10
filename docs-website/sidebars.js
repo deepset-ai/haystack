@@ -67,7 +67,7 @@ export default {
         {
           type: 'ref',
           id: 'tools/tool',
-          label: 'Tools',
+          label: 'Agent Tools',
         },
         {
           type: 'category',
@@ -122,40 +122,6 @@ export default {
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Tools',
-      items: [
-        'tools/tool',
-        'tools/agenttool',
-        'tools/componenttool',
-        'tools/pipelinetool',
-        'tools/toolset',
-        'tools/mcptool',
-        'tools/mcptoolset',
-        'tools/searchabletoolset',
-        'tools/skilltoolset',
-        {
-          type: 'category',
-          label: 'Ready-made Tools',
-          link: {
-            type: 'doc',
-            id: 'tools/ready-made-tools'
-          },
-          items: [
-            'tools/ready-made-tools/e2btoolset',
-            'tools/ready-made-tools/githubfileeditortool',
-            'tools/ready-made-tools/githubissuecommentertool',
-            'tools/ready-made-tools/githubissueviewertool',
-            'tools/ready-made-tools/githubprcreatortool',
-            'tools/ready-made-tools/githubrepoviewertool',
-            'tools/ready-made-tools/mem0memorytools',
-            'tools/ready-made-tools/mirageshelltool',
-            'tools/ready-made-tools/tavilywebsearchtool',
-          ],
-        },
       ],
     },
     {
@@ -743,6 +709,40 @@ export default {
             'pipeline-components/writers/cogneewriter',
             'pipeline-components/writers/documentwriter',
             'pipeline-components/writers/mem0memorywriter',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Agent Tools',
+      items: [
+        'tools/tool',
+        'tools/agenttool',
+        'tools/componenttool',
+        'tools/pipelinetool',
+        'tools/toolset',
+        'tools/mcptool',
+        'tools/mcptoolset',
+        'tools/searchabletoolset',
+        'tools/skilltoolset',
+        {
+          type: 'category',
+          label: 'Ready-made Tools',
+          link: {
+            type: 'doc',
+            id: 'tools/ready-made-tools'
+          },
+          items: [
+            'tools/ready-made-tools/e2btoolset',
+            'tools/ready-made-tools/githubfileeditortool',
+            'tools/ready-made-tools/githubissuecommentertool',
+            'tools/ready-made-tools/githubissueviewertool',
+            'tools/ready-made-tools/githubprcreatortool',
+            'tools/ready-made-tools/githubrepoviewertool',
+            'tools/ready-made-tools/mem0memorytools',
+            'tools/ready-made-tools/mirageshelltool',
+            'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },
       ],
