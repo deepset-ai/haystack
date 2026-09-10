@@ -51,6 +51,7 @@ The tables below list every available integration alongside the key properties y
 | PGVector | Relational Database | Relational database (PostgreSQL) with the `pgvector` extension for vector similarity search | Yes | Yes | Embedding, Keyword |
 | Pinecone | Vector Database | Managed cloud vector database | No | Yes | Embedding |
 | Qdrant | Vector Database | Purpose-built vector database with dense + sparse embedding support | Yes | Yes | Embedding, Sparse Embedding, Hybrid |
+| Solr | Search Engine | Distributed search server (Apache Lucene-based) with BM25 + kNN dense vector search | Yes | Yes | BM25, Embedding, Hybrid |
 | Supabase | Relational Database | Managed cloud Supabase — a wrapper over PgvectorDocumentStore with Supabase-specific defaults | Yes | Yes | Embedding, Keyword |
 | Valkey | In-memory Key-Value Store | In-memory key-value store (Redis fork) with HNSW vector search via `glide` client | Yes | Yes | Embedding |
 | Vespa | Search Engine | Distributed search & serving engine with BM25 lexical + HNSW vector (ANN) search | Yes | No | BM25, Embedding |
@@ -98,6 +99,7 @@ The tables below list every available integration alongside the key properties y
 - Azure AI Search ([AzureAISearchDocumentStore](../../document-stores/azureaisearchdocumentstore.mdx))
 - [Elasticsearch](../../document-stores/elasticsearch-document-store.mdx)
 - [OpenSearch](../../document-stores/opensearch-document-store.mdx)
+- [Solr](../../document-stores/solrdocumentstore.mdx)
 - [Needle](https://haystack.deepset.ai/integrations/needle) (external integration)
 - [Vespa](../../document-stores/vespadocumentstore.mdx)
 

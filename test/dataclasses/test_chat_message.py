@@ -955,8 +955,21 @@ class TestToOpenaiDictFormat:
             "name": "Assistant1",
         }
 
+    def test_to_openai_dict_format_contentless_assistant_message(self):
+        # A Chat Generator that discards a malformed tool call returns a reply with no content parts. The API rejects
+        # an assistant message with no `content` key, so it is sent with empty content, and it round-trips.
+        message = ChatMessage.from_assistant(text=None)
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+        assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
+
+    def test_to_openai_dict_format_reasoning_only_assistant_message(self):
+        # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the
+        # same as a reply carrying reasoning alongside text.
+        message = ChatMessage.from_assistant(reasoning="only reasoning")
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+
     def test_to_openai_dict_format_invalid(self):
-        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+        message = ChatMessage(_role=ChatRole.USER, _content=[])
         with pytest.raises(ValueError):
             message.to_openai_dict_format()
 

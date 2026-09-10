@@ -182,6 +182,7 @@ __init__(
     ascii_only: bool = False,
     strip_whitespaces: bool = False,
     replace_regexes: dict[str, str] | None = None,
+    min_content_length: int = 0,
 ) -> None
 ```
 
@@ -209,6 +210,8 @@ Initialize DocumentCleaner.
 - **replace_regexes** (<code>dict\[str, str\] | None</code>) – A dictionary mapping regex patterns to their replacement strings.
   For example, `{r'\n\n+': '\n'}` replaces multiple consecutive newlines with a single newline.
   This is applied after `remove_regex` and allows custom replacements instead of just removal.
+- **min_content_length** (<code>int</code>) – Minimum length of the cleaned document content after stripping leading and trailing
+  whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
 
 #### run
 
@@ -258,7 +261,14 @@ print(result["documents"])
 __init__(
     *,
     split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
+        "function",
+        "page",
+        "passage",
+        "period",
+        "word",
+        "line",
+        "sentence",
+        "token",
     ] = "word",
     split_length: int = 250,
     split_overlap: int = 0,
@@ -268,6 +278,7 @@ __init__(
     language: Language = "en",
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
+    tokenizer_encoding: str = "o200k_base",
     remove_empty_lines: bool = True,
     remove_extra_whitespaces: bool = True,
     remove_repeated_substrings: bool = False,
@@ -285,7 +296,8 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
 **Parameters:**
 
-- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence']</code>) – The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
+- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence', 'token']</code>) – The unit of splitting: "function", "page", "passage", "period", "word", "line",
+  "sentence", or "token".
 - **split_length** (<code>int</code>) – The maximum number of units (words, lines, pages, and so on) in each split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units between consecutive splits.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split is smaller than this, it's merged
@@ -297,6 +309,8 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 - **use_split_rules** (<code>bool</code>) – Whether to apply additional splitting heuristics for the sentence splitter.
 - **extend_abbreviations** (<code>bool</code>) – Whether to extend the sentence splitter with curated abbreviations for certain
   languages.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
 
 **Cleaner Parameters**:
 
@@ -376,7 +390,14 @@ result = splitter.run(documents=[doc])
 ```python
 __init__(
     split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
+        "function",
+        "page",
+        "passage",
+        "period",
+        "word",
+        "line",
+        "sentence",
+        "token",
     ] = "word",
     split_length: int = 200,
     split_overlap: int = 0,
@@ -387,7 +408,8 @@ __init__(
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
     *,
-    skip_empty_documents: bool = True
+    skip_empty_documents: bool = True,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -395,13 +417,14 @@ Initialize DocumentSplitter.
 
 **Parameters:**
 
-- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence']</code>) – The unit for splitting your documents. Choose from:
+- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence', 'token']</code>) – The unit for splitting your documents. Choose from:
 - `word` for splitting by spaces (" ")
 - `period` for splitting by periods (".")
 - `page` for splitting by form feed ("\\f")
 - `passage` for splitting by double line breaks ("\\n\\n")
 - `line` for splitting each line ("\\n")
 - `sentence` for splitting by NLTK sentence tokenizer
+- `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
 - **split_length** (<code>int</code>) – The maximum number of units in each split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split has fewer units
@@ -418,6 +441,8 @@ Initialize DocumentSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Choose whether to skip documents with empty content. Default is True.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
 
 #### warm_up
 
@@ -425,7 +450,7 @@ Initialize DocumentSplitter.
 warm_up() -> None
 ```
 
-Warm up the DocumentSplitter by loading the sentence tokenizer.
+Warm up the DocumentSplitter by loading the sentence tokenizer or tiktoken encoder.
 
 #### run
 

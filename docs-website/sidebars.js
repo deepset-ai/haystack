@@ -79,6 +79,7 @@ export default {
           items: [
             'concepts/data-classes/chatmessage',
             'concepts/data-classes/filecontent',
+            'concepts/data-classes/imagecontent',
           ],
         },
         {
@@ -141,6 +142,7 @@ export default {
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
+        'document-stores/solrdocumentstore',
         'document-stores/supabasedocumentstore',
         'document-stores/valkeydocumentstore',
         'document-stores/vespadocumentstore',
@@ -604,6 +606,7 @@ export default {
           items: [
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
+            'pipeline-components/retrievers/amazonbedrockknowledgebaseretriever',
             'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
@@ -649,6 +652,9 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretriever',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/solrbm25retriever',
+            'pipeline-components/retrievers/solrembeddingretriever',
+            'pipeline-components/retrievers/solrhybridretriever',
             'pipeline-components/retrievers/sqlalchemytableretriever',
             'pipeline-components/retrievers/supabasegroongabm25retriever',
             'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
@@ -718,6 +724,7 @@ export default {
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
             'pipeline-components/websearch/tavilywebsearch',
+            'pipeline-components/websearch/youcomwebsearch',
             'pipeline-components/websearch/external-integrations-websearch',
           ],
         },
@@ -777,6 +784,8 @@ export default {
         'token-counters/approximatetokencounter',
         'token-counters/tiktokencounter',
         'token-counters/openaitokencounter',
+        'token-counters/anthropictokencounter',
+        'token-counters/googlegenaitokencounter',
       ],
     },
     {
@@ -834,6 +843,7 @@ export default {
             'development/tracing/datadog',
             'development/tracing/langfuse',
             'development/tracing/weave',
+            'development/tracing/rhesis',
             'development/tracing/logging-tracer',
             'development/tracing/custom-tracer',
           ],

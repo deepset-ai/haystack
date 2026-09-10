@@ -19,7 +19,7 @@ description: "Use ToolResultOffloadCompactor to store older tool results only wh
 |  |  |
 | --- | --- |
 | **Used by** | [`CompactionHook`](compaction-hook.mdx) |
-| **Mandatory init variables** | `store`: The `ToolResultStore` that receives offloaded result text |
+| **Mandatory init variables** | `store`: The `ToolResultStore` that receives the offloaded results |
 | **Import path** | `haystack.hooks.compaction.ToolResultOffloadCompactor` |
 | **API reference** | [Hooks](/reference/hooks-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/tool_result_offloading.py |
@@ -29,11 +29,9 @@ description: "Use ToolResultOffloadCompactor to store older tool results only wh
 
 ## Usage
 
-Pass the compactor a [`ToolResultStore`](../tool-result-offloading.mdx#stores), then register its `CompactionHook` under the Agent's `before_llm` hook point:
+Pass the compactor a [`ToolResultStore`](../tool-result-offloading.mdx#stores) and give the result to a `CompactionHook`:
 
 ```python
-from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
 from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
 
@@ -48,47 +46,96 @@ compaction_hook = CompactionHook(
     compact_at=0.7,
     compact_to=0.4,
 )
-
-agent = Agent(
-    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
-    tools=[web_search],
-    hooks={"before_llm": [compaction_hook]},
-)
 ```
 
-The Agent initially sends each tool's full output to the model. Once the context reaches `compact_at`, the compactor processes eligible older results until the messages reach the target derived from `compact_to`. Each replacement contains the store reference, original character count, and a preview. Pair the store with a tool that can read its references if the Agent needs to retrieve the full output later.
+Register the hook under the Agent's `before_llm` hook point, as shown in [`CompactionHook`](compaction-hook.mdx). The Agent then initially sends each tool's full output to the model. Once the context reaches `compact_at`, the compactor processes eligible older results until the messages reach the target derived from `compact_to`. Each replacement names the store reference, the size of the original result, and a preview of its text. Give the Agent a tool that reads from the same store so it can retrieve the full output later, as shown in [Reading offloaded results back](#reading-offloaded-results-back).
 
 ## How offloading works
 
 The compactor processes tool results from oldest to newest:
 
 1. It leaves the conversation unchanged when it already fits within the target.
-2. It considers every historical result from before the latest user task before touching results produced during the current task.
-3. Within the current task, it protects results from at least the configured number of recent tool-calling Agent steps. Parallel results from one step are protected together.
-4. It skips errors, non-text results, results below the token threshold, and results already rewritten by offloading or another compactor.
-5. It writes eligible result text to the store and replaces the message with a compact reference until the conversation reaches the target.
+2. It protects results from at least the configured number of recent tool-calling Agent steps. Since at least one step must be kept, the current result batch remains intact until the model has acted on it.
+3. It skips error results, results already marked by context compaction or already offloaded, and results below the token threshold.
+4. It writes each eligible result to the store and replaces it with a reference until the estimated conversation size reaches the target.
 
-The replacement preserves the originating tool call, error flag, and existing message metadata. It also records `tool_result_offloaded` metadata containing the store reference and `context_compaction` metadata containing the strategy and original token count.
+The replacement preserves the originating tool call, error flag, and existing message metadata. It also records `tool_result_offloaded` metadata holding the list of store references written, and `context_compaction` metadata holding the strategy name and the original tool-result message's token count.
 
-Only string results and sequences containing exclusively text blocks can be offloaded. Results containing images or files remain in context.
+The target is a goal rather than a guarantee. Protected recent results and results that do not meet the offloading rules can leave the conversation above the requested target.
+
+### Text, image, and file results
+
+Every part of a result goes to its own store entry, and the reference left in the conversation says where each part went:
+
+```
+Tool result offloaded to 2 files:
+1. text (4120 characters) at '/abs/path/tool_results/compacted_fetch_call-123_0.txt'. Preview: Quarterly report...
+2. image/png (48210 bytes) at '/abs/path/tool_results/compacted_fetch_call-123_1.png'
+```
+
+Image and file content is only written to a store that sets `supports_binary_content`, which [`FileSystemToolResultStore`](../tool-result-offloading.mdx#stores) does. With a text-only store, a result carrying images or files stays in the conversation and a warning is logged.
 
 ## Configuration
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `store` | No default | The `ToolResultStore` that receives full result text and returns the reference placed in the conversation. |
-| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps in the current task whose results remain directly in context. Parallel results from one step are protected together. Historical results are not protected by this setting. |
+| `store` | No default | The `ToolResultStore` that receives the full result and returns the reference placed in the conversation. |
+| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. |
 | `min_tokens` | `200` | Only offload a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
-| `preview_chars` | `200` | The number of leading characters included in the compact reference message. Set to `0` to omit the preview. |
+| `preview_chars` | `200` | The number of leading characters of each offloaded text included in the reference. Set to `0` to omit the preview. |
 
 `min_keep_steps` must be at least `1`. `min_tokens` and `preview_chars` cannot be negative.
 
-The target is a goal rather than a guarantee. Protected recent results and ineligible results can leave the conversation above the requested target. A result also stays inline when its reference and preview would use at least as many tokens as the original message.
+## Token counting
 
-## Choosing between the compactor and hook
+The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `CompactionHook` to determine whether a result exceeds `min_tokens` and whether offloading it saves context.
+
+The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its reference. The compactor updates its running total using the difference between those two counts.
+
+This also decides whether a non-text result is worth offloading. A local counter measures an image or a file as a short stand-in, so offloading it frees nothing measurable and the result stays in context. A counter that measures what the provider actually charges for, such as [`OpenAITokenCounter`](../../../token-counters.mdx), reports the real size, and those results are offloaded like any other.
+
+## Reading offloaded results back
+
+The reference in the conversation is only useful if the Agent can resolve it, so give the Agent a tool that reads from the same store:
+
+```python
+from typing import Annotated
+
+from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+from haystack.tools import tool
+
+result_store = FileSystemToolResultStore(root="tool_results")
+
+
+@tool
+def read_offloaded_result(
+    reference: Annotated[str, "A reference from an offloaded tool result."],
+) -> str:
+    """Read back the full content of a tool result that was offloaded to storage."""
+    content = result_store.read(reference)
+    return (
+        content
+        if isinstance(content, str)
+        else f"{len(content)} bytes of binary content"
+    )
+```
+
+Pass that tool to the Agent alongside the tools whose results get offloaded, reading from the same store the compactor writes to. Without such a tool the offloaded output is gone from the Agent's reach, which makes [`ToolResultPruningCompactor`](tool-result-pruning-compactor.mdx) the simpler choice.
+
+## Choosing between the compactor and the hook
 
 Use `ToolResultOffloadCompactor` when fresh results should remain directly available and offloading should happen only as the context fills. Use [`ToolResultOffloadHook`](../tool-result-offloading.mdx) when selected outputs should always be offloaded immediately, including on short Agent runs.
 
-The hook supports per-tool `OffloadPolicy` configuration and request-scoped store overrides through `hook_context`. The compactor instead decides from result age, token size, and the current compaction target.
+The hook supports per-tool `OffloadPolicy` configuration and request-scoped store overrides through `hook_context`. A compactor receives no per-run context, so in a multi-user server build a compactor and its hook per run, each with that run's own isolated store.
 
-Both use the same `ToolResultStore` abstraction, pointer format, and `tool_result_offloaded` metadata. This lets retrieval tools handle references consistently regardless of when offloading occurred.
+Both use the same `ToolResultStore` abstraction, reference format, and `tool_result_offloaded` metadata, so a tool that reads references back handles them the same way regardless of when offloading happened.
+
+## When the conversation is unchanged
+
+The compactor returns `None` without changing the conversation when:
+
+- The conversation already fits within `target_tokens`.
+- There are no results older than the protected steps.
+- Every older result is an error, already compacted or offloaded, empty, or no larger than `min_tokens`.
+- Every older result carries image or file content that the store cannot hold.
+- A reference would not reduce the result's measured token count.

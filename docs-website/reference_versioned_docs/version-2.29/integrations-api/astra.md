@@ -483,10 +483,20 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a field matching a search term or all possible values if no search term is given.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception.
+AstraDB's Data API canonicalizes any whole-number float (e.g. `1.0`) to an int on storage, unconditionally so a
+whole-number float is always returned back as an int, never as a float.
+Example: 1.0 (float) is sent to storage and comes back a 1 (int)
+
+Exception are floats with a fractional part (e.g. `1.5`) are unaffected and round-trip normally.
 
 **Parameters:**
 
@@ -494,10 +504,11 @@ Retrieves unique values for a field matching a search term or all possible value
 - **search_term** (<code>str | None</code>) – Optional case-insensitive substring search term.
 - **from\_** (<code>int</code>) – The starting index for pagination.
 - **size** (<code>int</code>) – The number of values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing the paginated values and the total count.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing the paginated values (in their original type) and the total count.
 
 ## haystack_integrations.document_stores.astra.errors
 

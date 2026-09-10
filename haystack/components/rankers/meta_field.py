@@ -335,8 +335,7 @@ class MetaFieldRanker:
         if meta_value_type is None:
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
-        unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
-        if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
+        if not all(isinstance(doc.meta[self.meta_field], str) for doc in docs_with_meta_field):
             logger.warning(
                 "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
                 "provided Documents with IDs {document_ids} are strings.\n"

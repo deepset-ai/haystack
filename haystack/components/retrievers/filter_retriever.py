@@ -86,7 +86,8 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
+        resolved_filters = filters if filters is not None else self.filters
+        return {"documents": self.document_store.filter_documents(filters=resolved_filters)}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -100,7 +101,10 @@ class FilterRetriever:
             A list of retrieved documents.
         """
         # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)  # type: ignore[attr-defined]
+        resolved_filters = filters if filters is not None else self.filters
+        out_documents = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
+            filters=resolved_filters
+        )
         return {"documents": out_documents}
 
     def close(self) -> None:
