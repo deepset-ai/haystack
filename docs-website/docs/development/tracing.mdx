@@ -11,10 +11,17 @@ Traces document the flow of requests through your application and are vital for 
 
 Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack provides out-of-the-box support for several backends, and you can also quickly implement support for additional providers of your choosing.
 
+:::info[Tracing on Haystack Enterprise Platform]
+
+Deploy your pipeline on [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform) and get traces out of the box, no tracer setup needed. See [Haystack Enterprise Platform](tracing/haystack-enterprise-platform.mdx) for details, including how to connect Langfuse or Weights & Biases Weave for deeper tracing.
+
+:::
+
 ## Supported Tracers
 
 | Tracer | Description |
 | --- | --- |
+| [Haystack Enterprise Platform](tracing/haystack-enterprise-platform.mdx) | Get pipeline traces automatically when you deploy on [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform), no tracer setup needed. Optionally connect the `LangfuseConnector` or `WeaveConnector`. |
 | [OpenTelemetry](tracing/opentelemetry.mdx) | Send traces to any [OpenTelemetry](https://opentelemetry.io/)-compatible backend using the `OpenTelemetryTracer` or the `OpenTelemetryConnector` component. Includes a Jaeger setup for local development. |
 | [MLflow](tracing/mlflow.mdx) | Capture traces with [MLflow](https://mlflow.org/)'s native Haystack tracing support. |
 | [Datadog](tracing/datadog.mdx) | Trace your pipelines with [Datadog](https://www.datadoghq.com/) using the `DatadogTracer` or the `DatadogConnector` component. |
@@ -23,12 +30,6 @@ Instrumented applications typically send traces to a trace collector or a tracin
 | [Rhesis](tracing/rhesis.mdx) | Trace your pipelines and `Agent` runs in [Rhesis](https://rhesis.ai) using the `RhesisConnector` component, and correlate traces with test runs and conversation turns. |
 | [LoggingTracer](tracing/logging-tracer.mdx) | Inspect the data flowing through your pipeline in real time through logs, with no backend setup. |
 | [Custom Tracer](tracing/custom-tracer.mdx) | Connect any tracing backend by implementing the `Tracer` interface. |
-
-:::info[Tracing on Haystack Enterprise Platform]
-
-If you build and deploy your pipeline on [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform), you get pipeline traces out of the box in the Builder's Analytics tab, no tracer setup needed. You can also connect [Langfuse](https://docs.cloud.deepset.ai/docs/trace-with-langfuse) or [Weights & Biases Weave](https://docs.cloud.deepset.ai/docs/use-weights-and-biases) through the platform's connectors for deeper, cross-service tracing. See [Trace Your Pipelines](https://docs.cloud.deepset.ai/docs/trace-your-pipelines) and [Monitor Pipeline Performance](https://docs.cloud.deepset.ai/docs/pipeline-performance) for details.
-
-:::
 
 ## Enabling and Disabling Tracing
 

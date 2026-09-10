@@ -837,6 +837,7 @@ export default {
             id: 'development/tracing'
           },
           items: [
+            'development/tracing/haystack-enterprise-platform',
             'development/tracing/opentelemetry',
             'development/tracing/mlflow',
             'development/tracing/datadog',

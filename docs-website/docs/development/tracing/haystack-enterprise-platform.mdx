@@ -1,0 +1,40 @@
+---
+title: "Haystack Enterprise Platform"
+id: haystack-enterprise-platform
+slug: "/tracing-haystack-enterprise-platform"
+description: "Learn how pipeline tracing works out of the box on Haystack Enterprise Platform, and how to connect Langfuse or Weights & Biases Weave for deeper tracing."
+---
+
+# Haystack Enterprise Platform
+
+Learn how pipeline tracing works out of the box on [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform), and how to connect Langfuse or Weights & Biases Weave for deeper tracing.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **How to enable** | Built in — every deployed pipeline is traced automatically |
+| **Content tracing** | Captured automatically: query transformations, embeddings, retrieved documents, scoring decisions, latencies, and errors |
+| **Optional connectors** | `LangfuseConnector`, `WeaveConnector` |
+| **Platform docs** | [Trace Your Pipelines](https://docs.cloud.deepset.ai/docs/trace-your-pipelines) |
+
+</div>
+
+## Overview
+
+Haystack Enterprise Platform traces every pipeline you deploy without any setup: no tracer to enable, no content-tracing flag to flip. Traces capture the full journey of a query through your pipeline, including timestamps, query transformations, generated embeddings, retrieved documents, scoring and ranking decisions, and any errors or latency issues.
+
+## Built-in Tracing
+
+Open a pipeline in the Builder and check the **Analytics** tab to inspect traces for individual runs, alongside pipeline-level metrics like request volume and latency. See [Monitor Pipeline Performance](https://docs.cloud.deepset.ai/docs/pipeline-performance) for details on the available dashboards.
+
+## Connecting Langfuse or Weave
+
+For deeper, cross-service tracing, for example to correlate Haystack traces with the rest of your observability stack, connect one of the platform's tracing connectors:
+
+- **[Langfuse](https://docs.cloud.deepset.ai/docs/trace-with-langfuse)**: add the `LangfuseConnector` to your pipeline to send detailed spans and latency data to your Langfuse project.
+- **[Weights & Biases Weave](https://docs.cloud.deepset.ai/docs/use-weights-and-biases)**: add the `WeaveConnector` to send pipeline traces, including token counts, to your W&B project.
+
+:::info
+See the [`LangfuseConnector`](../../pipeline-components/connectors/langfuseconnector.mdx) and [`WeaveConnector`](../../pipeline-components/connectors/weaveconnector.mdx) component docs for configuring these connectors directly in a pipeline you bring to the platform.
+:::
