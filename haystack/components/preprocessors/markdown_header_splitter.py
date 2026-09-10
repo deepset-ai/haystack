@@ -276,7 +276,7 @@ class MarkdownHeaderSplitter:
                 if not self.keep_headers:
                     for key in ["header", "parent_headers"]:
                         if key in doc.meta:
-                            split.meta[key] = doc.meta[key]
+                            split.meta[key] = deepcopy(doc.meta[key])
 
                 result_docs.append(split)
 
