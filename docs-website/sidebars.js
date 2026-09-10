@@ -870,7 +870,6 @@ export default {
           ],
         },
         'development/logging',
-        'development/external-integrations-development',
       ],
     },
     {

@@ -256,6 +256,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
+          {
+            from: '/docs/next/external-integrations-development',
+            to: '/docs/next/production-usage',
+          },
         ],
       },
     ],
