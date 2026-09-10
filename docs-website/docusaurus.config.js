@@ -310,6 +310,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: 'left',
           },
           {
+            href: 'https://landing.deepset.ai/deepset-studio-signup',
+            label: 'Enterprise',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/deepset-ai/haystack/blob/main/docs-website/CONTRIBUTING.md',
             label: 'Contribute',
             position: 'right',
