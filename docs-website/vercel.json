@@ -12,6 +12,11 @@
       "permanent": true
     },
     {
+      "source": "/docs/api/:path*",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
       "source": "/reference/category/experiments-api",
       "destination": "/reference/",
       "permanent": true
