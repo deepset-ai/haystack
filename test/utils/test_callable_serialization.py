@@ -4,7 +4,7 @@
 
 import inspect
 
-import httpx
+import httpx2
 import pytest
 
 from haystack.components.generators.utils import print_streaming_chunk
@@ -54,8 +54,8 @@ def test_callable_serialization_non_local():
     assert result == "haystack.components.generators.utils.print_streaming_chunk"
 
     # check serialization of another library's callable
-    result = serialize_callable(httpx.get)
-    assert result == "httpx.get"
+    result = serialize_callable(httpx2.get)
+    assert result == "httpx2.get"
 
 
 def test_fully_qualified_import_deserialization():
@@ -94,9 +94,9 @@ def test_callable_deserialization():
 
 
 def test_callable_deserialization_non_local():
-    result = serialize_callable(httpx.get)
+    result = serialize_callable(httpx2.get)
     fn = deserialize_callable(result)
-    assert fn is httpx.get
+    assert fn is httpx2.get
 
 
 def test_classmethod_serialization_deserialization():
