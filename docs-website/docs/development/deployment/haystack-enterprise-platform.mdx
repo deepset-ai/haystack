@@ -17,10 +17,6 @@ If you already have a Haystack pipeline defined in code, serialize it to YAML, c
 
 Click **Deploy** on a pipeline to make it available for testing in the Playground. Deploys are zero-downtime: the version already running keeps serving queries until the new version deploys successfully, and Deploy always uses the latest saved version, so there's no draft-versus-version choice to make. See [Deploy a Pipeline](https://docs.cloud.deepset.ai/docs/deploy-a-pipeline) for details.
 
-## Going to Production
-
-A deployed pipeline is ready for testing and internal debugging, but for a stable, production-ready endpoint, publish it to a service in **Gateway**, the platform's home for pipeline services. Publishing decouples the endpoint from the pipeline version being developed: the endpoint URL stays the same regardless of which pipeline version you publish, so you can keep iterating without breaking anything calling it. See [Publish a Pipeline to a Service](https://docs.cloud.deepset.ai/docs/publish-pipeline-to-service) for details.
-
 ## Scaling and Idle Resources
 
 You don't manage servers directly. In the pipeline's Settings tab, you configure a minimum and maximum number of replicas and an idle timeout, the time after which an unused pipeline enters standby mode to save resources; inactive pipelines don't consume the pipeline hours included in your plan. See [Pipelines](https://docs.cloud.deepset.ai/docs/about-pipelines) for details on hosting settings.
