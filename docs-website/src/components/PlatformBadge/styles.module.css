@@ -6,15 +6,16 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  width: fit-content;
-  padding: 6px 11px;
-  margin-bottom: 16px;
-  border-radius: 6px;
+  gap: 4px;
+  vertical-align: middle;
+  margin-left: 14px;
+  padding: 3px 10px;
+  border-radius: 999px;
   border: 1px solid transparent;
   font-size: 13px;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.5;
+  white-space: nowrap;
   text-decoration: none;
 }
 
@@ -36,11 +37,6 @@
 .available:focus-visible {
   outline: 2px solid var(--color-success-text);
   outline-offset: 2px;
-}
-
-.chevron {
-  display: inline-flex;
-  opacity: 0.7;
 }
 
 .opensource {
