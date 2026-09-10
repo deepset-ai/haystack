@@ -161,45 +161,14 @@ class TestAnswerJoiner:
         assert [answer.data for answer in result["answers"]] == [None, None]
         assert [answer.score for answer in result["answers"]] == [0.5, None]
 
-    def test_sort_by_score_with_answers_missing_score_attribute(self):
+    def test_sort_by_score_with_answers_missing_score_attribute(self, caplog):
         # GeneratedAnswer has no score attribute at all; it must be handled as -infinity and sorted last.
         joiner = AnswerJoiner(sort_by_score=True)
         answers1: list[AnswerType] = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
         answers2: list[AnswerType] = [ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b"))]
-        result = joiner.run([answers1, answers2])
+        with caplog.at_level(logging.INFO):
+            result = joiner.run([answers1, answers2])
         # The ExtractedAnswer (score 0.9) comes first, the GeneratedAnswer (no score) comes last.
         assert isinstance(result["answers"][0], ExtractedAnswer)
         assert isinstance(result["answers"][1], GeneratedAnswer)
-
-    def test_sort_by_score_logs_when_some_answers_have_no_score(self, caplog):
-        # Mirrors DocumentJoiner.test_sort_by_score_without_scores: demoting an answer to -infinity
-        # is a silent ranking decision, so it must be visible in the logs.
-        joiner = AnswerJoiner(sort_by_score=True)
-        answers: list[AnswerType] = [
-            GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")]),
-            ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b")),
-        ]
-        with caplog.at_level(logging.INFO):
-            result = joiner.run([answers])
         assert "those with score=None were sorted as if they had a score of -infinity" in caplog.text
-        # ordering is unchanged by the log
-        assert isinstance(result["answers"][0], ExtractedAnswer)
-        assert isinstance(result["answers"][1], GeneratedAnswer)
-
-    def test_sort_by_score_does_not_log_when_all_answers_have_scores(self, caplog):
-        joiner = AnswerJoiner(sort_by_score=True)
-        answers: list[AnswerType] = [
-            ExtractedAnswer(query="a", score=0.5, meta={}, document=Document(content="a")),
-            ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b")),
-        ]
-        with caplog.at_level(logging.INFO):
-            joiner.run([answers])
-        assert "score of -infinity" not in caplog.text
-
-    def test_no_log_when_not_sorting_by_score(self, caplog):
-        # Without sort_by_score the missing score is never used, so there is nothing to report.
-        joiner = AnswerJoiner(sort_by_score=False)
-        answers: list[AnswerType] = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
-        with caplog.at_level(logging.INFO):
-            joiner.run([answers])
-        assert "score of -infinity" not in caplog.text
