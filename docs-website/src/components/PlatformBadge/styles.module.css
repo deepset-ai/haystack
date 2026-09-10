@@ -1,0 +1,59 @@
+/* SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.badgeRow {
+  display: block;
+  margin: 8px 0 18px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.available {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.available:hover {
+  background-color: var(--color-success-border);
+  border-color: var(--color-success-text);
+  color: var(--color-success-text);
+  text-decoration: none;
+}
+
+.available:focus-visible {
+  outline: 2px solid var(--color-success-text);
+  outline-offset: 2px;
+}
+
+.chevron {
+  display: inline-flex;
+  opacity: 0.7;
+}
+
+.opensource {
+  background-color: rgba(37, 88, 255, 0.08);
+  border-color: rgba(37, 88, 255, 0.2);
+  color: var(--ifm-color-primary);
+}
+
+:global([data-theme='dark']) .opensource {
+  background-color: rgba(110, 144, 255, 0.15);
+  border-color: rgba(110, 144, 255, 0.3);
+}
