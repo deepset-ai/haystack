@@ -3,24 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-.headingWithBadge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
+.badgeRow {
+  display: block;
+  margin: 10px 0 20px;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 999px;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -43,6 +40,11 @@
 .available:focus-visible {
   outline: 2px solid var(--color-success-text);
   outline-offset: 2px;
+}
+
+.chevron {
+  display: inline-flex;
+  opacity: 0.7;
 }
 
 .opensource {

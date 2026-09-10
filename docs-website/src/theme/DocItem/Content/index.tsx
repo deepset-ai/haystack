@@ -16,7 +16,8 @@ export default function ContentWrapper(props) {
   const [badgeHost, setBadgeHost] = useState(null);
 
   // The component title is literal markdown (`# ComponentName`) inside the MDX body,
-  // not a prop we can wrap — so the badge is portaled next to the rendered <h1> itself.
+  // not a prop we can wrap — so the badge is portaled as a block right after the
+  // rendered <h1> itself.
   useLayoutEffect(() => {
     if (!frontMatter.platform_availability || !containerRef.current) {
       setBadgeHost(null);
@@ -27,12 +28,11 @@ export default function ContentWrapper(props) {
       setBadgeHost(null);
       return undefined;
     }
-    const host = document.createElement('span');
-    heading.classList.add(styles.headingWithBadge);
-    heading.appendChild(host);
+    const host = document.createElement('div');
+    host.className = styles.badgeRow;
+    heading.insertAdjacentElement('afterend', host);
     setBadgeHost(host);
     return () => {
-      heading.classList.remove(styles.headingWithBadge);
       host.remove();
     };
   }, [frontMatter.platform_availability, metadata.permalink]);
