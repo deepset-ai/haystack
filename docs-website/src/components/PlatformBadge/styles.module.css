@@ -5,17 +5,17 @@
 
 .badgeRow {
   display: block;
-  margin: 10px 0 20px;
+  margin: 8px 0 18px;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
+  gap: 6px;
+  padding: 5px 12px;
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;

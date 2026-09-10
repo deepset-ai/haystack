@@ -13,19 +13,19 @@ type PlatformBadgeProps = {
 };
 
 const CheckIcon = () => (
-  <svg viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
+  <svg viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
     <path d="M13.5 4.5L6.5 11.5L2.5 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const ChevronIcon = () => (
-  <svg viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
+  <svg viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
     <path d="M6 3.5L11 8L6 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const DotIcon = () => (
-  <svg viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
+  <svg viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
     <circle cx="8" cy="8" r="5.2" stroke="currentColor" strokeWidth="1.6" />
   </svg>
 );
