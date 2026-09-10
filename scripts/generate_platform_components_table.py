@@ -266,12 +266,12 @@ def load_platform_components(schema_path: Path) -> dict[str, dict]:
 
 def build_mdx(
     platform_components: dict[str, dict], source_components: set[str], docs_link_map: dict[str, str] | None = None
-) -> str:
-    """Render the MDX page content."""
+) -> tuple[str, set[str]]:
+    """Render the MDX page content. Returns the MDX text and the set of titles rendered as available."""
     _link_map = docs_link_map or {}
     core_fqns: list[str] = []
     partner_components: dict[str, list[str]] = {}
-    visible_count = 0
+    visible_titles: set[str] = set()
 
     for fqn in platform_components:
         if fqn not in source_components:
@@ -280,7 +280,7 @@ def build_mdx(
         cls = fqn.split(".")[-1]
         if cls.endswith("Generator") and not cls.endswith("ChatGenerator"):
             continue
-        visible_count += 1
+        visible_titles.add(platform_components[fqn]["title"])
         if fqn.startswith("haystack_integrations."):
             partner_components.setdefault(partner_label_for(fqn) or "Other", []).append(fqn)
         else:
@@ -310,7 +310,7 @@ def build_mdx(
         "",
         "# Haystack Enterprise Components",
         "",
-        f"The Haystack Enterprise Platform currently supports **{visible_count} components**"
+        f"The Haystack Enterprise Platform currently supports **{len(visible_titles)} components**"
         f" and **{len(partner_components)} integrations**."
         " The following table lists them grouped by integration partner.",
         "",
@@ -322,7 +322,89 @@ def build_mdx(
     for label in sorted(partner_components, key=str.lower):
         sections += [f"## {label}", "", *render_table(partner_components[label]), ""]
 
-    return "\n".join(sections)
+    return "\n".join(sections), visible_titles
+
+
+# ── Component doc page labeling ───────────────────────────────────────────────
+
+# Directories that hold per-component doc pages. Scoped narrowly so this pass never
+# touches concept/tutorial pages that happen to share a `title` + `slug` frontmatter shape.
+_COMPONENT_DOC_ROOTS = ("pipeline-components", "document-stores", "memory-stores")
+
+
+def scan_component_doc_pages(docs_src: Path) -> dict[str, Path]:
+    """Return ``{frontmatter_title: mdx_path}`` for pages under `_COMPONENT_DOC_ROOTS`."""
+    pages: dict[str, Path] = {}
+    for root in _COMPONENT_DOC_ROOTS:
+        base = docs_src / root
+        if not base.is_dir():
+            continue
+        for mdx_file in base.rglob("*.mdx"):
+            try:
+                head = mdx_file.read_text(encoding="utf-8")[:1024]
+            except OSError:
+                continue
+            title = _parse_frontmatter(head).get("title", "")
+            if title:
+                pages[title] = mdx_file
+    return pages
+
+
+def _upsert_frontmatter_field(text: str, key: str, value: str) -> tuple[str, bool]:
+    """
+    Set ``key: value`` in the leading YAML frontmatter block, preserving everything else.
+
+    Returns the (possibly unchanged) text and whether a change was made — callers use the
+    flag to skip rewriting files that already carry the right value, so unrelated re-runs
+    produce no diff.
+    """
+    if not text.startswith("---"):
+        return text, False
+    try:
+        end = text.index("\n---", 3)
+    except ValueError:
+        return text, False
+    header, rest = text[:end], text[end:]
+    lines = header.split("\n")
+    new_line = f"{key}: {value}"
+    for i, line in enumerate(lines):
+        if line.startswith(f"{key}:"):
+            if line == new_line:
+                return text, False
+            lines[i] = new_line
+            return "\n".join(lines) + rest, True
+    lines.append(new_line)
+    return "\n".join(lines) + rest, True
+
+
+def label_component_pages(
+    docs_src: Path, available_titles: set[str], all_component_titles: set[str]
+) -> tuple[int, int]:
+    """
+    Write a `platform_availability` frontmatter field on every component doc page.
+
+    A page whose title is in `available_titles` is labeled `available`; a page whose
+    title matches a scanned `@component` class but isn't in `available_titles` is
+    labeled `opensource`. Pages that match neither (e.g. a concept page reusing the
+    same directory) are left untouched. Returns (labeled_available, labeled_opensource).
+    """
+    labeled_available = labeled_opensource = 0
+    for title, path in scan_component_doc_pages(docs_src).items():
+        if title in available_titles:
+            value = "available"
+        elif title in all_component_titles:
+            value = "opensource"
+        else:
+            continue
+        text = path.read_text(encoding="utf-8")
+        new_text, changed = _upsert_frontmatter_field(text, "platform_availability", value)
+        if changed:
+            path.write_text(new_text, encoding="utf-8")
+            if value == "available":
+                labeled_available += 1
+            else:
+                labeled_opensource += 1
+    return labeled_available, labeled_opensource
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -353,6 +435,11 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Print generated content to stdout instead of writing the file."
+    )
+    parser.add_argument(
+        "--skip-page-labels",
+        action="store_true",
+        help="Don't write the `platform_availability` frontmatter field on component doc pages.",
     )
 
     args = parser.parse_args(argv)
@@ -389,7 +476,7 @@ def main(argv: list[str] | None = None) -> None:
         logger.warning("docs-website/docs not found under --haystack-src, component links will be omitted")
     docs_link_map = scan_docs_links(docs_src) if docs_src.is_dir() else {}
 
-    mdx = build_mdx(platform_components, source_components, docs_link_map)
+    mdx, available_titles = build_mdx(platform_components, source_components, docs_link_map)
 
     if args.dry_run:
         print(mdx)
@@ -397,6 +484,11 @@ def main(argv: list[str] | None = None) -> None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(mdx, encoding="utf-8")
         logger.info("Written to %s", args.output)
+
+    if docs_src.is_dir() and not args.dry_run and not args.skip_page_labels:
+        all_component_titles = available_titles | {fqn.split(".")[-1] for fqn in source_components}
+        labeled_available, labeled_opensource = label_component_pages(docs_src, available_titles, all_component_titles)
+        logger.info("Labeled component doc pages: %d available, %d opensource", labeled_available, labeled_opensource)
 
 
 if __name__ == "__main__":
