@@ -133,7 +133,7 @@
     },
     {
       "source": "/reference/experimental-supercomponents-api",
-      "destination": "/reference/",
+      "destination": "/docs/supercomponents",
       "permanent": true
     },
     {
