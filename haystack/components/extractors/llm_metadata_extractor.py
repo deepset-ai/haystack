@@ -28,6 +28,10 @@ from haystack.utils.misc import _parse_dict_from_json
 logger = logging.getLogger(__name__)
 
 
+class _MetadataExtractionError(Exception):
+    """Raised when the LLM response cannot be parsed into the expected metadata keys."""
+
+
 @component
 class LLMMetadataExtractor:
     """
@@ -278,7 +282,7 @@ class LLMMetadataExtractor:
             )
             if self.raise_on_failure:
                 raise e
-            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
+            raise _MetadataExtractionError("Response is not valid JSON or missing keys. Error: " + str(e)) from e
 
         return parsed_metadata
 
@@ -368,9 +372,10 @@ class LLMMetadataExtractor:
                 failed_documents.append(replace(document, meta=new_meta))
                 continue
 
-            parsed_metadata = self._extract_metadata(result["replies"][0].text)
-            if "error" in parsed_metadata:
-                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
+            try:
+                parsed_metadata = self._extract_metadata(result["replies"][0].text)
+            except _MetadataExtractionError as e:
+                new_meta["metadata_extraction_error"] = str(e)
                 new_meta["metadata_extraction_response"] = result["replies"][0]
                 failed_documents.append(replace(document, meta=new_meta))
                 continue

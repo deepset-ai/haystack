@@ -10,6 +10,7 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
+from haystack.components.extractors.llm_metadata_extractor import _MetadataExtractionError
 from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
@@ -163,7 +164,8 @@ class TestLLMMetadataExtractor:
         extractor = LLMMetadataExtractor(
             prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
         )
-        extractor._extract_metadata(llm_answer='{"output": "valid json"}')
+        with pytest.raises(_MetadataExtractionError, match="Response is not valid JSON or missing keys"):
+            extractor._extract_metadata(llm_answer='{"output": "valid json"}')
         assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
@@ -297,6 +299,31 @@ class TestLLMMetadataExtractor:
 
         assert retry_result["failed_documents"] == []
         assert retry_result["documents"][0].meta == {"source": "retry"}
+
+    def test_run_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = extractor.run(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = await extractor.run_async(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
 
     @pytest.mark.asyncio
     async def test_run_async_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:

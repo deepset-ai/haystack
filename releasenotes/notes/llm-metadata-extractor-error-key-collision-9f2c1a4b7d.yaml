@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``LLMMetadataExtractor`` no longer fails a document when the LLM's JSON output
+    legitimately contains an ``error`` key (for example when ``"error"`` is one of the
+    declared ``expected_keys``). Parse failures are now signaled by an internal
+    exception instead of a sentinel ``"error"`` key in the returned dict, so a
+    successful extraction that extracts an ``error`` field lands in ``documents``
+    with the extracted metadata.
