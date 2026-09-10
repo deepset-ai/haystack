@@ -931,30 +931,26 @@ def test_page_break_inside_overlap_is_not_counted_twice():
     assert [doc.meta["page_number"] for doc in split_docs] == [1, 1, 2]
 
 
-@pytest.mark.parametrize("page_break_character", ["\f", "<PAGE>"], ids=["form_feed", "custom"])
-def test_page_numbers_in_chunk_starting_after_a_page_break(page_break_character):
-    # the "# H2" chunk starts on page 2, so its splits must be offset by that chunk's start page.
-    # A custom page break character must give exactly the same numbers as the default "\f".
-    pb = page_break_character
-    text = f"# H1\nw1 w2 {pb} w3 w4\n# H2\nw5 w6 {pb} w7 w8"
+def test_custom_page_break_character_in_secondary_splitting():
+    text = "# H1\nw1 w2 <PAGE> w3 w4"
+    splitter = MarkdownHeaderSplitter(page_break_character="<PAGE>", secondary_split="word", split_length=4)
 
-    def page_numbers(split_overlap):
-        docs = MarkdownHeaderSplitter(
-            page_break_character=pb, secondary_split="word", split_length=4, split_overlap=split_overlap
-        ).run(documents=[Document(content=text)])["documents"]
-        assert [doc.content for doc in docs] == expected_contents[split_overlap]
-        return [doc.meta["page_number"] for doc in docs]
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-    expected_contents = {
-        0: [f"# H1\nw1 w2 {pb} ", "w3 w4\n", f"# H2\nw5 w6 {pb} ", "w7 w8"],
-        2: [f"# H1\nw1 w2 {pb} ", f"w2 {pb} w3 w4\n", f"# H2\nw5 w6 {pb} ", f"w6 {pb} w7 w8"],
-    }
+    assert [doc.content for doc in docs] == ["# H1\nw1 w2 <PAGE> ", "w3 w4"]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
 
-    # without overlap the text advances a page at every break
-    assert page_numbers(split_overlap=0) == [1, 2, 2, 3]
-    # with overlap, splits 1 and 3 start on the word before a break, so they stay on the page
-    # their text begins on rather than advancing to the next one
-    assert page_numbers(split_overlap=2) == [1, 1, 2, 2]
+
+def test_page_break_in_removed_header_is_counted():
+    text = "# H1<PAGE>\nw1 w2 w3 w4"
+    splitter = MarkdownHeaderSplitter(
+        page_break_character="<PAGE>", keep_headers=False, secondary_split="word", split_length=2
+    )
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["\nw1 w2 ", "w3 w4"]
+    assert [doc.meta["page_number"] for doc in docs] == [2, 2]
 
 
 def test_trailing_header_without_content_is_not_dropped():

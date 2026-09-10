@@ -1,10 +1,6 @@
 ---
 fixes:
   - |
-    Fixed ``MarkdownHeaderSplitter`` reporting ``page_number`` values higher than the document's real
-    page count when ``secondary_split`` is used together with ``split_overlap``. Page breaks were
-    counted by scanning each split's full content, so a break falling inside an overlap window was
-    counted once for every split it appeared in and the page number drifted upwards. Each split's
-    ``page_number`` is now derived from where the split starts, so it matches the page numbers a plain
-    ``DocumentSplitter`` produces for the same text. Page breaks are counted using the configured
-    ``page_break_character``, so a custom value is now respected during secondary splitting as well.
+    Fixed incorrect ``page_number`` metadata from ``MarkdownHeaderSplitter`` when secondary splitting
+    uses overlap. Page breaks in overlapping content are no longer counted multiple times, and custom
+    ``page_break_character`` values are respected.
