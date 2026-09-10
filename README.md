@@ -47,7 +47,7 @@
 | haystack/components/embedders/mock\_document\_embedder.py                 |       58 |        0 |    100% |           |
 | haystack/components/embedders/mock\_text\_embedder.py                     |       50 |        0 |    100% |           |
 | haystack/components/embedders/mock\_utils.py                              |       25 |        0 |    100% |           |
-| haystack/components/embedders/openai\_document\_embedder.py               |      145 |       44 |     70% |187, 225, 258, 280-281, 292-328, 377-398 |
+| haystack/components/embedders/openai\_document\_embedder.py               |      145 |       26 |     82% |187, 225, 258, 280-281, 303, 309-315, 325-326, 377-398 |
 | haystack/components/embedders/openai\_text\_embedder.py                   |       73 |        9 |     88% |162, 229-231, 249-253 |
 | haystack/components/embedders/types/\_\_init\_\_.py                       |        2 |        0 |    100% |           |
 | haystack/components/embedders/types/protocol.py                           |        6 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17233** |  **769** | **96%** |           |
+| **TOTAL**                                                                 | **17233** |  **751** | **96%** |           |
 
 
 ## Setup coverage badge
