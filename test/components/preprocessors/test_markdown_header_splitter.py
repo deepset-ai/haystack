@@ -8,6 +8,7 @@ from unittest.mock import ANY
 import pytest
 
 from haystack import Document
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
 
 
@@ -957,3 +958,63 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
         split_contents.append(doc.content)
     assert "".join(split_contents) == text
     assert docs[-1].meta["header"] == ""
+
+
+def _secondary_pages(text, meta=None, **kwargs):
+    """Page numbers of MarkdownHeaderSplitter secondary splits (word mode) for one document."""
+    docs = [Document(content=text, meta=meta or {})]
+    splitter = MarkdownHeaderSplitter(secondary_split="word", **kwargs)
+    return [doc.meta.get("page_number") for doc in splitter.run(documents=docs)["documents"]]
+
+
+def _ds_pages(text, **kwargs):
+    """Reference page numbers from DocumentSplitter, which is overlap-aware by construction."""
+    splitter = DocumentSplitter(split_by="word", **kwargs)
+    return [doc.meta.get("page_number") for doc in splitter.run(documents=[Document(content=text)])["documents"]]
+
+
+def test_secondary_split_overlap_page_numbers_match_issue_repro():
+    # https://github.com/deepset-ai/haystack/issues/12618 — one break means two pages, never three
+    assert _secondary_pages("# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9", split_length=5, split_overlap=2) == [1, 1, 2]
+
+
+def test_secondary_split_overlap_page_numbers_keep_headers_false():
+    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
+    assert _secondary_pages(text, split_length=5, split_overlap=2, keep_headers=False) == [1, 1, 2]
+
+
+def test_secondary_split_no_overlap_page_numbers_unchanged():
+    # control: without overlap there is no double counting; must keep working
+    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
+    assert _secondary_pages(text, split_length=5, split_overlap=0) == [1, 2, 2]
+
+
+def test_secondary_split_overlap_without_breaks_stays_on_page_one():
+    # control: no breaks anywhere, overlap or not
+    assert _secondary_pages("# H1\nw1 w2 w3 w4 w5 w6 w7 w8 w9", split_length=5, split_overlap=2) == [1, 1, 1]
+
+
+def test_secondary_split_overlap_two_breaks():
+    text = "# H1\nw1 w2 \f w3 w4 \f w5 w6 w7 w8 w9"
+    assert _secondary_pages(text, split_length=5, split_overlap=2) == [1, 1, 2, 3]
+
+
+def test_secondary_split_overlap_respects_incoming_base_page():
+    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
+    assert _secondary_pages(text, {"page_number": 3}, split_length=5, split_overlap=2) == [3, 3, 4]
+
+
+def test_secondary_split_overlap_multi_header_chunks():
+    text = "# H1\nstart page one\fSecond header zone\n## H2\nw1 w2 w3 \f w4 w5 w6 w7 w8"
+    assert _secondary_pages(text, split_length=5, split_overlap=2) == [1, 1, 2, 2, 3]
+
+
+@pytest.mark.parametrize("text", ["# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9", "# H1\nw1 w2 \f w3 w4 \f w5 w6 w7 w8 w9"])
+def test_secondary_split_overlap_matches_document_splitter(text):
+    # single header kept in content: the secondary input is the full text, so pages must equal the reference
+    assert _secondary_pages(text, split_length=5, split_overlap=2) == _ds_pages(text, split_length=5, split_overlap=2)
+
+
+def test_secondary_split_large_overlap_never_exceeds_real_page_count():
+    text = "# H1\nw1 \f w2 w3 w4 w5 w6 w7"
+    assert _secondary_pages(text, split_length=4, split_overlap=3) == [1, 1, 1, 2, 2, 2]

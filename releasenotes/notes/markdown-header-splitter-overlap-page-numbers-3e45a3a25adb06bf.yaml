@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` assigning wrong ``page_number`` metadata when
+    ``secondary_split`` is used with ``split_overlap`` greater than zero. Page breaks
+    falling inside the overlap window were counted once per split they appeared in, so
+    page numbers drifted upwards and could exceed the document's real page count. The
+    component now reuses the overlap-aware page numbers assigned by the secondary
+    ``DocumentSplitter``, offset by the header chunk's starting page, instead of
+    recounting page breaks in the previous split's content.
