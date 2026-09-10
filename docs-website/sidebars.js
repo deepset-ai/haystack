@@ -14,7 +14,11 @@ export default {
       label: 'Get Started',
       items: [
         'overview/installation',
-        'overview/get-started',
+        {
+          type: 'doc',
+          id: 'overview/get-started',
+          label: 'Quickstart',
+        },
         'overview/docs-mcp-server',
       ],
     },
