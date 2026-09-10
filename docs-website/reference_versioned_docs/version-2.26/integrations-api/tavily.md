@@ -66,9 +66,33 @@ Initialize the TavilyFetcher component.
 warm_up() -> None
 ```
 
-Initialize the Tavily sync and async clients.
+Initialize the Tavily sync client.
 
 Called automatically on first use. Can be called explicitly to avoid cold-start latency.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initialize the Tavily async client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Tavily sync client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the Tavily async client.
 
 #### run
 
@@ -172,9 +196,33 @@ Initialize the TavilyWebSearch component.
 warm_up() -> None
 ```
 
-Initialize the Tavily sync and async clients.
+Initialize the Tavily sync client.
 
 Called automatically on first use. Can be called explicitly to avoid cold-start latency.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initialize the Tavily async client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Tavily sync client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the Tavily async client.
 
 #### run
 
