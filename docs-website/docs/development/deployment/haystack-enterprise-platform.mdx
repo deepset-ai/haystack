@@ -1,0 +1,22 @@
+---
+title: "Haystack Enterprise Platform"
+id: haystack-enterprise-platform
+slug: "/deployment-haystack-enterprise-platform"
+description: "Learn how to deploy your Haystack pipelines on Haystack Enterprise Platform, without managing your own infrastructure."
+---
+
+# Haystack Enterprise Platform
+
+Learn how to deploy your Haystack pipelines on [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform), without managing your own infrastructure.
+
+## Bringing a Pipeline onto the Platform
+
+If you already have a Haystack pipeline defined in code, serialize it to YAML, create an empty pipeline in the platform's Pipeline Builder, switch to YAML view, and paste it in. See [Import a Pipeline](https://docs.cloud.deepset.ai/docs/import-a-pipeline) for the exact steps. You can also build a pipeline from scratch directly in the Builder.
+
+## Deploying a Pipeline
+
+Click **Deploy** on a pipeline to make it available for testing in the Playground. Deploys are zero-downtime: the version already running keeps serving queries until the new version deploys successfully, and Deploy always uses the latest saved version, so there's no draft-versus-version choice to make. See [Deploy a Pipeline](https://docs.cloud.deepset.ai/docs/deploy-a-pipeline) for details.
+
+## Going to Production
+
+A deployed pipeline is ready for testing and internal debugging, but for a stable, production-ready endpoint, publish it to a service. This decouples the endpoint from the pipeline version being developed. The endpoint URL stays the same regardless of which pipeline version you publish, so you can keep iterating without breaking anything calling it. See [Publish a Pipeline to a Service](https://docs.cloud.deepset.ai/docs/publish-pipeline-to-service) for details.

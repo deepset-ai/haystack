@@ -858,6 +858,7 @@ export default {
             id: 'development/deployment'
           },
           items: [
+            'development/deployment/haystack-enterprise-platform',
             'development/deployment/docker',
             'development/deployment/kubernetes',
             'development/deployment/openshift',
