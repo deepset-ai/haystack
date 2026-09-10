@@ -268,20 +268,6 @@ class LLMMetadataExtractor:
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
-    def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
-        try:
-            parsed_metadata = _parse_dict_from_json(llm_answer, expected_keys=self.expected_keys, raise_on_failure=True)
-        except (ValueError, json.JSONDecodeError) as e:
-            logger.warning(
-                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
-                response=llm_answer,
-            )
-            if self.raise_on_failure:
-                raise e
-            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
-
-        return parsed_metadata
-
     def _prepare_prompts(
         self, documents: list[Document], expanded_range: list[int] | None = None
     ) -> list[ChatMessage | None]:
@@ -368,15 +354,24 @@ class LLMMetadataExtractor:
                 failed_documents.append(replace(document, meta=new_meta))
                 continue
 
-            parsed_metadata = self._extract_metadata(result["replies"][0].text)
-            if "error" in parsed_metadata:
-                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
-                new_meta["metadata_extraction_response"] = result["replies"][0]
+            reply = result["replies"][0]
+            try:
+                parsed_metadata = _parse_dict_from_json(
+                    reply.text, expected_keys=self.expected_keys, raise_on_failure=True
+                )
+            except (ValueError, json.JSONDecodeError) as e:
+                logger.warning(
+                    "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
+                    response=reply.text,
+                )
+                if self.raise_on_failure:
+                    raise
+                new_meta["metadata_extraction_error"] = "Response is not valid JSON or missing keys. Error: " + str(e)
+                new_meta["metadata_extraction_response"] = reply
                 failed_documents.append(replace(document, meta=new_meta))
                 continue
 
-            for key in parsed_metadata:
-                new_meta[key] = parsed_metadata[key]
+            new_meta.update(parsed_metadata)
             # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs.
             new_meta.pop("metadata_extraction_error", None)
             new_meta.pop("metadata_extraction_response", None)
