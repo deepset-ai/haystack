@@ -94,6 +94,29 @@ export default {
             'concepts/document-store/creating-custom-document-stores',
           ],
         },
+        {
+          type: 'category',
+          label: 'Memory Stores',
+          items: [
+            'memory-stores/cogneememorystore',
+            'memory-stores/mem0memorystore',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Token Counters',
+          link: {
+            type: 'doc',
+            id: 'token-counters'
+          },
+          items: [
+            'token-counters/approximatetokencounter',
+            'token-counters/tiktokencounter',
+            'token-counters/openaitokencounter',
+            'token-counters/anthropictokencounter',
+            'token-counters/googlegenaitokencounter',
+          ],
+        },
         'concepts/metadata-filtering',
         'concepts/device-management',
         'concepts/secret-management',
@@ -770,29 +793,6 @@ export default {
         'document-stores/valkeydocumentstore',
         'document-stores/vespadocumentstore',
         'document-stores/weaviatedocumentstore',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Memory Stores',
-      items: [
-        'memory-stores/cogneememorystore',
-        'memory-stores/mem0memorystore',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Token Counters',
-      link: {
-        type: 'doc',
-        id: 'token-counters'
-      },
-      items: [
-        'token-counters/approximatetokencounter',
-        'token-counters/tiktokencounter',
-        'token-counters/openaitokencounter',
-        'token-counters/anthropictokencounter',
-        'token-counters/googlegenaitokencounter',
       ],
     },
     {
