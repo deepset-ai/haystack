@@ -310,7 +310,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: 'left',
           },
           {
-            href: 'https://cloud.deepset.ai',
+            href: 'https://www.deepset.ai/products-and-services/haystack-enterprise-platform',
             label: 'Haystack Enterprise Platform',
             position: 'right',
           },
