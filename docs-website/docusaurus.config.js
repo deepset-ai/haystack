@@ -310,8 +310,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: 'left',
           },
           {
-            href: 'https://landing.deepset.ai/deepset-studio-signup',
-            label: 'Enterprise',
+            href: 'https://cloud.deepset.ai',
+            label: 'Haystack Enterprise Platform',
             position: 'right',
           },
           {
