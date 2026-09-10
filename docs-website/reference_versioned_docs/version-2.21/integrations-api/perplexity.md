@@ -372,9 +372,33 @@ Initialize the PerplexityWebSearch component.
 warm_up() -> None
 ```
 
-Initialize the sync and async HTTP clients.
+Initialize the synchronous HTTP client.
 
 Called automatically on first use. Can be called explicitly to avoid cold-start latency.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initialize the asynchronous HTTP client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous HTTP client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous HTTP client.
 
 #### run
 

@@ -69,6 +69,7 @@ class TestDocumentPreprocessor:
                 "language": "en",
                 "use_split_rules": True,
                 "extend_abbreviations": True,
+                "tokenizer_encoding": "o200k_base",
             },
             "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
         }
@@ -95,10 +96,19 @@ class TestDocumentPreprocessor:
                 "language": "en",
                 "use_split_rules": True,
                 "extend_abbreviations": True,
+                "tokenizer_encoding": "o200k_base",
             },
             "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
         }
         assert preprocessor.to_dict() == expected
+
+    def test_init_token(self) -> None:
+        preprocessor = DocumentPreprocessor(split_by="token", split_length=10, tokenizer_encoding="cl100k_base")
+        splitter = preprocessor.pipeline.get_component("splitter")
+        assert isinstance(splitter, DocumentSplitter)
+        assert splitter.split_by == "token"
+        assert splitter.split_length == 10
+        assert splitter.tokenizer_encoding == "cl100k_base"
 
     def test_warm_up(self, preprocessor: DocumentPreprocessor) -> None:
         with patch.object(preprocessor.pipeline, "warm_up") as mock_warm_up:
@@ -124,6 +134,13 @@ class TestDocumentPreprocessor:
             assert doc.content.strip() == doc.content
             assert len(doc.content.split()) <= 3  # Split length of 3 words
             assert doc.id is not None
+
+    @pytest.mark.integration
+    def test_run_token(self) -> None:
+        preprocessor = DocumentPreprocessor(split_by="token", split_length=5)
+        docs = [Document(content="one two three four five six seven eight nine ten")]
+        result = preprocessor.run(documents=docs)
+        assert len(result["documents"]) > 1
 
     def test_run_with_custom_splitting_function(self) -> None:
         def custom_split(text: str) -> list[str]:

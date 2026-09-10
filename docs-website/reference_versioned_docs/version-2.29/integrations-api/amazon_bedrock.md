@@ -1523,3 +1523,151 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>AmazonBedrockKnowledgeBaseRetriever</code> – The deserialized component.
+
+## haystack_integrations.token_counters.amazon_bedrock.token_counter
+
+### AmazonBedrockTokenCounter
+
+Counts tokens with Amazon Bedrock's `CountTokens` API.
+
+Implements Haystack's `TokenCounter` protocol. Unlike local, tokenizer-based counters, this counter sends the
+input to Bedrock's `CountTokens` operation, so the returned count reflects the model's exact tokenization,
+including the formatting Bedrock applies to messages, system prompts, and tool schemas.
+
+The messages and tools are converted to the Bedrock `Converse` format (the same conversion the
+`AmazonBedrockChatGenerator` uses), so the count matches what an equivalent `Converse` request would consume.
+
+Because it delegates to a server-side API, `count()` measures a complete, valid conversation rather than an
+arbitrary set of messages: Bedrock validates the input the same way the `Converse` inference API does (it must
+begin with a user message, and tool results must pair with the tool calls that produced them). This is the right
+fit for sizing a whole request before sending it - its intended use - but it cannot size a stand-alone fragment
+such as a single tool-result message. For fragment-level counting (for example inside a compactor that measures
+individual messages), use a local counter such as `ApproximateTokenCounter`.
+
+## Usage Example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.amazon_bedrock import AmazonBedrockTokenCounter
+
+counter = AmazonBedrockTokenCounter(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+messages = [ChatMessage.from_user("Hello, how are you?")]
+token_count = counter.count(messages)
+print(f"Token count: {token_count}")
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        ["AWS_ACCESS_KEY_ID"], strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        ["AWS_SECRET_ACCESS_KEY"], strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        ["AWS_SESSION_TOKEN"], strict=False
+    ),
+    aws_region_name: Secret | str | None = Secret.from_env_var(
+        ["AWS_DEFAULT_REGION"], strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        ["AWS_PROFILE"], strict=False
+    ),
+    boto3_config: dict[str, Any] | None = None
+) -> None
+```
+
+Initialize the counter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The Bedrock model id (or ARN) whose tokenization should be used, for example
+  `"anthropic.claude-3-5-sonnet-20240620-v1:0"`. Token counts are model-specific.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | str | None</code>) – AWS region name. Make sure the region you set supports Amazon Bedrock.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+
+**Raises:**
+
+- <code>ValueError</code> – If `model` is empty.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Amazon Bedrock client.
+
+**Raises:**
+
+- <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Return the number of input tokens Bedrock will use for the given messages and tools.
+
+`messages` must form a complete, valid conversation: Bedrock validates it the same way the `Converse`
+inference API does (it must begin with a user message, and tool results must pair with their tool calls).
+To size an arbitrary fragment such as a single message, use a local counter like `ApproximateTokenCounter`.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The messages to measure.
+- **tools** (<code>ToolsType | None</code>) – Tools whose schemas are sent alongside the messages, and so consume tokens too. Pass them to
+  have them counted; leave as None to measure the messages alone.
+
+**Returns:**
+
+- <code>int</code> – The token count, or `0` when there is nothing to measure.
+
+**Raises:**
+
+- <code>AmazonBedrockInferenceError</code> – If the Bedrock `CountTokens` request fails.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client and release its resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AmazonBedrockTokenCounter
+```
+
+Deserialize the counter.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – A dictionary representation of the counter.
+
+**Returns:**
+
+- <code>AmazonBedrockTokenCounter</code> – The deserialized counter.

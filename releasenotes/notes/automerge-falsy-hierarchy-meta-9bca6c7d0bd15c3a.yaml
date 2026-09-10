@@ -1,0 +1,7 @@
+﻿---
+fixes:
+  - |
+    Fix ``AutoMergingRetriever`` rejecting documents whose hierarchy metadata uses
+    ``__level=0`` or ``__block_size=0``. ``HierarchicalDocumentSplitter`` stores those
+    values on the root node, so validation now checks for key presence instead of
+    truthiness.
