@@ -118,17 +118,17 @@
     },
     {
       "source": "/reference/audio-api",
-      "destination": "/reference/",
+      "destination": "/docs/audio",
       "permanent": true
     },
     {
       "source": "/reference/readers-api",
-      "destination": "/reference/",
+      "destination": "/docs/readers",
       "permanent": true
     },
     {
       "source": "/reference/reader-api",
-      "destination": "/reference/",
+      "destination": "/docs/readers",
       "permanent": true
     },
     {
@@ -173,17 +173,17 @@
     },
     {
       "source": "/reference/experimental-generators-api",
-      "destination": "/reference/",
+      "destination": "/reference/generators-api",
       "permanent": true
     },
     {
       "source": "/reference/experimental-preprocessors-api",
-      "destination": "/reference/",
+      "destination": "/reference/preprocessors-api",
       "permanent": true
     },
     {
       "source": "/reference/experimental-retrievers-api",
-      "destination": "/reference/",
+      "destination": "/reference/retrievers-api",
       "permanent": true
     },
     {
@@ -193,7 +193,7 @@
     },
     {
       "source": "/reference/experimental-writers-api",
-      "destination": "/reference/",
+      "destination": "/reference/document-writers-api",
       "permanent": true
     },
     {
