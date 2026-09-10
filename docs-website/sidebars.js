@@ -11,35 +11,18 @@ export default {
     },
     {
       type: 'category',
-      label: 'Overview',
+      label: 'Get Started',
       items: [
         'overview/installation',
         'overview/get-started',
         'overview/docs-mcp-server',
-        'overview/faq',
-        'overview/telemetry',
-        'overview/breaking-change-policy',
-        'overview/migration',
-        'overview/migrating-from-langgraphlangchain-to-haystack',
-        'overview/platform-components',
       ],
     },
     {
       type: 'category',
-      label: 'Haystack Concepts',
+      label: 'Core Concepts',
       items: [
         'concepts/concepts-overview',
-        {
-          type: 'category',
-          label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'concepts/agents'
-          },
-          items: [
-            'concepts/agents/multi-agent-systems',
-          ],
-        },
         {
           type: 'category',
           label: 'Components',
@@ -68,6 +51,23 @@ export default {
             'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/smart-pipeline-connections',
           ],
+        },
+        {
+          type: 'category',
+          label: 'Agents',
+          link: {
+            type: 'doc',
+            id: 'concepts/agents'
+          },
+          items: [
+            'concepts/agents/choosing-between-pipelines-and-agents',
+            'concepts/agents/multi-agent-systems',
+          ],
+        },
+        {
+          type: 'ref',
+          id: 'tools/tool',
+          label: 'Tools',
         },
         {
           type: 'category',
@@ -103,50 +103,36 @@ export default {
     },
     {
       type: 'category',
-      label: 'Document Stores',
+      label: 'Tools',
       items: [
-        'document-stores/inmemorydocumentstore',
-        'document-stores/alloydbdocumentstore',
-        'document-stores/arangodocumentstore',
-        'document-stores/arcadedbdocumentstore',
-        'document-stores/astradocumentstore',
-        'document-stores/azureaisearchdocumentstore',
-        'document-stores/chromadocumentstore',
+        'tools/tool',
+        'tools/agenttool',
+        'tools/componenttool',
+        'tools/pipelinetool',
+        'tools/toolset',
+        'tools/mcptool',
+        'tools/mcptoolset',
+        'tools/searchabletoolset',
+        'tools/skilltoolset',
         {
-          type: 'link',
-          label: 'CouchbaseDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
+          type: 'category',
+          label: 'Ready-made Tools',
+          link: {
+            type: 'doc',
+            id: 'tools/ready-made-tools'
+          },
+          items: [
+            'tools/ready-made-tools/e2btoolset',
+            'tools/ready-made-tools/githubfileeditortool',
+            'tools/ready-made-tools/githubissuecommentertool',
+            'tools/ready-made-tools/githubissueviewertool',
+            'tools/ready-made-tools/githubprcreatortool',
+            'tools/ready-made-tools/githubrepoviewertool',
+            'tools/ready-made-tools/mem0memorytools',
+            'tools/ready-made-tools/mirageshelltool',
+            'tools/ready-made-tools/tavilywebsearchtool',
+          ],
         },
-        'document-stores/elasticsearch-document-store',
-        'document-stores/faissdocumentstore',
-        'document-stores/falkordbdocumentstore',
-        {
-          type: 'link',
-          label: 'LanceDBDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/lancedb/',
-        },
-        'document-stores/mariadbdocumentstore',
-        {
-          type: 'link',
-          label: 'MilvusDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
-        },
-        'document-stores/mongodbatlasdocumentstore',
-        {
-          type: 'link',
-          label: 'Neo4jDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
-        },
-        'document-stores/opensearch-document-store',
-        'document-stores/oracledocumentstore',
-        'document-stores/pgvectordocumentstore',
-        'document-stores/pinecone-document-store',
-        'document-stores/qdrant-document-store',
-        'document-stores/solrdocumentstore',
-        'document-stores/supabasedocumentstore',
-        'document-stores/valkeydocumentstore',
-        'document-stores/vespadocumentstore',
-        'document-stores/weaviatedocumentstore',
       ],
     },
     {
@@ -740,36 +726,58 @@ export default {
     },
     {
       type: 'category',
-      label: 'Tools',
+      label: 'Document Stores',
       items: [
-        'tools/tool',
-        'tools/agenttool',
-        'tools/componenttool',
-        'tools/pipelinetool',
-        'tools/toolset',
-        'tools/mcptool',
-        'tools/mcptoolset',
-        'tools/searchabletoolset',
-        'tools/skilltoolset',
+        'document-stores/inmemorydocumentstore',
+        'document-stores/alloydbdocumentstore',
+        'document-stores/arangodocumentstore',
+        'document-stores/arcadedbdocumentstore',
+        'document-stores/astradocumentstore',
+        'document-stores/azureaisearchdocumentstore',
+        'document-stores/chromadocumentstore',
         {
-          type: 'category',
-          label: 'Ready-made Tools',
-          link: {
-            type: 'doc',
-            id: 'tools/ready-made-tools'
-          },
-          items: [
-            'tools/ready-made-tools/e2btoolset',
-            'tools/ready-made-tools/githubfileeditortool',
-            'tools/ready-made-tools/githubissuecommentertool',
-            'tools/ready-made-tools/githubissueviewertool',
-            'tools/ready-made-tools/githubprcreatortool',
-            'tools/ready-made-tools/githubrepoviewertool',
-            'tools/ready-made-tools/mem0memorytools',
-            'tools/ready-made-tools/mirageshelltool',
-            'tools/ready-made-tools/tavilywebsearchtool',
-          ],
+          type: 'link',
+          label: 'CouchbaseDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
         },
+        'document-stores/elasticsearch-document-store',
+        'document-stores/faissdocumentstore',
+        'document-stores/falkordbdocumentstore',
+        {
+          type: 'link',
+          label: 'LanceDBDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/lancedb/',
+        },
+        'document-stores/mariadbdocumentstore',
+        {
+          type: 'link',
+          label: 'MilvusDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
+        },
+        'document-stores/mongodbatlasdocumentstore',
+        {
+          type: 'link',
+          label: 'Neo4jDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
+        },
+        'document-stores/opensearch-document-store',
+        'document-stores/oracledocumentstore',
+        'document-stores/pgvectordocumentstore',
+        'document-stores/pinecone-document-store',
+        'document-stores/qdrant-document-store',
+        'document-stores/solrdocumentstore',
+        'document-stores/supabasedocumentstore',
+        'document-stores/valkeydocumentstore',
+        'document-stores/vespadocumentstore',
+        'document-stores/weaviatedocumentstore',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Memory Stores',
+      items: [
+        'memory-stores/cogneememorystore',
+        'memory-stores/mem0memorystore',
       ],
     },
     {
@@ -789,15 +797,43 @@ export default {
     },
     {
       type: 'category',
-      label: 'Memory Stores',
+      label: 'Optimization',
       items: [
-        'memory-stores/cogneememorystore',
-        'memory-stores/mem0memorystore',
+        {
+          type: 'category',
+          label: 'Advanced RAG Techniques',
+          link: {
+            type: 'doc',
+            id: 'optimization/advanced-rag-techniques'
+          },
+          items: [
+            'optimization/advanced-rag-techniques/hypothetical-document-embeddings-hyde',
+          ],
+        },
+        'development/enabling-gpu-acceleration',
       ],
     },
     {
       type: 'category',
-      label: 'Optimization',
+      label: 'Deployment',
+      link: {
+        type: 'doc',
+        id: 'development/deployment'
+      },
+      items: [
+        'development/hayhooks',
+        'development/deployment/docker',
+        'development/deployment/kubernetes',
+        'development/deployment/openshift',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Production usage',
+      link: {
+        type: 'doc',
+        id: 'production-usage'
+      },
       items: [
         {
           type: 'category',
@@ -811,24 +847,6 @@ export default {
             'optimization/evaluation/statistical-evaluation',
           ],
         },
-        {
-          type: 'category',
-          label: 'Advanced RAG Techniques',
-          link: {
-            type: 'doc',
-            id: 'optimization/advanced-rag-techniques'
-          },
-          items: [
-            'optimization/advanced-rag-techniques/hypothetical-document-embeddings-hyde',
-          ],
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Development',
-      items: [
-        'development/logging',
         {
           type: 'category',
           label: 'Tracing',
@@ -847,22 +865,29 @@ export default {
             'development/tracing/custom-tracer',
           ],
         },
-        'development/enabling-gpu-acceleration',
-        'development/hayhooks',
+        'development/logging',
+        'development/external-integrations-development',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Resources',
+      items: [
+        'overview/faq',
+        'overview/telemetry',
+        'overview/breaking-change-policy',
         {
           type: 'category',
-          label: 'Deployment',
+          label: 'Migration',
           link: {
             type: 'doc',
-            id: 'development/deployment'
+            id: 'overview/migration'
           },
           items: [
-            'development/deployment/docker',
-            'development/deployment/kubernetes',
-            'development/deployment/openshift',
+            'overview/migrating-from-langgraphlangchain-to-haystack',
           ],
         },
-        'development/external-integrations-development',
+        'overview/platform-components',
       ],
     },
   ],
