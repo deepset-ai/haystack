@@ -3,12 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+.headingWithBadge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  vertical-align: middle;
-  margin-left: 14px;
   padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid transparent;

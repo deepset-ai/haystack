@@ -8,6 +8,7 @@ import OriginalContent from '@theme-original/DocItem/Content';
 import { useDoc } from '@docusaurus/plugin-content-docs/client';
 import CopyDropdown from '@site/src/components/CopyDropdown';
 import PlatformBadge from '@site/src/components/PlatformBadge';
+import styles from '@site/src/components/PlatformBadge/styles.module.css';
 
 export default function ContentWrapper(props) {
   const { frontMatter, metadata } = useDoc();
@@ -27,9 +28,11 @@ export default function ContentWrapper(props) {
       return undefined;
     }
     const host = document.createElement('span');
+    heading.classList.add(styles.headingWithBadge);
     heading.appendChild(host);
     setBadgeHost(host);
     return () => {
+      heading.classList.remove(styles.headingWithBadge);
       host.remove();
     };
   }, [frontMatter.platform_availability, metadata.permalink]);
