@@ -48,7 +48,12 @@
 }
 
 .opensource {
-  background-color: var(--color-background-hover);
-  border-color: var(--color-border);
-  color: var(--color-text-secondary);
+  background-color: rgba(37, 88, 255, 0.08);
+  border-color: rgba(37, 88, 255, 0.2);
+  color: var(--ifm-color-primary);
+}
+
+:global([data-theme='dark']) .opensource {
+  background-color: rgba(110, 144, 255, 0.15);
+  border-color: rgba(110, 144, 255, 0.3);
 }
