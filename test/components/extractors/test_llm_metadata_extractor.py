@@ -10,7 +10,6 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
-from haystack.components.extractors.llm_metadata_extractor import _MetadataExtractionError
 from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
@@ -144,29 +143,6 @@ class TestLLMMetadataExtractor:
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
-
-    def test_extract_metadata(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator())
-        result = extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert result == {"output": "valid json"}
-
-    def test_extract_metadata_invalid_json(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), raise_on_failure=True
-        )
-        with pytest.raises(ValueError):
-            extractor._extract_metadata(llm_answer='{"output: "valid json"}')
-
-    def test_extract_metadata_missing_key(self, monkeypatch, caplog):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
-        )
-        with pytest.raises(_MetadataExtractionError, match="Response is not valid JSON or missing keys"):
-            extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -312,6 +288,18 @@ class TestLLMMetadataExtractor:
         assert result["failed_documents"] == []
         assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
 
+    def test_run_raises_parse_error_when_raise_on_failure_is_true(self, caplog: pytest.LogCaptureFixture) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            extractor.run(documents=[Document(content="content")])
+        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
+
     @pytest.mark.asyncio
     async def test_run_async_extracted_error_key_is_not_treated_as_failure(self) -> None:
         extractor = LLMMetadataExtractor(
@@ -324,6 +312,18 @@ class TestLLMMetadataExtractor:
 
         assert result["failed_documents"] == []
         assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_parse_error_when_raise_on_failure_is_true(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            await extractor.run_async(documents=[Document(content="content")])
 
     @pytest.mark.asyncio
     async def test_run_async_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
