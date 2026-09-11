@@ -25,7 +25,7 @@ This component recursively breaks down text into smaller chunks by applying a gi
 
 The `RecursiveDocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. You can set the following parameters when initializing the component:
 
-- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the the unit.
+- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the unit.
 - `split_overlap`: The number of characters or words that overlap between consecutive chunks.
 - `split_unit`: The unit of the `split_length` parameter. Can be either `"word"`, `"char"`, or `"token"`.
 - `separators`: An optional list of separator strings to use for splitting the text. If you don’t provide any separators, the default ones are `["\n\n", "sentence", "\n", " "]`. The string separators will be treated as regular expressions. If the separator is `"sentence"`, the text will be split into sentences using a custom sentence tokenizer based on NLTK. See [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116) code for more information.
