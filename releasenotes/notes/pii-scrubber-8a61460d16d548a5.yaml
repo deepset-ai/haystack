@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add ``PIIScrubber`` preprocessor component.
+    It scrubs emails, phone numbers, and credit card numbers from ``Document`` content
+    using stdlib regexes and records audit counts in ``meta["pii_redactions"]``.
