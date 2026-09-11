@@ -13,24 +13,30 @@ class TestPIIScrubber:
         scrubber = PIIScrubber()
         result = scrubber.run(documents=[Document(content="Contact jane@example.com today")])
         doc = result["documents"][0]
+        assert doc.content is not None
         assert "jane@example.com" not in doc.content
         assert "[EMAIL_1]" in doc.content
 
     def test_scrubs_phone(self):
         scrubber = PIIScrubber(entities=["phone"])
         result = scrubber.run(documents=[Document(content="Call 415-555-1234 now")])
-        assert "415-555-1234" not in result["documents"][0].content
+        doc = result["documents"][0]
+        assert doc.content is not None
+        assert "415-555-1234" not in doc.content
 
     def test_credit_card_luhn(self):
         scrubber = PIIScrubber(entities=["credit_card"])
         valid = scrubber.run(documents=[Document(content="Card 4242424242424242")])["documents"][0]
+        assert valid.content is not None
         assert "4242424242424242" not in valid.content
         invalid = scrubber.run(documents=[Document(content="Num 1234567890123")])["documents"][0]
+        assert invalid.content is not None
         assert "1234567890123" in invalid.content
 
     def test_entities_opt_in(self):
         scrubber = PIIScrubber(entities=["email"])
         result = scrubber.run(documents=[Document(content="jane@example.com 415-555-1234")])["documents"][0]
+        assert result.content is not None
         assert "415-555-1234" in result.content
 
     def test_audit_meta(self):
@@ -79,4 +85,5 @@ class TestPIIScrubber:
         data = scrubber.to_dict()
         restored = PIIScrubber.from_dict(data)
         result = restored.run(documents=[Document(content="Hi jane@example.com")])
+        assert result["documents"][0].content is not None
         assert "[EMAIL_1]" in result["documents"][0].content
