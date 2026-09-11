@@ -50,6 +50,12 @@ class TestPIIScrubber:
         assert "pii_redactions" not in doc.meta
         assert doc.content == "Hello world"
 
+    def test_none_content_passthrough(self):
+        doc = Document(content=None)
+        result = PIIScrubber().run(documents=[doc])["documents"][0]
+        assert result.content is None
+        assert "pii_redactions" not in result.meta
+
     def test_invalid_input(self):
         with pytest.raises(TypeError, match="PIIScrubber expects a List of Documents"):
             PIIScrubber().run(documents="not a list")  # type: ignore[arg-type]
