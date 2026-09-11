@@ -56,6 +56,9 @@ class AnswerExactMatchEvaluator:
         if not len(ground_truth_answers) == len(predicted_answers):
             raise ValueError("The length of ground_truth_answers and predicted_answers must be the same.")
 
+        if len(ground_truth_answers) == 0:
+            raise ValueError("ground_truth_answers and predicted_answers must be provided.")
+
         matches = []
         for truth, extracted in zip(ground_truth_answers, predicted_answers, strict=True):
             if truth == extracted:

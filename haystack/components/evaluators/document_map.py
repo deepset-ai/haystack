@@ -112,6 +112,10 @@ class DocumentMAPEvaluator:
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
+        if len(ground_truth_documents) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
         individual_scores = []
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents, strict=True):
