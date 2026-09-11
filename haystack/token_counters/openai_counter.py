@@ -78,13 +78,16 @@ class OpenAITokenCounter(TokenCounter):
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+        # https://github.com/openai/openai-python/blob/main/httpx2.md
+        http_client = init_http_client(self.http_client_kwargs, async_client=False)
         self.client = OpenAI(
             api_key=self.api_key.resolve_value(),
             organization=self.organization,
             base_url=self.api_base_url,
             timeout=timeout,
             max_retries=max_retries,
-            http_client=init_http_client(self.http_client_kwargs, async_client=False),
+            http_client=http_client,  # type: ignore[arg-type]
         )
 
     def count(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> int:

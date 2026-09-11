@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Add ``Pipeline.connect_many()`` to connect multiple ``(sender, receiver)`` pairs in one call.
+    ``Pipeline.add_component()`` and ``Pipeline.add_components()`` now return the pipeline, allowing pipeline-building
+    methods to be chained.
+
+    .. code:: python
+
+      pipeline = (
+          Pipeline()
+          .add_components(
+              {
+                  "retriever": retriever,
+                  "prompt_builder": prompt_builder,
+                  "llm": llm,
+              }
+          )
+          .connect_many(
+              [
+                  ("retriever", "prompt_builder.documents"),
+                  ("prompt_builder", "llm"),
+              ]
+          )
+      )

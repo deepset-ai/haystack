@@ -97,7 +97,9 @@ class TestLLMMetadataExtractor:
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         with pytest.raises(TypeError):
-            _ = LLMMetadataExtractor(prompt="prompt {{document.content}}", expected_keys=["key1", "key2"])
+            _ = LLMMetadataExtractor(  # type: ignore[call-arg]
+                prompt="prompt {{document.content}}", expected_keys=["key1", "key2"]
+            )
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -139,29 +141,8 @@ class TestLLMMetadataExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
-
-    def test_extract_metadata(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator())
-        result = extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert result == {"output": "valid json"}
-
-    def test_extract_metadata_invalid_json(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), raise_on_failure=True
-        )
-        with pytest.raises(ValueError):
-            extractor._extract_metadata(llm_answer='{"output: "valid json"}')
-
-    def test_extract_metadata_missing_key(self, monkeypatch, caplog):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
-        )
-        extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -279,6 +260,86 @@ class TestLLMMetadataExtractor:
         result = await extractor.run_async(documents=[])
         assert result["documents"] == []
         assert result["failed_documents"] == []
+
+    def test_run_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = extractor.run(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = extractor.run(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
+
+    def test_run_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = extractor.run(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    def test_run_raises_parse_error_when_raise_on_failure_is_true(self, caplog: pytest.LogCaptureFixture) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            extractor.run(documents=[Document(content="content")])
+        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_run_async_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = await extractor.run_async(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_parse_error_when_raise_on_failure_is_true(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            await extractor.run_async(documents=[Document(content="content")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = await extractor.run_async(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = await extractor.run_async(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
 
     def test_run_with_document_content_none(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

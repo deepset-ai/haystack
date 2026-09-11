@@ -1,0 +1,119 @@
+---
+title: "SkillToolset"
+id: skilltoolset
+slug: "/skilltoolset"
+description: "Let agents discover and read skills — reusable instruction sets with bundled files — through progressive disclosure."
+---
+
+# SkillToolset
+
+Let agents discover and read skills — reusable instruction sets with bundled files — through progressive disclosure.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `store`: A `SkillStore` instance that provides the skills |
+| **API reference**            | [SkillToolset](/reference/tools-api#skilltoolset) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/skills/skill_toolset.py |
+| **Package name**             | `haystack-ai` |
+
+</div>
+
+## Overview
+
+A *skill* is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter (`description` is required; `name` is optional and defaults to the directory name) and a markdown body of instructions. Skills may bundle additional files, such as reference docs, examples, or templates.
+
+`SkillToolset` lets an [`Agent`](../pipeline-components/agents-1/agent.mdx) use skills through *progressive disclosure*, similar to how coding assistants like Claude Code expose skills: the model first sees only each skill's name and description, loads the full instructions when a task calls for them, and fetches bundled files only when the instructions reference them. This keeps the context small even with many detailed skills.
+
+The toolset exposes two tools:
+
+- `load_skill`: Returns a skill's full instructions on demand, plus a manifest of its bundled files. The names and descriptions of all discovered skills are baked into this tool's description at warm-up, so the model can see which skills exist without any system prompt injection.
+- `read_skill_file`: Reads a file bundled with a skill (with path-traversal protection).
+
+Skills are discovered when the toolset is warmed up — the `Agent` does this automatically before a run. Constructing the toolset does not read any skills.
+
+`SkillToolset` is backed by a `SkillStore`. Use the built-in `FileSystemSkillStore` to load skills from a local directory, or implement the `SkillStore` protocol (`list_skills`, `load_skill`, `read_skill_file`, plus serialization methods) to back the toolset with any storage system — a database, a remote API, and so on.
+
+:::info
+The tool names `load_skill` and `read_skill_file` are fixed, so an `Agent` can use at most one `SkillToolset`. It also does not support adding tools or concatenation with other toolsets — to combine it with other tools, pass it to the `Agent` alongside them, for example `tools=[skills_toolset, other_tool]`. To serve skills from multiple sources, back a single toolset with a custom store that merges them.
+:::
+
+### Skill format
+
+`FileSystemSkillStore` expects one sub-directory per skill under a root directory:
+
+```
+skills/
+  pdf-forms/
+    SKILL.md            # frontmatter (description required, name optional) + markdown instructions
+    reference/forms.md  # optional bundled file
+```
+
+A minimal `SKILL.md` looks like this:
+
+```markdown
+---
+name: pdf-forms
+description: Fill in PDF forms programmatically. Use when the user asks to complete or fill a PDF form.
+---
+
+# Filling PDF forms
+
+1. Inspect the form fields first...
+2. For the full field reference, read `reference/forms.md`.
+```
+
+Only the frontmatter of each `SKILL.md` is read at warm-up to build the catalog; instruction bodies and bundled files are read lazily when the agent calls the corresponding tool.
+
+### Multimodal skill assets
+
+`read_skill_file` returns text files as strings, images as [`ImageContent`](../concepts/data-classes/imagecontent.mdx), and PDFs as [`FileContent`](../concepts/data-classes/filecontent.mdx). Image and file results are passed to the model as content parts of the tool result instead of being converted to a string, so an `Agent` backed by a multimodal chat generator that supports these inputs (for example, `OpenAIResponsesChatGenerator`) can read a skill's visual assets — such as a reference screenshot or a showcase PDF — directly. Binary files that are neither images nor PDFs are rejected with an error.
+
+### Executing bundled scripts
+
+`SkillToolset` only *reads* skills — `load_skill` and `read_skill_file` never execute anything. If your skills bundle executable scripts (for example, a Python helper that the instructions tell the model to run), pass a script-execution tool of your own to the `Agent` alongside the toolset:
+
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[skills_toolset, run_shell_command_tool],  # your own execution tool
+)
+```
+
+The agent can then read a bundled script with `read_skill_file` and run it through your execution tool. Since such a tool runs model-chosen commands, scope it carefully — restrict what it can execute, sandbox it, or guard it with a [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) confirmation strategy.
+
+## Usage
+
+### With an Agent
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.skill_stores.file_system import FileSystemSkillStore
+from haystack.tools import SkillToolset
+
+store = FileSystemSkillStore("skills/")
+skills_toolset = SkillToolset(store)
+
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+
+# The agent sees the available skills in the `load_skill` tool description,
+# loads the matching skill, and follows its instructions.
+result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
+print(result["last_message"].text)
+```
+
+### Inspecting discovered skills
+
+The `skills` property returns the metadata of all discovered skills as a mapping of skill name to `SkillInfo` (warming up the toolset first if needed):
+
+```python
+from haystack.skill_stores.file_system import FileSystemSkillStore
+from haystack.tools import SkillToolset
+
+skills_toolset = SkillToolset(FileSystemSkillStore("skills/"))
+for name, info in skills_toolset.skills.items():
+    print(f"{name}: {info.description}")
+```

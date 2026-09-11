@@ -30,6 +30,9 @@ env:
   AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
   PYTHON_VERSION: "3.10"
+  # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
+  # See [tool.mypy] in pyproject.toml.
+  MYPY_PYTHON_VERSION: "3.12"
   HATCH_VERSION: "1.16.5"
 
 permissions:
@@ -197,7 +200,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: steps.files.outputs.any_changed == 'true'
         with:
-          python-version: "${{ env.PYTHON_VERSION }}"
+          python-version: "${{ env.MYPY_PYTHON_VERSION }}"
 
       - name: Install Hatch
         id: hatch

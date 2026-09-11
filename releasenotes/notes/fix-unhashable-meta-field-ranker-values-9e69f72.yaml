@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``MetaFieldRanker`` raising a ``TypeError`` when ``meta_value_type`` is set and a document contains
+    an unhashable metadata value, such as a list or dictionary. These values now follow the existing warning
+    and original-document fallback behavior.

@@ -52,16 +52,17 @@ from haystack import Document
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
 
 doc = Document(content="This is a simple test document")
-splitter = HierarchicalDocumentSplitter(block_sizes={3, 2}, split_overlap=0, split_by="word")
+splitter = HierarchicalDocumentSplitter(
+    block_sizes={3, 2}, split_overlap=0, split_by="word"
+)
 splitter.run([doc])
-
->> {'documents': [Document(id=3f7..., content: 'This is a simple test document', meta: {'__block_size': 0, '__parent_id': None, '__children_ids': ['80a..', 'f0e..'], '__level': 0}),
->> Document(id=80a.., content: 'This is a ', meta: {'__block_size': 3, '__parent_id': '3f7..', '__children_ids': ['e39..', 'fbf..'], '__level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
->> Document(id=f0e.., content: 'simple test document', meta: {'__block_size': 3, '__parent_id': '3f7..', '__children_ids': ['5d1..', '181..'], '__level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
->> Document(id=e39.., content: 'This is ', meta: {'__block_size': 2, '__parent_id': '80a..', '__children_ids': [], '__level': 2, 'source_id': '80a..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
->> Document(id=fbf.., content: 'a ', meta: {'__block_size': 2, '__parent_id': '80a..', '__children_ids': [], '__level': 2, 'source_id': '80a..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
->> Document(id=5d1.., content: 'simple test ', meta: {'__block_size': 2, '__parent_id': 'f0e..', '__children_ids': [], '__level': 2, 'source_id': 'f0e..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
->> Document(id=181.., content: 'document', meta: {'__block_size': 2, '__parent_id': 'f0e..', '__children_ids': [], '__level': 2, 'source_id': 'f0e..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
+# >> {'documents': [Document(id=3f7..., content: 'This is a simple test document', meta: {'__block_size': 0, '__parent_id': None, '__children_ids': ['80a..', 'f0e..'], '__level': 0}),
+# >> Document(id=80a.., content: 'This is a ', meta: {'__block_size': 3, '__parent_id': '3f7..', '__children_ids': ['e39..', 'fbf..'], '__level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+# >> Document(id=f0e.., content: 'simple test document', meta: {'__block_size': 3, '__parent_id': '3f7..', '__children_ids': ['5d1..', '181..'], '__level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
+# >> Document(id=e39.., content: 'This is ', meta: {'__block_size': 2, '__parent_id': '80a..', '__children_ids': [], '__level': 2, 'source_id': '80a..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+# >> Document(id=fbf.., content: 'a ', meta: {'__block_size': 2, '__parent_id': '80a..', '__children_ids': [], '__level': 2, 'source_id': '80a..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
+# >> Document(id=5d1.., content: 'simple test ', meta: {'__block_size': 2, '__parent_id': 'f0e..', '__children_ids': [], '__level': 2, 'source_id': 'f0e..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+# >> Document(id=181.., content: 'document', meta: {'__block_size': 2, '__parent_id': 'f0e..', '__children_ids': [], '__level': 2, 'source_id': 'f0e..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
 ```
 
 ### In a pipeline

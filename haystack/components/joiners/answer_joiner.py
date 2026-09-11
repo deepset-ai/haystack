@@ -96,8 +96,8 @@ class AnswerJoiner:
         :param top_k:
             The maximum number of Answers to return. Must be `None` or greater than 0.
         :param sort_by_score:
-            If `True`, sorts the documents by score in descending order.
-            If a document has no score, it is handled as if its score is -infinity.
+            If `True`, sorts the answers by score in descending order.
+            If an answer has no score, it is handled as if its score is -infinity.
 
         :raises ValueError:
             If `top_k` is not `None` and is less than or equal to 0.
@@ -154,7 +154,7 @@ class AnswerJoiner:
 
     def _concatenate(self, answer_lists: list[list[AnswerType]]) -> list[AnswerType]:
         """
-        Concatenate multiple lists of Answers, flattening them into a single list and sorting by score.
+        Concatenate multiple lists of Answers, flattening them into a single list.
 
         :param answer_lists: List of lists of Answers to be flattened.
         """

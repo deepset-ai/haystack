@@ -627,11 +627,16 @@ Whether this component device representation contains multiple devices.
 first_device: Optional[ComponentDevice]
 ```
 
-Return either the single device or the first device in the device map, if any.
+Return either the single device or the first usable device in the device map, if any.
+
+Disk devices are skipped because they can only be used as part of a device map and not as a
+single device. If the device map is empty or contains only disk devices, a `ValueError` is
+raised so callers that do `first_device.to_torch()` still get a clear error instead of
+`AttributeError: 'NoneType' object has no attribute 'to_torch'`.
 
 **Returns:**
 
-- <code>Optional\[ComponentDevice\]</code> – The first device.
+- <code>Optional\[ComponentDevice\]</code> – The first usable device.
 
 #### resolve_device
 

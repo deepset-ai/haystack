@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``LinkContentFetcher`` rotating the ``User-Agent`` on a cursor shared by every URL in the same
+    ``run()``/``run_async()`` call. The URLs are fetched concurrently, so a retry triggered by one of them
+    advanced the user agent for the others, and each completed fetch reset the cursor for the requests
+    still in flight — most retries went out with the un-rotated user agent. Each fetch now walks the
+    ``user_agents`` list on its own, so a URL rotates exactly as documented no matter how many other URLs
+    are fetched alongside it.

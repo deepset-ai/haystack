@@ -74,6 +74,38 @@ Create a new OllamaDocumentEmbedder instance.
   mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
   Requires ollama-python >= 0.6.2.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Ollama client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Ollama client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Ollama client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Ollama client.
+
 #### run
 
 ```python
@@ -169,6 +201,38 @@ Create a new OllamaTextEmbedder instance.
 - **dimensions** (<code>int | None</code>) – The desired number of dimensions in the embedding output. Only supported by models
   that implement Matryoshka Representation Learning (MRL), such as nomic-embed-text-v1.5,
   mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Ollama client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Ollama client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Ollama client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Ollama client.
 
 #### run
 
@@ -287,6 +351,38 @@ Create a new OllamaChatGenerator instance.
 - JSON Schema: The response is formatted as a JSON object
   that adheres to the specified JSON Schema. (needs Ollama ≥ 0.1.34)
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Ollama client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Ollama client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Ollama client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Ollama client.
+
 #### to_dict
 
 ```python
@@ -377,119 +473,3 @@ Async version of run. Runs an Ollama Model on a given chat history.
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list of ChatMessages containing the model's response
-
-## haystack_integrations.components.generators.ollama.generator
-
-### OllamaGenerator
-
-Provides an interface to generate text using an LLM running on Ollama.
-
-Usage example:
-
-```python
-from haystack_integrations.components.generators.ollama import OllamaGenerator
-
-generator = OllamaGenerator(model="zephyr",
-                            url = "http://localhost:11434",
-                            generation_kwargs={
-                            "num_predict": 100,
-                            "temperature": 0.9,
-                            })
-
-print(generator.run("Who is the best American actor?"))
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str = "orca-mini",
-    url: str = "http://localhost:11434",
-    generation_kwargs: dict[str, Any] | None = None,
-    system_prompt: str | None = None,
-    template: str | None = None,
-    raw: bool = False,
-    timeout: int = 120,
-    keep_alive: float | str | None = None,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None,
-) -> None
-```
-
-Create a new OllamaGenerator instance.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The name of the model to use. The model should be available in the running Ollama instance.
-- **url** (<code>str</code>) – The URL of a running Ollama instance.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Ollama generation endpoint, such as temperature,
-  top_p, and others. See the available arguments in
-  [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- **system_prompt** (<code>str | None</code>) – Optional system message (overrides what is defined in the Ollama Modelfile).
-- **template** (<code>str | None</code>) – The full prompt template (overrides what is defined in the Ollama Modelfile).
-- **raw** (<code>bool</code>) – If True, no formatting will be applied to the prompt. You may choose to use the raw parameter
-  if you are specifying a full templated prompt in your API request.
-- **timeout** (<code>int</code>) – The number of seconds before throwing a timeout error from the Ollama API.
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
-  The callback function accepts StreamingChunk as an argument.
-- **keep_alive** (<code>float | str | None</code>) – The option that controls how long the model will stay loaded into memory following the request.
-  If not set, it will use the default value from the Ollama (5 minutes).
-  The value can be set to:
-- a duration string (such as "10m" or "24h")
-- a number in seconds (such as 3600)
-- any negative number which will keep the model loaded in memory (e.g. -1 or "-1m")
-- '0' which will unload the model immediately after generating a response.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> OllamaGenerator
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>OllamaGenerator</code> – Deserialized component.
-
-#### run
-
-```python
-run(
-    prompt: str,
-    generation_kwargs: dict[str, Any] | None = None,
-    *,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None
-) -> dict[str, list[Any]]
-```
-
-Runs an Ollama Model on the given prompt.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to generate a response for.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Ollama generation endpoint, such as temperature,
-  top_p, and others. See the available arguments in
-  [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
-
-**Returns:**
-
-- <code>dict\[str, list\[Any\]\]</code> – A dictionary with the following keys:
-- `replies`: The responses from the model
-- `meta`: The metadata collected during the run

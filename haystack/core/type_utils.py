@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import collections.abc
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from enum import Enum
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
@@ -28,6 +27,18 @@ class ConversionStrategy(Enum):
 
 
 ConversionStrategyType = ConversionStrategy | None
+
+# Priority used to pick a strategy when a Union receiver admits more than one conversion
+_STRATEGY_PRIORITY = (
+    ConversionStrategy.WRAP,
+    ConversionStrategy.UNWRAP,
+    ConversionStrategy.CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.STR_TO_CHAT_MESSAGE,
+    ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+    ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+)
 
 
 def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
@@ -147,24 +158,32 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
 
     sender_origin = _safe_get_origin(sender)
     receiver_origin = _safe_get_origin(receiver)
+    sender_args = get_args(sender)
+    receiver_args = get_args(receiver)
 
     # Special case to reject bare-Union types
-    if (sender_origin is Union and not get_args(sender)) or (receiver_origin is Union and not get_args(receiver)):
+    if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
 
     if sender_origin is not Union and receiver_origin is Union:
-        return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
+        return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)
+
+    # Special case to allow list[T] -> Iterable[T] and list[T] -> Iterable[Any]
+    if sender_origin is list and receiver_origin is Iterable:
+        # If the receiver is a bare Iterable, we accept any list.
+        if not receiver_args:
+            return True
+        # If the receiver is Iterable[T], we require the sender to be list[T] for the same T.
+        if len(sender_args) != 1 or len(receiver_args) != 1:
+            return False
+        return _strict_types_are_compatible(sender_args[0], receiver_args[0])
 
     # Both must have origins and they must be equal
     if not (sender_origin and receiver_origin and sender_origin == receiver_origin):
         return False
 
-    # Compare generic type arguments
-    sender_args = get_args(sender)
-    receiver_args = get_args(receiver)
-
     # Handle Callable types
-    if sender_origin == receiver_origin == collections.abc.Callable:
+    if sender_origin == receiver_origin == Callable:
         return _check_callable_compatibility(sender_args, receiver_args)
 
     # Handle bare types
@@ -213,13 +232,13 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         return None
 
     # If receiver is a Union, it's compatible if ANY of its types are compatible.
-    # We prefer strategies that don't require type conversion if possible.
+    # When several members admit different conversions, decide based on _STRATEGY_PRIORITY.
     if _safe_get_origin(receiver) is Union:
-        strategies = {_get_conversion_strategy(sender, arg) for arg in get_args(receiver)} - {None}
-        for preferred in (ConversionStrategy.WRAP, ConversionStrategy.UNWRAP):
+        strategies = {_get_conversion_strategy(sender, arg) for arg in get_args(receiver)}
+        for preferred in _STRATEGY_PRIORITY:
             if preferred in strategies:
                 return preferred
-        return strategies.pop() if strategies else None
+        return None
 
     # ChatMessage -> str
     if sender is ChatMessage and receiver is str:

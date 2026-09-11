@@ -121,7 +121,7 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][1].content == "unique"
 
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8, 12, 20])
-    def test_lost_in_the_middle_order_with_top_k(self, top_k: int):
+    def test_lost_in_the_middle_order_with_top_k(self, top_k: int) -> None:
         # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
         docs = [Document(content=str(i)) for i in range(1, 10)]
         ranker = LostInTheMiddleRanker()

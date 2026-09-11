@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    The ``+`` operator for combining Toolsets has been removed. Pass Toolsets as a list wherever tools are
+    accepted instead: ``Agent(..., tools=[toolset_a, toolset_b])``. Pipelines serialized with a ``+``-combined
+    Toolset cannot be loaded anymore (their YAML references the removed internal ``_ToolsetWrapper`` class):
+    recreate them with the list form and serialize them again.
+  - |
+    ``Toolset.add()`` now only accepts a single Tool, not another Toolset. To combine Toolsets, pass them as
+    a list: ``Agent(..., tools=[toolset_a, toolset_b])``.

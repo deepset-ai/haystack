@@ -13,6 +13,7 @@ import pytest
 
 from haystack.core.component.types import Variadic
 from haystack.core.type_utils import (
+    _STRATEGY_PRIORITY,
     ConversionStrategy,
     _chat_message_to_str,
     _contains_type,
@@ -487,6 +488,38 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(List[int], Iterable[int], id="typing-list-to-iterable"),
+        pytest.param(list[int], Iterable[int], id="list-to-iterable"),
+        pytest.param(
+            list[str | Path | ByteStream],
+            Iterable[str | Path | ByteStream],
+            id="list-of-file-sources-to-iterable-of-file-sources",
+        ),
+        pytest.param(list[Class3], Iterable[Class1], id="list-of-subclass-to-iterable-of-superclass"),
+        pytest.param(list[int], Iterable[Any], id="list-to-iterable-of-any"),
+        pytest.param(list[int], Iterable, id="list-to-bare-iterable"),
+    ],
+)
+def test_list_is_compatible_with_iterable_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (True, None)
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(list[str], Iterable[int], id="list-to-iterable-with-incompatible-item-types"),
+        pytest.param(list[Any], Iterable[int], id="list-of-any-to-typed-iterable"),
+        pytest.param(list, Iterable[int], id="bare-list-to-typed-iterable"),
+        pytest.param(Iterable[int], list[int], id="iterable-to-list"),
+    ],
+)
+def test_list_and_iterable_are_not_compatible_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (False, None)
+
+
 incompatible_type_cases = [
     pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(tuple[int, str], tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
@@ -905,6 +938,9 @@ def test_contains_type():
 
 
 class TestConversion:
+    def test_strategy_priority_covers_all_strategies(self):
+        assert set(_STRATEGY_PRIORITY) == set(ConversionStrategy)
+
     def test_chat_message_to_str(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
             _chat_message_to_str(value=ChatMessage.from_assistant())
@@ -1000,27 +1036,19 @@ class TestConversion:
         # multi-level wrap not supported
         assert _types_are_compatible(sender=str, receiver=List[List[str]]) == (False, None)
 
-        ### Handle Union in receiver + conversion
-        assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | list[ChatMessage]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
-        assert _types_are_compatible(sender=ChatMessage, receiver=Union[list[str], list[ChatMessage]]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
+        ### Union inner types in list sender
+        assert _types_are_compatible(sender=list[str | int], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=List[str | int], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=list[Union[str, int]], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=List[Union[str, int]], receiver=str) == (False, None)
 
-        assert _types_are_compatible(sender=str, receiver=list[str] | list[ChatMessage]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
+        assert _types_are_compatible(sender=list[str | int], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[str | None], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=List[Optional[str]], receiver=str) == (False, None)
 
-        assert _types_are_compatible(sender=list[ChatMessage], receiver=str | ChatMessage) == (
-            True,
-            ConversionStrategy.UNWRAP,
-        )
-        assert _types_are_compatible(sender=list[str], receiver=str | ChatMessage) == (True, ConversionStrategy.UNWRAP)
-
+    def test_union_in_receiver_conversion(self):
         assert _types_are_compatible(sender=ChatMessage, receiver=str | int) == (
             True,
             ConversionStrategy.CHAT_MESSAGE_TO_STR,
@@ -1041,17 +1069,56 @@ class TestConversion:
             ConversionStrategy.WRAP,
         )
 
-        ### Union inner types in list sender
-        assert _types_are_compatible(sender=list[str | int], receiver=ChatMessage) == (False, None)
-        assert _types_are_compatible(sender=List[str | int], receiver=ChatMessage) == (False, None)
-        assert _types_are_compatible(sender=list[Union[str, int]], receiver=str) == (False, None)
-        assert _types_are_compatible(sender=List[Union[str, int]], receiver=str) == (False, None)
+    def test_union_in_receiver_strategy_priority(self):
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=Union[list[str], list[ChatMessage]]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
 
-        assert _types_are_compatible(sender=list[str | int], receiver=str) == (False, None)
-        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=ChatMessage) == (False, None)
-        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=str) == (False, None)
-        assert _types_are_compatible(sender=list[str | None], receiver=str) == (False, None)
-        assert _types_are_compatible(sender=List[Optional[str]], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str, receiver=list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str | ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=str | ChatMessage) == (True, ConversionStrategy.UNWRAP)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=Union[str, list[str]]) == (
+            True,
+            ConversionStrategy.CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[str]) == (
+            True,
+            ConversionStrategy.CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | str) == (
+            True,
+            ConversionStrategy.CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=str, receiver=Union[ChatMessage, list[ChatMessage]]) == (
+            True,
+            ConversionStrategy.STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=str, receiver=Union[list[str], ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
 
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):

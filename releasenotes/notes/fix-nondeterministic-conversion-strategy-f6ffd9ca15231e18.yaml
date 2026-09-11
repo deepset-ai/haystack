@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Pipeline connections now always convert values in the same way. When a component output is connected to an
+    input that accepts multiple types, Haystack is sometimes able to automatically convert the value, and more
+    than one conversion may be possible. For example, a ``ChatMessage`` with text "hello" connected to an input
+    annotated ``str | list[str]`` can be delivered either as plain text (``"hello"``) or as a list containing the
+    text (``["hello"]``). Previously the conversion strategy was chosen non-deterministically, so the same
+    pipeline could return a different value across runs. The conversion strategy is now selected using a fixed
+    priority: first, wrapping a value in a list or unwrapping a single-element list; second, converting between
+    ``ChatMessage`` and ``str``; and last, combining both conversions.

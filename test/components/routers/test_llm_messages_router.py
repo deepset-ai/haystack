@@ -10,7 +10,7 @@ import pytest
 
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.components.routers.llm_messages_router import LLMMessagesRouter
+from haystack.components.routers.llm_messages_router import _RESERVED_OUTPUT_NAMES, LLMMessagesRouter
 from haystack.dataclasses import ChatMessage
 
 
@@ -45,6 +45,21 @@ class TestLLMMessagesRouter:
             LLMMessagesRouter(
                 chat_generator=chat_generator, output_names=["name1", "name2"], output_patterns=["pattern1"]
             )
+
+    @pytest.mark.parametrize("reserved_name", ["chat_generator_text", "unmatched"])
+    def test_init_rejects_reserved_output_names(self, reserved_name):
+        with pytest.raises(ValueError, match="reserved output names"):
+            LLMMessagesRouter(
+                chat_generator=MockChatGenerator("safe"), output_names=[reserved_name], output_patterns=["safe"]
+            )
+
+    def test_reserved_output_names_match_the_always_present_sockets(self):
+        router = LLMMessagesRouter(
+            chat_generator=MockChatGenerator("safe"), output_names=["safe"], output_patterns=["safe"]
+        )
+        outputs = router.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
+
+        assert set(outputs) - {"safe"} == set(_RESERVED_OUTPUT_NAMES)
 
     def test_run_input_errors(self):
         router = LLMMessagesRouter(
@@ -158,6 +173,7 @@ class TestLLMMessagesRouter:
 
         router = LLMMessagesRouter.from_dict(data)
 
+        assert isinstance(router._chat_generator, MockChatGenerator)
         assert router._chat_generator.to_dict() == chat_generator.to_dict()
         assert router._output_names == ["safe", "unsafe"]
         assert router._output_patterns == ["safe", "unsafe"]
@@ -182,6 +198,7 @@ class TestLLMMessagesRouter:
         print(result)
 
         assert result["safe"] == messages
+        assert isinstance(result["chat_generator_text"], str)
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result
@@ -280,6 +297,7 @@ class TestLLMMessagesRouterAsync:
         result = await router.run_async(messages)
 
         assert result["safe"] == messages
+        assert isinstance(result["chat_generator_text"], str)
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result

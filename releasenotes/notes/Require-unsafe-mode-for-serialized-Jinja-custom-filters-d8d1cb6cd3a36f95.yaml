@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    Serialized ``OutputAdapter`` and ``ConditionalRouter`` components containing Jinja
+    ``custom_filters`` must now be loaded with ``Pipeline.load(..., unsafe=True)`` (or the
+    equivalent ``Pipeline.loads`` / ``Pipeline.from_dict`` option).
+security:
+  - |
+    Prevent arbitrary callables registered as serialized Jinja custom filters from executing while
+    a pipeline is loaded in safe mode. Jinja can invoke filters with constant arguments during
+    template compilation, and its sandbox does not apply callable-safety checks to filters.

@@ -33,7 +33,7 @@ class _FakeEncoder:
 
 
 @pytest.fixture
-def fake_encoder(monkeypatch) -> _FakeEncoder:
+def fake_encoder(monkeypatch: pytest.MonkeyPatch) -> _FakeEncoder:
     """Replace `tiktoken.get_encoding`, which downloads its vocabulary on first use."""
     encoder = _FakeEncoder()
     monkeypatch.setattr(tiktoken_counter_module.tiktoken, "get_encoding", lambda _name: encoder)
@@ -105,6 +105,7 @@ class TestTiktokenCounter:
             "init_parameters": {"encoding": "cl100k_base", "tokens_per_image": 200, "tokens_per_file": 3000},
         }
         restored = TiktokenCounter.from_dict(data)
+        assert isinstance(restored, TiktokenCounter)
         assert restored.encoding == "cl100k_base"
         assert restored.tokens_per_image == 200
 
