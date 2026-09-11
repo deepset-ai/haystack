@@ -17,9 +17,19 @@ Haystack is an open-source AI orchestration framework that you can use to build 
 
 Haystack is designed in a modular way, allowing you to combine the best technology from OpenAI, Google, Anthropic, and open-source projects like Hugging Face's Transformers.
 
-The core foundation of Haystack consists of components and pipelines, along with Document Stores, Agents, Tools, and many integrations. Read more about Haystack concepts in the [Haystack Concepts Overview](concepts/concepts-overview.mdx).
+The core foundation of Haystack consists of components and [pipelines](concepts/pipelines.mdx), along with Document Stores, [Agents](concepts/agents.mdx), Tools, and many integrations. A pipeline is a graph you wire yourself, so it runs the same way every time; an agent hands step-by-step control to the LLM, trading that predictability for the ability to handle requests you didn't enumerate in advance. See [Choosing Between Pipelines and Agents](concepts/agents/choosing-between-pipelines-and-agents.mdx) to decide which one your use case needs - and note that an agent can be a step inside a pipeline, and a pipeline can be a tool an agent calls, so it's rarely all-or-nothing. Read more about Haystack concepts in the [Haystack Concepts Overview](concepts/concepts-overview.mdx).
 
 Supported by an engaged community of developers, Haystack has grown into a comprehensive and user-friendly framework for LLM-based development.
+
+## Start here
+
+New to Haystack? Follow this path:
+
+1. [Installation](overview/installation.mdx) - install the `haystack-ai` package.
+2. [Get Started](overview/get-started.mdx) - build your first RAG pipeline and tool-calling agent.
+3. [Core Concepts](concepts/concepts-overview.mdx) - components, pipelines, agents, and the other building blocks.
+4. [Deployment](development/deployment.mdx) - serve your pipeline or agent as an HTTP endpoint.
+5. [Production Usage](production-usage.mdx) - evaluate, trace, and log it once it's running.
 
 :::note[Looking to scale with confidence?]
 
