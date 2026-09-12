@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `ConditionalRouter` silently coercing string output to another type when `output_type` is a
+    Union that includes `str` (for example `str | None`). The literal-evaluation skip previously only
+    checked for the exact `str` type, so a rendered value like `"42"` declared with `output_type=str | None`
+    was coerced to the integer `42` instead of being returned as the string `"42"`.

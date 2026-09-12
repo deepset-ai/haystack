@@ -458,12 +458,12 @@ class ConditionalRouter:
                         # we try to evaluate it and would fail.
                         # This must be done cause the output could be different literal structures.
                         # This doesn't support any user types.
-                        # When the declared output_type is str we skip literal evaluation so that a
-                        # rendered string that happens to be a valid Python literal (e.g. "1,000" -> (1, 0),
-                        # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
-                        # another type, which would violate the declared output_type.
+                        # When the declared output_type is str, or a Union that includes str (e.g. str | None),
+                        # we skip literal evaluation so that a rendered string that happens to be a valid Python
+                        # literal (e.g. "1,000" -> (1, 0), "42" -> 42, "None" -> None) is returned unchanged
+                        # instead of being coerced to another type, which would violate the declared output_type.
                         with contextlib.suppress(Exception):
-                            if not self._unsafe and output_type is not str:
+                            if not self._unsafe and not self._output_type_includes_str(output_type):
                                 output_value = ast.literal_eval(output_value)
 
                     # Validate output type if needed
@@ -568,6 +568,17 @@ class ConditionalRouter:
             return True
         except TemplateSyntaxError:
             return False
+
+    @staticmethod
+    def _output_type_includes_str(output_type: Any) -> bool:
+        """
+        Checks whether `output_type` is `str` itself, or a Union that includes `str` (e.g. `str | None`).
+        """
+        if output_type is str:
+            return True
+        if _is_union_type(output_type):
+            return str in get_args(output_type)
+        return False
 
     def _output_matches_type(self, value: Any, expected_type: type) -> bool:  # noqa: PLR0911
         """
