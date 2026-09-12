@@ -2,29 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
 import json
-import mimetypes
-from pathlib import Path
 from typing import Any
 
-from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent
+from haystack.dataclasses import ChatMessage
 from haystack.hooks.tool_result_offloading.types import OffloadPolicy, ToolResultStore
+from haystack.hooks.tool_result_offloading.utils import (
+    _OFFLOADED_META_KEY,
+    _content_block_payload,
+    _offloadable_content_blocks,
+    _offloaded_message,
+)
 from haystack.utils.deserialization import deserialize_component_inplace
-
-# Extension used for a binary block whose MIME type is unknown or maps to no known extension.
-_FALLBACK_EXTENSION = ".bin"
-
-logger = logging.getLogger(__name__)
-
-# Meta key marking an already-offloaded tool-result message; its value is the list of store references written.
-# Stops a second `after_tool` offload hook from offloading the pointer text again, since the pointer is itself a
-# tool result.
-_OFFLOADED_META_KEY = "tool_result_offloaded"
 
 # Key under which a per-run store override may be supplied via the Agent's `hook_context` (e.g. a request-scoped
 # sandbox filesystem).
@@ -47,20 +39,6 @@ def _fresh_tool_results_start(messages: list[ChatMessage]) -> int:
     while index > 0 and messages[index - 1].tool_call_result is not None:
         index -= 1
     return index
-
-
-def _content_block_payload(content_block: TextContent | ImageContent | FileContent) -> str:
-    """
-    Return the string a content block contributes to the conversation.
-
-    For an image or a file this is the base64 payload, which is what actually occupies the context window.
-
-    :param content_block: The content block to inspect.
-    :returns: The content block's text or base64 payload.
-    """
-    if isinstance(content_block, TextContent):
-        return content_block.text
-    return content_block.base64_image if isinstance(content_block, ImageContent) else content_block.base64_data
 
 
 def _serialize_offload_strategies(strategies: dict[str | tuple[str, ...], OffloadPolicy]) -> dict[str, Any]:
@@ -269,26 +247,9 @@ class ToolResultOffloadHook:
         if policy is None:
             return message
 
-        # A plain string result is handled as a single text block, so everything below has one shape to work with.
-        content_blocks: list[TextContent | ImageContent | FileContent] = (
-            [TextContent(text=result.result)] if isinstance(result.result, str) else list(result.result)
-        )
-        # A result made up of nothing but empty text has nothing worth storing, so it stays in context. `all` also
-        # covers a result with no content blocks at all.
-        if all(isinstance(content_block, TextContent) and not content_block.text for content_block in content_blocks):
-            return message
-
-        # Check whether the store can store binary content before offloading an image or file result. A text-only store
-        # leaves the result in context and logs a warning.
-        if not getattr(store, "supports_binary_content", False) and not all(
-            isinstance(content_block, TextContent) for content_block in content_blocks
-        ):
-            logger.warning(
-                "Tool '{tool}' produced a result with image or file content, but {store} does not support binary "
-                "content; leaving the result in context.",
-                tool=tool_name,
-                store=type(store).__name__,
-            )
+        # An empty result, or image or file content a text-only store cannot take, stays in context.
+        content_blocks = _offloadable_content_blocks(result=result, store=store)
+        if content_blocks is None:
             return message
 
         # The policy sizes up the result by the string it occupies in the conversation, which for an image or a file
@@ -300,80 +261,13 @@ class ToolResultOffloadHook:
         # Step, tool name, and call id keep results from different tools and steps from colliding. A tool call id is
         # optional, so an id-less call falls back to its position in this step's batch.
         step = state.data.get("step_count", 0)
-        prefix = f"{step}_{tool_name}_{result.origin.id or f'call{index}'}"
-        references, pointer = self._offload_content_blocks(content_blocks=content_blocks, store=store, prefix=prefix)
-
-        return ChatMessage.from_tool(
-            tool_result=pointer,
-            origin=result.origin,
-            error=result.error,
-            meta={**message.meta, _OFFLOADED_META_KEY: references},
+        return _offloaded_message(
+            message=message,
+            content_blocks=content_blocks,
+            store=store,
+            key_prefix=f"{step}_{tool_name}_{result.origin.id or f'call{index}'}",
+            preview_chars=self.preview_chars,
         )
-
-    def _offload_content_blocks(
-        self, content_blocks: list[TextContent | ImageContent | FileContent], store: ToolResultStore, prefix: str
-    ) -> tuple[list[str], str]:
-        """
-        Write a result's content blocks to the store and build the pointer that replaces them in the conversation.
-
-        Every content block goes to its own store entry. A single block keeps `prefix` as its key and gets a one-line
-        pointer; several blocks get position-suffixed keys and one numbered pointer line each.
-
-        :param content_blocks: The result's content blocks, in order.
-        :param store: The store to write to.
-        :param prefix: The result's store key prefix, as described above.
-        :returns: The store references written, and the pointer text for the conversation.
-        """
-        references: list[str] = []
-        descriptions: list[str] = []
-        single = len(content_blocks) == 1
-        for position, content_block in enumerate(content_blocks):
-            reference, description = self._offload_content_block(
-                content_block=content_block, store=store, key_prefix=prefix if single else f"{prefix}_{position}"
-            )
-            references.append(reference)
-            descriptions.append(description)
-
-        if len(descriptions) == 1:
-            return references, f"Tool result offloaded to {descriptions[0]}"
-
-        numbered = [f"{position}. {description}" for position, description in enumerate(descriptions, start=1)]
-        return references, "\n".join([f"Tool result offloaded to {len(descriptions)} files:", *numbered])
-
-    def _offload_content_block(
-        self, content_block: TextContent | ImageContent | FileContent, store: ToolResultStore, key_prefix: str
-    ) -> tuple[str, str]:
-        """
-        Write a single content block to the store and describe where it went.
-
-        :param content_block: The content block to offload.
-        :param store: The store to write to.
-        :param key_prefix: The content block's store key without its extension.
-        :returns: The store reference the content block was written to, and a one-line description for the pointer.
-        """
-        if isinstance(content_block, TextContent):
-            text = content_block.text
-            reference = store.write(key=f"{key_prefix}.txt", content=text)
-            # An ellipsis marks a preview that was cut short, so the model can tell it is not the whole text.
-            preview = f"{text[: self.preview_chars]}{'...' if len(text) > self.preview_chars else ''}"
-            return reference, f"text ({len(text)} characters) at '{reference}'. Preview: {preview}"
-
-        if isinstance(content_block, ImageContent):
-            data = base64.b64decode(content_block.base64_image)
-            label = content_block.mime_type or "image"
-            filename = None
-        else:
-            data = base64.b64decode(content_block.base64_data)
-            label = content_block.mime_type or "file"
-            filename = content_block.filename
-
-        # What the tool called the file wins over its MIME type. Only the suffix is taken.
-        mime_extension = mimetypes.guess_extension(content_block.mime_type) if content_block.mime_type else None
-        extension = (Path(filename).suffix if filename else "") or mime_extension or _FALLBACK_EXTENSION
-        reference = store.write(key=f"{key_prefix}{extension}", content=data)
-
-        named = f" named '{filename}'" if filename else ""
-        return reference, f"{label}{named} ({len(data)} bytes) at '{reference}'"
 
     def to_dict(self) -> dict[str, Any]:
         """
