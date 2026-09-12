@@ -109,7 +109,14 @@ class MultiRetriever:
             How to merge results from multiple retrievers. Available modes:
             - `concatenate`: Combines all results into a single list and deduplicates.
             - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
+
+        :raises ValueError:
+            If `top_k` or `top_k_per_retriever` is not `None` and is less than or equal to 0.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+        if top_k_per_retriever is not None and top_k_per_retriever <= 0:
+            raise ValueError(f"top_k_per_retriever must be > 0, but got {top_k_per_retriever}")
         self.retrievers = retrievers
         self.filters = filters
         self.top_k_per_retriever = top_k_per_retriever
@@ -226,7 +233,8 @@ class MultiRetriever:
                 - "documents": A deduplicated list of retrieved documents.
 
         :raises ValueError:
-            If any name in `active_retrievers` does not match a retriever name.
+            If any name in `active_retrievers` does not match a retriever name,
+            or if the resolved `top_k`/`top_k_per_retriever` is less than or equal to 0.
         """
         self.warm_up()
 
@@ -234,6 +242,10 @@ class MultiRetriever:
             top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
         )
         resolved_top_k = top_k if top_k is not None else self.top_k
+        if resolved_top_k is not None and resolved_top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {resolved_top_k}")
+        if resolved_top_k_per_retriever is not None and resolved_top_k_per_retriever <= 0:
+            raise ValueError(f"top_k_per_retriever must be > 0, but got {resolved_top_k_per_retriever}")
         resolved_filters = filters if filters is not None else self.filters
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
@@ -295,7 +307,8 @@ class MultiRetriever:
                 - "documents": A deduplicated list of retrieved documents.
 
         :raises ValueError:
-            If any name in `active_retrievers` does not match a retriever name.
+            If any name in `active_retrievers` does not match a retriever name,
+            or if the resolved `top_k`/`top_k_per_retriever` is less than or equal to 0.
         """
         await self.warm_up_async()
 
@@ -303,6 +316,10 @@ class MultiRetriever:
             top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
         )
         resolved_top_k = top_k if top_k is not None else self.top_k
+        if resolved_top_k is not None and resolved_top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {resolved_top_k}")
+        if resolved_top_k_per_retriever is not None and resolved_top_k_per_retriever <= 0:
+            raise ValueError(f"top_k_per_retriever must be > 0, but got {resolved_top_k_per_retriever}")
         resolved_filters = filters if filters is not None else self.filters
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
