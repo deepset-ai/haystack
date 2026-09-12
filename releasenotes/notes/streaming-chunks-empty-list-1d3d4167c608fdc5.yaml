@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fix an `IndexError: list index out of range` when a chat generator's stream completes
+    without emitting any chunks. `_convert_streaming_chunks_to_chat_message` already handled
+    an empty chunk list everywhere except the two positional reads that populate `meta`
+    (`model` and `completion_start_time`), so an empty completion surfaced as an `IndexError`
+    far from the provider that produced it. It now returns an assistant message with empty
+    content and `None` metadata instead.

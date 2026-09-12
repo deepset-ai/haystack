@@ -858,3 +858,23 @@ def test_normalize_messages():
 
     with pytest.raises(TypeError):
         _normalize_messages(123)  # type: ignore[arg-type]
+
+
+def test_convert_streaming_chunks_to_chat_message_no_chunks():
+    """
+    Test that an empty chunk list yields an empty assistant message instead of raising.
+
+    A provider can close a stream without emitting a single chunk -- Amazon Bedrock's
+    `converse_stream` does it for an empty completion -- and the positional reads that build
+    `meta` used to turn that into an `IndexError: list index out of range`, several frames away
+    from the provider that produced it.
+    """
+    message = _convert_streaming_chunks_to_chat_message(chunks=[])
+
+    assert message.text is None
+    assert message.tool_calls == []
+    assert message.reasoning is None
+    assert message.meta["model"] is None
+    assert message.meta["finish_reason"] is None
+    assert message.meta["completion_start_time"] is None
+    assert message.meta["usage"] is None
