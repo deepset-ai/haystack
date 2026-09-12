@@ -7,9 +7,13 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {"json_schema": ["JsonSchemaValidator"]}
+_import_structure = {
+    "json_schema": ["JsonSchemaValidator"],
+    "groundedness_checker": ["GroundednessChecker"],
+}
 
 if TYPE_CHECKING:
+    from .groundedness_checker import GroundednessChecker as GroundednessChecker
     from .json_schema import JsonSchemaValidator as JsonSchemaValidator
 
 else:
