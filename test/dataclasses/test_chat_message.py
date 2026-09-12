@@ -842,6 +842,10 @@ class TestToOpenaiDictFormat:
         message = ChatMessage.from_system("You are good assistant")
         assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
 
+    def test_to_openai_dict_format_developer_message(self):
+        message = ChatMessage.from_developer("You are a non-overridable system prompt")
+        assert message.to_openai_dict_format() == {"role": "developer", "content": "You are a non-overridable system prompt"}
+
     def test_to_openai_dict_format_user_message(self):
         message = ChatMessage.from_user("I have a question")
         assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question"}
@@ -1036,6 +1040,27 @@ class TestFromOpenaiDictFormat:
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "system"
         assert message.text == "You are a helpful assistant"
+
+    def test_from_openai_dict_format_developer_message(self):
+        # Regression test for https://github.com/deepset-ai/haystack/issues/12604
+        # The 'developer' role must deserialize to ChatRole.DEVELOPER, not ChatRole.SYSTEM.
+        openai_msg = {"role": "developer", "content": "You are a non-overridable system prompt"}
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role == ChatRole.DEVELOPER
+        assert message.role.value == "developer"
+        assert message.text == "You are a non-overridable system prompt"
+        # Round-trip must preserve the developer role
+        assert message.to_openai_dict_format() == {"role": "developer", "content": "You are a non-overridable system prompt"}
+
+    def test_from_openai_dict_format_developer_and_system_are_distinct(self):
+        # 'developer' and 'system' must produce distinct ChatRole values after round-tripping.
+        system_msg = ChatMessage.from_openai_dict_format({"role": "system", "content": "x"})
+        developer_msg = ChatMessage.from_openai_dict_format({"role": "developer", "content": "x"})
+        assert system_msg.role == ChatRole.SYSTEM
+        assert developer_msg.role == ChatRole.DEVELOPER
+        assert system_msg.role != developer_msg.role
+        assert system_msg.to_openai_dict_format()["role"] == "system"
+        assert developer_msg.to_openai_dict_format()["role"] == "developer"
 
     def test_from_openai_dict_format_assistant_message_with_content(self):
         openai_msg = {"role": "assistant", "content": "I can help with that"}
