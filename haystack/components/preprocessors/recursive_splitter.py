@@ -421,7 +421,8 @@ class RecursiveDocumentSplitter:
             )
 
     def _run_one(self, doc: Document) -> list[Document]:
-        chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
+        text = doc.content or ""  # the caller already check for a non-empty doc.content
+        chunks = self._chunk_text(text)
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
 
         # apply the overlap once, on the fully chunked list, so that chunks produced
@@ -430,7 +431,6 @@ class RecursiveDocumentSplitter:
             chunks = self._apply_overlap(chunks)
 
         current_position = 0
-        current_page = 1
 
         new_docs: list[Document] = []
 
@@ -447,17 +447,12 @@ class RecursiveDocumentSplitter:
             if split_nr > 0 and self.split_overlap > 0:
                 self._add_overlap_info(current_position, new_doc, new_docs)
 
-            # count page breaks in the chunk
-            current_page += chunk.count("\f")
-
-            # if there are consecutive page breaks at the end with no more text, adjust the page number
-            # e.g: "text\f\f\f" -> 3 page breaks, but current_page should be 1
-            consecutive_page_breaks = len(chunk) - len(chunk.rstrip("\f"))
-
-            if consecutive_page_breaks > 0:
-                new_doc.meta["page_number"] = current_page - consecutive_page_breaks
-            else:
-                new_doc.meta["page_number"] = current_page
+            # A chunk belongs to the page its first character of text is on, so only page breaks *before*
+            # that character count. Leading page breaks are part of the chunk and do advance it, while
+            # breaks inside or at the end of the chunk belong to later chunks.
+            # e.g: "text\f\f\f" -> 3 page breaks, but page_number is still 1
+            leading_page_breaks = len(chunk) - len(chunk.lstrip("\f"))
+            new_doc.meta["page_number"] = 1 + text.count("\f", 0, current_position + leading_page_breaks)
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)

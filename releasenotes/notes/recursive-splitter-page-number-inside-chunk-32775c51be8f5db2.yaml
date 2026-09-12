@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` assigning a chunk the ``page_number`` of the page it ends on
+    rather than the page its text starts on. Page breaks were counted before the page number was
+    assigned, and the existing correction only applied when the form feed was the chunk's very last
+    character, so any separator other than ``"\f"`` left the chunk one or more pages ahead.
+    ``page_number`` is now derived from the chunk's start offset in the original document.
