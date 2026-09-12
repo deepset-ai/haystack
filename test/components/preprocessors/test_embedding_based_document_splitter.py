@@ -32,6 +32,7 @@ class TestEmbeddingBasedDocumentSplitter:
         assert splitter.percentile == 0.9
         assert splitter.min_length == 50
         assert splitter.max_length == 1000
+        assert splitter.min_distance_for_two_groups is None
 
     def test_init_invalid_sentences_per_group(self):
         mock_embedder = Mock()
@@ -42,6 +43,11 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         with pytest.raises(ValueError, match="percentile must be between 0.0 and 1.0"):
             EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, percentile=1.5)
+
+    def test_init_invalid_min_distance_for_two_groups(self):
+        mock_embedder = Mock()
+        with pytest.raises(ValueError, match="min_distance_for_two_groups must be between 0.0 and 2.0"):
+            EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_distance_for_two_groups=2.5)
 
     def test_init_invalid_min_length(self):
         mock_embedder = Mock()
@@ -169,6 +175,95 @@ class TestEmbeddingBasedDocumentSplitter:
         split_points = splitter._find_split_points(embeddings)
         # Should find a split point after the second embedding (index 2)
         assert 2 in split_points
+
+    def test_find_split_points_two_groups_default_never_splits(self):
+        """
+        With exactly two sentence groups there is only one distance to compare, so np.percentile of that
+        single-element list always returns the value itself: `distance > threshold` is comparing the value
+        to itself and can never be True. `percentile` therefore cannot decide this case, and there is no
+        universally correct absolute distance threshold across embedding models to fall back on either (see
+        `min_distance_for_two_groups`'s docstring). The safe default is to never split here, matching the
+        pre-existing behavior for documents with a single sentence group -- even for maximally dissimilar
+        (orthogonal) embeddings, at the most aggressive percentile=0.0 setting.
+        """
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, percentile=0.0)
+        assert splitter.min_distance_for_two_groups is None
+
+        embeddings = [[1.0, 0.0], [0.0, 1.0]]  # orthogonal -> maximum possible cosine distance
+        assert splitter._find_split_points(embeddings) == []
+
+    def test_find_split_points_two_groups_splits_once_min_distance_for_two_groups_is_configured(self):
+        """
+        Splitting a two-group document is opt-in: once `min_distance_for_two_groups` is set, the lone
+        distance is compared against it directly, independent of `percentile` (which cannot apply here).
+        """
+        mock_embedder = Mock()
+        embeddings = [[1.0, 0.0], [0.0, 1.0]]  # orthogonal -> cosine distance of 1.0
+
+        for percentile in (0.0, 0.5, 0.95, 1.0):
+            splitter = EmbeddingBasedDocumentSplitter(
+                document_embedder=mock_embedder, percentile=percentile, min_distance_for_two_groups=0.5
+            )
+            assert splitter._find_split_points(embeddings) == [1], f"expected split at percentile={percentile}"
+
+    def test_find_split_points_two_identical_groups_do_not_split(self):
+        """Two identical groups (distance == 0) must not produce a split point even at the threshold's edge."""
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=mock_embedder, percentile=0.0, min_distance_for_two_groups=0.0
+        )
+
+        embeddings = [[1.0, 0.0], [1.0, 0.0]]
+        assert splitter._find_split_points(embeddings) == []
+
+    def test_find_split_points_two_near_duplicate_groups_do_not_split_regardless_of_percentile(self):
+        """
+        Regression test: comparing the lone distance to itself (the original bug) or splitting on any
+        nonzero distance (an earlier, overly aggressive fix) both fail on near-duplicate groups. Two groups
+        that are almost, but not exactly, identical (a tiny cosine distance well under a realistic
+        `min_distance_for_two_groups`) should not split, and since `percentile` does not apply to the
+        two-group case, this must hold at every percentile setting, including the most aggressive (0.0).
+        """
+        mock_embedder = Mock()
+        embeddings = [[1.0, 0.0], [1.0, 0.001]]  # cosine distance ~5e-7: near-duplicate, not identical
+
+        for percentile in (0.0, 0.5, 0.95, 1.0):
+            splitter = EmbeddingBasedDocumentSplitter(
+                document_embedder=mock_embedder, percentile=percentile, min_distance_for_two_groups=0.3
+            )
+            assert splitter._find_split_points(embeddings) == [], f"unexpected split at percentile={percentile}"
+
+    def test_run_splits_document_with_exactly_two_sentence_groups(self):
+        """
+        End-to-end regression test: a document that tokenizes into exactly two sentence groups with
+        maximally dissimilar content is split by run() once `min_distance_for_two_groups` is configured,
+        even at the most aggressive percentile=0.0 setting.
+        """
+        text = (
+            "Astronomy studies the stars and galaxies of outer space. "
+            "Sourdough baking relies on wild yeast fermentation."
+        )
+
+        def mock_run(documents):
+            embeddings = [[1.0, 0.0] if i == 0 else [0.0, 1.0] for i in range(len(documents))]
+            return {"documents": [replace(doc, embedding=emb) for doc, emb in zip(documents, embeddings, strict=True)]}
+
+        mock_embedder = Mock()
+        mock_embedder.run = Mock(side_effect=mock_run)
+
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=mock_embedder,
+            sentences_per_group=1,
+            percentile=0.0,
+            min_length=0,
+            max_length=10000,
+            min_distance_for_two_groups=0.5,
+        )
+        splitter.warm_up()
+
+        result = splitter.run(documents=[Document(content=text)])
+        assert len(result["documents"]) == 2
 
     def test_create_splits_from_points(self):
         mock_embedder = Mock()
@@ -411,6 +506,7 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["init_parameters"]["percentile"] == 0.9
         assert result["init_parameters"]["min_length"] == 50
         assert result["init_parameters"]["max_length"] == 1000
+        assert result["init_parameters"]["min_distance_for_two_groups"] is None
         assert "document_embedder" in result["init_parameters"]
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
