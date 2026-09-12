@@ -4,7 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import httpx
+import httpx2
 import pytest
 
 from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
@@ -12,7 +12,7 @@ from haystack.utils.requests_utils import async_request_with_retry, request_with
 
 @pytest.fixture
 def mock_httpx_response():
-    response = MagicMock(spec=httpx.Response)
+    response = MagicMock(spec=httpx2.Response)
     response.status_code = 200
     response.raise_for_status.return_value = None
     return response
@@ -21,7 +21,7 @@ def mock_httpx_response():
 class TestRequestWithRetry:
     def test_request_with_retry_success(self, mock_httpx_response):
         """Test that request_with_retry works with default parameters"""
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="GET", url="https://example.com")
 
             assert response == mock_httpx_response
@@ -29,7 +29,7 @@ class TestRequestWithRetry:
 
     def test_request_with_retry_custom_attempts(self, mock_httpx_response):
         """Test that request_with_retry respects custom attempts parameter"""
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="GET", url="https://example.com", attempts=5)
 
             assert response == mock_httpx_response
@@ -37,7 +37,7 @@ class TestRequestWithRetry:
 
     def test_request_with_retry_custom_status_codes(self, mock_httpx_response):
         """Test that request_with_retry respects custom status_codes_to_retry parameter"""
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=[500, 502])
 
             assert response == mock_httpx_response
@@ -45,7 +45,7 @@ class TestRequestWithRetry:
 
     def test_request_with_retry_custom_timeout(self, mock_httpx_response):
         """Test that request_with_retry respects custom timeout parameter"""
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="GET", url="https://example.com", timeout=30)
 
             assert response == mock_httpx_response
@@ -54,7 +54,7 @@ class TestRequestWithRetry:
     def test_request_with_retry_with_headers(self, mock_httpx_response):
         """Test that request_with_retry passes headers correctly"""
         headers = {"Authorization": "Bearer token123"}
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="GET", url="https://example.com", headers=headers)
 
             assert response == mock_httpx_response
@@ -63,7 +63,7 @@ class TestRequestWithRetry:
     def test_request_with_retry_with_json(self, mock_httpx_response):
         """Test that request_with_retry passes JSON data correctly"""
         json_data = {"key": "value"}
-        with patch("httpx.Client.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.Client.request", return_value=mock_httpx_response) as mock_request:
             response = request_with_retry(method="POST", url="https://example.com", json=json_data)
 
             assert response == mock_httpx_response
@@ -75,12 +75,12 @@ class TestRequestWithRetry:
             # Mock time.sleep used by tenacity to keep this test fast
             mock_sleep.return_value = None
 
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
 
-            with patch("httpx.Client.request") as mock_request:
+            with patch("httpx2.Client.request") as mock_request:
                 # First call raises an error, second call succeeds
                 mock_request.side_effect = [
-                    httpx.RequestError("Server error", request=httpx.Request("GET", "https://example.com")),
+                    httpx2.RequestError("Server error", request=httpx2.Request("GET", "https://example.com")),
                     success_response,
                 ]
 
@@ -96,20 +96,20 @@ class TestRequestWithRetry:
             # Mock time.sleep used by tenacity to keep this test fast
             mock_sleep.return_value = None
 
-            error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+            error_response = httpx2.Response(status_code=503, request=httpx2.Request("GET", "https://example.com"))
 
             def raise_for_status():
                 if error_response.status_code in [503]:
-                    raise httpx.HTTPStatusError(
+                    raise httpx2.HTTPStatusError(
                         "Service Unavailable", request=error_response.request, response=error_response
                     )
 
             error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]
 
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
             success_response.raise_for_status = lambda: None  # type: ignore[method-assign, assignment, return-value]
 
-            with patch("httpx.Client.request") as mock_request:
+            with patch("httpx2.Client.request") as mock_request:
                 # First call returns error status code, second call succeeds
                 mock_request.side_effect = [error_response, success_response]
 
@@ -129,12 +129,12 @@ class TestRequestWithRetry:
         retry silently fell back to the default of 10 seconds.
         """
         with patch("time.sleep", return_value=None):
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
 
-            with patch("httpx.Client.request") as mock_request:
+            with patch("httpx2.Client.request") as mock_request:
                 # First attempt fails with a retryable error, second attempt succeeds.
                 mock_request.side_effect = [
-                    httpx.RequestError("boom", request=httpx.Request("GET", "https://example.com")),
+                    httpx2.RequestError("boom", request=httpx2.Request("GET", "https://example.com")),
                     success_response,
                 ]
 
@@ -150,7 +150,7 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_success(self, mock_httpx_response):
         """Test that async_request_with_retry works with default parameters"""
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(method="GET", url="https://example.com")
 
             assert response == mock_httpx_response
@@ -159,7 +159,7 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_custom_attempts(self, mock_httpx_response):
         """Test that async_request_with_retry respects custom attempts parameter"""
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(method="GET", url="https://example.com", attempts=5)
 
             assert response == mock_httpx_response
@@ -168,7 +168,7 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_custom_status_codes(self, mock_httpx_response):
         """Test that async_request_with_retry respects custom status_codes_to_retry parameter"""
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(
                 method="GET", url="https://example.com", status_codes_to_retry=[500, 502]
             )
@@ -179,7 +179,7 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_custom_timeout(self, mock_httpx_response):
         """Test that async_request_with_retry respects custom timeout parameter"""
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(method="GET", url="https://example.com", timeout=30)
 
             assert response == mock_httpx_response
@@ -189,7 +189,7 @@ class TestAsyncRequestWithRetry:
     async def test_async_request_with_retry_with_headers(self, mock_httpx_response):
         """Test that async_request_with_retry passes headers correctly"""
         headers = {"Authorization": "Bearer token123"}
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(method="GET", url="https://example.com", headers=headers)
 
             assert response == mock_httpx_response
@@ -199,7 +199,7 @@ class TestAsyncRequestWithRetry:
     async def test_async_request_with_retry_with_json(self, mock_httpx_response):
         """Test that async_request_with_retry passes JSON data correctly"""
         json_data = {"key": "value"}
-        with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
+        with patch("httpx2.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
             response = await async_request_with_retry(method="POST", url="https://example.com", json=json_data)
 
             assert response == mock_httpx_response
@@ -212,12 +212,12 @@ class TestAsyncRequestWithRetry:
             # Mock asyncio.sleep used by tenacity to keep this test fast
             mock_sleep.return_value = None
 
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
 
-            with patch("httpx.AsyncClient.request") as mock_request:
+            with patch("httpx2.AsyncClient.request") as mock_request:
                 # First call raises an error, second call succeeds
                 mock_request.side_effect = [
-                    httpx.RequestError("Server error", request=httpx.Request("GET", "https://example.com")),
+                    httpx2.RequestError("Server error", request=httpx2.Request("GET", "https://example.com")),
                     success_response,
                 ]
 
@@ -234,20 +234,20 @@ class TestAsyncRequestWithRetry:
             # Mock asyncio.sleep used by tenacity to keep this test fast
             mock_sleep.return_value = None
 
-            error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+            error_response = httpx2.Response(status_code=503, request=httpx2.Request("GET", "https://example.com"))
 
             def raise_for_status():
                 if error_response.status_code in [503]:
-                    raise httpx.HTTPStatusError(
+                    raise httpx2.HTTPStatusError(
                         "Service Unavailable", request=error_response.request, response=error_response
                     )
 
             error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]
 
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
             success_response.raise_for_status = lambda: None  # type: ignore[method-assign, assignment, return-value]
 
-            with patch("httpx.AsyncClient.request") as mock_request:
+            with patch("httpx2.AsyncClient.request") as mock_request:
                 # First call returns error status code, second call succeeds
                 mock_request.side_effect = [error_response, success_response]
 
@@ -268,12 +268,12 @@ class TestAsyncRequestWithRetry:
         retry silently fell back to the default of 10 seconds.
         """
         with patch("asyncio.sleep", return_value=None):
-            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx2.Response(status_code=200, request=httpx2.Request("GET", "https://example.com"))
 
-            with patch("httpx.AsyncClient.request") as mock_request:
+            with patch("httpx2.AsyncClient.request") as mock_request:
                 # First attempt fails with a retryable error, second attempt succeeds.
                 mock_request.side_effect = [
-                    httpx.RequestError("boom", request=httpx.Request("GET", "https://example.com")),
+                    httpx2.RequestError("boom", request=httpx2.Request("GET", "https://example.com")),
                     success_response,
                 ]
 

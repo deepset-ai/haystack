@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import httpx
+import httpx2
 import pytest
 
 from haystack.utils.http_client import init_http_client
@@ -17,7 +17,7 @@ def test_init_http_client():
     client_kwargs = {"base_url": "https://example.com"}
     http_client = init_http_client(http_client_kwargs=client_kwargs)
     assert http_client is not None
-    assert isinstance(http_client, httpx.Client)
+    assert isinstance(http_client, httpx2.Client)
     assert http_client.base_url == "https://example.com"
 
 
@@ -29,7 +29,7 @@ def test_init_http_client_async():
     # test async client is initialized with http_client_kwargs
     http_async_client = init_http_client(http_client_kwargs={"base_url": "https://example.com"}, async_client=True)
     assert http_async_client is not None
-    assert isinstance(http_async_client, httpx.AsyncClient)
+    assert isinstance(http_async_client, httpx2.AsyncClient)
     assert http_async_client.base_url == "https://example.com"
 
 
@@ -46,12 +46,12 @@ def test_http_client_kwargs_with_invalid_params():
 
 
 def test_init_http_client_with_dict_limits():
-    """Test that dict limits are converted to httpx.Limits objects without AttributeError."""
+    """Test that dict limits are converted to httpx2.Limits objects without AttributeError."""
     http_client_kwargs = {"limits": {"max_connections": 100, "max_keepalive_connections": 20}}
 
     # This should not raise AttributeError: 'dict' object has no attribute 'max_connections'
     client = init_http_client(http_client_kwargs=http_client_kwargs, async_client=False)
     assert client is not None
-    assert isinstance(client, httpx.Client)
+    assert isinstance(client, httpx2.Client)
 
     client.close()

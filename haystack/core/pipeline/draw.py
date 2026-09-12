@@ -9,7 +9,7 @@ import random
 import zlib
 from typing import Any
 
-import httpx
+import httpx2
 import networkx
 
 from haystack import logging
@@ -178,7 +178,7 @@ _WEBP_SIGNATURE = b"WEBP"
 _SVG_PREFIXES = (b"<?xml", b"<svg")
 
 
-def _validate_image_response(resp: httpx.Response, params: dict[str, Any]) -> None:
+def _validate_image_response(resp: httpx2.Response, params: dict[str, Any]) -> None:
     """
     Validate that the Mermaid server response actually contains the expected image/SVG/PDF data.
 
@@ -312,7 +312,7 @@ def _to_mermaid_image(
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
-        resp = httpx.get(url, timeout=timeout)
+        resp = httpx2.get(url, timeout=timeout)
         if resp.status_code >= 400:
             logger.warning(
                 "Failed to draw the pipeline: {server_url} returned status {status_code}",

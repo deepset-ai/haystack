@@ -7,7 +7,7 @@ import logging
 import warnings
 from unittest.mock import Mock, patch
 
-import httpx
+import httpx2
 import pytest
 from PIL import Image
 
@@ -171,7 +171,7 @@ def test_image_content_from_file_path_non_existing(test_files_path, caplog):
 
 
 def test_image_content_from_url(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         with open(test_files_path / "images" / "apple.jpg", "rb") as image_file:
             image_bytes = image_file.read()
         mock_response = Mock(status_code=200, content=image_bytes, headers={"Content-Type": "image/jpeg"})
@@ -188,15 +188,15 @@ def test_image_content_from_url(test_files_path):
 
 
 def test_image_content_from_url_bad_request():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_get.side_effect = httpx.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
+        mock_get.side_effect = httpx2.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(httpx2.HTTPStatusError):
             ImageContent.from_url(url="https://non_existent_website_dot.com/image.jpg", retry_attempts=0, timeout=1)
 
 
 def test_image_content_from_url_wrong_mime_type_text():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         mock_response = Mock(status_code=200, text="a text", headers={"Content-Type": "text/plain"})
         mock_get.return_value = mock_response
 
@@ -207,7 +207,7 @@ def test_image_content_from_url_wrong_mime_type_text():
 
 
 def test_image_content_from_url_wrong_mime_type_pdf(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as pdf_file:
             pdf_bytes = pdf_file.read()
         mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})

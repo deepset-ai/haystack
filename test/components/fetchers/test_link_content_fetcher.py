@@ -5,7 +5,7 @@
 import threading
 from unittest.mock import AsyncMock, Mock, patch
 
-import httpx
+import httpx2
 import pytest
 from tenacity import wait_none
 
@@ -23,7 +23,7 @@ PDF_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/b5987a6d8d0714e
 
 @pytest.fixture
 def mock_get_link_text_content():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         mock_response = Mock(status_code=200, text="Example test response", headers={"Content-Type": "text/plain"})
         mock_get.return_value = mock_response
         yield mock_get
@@ -31,7 +31,7 @@ def mock_get_link_text_content():
 
 @pytest.fixture
 def mock_get_link_content(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
             file_bytes = f1.read()
         mock_response = Mock(status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"})
@@ -83,7 +83,7 @@ class TestLinkContentFetcher:
     def test_run_text(self):
         """Test fetching text content"""
         correct_response = b"Example test response"
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_response = Mock(status_code=200, text="Example test response", headers={"Content-Type": "text/plain"})
             mock_get.return_value = mock_response
             fetcher = LinkContentFetcher()
@@ -96,7 +96,7 @@ class TestLinkContentFetcher:
     def test_run_html(self):
         """Test fetching HTML content"""
         correct_response = b"<h1>Example test response</h1>"
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_response = Mock(
                 status_code=200, content=b"<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
             )
@@ -112,7 +112,7 @@ class TestLinkContentFetcher:
         """Test fetching binary content"""
         with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
             file_bytes = f1.read()
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_response = Mock(status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"})
             mock_get.return_value = mock_response
             fetcher = LinkContentFetcher()
@@ -127,11 +127,11 @@ class TestLinkContentFetcher:
         empty_byte_stream = b""
         fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
         mock_response = Mock(status_code=403)
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
             "403 Client Error", request=Mock(), response=mock_response
         )
 
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_get.return_value = mock_response
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
 
@@ -150,24 +150,24 @@ class TestLinkContentFetcher:
         fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=0)
 
         mock_response = Mock(status_code=403)
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
             "403 Client Error", request=Mock(), response=mock_response
         )
 
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_get.return_value = mock_response
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(httpx2.HTTPStatusError):
                 fetcher.run(["https://non_existent_website_dot.com/"])
 
     def test_run_retries_once_when_retry_attempts_is_one(self):
         url = "https://www.example.com"
         successful_response = Mock(status_code=200, text="Success", headers={"Content-Type": "text/plain"})
 
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as client_mock:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client") as client_mock:
             client = client_mock.return_value
             client.headers = {}
             client.get.side_effect = [
-                httpx.RequestError("transient failure", request=httpx.Request("GET", url)),
+                httpx2.RequestError("transient failure", request=httpx2.Request("GET", url)),
                 successful_response,
             ]
 
@@ -180,7 +180,7 @@ class TestLinkContentFetcher:
 
     def test_request_headers_merging_and_ua_override(self):
         # Patch the Client class to control the instance created by LinkContentFetcher
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client") as ClientMock:
             client = ClientMock.return_value
             client.headers = {}  # base headers used in the merge
             mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
@@ -223,12 +223,12 @@ class TestLinkContentFetcher:
                 attempts[url] = attempt + 1
             if attempt == 0:
                 # Every URL fails once, so every URL rotates once.
-                raise httpx.RequestError("simulated transient failure", request=httpx.Request("GET", url))
+                raise httpx2.RequestError("simulated transient failure", request=httpx2.Request("GET", url))
             with lock:
                 user_agent_on_success[url] = headers["User-Agent"]
             return Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
 
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client") as ClientMock:
             client = ClientMock.return_value
             client.headers = {}
             client.get.side_effect = fake_get
@@ -250,7 +250,7 @@ class TestComponentLifecycle:
     def test_sync_lifecycle(self):
         client_instance = Mock()
         with patch(
-            "haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance
+            "haystack.components.fetchers.link_content.httpx2.Client", return_value=client_instance
         ) as ClientMock:
             fetcher = LinkContentFetcher()
 
@@ -264,7 +264,7 @@ class TestComponentLifecycle:
             assert fetcher._client is None
 
     def test_warm_up_is_idempotent(self):
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client") as ClientMock:
             fetcher = LinkContentFetcher()
             fetcher.warm_up()
             fetcher.warm_up()
@@ -275,7 +275,7 @@ class TestComponentLifecycle:
         async_client_instance = Mock()
         async_client_instance.aclose = AsyncMock()
         with patch(
-            "haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance
+            "haystack.components.fetchers.link_content.httpx2.AsyncClient", return_value=async_client_instance
         ) as AsyncClientMock:
             fetcher = LinkContentFetcher()
 
@@ -290,7 +290,7 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_warm_up_async_is_idempotent(self):
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient") as AsyncClientMock:
             fetcher = LinkContentFetcher()
             await fetcher.warm_up_async()
             await fetcher.warm_up_async()
@@ -310,8 +310,8 @@ class TestComponentLifecycle:
         async_client_instance = Mock()
         async_client_instance.aclose = AsyncMock()
         with (
-            patch("haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance),
-            patch("haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance),
+            patch("haystack.components.fetchers.link_content.httpx2.Client", return_value=client_instance),
+            patch("haystack.components.fetchers.link_content.httpx2.AsyncClient", return_value=async_client_instance),
         ):
             fetcher = LinkContentFetcher()
             fetcher.warm_up()
@@ -327,7 +327,7 @@ class TestComponentLifecycle:
             client_instance.close.assert_called_once()
 
     def test_run_self_heals(self):
-        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
             mock_response = Mock(status_code=200, text="ok", headers={"Content-Type": "text/plain"})
             mock_get.return_value = mock_response
             fetcher = LinkContentFetcher()
@@ -336,7 +336,7 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_run_async_self_heals(self):
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient.get") as mock_get:
             mock_response = Mock(status_code=200, text="ok", headers={"Content-Type": "text/plain"})
             mock_get.return_value = mock_response
             fetcher = LinkContentFetcher()
@@ -423,7 +423,7 @@ class TestLinkContentFetcherIntegration:
 class TestLinkContentFetcherAsync:
     async def test_run_async(self):
         """Test basic async fetching with a mocked response"""
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient.get") as mock_get:
             mock_response = Mock(status_code=200, text="Example test response", headers={"Content-Type": "text/plain"})
             mock_get.return_value = mock_response
 
@@ -438,7 +438,7 @@ class TestLinkContentFetcherAsync:
 
     async def test_run_async_multiple(self):
         """Test async fetching of multiple URLs with mocked responses"""
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient.get") as mock_get:
             mock_response = Mock(status_code=200, text="Example test response", headers={"Content-Type": "text/plain"})
             mock_get.return_value = mock_response
 
@@ -462,9 +462,9 @@ class TestLinkContentFetcherAsync:
 
     async def test_run_async_error_handling(self):
         """Test error handling for async fetching"""
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient.get") as mock_get:
             mock_response = Mock(status_code=404)
-            mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
                 "404 Not Found", request=Mock(), response=mock_response
             )
             mock_get.return_value = mock_response
@@ -476,13 +476,13 @@ class TestLinkContentFetcherAsync:
 
             # With raise_on_failure=True
             fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=0)
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(httpx2.HTTPStatusError):
                 await fetcher.run_async(urls=["https://www.example.com"])
 
     async def test_run_async_user_agent_rotation(self):
         """Test user agent rotation in async fetching"""
         with (
-            patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get,
+            patch("haystack.components.fetchers.link_content.httpx2.AsyncClient.get") as mock_get,
             patch("asyncio.sleep") as mock_sleep,
         ):
             # Mock asyncio.sleep used by tenacity to keep this test fast
@@ -490,7 +490,7 @@ class TestLinkContentFetcherAsync:
 
             # First call raises an error to trigger user agent rotation
             first_response = Mock(status_code=403)
-            first_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            first_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
                 "403 Forbidden", request=Mock(), response=first_response
             )
 
@@ -513,7 +513,7 @@ class TestLinkContentFetcherAsync:
 
     async def test_request_headers_merging_and_ua_override(self):
         # Patch the AsyncClient class to control the instance created by LinkContentFetcher
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient") as AsyncClientMock:
             aclient = AsyncClientMock.return_value
             aclient.headers = {}  # base headers used in the merge
 
@@ -535,7 +535,7 @@ class TestLinkContentFetcherAsync:
 
     async def test_duplicated_request_headers_merging(self):
         # Patch the AsyncClient class to control the instance created by LinkContentFetcher
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+        with patch("haystack.components.fetchers.link_content.httpx2.AsyncClient") as AsyncClientMock:
             aclient = AsyncClientMock.return_value
             aclient.headers = {}  # base headers used in the merge
 
