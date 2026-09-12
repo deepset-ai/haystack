@@ -221,6 +221,32 @@ class TestMultiRetriever:
         retriever.run(query="energy", top_k=5)
         assert received.get("top_k") is None
 
+    @pytest.mark.parametrize("top_k", [-1, -3, 0])
+    def test_init_with_invalid_top_k_raises(self, top_k):
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="top_k must be > 0"):
+            MultiRetriever(retrievers=retrievers, top_k=top_k)
+
+    @pytest.mark.parametrize("top_k_per_retriever", [-1, 0])
+    def test_init_with_invalid_top_k_per_retriever_raises(self, top_k_per_retriever):
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="top_k_per_retriever must be > 0"):
+            MultiRetriever(retrievers=retrievers, top_k_per_retriever=top_k_per_retriever)
+
+    @pytest.mark.parametrize("top_k", [-1, -2, 0])
+    def test_run_with_invalid_top_k_raises(self, sample_documents, top_k):
+        # Regression: a negative top_k was used as a negative slice on the merged list, silently dropping the
+        # last documents instead of raising.
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k must be > 0"):
+            retriever.run(query="energy", top_k=top_k)
+
+    @pytest.mark.parametrize("top_k_per_retriever", [-1, 0])
+    def test_run_with_invalid_top_k_per_retriever_raises(self, sample_documents, top_k_per_retriever):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k_per_retriever must be > 0"):
+            retriever.run(query="energy", top_k_per_retriever=top_k_per_retriever)
+
     def test_run_top_k_truncates_merged_results(self, sample_documents):
         retriever = MultiRetriever(
             retrievers={
@@ -536,6 +562,20 @@ class TestMultiRetrieverAsync:
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
         assert all(doc.score is not None for doc in result["documents"])
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, 0])
+    async def test_run_async_with_invalid_top_k_raises(self, sample_documents, top_k):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k must be > 0"):
+            await retriever.run_async(query="energy", top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k_per_retriever", [-1, 0])
+    async def test_run_async_with_invalid_top_k_per_retriever_raises(self, sample_documents, top_k_per_retriever):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k_per_retriever must be > 0"):
+            await retriever.run_async(query="energy", top_k_per_retriever=top_k_per_retriever)
 
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers(self, sample_documents):

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MultiRetriever`` now validates ``top_k`` and ``top_k_per_retriever``, raising a ``ValueError`` when they are
+    not greater than 0. Previously a negative value was applied as a negative slice on the merged results, which
+    silently dropped the last documents instead of raising an error.
