@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fix ``DocumentRecallEvaluator`` and ``DocumentNDCGEvaluator`` crashes when
+    ``document_comparison_field`` points to a list or dictionary in
+    ``Document.meta``. These composite values are now compared and deduplicated
+    consistently with ``DocumentMAPEvaluator``.
