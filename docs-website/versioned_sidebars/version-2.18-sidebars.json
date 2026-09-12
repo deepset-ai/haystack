@@ -362,14 +362,11 @@
               ]
             },
             "pipeline-components/generators/amazonbedrockchatgenerator",
-            "pipeline-components/generators/amazonbedrockgenerator",
             "pipeline-components/generators/anthropicchatgenerator",
-            "pipeline-components/generators/anthropicgenerator",
             "pipeline-components/generators/anthropicvertexchatgenerator",
             "pipeline-components/generators/azureopenaichatgenerator",
             "pipeline-components/generators/azureopenaigenerator",
             "pipeline-components/generators/coherechatgenerator",
-            "pipeline-components/generators/coheregenerator",
             "pipeline-components/generators/dalleimagegenerator",
             "pipeline-components/generators/external-integrations-generators",
             "pipeline-components/generators/googleaigeminichatgenerator",
@@ -380,14 +377,11 @@
             "pipeline-components/generators/huggingfacelocalchatgenerator",
             "pipeline-components/generators/huggingfacelocalgenerator",
             "pipeline-components/generators/llamacppchatgenerator",
-            "pipeline-components/generators/llamacppgenerator",
             "pipeline-components/generators/llamastackchatgenerator",
             "pipeline-components/generators/metallamachatgenerator",
             "pipeline-components/generators/mistralchatgenerator",
             "pipeline-components/generators/nvidiachatgenerator",
-            "pipeline-components/generators/nvidiagenerator",
             "pipeline-components/generators/ollamachatgenerator",
-            "pipeline-components/generators/ollamagenerator",
             "pipeline-components/generators/openaichatgenerator",
             "pipeline-components/generators/openaigenerator",
             "pipeline-components/generators/openrouterchatgenerator",
@@ -400,8 +394,7 @@
             "pipeline-components/generators/vertexaiimagegenerator",
             "pipeline-components/generators/vertexaiimageqa",
             "pipeline-components/generators/vertexaitextgenerator",
-            "pipeline-components/generators/watsonxchatgenerator",
-            "pipeline-components/generators/watsonxgenerator"
+            "pipeline-components/generators/watsonxchatgenerator"
           ]
         },
         {

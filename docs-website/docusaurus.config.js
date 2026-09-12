@@ -257,6 +257,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             to: '/docs/tool',
           },
         ],
+        // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
+        // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
+        createRedirects(existingPath) {
+          const match = existingPath.match(
+            /^(\/docs\/(?:[\w.-]+\/)?)(amazonbedrock|anthropic|cohere|llamacpp|nvidia|ollama|togetherai|watsonx)chatgenerator$/,
+          );
+          if (match) {
+            return [`${match[1]}${match[2]}generator`];
+          }
+          return undefined;
+        },
       },
     ],
   ],
