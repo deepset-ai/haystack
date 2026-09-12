@@ -547,10 +547,12 @@ def _run_tool(
 
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
+    io_list = [_state_io_for_call(tool, tc.arguments) for tc, tool in zip(tool_calls, resolved_tools, strict=True)]
 
     # Results are indexed by call position so the returned messages stay in call order, even though batches may
     # execute the calls in a different order.
     results: list[ChatMessage | None] = [None] * len(tool_calls)
+    raw_results: list[Any] = [None] * len(tool_calls)
     stream_index = 0
 
     # Resolved once, before any tool runs, so all per-call spans of this step become siblings under the same parent.
@@ -577,17 +579,42 @@ def _run_tool(
 
             # Merge results in call order within the batch so write-write merges stay deterministic.
             for idx in batch:
+                raw_result = futures[idx].result()
                 message = _finalize_tool_result(
-                    futures[idx].result(),
+                    raw_result,
                     tool_calls[idx],
                     resolved_tools[idx],
                     state,
                     raise_on_failure=raise_on_failure,
                 )
                 results[idx] = message
+                raw_results[idx] = raw_result
                 if streaming_callback is not None:
                     streaming_callback(_create_tool_result_streaming_chunk(message, tool_calls[idx], stream_index))
                     stream_index += 1
+
+    # Write-write replay: batching only orders read-after-write dependencies, but the per-batch merge can let an
+    # earlier-indexed writer that landed in a later batch (pushed there by an unrelated dependency) overwrite a
+    # later-indexed writer. For keys with multiple writers and no same-step reader, replay the outputs in original
+    # call order so the last writer in call order wins, as the _schedule_tool_calls contract states.
+    readers: _StateKeys = set()
+    for reads, _ in io_list:
+        if reads is _ALL_STATE_KEYS:
+            readers = _ALL_STATE_KEYS
+            break
+        readers |= reads
+    if readers is not _ALL_STATE_KEYS:
+        writers_by_key: dict[str, list[int]] = {}
+        for idx, (_, writes) in enumerate(io_list):
+            for key in writes:
+                writers_by_key.setdefault(key, []).append(idx)
+        for key, writer_indices in writers_by_key.items():
+            if key in readers or len(writer_indices) < 2:
+                continue
+            for idx in writer_indices:  # already in ascending call order
+                raw_result = raw_results[idx]
+                if isinstance(raw_result, dict):
+                    _merge_tool_outputs_into_state(resolved_tools[idx], raw_result, state)
 
     tool_messages = error_messages + [m for m in results if m is not None]
 
@@ -636,10 +663,12 @@ async def _run_tool_async(
 
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
+    io_list = [_state_io_for_call(tool, tc.arguments) for tc, tool in zip(tool_calls, resolved_tools, strict=True)]
 
     # Results are indexed by call position so the returned messages stay in call order, even though batches may
     # execute the calls in a different order.
     results: list[ChatMessage | None] = [None] * len(tool_calls)
+    raw_results: list[Any] = [None] * len(tool_calls)
     stream_index = 0
 
     # `max_workers` + Semaphore bounds concurrency for both sync and async tool calls async tools are awaited directly,
@@ -675,11 +704,32 @@ async def _run_tool_async(
                 result, tool_calls[idx], resolved_tools[idx], state, raise_on_failure=raise_on_failure
             )
             results[idx] = message
+            raw_results[idx] = result
             if streaming_callback is not None:
                 await _invoke_streaming_callback(
                     streaming_callback, _create_tool_result_streaming_chunk(message, tool_calls[idx], stream_index)
                 )
                 stream_index += 1
+
+    # Write-write replay: mirror the sync path — see the comment in `_run_tool`.
+    readers: _StateKeys = set()
+    for reads, _ in io_list:
+        if reads is _ALL_STATE_KEYS:
+            readers = _ALL_STATE_KEYS
+            break
+        readers |= reads
+    if readers is not _ALL_STATE_KEYS:
+        writers_by_key: dict[str, list[int]] = {}
+        for idx, (_, writes) in enumerate(io_list):
+            for key in writes:
+                writers_by_key.setdefault(key, []).append(idx)
+        for key, writer_indices in writers_by_key.items():
+            if key in readers or len(writer_indices) < 2:
+                continue
+            for idx in writer_indices:  # already in ascending call order
+                raw_result = raw_results[idx]
+                if isinstance(raw_result, dict):
+                    _merge_tool_outputs_into_state(resolved_tools[idx], raw_result, state)
 
     tool_messages = error_messages + [m for m in results if m is not None]
 

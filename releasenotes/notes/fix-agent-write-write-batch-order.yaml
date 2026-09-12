@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the write-write merge order in Agent tool-call scheduling: when an
+    unrelated read-after-write dependency pushed one of two writers into a later
+    batch, the earlier-indexed writer could overwrite a later-indexed one, so the
+    contended state key no longer reflected the LLM's call order. Conflicting
+    outputs are now replayed in call order after all batches resolve.
