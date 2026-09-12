@@ -27,6 +27,9 @@ class ChatRole(str, Enum):
     #: The system role. A message from the system contains only text.
     SYSTEM = "system"
 
+    #: The developer role. A message from the developer contains only text.
+    DEVELOPER = "developer"
+
     #: The assistant role. A message from the assistant can contain text and Tool calls. It can also store metadata.
     ASSISTANT = "assistant"
 
@@ -285,7 +288,8 @@ class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
-    Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a ChatMessage.
+    Use the `from_assistant`, `from_user`, `from_system`, `from_developer`, and `from_tool` class methods to create a
+    ChatMessage.
     """
 
     _role: ChatRole
@@ -477,6 +481,18 @@ class ChatMessage:
         :returns: A new ChatMessage instance.
         """
         return cls(_role=ChatRole.SYSTEM, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
+
+    @classmethod
+    def from_developer(cls, text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> "ChatMessage":
+        """
+        Create a message from the developer.
+
+        :param text: The text content of the message.
+        :param meta: Additional metadata associated with the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :returns: A new ChatMessage instance.
+        """
+        return cls(_role=ChatRole.DEVELOPER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
 
     @classmethod
     def from_assistant(
@@ -828,8 +844,10 @@ class ChatMessage:
 
         if role == "user":
             return cls.from_user(text=content, name=name)
-        if role in ["system", "developer"]:
+        if role == "system":
             return cls.from_system(text=content, name=name)
+        if role == "developer":
+            return cls.from_developer(text=content, name=name)
 
         if isinstance(content, list):
             if not all("text" in el for el in content):

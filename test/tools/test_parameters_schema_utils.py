@@ -245,7 +245,7 @@ FILE_CONTENT_SCHEMA = {
 
 CHAT_ROLE_SCHEMA = {
     "description": "Enumeration representing the roles within a chat.",
-    "enum": ["user", "system", "assistant", "tool"],
+    "enum": ["user", "system", "developer", "assistant", "tool"],
     "type": "string",
 }
 

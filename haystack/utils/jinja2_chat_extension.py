@@ -365,13 +365,16 @@ class ChatMessageExtension(Extension):
                 )
             return ChatMessage.from_user(meta=meta, name=name, content_parts=valid_parts)
 
-        if role == "system":
+        if role in ["system", "developer"]:
+            role_name = role.capitalize()
             if not isinstance(parts[0], TextContent):
-                raise ValueError("System message must contain a text part.")
+                raise ValueError(f"{role_name} message must contain a text part.")
             text = parts[0].text
             if len(parts) > 1:
-                raise ValueError("System message must contain only one text part.")
-            return ChatMessage.from_system(meta=meta, name=name, text=text)
+                raise ValueError(f"{role_name} message must contain only one text part.")
+            if role == "system":
+                return ChatMessage.from_system(meta=meta, name=name, text=text)
+            return ChatMessage.from_developer(meta=meta, name=name, text=text)
 
         if role == "assistant":
             texts = [part.text for part in parts if isinstance(part, TextContent)]
