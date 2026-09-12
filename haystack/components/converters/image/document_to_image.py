@@ -113,23 +113,34 @@ class DocumentToImageContent:
         :returns:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-                data and metadata. The order corresponds to order of input documents.
+                data and metadata. The order corresponds to order of input documents. A document that cannot be
+                converted, because it is missing the required metadata keys, has an invalid file path or has an
+                unsupported MIME type, produces None in its position and a logged warning naming it, so that a
+                batch mixing convertible and unconvertible documents still returns the convertible ones.
         :raises ValueError:
-            If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-            MIME type. The error message will specify which document and what information is missing or incorrect.
+            If a document's file path escapes the configured `root_path`. This is a rejected path traversal rather
+            than a property of one document, so it is raised rather than reported per document.
         """
         if not documents:
             return {"image_contents": []}
 
         images_source_info = _extract_image_sources_info(
-            documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
+            documents=documents,
+            file_path_meta_field=self.file_path_meta_field,
+            root_path=self.root_path,
+            raise_on_failure=False,
         )
 
         image_contents: list[ImageContent | None] = [None] * len(documents)
 
         pdf_page_infos: list[_PDFPageInfo] = []
 
+        # `images_source_info` has one entry per input document, so `doc_idx` indexes `documents` and
+        # `image_contents` as well. Failed documents are None here and keep their None in the output.
         for doc_idx, image_source_info in enumerate(images_source_info):
+            if image_source_info is None:
+                continue
+
             mime_type = image_source_info["mime_type"]
             path = image_source_info["path"]
             if mime_type == "application/pdf":
