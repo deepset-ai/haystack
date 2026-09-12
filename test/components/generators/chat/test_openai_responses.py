@@ -356,6 +356,30 @@ class TestSerDe:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
+    def test_from_dict_with_component_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component_tool = ComponentTool(
+            name="message_extractor", description="Extracts messages", component=MessageExtractor()
+        )
+        generator = OpenAIResponsesChatGenerator(tools=[component_tool])
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools is not None
+        assert isinstance(deserialized_generator.tools[0], ComponentTool)
+        assert deserialized_generator.tools[0].name == "message_extractor"
+
+    def test_from_dict_with_raw_openai_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        raw_tools: list[dict[str, Any]] = [{"type": "function", "name": "custom_func", "parameters": {}}]
+        generator = OpenAIResponsesChatGenerator(tools=raw_tools)
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools == raw_tools
+
 
 @pytest.fixture
 def mock_openai_clients(monkeypatch):
