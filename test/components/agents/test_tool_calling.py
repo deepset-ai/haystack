@@ -1102,6 +1102,160 @@ class TestStateDependencyScheduling:
         _run_tool(messages=[message], state=state, tools=[reader_tool, writer_tool])
         assert seen == ["written"]
 
+    def test_write_write_across_batches_resolves_by_call_order(self):
+        """A write-write overlap must resolve by LLM call order even when an unrelated dependency splits the
+        writers into different batches (https://github.com/deepset-ai/haystack/issues/12621).
+
+        writer("shared", "A") is pushed into the second batch because it reads "dep", while writer("shared", "B")
+        runs in the first batch next to the "dep" writer. Batch-order merging would let the *first* call's write
+        land last; call order must win instead.
+        """
+
+        def dep_writer_fn():
+            return {"out": "dep-value"}
+
+        dep_writer = Tool(
+            name="dep_writer",
+            description="Writes dep.",
+            parameters={"type": "object", "properties": {}},
+            function=dep_writer_fn,
+            outputs_to_state={"dep": {"source": "out"}},
+        )
+
+        def shared_reader_writer_fn(dep):  # noqa: ARG001  <- read is what forces the later batch
+            return {"out": "A"}
+
+        shared_reader_writer = Tool(
+            name="shared_reader_writer",
+            description="Reads dep, writes shared.",
+            parameters={"type": "object", "properties": {"dep": {"type": "string"}}, "required": ["dep"]},
+            function=shared_reader_writer_fn,
+            inputs_from_state={"dep": "dep"},
+            outputs_to_state={"shared": {"source": "out"}},
+        )
+
+        state = State(schema={"dep": {"type": str}, "shared": {"type": str}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="shared_reader_writer", arguments={}),
+                ToolCall(id="2", tool_name="writer_tool", arguments={}),
+                ToolCall(id="3", tool_name="dep_writer", arguments={}),
+            ]
+        )
+        _run_tool(
+            messages=[message], state=state, tools=[shared_reader_writer, _writer_tool("shared", "B"), dep_writer]
+        )
+        assert state.get("shared") == "B"
+
+    def test_cross_batch_reader_sees_call_order_winner(self):
+        """A reader running after all writers of a contended key must observe the call-order winner, not the
+        value the intermediate per-batch merges happened to leave behind."""
+
+        seen = []
+
+        def shared_reader_fn(shared):
+            seen.append(shared)
+            return {"out": "ok"}
+
+        shared_reader = Tool(
+            name="shared_reader",
+            description="Reads shared.",
+            parameters={"type": "object", "properties": {"shared": {"type": "string"}}},
+            function=shared_reader_fn,
+            inputs_from_state={"shared": "shared"},
+        )
+
+        def dep_writer_fn():
+            return {"out": "dep-value"}
+
+        dep_writer = Tool(
+            name="dep_writer",
+            description="Writes dep.",
+            parameters={"type": "object", "properties": {}},
+            function=dep_writer_fn,
+            outputs_to_state={"dep": {"source": "out"}},
+        )
+
+        def shared_reader_writer_fn(dep):  # noqa: ARG001
+            return {"out": "A"}
+
+        shared_reader_writer = Tool(
+            name="shared_reader_writer",
+            description="Reads dep, writes shared.",
+            parameters={"type": "object", "properties": {"dep": {"type": "string"}}, "required": ["dep"]},
+            function=shared_reader_writer_fn,
+            inputs_from_state={"dep": "dep"},
+            outputs_to_state={"shared": {"source": "out"}},
+        )
+
+        state = State(schema={"dep": {"type": str}, "shared": {"type": str}, "done": {"type": str}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="shared_reader_writer", arguments={}),
+                ToolCall(id="2", tool_name="writer_tool", arguments={}),
+                ToolCall(id="3", tool_name="dep_writer", arguments={}),
+                ToolCall(id="4", tool_name="shared_reader", arguments={}),
+            ]
+        )
+        _run_tool(
+            messages=[message],
+            state=state,
+            tools=[shared_reader_writer, _writer_tool("shared", "B"), dep_writer, shared_reader],
+        )
+        assert seen == ["B"]
+        assert state.get("shared") == "B"
+
+    def test_cross_batch_accumulating_writes_merge_in_call_order(self):
+        """Accumulating state handlers must collect cross-batch writes in call order too: batch-order
+        concatenation would reverse the LLM's sequence."""
+
+        append = lambda old, new: (old or []) + new  # noqa: E731
+
+        def dep_reader_writer_fn(dep):  # noqa: ARG001
+            return {"out": ["first"]}
+
+        dep_reader_writer = Tool(
+            name="dep_reader_writer",
+            description="Reads dep, appends to items.",
+            parameters={"type": "object", "properties": {"dep": {"type": "string"}}, "required": ["dep"]},
+            function=dep_reader_writer_fn,
+            inputs_from_state={"dep": "dep"},
+            outputs_to_state={"items": {"source": "out", "handler": append}},
+        )
+
+        def second_writer_fn():
+            return {"out": ["second"]}
+
+        second_writer = Tool(
+            name="second_writer",
+            description="Appends to items.",
+            parameters={"type": "object", "properties": {}},
+            function=second_writer_fn,
+            outputs_to_state={"items": {"source": "out", "handler": append}},
+        )
+
+        def dep_writer_fn():
+            return {"out": "dep-value"}
+
+        dep_writer = Tool(
+            name="dep_writer",
+            description="Writes dep.",
+            parameters={"type": "object", "properties": {}},
+            function=dep_writer_fn,
+            outputs_to_state={"dep": {"source": "out"}},
+        )
+
+        state = State(schema={"dep": {"type": str}, "items": {"type": list[str]}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="dep_reader_writer", arguments={}),
+                ToolCall(id="2", tool_name="second_writer", arguments={}),
+                ToolCall(id="3", tool_name="dep_writer", arguments={}),
+            ]
+        )
+        _run_tool(messages=[message], state=state, tools=[dep_reader_writer, second_writer, dep_writer])
+        assert state.get("items") == ["first", "second"]
+
 
 class TestRunToolAsync:
     @pytest.mark.asyncio
@@ -1117,6 +1271,46 @@ class TestRunToolAsync:
 
         to_thread_mock.assert_not_called()
         assert json.loads(tool_messages[0].tool_call_results[0].result)["weather"] == "mostly sunny"
+
+    @pytest.mark.asyncio
+    async def test_write_write_across_batches_resolves_by_call_order(self):
+        """Async variant of the cross-batch write-write ordering regression (#12621)."""
+
+        def dep_writer_fn():
+            return {"out": "dep-value"}
+
+        dep_writer = Tool(
+            name="dep_writer",
+            description="Writes dep.",
+            parameters={"type": "object", "properties": {}},
+            function=dep_writer_fn,
+            outputs_to_state={"dep": {"source": "out"}},
+        )
+
+        def shared_reader_writer_fn(dep):  # noqa: ARG001
+            return {"out": "A"}
+
+        shared_reader_writer = Tool(
+            name="shared_reader_writer",
+            description="Reads dep, writes shared.",
+            parameters={"type": "object", "properties": {"dep": {"type": "string"}}, "required": ["dep"]},
+            function=shared_reader_writer_fn,
+            inputs_from_state={"dep": "dep"},
+            outputs_to_state={"shared": {"source": "out"}},
+        )
+
+        state = State(schema={"dep": {"type": str}, "shared": {"type": str}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="shared_reader_writer", arguments={}),
+                ToolCall(id="2", tool_name="writer_tool", arguments={}),
+                ToolCall(id="3", tool_name="dep_writer", arguments={}),
+            ]
+        )
+        _, state = await _run_tool_async(
+            messages=[message], state=state, tools=[shared_reader_writer, _writer_tool("shared", "B"), dep_writer]
+        )
+        assert state.get("shared") == "B"
 
     @pytest.mark.asyncio
     async def test_sync_tool_is_dispatched_to_thread(self, weather_tool):
