@@ -106,6 +106,10 @@ class DocumentMRREvaluator:
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high the first retrieved
                 document is ranked.
         """
+        if len(ground_truth_documents) == 0 or len(retrieved_documents) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
