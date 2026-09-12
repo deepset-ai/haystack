@@ -42,6 +42,29 @@ class TestMemoryBM25Retriever:
         with pytest.raises(ValueError):
             InMemoryBM25Retriever(in_memory_doc_store, top_k=-2)
 
+    @pytest.mark.parametrize("top_k", [-1, -3, 0])
+    def test_run_with_invalid_top_k_parameter(self, in_memory_doc_store, mock_docs, top_k):
+        # Regression: a negative runtime top_k was passed straight to the document store, which used it as a
+        # negative slice and silently returned fewer documents instead of raising.
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            retriever.run(query="Java", top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, 0])
+    async def test_run_async_with_invalid_top_k_parameter(self, in_memory_doc_store, mock_docs, top_k):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            await retriever.run_async(query="Java", top_k=top_k)
+
+    def test_run_with_valid_top_k_returns_that_many_documents(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        result = retriever.run(query="popular", top_k=3)
+        assert len(result["documents"]) == 3
+
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()

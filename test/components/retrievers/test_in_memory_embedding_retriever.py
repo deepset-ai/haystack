@@ -33,6 +33,36 @@ class TestMemoryEmbeddingRetriever:
         with pytest.raises(ValueError):
             InMemoryEmbeddingRetriever(in_memory_doc_store, top_k=-2)
 
+    @pytest.mark.parametrize("top_k", [-1, -3, 0])
+    def test_run_with_invalid_top_k_parameter(self, top_k):
+        # Regression: a negative runtime top_k was passed straight to the document store, which used it as a
+        # negative slice and silently returned fewer documents instead of raising.
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+                Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+                Document(content="third document", embedding=[0.5, 0.7, 0.5, 0.7]),
+            ]
+        )
+        retriever = InMemoryEmbeddingRetriever(ds)
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            retriever.run(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, 0])
+    async def test_run_async_with_invalid_top_k_parameter(self, top_k):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+                Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            ]
+        )
+        retriever = InMemoryEmbeddingRetriever(ds)
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            await retriever.run_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
+
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
