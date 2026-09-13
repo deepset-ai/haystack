@@ -92,6 +92,63 @@ def test_chunk_text_by_period():
     assert chunks[2] == " And one more."
 
 
+def test_chunk_text_by_regex_separator():
+    splitter = RecursiveDocumentSplitter(split_length=10, split_overlap=0, separators=[r"\s+"], split_unit="char")
+    text = "one two three four five"
+
+    chunks = splitter._chunk_text(text)
+
+    assert chunks == ["one two ", "three ", "four five"]
+
+
+def test_chunk_text_by_regex_separator_word_unit():
+    splitter = RecursiveDocumentSplitter(split_length=6, split_overlap=0, separators=[r"\n{2,}"], split_unit="word")
+    text = "one two three four\n\nfive six seven eight nine ten"
+
+    chunks = splitter._chunk_text(text)
+
+    assert chunks == ["one two three four\n\n", "five six seven eight nine ten"]
+
+
+def test_chunk_text_by_zero_width_regex_separator():
+    splitter = RecursiveDocumentSplitter(split_length=3, split_overlap=0, separators=[r"(?=a)"], split_unit="char")
+    text = "a long text"
+
+    chunks = splitter._chunk_text(text)
+
+    assert chunks
+    assert all(chunks)
+    assert "".join(chunks) == text
+
+
+def test_run_with_zero_width_header_regex_separator():
+    splitter = RecursiveDocumentSplitter(
+        split_length=1, split_overlap=0, separators=[r"(?m)(?=^#{1,6}\s)"], split_unit="word"
+    )
+    text = "# Header\nbody text"
+
+    document_chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert document_chunks
+    contents: list[str] = []
+    for document in document_chunks:
+        content = document.content
+        assert content
+        contents.append(content)
+    assert "".join(contents) == text
+
+
+def test_chunk_text_by_regex_separator_with_capturing_group():
+    splitter = RecursiveDocumentSplitter(
+        split_length=12, split_overlap=0, separators=[r"\s+(and|or)\s+"], split_unit="char"
+    )
+    text = "one and two or three"
+
+    chunks = splitter._chunk_text(text)
+
+    assert chunks == ["one and ", "two or three"]
+
+
 def test_run_multiple_new_lines_unit_char():
     splitter = RecursiveDocumentSplitter(split_length=18, separators=["\n\n", "\n"], split_unit="char")
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
