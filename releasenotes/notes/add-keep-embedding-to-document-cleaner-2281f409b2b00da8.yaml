@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    ``DocumentCleaner`` now sets ``embedding`` and ``sparse_embedding`` to ``None`` by default
+    on cleaned documents instead of copying vectors calculated on the uncleaned text. Users who
+    need to preserve existing embeddings across cleaning should pass ``keep_embedding=True``.
+enhancements:
+  - |
+    Add ``keep_embedding`` parameter to ``DocumentCleaner``. When set to ``False`` (the default),
+    both dense and sparse embeddings are cleared because the content has changed.
+    Set ``keep_embedding=True`` to retain the original embeddings on cleaned documents.

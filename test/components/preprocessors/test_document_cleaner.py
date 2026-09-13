@@ -8,6 +8,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentCleaner
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.dataclasses import ByteStream, SparseEmbedding
 
 
@@ -21,6 +22,7 @@ class TestDocumentCleaner:
         assert cleaner.remove_regex is None
         assert cleaner.keep_id is False
         assert cleaner.min_content_length == 0
+        assert cleaner.keep_embedding is False
 
     def test_init_rejects_negative_min_content_length(self):
         with pytest.raises(ValueError, match="min_content_length must be greater than or equal to 0"):
@@ -256,7 +258,7 @@ class TestDocumentCleaner:
         assert result["documents"][0].content == expected_text
 
     def test_other_document_fields_are_not_lost(self):
-        cleaner = DocumentCleaner(keep_id=True)
+        cleaner = DocumentCleaner(keep_id=True, keep_embedding=True)
         document = Document(
             content="This is a text with some words. \nThere is a second sentence. \nAnd there is a third sentence.\n",
             blob=ByteStream.from_string("some_data"),
@@ -278,6 +280,37 @@ class TestDocumentCleaner:
         assert res["documents"][0].score == document.score
         assert res["documents"][0].embedding == document.embedding
         assert res["documents"][0].sparse_embedding == document.sparse_embedding
+
+    def test_embeddings_are_dropped_by_default(self):
+        cleaner = DocumentCleaner(keep_id=True)
+        document = Document(
+            content="This is a text with some words.",
+            embedding=[0.1, 0.2, 0.3],
+            sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+        )
+        res = cleaner.run(documents=[document])
+        assert res["documents"][0].embedding is None
+        assert res["documents"][0].sparse_embedding is None
+
+    def test_keep_embedding_preserves_both_vectors(self):
+        cleaner = DocumentCleaner(keep_id=True, keep_embedding=True)
+        document = Document(
+            content="This is a text with some words.",
+            embedding=[0.1, 0.2, 0.3],
+            sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+        )
+        res = cleaner.run(documents=[document])
+        assert res["documents"][0].embedding == [0.1, 0.2, 0.3]
+        assert res["documents"][0].sparse_embedding == SparseEmbedding([0, 2], [0.1, 0.3])
+
+    def test_keep_embedding_none_content_is_unaffected(self):
+        cleaner = DocumentCleaner(keep_embedding=False)
+        document = Document(
+            content=None, embedding=[0.1, 0.2, 0.3], sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3])
+        )
+        res = cleaner.run(documents=[document])
+        assert res["documents"][0].embedding == [0.1, 0.2, 0.3]
+        assert res["documents"][0].sparse_embedding == SparseEmbedding([0, 2], [0.1, 0.3])
 
     def test_strip_whitespaces(self):
         """Test that strip_whitespaces removes only leading and trailing whitespace."""
@@ -366,3 +399,14 @@ This is a paragraph.
         result = cleaner.run(documents=[Document(content=content)])
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == " content.\f content."
+
+    def test_to_dict(self):
+        cleaner = DocumentCleaner(keep_embedding=True)
+        data = component_to_dict(cleaner, name="cleaner")
+        assert data["init_parameters"]["keep_embedding"] is True
+
+    def test_from_dict(self):
+        cleaner = DocumentCleaner(keep_embedding=True)
+        data = component_to_dict(cleaner, name="cleaner")
+        deserialized = component_from_dict(DocumentCleaner, data=data, name="cleaner")
+        assert deserialized.keep_embedding is True

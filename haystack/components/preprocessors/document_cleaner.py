@@ -52,6 +52,8 @@ class DocumentCleaner:
         strip_whitespaces: bool = False,
         replace_regexes: dict[str, str] | None = None,
         min_content_length: int = 0,
+        *,
+        keep_embedding: bool = False,
     ) -> None:
         """
         Initialize DocumentCleaner.
@@ -78,6 +80,9 @@ class DocumentCleaner:
             This is applied after `remove_regex` and allows custom replacements instead of just removal.
         :param min_content_length: Minimum length of the cleaned document content after stripping leading and trailing
             whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
+        :param keep_embedding: If `True`, preserves the `embedding` and `sparse_embedding` of the document.
+            If `False` (default), clears them to `None` because the content has been modified and existing
+            embeddings no longer match the cleaned text.
         """
 
         self._validate_params(unicode_normalization=unicode_normalization)
@@ -95,6 +100,7 @@ class DocumentCleaner:
         self.strip_whitespaces = strip_whitespaces
         self.replace_regexes = replace_regexes
         self.min_content_length = min_content_length
+        self.keep_embedding = keep_embedding
 
     def _validate_params(self, unicode_normalization: str | None) -> None:
         """
@@ -170,8 +176,8 @@ class DocumentCleaner:
                 blob=doc.blob,
                 meta=deepcopy(doc.meta),
                 score=doc.score,
-                embedding=doc.embedding,
-                sparse_embedding=doc.sparse_embedding,
+                embedding=doc.embedding if self.keep_embedding else None,
+                sparse_embedding=doc.sparse_embedding if self.keep_embedding else None,
             )
             cleaned_docs.append(clean_doc)
 
