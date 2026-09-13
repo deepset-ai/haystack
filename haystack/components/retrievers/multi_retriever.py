@@ -313,12 +313,16 @@ class MultiRetriever:
         if resolved_filters is not None:
             run_kwargs["filters"] = resolved_filters
 
+        # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
+        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
-            try:
-                result = await _execute_component_async(retriever, **run_kwargs)
-                return result.get("documents", [])
-            except Exception as e:
-                raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
+            async with semaphore:
+                try:
+                    result = await _execute_component_async(retriever, **run_kwargs)
+                    return result.get("documents", [])
+                except Exception as e:
+                    raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         tasks = [asyncio.create_task(_run_one(name, retriever)) for name, retriever in retrievers_to_run.items()]
         document_lists = await _gather_tasks_with_cancel(tasks)
