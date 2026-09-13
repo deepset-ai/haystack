@@ -128,6 +128,7 @@ class JSONConverter:
         :param content_key:
             Optional key to extract document content.
             If `jq_schema` is specified, the `content_key` will be extracted from that object.
+            Numbers and booleans are converted to strings. JSON null values are preserved as `None`.
         :param extra_meta_fields:
             An optional set of meta keys to extract from the content.
             If `jq_schema` is specified, all keys will be extracted from that object.
@@ -176,7 +177,7 @@ class JSONConverter:
         """
         return default_from_dict(cls, data)
 
-    def _get_content_and_meta(self, source: ByteStream) -> list[tuple[str, dict[str, Any]]]:
+    def _get_content_and_meta(self, source: ByteStream) -> list[tuple[str | None, dict[str, Any]]]:
         """
         Utility function to extract text and metadata from a JSON file.
 
@@ -244,7 +245,7 @@ class JSONConverter:
                 else:
                     for field in meta_fields:
                         meta[field] = obj.get(field, None)
-                result.append((text, meta))
+                result.append((str(text) if text is not None else None, meta))
         else:
             for obj in objects:
                 if isinstance(obj, (dict, list)):

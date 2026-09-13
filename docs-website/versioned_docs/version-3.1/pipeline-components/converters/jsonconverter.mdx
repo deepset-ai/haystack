@@ -39,6 +39,8 @@ The `content_key` parameter lets you specify which key in the extracted data wil
 - If only `jq_schema` is set, the extracted value must be scalar; objects or arrays will be skipped.
 - If only `content_key` is set, the source must be a JSON object, or it will be skipped.
 
+In version 3.1, values selected by `content_key` must be strings or `null`. Numeric and boolean values raise a `ValueError`; convert them to strings in your JSON data or `jq_schema` before extraction. JSON `null` is preserved as `None`.
+
 Check out the [API reference](/reference/converters-api#jsonconverter) for the full list of parameters.
 
 ## Usage
