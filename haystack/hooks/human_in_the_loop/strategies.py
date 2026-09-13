@@ -636,13 +636,11 @@ def _update_chat_history(
     """
     Update the chat history to include rejection messages and tool call messages at the appropriate positions.
 
-    Steps:
-    1. Identify the last user message and the last tool message in the current chat history.
-    2. Determine the insertion point as the maximum index of these two messages.
-    3. Create a new chat history that includes:
-       - All messages up to the insertion point.
+    The pending tool calls are on the last message of the chat history, so only that message is replaced, by:
        - Any rejection messages (pairs of tool call and tool call result messages).
        - Any tool call messages for confirmed or modified tool calls, including user messages explaining modifications.
+
+    Every earlier message is kept, including messages added after the last user or tool message by other hooks.
 
     :param chat_history: The current chat history.
     :param rejection_messages: Chat messages to add for rejected tool calls (pairs of tool call and tool call result
@@ -652,15 +650,7 @@ def _update_chat_history(
     :returns:
         The updated chat history.
     """
-    user_indices = [i for i, message in enumerate(chat_history) if message.is_from("user")]
-    tool_indices = [i for i, message in enumerate(chat_history) if message.is_from("tool")]
-
-    last_user_idx = max(user_indices) if user_indices else -1
-    last_tool_idx = max(tool_indices) if tool_indices else -1
-
-    insertion_point = max(last_user_idx, last_tool_idx)
-
-    return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
+    return chat_history[:-1] + rejection_messages + tool_call_and_explanation_messages
 
 
 def _serialize_confirmation_strategies(
