@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `SuperComponent.run_async` now returns outputs mapped from components that are not leaves of the wrapped
+    pipeline, like `run` does. Before, an output that was also consumed inside the pipeline, such as
+    `retriever.documents` feeding a prompt builder, was silently missing from the async result. This also
+    affected a `PipelineTool` run by `Agent.run_async`, whose `outputs_to_state` got nothing for such outputs.
