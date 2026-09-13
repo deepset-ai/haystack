@@ -63,14 +63,16 @@ class Secret(ABC):
         """
         Create an environment variable-based secret. Accepts one or more environment variables.
 
-        Upon resolution, it returns a string token from the first environment variable that is set.
+        Upon resolution, it returns a string token from the first environment variable that is set
+        to a non-empty value. Empty or whitespace-only values are treated as unset so they do not
+        block fallback to later candidates.
 
         :param env_vars:
             A single environment variable or an ordered list of
             candidate environment variables.
         :param strict:
             Whether to raise an exception if none of the environment
-            variables are set.
+            variables are set to a non-empty value.
         """
         if isinstance(env_vars, str):
             env_vars = [env_vars]
@@ -181,7 +183,9 @@ class EnvVarSecret(Secret):
     """
     A secret that accepts one or more environment variables.
 
-    Upon resolution, it returns a string token from the first environment variable that is set. Can be serialized.
+    Upon resolution, it returns a string token from the first environment variable
+    that is set to a non-empty value. Empty or whitespace-only values are treated
+    as unset. Can be serialized.
     """
 
     _env_vars: tuple[str, ...]
@@ -207,7 +211,7 @@ class EnvVarSecret(Secret):
         out = None
         for env_var in self._env_vars:
             value = os.getenv(env_var)
-            if value is not None:
+            if value is not None and value.strip():
                 out = value
                 break
         if out is None and self._strict:

@@ -85,3 +85,22 @@ def test_env_var_secret():
         secret._strict = False  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
         secret._type = SecretType.TOKEN  # type: ignore[misc]
+
+
+def test_env_var_secret_treats_blank_values_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TEST_ENV_VAR_BLANK", "")
+    monkeypatch.setenv("TEST_ENV_VAR_SPACES", "   ")
+    monkeypatch.setenv("TEST_ENV_VAR_FALLBACK", "real-token")
+
+    blank_strict = Secret.from_env_var("TEST_ENV_VAR_BLANK", strict=True)
+    with pytest.raises(ValueError, match="None of the following .* variables are set"):
+        blank_strict.resolve_value()
+
+    blank_optional = Secret.from_env_var("TEST_ENV_VAR_BLANK", strict=False)
+    assert blank_optional.resolve_value() is None
+
+    whitespace_optional = Secret.from_env_var("TEST_ENV_VAR_SPACES", strict=False)
+    assert whitespace_optional.resolve_value() is None
+
+    fallback = Secret.from_env_var(["TEST_ENV_VAR_BLANK", "TEST_ENV_VAR_FALLBACK"], strict=True)
+    assert fallback.resolve_value() == "real-token"
