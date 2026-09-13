@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    ``TextFileToDocument``, ``CSVToDocument``, ``MarkdownToDocument`` and
+    ``MultiFileConverter`` now default to ``utf-8-sig`` instead of ``utf-8``, so a
+    UTF-8 byte order mark (BOM) is stripped rather than leaking into
+    ``Document.content`` as a zero-width character. ``utf-8-sig`` decodes plain
+    UTF-8 identically, so files without a BOM are unaffected.
+  - |
+    ``JSONConverter`` no longer silently skips UTF-8 files that start with a byte
+    order mark. The file content is now decoded with ``utf-8-sig`` and the
+    converter accepts an ``encoding`` parameter, matching the other converters.
+    Previously the ``UnicodeError`` was caught and logged as a warning, so a BOM
+    file was dropped from the pipeline without raising - three input files could
+    produce two documents with no error.
