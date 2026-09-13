@@ -34,6 +34,7 @@ class CSVDocumentCleaner:
         remove_empty_rows: bool = True,
         remove_empty_columns: bool = True,
         keep_id: bool = False,
+        keep_embedding: bool = False,
     ) -> None:
         """
         Initializes the CSVDocumentCleaner component.
@@ -43,6 +44,9 @@ class CSVDocumentCleaner:
         :param remove_empty_rows: Whether to remove rows that are entirely empty.
         :param remove_empty_columns: Whether to remove columns that are entirely empty.
         :param keep_id: Whether to retain the original document ID in the output document.
+        :param keep_embedding: If `True`, preserves the `embedding` and `sparse_embedding` of the document.
+            If `False` (default), clears them to `None` because the content is re-serialized during cleaning
+            and existing embeddings no longer match the cleaned text.
 
         Rows and columns ignored using these parameters are preserved in the final output, meaning
         they are not considered when removing empty rows and columns.
@@ -52,6 +56,7 @@ class CSVDocumentCleaner:
         self.remove_empty_rows = remove_empty_rows
         self.remove_empty_columns = remove_empty_columns
         self.keep_id = keep_id
+        self.keep_embedding = keep_embedding
         pandas_import.check()
 
     @component.output_types(documents=list[Document])
@@ -112,8 +117,8 @@ class CSVDocumentCleaner:
                 blob=document.blob,
                 meta=deepcopy(document.meta),
                 score=document.score,
-                embedding=document.embedding,
-                sparse_embedding=document.sparse_embedding,
+                embedding=document.embedding if self.keep_embedding else None,
+                sparse_embedding=document.sparse_embedding if self.keep_embedding else None,
             )
             cleaned_documents.append(clean_doc)
         return {"documents": cleaned_documents}
