@@ -225,6 +225,17 @@ class TestOutputAdapter:
         assert result["output"] == [1, 2, 3]
         assert isinstance(result["output"], list)
 
+    def test_union_string_output_type_preserved_over_literal_eval(self):
+        # When output_type is a Union containing str (e.g., str | None), a rendered string
+        # that looks like a Python literal should still be preserved as a string.
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="42")
+        assert result["output"] == "42"
+        assert isinstance(result["output"], str)
+
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="None")
+        assert result["output"] == "None"
+        assert isinstance(result["output"], str)
+
     def test_unsafe(self):
         adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
         documents = [
