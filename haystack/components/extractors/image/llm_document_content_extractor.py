@@ -350,7 +350,9 @@ class LLMDocumentContentExtractor:
 
         Returns (updated_document, True if success else False).
         """
-        if "error" in result:
+        # Internal failure dicts carry no "replies" key, while generator outputs always
+        # do; checking "replies" avoids treating a generator's own "error" field as a failure.
+        if "replies" not in result:
             new_meta = {**document.meta, "extraction_error": result["error"]}
             return replace(document, meta=new_meta), False
 
