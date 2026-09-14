@@ -97,9 +97,9 @@
 | haystack/components/preprocessors/hierarchical\_document\_splitter.py     |       60 |        0 |    100% |           |
 | haystack/components/preprocessors/markdown\_header\_splitter.py           |      166 |        6 |     96% |251-252, 266-267, 318, 377 |
 | haystack/components/preprocessors/python\_code\_splitter.py               |      291 |       15 |     95% |151, 163, 191, 198, 232, 281, 309-311, 412-414, 416, 529, 597 |
-| haystack/components/preprocessors/recursive\_splitter.py                  |      239 |       19 |     92% |149-152, 194-196, 237-239, 255-257, 277, 399, 405-408 |
+| haystack/components/preprocessors/recursive\_splitter.py                  |      241 |       19 |     92% |165-168, 210-212, 253-255, 271-273, 293, 415, 421-424 |
 | haystack/components/preprocessors/sentence\_tokenizer.py                  |       83 |        5 |     94% |62-63, 70-75, 215 |
-| haystack/components/preprocessors/text\_cleaner.py                        |       29 |        0 |    100% |           |
+| haystack/components/preprocessors/text\_cleaner.py                        |       31 |        0 |    100% |           |
 | haystack/components/query/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
 | haystack/components/query/query\_expander.py                              |      137 |       10 |     93% |274-275, 279, 289-290, 297-303, 314-317 |
 | haystack/components/rankers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17231** |  **751** | **96%** |           |
+| **TOTAL**                                                                 | **17235** |  **751** | **96%** |           |
 
 
 ## Setup coverage badge
