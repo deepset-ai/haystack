@@ -772,3 +772,14 @@ def test_document_matches_filter_raises_error(filters):
 def test_document_matches_filter_unknown_operator_error_message(filters, expected_message):
     with pytest.raises(FilterError, match=expected_message):
         document_matches_filter(filters, Document(meta={"page": 10}))
+
+
+def test_dotted_field_with_unknown_root_is_treated_as_missing():
+    # A dotted field whose root is not a Document attribute must be treated as a missing field
+    # (matching the documented "treat it as None" behavior and non-dotted unknown fields),
+    # not raise AttributeError.
+    document = Document(content="test", meta={"name": "test"})
+    assert document_matches_filter({"field": "typo.x", "operator": "==", "value": 1}, document) is False
+    assert document_matches_filter({"field": "typo.x", "operator": "!=", "value": 1}, document) is True
+    not_filter = {"operator": "NOT", "conditions": [{"field": "typo.x", "operator": "==", "value": 1}]}
+    assert document_matches_filter(not_filter, document) is True
