@@ -137,6 +137,16 @@ class TestDocumentRecallEvaluatorSingleHit:
                 retrieved_documents=[[Document(content="Berlin")]],
             )
 
+    def test_run_with_empty_inputs(self, evaluator):
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[])
+
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="Berlin")]])
+
     def test_to_dict(self, evaluator):
         data = evaluator.to_dict()
         assert data == {
@@ -266,6 +276,16 @@ class TestDocumentRecallEvaluatorMultiHit:
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )
+
+    def test_run_with_empty_inputs(self, evaluator):
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[])
+
+        with pytest.raises(ValueError, match="ground_truth_documents and retrieved_documents must be provided"):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="Berlin")]])
 
     def test_to_dict(self, evaluator):
         data = evaluator.to_dict()

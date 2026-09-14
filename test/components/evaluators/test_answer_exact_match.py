@@ -71,3 +71,15 @@ def test_run_with_different_lengths():
 
     with pytest.raises(ValueError):
         evaluator.run(ground_truth_answers=["Berlin", "Paris"], predicted_answers=["Berlin"])
+
+
+def test_run_with_empty_inputs():
+    evaluator = AnswerExactMatchEvaluator()
+    with pytest.raises(ValueError, match="ground_truth_answers and predicted_answers must be provided"):
+        evaluator.run(ground_truth_answers=[], predicted_answers=[])
+
+    with pytest.raises(ValueError, match="ground_truth_answers and predicted_answers must be provided"):
+        evaluator.run(ground_truth_answers=["Berlin"], predicted_answers=[])
+
+    with pytest.raises(ValueError, match="ground_truth_answers and predicted_answers must be provided"):
+        evaluator.run(ground_truth_answers=[], predicted_answers=["Berlin"])
