@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    `RecursiveDocumentSplitter` and `TextCleaner` now keep their init parameters when serialized, for example in a
-    pipeline saved with `Pipeline.dumps()`. Before, `RecursiveDocumentSplitter` wrote `split_unit: word` whatever
+    ``RecursiveDocumentSplitter`` and ``TextCleaner`` now keep their init parameters when serialized, for example in a
+    pipeline saved with ``Pipeline.dumps()``. Before, ``RecursiveDocumentSplitter`` wrote ``split_unit: word`` whatever
     unit it was created with, so a reloaded splitter configured for characters or tokens counted words instead.
-    A reloaded `TextCleaner` lost all of its options and returned the texts unchanged.
+    A reloaded ``TextCleaner`` lost all of its options and returned the texts unchanged.
