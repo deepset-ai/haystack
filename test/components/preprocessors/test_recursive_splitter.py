@@ -121,6 +121,15 @@ def test_chunk_text_by_zero_width_regex_separator():
     assert "".join(chunks) == text
 
 
+def test_chunk_text_by_zero_width_regex_separator_in_middle():
+    splitter = RecursiveDocumentSplitter(split_length=10, split_overlap=0, separators=[r"(?=a)"], split_unit="char")
+    text = "prefix a suffix"
+
+    chunks = splitter._chunk_text(text)
+
+    assert chunks == ["prefix ", "a suffix"]
+
+
 def test_run_with_zero_width_header_regex_separator():
     splitter = RecursiveDocumentSplitter(
         split_length=1, split_overlap=0, separators=[r"(?m)(?=^#{1,6}\s)"], split_unit="word"
