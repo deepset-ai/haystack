@@ -176,6 +176,10 @@ class DocumentRecallEvaluator:
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
+        if len(ground_truth_documents) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
         if self.mode == RecallMode.SINGLE_HIT:
             mode_function = self._recall_single_hit
         elif self.mode == RecallMode.MULTI_HIT:

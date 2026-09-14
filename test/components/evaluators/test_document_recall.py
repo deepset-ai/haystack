@@ -321,3 +321,10 @@ class TestDocumentRecallEvaluatorMultiHit:
             retrieved_documents=[[Document(meta={"file_id": "f1"})]],
         )
         assert result == {"individual_scores": [1.0], "score": 1.0}
+
+
+def test_run_with_empty_input():
+    for mode in (RecallMode.SINGLE_HIT, RecallMode.MULTI_HIT):
+        evaluator = DocumentRecallEvaluator(mode=mode)
+        with pytest.raises(ValueError, match="must be provided"):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[])

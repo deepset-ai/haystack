@@ -150,3 +150,9 @@ def test_run_with_different_lengths():
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
         )
+
+
+def test_run_with_empty_input():
+    evaluator = DocumentMRREvaluator()
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
