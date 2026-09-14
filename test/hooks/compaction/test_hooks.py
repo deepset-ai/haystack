@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
 import pytest
 
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
+from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
+from haystack.hooks import Hook, HookPoint
 from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCompactor, ToolResultPruningCompactor
 from haystack.hooks.compaction.hooks import _estimated_context_tokens
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _last_assistant_index
@@ -81,9 +83,17 @@ class _RecordingCompactor(Compactor):
     async def close_async(self) -> None:
         self.calls.append("close_async")
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
 
-def _hook(compactor=None, **overrides) -> CompactionHook:
-    settings = {"context_window": WINDOW, "compact_at": 0.7, "compact_to": 0.4, "token_counter": FakeCounter()}
+
+def _hook(compactor: Compactor | None = None, **overrides: Any) -> CompactionHook:
+    settings: dict[str, Any] = {
+        "context_window": WINDOW,
+        "compact_at": 0.7,
+        "compact_to": 0.4,
+        "token_counter": FakeCounter(),
+    }
     return CompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
 
 
@@ -92,7 +102,7 @@ def _fetch_call(call_id: str) -> ChatMessage:
     return tool_call(call_id, name="fetch", arguments={"topic": "haystack"})
 
 
-def _agent(hooks) -> Agent:
+def _agent(hooks: dict[HookPoint, list[Hook]] | None) -> Agent:
     return Agent(
         chat_generator=MockChatGenerator(
             responses=[_fetch_call("c1"), _fetch_call("c2"), _fetch_call("c3"), "done"], meta=USAGE_META
@@ -350,7 +360,12 @@ class TestCompactionHook:
             tool_call("recent"),
             tool_result("recent result " * 400, call_id="recent"),
         ]
-        settings = {"context_window": 2000, "compact_at": 0.5, "compact_to": 0.1, "token_counter": counter}
+        settings: dict[str, Any] = {
+            "context_window": 2000,
+            "compact_at": 0.5,
+            "compact_to": 0.1,
+            "token_counter": counter,
+        }
         pruning_hook = CompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings)
         sliding_window_hook = CompactionHook(compactor=SlidingWindowCompactor(), **settings)
         # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
