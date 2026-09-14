@@ -74,9 +74,10 @@ class RecursiveDocumentSplitter:
             `split_unit`) between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
             If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
-        :param separators: An optional list of separator strings to use for splitting the text. The string
-            separators will be treated as regular expressions unless the separator is "sentence", in that case the
-            text will be split into sentences using a custom sentence tokenizer based on NLTK.
+        :param separators: An optional list of separator strings to use for splitting the text. Multi-character
+            separators will be treated as regular expressions, while single-character separators are treated
+            literally for backwards compatibility. If the separator is "sentence", the text will be split into
+            sentences using a custom sentence tokenizer based on NLTK.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter.
             If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
         :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
@@ -309,24 +310,34 @@ class RecursiveDocumentSplitter:
             return [text]
 
         for curr_separator in self.separators:
+            splits: list[str]
             if curr_separator == "sentence":
                 # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
-                # add escape "\" to the separator and wrapped it in a group so that it's included in the splits as well
-                escaped_separator = re.escape(curr_separator)
-                escaped_separator = f"({escaped_separator})"
+                # Keep single-character separators literal for backwards compatibility, while allowing
+                # multi-character separators to use regular expression syntax.
+                separator_pattern = re.escape(curr_separator) if len(curr_separator) == 1 else curr_separator
 
-                # split the text and merge every two consecutive splits, i.e.: the text and the separator after it
-                splits = re.split(escaped_separator, text)
-                splits = [
-                    "".join([splits[i], splits[i + 1]]) if i < len(splits) - 1 else splits[i]
-                    for i in range(0, len(splits), 2)
-                ]
+                # Use match spans instead of re.split so capturing groups in the user-provided separator do not
+                # affect how the separator is kept with the text preceding it.
+                splits = []
+                split_start = 0
+                for match in re.finditer(separator_pattern, text):
+                    if match.start() == match.end():
+                        # Zero-width matches split before the match but must not create empty splits or repeat the
+                        # same recursive call when the match is at the beginning of the text.
+                        if match.start() > split_start:
+                            splits.append(text[split_start : match.start()])
+                            split_start = match.start()
+                        continue
 
-                # remove last split if it's empty
-                splits = splits[:-1] if splits[-1] == "" else splits
+                    splits.append(text[split_start : match.end()])
+                    split_start = match.end()
+
+                if split_start < len(text) or not splits:
+                    splits.append(text[split_start:])
 
             if len(splits) == 1:  # go to next separator, if current separator not found in the text
                 continue

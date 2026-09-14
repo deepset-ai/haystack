@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` now honors regular-expression syntax in
+    multi-character separators, such as ``\s+``, while preserving the
+    existing literal behavior of single-character separators.
