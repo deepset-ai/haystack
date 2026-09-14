@@ -1,0 +1,131 @@
+---
+title: "YouComWebSearch"
+id: youcomwebsearch
+slug: "/youcomwebsearch"
+description: "Search engine using the You.com Search API, with an optional keyless free tier."
+---
+
+# YouComWebSearch
+
+Search the web using the You.com Search API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | None. Falls back to You.com's keyless free tier. Set `YOUDOTCOM_API_KEY` (or pass `api_key`) for higher rate limits. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result content. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [You.com Search API](/reference/integrations-youcom) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/youcom/src/haystack_integrations/components/websearch/youcom/youcom_websearch.py |
+| **Package name** | `youcom-haystack` |
+
+</div>
+
+## Overview
+
+When you give `YouComWebSearch` a query, it uses the [You.com Search API](https://you.com/docs/api-reference/search/v1-search) to search the web and return relevant content as Haystack `Document` objects. It also returns a list of the source URLs.
+
+Unlike most other websearch components, `YouComWebSearch` works with zero configuration: when no API key is available, it searches using You.com's [keyless free tier](https://you.com/docs/api-reference/search/v1-agents-search) (rate limited per IP), so getting-started pipelines can run without any setup. Set the `YOUDOTCOM_API_KEY` environment variable (or pass `api_key`) to use the keyed API instead, with higher limits.
+
+Pass `keyless_fallback=False` to require a key and fail fast with a `YouComError` instead of silently degrading to the keyless tier — useful in production pipelines where a missing key should surface as an error.
+
+You can configure the search with:
+
+- `top_k`: Maximum number of results to return per section (web, news). Maps to the `count` parameter in the You.com API (1-100).
+- `freshness`: Only return results from within a given window: `"day"`, `"week"`, `"month"`, `"year"`, or a date range in the format `"YYYY-MM-DDtoYYYY-MM-DD"`.
+- `country`: 2-letter country code determining the geographical focus of web results (e.g. `"US"`, `"DE"`).
+- `search_lang`: Language of the returned web results in BCP 47 format (e.g. `"EN"`, `"PT-BR"`). Maps to the `language` parameter in the You.com API.
+- `safesearch`: Content moderation level: `"off"`, `"moderate"`, or `"strict"`.
+- `extra_params`: Additional query parameters passed directly to the You.com Search API (e.g. `{"include_domains": "nytimes.com,bbc.com"}`).
+- `timeout`: Timeout in seconds for the HTTP request. Defaults to 10.
+- `max_retries`: Maximum number of retry attempts on transient failures. Defaults to 3.
+
+All of these can be overridden for a single search by passing `top_k` to `run()`.
+
+`YouComWebSearch` also supports asynchronous execution through `run_async()`.
+
+## Usage
+
+Install the `youcom-haystack` package to use the `YouComWebSearch` component:
+
+```shell
+pip install youcom-haystack
+```
+
+### On its own
+
+Here is a quick example of how `YouComWebSearch` searches the web based on a query and returns a list of Documents. No API key is needed to get started.
+
+```python
+from haystack_integrations.components.websearch.youcom import YouComWebSearch
+
+web_search = YouComWebSearch(top_k=5)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.content)
+```
+
+To use the keyed API with higher rate limits, and fail fast instead of falling back to the keyless tier when no key is available:
+
+```python
+from haystack_integrations.components.websearch.youcom import YouComWebSearch
+from haystack.utils import Secret
+
+web_search = YouComWebSearch(
+    api_key=Secret.from_env_var("YOUDOTCOM_API_KEY"),
+    keyless_fallback=False,
+    top_k=5,
+)
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline that uses `YouComWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.websearch.youcom import YouComWebSearch
+from haystack.dataclasses import ChatMessage
+
+web_search = YouComWebSearch(top_k=3)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```

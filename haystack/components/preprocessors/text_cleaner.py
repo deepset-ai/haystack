@@ -6,7 +6,7 @@ import re
 import string
 from typing import Any
 
-from haystack import component
+from haystack import component, default_to_dict
 
 
 @component
@@ -60,6 +60,21 @@ class TextCleaner:
             to_remove += string.digits
 
         self._translator = str.maketrans("", "", to_remove) if to_remove else None
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            remove_regexps=self._remove_regexps,
+            convert_to_lowercase=self._convert_to_lowercase,
+            remove_punctuation=self._remove_punctuation,
+            remove_numbers=self._remove_numbers,
+        )
 
     @component.output_types(texts=list[str])
     def run(self, texts: list[str]) -> dict[str, Any]:

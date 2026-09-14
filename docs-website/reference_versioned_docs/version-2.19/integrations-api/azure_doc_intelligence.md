@@ -84,6 +84,14 @@ warm_up() -> None
 
 Initializes the Azure Document Intelligence client.
 
+#### close
+
+```python
+close() -> None
+```
+
+Close the Azure Document Intelligence client.
+
 #### run
 
 ```python

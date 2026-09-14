@@ -45,6 +45,17 @@ class TestFileTypeRouter:
         with pytest.raises(ValueError):
             FileTypeRouter(mime_types=[])
 
+    @pytest.mark.parametrize("reserved", ["unclassified", "failed"])
+    def test_init_rejects_reserved_output_name(self, reserved: str) -> None:
+        with pytest.raises(ValueError, match=f"'{reserved}'.*reserved"):
+            FileTypeRouter(mime_types=[reserved, "text/plain"])
+
+    def test_from_dict_rejects_reserved_output_name(self):
+        data = FileTypeRouter(mime_types=["text/plain"]).to_dict()
+        data["init_parameters"]["mime_types"] = ["unclassified", "text/plain"]
+        with pytest.raises(ValueError, match="'unclassified'.*reserved"):
+            FileTypeRouter.from_dict(data)
+
     def test_to_dict(self):
         router = FileTypeRouter(
             mime_types=["text/plain", "audio/x-wav", "image/jpeg"],
@@ -173,6 +184,21 @@ class TestFileTypeRouter:
         assert isinstance(output[r"text/plain"][0], ByteStream)
         assert output[r"text/plain"][0].meta["foo"] == "bar"
         assert output[r"text/plain"][0].meta["another_key"] == "another_value"
+
+    def test_run_with_meta_does_not_mutate_input_bytestreams(self):
+        """
+        Test that meta passed to run() lands on the routed ByteStream without touching the caller's one.
+        """
+
+        bs = ByteStream.from_string("Haystack!", mime_type="text/plain", meta={"foo": "bar"})
+        router = FileTypeRouter(mime_types=[r"text/plain"])
+
+        output = router.run(sources=[bs], meta={"another_key": "another_value"})
+
+        routed = output[r"text/plain"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.meta == {"foo": "bar", "another_key": "another_value"}
+        assert bs.meta == {"foo": "bar"}
 
     def test_run_fails_if_meta_length_does_not_match_sources(self, test_files_path):
         """
