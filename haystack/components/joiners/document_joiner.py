@@ -106,7 +106,10 @@ class DocumentJoiner:
             Assign importance to each list of documents to influence how they're joined.
             This parameter is ignored for
             `concatenate` or `distribution_based_rank_fusion` join modes.
-            Weight for each list of documents must match the number of inputs.
+            Weights are applied in `Pipeline.connect()` / sender order (not component
+            execution or arrival order). The length must match the number of connected
+            senders; missing senders (for example a skipped ConditionalRouter branch)
+            are treated as empty lists.
         :param top_k:
             The maximum number of documents to return. Must be `None` or greater than 0.
         :param sort_by_score:
