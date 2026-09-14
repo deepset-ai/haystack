@@ -22,6 +22,20 @@ from haystack.utils.type_serialization import _is_union_type
 logger = logging.getLogger(__name__)
 
 
+def _output_type_accepts_str(output_type: Any) -> bool:
+    """
+    Returns True if `str` is a valid value for `output_type`.
+
+    Either `output_type` is `str` itself, or `output_type` is a Union (e.g. `str | None`,
+    `Optional[str]`) that includes `str` as a member.
+    """
+    if output_type is str:
+        return True
+    if _is_union_type(get_origin(output_type)):
+        return str in get_args(output_type)
+    return False
+
+
 class NoRouteSelectedException(Exception):
     """Exception raised when no route is selected in ConditionalRouter."""
 
@@ -463,7 +477,7 @@ class ConditionalRouter:
                         # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
                         # another type, which would violate the declared output_type.
                         with contextlib.suppress(Exception):
-                            if not self._unsafe and output_type is not str:
+                            if not self._unsafe and not _output_type_accepts_str(output_type):
                                 output_value = ast.literal_eval(output_value)
 
                     # Validate output type if needed
