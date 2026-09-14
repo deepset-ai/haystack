@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Preserve the OpenAI ``developer`` role in ``ChatMessage`` OpenAI
+    round-trips. Added ``ChatRole.DEVELOPER`` and a ``ChatMessage.from_developer``
+    constructor, and ``from_openai_dict_format`` now maps ``developer`` messages
+    to the new role instead of silently collapsing them to ``system``.
+    ``to_openai_dict_format`` emits ``developer`` for such messages.
