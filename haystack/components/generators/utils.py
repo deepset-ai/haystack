@@ -183,10 +183,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             usage = chunk_usage
             break
 
-    # A provider can close a stream without emitting a single chunk. Everything above already
-    # handles that (joining an empty list, iterating an empty list, the `if finish_reasons else`
-    # guard), so only these two positional reads would raise -- turning an empty completion into
-    # an IndexError several frames away from the provider that produced it.
     first_chunk_meta = chunks[0].meta if chunks else {}
     last_chunk_meta = chunks[-1].meta if chunks else {}
 
