@@ -82,7 +82,7 @@
 | haystack/components/generators/openai\_image\_generator.py                |       80 |        0 |    100% |           |
 | haystack/components/generators/utils.py                                   |       95 |        9 |     91% |69, 83, 129, 162-163, 198, 214, 216, 218 |
 | haystack/components/joiners/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/joiners/answer\_joiner.py                             |       57 |        1 |     98% |       159 |
+| haystack/components/joiners/answer\_joiner.py                             |       57 |        1 |     98% |       164 |
 | haystack/components/joiners/branch.py                                     |       20 |        3 |     85% |105, 116-117 |
 | haystack/components/joiners/document\_joiner.py                           |      102 |        0 |    100% |           |
 | haystack/components/joiners/list\_joiner.py                               |       23 |        0 |    100% |           |
