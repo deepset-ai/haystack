@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable, Iterable
 from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
 from haystack.dataclasses import ChatMessage
 
@@ -107,7 +107,7 @@ def _type_name(type_: Any) -> str:
     return f"{name}"
 
 
-def _safe_get_origin(_type: type | UnionType) -> Any:
+def _safe_get_origin(_type: Any) -> Any:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 
@@ -123,7 +123,29 @@ def _safe_get_origin(_type: type | UnionType) -> Any:
     # So we convert UnionType to Union if it is detected.
     if origin is UnionType:
         origin = Union
+    # `Annotated[T, m1, m2, ...]` is the same type as `T` for type-checking purposes — the metadata
+    # is just an annotation, not a type modifier. `get_origin(Annotated[T, ...])` returns `Annotated`
+    # (not `T`), so unwrap to the wrapped type (recursively, for nested Annotated). Without this,
+    # `Annotated[int, "doc"]` would not be considered compatible with `int` and a component socket
+    # declared as `Annotated[int, "doc"]` could not be connected to one declared as `int`.
+    while origin is Annotated:
+        _type = get_args(_type)[0]
+        origin = get_origin(_type) or (_type if isinstance(_type, type) else None)
     return origin
+
+
+def _unwrap_annotated(_type: Any) -> Any:
+    """
+    Strip one or more ``Annotated[...]`` wrappers and return the underlying type.
+
+    ``Annotated[T, m1, m2, ...]`` is the same type as ``T`` for type-checking purposes — the metadata
+    is annotation, not a type modifier. This is a small helper that does the same unwrap as
+    ``_safe_get_origin`` but returns the full type object (not just the origin), so callers that need
+    to use ``get_args`` on the result can do so without seeing the metadata as a type arg.
+    """
+    while get_origin(_type) is Annotated:
+        _type = get_args(_type)[0]
+    return _type
 
 
 def _contains_type(container: Any, target: Any) -> bool:
@@ -144,6 +166,15 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     :param receiver: The receiver type.
     :return: True if the sender type is strictly compatible with the receiver type, False otherwise.
     """
+    # `Annotated[T, m1, m2, ...]` is the same type as `T` for type-checking purposes — the metadata is
+    # just an annotation, not a type modifier. Unwrap both sides so the rest of the function works on
+    # the underlying types. Without this, `get_args(Annotated[int, "x"])` returns `(int, "x")` and the
+    # generic-args comparison below would see a 2-arg sender against a 0-arg receiver (int) and reject
+    # the pair. _safe_get_origin does the same unwrap; we also need it here because the rest of this
+    # function uses `get_args` directly.
+    sender = _unwrap_annotated(sender)
+    receiver = _unwrap_annotated(receiver)
+
     if sender == receiver or receiver is Any:
         return True
 
