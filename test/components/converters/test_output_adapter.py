@@ -225,6 +225,28 @@ class TestOutputAdapter:
         assert result["output"] == [1, 2, 3]
         assert isinstance(result["output"], list)
 
+    def test_optional_str_output_type_preserved_over_literal_eval(self):
+        # PR review (deepset-ai/haystack#12626) found that gating literal_eval purely on the
+        # declared output_type (skip when str is a possible type) breaks the None round-trip for
+        # output_type=str | None. The corrected approach evaluates the literal first, then only
+        # keeps the evaluated result if ITS type actually matches output_type -- otherwise the
+        # original string is kept. This preserves "42" as a string here...
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="42")
+        assert result["output"] == "42"
+        assert isinstance(result["output"], str)
+
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="1,000")
+        assert result["output"] == "1,000"
+        assert isinstance(result["output"], str)
+
+    def test_optional_str_output_type_none_round_trips_correctly(self):
+        # ...while still correctly restoring an actual None when the rendered value is "None"
+        # and None is a valid member of the declared Union -- this is the exact regression a
+        # maintainer caught in review: the naive "skip eval whenever str is possible" approach
+        # broke this case by returning the string "None" instead of the real None object.
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply=None)
+        assert result["output"] is None
+
     def test_unsafe(self):
         adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
         documents = [
