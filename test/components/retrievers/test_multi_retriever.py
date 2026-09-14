@@ -633,6 +633,30 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "async1"
 
+    @pytest.mark.asyncio
+    async def test_run_async_bounds_concurrency_to_max_workers(self):
+        state = {"current": 0, "peak": 0}
+
+        @component
+        class TrackingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                state["current"] += 1
+                state["peak"] = max(state["peak"], state["current"])
+                await asyncio.sleep(0.02)
+                state["current"] -= 1
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={f"r{i}": TrackingRetriever() for i in range(8)}, max_workers=2)
+        await retriever.run_async(query="energy")
+
+        assert state["peak"] <= 2
+        assert state["peak"] > 1  # the retrievers do overlap; they are not serialized
+
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
