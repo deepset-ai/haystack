@@ -19,6 +19,27 @@ from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 
 
 class TestLLMDocumentContentExtractor:
+    def test_generator_output_with_error_key_is_not_treated_as_failure(self):
+        """A generator whose output dict includes an "error" field must not fail the document."""
+
+        class ErrorKeyChatGenerator:
+            def run(self, messages, **kwargs):
+                return {"replies": [ChatMessage.from_assistant("extracted text")], "error": None}
+
+        extractor = LLMDocumentContentExtractor(chat_generator=ErrorKeyChatGenerator())
+
+        with patch.object(DocumentToImageContent, "run") as mock_convert:
+            mock_convert.return_value = {
+                "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+            }
+            doc = Document(content="", meta={"file_path": "/path/to/image.pdf"})
+            result = extractor.run(documents=[doc])
+
+        assert result["failed_documents"] == []
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "extracted text"
+        assert "extraction_error" not in result["documents"][0].meta
+
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
