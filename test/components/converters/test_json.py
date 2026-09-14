@@ -578,3 +578,51 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         "and for his related discovery of nuclear reactions brought about by slow neutrons"
     )
     assert result["documents"][3].meta == {"id": "46", "firstname": "Enrico", "surname": "Fermi", "share": "1"}
+
+
+def test_run_utf8_with_bom(tmp_path: Path) -> None:
+    """
+    A JSON file saved as UTF-8 with a byte order mark must still be converted.
+
+    Before this was fixed the decode raised UnicodeError, which was caught and turned
+    into a warning, so the file was skipped and the document silently disappeared from
+    the output. In an indexing pipeline that means a document missing from the corpus
+    with no error raised anywhere. The BOM is in the bytes, so this is not platform
+    specific.
+    """
+    path = tmp_path / "bom.json"
+    path.write_text(json.dumps({"content": "bravo"}), encoding="utf-8-sig")
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(path)])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "bravo"
+
+
+def test_run_utf8_with_bom_is_not_silently_skipped(tmp_path: Path) -> None:
+    """A BOM-encoded source must not be dropped from a batch of otherwise valid sources."""
+    plain_a = tmp_path / "a.json"
+    plain_a.write_text(json.dumps({"content": "alpha"}), encoding="utf-8")
+    with_bom = tmp_path / "b.json"
+    with_bom.write_text(json.dumps({"content": "bravo"}), encoding="utf-8-sig")
+    plain_c = tmp_path / "c.json"
+    plain_c.write_text(json.dumps({"content": "charlie"}), encoding="utf-8")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(plain_a), str(with_bom), str(plain_c)])[
+        "documents"
+    ]
+
+    assert [document.content for document in documents] == ["alpha", "bravo", "charlie"]
+
+
+def test_run_utf8_without_bom_is_unchanged(tmp_path: Path) -> None:
+    """Reading plain UTF-8 JSON must keep working, including non-ASCII content."""
+    path = tmp_path / "plain.json"
+    path.write_text(json.dumps({"content": "café 日本語"}, ensure_ascii=False), encoding="utf-8")
+    assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(path)])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "café 日本語"
