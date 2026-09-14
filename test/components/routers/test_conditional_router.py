@@ -398,6 +398,37 @@ class TestRouter:
         assert result["reply"] == [1, 2, 3]
         assert isinstance(result["reply"], list)
 
+    def test_union_str_output_type_preserved_over_literal_eval(self):
+        # A Union output_type that includes str (e.g. str | None, a normal way to declare an optional
+        # string output) must be treated like a plain str output_type: a rendered string that happens to be
+        # a valid Python literal must not be silently coerced to another type.
+        routes: list[Route] = [
+            {
+                "condition": "{{ True }}",
+                "output": "{{ reply }}",
+                "output_name": "reply",
+                # A PEP 604 union is not a `type`, but `conditional_router.py` has an explicit branch for
+                # union output types, so `Route.output_type` is narrower than the real contract.
+                "output_type": str | None,  # type: ignore[typeddict-item]
+            }
+        ]
+        result = ConditionalRouter(routes, validate_output_type=True).run(reply="42")
+        assert result["reply"] == "42"
+        assert isinstance(result["reply"], str)
+
+        # Non-str Union members must still reconstruct structured literals from the rendered string.
+        routes = [
+            {
+                "condition": "{{ True }}",
+                "output": "{{ reply }}",
+                "output_name": "reply",
+                "output_type": list | None,  # type: ignore[typeddict-item]
+            }
+        ]
+        result = ConditionalRouter(routes, validate_output_type=True).run(reply="[1, 2, 3]")
+        assert result["reply"] == [1, 2, 3]
+        assert isinstance(result["reply"], list)
+
     def test_sede_with_custom_filter(self):
         routes: list[Route] = [
             {
