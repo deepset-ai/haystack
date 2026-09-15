@@ -5,7 +5,7 @@
 import logging
 from typing import Any
 
-import httpx
+import httpx2
 from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # NOTE: this uses the standard library logger (not `haystack.logging`) on purpose: tenacity's `before_log`/`after_log`
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def request_with_retry(
     attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any
-) -> httpx.Response:
+) -> httpx2.Response:
     """
     Executes an HTTP request with a configurable exponential backoff retry on failures.
 
@@ -53,9 +53,9 @@ def request_with_retry(
         List of HTTP status codes that will trigger a retry.
         When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
     :param kwargs:
-        Optional arguments that `httpx.Client.request` accepts.
+        Optional arguments that `httpx2.Client.request` accepts.
     :returns:
-        The `httpx.Response` object.
+        The `httpx2.Response` object.
     """
 
     if status_codes_to_retry is None:
@@ -67,13 +67,13 @@ def request_with_retry(
     @retry(
         reraise=True,
         wait=wait_exponential(),
-        retry=retry_if_exception_type((httpx.HTTPError, TimeoutError)),
+        retry=retry_if_exception_type((httpx2.HTTPError, TimeoutError)),
         stop=stop_after_attempt(attempts),
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    def run() -> httpx.Response:
-        with httpx.Client() as client:
+    def run() -> httpx2.Response:
+        with httpx2.Client() as client:
             res = client.request(**kwargs, timeout=timeout)
 
             if res.status_code in status_codes_to_retry:
@@ -91,7 +91,7 @@ def request_with_retry(
 
 async def async_request_with_retry(
     attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any
-) -> httpx.Response:
+) -> httpx2.Response:
     """
     Executes an asynchronous HTTP request with a configurable exponential backoff retry on failures.
 
@@ -165,9 +165,9 @@ async def async_request_with_retry(
         List of HTTP status codes that will trigger a retry.
         When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
     :param kwargs:
-        Optional arguments that `httpx.AsyncClient.request` accepts.
+        Optional arguments that `httpx2.AsyncClient.request` accepts.
     :returns:
-        The `httpx.Response` object.
+        The `httpx2.Response` object.
     """
 
     if status_codes_to_retry is None:
@@ -179,13 +179,13 @@ async def async_request_with_retry(
     @retry(
         reraise=True,
         wait=wait_exponential(),
-        retry=retry_if_exception_type((httpx.HTTPError, TimeoutError)),
+        retry=retry_if_exception_type((httpx2.HTTPError, TimeoutError)),
         stop=stop_after_attempt(attempts),
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    async def run() -> httpx.Response:
-        async with httpx.AsyncClient() as client:
+    async def run() -> httpx2.Response:
+        async with httpx2.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)
 
             if res.status_code in status_codes_to_retry:

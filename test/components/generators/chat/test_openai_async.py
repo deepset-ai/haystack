@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
+import httpx2
 import pytest
 from openai import AsyncOpenAI, AsyncStream, OpenAIError
 from openai.types.chat import (
@@ -113,7 +113,7 @@ class TestOpenAIChatGeneratorAsync:
 
     async def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        requests: list[httpx.Request] = []
+        requests: list[httpx2.Request] = []
         # trimmed capture of a real /chat/completions response
         completion = {
             "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
@@ -124,13 +124,13 @@ class TestOpenAIChatGeneratorAsync:
             "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
         }
 
-        async def handler(request: httpx.Request) -> httpx.Response:
+        async def handler(request: httpx2.Request) -> httpx2.Response:
             requests.append(request)
-            return httpx.Response(200, json=completion)
+            return httpx2.Response(200, json=completion)
 
         component = OpenAIChatGenerator(
             http_client_kwargs={
-                "transport": httpx.MockTransport(handler),
+                "transport": httpx2.MockTransport(handler),
                 "cookies": {"session": "abc"},
                 "follow_redirects": False,
             }

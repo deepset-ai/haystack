@@ -10,7 +10,7 @@ from dataclasses import replace
 from fnmatch import fnmatch
 from typing import Any, cast
 
-import httpx
+import httpx2
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from haystack import component, logging
@@ -19,7 +19,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.version import __version__
 
 # HTTP/2 support via lazy import
-with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
+with LazyImport("Run 'pip install httpx2[http2]' to use HTTP/2 support") as h2_import:
     pass  # nothing to import as we simply set the http2 attribute, library handles the rest
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
     return {keymap[kl]: v for kl, v in merged.items()}
 
 
-def _text_content_handler(response: httpx.Response) -> ByteStream:
+def _text_content_handler(response: httpx2.Response) -> ByteStream:
     """
     Handles text content.
 
@@ -63,7 +63,7 @@ def _text_content_handler(response: httpx.Response) -> ByteStream:
     return ByteStream.from_string(response.text)
 
 
-def _binary_content_handler(response: httpx.Response) -> ByteStream:
+def _binary_content_handler(response: httpx2.Response) -> ByteStream:
     """
     Handles binary content.
 
@@ -132,8 +132,8 @@ class LinkContentFetcher:
         :param retry_attempts: The number of times to retry to fetch the URL's content.
         :param timeout: Timeout in seconds for the request.
         :param http2: Whether to enable HTTP/2 support for requests. Defaults to False.
-                     Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
-        :param client_kwargs: Additional keyword arguments to pass to the httpx client.
+                     Requires the 'h2' package to be installed (via `pip install httpx2[http2]`).
+        :param client_kwargs: Additional keyword arguments to pass to the httpx2 client.
                      If `None`, default values are used.
         :param request_headers: Additional headers to send with every request. These take precedence over the
                      component's default headers but not over the rotating `User-Agent`.
@@ -150,12 +150,12 @@ class LinkContentFetcher:
         self.client_kwargs.setdefault("timeout", timeout)
         self.client_kwargs.setdefault("follow_redirects", True)
 
-        # httpx clients are built lazily in warm_up / warm_up_async (resource lifecycle)
-        self._client: httpx.Client | None = None
-        self._async_client: httpx.AsyncClient | None = None
+        # httpx2 clients are built lazily in warm_up / warm_up_async (resource lifecycle)
+        self._client: httpx2.Client | None = None
+        self._async_client: httpx2.AsyncClient | None = None
 
         # register default content handlers that extract data from the response
-        self.handlers: dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
+        self.handlers: dict[str, Callable[[httpx2.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
         self.handlers["text/*"] = _text_content_handler
         self.handlers["text/html"] = _binary_content_handler
         self.handlers["application/json"] = _text_content_handler
@@ -164,7 +164,7 @@ class LinkContentFetcher:
         self.handlers["audio/*"] = _binary_content_handler
         self.handlers["video/*"] = _binary_content_handler
 
-    def _get_response(self, url: str) -> httpx.Response:
+    def _get_response(self, url: str) -> httpx2.Response:
         """
         Gets a response from a URL, rotating the user agent on every failed attempt.
 
@@ -172,7 +172,7 @@ class LinkContentFetcher:
         component would be advanced and reset by whichever fetches happen to be in flight at the same time.
 
         :param url: The URL to fetch.
-        :returns: The httpx Response object.
+        :returns: The httpx2 Response object.
         """
         user_agent_idx = 0
 
@@ -185,11 +185,11 @@ class LinkContentFetcher:
             reraise=True,
             stop=stop_after_attempt(self.retry_attempts + 1),
             wait=wait_exponential(multiplier=1, min=2, max=10),
-            retry=(retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError))),
+            retry=(retry_if_exception_type((httpx2.HTTPStatusError, httpx2.RequestError))),
             # This callback is invoked only after failed requests (exception raised)
             after=rotate_user_agent,
         )
-        def get_response(url: str) -> httpx.Response:
+        def get_response(url: str) -> httpx2.Response:
             assert self._client is not None  # mypy: client is built by warm_up before run
             response = self._client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
             response.raise_for_status()
@@ -199,7 +199,7 @@ class LinkContentFetcher:
 
     def _build_client_kwargs(self) -> dict[str, Any]:
         """
-        Build the keyword arguments used to construct the httpx clients.
+        Build the keyword arguments used to construct the httpx2 clients.
 
         Resolves optional HTTP/2 support, downgrading to HTTP/1.1 if the 'h2' package is not installed.
         """
@@ -213,7 +213,7 @@ class LinkContentFetcher:
             except ImportError:
                 logger.warning(
                     "HTTP/2 support requested but 'h2' package is not installed. "
-                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
+                    "Falling back to HTTP/1.1. Install with `pip install httpx2[http2]` to enable HTTP/2 support."
                 )
                 self.http2 = False  # Update the setting to match actual capability
 
@@ -221,21 +221,21 @@ class LinkContentFetcher:
 
     def warm_up(self) -> None:
         """
-        Initializes the synchronous httpx client.
+        Initializes the synchronous httpx2 client.
         """
         if self._client is None:
-            self._client = httpx.Client(**self._build_client_kwargs())
+            self._client = httpx2.Client(**self._build_client_kwargs())
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Initializes the asynchronous httpx client on the serving event loop.
+        Initializes the asynchronous httpx2 client on the serving event loop.
         """
         if self._async_client is None:
-            self._async_client = httpx.AsyncClient(**self._build_client_kwargs())
+            self._async_client = httpx2.AsyncClient(**self._build_client_kwargs())
 
     def close(self) -> None:
         """
-        Releases the synchronous httpx client.
+        Releases the synchronous httpx2 client.
         """
         if self._client is not None:
             self._client.close()
@@ -243,7 +243,7 @@ class LinkContentFetcher:
 
     async def close_async(self) -> None:
         """
-        Releases the asynchronous httpx client.
+        Releases the asynchronous httpx2 client.
         """
         if self._async_client is not None:
             await self._async_client.aclose()
@@ -380,13 +380,13 @@ class LinkContentFetcher:
         return {"content_type": content_type, "url": url}, stream
 
     async def _fetch_async(
-        self, url: str, client: httpx.AsyncClient
+        self, url: str, client: httpx2.AsyncClient
     ) -> tuple[dict[str, str] | None, ByteStream | None]:
         """
         Asynchronously fetches content from a URL and returns it as a ByteStream.
 
         :param url: The URL to fetch content from.
-        :param client: The async httpx client to use for making requests.
+        :param client: The async httpx2 client to use for making requests.
         :returns: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
         """
         content_type: str = "text/html"
@@ -428,13 +428,13 @@ class LinkContentFetcher:
         else:
             return self._fetch(url)
 
-    async def _get_response_async(self, url: str, client: httpx.AsyncClient) -> httpx.Response:
+    async def _get_response_async(self, url: str, client: httpx2.AsyncClient) -> httpx2.Response:
         """
         Asynchronously gets a response from a URL with retry logic.
 
         :param url: The URL to fetch.
-        :param client: The async httpx client to use for making requests.
-        :returns: The httpx Response object.
+        :param client: The async httpx2 client to use for making requests.
+        :returns: The httpx2 Response object.
         """
         attempt = 0
         last_exception = None
@@ -447,7 +447,7 @@ class LinkContentFetcher:
                 response = await client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
                 response.raise_for_status()
                 return response
-            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            except (httpx2.HTTPStatusError, httpx2.RequestError) as e:
                 last_exception = e
                 attempt += 1
                 if attempt <= self.retry_attempts:
@@ -463,9 +463,9 @@ class LinkContentFetcher:
             raise last_exception
 
         # This should never happen, but just in case
-        raise httpx.RequestError("Failed to get response after retries", request=None)
+        raise httpx2.RequestError("Failed to get response after retries", request=None)
 
-    def _get_content_type(self, response: httpx.Response) -> str:
+    def _get_content_type(self, response: httpx2.Response) -> str:
         """
         Get the content type of the response.
 
@@ -475,7 +475,7 @@ class LinkContentFetcher:
         content_type = response.headers.get("Content-Type", "")
         return content_type.split(";")[0]
 
-    def _resolve_handler(self, content_type: str) -> Callable[[httpx.Response], ByteStream]:
+    def _resolve_handler(self, content_type: str) -> Callable[[httpx2.Response], ByteStream]:
         """
         Resolves the handler for the given content type.
 
