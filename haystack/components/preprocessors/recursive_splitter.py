@@ -479,15 +479,34 @@ class RecursiveDocumentSplitter:
             new_docs.append(new_doc)
             # Advance current_position by chunk length minus overlap.
             # split_overlap is in split_units, not chars, so get the actual
-            # overlap string from _get_overlap() and use its char length.
+            # overlap string from _get_overlap() and measure where it sits in the chunk.
             if self.split_overlap > 0 and split_nr < len(chunks) - 1:
                 overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
-                overlap_char_len = len(overlap_str)
+                overlap_char_len = self._overlap_char_length(chunk, overlap_str)
             else:
                 overlap_char_len = 0
             current_position += len(chunk) - overlap_char_len
 
         return new_docs
+
+    def _overlap_char_length(self, chunk: str, overlap: str) -> int:
+        """
+        Return how many characters at the end of `chunk` are covered by `overlap`.
+
+        In word mode the overlap is rebuilt by joining the last words with single spaces, so its length does not
+        include the whitespace that follows those words in the chunk (for example the trailing separator). The next
+        chunk starts at the first overlapping word, so measure from there to the end of the chunk instead.
+
+        :param chunk: The chunk the overlap was taken from.
+        :param overlap: The overlap string returned by `_get_overlap`.
+        :returns: The number of characters of `chunk`, counted from its end, that the overlap covers.
+        """
+        if self.split_units == "word":
+            n_overlap_words = len(overlap.split())
+            word_starts = [match.start() for match in re.finditer(r"\S+", chunk)]
+            if 0 < n_overlap_words <= len(word_starts):
+                return len(chunk) - word_starts[-n_overlap_words]
+        return len(overlap)
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
