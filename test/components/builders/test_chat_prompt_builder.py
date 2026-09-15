@@ -68,6 +68,16 @@ class TestChatPromptBuilder:
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
+    def test_developer_message_variables_are_inferred_and_rendered(self):
+        builder = ChatPromptBuilder(template=[ChatMessage.from_developer("Answer in {{ language }}")])
+
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+        assert "language" in inputs
+
+        result = builder.run(language="English")
+
+        assert result["prompt"] == [ChatMessage.from_developer("Answer in English")]
+
     def test_init_with_required_variables(self):
         builder = ChatPromptBuilder(
             template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=["variable"]

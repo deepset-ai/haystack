@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Preserve the OpenAI ``developer`` role when converting between OpenAI chat
+    dictionaries and ``ChatMessage`` objects.

@@ -553,6 +553,16 @@ But my favorite subject is Small Language Models.
         with pytest.raises(ValueError):
             jinja_env.from_string(template).render(image=image)
 
+    def test_developer_message(self, jinja_env):
+        template = """
+        {% message role="developer" %}
+        You are a developer.
+        {% endmessage %}
+        """
+        rendered = jinja_env.from_string(template).render()
+        output = json.loads(rendered.strip())
+        assert output == {"role": "developer", "content": [{"text": "You are a developer."}], "meta": {}, "name": None}
+
     def test_invalid_assistant_message_raises_error(self, jinja_env, base64_image_string):
         template = """
         {% message role="assistant" %}

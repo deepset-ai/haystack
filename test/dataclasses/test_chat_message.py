@@ -842,6 +842,10 @@ class TestToOpenaiDictFormat:
         message = ChatMessage.from_system("You are good assistant")
         assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
 
+    def test_to_openai_dict_format_developer_message(self):
+        message = ChatMessage.from_developer("You are a developer")
+        assert message.to_openai_dict_format() == {"role": "developer", "content": "You are a developer"}
+
     def test_to_openai_dict_format_user_message(self):
         message = ChatMessage.from_user("I have a question")
         assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question"}
@@ -1036,6 +1040,20 @@ class TestFromOpenaiDictFormat:
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "system"
         assert message.text == "You are a helpful assistant"
+
+    def test_from_openai_dict_format_developer_message(self):
+        openai_msg = {"role": "developer", "content": "You are a developer"}
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role == ChatRole.DEVELOPER
+        assert message.text == "You are a developer"
+        assert message.to_openai_dict_format()["role"] == "developer"
+
+    def test_from_openai_dict_format_developer_and_system_are_distinct(self):
+        system_message = ChatMessage.from_openai_dict_format({"role": "system", "content": "x"})
+        developer_message = ChatMessage.from_openai_dict_format({"role": "developer", "content": "x"})
+        assert system_message.role == ChatRole.SYSTEM
+        assert developer_message.role == ChatRole.DEVELOPER
+        assert system_message.role != developer_message.role
 
     def test_from_openai_dict_format_assistant_message_with_content(self):
         openai_msg = {"role": "assistant", "content": "I can help with that"}
