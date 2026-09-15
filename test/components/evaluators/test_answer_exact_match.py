@@ -63,6 +63,24 @@ def test_run_with_complex_data():
     assert result == {"individual_scores": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1], "score": 0.3333333333333333}
 
 
+def test_run_no_predicted_and_no_ground_truth():
+    evaluator = AnswerExactMatchEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_answers=[], predicted_answers=[])
+
+
+def test_run_no_ground_truth():
+    evaluator = AnswerExactMatchEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_answers=[], predicted_answers=["Berlin"])
+
+
+def test_run_no_predicted():
+    evaluator = AnswerExactMatchEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_answers=["Berlin"], predicted_answers=[])
+
+
 def test_run_with_different_lengths():
     evaluator = AnswerExactMatchEvaluator()
 
