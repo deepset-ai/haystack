@@ -837,6 +837,7 @@ export default {
             id: 'development/tracing'
           },
           items: [
+            'development/tracing/haystack-enterprise-platform',
             'development/tracing/opentelemetry',
             'development/tracing/mlflow',
             'development/tracing/datadog',
@@ -857,6 +858,7 @@ export default {
             id: 'development/deployment'
           },
           items: [
+            'development/deployment/haystack-enterprise-platform',
             'development/deployment/docker',
             'development/deployment/kubernetes',
             'development/deployment/openshift',
