@@ -1,0 +1,24 @@
+---
+title: "Production Usage"
+id: production-usage
+slug: "/production-usage"
+description: "Measure the quality of your Haystack pipelines and agents before you ship, and observe their behavior once they're running: evaluation, tracing, and logging."
+---
+
+# Production Usage
+
+Measure the quality of your Haystack pipelines and agents before you ship, and observe their behavior once they're running.
+
+This section covers the tools Haystack provides for that: evaluate a pipeline or component against metrics before you promote it, trace requests as they move through components to understand latency and behavior, and log what happened for debugging. See [Deployment](development/deployment.mdx) for how to serve a pipeline as an HTTP endpoint in the first place.
+
+### Evaluation
+
+[Evaluation](optimization/evaluation.mdx) covers model-based and statistical metrics for scoring pipelines and components - Retrievers, Generators, and full RAG pipelines included - so you can compare changes before you ship them.
+
+### Tracing
+
+[Tracing](development/tracing.mdx) instruments the flow of requests through your pipeline's components. Haystack supports OpenTelemetry, Langfuse, Datadog, MLflow, Weave, and Rhesis out of the box, plus a logging-based tracer and custom tracer backends.
+
+### Logging
+
+[Logging](development/logging.mdx) covers Haystack's structured logging setup for monitoring and debugging pipelines during development and in production.

@@ -24,6 +24,13 @@ Instrumented applications typically send traces to a trace collector or a tracin
 | [LoggingTracer](tracing/logging-tracer.mdx) | Inspect the data flowing through your pipeline in real time through logs, with no backend setup. |
 | [Custom Tracer](tracing/custom-tracer.mdx) | Connect any tracing backend by implementing the `Tracer` interface. |
 
+## Other Integrations
+
+| Integration | Description |
+| --- | --- |
+| [Arize Phoenix](https://haystack.deepset.ai/integrations/arize-phoenix) | Trace your pipelines with Arize Phoenix. |
+| [Arize AI](https://haystack.deepset.ai/integrations/arize) | Trace and monitor your pipelines with Arize AI. |
+
 ## Enabling and Disabling Tracing
 
 Haystack never enables tracing automatically. To enable it, either call `haystack.tracing.enable_tracing(...)` with the tracer of your choice, or add a tracing connector component such as the [`OpenTelemetryConnector`](tracing/opentelemetry.mdx) or the [`DatadogConnector`](tracing/datadog.mdx) to your pipeline.
