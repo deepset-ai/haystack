@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -176,7 +177,7 @@ class TestMarkdownToDocument:
         """
         Test if the component correctly handles errors.
         """
-        sources = ["non_existing_file.md"]
+        sources: list[str | Path | ByteStream] = ["non_existing_file.md"]
         converter = MarkdownToDocument()
         with caplog.at_level(logging.WARNING):
             result = converter.run(sources=sources)
