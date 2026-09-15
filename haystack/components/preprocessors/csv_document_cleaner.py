@@ -40,7 +40,7 @@ class CSVDocumentCleaner:
 
         :param ignore_rows: Number of rows to ignore from the top of the CSV table before processing.
         :param ignore_columns: Number of columns to ignore from the left of the CSV table before processing.
-        :param remove_empty_rows: Whether to remove rows that are entirely empty.
+        :param remove_empty_rows: Whether to remove rows that are entirely empty, including blank lines.
         :param remove_empty_columns: Whether to remove columns that are entirely empty.
         :param keep_id: Whether to retain the original document ID in the output document.
 
@@ -76,11 +76,22 @@ class CSVDocumentCleaner:
 
         ignore_rows = self.ignore_rows
         ignore_columns = self.ignore_columns
+        preserve_blank_rows = not self.remove_empty_rows or ignore_rows > 0
 
         cleaned_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)
+                names = None
+                if preserve_blank_rows:
+                    # Infer the width without blank lines: pandas cannot infer columns from a leading blank row.
+                    names = pd.read_csv(StringIO(document.content), header=None, nrows=0).columns.to_list()
+                df = pd.read_csv(
+                    StringIO(document.content),
+                    header=None,
+                    dtype=object,
+                    names=names,
+                    skip_blank_lines=not preserve_blank_rows,
+                )
             except Exception as e:
                 logger.exception(
                     "Error processing document {id}. Keeping it, but skipping cleaning. Error: {error}",
