@@ -6,10 +6,8 @@ import React from 'react';
 import Link from '@docusaurus/Link';
 import styles from './styles.module.css';
 
-type Availability = 'available' | 'opensource';
-
 type PlatformBadgeProps = {
-  availability?: Availability;
+  available?: boolean;
 };
 
 const CheckIcon = () => (
@@ -24,36 +22,21 @@ const ChevronIcon = () => (
   </svg>
 );
 
-const DotIcon = () => (
-  <svg viewBox="0 0 16 16" fill="none" width="12" height="12" aria-hidden="true">
-    <circle cx="8" cy="8" r="5.2" stroke="currentColor" strokeWidth="1.6" />
-  </svg>
-);
-
 /**
  * Renders directly under the component's <h1>, on doc pages whose frontmatter carries
- * `platform_availability` (written automatically by scripts/generate_platform_components_table.py).
+ * `hep_available` (written automatically by scripts/generate_platform_components_table.py).
  * Absent on any page without that field, so non-component pages render nothing.
  */
-const PlatformBadge: React.FC<PlatformBadgeProps> = ({ availability }) => {
-  if (availability === 'available') {
+const PlatformBadge: React.FC<PlatformBadgeProps> = ({ available }) => {
+  if (available) {
     return (
       <Link className={`${styles.badge} ${styles.available}`} to="/docs/platform-components">
         <CheckIcon />
-        Available in the Platform
+        Available on Haystack Enterprise Platform
         <span className={styles.chevron}>
           <ChevronIcon />
         </span>
       </Link>
-    );
-  }
-
-  if (availability === 'opensource') {
-    return (
-      <span className={`${styles.badge} ${styles.opensource}`}>
-        <DotIcon />
-        Open Source Only
-      </span>
     );
   }
 

@@ -46,14 +46,3 @@
   display: inline-flex;
   opacity: 0.7;
 }
-
-.opensource {
-  background-color: rgba(37, 88, 255, 0.08);
-  border-color: rgba(37, 88, 255, 0.2);
-  color: var(--ifm-color-primary);
-}
-
-:global([data-theme='dark']) .opensource {
-  background-color: rgba(110, 144, 255, 0.15);
-  border-color: rgba(110, 144, 255, 0.3);
-}

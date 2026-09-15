@@ -381,30 +381,30 @@ def label_component_pages(
     docs_src: Path, available_titles: set[str], all_component_titles: set[str]
 ) -> tuple[int, int]:
     """
-    Write a `platform_availability` frontmatter field on every component doc page.
+    Write a `hep_available` frontmatter field on every component doc page.
 
-    A page whose title is in `available_titles` is labeled `available`; a page whose
+    A page whose title is in `available_titles` is labeled `true`; a page whose
     title matches a scanned `@component` class but isn't in `available_titles` is
-    labeled `opensource`. Pages that match neither (e.g. a concept page reusing the
-    same directory) are left untouched. Returns (labeled_available, labeled_opensource).
+    labeled `false`. Pages that match neither (e.g. a concept page reusing the
+    same directory) are left untouched. Returns (labeled_available, labeled_unavailable).
     """
-    labeled_available = labeled_opensource = 0
+    labeled_available = labeled_unavailable = 0
     for title, path in scan_component_doc_pages(docs_src).items():
         if title in available_titles:
-            value = "available"
+            value = "true"
         elif title in all_component_titles:
-            value = "opensource"
+            value = "false"
         else:
             continue
         text = path.read_text(encoding="utf-8")
-        new_text, changed = _upsert_frontmatter_field(text, "platform_availability", value)
+        new_text, changed = _upsert_frontmatter_field(text, "hep_available", value)
         if changed:
             path.write_text(new_text, encoding="utf-8")
-            if value == "available":
+            if value == "true":
                 labeled_available += 1
             else:
-                labeled_opensource += 1
-    return labeled_available, labeled_opensource
+                labeled_unavailable += 1
+    return labeled_available, labeled_unavailable
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -439,7 +439,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--skip-page-labels",
         action="store_true",
-        help="Don't write the `platform_availability` frontmatter field on component doc pages.",
+        help="Don't write the `hep_available` frontmatter field on component doc pages.",
     )
 
     args = parser.parse_args(argv)
@@ -487,8 +487,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if docs_src.is_dir() and not args.dry_run and not args.skip_page_labels:
         all_component_titles = available_titles | {fqn.split(".")[-1] for fqn in source_components}
-        labeled_available, labeled_opensource = label_component_pages(docs_src, available_titles, all_component_titles)
-        logger.info("Labeled component doc pages: %d available, %d opensource", labeled_available, labeled_opensource)
+        labeled_available, labeled_unavailable = label_component_pages(docs_src, available_titles, all_component_titles)
+        logger.info("Labeled component doc pages: %d available, %d unavailable", labeled_available, labeled_unavailable)
 
 
 if __name__ == "__main__":

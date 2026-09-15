@@ -19,7 +19,7 @@ export default function ContentWrapper(props) {
   // not a prop we can wrap — so the badge is portaled as a block right after the
   // rendered <h1> itself.
   useLayoutEffect(() => {
-    if (!frontMatter.platform_availability || !containerRef.current) {
+    if (frontMatter.hep_available !== true || !containerRef.current) {
       setBadgeHost(null);
       return undefined;
     }
@@ -35,7 +35,7 @@ export default function ContentWrapper(props) {
     return () => {
       host.remove();
     };
-  }, [frontMatter.platform_availability, metadata.permalink]);
+  }, [frontMatter.hep_available, metadata.permalink]);
 
   return (
     <>
@@ -45,7 +45,7 @@ export default function ContentWrapper(props) {
       <div ref={containerRef}>
         <OriginalContent {...props} />
       </div>
-      {badgeHost && createPortal(<PlatformBadge availability={frontMatter.platform_availability} />, badgeHost)}
+      {badgeHost && createPortal(<PlatformBadge available={frontMatter.hep_available} />, badgeHost)}
     </>
   );
 }
