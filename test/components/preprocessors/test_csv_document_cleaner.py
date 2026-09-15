@@ -4,6 +4,7 @@
 
 from haystack import Document
 from haystack.components.preprocessors.csv_document_cleaner import CSVDocumentCleaner
+from haystack.core.serialization import component_to_dict
 
 
 def test_empty_column() -> None:
@@ -218,3 +219,32 @@ def test_remove_empty_rows_and_columns_false() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",B,C\n,,4\n,,\n"
+
+
+def test_embeddings_are_dropped_by_default() -> None:
+    csv_content = "A,B\n1,2\n"
+    csv_document = Document(content=csv_content, embedding=[0.1, 0.2, 0.3])
+    csv_document_cleaner = CSVDocumentCleaner(keep_id=True)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.embedding is None
+    assert cleaned_document.sparse_embedding is None
+
+
+def test_keep_embedding_true_preserves_embeddings() -> None:
+    csv_content = "A,B\n1,2\n"
+    csv_document = Document(content=csv_content, embedding=[0.1, 0.2, 0.3])
+    csv_document_cleaner = CSVDocumentCleaner(keep_id=True, keep_embedding=True)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.embedding == [0.1, 0.2, 0.3]
+
+
+def test_to_dict_includes_keep_embedding() -> None:
+    cleaner = CSVDocumentCleaner()
+    data = component_to_dict(cleaner, "cleaner")
+    assert data["init_parameters"]["keep_embedding"] is False
+
+    cleaner = CSVDocumentCleaner(keep_embedding=True)
+    data = component_to_dict(cleaner, "cleaner")
+    assert data["init_parameters"]["keep_embedding"] is True

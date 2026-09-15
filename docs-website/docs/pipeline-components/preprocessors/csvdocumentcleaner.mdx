@@ -33,6 +33,7 @@ Use `CSVDocumentCleaner` to clean CSV documents by removing empty rows and colum
 - `remove_empty_rows`: Whether to remove entirely empty rows.
 - `remove_empty_columns`: Whether to remove entirely empty columns.
 - `keep_id`: Whether to retain the original document ID in the output document.
+- `keep_embedding`: Preserves the document's vector embeddings (`embedding` and `sparse_embedding`). The default value is `false`, which clears embeddings to `null` because the CSV content is re-serialized during cleaning.
 
 ### Cleaning Process
 
