@@ -977,6 +977,18 @@ warm_up() -> None
 
 Warm up the sentence tokenizer and tiktoken tokenizer if needed.
 
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
 #### run
 
 ```python
@@ -1034,6 +1046,18 @@ Initializes the TextCleaner component.
 - **convert_to_lowercase** (<code>bool</code>) – If `True`, converts all characters to lowercase.
 - **remove_punctuation** (<code>bool</code>) – If `True`, removes punctuation from the text.
 - **remove_numbers** (<code>bool</code>) – If `True`, removes numerical digits from the text.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
 #### run
 

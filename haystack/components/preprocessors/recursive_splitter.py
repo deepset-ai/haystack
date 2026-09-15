@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from typing import Any, Literal
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
@@ -109,6 +109,22 @@ class RecursiveDocumentSplitter:
             tiktoken_imports.check()
             self.tiktoken_tokenizer = tiktoken.get_encoding("o200k_base")
         self._is_warmed_up = True
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_unit=self.split_units,
+            separators=self.separators,
+            sentence_splitter_params=self.sentence_splitter_params,
+        )
 
     def _check_params(self) -> None:
         if self.split_length < 1:

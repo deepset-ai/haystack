@@ -906,6 +906,21 @@ def test_run_custom_split_by_dot_and_overlap_3_char_unit():
     assert chunks[0] == "\x0c\x0c Sentence on page 5."
 
 
+def test_serialization_keeps_split_unit():
+    splitter = RecursiveDocumentSplitter(split_length=8, split_overlap=0, split_unit="char", separators=[" "])
+    pipeline = Pipeline()
+    pipeline.add_component("chunker", splitter)
+    assert pipeline.to_dict()["components"]["chunker"]["init_parameters"]["split_unit"] == "char"
+
+    restored = Pipeline.loads(pipeline.dumps()).get_component("chunker")
+    assert isinstance(restored, RecursiveDocumentSplitter)
+    assert restored.split_units == "char"
+
+    doc = Document(content="alpha beta gamma delta epsilon zeta eta theta")
+    original_chunks = [chunk.content for chunk in splitter.run([doc])["documents"]]
+    assert [chunk.content for chunk in restored.run([doc])["documents"]] == original_chunks
+
+
 def test_run_serialization_in_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("chunker", RecursiveDocumentSplitter(split_length=20, split_overlap=5, separators=["."]))

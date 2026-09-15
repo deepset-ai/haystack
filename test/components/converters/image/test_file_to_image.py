@@ -65,12 +65,13 @@ class TestImageFileToImageContent:
         assert len(results["image_contents"]) == 0
         assert results == {"image_contents": []}
 
-    def test_run_with_invalid_source_type(self, caplog) -> None:
+    def test_run_with_invalid_source_type(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = ImageFileToImageContent()
-        converter.run(sources=[123])  # Invalid source type
+        # The invalid source type is what this test exercises.
+        converter.run(sources=[123])  # type: ignore[list-item]
         assert "Could not read" in caplog.text
 
-    def test_run_with_non_existent_file(self, caplog) -> None:
+    def test_run_with_non_existent_file(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = ImageFileToImageContent()
         converter.run(sources=["./non_existent_file.png"])
         assert "Could not read" in caplog.text

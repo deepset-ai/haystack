@@ -11,6 +11,7 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.hooks import Hook, HookPoint
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
@@ -46,7 +47,7 @@ def tools() -> list[Tool]:
 
 
 @pytest.fixture
-def confirmation_strategies() -> dict[str, ConfirmationStrategy]:
+def confirmation_strategies() -> dict[str | tuple[str, ...], ConfirmationStrategy]:
     return {
         "addition_tool": BlockingConfirmationStrategy(
             confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
@@ -55,7 +56,7 @@ def confirmation_strategies() -> dict[str, ConfirmationStrategy]:
 
 
 @pytest.fixture
-def confirmation_hook(confirmation_strategies) -> ConfirmationHook:
+def confirmation_hook(confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]) -> ConfirmationHook:
     return ConfirmationHook(confirmation_strategies=confirmation_strategies)
 
 
@@ -162,6 +163,7 @@ class TestAgent:
         assert deserialized_agent.to_dict() == agent.to_dict()
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert len(deserialized_agent.tools) == 1
+        assert isinstance(deserialized_agent.tools[0], Tool)
         assert deserialized_agent.tools[0].name == "addition_tool"
         assert deserialized_agent.tool_concurrency_limit == agent.tool_concurrency_limit
         assert deserialized_agent.tool_streaming_callback_passthrough == agent.tool_streaming_callback_passthrough
@@ -260,7 +262,7 @@ consumer_tool = Tool(
 
 
 class TestConfirmationStrategyToolArgPrep:
-    def test_confirmed_dependent_tool_runs_with_fresh_state(self):
+    def test_confirmed_dependent_tool_runs_with_fresh_state(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """
         When a confirmation strategy is configured, a tool that reads State a same-step tool writes must still run
         with the freshly-produced value, not the stale step-start value.
@@ -281,7 +283,7 @@ class TestConfirmationStrategyToolArgPrep:
         agent.warm_up()
         # Step 1: the model calls producer and consumer together (consumer relies on inputs_from_state for `value`).
         # Step 2: a plain text reply ends the run.
-        agent.chat_generator.run = MagicMock(
+        mock_run = MagicMock(
             side_effect=[
                 {
                     "replies": [
@@ -291,6 +293,7 @@ class TestConfirmationStrategyToolArgPrep:
                 {"replies": [ChatMessage.from_assistant("done")]},
             ]
         )
+        monkeypatch.setattr(agent.chat_generator, "run", mock_run)
 
         # `shared` starts stale; producer overwrites it to "PRODUCED" before consumer runs.
         result = agent.run(messages=[ChatMessage.from_user("go")], shared="OLD")
@@ -327,14 +330,14 @@ def _single_tool_hook(tool_name: str, ui_result: ConfirmationUIResult) -> Confir
 
 
 class TestMultipleConfirmationHooks:
-    def test_multiple_hooks_each_targeting_a_different_tool(self):
+    def test_multiple_hooks_each_targeting_a_different_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """
         Three before_tool ConfirmationHooks, each owning a different tool of a three-call batch, compose correctly:
         a tool a hook does not own passes through unchanged, so reject/modify decisions from all three hooks land on
         the right calls in the final, re-read pending message.
         """
         foo, bar, baz = _echo_tool("foo"), _echo_tool("bar"), _echo_tool("baz")
-        hooks = {
+        hooks: dict[HookPoint, list[Hook]] = {
             "before_tool": [
                 _single_tool_hook("foo", ConfirmationUIResult(action="reject")),
                 _single_tool_hook("bar", ConfirmationUIResult(action="modify", new_tool_params={"x": 99})),
@@ -343,7 +346,7 @@ class TestMultipleConfirmationHooks:
         }
         agent = Agent(chat_generator=MockChatGenerator(), tools=[foo, bar, baz], hooks=hooks)
         agent.warm_up()
-        agent.chat_generator.run = MagicMock(
+        mock_run = MagicMock(
             side_effect=[
                 {
                     "replies": [
@@ -355,6 +358,7 @@ class TestMultipleConfirmationHooks:
                 {"replies": [ChatMessage.from_assistant("done")]},
             ]
         )
+        monkeypatch.setattr(agent.chat_generator, "run", mock_run)
 
         result = agent.run(messages=[ChatMessage.from_user("go")])
 

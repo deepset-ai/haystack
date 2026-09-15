@@ -11,6 +11,7 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State
 from haystack.components.generators.chat import MockChatGenerator
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.hooks.budget import TokenBudgetHook
 from haystack.hooks.budget.hooks import _FINAL_MESSAGE_TEXT
@@ -88,7 +89,7 @@ class TestTokenBudgetHook:
             hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100)]},
         )
         agent.warm_up()
-        agent.chat_generator.run = MagicMock(
+        agent.chat_generator.run = MagicMock(  # type: ignore[method-assign]
             side_effect=[_fetch_reply(60), _fetch_reply(60), {"replies": [ChatMessage.from_assistant("done")]}]
         )
         result = agent.run(messages=[ChatMessage.from_user("hi")])
@@ -101,12 +102,19 @@ class TestTokenBudgetHook:
             def run(self, state: State) -> None:
                 state.set("continue_run", True)
 
+            def to_dict(self) -> dict[str, Any]:
+                return default_to_dict(self)
+
+            @classmethod
+            def from_dict(cls, data: dict[str, Any]) -> "KeepIterating":
+                return default_from_dict(cls, data)
+
         agent = Agent(
             chat_generator=MockChatGenerator(),
             hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100)], "on_exit": [KeepIterating()]},
         )
         agent.warm_up()
-        agent.chat_generator.run = MagicMock(
+        agent.chat_generator.run = MagicMock(  # type: ignore[method-assign]
             return_value={"replies": [ChatMessage.from_assistant("draft", meta={"usage": {"total_tokens": 60}})]}
         )
         result = agent.run(messages=[ChatMessage.from_user("hi")])

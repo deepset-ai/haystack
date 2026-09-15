@@ -310,7 +310,8 @@ def build_mdx(
         "",
         "# Haystack Enterprise Components",
         "",
-        f"The Haystack Enterprise Platform currently supports **{len(visible_titles)} components**"
+        "The [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform)"
+        f" currently supports **{len(visible_titles)} components**"
         f" and **{len(partner_components)} integrations**."
         " The following table lists them grouped by integration partner.",
         "",
