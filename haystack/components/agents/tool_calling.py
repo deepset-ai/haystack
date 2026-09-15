@@ -5,7 +5,8 @@
 import asyncio
 import contextvars
 import json
-from collections.abc import Callable
+from collections import defaultdict
+from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -60,9 +61,22 @@ def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
     return dict(zip(tool_names, available_tools, strict=True))
 
 
-def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> None:
+def _merge_tool_outputs_into_state(
+    tool: Tool,
+    result: Any,
+    state: State,
+    *,
+    call_idx: int | None = None,
+    defer_keys: frozenset[str] = frozenset(),
+    deferred: dict[str, list[tuple[int, Tool, Any]]] | None = None,
+    only_key: str | None = None,
+) -> None:
     """
     Write tool outputs into State according to the tool's `outputs_to_state` mapping.
+
+    When `defer_keys`/`deferred` are supplied (see `_deferred_state_keys`), writes to those keys are buffered as
+    `(call_idx, tool, result)` entries instead of applied, so they can later be replayed in call order by
+    `_flush_deferred_writes`. `only_key` restricts the merge to a single state key (used by that replay).
 
     :raises RuntimeError: If writing an output value into the state fails.
     """
@@ -70,6 +84,11 @@ def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> Non
         return
 
     for state_key, config in (tool.outputs_to_state or {}).items():
+        if only_key is not None and state_key != only_key:
+            continue
+        if deferred is not None and state_key in defer_keys:
+            deferred[state_key].append((call_idx, tool, result))
+            continue
         source_key = config.get("source", None)
         if source_key and source_key not in result:
             continue
@@ -436,6 +455,61 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
     return reads, writes
 
 
+def _key_writers(io_list: list[tuple[set[str], set[str]]]) -> dict[str, set[int]]:
+    """
+    Map each explicitly-written State key to the indices of the calls that write it.
+
+    `_ALL_STATE_KEYS` writers (tools taking the live `State`) are excluded: their writes bypass
+    `outputs_to_state` merging entirely, so there is nothing to defer or order.
+    """
+    key_writers: dict[str, set[int]] = {}
+    for idx, (_, writes) in enumerate(io_list):
+        if writes is _ALL_STATE_KEYS:
+            continue
+        for key in writes:
+            key_writers.setdefault(key, set()).add(idx)
+    return key_writers
+
+
+def _deferred_state_keys(io_list: list[tuple[set[str], set[str]]], batches: list[list[int]]) -> frozenset[str]:
+    """
+    Pure write-write contended keys whose writers span more than one batch.
+
+    Batches merge their outputs into State as they complete, so for such a key the per-batch merge order can
+    contradict the LLM's call order (a call delayed into a later batch by an unrelated read-after-write dependency
+    would overwrite a later-listed call's write). `_run_tool` buffers writes to these keys and replays them in call
+    order instead — see `_flush_deferred_writes`.
+
+    Keys whose writers all land in a single batch are not deferred: batches already merge their outputs in call
+    order. Keys that any single call both reads and writes (read-modify-write chains, e.g. accumulating retrieval
+    loops) are never deferred: their intermediate per-batch visibility is exactly what the chain semantics require.
+    Pure readers of a deferred key are unaffected — read-after-write dependencies place them in a batch after every
+    writer, by which point the deferred writes have been flushed in call order.
+    """
+    call_batch = {idx: batch_pos for batch_pos, batch in enumerate(batches) for idx in batch}
+    read_write_keys = {key for reads, writes in io_list if writes is not _ALL_STATE_KEYS for key in reads & writes}
+    return frozenset(
+        key
+        for key, writers in _key_writers(io_list).items()
+        if key not in read_write_keys and len({call_batch[idx] for idx in writers}) > 1
+    )
+
+
+def _flush_deferred_writes(
+    deferred: dict[str, list[tuple[int, Tool, Any]]], state: State, keys: Iterable[str] | None = None
+) -> None:
+    """
+    Replay buffered writes to `keys` (all buffered keys by default) into State in LLM call order.
+
+    Replaying in call order makes write-write resolution match what sequential, call-ordered execution would have
+    produced, for both replacing and accumulating state handlers.
+    """
+    for key in list(deferred.keys()) if keys is None else keys:
+        entries = deferred.pop(key, [])
+        for _call_idx, tool, result in sorted(entries, key=lambda entry: entry[0]):
+            _merge_tool_outputs_into_state(tool, result, state, only_key=key)
+
+
 def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[list[int]]:
     """
     Group tool calls into ordered execution batches based on their State read/write sets.
@@ -450,7 +524,9 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
     (the lowest-index remaining call runs next, on its own).
 
     Pure write-write overlaps create no dependency: nobody reads the contended key, and outputs are merged into State
-    sequentially in call order afterward, so the result stays deterministic without serializing execution.
+    sequentially in call order afterward, so the result stays deterministic without serializing execution. When the
+    writers of such a key end up in different batches, `_run_tool` defers their writes and replays them in call
+    order (see `_deferred_state_keys`), so batch placement cannot change the outcome.
 
     :param tool_calls: The tool calls to schedule, in call order.
     :param tools: The resolved Tool for each entry in `tool_calls` (parallel list).
@@ -492,14 +568,23 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
 
 
 def _finalize_tool_result(
-    result: Any, tool_call: ToolCall, tool: Tool, state: State, *, raise_on_failure: bool
+    result: Any,
+    tool_call: ToolCall,
+    tool: Tool,
+    state: State,
+    *,
+    raise_on_failure: bool,
+    call_idx: int | None = None,
+    defer_keys: frozenset[str] = frozenset(),
+    deferred: dict[str, list[tuple[int, Tool, Any]]] | None = None,
 ) -> ChatMessage:
     """
     Turn a single tool invocation result into a tool-result ChatMessage, merging outputs into State.
 
     On a `ToolInvocationError`, either re-raise (when `raise_on_failure`) or return an error message. Otherwise
     merge the tool's outputs into State (in call order, so write-write merges stay deterministic) and build the
-    result message.
+    result message. Writes to `defer_keys` are buffered into `deferred` for call-order replay by
+    `_flush_deferred_writes` instead of being applied immediately.
     """
     if isinstance(result, ToolInvocationError):
         if raise_on_failure:
@@ -507,7 +592,7 @@ def _finalize_tool_result(
         logger.error("{error_exception}", error_exception=result)
         return ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True)
 
-    _merge_tool_outputs_into_state(tool, result, state)
+    _merge_tool_outputs_into_state(tool, result, state, call_idx=call_idx, defer_keys=defer_keys, deferred=deferred)
     return _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
 
 
@@ -548,6 +633,20 @@ def _run_tool(
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
 
+    # Writes to keys contended across batches are buffered and replayed in call order (see
+    # `_deferred_state_keys`), so batch placement cannot decide a write-write winner.
+    io_list = [_state_io_for_call(tool, tc.arguments) for tc, tool in zip(tool_calls, resolved_tools, strict=True)]
+    defer_keys = _deferred_state_keys(io_list, batches)
+    deferred: dict[str, list[tuple[int, Tool, Any]]] = defaultdict(list)
+    key_writers: dict[str, set[int]] = {
+        key: writers for key, writers in _key_writers(io_list).items() if key in defer_keys
+    }
+    merged_calls: set[int] = set()
+
+    def _flush_ready_deferred() -> None:
+        ready = [key for key, writers in key_writers.items() if key in deferred and writers <= merged_calls]
+        _flush_deferred_writes(deferred, state, keys=ready)
+
     # Results are indexed by call position so the returned messages stay in call order, even though batches may
     # execute the calls in a different order.
     results: list[ChatMessage | None] = [None] * len(tool_calls)
@@ -558,6 +657,10 @@ def _run_tool(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for batch in batches:
+            # Flush writes whose every writer has merged before preparing args, so tools that read from State
+            # observe them exactly as sequential call-ordered execution would have produced.
+            _flush_ready_deferred()
+
             # Prepare args at the start of each batch so tools that read from State observe writes merged by earlier
             # batches.
             futures = {}
@@ -583,11 +686,18 @@ def _run_tool(
                     resolved_tools[idx],
                     state,
                     raise_on_failure=raise_on_failure,
+                    call_idx=idx,
+                    defer_keys=defer_keys,
+                    deferred=deferred,
                 )
                 results[idx] = message
+                merged_calls.add(idx)
                 if streaming_callback is not None:
                     streaming_callback(_create_tool_result_streaming_chunk(message, tool_calls[idx], stream_index))
                     stream_index += 1
+
+    # Replay any still-buffered writes (keys no later batch read) in call order for the final State.
+    _flush_ready_deferred()
 
     tool_messages = error_messages + [m for m in results if m is not None]
 
@@ -637,6 +747,20 @@ async def _run_tool_async(
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
 
+    # Writes to keys contended across batches are buffered and replayed in call order (see
+    # `_deferred_state_keys`), so batch placement cannot decide a write-write winner.
+    io_list = [_state_io_for_call(tool, tc.arguments) for tc, tool in zip(tool_calls, resolved_tools, strict=True)]
+    defer_keys = _deferred_state_keys(io_list, batches)
+    deferred: dict[str, list[tuple[int, Tool, Any]]] = defaultdict(list)
+    key_writers: dict[str, set[int]] = {
+        key: writers for key, writers in _key_writers(io_list).items() if key in defer_keys
+    }
+    merged_calls: set[int] = set()
+
+    def _flush_ready_deferred() -> None:
+        ready = [key for key, writers in key_writers.items() if key in deferred and writers <= merged_calls]
+        _flush_deferred_writes(deferred, state, keys=ready)
+
     # Results are indexed by call position so the returned messages stay in call order, even though batches may
     # execute the calls in a different order.
     results: list[ChatMessage | None] = [None] * len(tool_calls)
@@ -650,6 +774,10 @@ async def _run_tool_async(
     parent_span = tracing.tracer.current_span()
 
     for batch in batches:
+        # Flush writes whose every writer has merged before preparing args, so readers observe them exactly as
+        # sequential call-ordered execution would have produced.
+        _flush_ready_deferred()
+
         # Prepare args at the start of each batch so readers observe writes merged by earlier batches.
         tasks = {}
         for idx in batch:
@@ -672,14 +800,25 @@ async def _run_tool_async(
         # Merge results in call order within the batch so write-write merges stay deterministic.
         for idx, result in zip(tasks.keys(), batch_results, strict=True):
             message = _finalize_tool_result(
-                result, tool_calls[idx], resolved_tools[idx], state, raise_on_failure=raise_on_failure
+                result,
+                tool_calls[idx],
+                resolved_tools[idx],
+                state,
+                raise_on_failure=raise_on_failure,
+                call_idx=idx,
+                defer_keys=defer_keys,
+                deferred=deferred,
             )
             results[idx] = message
+            merged_calls.add(idx)
             if streaming_callback is not None:
                 await _invoke_streaming_callback(
                     streaming_callback, _create_tool_result_streaming_chunk(message, tool_calls[idx], stream_index)
                 )
                 stream_index += 1
+
+    # Replay any still-buffered writes (keys no later batch read) in call order for the final State.
+    _flush_ready_deferred()
 
     tool_messages = error_messages + [m for m in results if m is not None]
 

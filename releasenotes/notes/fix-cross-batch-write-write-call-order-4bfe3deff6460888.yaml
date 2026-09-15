@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the agent tool scheduler so that write-write conflicts on the same State key resolve by the LLM's
+    call order even when an unrelated read-after-write dependency splits the writers into different batches.
+    Previously, the batch a call landed in decided the winner, contradicting the documented call-order merge
+    contract.
+    `<https://github.com/deepset-ai/haystack/issues/12621>`
