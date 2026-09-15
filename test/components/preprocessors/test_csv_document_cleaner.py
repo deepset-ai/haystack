@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from haystack import Document
 from haystack.components.preprocessors.csv_document_cleaner import CSVDocumentCleaner
 
@@ -18,12 +20,9 @@ def test_empty_column() -> None:
     assert cleaned_document.content == "A,B,C\n1,2,3\n4,5,6\n"
 
 
-def test_empty_row() -> None:
-    csv_content = """A,B,C
-1,2,3
-,,
-4,5,6
-"""
+@pytest.mark.parametrize("empty_row", [",,\n", "\n"])
+def test_empty_row(empty_row: str) -> None:
+    csv_content = f"A,B,C\n1,2,3\n{empty_row}4,5,6\n"
     csv_document = Document(content=csv_content)
     csv_document_cleaner = CSVDocumentCleaner()
     result = csv_document_cleaner.run([csv_document])
@@ -184,16 +183,61 @@ def test_id_not_none() -> None:
     assert cleaned_document.content == ",A,B,C\n1,item,s,\n"
 
 
-def test_remove_empty_rows_false() -> None:
-    csv_content = """,B,C
-,,
-,5,6
-"""
+@pytest.mark.parametrize("empty_row", [",,\n", "\n"])
+def test_remove_empty_rows_false(empty_row: str) -> None:
+    csv_content = f",B,C\n{empty_row},5,6\n"
     csv_document = Document(content=csv_content)
     csv_document_cleaner = CSVDocumentCleaner(remove_empty_rows=False)
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == "B,C\n,\n5,6\n"
+
+
+def test_ignore_rows_preserves_blank_rows() -> None:
+    csv_document = Document(content="A,B\n\n\n1,2\n")
+    cleaner = CSVDocumentCleaner(ignore_rows=2)
+
+    result = cleaner.run(documents=[csv_document])
+
+    assert result["documents"][0].content == "A,B\n,\n1,2\n"
+
+
+def test_remove_empty_rows_false_preserves_trailing_blank_row() -> None:
+    csv_document = Document(content="A,B\n1,2\n\n")
+    cleaner = CSVDocumentCleaner(remove_empty_rows=False)
+
+    result = cleaner.run(documents=[csv_document])
+
+    assert result["documents"][0].content == "A,B\n1,2\n,\n"
+
+
+@pytest.mark.parametrize("remove_empty_rows", [True, False])
+def test_leading_blank_rows(remove_empty_rows: bool) -> None:
+    csv_document = Document(content="\n,B,C\n,5,6\n")
+    cleaner = CSVDocumentCleaner(remove_empty_rows=remove_empty_rows)
+
+    result = cleaner.run(documents=[csv_document])
+
+    expected = "B,C\n5,6\n" if remove_empty_rows else ",\nB,C\n5,6\n"
+    assert result["documents"][0].content == expected
+
+
+def test_ignore_rows_preserves_leading_blank_row() -> None:
+    csv_document = Document(content="\nA,B\n\n1,2\n")
+    cleaner = CSVDocumentCleaner(ignore_rows=1)
+
+    result = cleaner.run(documents=[csv_document])
+
+    assert result["documents"][0].content == ",\nA,B\n1,2\n"
+
+
+def test_blank_lines_inside_quoted_field_are_preserved() -> None:
+    csv_content = 'A,B\n"first\n\nlast",2\n'
+    cleaner = CSVDocumentCleaner(remove_empty_rows=False)
+
+    result = cleaner.run(documents=[Document(content=csv_content)])
+
+    assert result["documents"][0].content == csv_content
 
 
 def test_remove_empty_columns_false() -> None:
