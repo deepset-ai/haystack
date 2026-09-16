@@ -660,6 +660,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     tool_calls = []
     reasoning = None
     logprobs: list[dict] = []
+    annotations: list[dict] = []
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning("OpenAI returned a refusal output: {output}", output=output)
@@ -669,6 +670,8 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             for content in output.content:
                 if hasattr(content, "logprobs") and content.logprobs is not None:
                     logprobs.append(_serialize_object(content.logprobs))
+                if hasattr(content, "annotations") and content.annotations is not None:
+                    annotations.extend([_serialize_object(ann) for ann in content.annotations])
 
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
@@ -715,6 +718,9 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     if logprobs:
         meta["logprobs"] = logprobs
+        
+    if annotations:
+        meta["annotations"] = annotations
 
     return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
@@ -925,6 +931,14 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         (response for response in reversed(responses) if response.get("usage") is not None), None
     )
     final_response = (response_with_usage or responses[-1]).copy() if responses else {}
+    
+    annotations = []
+    for output in final_response.get("output", []):
+        if output.get("type") == "message":
+            for content in output.get("content", []):
+                if content.get("annotations"):
+                    annotations.extend(content["annotations"])
+                    
     final_response.pop("output", None)
 
     # finish_reason can appear in different places so we look for the last one
@@ -933,6 +947,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         final_response["finish_reason"] = finish_reasons[-1]
     if logprobs:
         final_response["logprobs"] = logprobs
+    if annotations:
+        final_response["annotations"] = annotations
 
     # Add reasoning content if id is available
     # Note: the API expects a reasoning id even if there is no reasoning text
