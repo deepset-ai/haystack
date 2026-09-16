@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Agent no longer lets ``generation_kwargs["tools"]`` replace its own tools on the chat generator
+    call. Extra OpenAI tool specs are offered to the LLM alongside Agent tools, but only Agent tools
+    are invoked. Unknown names are left on the last assistant message so a client can execute them.
