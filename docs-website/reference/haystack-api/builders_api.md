@@ -319,7 +319,7 @@ To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
 **Raises:**
 
-- <code>ValueError</code> – If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+- <code>ValueError</code> – If `template` is empty or contains elements that are not instances of `ChatMessage`.
 
 #### to_dict
 

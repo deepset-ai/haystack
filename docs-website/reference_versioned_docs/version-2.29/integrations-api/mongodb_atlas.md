@@ -646,10 +646,18 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a field matching a search_term or all possible values if no search term is given.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: MongoDB's aggregation `$group` compares numeric values across BSON subtypes, so a
+whole-number float (e.g. `1.0`) is grouped together with a numerically equal int (`1`) and only
+one of the two survives - regardless of whether they were written to the same metadata field.
+Floats with a fractional part (e.g. `1.5`) are unaffected and stay distinct from ints.
 
 **Parameters:**
 
@@ -657,11 +665,12 @@ Retrieves unique values for a field matching a search_term or all possible value
 - **search_term** (<code>str | None</code>) – The search term to filter values. Matches as a case-insensitive substring.
 - **from\_** (<code>int</code>) – The starting index for pagination.
 - **size** (<code>int</code>) – The number of values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing a list of unique values and the total count of unique values matching the
-  search term.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing a list of unique values (in their original type) and the total count
+  of unique values matching the search term.
 
 #### get_metadata_field_unique_values_async
 
@@ -671,22 +680,29 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously retrieves unique values for a metadata field, optionally filtered by a search term.
 
+Asynchronously retrieves unique values for a metadata field, optionally filtered by a search term.
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: MongoDB's aggregation `$group` compares numeric values across BSON subtypes, so a
+whole-number float (e.g. `1.0`) is grouped together with a numerically equal int (`1`) and only
+one of the two survives - regardless of whether they were written to the same metadata field.
+Floats with a fractional part (e.g. `1.5`) are unaffected and stay distinct from ints.
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field to retrieve unique values for.
-- **search_term** (<code>str | None</code>) – The search term to filter values. Matches as a case-insensitive substring.
-- **from\_** (<code>int</code>) – The starting index for pagination.
-- **size** (<code>int</code>) – The number of values to return.
-
-**Returns:**
-
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing a list of unique values and the total count of unique values matching the
-  search term.
+  :param search_term: The search term to filter values. Matches as a case-insensitive substring.
+  :param from\_: The starting index for pagination.
+  :param size: The number of values to return.
+  :param filters: Optional filters to restrict the documents considered.
+  :returns: A tuple containing a list of unique values (in their original type) and the total count
+  of unique values matching the search term.
 
 #### filter_documents
 

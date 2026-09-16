@@ -248,8 +248,10 @@ class TestComponentLifecycle:
         assert fetcher._async_client is None
 
     def test_sync_lifecycle(self):
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
-            client_instance = ClientMock.return_value
+        client_instance = Mock()
+        with patch(
+            "haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance
+        ) as ClientMock:
             fetcher = LinkContentFetcher()
 
             fetcher.warm_up()
@@ -270,9 +272,11 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_async_lifecycle(self):
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
-            async_client_instance = AsyncClientMock.return_value
-            async_client_instance.aclose = AsyncMock()
+        async_client_instance = Mock()
+        async_client_instance.aclose = AsyncMock()
+        with patch(
+            "haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance
+        ) as AsyncClientMock:
             fetcher = LinkContentFetcher()
 
             await fetcher.warm_up_async()
@@ -302,14 +306,13 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_close_and_close_async_are_independent(self):
+        client_instance = Mock()
+        async_client_instance = Mock()
+        async_client_instance.aclose = AsyncMock()
         with (
-            patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock,
-            patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock,
+            patch("haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance),
+            patch("haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance),
         ):
-            client_instance = ClientMock.return_value
-            async_client_instance = AsyncClientMock.return_value
-            async_client_instance.aclose = AsyncMock()
-
             fetcher = LinkContentFetcher()
             fetcher.warm_up()
             await fetcher.warm_up_async()

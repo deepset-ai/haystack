@@ -1017,7 +1017,6 @@ class TestConversionToStreamingChunks:
             ResponseFunctionCallArgumentsDoneEvent(
                 arguments='{"city":"Paris"}',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                name="weather",  # added name here because pydantic complains otherwise API returns a none here
                 output_index=1,
                 sequence_number=10,
                 type="response.function_call_arguments.done",
@@ -1212,7 +1211,6 @@ class TestConversionToStreamingChunks:
                     "received_at": ANY,
                     "arguments": '{"city":"Paris"}',
                     "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                    "name": "weather",
                     "output_index": 1,
                     "sequence_number": 10,
                     "type": "response.function_call_arguments.done",
@@ -1562,9 +1560,21 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_invalid(self) -> None:
+    def test_convert_contentless_assistant_message(self) -> None:
+        # A Chat Generator that discards a malformed tool call returns a contentless reply. The API rejects an input
+        # item with no `content`, so it is sent with empty content.
+        message = ChatMessage.from_assistant(text=None)
+        assert _convert_chat_message_to_responses_api_format(message) == [{"role": "assistant", "content": ""}]
 
-        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+    def test_convert_reasoning_only_message_adds_no_empty_message(self) -> None:
+        # Reasoning already produces an input item, so no empty assistant message is appended alongside it.
+        message = ChatMessage.from_assistant(reasoning="thinking")
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"summary": [{"text": "thinking", "type": "summary_text"}]}
+        ]
+
+    def test_convert_invalid(self) -> None:
+        message = ChatMessage(_role=ChatRole.USER, _content=[])
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
 

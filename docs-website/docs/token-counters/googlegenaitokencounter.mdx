@@ -1,0 +1,99 @@
+---
+title: "GoogleGenAITokenCounter"
+id: googlegenaitokencounter
+slug: "/googlegenaitokencounter"
+description: "Count message and tool tokens exactly for Gemini models with Google's token counting API."
+---
+
+# GoogleGenAITokenCounter
+
+`GoogleGenAITokenCounter` uses the `countTokens` endpoint of the Google Gen AI SDK to count the input tokens of `ChatMessage` objects and optional tool schemas for a specific Gemini model. The endpoint returns a count without generating a response, so it does not incur generation costs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Import path** | `haystack_integrations.token_counters.google_genai.GoogleGenAITokenCounter` |
+| **Mandatory init variables** | `model`: The Gemini model to count for |
+| **API reference** | [Google GenAI](/reference/integrations-google-genai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
+| **Package name** | `google-genai-haystack` |
+
+</div>
+
+Because it calls a remote API, it needs Google credentials and adds network latency to every count. Use it when you need model-specific counts for Gemini models. For local estimates, use [`ApproximateTokenCounter`](approximatetokencounter.mdx) or [`TiktokenCounter`](tiktokencounter.mdx).
+
+## Installation
+
+Install the `google-genai-haystack` package:
+
+```bash
+pip install google-genai-haystack
+```
+
+## Usage
+
+Token counts are model-specific, so pass the model you intend to generate with:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.google_genai import GoogleGenAITokenCounter
+
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("Explain retrieval-augmented generation."),
+]
+
+counter = GoogleGenAITokenCounter(model="gemini-2.5-flash")
+token_count = counter.count(messages)
+print(token_count)
+```
+
+By default, the counter uses the Gemini Developer API and reads the API key from the `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable. You can also pass a Haystack [Secret](../concepts/secret-management.mdx) explicitly, set the `timeout` and `max_retries` of the underlying client, or target Vertex AI with `api="vertex"`:
+
+```python
+counter = GoogleGenAITokenCounter(
+    model="gemini-2.5-flash",
+    api="vertex",
+    vertex_ai_project="my-project",
+    vertex_ai_location="us-central1",
+)
+```
+
+To include the context consumed by tool schemas, pass the tools to `count()`:
+
+```python
+token_count = counter.count(messages, tools=[search_tool])
+```
+
+The counter creates its API client on the first call to `count()`. To create it during application startup instead, call `warm_up()` explicitly. Call `close()` when you are done with the counter to release the client's HTTP resources:
+
+```python
+counter.warm_up()
+...
+counter.close()
+```
+
+## Gemini Developer API versus Vertex AI
+
+The Google Gen AI SDK only accepts a system instruction and tool schemas on `countTokens` when the client targets Vertex AI. On the Gemini Developer API, a leading system message is measured as a user turn, which is a close approximation rather than the exact count, and passing tools raises a `ValueError`. If you need exact counts for system prompts or tool schemas, use `api="vertex"`.
+
+## Non-text content
+
+Gemini counts images and files as part of the request, so the counter measures them instead of applying a flat estimate. It supports the same content types as [`GoogleGenAIChatGenerator`](../pipeline-components/generators/googlegenaichatgenerator.mdx): PNG, JPEG, WebP, HEIC, and HEIF images, and files with a MIME type set, both in user messages only. Other image MIME types raise an error rather than being estimated.
+
+## Use with compaction
+
+Pass the counter to [`CompactionHook`](../pipeline-components/agents-1/compaction/compaction-hook.mdx) to size an Agent's conversation with the same tokenizer Gemini uses:
+
+```python
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=1_000_000,
+    token_counter=GoogleGenAITokenCounter(model="gemini-2.5-flash", api="vertex"),
+)
+```
+
+Keep in mind that the hook counts messages on every Agent step, so each compaction check costs an API round trip. The hook also passes the Agent's tools to the counter, so use `api="vertex"` when the Agent has tools.

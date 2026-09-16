@@ -79,6 +79,22 @@ Creates an AzureOCRDocumentConverter component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Azure Document Analysis client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Azure Document Analysis client.
+
 #### run
 
 ```python
