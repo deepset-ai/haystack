@@ -29,7 +29,7 @@ We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgene
 
 </div>
 
-`VertexAIGeminiGenerator` supports `gemini-1.5-pro` and `gemini-1.5-flash`/  `gemini-2.0-flash` models. Note that [Google recommends upgrading](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions) from `gemini-1.5-pro` to `gemini-2.0-flash`.
+`VertexAIGeminiChatGenerator` supports Gemini models such as `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-2.5-pro`, and `gemini-2.5-flash`. Deprecated models like `gemini-2.0-flash` and `gemini-1.5-pro` are no longer available; see [Google's model versions page](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions) for the migration path.
 
 For available models, see https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models.
 
@@ -110,7 +110,7 @@ from haystack_integrations.components.generators.google_vertex import (
     VertexAIGeminiChatGenerator,
 )
 
-gemini_chat = VertexAIGeminiChatGenerator(model="gemini-2.0-flash-exp", tools=[tool])
+gemini_chat = VertexAIGeminiChatGenerator(model="gemini-3.8-flash", tools=[tool])
 ```
 
 And then ask our question. The model prepares the tool call, your code executes it with `Tool.invoke`, and the results go back to the model for the final answer:
@@ -149,7 +149,7 @@ from haystack_integrations.components.generators.google_vertex import (
 )
 
 agent = Agent(
-    chat_generator=VertexAIGeminiChatGenerator(model="gemini-2.0-flash-exp"),
+    chat_generator=VertexAIGeminiChatGenerator(model="gemini-3.8-flash"),
     tools=[tool],
 )
 
