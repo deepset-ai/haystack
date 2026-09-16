@@ -151,6 +151,14 @@ class MarkdownHeaderSplitter:
 
         # process headers and build chunks
         chunks: list[dict] = []
+
+        # Text before the first header belongs to no section, but it is still document content: a README's
+        # opening paragraph, a title block, or front matter. Emit it as its own header-less chunk, the same
+        # shape the no-headers-found path returns, instead of dropping it.
+        preamble = text[: matches[0].start()]
+        if preamble.strip():
+            chunks.append({"content": preamble, "meta": {}, "source_start_idx": 0})
+
         header_stack: list[str | None] = [None] * 6
         pending_start: int | None = None  # start offset in text of the first buffered empty header
         pending_header_text: str | None = None  # text of the last buffered empty header
