@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    `DocumentJoiner` now keeps the highest-scoring copy of a duplicate document in `merge` and
+    `reciprocal_rank_fusion` mode, matching what `concatenate` and
+    `distribution_based_rank_fusion` already do. Both modes previously overwrote the stored
+    document unconditionally, so when two retrievers returned the same id with different content
+    or meta, the copy that survived was whichever list happened to come last. The fused score is
+    order-independent in both modes, so the returned payload silently depended on connection
+    order while the score did not. The shared `_reciprocal_rank_fusion` helper is fixed too, so
+    every caller benefits.

@@ -188,6 +188,35 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert output["documents"][0].score == 0.0
 
+    def test_run_with_merge_join_mode_keeps_highest_scoring_duplicate(self):
+        # Duplicates share an id but not necessarily a payload. The fused score is a weighted sum
+        # and so is order-independent; the kept copy must be too, and must match what
+        # `concatenate` and `distribution_based_rank_fusion` keep -- the highest-scoring one.
+        high = Document(id="d1", content="full text", score=0.9)
+        low = Document(id="d1", content="stub", score=0.1)
+
+        for lists in ([high], [low]), ([low], [high]):
+            output = DocumentJoiner(join_mode="merge", weights=[0.5, 0.5]).run(list(lists))
+            assert len(output["documents"]) == 1
+            assert output["documents"][0].content == "full text"
+
+    def test_run_with_rrf_join_mode_keeps_highest_scoring_duplicate(self):
+        high = Document(id="d1", content="full text", score=0.9)
+        low = Document(id="d1", content="stub", score=0.1)
+
+        for lists in ([high], [low]), ([low], [high]):
+            output = DocumentJoiner(join_mode="reciprocal_rank_fusion").run(list(lists))
+            assert len(output["documents"]) == 1
+            assert output["documents"][0].content == "full text"
+
+    def test_run_with_merge_join_mode_keeps_scored_duplicate_over_unscored(self):
+        scored = Document(id="d1", content="scored", score=0.2)
+        unscored = Document(id="d1", content="unscored", score=None)
+
+        for lists in ([scored], [unscored]), ([unscored], [scored]):
+            output = DocumentJoiner(join_mode="merge", weights=[0.5, 0.5]).run(list(lists))
+            assert output["documents"][0].content == "scored"
+
     def test_run_with_merge_join_mode(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[1.5, 0.5])
         documents_1 = [Document(content="a", score=1.0), Document(content="b", score=2.0)]

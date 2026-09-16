@@ -16,6 +16,11 @@ from haystack.utils.misc import _reciprocal_rank_fusion
 logger = logging.getLogger(__name__)
 
 
+def _score_or_neg_inf(document: Document) -> float:
+    """Sort key that ranks a Document without a score below every scored one."""
+    return document.score if document.score is not None else -inf
+
+
 class JoinMode(Enum):
     """
     Enum for join mode.
@@ -188,7 +193,7 @@ class DocumentJoiner:
         for doc in itertools.chain.from_iterable(document_lists):
             docs_per_id[doc.id].append(doc)
         for docs in docs_per_id.values():
-            doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score is not None else -inf)
+            doc_with_best_score = max(docs, key=_score_or_neg_inf)
             output.append(doc_with_best_score)
         return output
 
@@ -207,7 +212,14 @@ class DocumentJoiner:
         for documents, weight in zip(document_lists, weights, strict=True):
             for doc in documents:
                 scores_map[doc.id] += (doc.score if doc.score is not None else 0) * weight
-                documents_map[doc.id] = doc
+                # Duplicates share an id but not necessarily a payload: two retrievers can return
+                # the same document with different content or meta. Keep the highest-scoring copy,
+                # as `_concatenate` and `_distribution_based_rank_fusion` do -- overwriting
+                # unconditionally would keep whichever list happened to come last, making the
+                # returned payload depend on connection order even though the fused score does not.
+                incumbent = documents_map.get(doc.id)
+                if incumbent is None or _score_or_neg_inf(doc) > _score_or_neg_inf(incumbent):
+                    documents_map[doc.id] = doc
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 

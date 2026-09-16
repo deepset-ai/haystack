@@ -180,7 +180,15 @@ def _reciprocal_rank_fusion(
     for documents, weight in zip(document_lists, resolved_weights, strict=True):
         for rank, doc in enumerate(documents):
             scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
-            documents_map[doc.id] = doc
+            # Duplicates share an id but not necessarily a payload, so keep the highest-scoring
+            # copy the way `_deduplicate_documents` does. Overwriting unconditionally would keep
+            # whichever list came last, making the returned payload depend on list order even
+            # though the fused score does not.
+            incumbent = documents_map.get(doc.id)
+            if incumbent is None or (doc.score if doc.score is not None else -inf) > (
+                incumbent.score if incumbent.score is not None else -inf
+            ):
+                documents_map[doc.id] = doc
 
     for _id in scores_map:
         scores_map[_id] /= len(document_lists) / k
