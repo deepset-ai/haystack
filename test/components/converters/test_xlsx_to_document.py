@@ -86,13 +86,24 @@ class TestXLSXToDocument:
         }
         assert (
             documents[1].content
-            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | nan   |"
+            # The empty cell reads as empty, the way the CSV format already writes it.
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  |       |"
         )
         assert documents[1].meta == {
             "date_added": "2022-01-01T00:00:00",
             "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
             "xlsx": {"sheet_name": "Table Missing Value"},
         }
+
+    def test_run_markdown_missing_value(self, test_files_path: Path) -> None:
+        """table_format_kwargs["missingval"] reaches tabulate for an empty cell."""
+        converter = XLSXToDocument(table_format="markdown", table_format_kwargs={"missingval": "N/A"})
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        results = converter.run(sources=paths)
+        assert (
+            results["documents"][1].content
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | N/A   |"
+        )
 
     @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",

@@ -227,10 +227,15 @@ class XLSXToDocument:
                     "index": True,
                     "headers": value.columns,
                     "tablefmt": "pipe",
+                    "missingval": "",
                     **self.table_format_kwargs,
                 }
-                # to_markdown uses tabulate
-                tables.append(value.to_markdown(**resolved_kwargs))
+                # to_markdown uses tabulate, whose missingval only covers None: a NaN
+                # reaches the formatter as a number and is written out as "nan". Replace
+                # the empty cells with None so an empty cell reads as empty, the way
+                # to_csv already writes it, and so missingval keeps working.
+                filled = value.astype(object).where(value.notna(), None)
+                tables.append(filled.to_markdown(**resolved_kwargs))
             # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
         return tables, metadata
