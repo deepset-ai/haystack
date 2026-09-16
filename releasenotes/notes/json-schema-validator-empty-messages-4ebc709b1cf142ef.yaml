@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``JsonSchemaValidator`` now raises a descriptive ``ValueError`` when it receives an empty message list instead of
+    leaking an ``IndexError`` from its attempt to read the last message.
