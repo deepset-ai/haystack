@@ -285,6 +285,67 @@ class TestDOCXToDocument:
             assert rows[1] == expected_row_one
             assert rows[2] == expected_row_two
 
+    def test_markdown_table_escapes_a_pipe_in_a_cell(self, tmp_path):
+        """A pipe in a cell would be read as a column separator."""
+        from docx import Document
+
+        doc = Document()
+        table = doc.add_table(rows=2, cols=2)
+        table.cell(0, 0).text = "Name"
+        table.cell(0, 1).text = "Pattern"
+        table.cell(1, 0).text = "alternation"
+        table.cell(1, 1).text = "a|b"
+        path = tmp_path / "pipe.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format="markdown").run(sources=[path])["documents"][0].content
+        rows = [row for row in content.split("\n") if row.startswith("|")]
+
+        assert rows[2] == "| alternation | a\\|b    |"
+        # Every row describes the same number of columns as the header.
+        assert all(row.count("|") - row.count("\\|") == 3 for row in rows)
+
+    def test_markdown_table_collapses_a_line_break_in_a_cell(self, tmp_path):
+        """A cell spanning two paragraphs would end the row in the middle of it."""
+        from docx import Document
+
+        doc = Document()
+        table = doc.add_table(rows=2, cols=2)
+        table.cell(0, 0).text = "Step"
+        table.cell(0, 1).text = "Notes"
+        table.cell(1, 0).text = "1"
+        cell = table.cell(1, 1)
+        cell.text = "first line"
+        cell.add_paragraph("second line")
+        path = tmp_path / "break.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format="markdown").run(sources=[path])["documents"][0].content
+        rows = [row for row in content.split("\n") if row.startswith("|")]
+
+        assert len(rows) == 3
+        assert rows[2] == "| 1    | first line second line |"
+
+    def test_csv_table_still_quotes_a_line_break_in_a_cell(self, tmp_path):
+        """Guard: the CSV format already handled both and must not change."""
+        from docx import Document
+
+        doc = Document()
+        table = doc.add_table(rows=2, cols=2)
+        table.cell(0, 0).text = "Step"
+        table.cell(0, 1).text = "Notes"
+        table.cell(1, 0).text = "1"
+        cell = table.cell(1, 1)
+        cell.text = "first line"
+        cell.add_paragraph("second line")
+        path = tmp_path / "break_csv.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format="csv").run(sources=[path])["documents"][0].content
+        rows = list(csv.reader(StringIO(content.strip())))
+
+        assert rows == [["Step", "Notes"], ["1", "first line\nsecond line"]]
+
     def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
