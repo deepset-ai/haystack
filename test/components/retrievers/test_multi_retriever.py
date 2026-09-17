@@ -559,7 +559,8 @@ class TestMultiRetrieverAsync:
             await retriever.run_async(query="energy")
 
     @pytest.mark.asyncio
-    async def test_run_async_cancels_sibling_retrievers_when_one_fails(self):
+    @pytest.mark.parametrize("error_type", [RuntimeError, asyncio.CancelledError])
+    async def test_run_async_cancels_sibling_retrievers_when_one_fails(self, error_type: type[BaseException]) -> None:
         slow_started = asyncio.Event()
         slow_cancelled = False
 
@@ -597,11 +598,11 @@ class TestMultiRetrieverAsync:
                 self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
             ) -> dict[str, list[Document]]:
                 await slow_started.wait()
-                raise RuntimeError("boom")
+                raise error_type("boom")
 
         retriever = MultiRetriever(retrievers={"slow": SlowRetriever(), "failing": FailingRetriever()})
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(error_type, match="boom"):
             await retriever.run_async(query="energy")
 
         assert slow_cancelled is True
