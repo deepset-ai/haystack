@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ChatMessage.from_openai_dict_format`` now accepts tool-call ``arguments`` that are already a dictionary,
+    and treats invalid JSON strings as an empty mapping, instead of raising ``TypeError`` or ``JSONDecodeError``.
+    Some OpenAI-compatible servers send a parsed object rather than a JSON string.
