@@ -231,6 +231,7 @@ class TestSlidingWindowCompactor:
         compacted = SlidingWindowCompactor(omission_note=None).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
+        assert compacted is not None
         # System + user + tool_call + tool_result
         assert len(compacted) == 4
         assert compacted == [*messages[:2], *messages[4:]]
@@ -305,8 +306,10 @@ class TestSlidingWindowCompactor:
         compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         assert compacted is not None
         assert compacted[-4:] == messages[-4:]
+        tool_call_results = [result.tool_call_result for result in compacted[-3:]]
+        assert all(tool_call_result is not None for tool_call_result in tool_call_results)
         assert {call.id for call in compacted[-4].tool_calls} == {
-            result.tool_call_result.origin.id for result in compacted[-3:]
+            tool_call_result.origin.id for tool_call_result in tool_call_results if tool_call_result is not None
         }
 
     @pytest.mark.parametrize(("min_keep_steps", "expected"), [(0, 0), (1, 1), (2, 2), (20, 2)])
@@ -337,6 +340,7 @@ class TestSlidingWindowCompactor:
             "init_parameters": {"min_keep_steps": 7, "omission_note": "Dropped {num_removed}."},
         }
         restored = SlidingWindowCompactor.from_dict(data=data)
+        assert isinstance(restored, SlidingWindowCompactor)
         assert restored.min_keep_steps == 7
         assert restored.omission_note == "Dropped {num_removed}."
 

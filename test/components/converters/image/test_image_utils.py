@@ -51,9 +51,11 @@ class TestConvertPdfToImages:
         pages_images = _convert_pdf_to_images(bytestream=bytestream, page_range=[1], size=(100, 100))
 
         assert len(pages_images) == 1
-        assert pages_images[0][0] == 1
-        assert pages_images[0][1].width <= 100
-        assert pages_images[0][1].height <= 100
+        page_number, image = pages_images[0]
+        assert page_number == 1
+        assert isinstance(image, Image.Image)
+        assert image.width <= 100
+        assert image.height <= 100
 
     def test_convert_pdf_to_images_invalid_page(self, caplog: LogCaptureFixture) -> None:
         bytestream = get_bytestream_from_source(Path("test/test_files/pdf/sample_pdf_1.pdf"))

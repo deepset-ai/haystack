@@ -488,6 +488,7 @@ export default {
             'pipeline-components/generators/openaiimagegenerator',
             'pipeline-components/generators/openrouterchatgenerator',
             'pipeline-components/generators/orcarouterchatgenerator',
+            'pipeline-components/generators/parallelchatgenerator',
             'pipeline-components/generators/perplexitychatgenerator',
             'pipeline-components/generators/sagemakergenerator',
             'pipeline-components/generators/stackitchatgenerator',
@@ -719,6 +720,7 @@ export default {
             'pipeline-components/websearch/ddgswebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/linkupwebsearch',
+            'pipeline-components/websearch/parallelwebsearch',
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
@@ -837,6 +839,7 @@ export default {
             id: 'development/tracing'
           },
           items: [
+            'development/tracing/haystack-enterprise-platform',
             'development/tracing/opentelemetry',
             'development/tracing/mlflow',
             'development/tracing/datadog',
@@ -857,6 +860,7 @@ export default {
             id: 'development/deployment'
           },
           items: [
+            'development/deployment/haystack-enterprise-platform',
             'development/deployment/docker',
             'development/deployment/kubernetes',
             'development/deployment/openshift',
