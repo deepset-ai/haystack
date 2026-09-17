@@ -1,0 +1,116 @@
+---
+title: "ParallelChatGenerator"
+id: parallelchatgenerator
+slug: "/parallelchatgenerator"
+description: "`ParallelChatGenerator` enables chat completion grounded in live web research using the Parallel Responses API."
+---
+
+# ParallelChatGenerator
+
+`ParallelChatGenerator` enables chat completion grounded in live web research using the Parallel Responses API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Parallel API key. Can be set with `PARALLEL_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat |
+| **Output variables** | `replies`: A list of alternative replies of the LLM to the input chat |
+| **API reference** | [Integrations](/reference/integrations-parallel) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/parallel/src/haystack_integrations/components/generators/parallel/chat/chat_generator.py |
+| **Package name** | `parallel-haystack` |
+
+</div>
+
+## Overview
+
+`ParallelChatGenerator` is built on top of `OpenAIResponsesChatGenerator` and communicates with the [Parallel Responses API](https://docs.parallel.ai/responses-api/responses-quickstart) (`POST /v1/responses`), which uses an OpenAI Responses-compatible interface.
+
+It supports a single model, `parallel`, which is the default. Every answer is grounded in live web research and comes with citations, so there is no separate retrieval step to wire up.
+
+The `reasoning.effort` parameter selects the research tier:
+
+- `low` — roughly 5-10 seconds
+- `medium` — roughly 15-20 seconds (default)
+- `high` — roughly 30-60 seconds
+
+`ParallelChatGenerator` needs a Parallel API key to work. It uses a `PARALLEL_API_KEY` environment variable by default.
+
+The component accepts a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (such as `user`, `assistant`, or `system`), and optional metadata. See the [usage](#usage) section for an example.
+
+You can pass any parameters supported by the Parallel Responses API using the `generation_kwargs` parameter, both at initialization and in the `run()` method. Because web grounding is built into the model, tool calling and sampling parameters (`tools`, `temperature`, `top_p`, and others) are accepted for SDK compatibility but silently ignored by the API. The component logs a warning when these parameters are passed at initialization. See the [OpenAI compatibility page](https://docs.parallel.ai/responses-api/openai-compatibility) for the full list.
+
+Since a single call runs live research, `timeout` defaults to 120 seconds rather than the 30 seconds inherited from the OpenAI client, which leaves room for the `high` tier.
+
+## Installation
+
+Install the integration and set your [Parallel API key](https://platform.parallel.ai) before running the examples:
+
+```bash
+pip install parallel-haystack
+export PARALLEL_API_KEY="YOUR_PARALLEL_API_KEY"
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.parallel import ParallelChatGenerator
+
+chat_generator = ParallelChatGenerator(generation_kwargs={"reasoning": {"effort": "low"}})
+response = chat_generator.run(
+    [ChatMessage.from_user("What did Parallel Web Systems announce this year?")],
+)
+print(response["replies"][0].text)
+```
+
+With streaming — pass any callable to `streaming_callback`, or use the built-in `print_streaming_chunk`:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.generators.parallel import ParallelChatGenerator
+
+chat_generator = ParallelChatGenerator(
+    streaming_callback=print_streaming_chunk,
+    generation_kwargs={"reasoning": {"effort": "low"}},
+)
+response = chat_generator.run(
+    [ChatMessage.from_user("What did Parallel Web Systems announce this year?")],
+)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack_integrations.components.generators.parallel import ParallelChatGenerator
+
+prompt_builder = ChatPromptBuilder(
+    template=[
+        ChatMessage.from_system("You are a helpful assistant."),
+        ChatMessage.from_user("Tell me about {{topic}}"),
+    ],
+    required_variables="*",
+)
+llm = ParallelChatGenerator(
+    api_key=Secret.from_env_var("PARALLEL_API_KEY"),
+    generation_kwargs={"reasoning": {"effort": "low"}},
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+result = pipe.run(
+    data={"prompt_builder": {"topic": "large language models"}},
+)
+print(result["llm"]["replies"][0].text)
+```
