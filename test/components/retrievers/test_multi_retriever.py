@@ -602,7 +602,8 @@ class TestMultiRetrieverAsync:
 
         retriever = MultiRetriever(retrievers={"slow": SlowRetriever(), "failing": FailingRetriever()})
 
-        with pytest.raises(error_type, match="boom"):
+        # Python 3.10's gather does not preserve the cancelled task's message.
+        with pytest.raises(error_type, match="boom" if error_type is RuntimeError else None):
             await retriever.run_async(query="energy")
 
         assert slow_cancelled is True

@@ -648,7 +648,8 @@ class TestAgentRun:
             raise_on_tool_invocation_failure=raise_on_tool_invocation_failure,
         )
         try:
-            with pytest.raises(asyncio.CancelledError, match="tool stopped"):
+            # Python 3.10's gather does not preserve the cancelled task's message.
+            with pytest.raises(asyncio.CancelledError):
                 await agent.run_async(messages=[ChatMessage.from_user("run both tools")])
             assert cleaned.is_set()
             assert all(task.done() for task in tool_tasks)
