@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``LLMMessagesRouter`` now routes messages to ``unmatched`` when the chat generator returns no replies
+    or a reply with no text, instead of raising ``IndexError`` or ``TypeError``.

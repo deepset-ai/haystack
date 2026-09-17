@@ -16,6 +16,15 @@ from haystack.utils.async_utils import _execute_component_async
 _RESERVED_OUTPUT_NAMES = ("chat_generator_text", "unmatched")
 
 
+def _chat_generator_text(generator_result: dict[str, Any]) -> str:
+    """Return the first reply text from a chat generator, or an empty string if none is available."""
+    replies = generator_result.get("replies") or []
+    if not replies:
+        return ""
+    text = getattr(replies[0], "text", None)
+    return text if isinstance(text, str) else ""
+
+
 @component
 class LLMMessagesRouter:
     """
@@ -158,7 +167,7 @@ class LLMMessagesRouter:
         with _trace_chat_generator_run(self._chat_generator, {"messages": messages_for_inference}) as span:
             generator_result = self._chat_generator.run(messages=messages_for_inference)
             span.set_content_tag("haystack.component.output", generator_result)
-        chat_generator_text = generator_result["replies"][0].text
+        chat_generator_text = _chat_generator_text(generator_result)
 
         output = {"chat_generator_text": chat_generator_text}
 
@@ -207,7 +216,7 @@ class LLMMessagesRouter:
         with _trace_chat_generator_run(self._chat_generator, {"messages": messages_for_inference}) as span:
             generator_result = await _execute_component_async(self._chat_generator, messages=messages_for_inference)
             span.set_content_tag("haystack.component.output", generator_result)
-        chat_generator_text = generator_result["replies"][0].text
+        chat_generator_text = _chat_generator_text(generator_result)
 
         output = {"chat_generator_text": chat_generator_text}
 
