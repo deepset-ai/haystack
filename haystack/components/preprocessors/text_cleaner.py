@@ -85,6 +85,7 @@ class TextCleaner:
         :returns: A dictionary with the following key:
             - `texts`:  the cleaned list of strings.
         """
+        texts = [text if isinstance(text, str) else "" for text in texts]
 
         if self._regex:
             texts = [self._regex.sub("", text) for text in texts]

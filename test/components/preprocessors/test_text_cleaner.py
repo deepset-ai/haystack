@@ -31,6 +31,12 @@ def test_run_with_empty_inputs():
     assert result["texts"] == []
 
 
+def test_run_with_none_and_non_string_inputs():
+    cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=True)
+    result = cleaner.run(texts=["Hello, World!", None, 42, ""])  # type: ignore[list-item]
+    assert result["texts"] == ["hello world", "", "", ""]
+
+
 def test_run_with_regex():
     cleaner = TextCleaner(remove_regexps=[r"\d+"])
     result = cleaner.run(texts=["Open123 Source", "HaystackAI"])
