@@ -29,6 +29,11 @@ Converts CSV files to documents.
 The component uses UTF-8 encoding by default, but you may specify a different encoding if needed during initialization.
 You can optionally attach metadata to each document with a `meta` parameter when running the component.
 
+In row mode (`conversion_mode="row"`), pass `content_column` to select the column used as document content.
+The remaining columns become metadata, while `meta["row_number"]` records the zero-based row index.
+A CSV column named `row_number` is preserved as `csv_row_number`; if that key already exists in the metadata,
+a numeric suffix is added, for example `csv_row_number_1`.
+
 ## Usage
 
 ### On its own
