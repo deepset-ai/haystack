@@ -460,7 +460,7 @@ is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaH
 (retrieved 4th November 2021).
 
 The agreement's main purpose is to protect the continued open use of Haystack. At the same time, it also helps in
-\protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
+protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
 open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as remove liabilities on
 your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You
 can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).
