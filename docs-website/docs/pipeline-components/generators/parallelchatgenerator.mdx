@@ -60,7 +60,9 @@ export PARALLEL_API_KEY="YOUR_PARALLEL_API_KEY"
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.parallel import ParallelChatGenerator
 
-chat_generator = ParallelChatGenerator(generation_kwargs={"reasoning": {"effort": "low"}})
+chat_generator = ParallelChatGenerator(
+    generation_kwargs={"reasoning": {"effort": "low"}}
+)
 response = chat_generator.run(
     [ChatMessage.from_user("What did Parallel Web Systems announce this year?")],
 )
