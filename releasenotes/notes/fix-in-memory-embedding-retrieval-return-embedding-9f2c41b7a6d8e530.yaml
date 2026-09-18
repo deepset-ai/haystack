@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``InMemoryDocumentStore.embedding_retrieval`` and ``embedding_retrieval_async`` ignoring the
+    ``return_embedding`` value set at component initialization. Omitting the argument always behaved
+    as ``False``, so Documents retrieved from the default document store silently lost their
+    embeddings even though the docstring documented the opposite. Passing ``return_embedding``
+    explicitly continues to take precedence over the component setting.
