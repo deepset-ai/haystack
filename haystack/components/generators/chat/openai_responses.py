@@ -13,6 +13,10 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat._openai_tool_defs import (
+    _check_duplicate_openai_tool_definition_keys,
+    _merge_openai_tool_definitions,
+)
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
@@ -553,15 +557,10 @@ class OpenAIResponsesChatGenerator:
         tools = tools if tools is not None else self.tools
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
 
-        openai_tools = {}
-        # Build tool definitions
+        tool_definitions: list[dict[str, Any]] = []
         if tools:
-            tool_definitions: list[Any] = []
             if isinstance(tools, list) and isinstance(tools[0], dict):
-                # Predefined OpenAI/MCP-style tools
-                tool_definitions = tools
-
-            # Convert all tool objects to the correct OpenAI-compatible structure
+                tool_definitions = [item for item in tools if isinstance(item, dict)]
             else:
                 # mypy can't infer that tools is ToolsType here
                 flattened_tools = flatten_tools_or_toolsets(tools)  # type: ignore[arg-type]
@@ -576,7 +575,9 @@ class OpenAIResponsesChatGenerator:
                     function_spec["parameters"] = {**function_spec["parameters"], "additionalProperties": False}
                     tool_definitions.append({"type": "function", **function_spec})
 
-            openai_tools = {"tools": tool_definitions}
+        tool_definitions = _merge_openai_tool_definitions(tool_definitions, generation_kwargs.pop("tools", None))
+        _check_duplicate_openai_tool_definition_keys(tool_definitions)
+        openai_tools = {"tools": tool_definitions} if tool_definitions else {}
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 

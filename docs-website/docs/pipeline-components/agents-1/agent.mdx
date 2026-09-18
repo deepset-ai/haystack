@@ -67,6 +67,7 @@ The `exit_reason` output tells you why the agent stopped, which makes it easy to
 - `"length"`: the model reached its output-token limit. `last_message` may contain a partial response.
 - `"content_filter"`: a content filter stopped the model response. `last_message` may contain a partial response.
 - the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
+- `"client_tools"`: the model called a tool from `generation_kwargs["tools"]` that the Agent does not invoke (typical for OpenAI-compatible proxies that forward a client-side tool catalog). `last_message` is the assistant message with the pending tool call when only client tools were requested; when the model also called Agent tools in the same step, `last_message` is the last tool result and the pending client call remains in `messages`.
 - `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
 - a custom reason set by a hook through the `stop_run` state key, such as `"token_budget_exceeded"` from the [`TokenBudgetHook`](./token-budget.mdx).
 
@@ -127,7 +128,7 @@ def recover_from_output_limit(state: State) -> None:
 `run()` also accepts parameters that override the init-time configuration for a single call:
 
 - `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
-- `generation_kwargs`: Additional keyword arguments forwarded to the chat generator (e.g. `{"temperature": 0.2}`). They are merged per key with the `generation_kwargs` set at the chat generator's initialization: keys passed here take precedence, keys set only at initialization are kept.
+- `generation_kwargs`: Additional keyword arguments forwarded to the chat generator (e.g. `{"temperature": 0.2}`). They are merged per key with the `generation_kwargs` set at the chat generator's initialization: keys passed here take precedence, keys set only at initialization are kept. A `tools` entry is treated as extra **client-side** OpenAI function specs for the LLM: the Agent offers them alongside its own tools, strips them from the payload forwarded as `generation_kwargs`, and never invokes them. Tool names the Agent does not own and that are not listed in `generation_kwargs["tools"]` still follow the normal tool-not-found path.
 - `hook_context`: A dict of request-scoped resources made available to [hooks](./hooks.mdx) via `state.data["hook_context"]` — for example, a user ID or a WebSocket connection.
 
 :::info

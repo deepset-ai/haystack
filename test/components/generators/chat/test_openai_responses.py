@@ -554,6 +554,31 @@ class TestRun:
         # ...while the payload actually sent to the API still carries additionalProperties=False.
         assert api_args["tools"][0]["parameters"]["additionalProperties"] is False
 
+    def test_prepare_api_call_merges_tools_from_generation_kwargs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        tool = Tool(
+            name="weather",
+            description="get the weather",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=print,
+        )
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files", "description": "Client search."}}]
+        generator = OpenAIResponsesChatGenerator(tools_strict=False)
+        api_args = generator._prepare_api_call(
+            messages=[ChatMessage.from_user("hi")], tools=[tool], generation_kwargs={"tools": extra}
+        )
+        def tool_name(entry: dict) -> str:
+            if isinstance(entry.get("name"), str):
+                return entry["name"]
+            nested = entry.get("function")
+            assert isinstance(nested, dict)
+            name = nested.get("name")
+            assert isinstance(name, str)
+            return name
+
+        sent_names = [tool_name(entry) for entry in api_args["tools"]]
+        assert sent_names == ["weather", "search_knowledge_files"]
+
     def test_run_with_wrong_model(self) -> None:
 
         mock_client = MagicMock()
