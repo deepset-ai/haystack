@@ -102,7 +102,17 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
-        resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
+        resolved_read_csv_kwargs = {
+            "header": None,
+            "skip_blank_lines": False,
+            "dtype": object,
+            # keep_default_na=False prevents pandas from silently coercing the literal
+            # strings "N/A", "NA", "n/a", "NULL", "None", "NaN", and "nan" into NaN.
+            # Callers can override via read_csv_kwargs={"keep_default_na": True} if they
+            # want the old behaviour. See #12784.
+            "keep_default_na": False,
+            **self.read_csv_kwargs,
+        }
 
         split_documents = []
         split_dfs = []

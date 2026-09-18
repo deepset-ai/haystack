@@ -398,3 +398,30 @@ E,F,,,G,H
     def test_incorrect_split_mode(self) -> None:
         with pytest.raises(ValueError, match="not recognized"):
             CSVDocumentSplitter(split_mode="incorrect_mode")  # type: ignore[arg-type]
+
+    def test_literal_na_strings_preserved(self) -> None:
+        """Regression for #12784: pandas' default NA strings ('N/A', 'NA', 'n/a',
+        'NULL', 'None', 'NaN', 'nan') used to be coerced to NaN before splitting,
+        so the splitter saw empty cells instead of the literal 'N/A' values."""
+        csv_content = "A,B\nfoo,N/A\nbar,NA\n"
+        splitter = CSVDocumentSplitter(split_mode="row-wise")
+        doc = Document(content=csv_content)
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 1
+        rows = [r for r in result[0].content.split("\n") if r]
+        # Both rows preserved with literal N/A / NA in column B
+        assert "foo,N/A" in rows
+        assert "bar,NA" in rows
+
+    def test_read_csv_kwargs_keep_default_na_true_restores_old_behaviour(self) -> None:
+        """Callers who want pandas' default NA-string coercion can opt in by
+        passing read_csv_kwargs={'keep_default_na': True}."""
+        csv_content = "A,B\nfoo,N/A\n"
+        splitter = CSVDocumentSplitter(
+            split_mode="row-wise", read_csv_kwargs={"keep_default_na": True}
+        )
+        doc = Document(content=csv_content)
+        result = splitter.run([doc])["documents"]
+        # With keep_default_na=True the 'N/A' cell is coerced to NaN, so the row
+        # is treated as having a missing value and gets written back empty.
+        assert "foo," in result[0].content
