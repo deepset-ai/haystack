@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import logging
 import os
 import re
@@ -610,6 +611,53 @@ class TestGetModelExitReason:
 
 
 class TestAgentRun:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("raise_on_tool_invocation_failure", [True, False])
+    async def test_cancelled_tool_drains_other_agent_tools(self, raise_on_tool_invocation_failure: bool) -> None:
+        started = asyncio.Event()
+        cleaned = asyncio.Event()
+        tool_tasks: list[asyncio.Task[Any]] = []
+
+        async def pending_tool() -> str:
+            task = asyncio.current_task()
+            assert task is not None
+            tool_tasks.append(task)
+            started.set()
+            try:
+                await asyncio.Event().wait()
+                return "unexpected completion"
+            finally:
+                # Exercise cleanup that itself yields to the event loop.
+                await asyncio.sleep(0)
+                cleaned.set()
+
+        async def cancelled_tool() -> str:
+            await started.wait()
+            raise asyncio.CancelledError("tool stopped")
+
+        tools = [
+            Tool(name=name, description=name, parameters={"type": "object", "properties": {}}, async_function=function)
+            for name, function in [("pending", pending_tool), ("cancelled", cancelled_tool)]
+        ]
+        reply = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id=name, tool_name=name, arguments={}) for name in ("pending", "cancelled")]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(reply),
+            tools=tools,
+            raise_on_tool_invocation_failure=raise_on_tool_invocation_failure,
+        )
+        try:
+            # Python 3.10's gather does not preserve the cancelled task's message.
+            with pytest.raises(asyncio.CancelledError):
+                await agent.run_async(messages=[ChatMessage.from_user("run both tools")])
+            assert cleaned.is_set()
+            assert all(task.done() for task in tool_tasks)
+        finally:
+            for task in tool_tasks:
+                task.cancel()
+            await asyncio.gather(*tool_tasks, return_exceptions=True)
+
     def test_agent_with_no_tools(self):
         agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
 
