@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -324,6 +325,85 @@ class _ExecutionContext:
     tool_execution_inputs: dict
     client_side_tools: list[Tool]
     counter: int = 0
+
+
+def _stop_step_for_client_tools(exe_context: _ExecutionContext) -> None:
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+
+
+def _plan_tool_step(
+    exe_context: _ExecutionContext, *, current_tools: list[Tool], client_side_tools: list[Tool]
+) -> tuple[_PendingToolCallPlan, list[ChatMessage]] | None:
+    """
+    Plan tool invocation for the current step.
+
+    :returns: ``(plan, pending_tool_call_messages)``, or ``None`` if the step stops for client-only tool calls.
+    """
+    pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
+    plan = _plan_pending_tool_calls(
+        pending_tool_call_messages, current_tools=current_tools, client_side_tools=client_side_tools
+    )
+    if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
+        _stop_step_for_client_tools(exe_context)
+        return None
+    return plan, pending_tool_call_messages
+
+
+def _commit_tool_results(exe_context: _ExecutionContext, tool_messages: list[ChatMessage]) -> None:
+    exe_context.state.set("messages", tool_messages)
+    _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+
+
+def _finish_tool_step(
+    exe_context: _ExecutionContext,
+    *,
+    exit_conditions: list[str],
+    plan: _PendingToolCallPlan,
+    pending_tool_call_messages: list[ChatMessage],
+    tool_messages: list[ChatMessage],
+    check_exit_conditions: Callable[[list[ChatMessage], list[ChatMessage]], str | None],
+    continue_after_exit: Callable[[], bool],
+) -> bool:
+    """Returns True to continue the agent loop, False to stop."""
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    if plan.stop_for_client_tools:
+        exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+        return False
+    exit_condition_tool = (
+        None if exit_conditions == ["text"] else check_exit_conditions(pending_tool_call_messages, tool_messages)
+    )
+    if exit_condition_tool is not None:
+        exe_context.state.set("exit_reason", exit_condition_tool)
+        return continue_after_exit()
+    return True
+
+
+async def _finish_tool_step_async(
+    exe_context: _ExecutionContext,
+    *,
+    exit_conditions: list[str],
+    plan: _PendingToolCallPlan,
+    pending_tool_call_messages: list[ChatMessage],
+    tool_messages: list[ChatMessage],
+    check_exit_conditions: Callable[[list[ChatMessage], list[ChatMessage]], str | None],
+    continue_after_exit: Callable[[], Awaitable[bool]],
+) -> bool:
+    """Returns True to continue the agent loop, False to stop."""
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    if plan.stop_for_client_tools:
+        exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+        return False
+    exit_condition_tool = (
+        None if exit_conditions == ["text"] else check_exit_conditions(pending_tool_call_messages, tool_messages)
+    )
+    if exit_condition_tool is not None:
+        exe_context.state.set("exit_reason", exit_condition_tool)
+        return await continue_after_exit()
+    return True
 
 
 @component
@@ -1148,43 +1228,31 @@ class Agent:
                 return self._continue_after_exit_hooks(exe_context=exe_context)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
-            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
-            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
-            plan = _plan_pending_tool_calls(
-                pending_tool_call_messages, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
+            planned = _plan_tool_step(
+                exe_context, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
             )
-            if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
-                exe_context.counter += 1
-                exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+            if planned is None:
                 return False
+            plan, pending_tool_call_messages = planned
 
-            tool_execution_inputs = {
-                "messages": plan.invoke_messages,
-                "state": exe_context.state,
+            tool_messages, exe_context.state = _run_tool(
+                messages=plan.invoke_messages,
+                state=exe_context.state,
+                tools=current_tools,
                 **exe_context.tool_execution_inputs,
-                "tools": current_tools,
-            }
-            tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
-            exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            )
+            _commit_tool_results(exe_context, tool_messages)
             _run_hooks(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
-            exe_context.counter += 1
-            exe_context.state.set("step_count", exe_context.counter)
-            if plan.stop_for_client_tools:
-                exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
-                return False
-            exit_condition_tool = (
-                None
-                if self.exit_conditions == ["text"]
-                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
+            return _finish_tool_step(
+                exe_context,
+                exit_conditions=self.exit_conditions,
+                plan=plan,
+                pending_tool_call_messages=pending_tool_call_messages,
+                tool_messages=tool_messages,
+                check_exit_conditions=self._check_exit_conditions,
+                continue_after_exit=lambda: self._continue_after_exit_hooks(exe_context=exe_context),
             )
-            if exit_condition_tool is not None:
-                exe_context.state.set("exit_reason", exit_condition_tool)
-                return self._continue_after_exit_hooks(exe_context=exe_context)
-            return True
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
@@ -1230,43 +1298,31 @@ class Agent:
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
-            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
-            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
-            plan = _plan_pending_tool_calls(
-                pending_tool_call_messages, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
+            planned = _plan_tool_step(
+                exe_context, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
             )
-            if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
-                exe_context.counter += 1
-                exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+            if planned is None:
                 return False
+            plan, pending_tool_call_messages = planned
 
-            tool_execution_inputs = {
-                "messages": plan.invoke_messages,
-                "state": exe_context.state,
+            tool_messages, exe_context.state = await _run_tool_async(
+                messages=plan.invoke_messages,
+                state=exe_context.state,
+                tools=current_tools,
                 **exe_context.tool_execution_inputs,
-                "tools": current_tools,
-            }
-            tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
-            exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            )
+            _commit_tool_results(exe_context, tool_messages)
             await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
-            exe_context.counter += 1
-            exe_context.state.set("step_count", exe_context.counter)
-            if plan.stop_for_client_tools:
-                exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
-                return False
-            exit_condition_tool = (
-                None
-                if self.exit_conditions == ["text"]
-                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
+            return await _finish_tool_step_async(
+                exe_context,
+                exit_conditions=self.exit_conditions,
+                plan=plan,
+                pending_tool_call_messages=pending_tool_call_messages,
+                tool_messages=tool_messages,
+                check_exit_conditions=self._check_exit_conditions,
+                continue_after_exit=lambda: self._continue_after_exit_hooks_async(exe_context=exe_context),
             )
-            if exit_condition_tool is not None:
-                exe_context.state.set("exit_reason", exit_condition_tool)
-                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
-            return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
         """

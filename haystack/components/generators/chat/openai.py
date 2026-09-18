@@ -23,12 +23,10 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.chat._openai_tool_defs import (
-    _check_duplicate_openai_tool_definition_keys,
-    _merge_openai_tool_definitions,
-)
 from haystack.components.generators.utils import (
+    _check_duplicate_openai_tool_definition_keys,
     _convert_streaming_chunks_to_chat_message,
+    _merge_openai_tool_definitions,
     _normalize_messages,
     _serialize_object,
 )

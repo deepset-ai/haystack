@@ -13,11 +13,12 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.chat._openai_tool_defs import (
+from haystack.components.generators.utils import (
     _check_duplicate_openai_tool_definition_keys,
     _merge_openai_tool_definitions,
+    _normalize_messages,
+    _serialize_object,
 )
-from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
