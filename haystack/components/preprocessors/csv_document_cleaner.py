@@ -80,7 +80,13 @@ class CSVDocumentCleaner:
         cleaned_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)
+                # keep_default_na=False prevents pandas from silently coercing the literal
+                # strings "N/A", "NA", "n/a", "NULL", "None", "NaN", and "nan" into NaN
+                # before the cleaner has a chance to see them. Without it, a row whose cells
+                # all say "N/A" is treated as fully empty and removed by dropna(how="all"),
+                # and any cell that holds one of those strings comes out as an empty string
+                # in the rewritten document. See #12784.
+                df = pd.read_csv(StringIO(document.content), header=None, dtype=object, keep_default_na=False)
             except Exception as e:
                 logger.exception(
                     "Error processing document {id}. Keeping it, but skipping cleaning. Error: {error}",

@@ -218,3 +218,28 @@ def test_remove_empty_rows_and_columns_false() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",B,C\n,,4\n,,\n"
+
+
+def test_literal_na_strings_preserved_in_cells() -> None:
+    """Regression for #12784: pandas' default NA strings ('N/A', 'NA', 'n/a',
+    'NULL', 'None', 'NaN', 'nan') used to be coerced to NaN before the cleaner
+    could see them, so cells that held those literal strings came back empty."""
+    csv_content = "A,B,C\nfoo,N/A,bar\nbaz,NA,qux\n"
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner()
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == "A,B,C\nfoo,N/A,bar\nbaz,NA,qux\n"
+
+
+def test_row_of_na_strings_not_treated_as_empty() -> None:
+    """Regression for #12784: a row whose cells all say 'N/A' used to be dropped
+    by dropna(how='all') because pandas had already coerced every cell to NaN.
+    With keep_default_na=False the literal string is preserved and the row
+    stays in the output."""
+    csv_content = "A,B,C\n1,2,3\nN/A,N/A,N/A\n4,5,6\n"
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner()
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == "A,B,C\n1,2,3\nN/A,N/A,N/A\n4,5,6\n"
