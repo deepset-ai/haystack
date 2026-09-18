@@ -381,6 +381,23 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"bad_phone_num": "Phone number does not have 123 area code"}
 
+    def test_string_output_type_preserved_over_literal_eval(self):
+        # A rendered string that happens to be a valid Python literal must be returned
+        # unchanged when output_type=str, and not silently coerced to another type
+        # (e.g. "1,000" is a valid Python tuple literal that evaluates to (1, 0)).
+        routes: list[Route] = [
+            {"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": str}
+        ]
+        result = ConditionalRouter(routes).run(reply="1,000")
+        assert result["reply"] == "1,000"
+        assert isinstance(result["reply"], str)
+
+        # Non-str output types must still reconstruct structured literals from the rendered string.
+        routes = [{"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": list}]
+        result = ConditionalRouter(routes).run(reply="[1, 2, 3]")
+        assert result["reply"] == [1, 2, 3]
+        assert isinstance(result["reply"], list)
+
     def test_sede_with_custom_filter(self):
         routes: list[Route] = [
             {

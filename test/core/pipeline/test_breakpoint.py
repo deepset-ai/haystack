@@ -224,6 +224,20 @@ class TestResumeFromPipelineSnapshot:
         result = pipeline.run(data={}, pipeline_snapshot=snapshot, break_point=Breakpoint(component_name="comp1"))
         assert result["comp3"]["result"] == "test_processed_processed_processed"
 
+    def test_resume_rejects_pipeline_with_added_component(self):
+        pipeline = _three_component_pipeline()
+
+        with pytest.raises(BreakpointException) as exc_info:
+            pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
+        snapshot = exc_info.value.pipeline_snapshot
+        assert snapshot is not None
+
+        pipeline.add_component("comp4", _AppendingComponent())
+        pipeline.connect("comp3", "comp4")
+
+        with pytest.raises(PipelineInvalidPipelineSnapshotError, match="not present in 'ordered_component_names'"):
+            pipeline.run(data={}, pipeline_snapshot=snapshot)
+
     def test_break_point_matching_pipeline_snapshot_break_point_raises(self):
         pipeline = _three_component_pipeline()
 

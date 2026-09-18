@@ -17,8 +17,9 @@ Haystack provides the `TokenCounter` protocol and three built-in implementations
 | [`TiktokenCounter`](token-counters/tiktokencounter.mdx) | Uses OpenAI's `tiktoken` byte-pair encoder | `tiktoken` | More accurate estimates for OpenAI models |
 | [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx) | Calls OpenAI's input token counting API | OpenAI API key | Exact, model-specific counts including images, files, and tools |
 | [`AnthropicTokenCounter`](token-counters/anthropictokencounter.mdx) | Calls Anthropic's token counting API | `anthropic-haystack` package and an Anthropic API key | Exact, model-specific counts for Claude models |
+| [`GoogleGenAITokenCounter`](token-counters/googlegenaitokencounter.mdx) | Calls Google's token counting API | `google-genai-haystack` package and Google credentials | Exact, model-specific counts for Gemini models |
 
-All counters include message roles, text, tool calls, tool results, and optional tool schemas. The local counters account for images and files using configurable flat rates, including images and files nested in tool results. `OpenAITokenCounter` and `AnthropicTokenCounter` send supported non-text content to the provider for a model-specific count.
+All counters include message roles, text, tool calls, tool results, and optional tool schemas. The local counters account for images and files using configurable flat rates, including images and files nested in tool results. `OpenAITokenCounter`, `AnthropicTokenCounter`, and `GoogleGenAITokenCounter` send supported non-text content to the provider for a model-specific count.
 
 See the [Token Counters API reference](/reference/token-counters-api) for all constructor parameters and methods.
 
@@ -58,6 +59,7 @@ See the documentation for the counter you use to understand how it counts non-te
 - [`TiktokenCounter`](token-counters/tiktokencounter.mdx)
 - [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx)
 - [`AnthropicTokenCounter`](token-counters/anthropictokencounter.mdx)
+- [`GoogleGenAITokenCounter`](token-counters/googlegenaitokencounter.mdx)
 
 ## Creating a custom token counter
 

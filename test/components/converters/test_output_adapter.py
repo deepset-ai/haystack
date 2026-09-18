@@ -33,8 +33,8 @@ class TestOutputAdapter:
         adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
 
         assert adapter.template == template
-        assert adapter.__haystack_output__.output.name == "output"
-        assert adapter.__haystack_output__.output.type == output_type
+        assert adapter.__haystack_output__.output.name == "output"  # type: ignore[attr-defined]
+        assert adapter.__haystack_output__.output.type == output_type  # type: ignore[attr-defined]
 
     #  OutputAdapter can adapt the output of one component to be compatible with the input of another
     #  component using Jinja2 template expressions.
@@ -159,7 +159,9 @@ class TestOutputAdapter:
         assert "list[str]" in serialized_pipe
 
         deserialized_pipe = Pipeline.loads(serialized_pipe)
-        assert deserialized_pipe.get_component("adapter").output_type == list[str]
+        deserialized_adapter = deserialized_pipe.get_component("adapter")
+        assert isinstance(deserialized_adapter, OutputAdapter)
+        assert deserialized_adapter.output_type == list[str]
 
     def test_sede_with_typing_list_output_type_in_pipeline(self):
         pipe = Pipeline()
@@ -170,7 +172,9 @@ class TestOutputAdapter:
         assert "typing.List[str]" in serialized_pipe
 
         deserialized_pipe = Pipeline.loads(serialized_pipe)
-        assert deserialized_pipe.get_component("adapter").output_type == List[str]
+        deserialized_adapter = deserialized_pipe.get_component("adapter")
+        assert isinstance(deserialized_adapter, OutputAdapter)
+        assert deserialized_adapter.output_type == List[str]
 
     def test_output_adapter_from_dict_custom_filters_none(self):
         component = OutputAdapter.from_dict(
@@ -202,7 +206,7 @@ class TestOutputAdapter:
             name="output_adapter",
             instance=OutputAdapter(
                 template="{{ documents[0].content | json_loads}}",
-                output_type=str,
+                output_type=dict,
                 custom_filters={"json_loads": lambda s: json.loads(str(s))},
             ),
         )
@@ -211,6 +215,19 @@ class TestOutputAdapter:
         result = pipe.run(data={})
         assert result
         assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+
+    def test_string_output_type_preserved_over_literal_eval(self):
+        # A rendered string that happens to be a valid Python literal must be returned
+        # unchanged when output_type=str, and not silently coerced to another type
+        # (e.g. "1,000" is a valid Python tuple literal that evaluates to (1, 0)).
+        result = OutputAdapter(template="{{ reply }}", output_type=str).run(reply="1,000")
+        assert result["output"] == "1,000"
+        assert isinstance(result["output"], str)
+
+        # Non-str output types must still reconstruct structured literals from the rendered string.
+        result = OutputAdapter(template="{{ reply }}", output_type=list).run(reply="[1, 2, 3]")
+        assert result["output"] == [1, 2, 3]
+        assert isinstance(result["output"], list)
 
     def test_unsafe(self):
         adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
@@ -274,6 +291,8 @@ class TestOutputAdapter:
 {{ output }}
 """
         adapter = OutputAdapter(template=template, output_type=int)
-        assert adapter.__haystack_input__._sockets_dict == {"control": InputSocket(name="control", type=Any)}
+        assert adapter.__haystack_input__._sockets_dict == {  # type: ignore[attr-defined]
+            "control": InputSocket(name="control", type=Any)
+        }
         res = adapter.run(control="something")
         assert res["output"] == 1

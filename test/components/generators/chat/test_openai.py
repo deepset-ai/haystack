@@ -502,6 +502,13 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    def test_run_with_empty_tools_override(self, tools: list[Tool], openai_mock_chat_completion: MagicMock) -> None:
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
+
+        assert "tools" not in openai_mock_chat_completion.call_args.kwargs
+
     def test_run_with_generation_kwargs(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
     ) -> None:
@@ -889,8 +896,9 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run(self) -> None:
-
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -907,7 +915,6 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
-
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]

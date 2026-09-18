@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from typing import Any, Literal
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
@@ -109,6 +109,22 @@ class RecursiveDocumentSplitter:
             tiktoken_imports.check()
             self.tiktoken_tokenizer = tiktoken.get_encoding("o200k_base")
         self._is_warmed_up = True
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_unit=self.split_units,
+            separators=self.separators,
+            sentence_splitter_params=self.sentence_splitter_params,
+        )
 
     def _check_params(self) -> None:
         if self.split_length < 1:
@@ -350,17 +366,11 @@ class RecursiveDocumentSplitter:
             if current_chunk:
                 chunks.append("".join(current_chunk))
 
-            if self.split_overlap > 0:
-                chunks = self._apply_overlap(chunks)
-
             if chunks:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        chunks = self._fall_back_to_fixed_chunking(text, self.split_units)
-        if self.split_overlap > 0:
-            chunks = self._apply_overlap(chunks)
-        return chunks
+        return self._fall_back_to_fixed_chunking(text, self.split_units)
 
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char", "token"]) -> list[str]:
         """
@@ -429,6 +439,12 @@ class RecursiveDocumentSplitter:
     def _run_one(self, doc: Document) -> list[Document]:
         chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
+
+        # apply the overlap once, on the fully chunked list, so that chunks produced
+        # at inner recursion levels don't get the overlap applied a second time
+        if self.split_overlap > 0:
+            chunks = self._apply_overlap(chunks)
+
         current_position = 0
         current_page = 1
 

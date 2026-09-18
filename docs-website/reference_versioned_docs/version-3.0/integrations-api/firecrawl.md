@@ -21,15 +21,15 @@ suitable for LLMs. You need a Firecrawl API key from [firecrawl.dev](https://fir
 ### Usage example
 
 ```python
-from haystack_integrations.components.fetchers.firecrawl import FirecrawlFetcher
+from haystack_integrations.components.fetchers.firecrawl import FirecrawlCrawler
 
-fetcher = FirecrawlFetcher(
+crawler = FirecrawlCrawler(
     api_key=Secret.from_env_var("FIRECRAWL_API_KEY"),
     params={"limit": 5},
 )
-fetcher.warm_up()
+crawler.warm_up()
 
-result = fetcher.run(urls=["https://docs.haystack.deepset.ai/docs/intro"])
+result = crawler.run(urls=["https://docs.haystack.deepset.ai/docs/intro"])
 documents = result["documents"]
 ```
 
@@ -42,7 +42,7 @@ __init__(
 ) -> None
 ```
 
-Initialize the FirecrawlFetcher.
+Initialize the FirecrawlCrawler.
 
 **Parameters:**
 
@@ -100,8 +100,15 @@ Asynchronously crawls the given URLs and returns the extracted content as Docume
 warm_up() -> None
 ```
 
-Warm up the Firecrawl client by initializing the clients.
-This is useful to avoid cold start delays when crawling many URLs.
+Warm up the synchronous Firecrawl client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the asynchronous Firecrawl client.
 
 ## haystack_integrations.components.websearch.firecrawl.firecrawl_websearch
 
@@ -160,8 +167,15 @@ Initialize the FirecrawlWebSearch component.
 warm_up() -> None
 ```
 
-Warm up the Firecrawl clients by initializing the sync and async clients.
-This is useful to avoid cold start delays when performing searches.
+Warm up the synchronous Firecrawl client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the asynchronous Firecrawl client.
 
 #### run
 

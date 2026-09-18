@@ -8,6 +8,7 @@ from unittest.mock import ANY
 import pytest
 
 from haystack import Document
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
 
 
@@ -909,6 +910,47 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         split_contents.append(doc.content)
     reconstructed_text = "".join(split_contents)
     assert reconstructed_text == sample_text_with_page_breaks
+
+
+def test_page_break_inside_overlap_is_not_counted_twice():
+    # "\f" sits inside the 2-word overlap window, so it appears in two consecutive splits.
+    # Counting it once per appearance used to push page_number past the real number of pages.
+    text = "# H1\nw1 w2 w3 \f w4 w5 w6 w7 w8 w9"
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5, split_overlap=2)
+    split_docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    # a single header means the chunk is the whole document, so a plain DocumentSplitter run
+    # over the same text with the same settings is the reference for both content and pages
+    baseline_docs = DocumentSplitter(split_by="word", split_length=5, split_overlap=2).run(
+        documents=[Document(content=text)]
+    )["documents"]
+
+    assert [doc.content for doc in split_docs] == [doc.content for doc in baseline_docs]
+    assert [doc.meta["page_number"] for doc in split_docs] == [doc.meta["page_number"] for doc in baseline_docs]
+    # the text contains one page break, so it spans two pages
+    assert [doc.meta["page_number"] for doc in split_docs] == [1, 1, 2]
+
+
+def test_custom_page_break_character_in_secondary_splitting():
+    text = "# H1\nw1 w2 <PAGE> w3 w4"
+    splitter = MarkdownHeaderSplitter(page_break_character="<PAGE>", secondary_split="word", split_length=4)
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["# H1\nw1 w2 <PAGE> ", "w3 w4"]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+
+
+def test_page_break_in_removed_header_is_counted():
+    text = "# H1<PAGE>\nw1 w2 w3 w4"
+    splitter = MarkdownHeaderSplitter(
+        page_break_character="<PAGE>", keep_headers=False, secondary_split="word", split_length=2
+    )
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["\nw1 w2 ", "w3 w4"]
+    assert [doc.meta["page_number"] for doc in docs] == [2, 2]
 
 
 def test_trailing_header_without_content_is_not_dropped():

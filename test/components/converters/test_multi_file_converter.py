@@ -21,7 +21,7 @@ def converter():
 class TestMultiFileConverter:
     def test_init_default_params(self, converter):
         """Test initialization with default parameters"""
-        assert converter.encoding == "utf-8"
+        assert converter.encoding == "utf-8-sig"
         assert converter.json_content_key == "content"
         assert isinstance(converter, Component)
 
@@ -36,7 +36,7 @@ class TestMultiFileConverter:
         data = component_to_dict(converter, "converter")
         assert data == {
             "type": "haystack.components.converters.multi_file_converter.MultiFileConverter",
-            "init_parameters": {"encoding": "utf-8", "json_content_key": "content"},
+            "init_parameters": {"encoding": "utf-8-sig", "json_content_key": "content"},
         }
 
     def test_from_dict(self):

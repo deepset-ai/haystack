@@ -57,28 +57,28 @@ class TestFunctionHookConstruction:
 
     def test_sync_slot_rejects_coroutine_function(self):
         with pytest.raises(ValueError):
-            FunctionHook(function=append_system_async)
+            FunctionHook(function=append_system_async)  # type: ignore[arg-type]
 
     def test_async_slot_rejects_regular_function(self):
         with pytest.raises(ValueError):
-            FunctionHook(async_function=append_system)
+            FunctionHook(async_function=append_system)  # type: ignore[arg-type]
 
     def test_rejects_function_without_a_parameter(self):
         def no_params() -> None:
             pass
 
         with pytest.raises(ValueError):
-            FunctionHook(function=no_params)
+            FunctionHook(function=no_params)  # type: ignore[arg-type]
 
     def test_rejects_function_with_extra_parameters(self):
         def two_params(state: State, extra: int) -> None:
             pass
 
         with pytest.raises(ValueError):
-            FunctionHook(function=two_params)
+            FunctionHook(function=two_params)  # type: ignore[arg-type]
 
     def test_rejects_unannotated_parameter(self):
-        def unannotated(state) -> None:
+        def unannotated(state) -> None:  # type: ignore[no-untyped-def]
             pass
 
         with pytest.raises(ValueError):
