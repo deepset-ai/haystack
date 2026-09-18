@@ -567,6 +567,7 @@ class TestRun:
         api_args = generator._prepare_api_call(
             messages=[ChatMessage.from_user("hi")], tools=[tool], generation_kwargs={"tools": extra}
         )
+
         def tool_name(entry: dict) -> str:
             if isinstance(entry.get("name"), str):
                 return entry["name"]

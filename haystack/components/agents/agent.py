@@ -253,7 +253,17 @@ def _messages_with_owned_tool_calls(messages: list[ChatMessage], owned_names: se
         if len(owned) == len(message.tool_calls or []):
             filtered.append(message)
             continue
-        filtered.append(ChatMessage.from_assistant(tool_calls=owned, meta=message.meta or None))
+        # Rebuild the assistant turn for tool execution only: keep non-tool content from the
+        # original message, but drop client-side tool calls so _run_tool does not hit ToolNotFound.
+        filtered.append(
+            ChatMessage.from_assistant(
+                text=message.text,
+                meta=message.meta or None,
+                name=message.name,
+                tool_calls=owned,
+                reasoning=message.reasoning,
+            )
+        )
     return filtered
 
 
@@ -270,7 +280,7 @@ def _plan_pending_tool_calls(
     Decide which pending tool calls the Agent should invoke.
 
     Names from ``generation_kwargs["tools"]`` are client-side: the Agent offers them to the LLM but does not
-    invoke them. Truly unknown names keep the existing ToolNotFound path.
+    invoke them, but may request that the client invoke them. Truly unknown tool names raise `ToolNotFound`.
     """
     owned_names = {tool.name for tool in current_tools}
     client_names = {tool.name for tool in client_side_tools}
@@ -304,7 +314,7 @@ class _ExecutionContext:
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator (tools are injected per step).
     :param tool_execution_inputs: Runtime inputs to be passed to tool execution (tools are injected per step).
     :param client_side_tools: Spec-only tools taken from ``generation_kwargs["tools"]``. Offered to the
-        LLM alongside Agent tools, but never invoked by the Agent.
+        LLM alongside Agent tools. The Agent never invokes them directly, but may request that the client invoke them.
     :param counter: A counter to track the number of steps taken in the agent's run.
     """
 
@@ -1144,7 +1154,7 @@ class Agent:
             plan = _plan_pending_tool_calls(
                 pending_tool_call_messages, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
             )
-            if plan.invoke_messages is None:
+            if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
@@ -1226,7 +1236,7 @@ class Agent:
             plan = _plan_pending_tool_calls(
                 pending_tool_call_messages, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
             )
-            if plan.invoke_messages is None:
+            if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)

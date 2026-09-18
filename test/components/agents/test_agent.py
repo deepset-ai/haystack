@@ -17,7 +17,7 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component
-from haystack.components.agents.agent import Agent, _get_model_exit_reason
+from haystack.components.agents.agent import Agent, _get_model_exit_reason, _messages_with_owned_tool_calls
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -29,7 +29,7 @@ from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import OutputSocket
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -785,6 +785,53 @@ class TestAgentRun:
         ]
         assert invoked_names == ["weather_tool"]
         assert result["exit_reason"] == "client_tools"
+
+    def test_owned_and_client_tool_calls_invoke_payload_keeps_text_and_reasoning(self, weather_tool):
+        assistant_turn = ChatMessage.from_assistant(
+            text="I'll check weather and files.",
+            reasoning=ReasoningContent(reasoning_text="Use both tools in parallel."),
+            tool_calls=[
+                ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                ToolCall(tool_name="search_knowledge_files", arguments={"query": "Berlin weather"}),
+            ],
+            meta={"finish_reason": "tool_calls"},
+        )
+        chat_generator = MockChatGenerator([assistant_turn, "should not be reached"])
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            agent.run([ChatMessage.from_user("Weather in Berlin?")], generation_kwargs={"tools": extra})
+
+        invoke_messages = run_tool_mock.call_args.kwargs["messages"]
+        assert len(invoke_messages) == 1
+        invoke_message = invoke_messages[0]
+        assert invoke_message.text == "I'll check weather and files."
+        assert invoke_message.reasoning is not None
+        assert invoke_message.reasoning.reasoning_text == "Use both tools in parallel."
+        assert [tool_call.tool_name for tool_call in invoke_message.tool_calls] == ["weather_tool"]
+        assert len(assistant_turn.tool_calls) == 2
+
+    def test_messages_with_owned_tool_calls_strips_client_calls_and_keeps_content(self, weather_tool):
+        assistant = ChatMessage.from_assistant(
+            text="Checking both sources.",
+            reasoning="Need weather and file search.",
+            tool_calls=[
+                ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                ToolCall(tool_name="search_knowledge_files", arguments={"query": "x"}),
+            ],
+            meta={"finish_reason": "tool_calls"},
+        )
+        filtered = _messages_with_owned_tool_calls([assistant], {weather_tool.name})
+
+        assert len(filtered) == 1
+        message = filtered[0]
+        assert message.text == "Checking both sources."
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == "Need weather and file search."
+        assert [tool_call.tool_name for tool_call in message.tool_calls] == ["weather_tool"]
+        assert message.meta.get("finish_reason") == "tool_calls"
+        assert len(assistant.tool_calls) == 2
 
     @pytest.mark.asyncio
     async def test_run_async_generation_kwargs_tools_are_offered_alongside_agent_tools(self, weather_tool):
