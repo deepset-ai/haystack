@@ -229,3 +229,16 @@ class TestJsonSchemaValidator:
         assert "validation_error" in result["schema_validator"]
         assert len(result["schema_validator"]["validation_error"]) == 1
         assert "Error details" in result["schema_validator"]["validation_error"][0].text
+
+
+class TestEmptyMessagesRaisesValueError:
+    """Regression for #12765: JsonSchemaValidator.run([]) used to raise a bare IndexError
+    from messages[-1]. It now raises a descriptive ValueError consistent with the other
+    input-validation paths in this component."""
+
+    def test_empty_messages_list_raises_value_error(self):
+        from haystack.components.validators import JsonSchemaValidator
+
+        validator = JsonSchemaValidator(json_schema={"type": "object"})
+        with pytest.raises(ValueError, match="messages"):
+            validator.run(messages=[])
