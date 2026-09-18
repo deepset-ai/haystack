@@ -256,6 +256,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
+          {
+            from: '/docs/fastembedcolbertranker',
+            to: '/docs/fastembedlateinteractionranker',
+          },
+          {
+            from: '/docs/sentencewindowretrieval',
+            to: '/docs/sentencewindowretriever',
+          },
+          {
+            from: '/docs/pipeline-templates',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/external-integrations-converters',
+            to: '/docs/converters',
+          },
         ],
         // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
         // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
