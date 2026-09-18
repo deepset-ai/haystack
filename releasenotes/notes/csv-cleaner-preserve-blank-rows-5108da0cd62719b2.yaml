@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``CSVDocumentCleaner`` now preserves blank rows when ``remove_empty_rows=False``
+    or when they fall within ``ignore_rows``, instead of skipping them before cleaning.
+    Preserved blank rows are serialized as empty CSV records.

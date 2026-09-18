@@ -30,7 +30,7 @@ Use `CSVDocumentCleaner` to clean CSV documents by removing empty rows and colum
 
 - `ignore_rows`: Number of rows to ignore from the top of the CSV table before processing. If any columns are removed, the same columns will be dropped from the ignored rows.
 - `ignore_columns`: Number of columns to ignore from the left of the CSV table before processing. If any rows are removed, the same rows will be dropped from the ignored columns.
-- `remove_empty_rows`: Whether to remove entirely empty rows.
+- `remove_empty_rows`: Whether to remove entirely empty rows, including blank lines. Preserved blank lines are written as empty CSV records with the remaining number of columns.
 - `remove_empty_columns`: Whether to remove entirely empty columns.
 - `keep_id`: Whether to retain the original document ID in the output document.
 
