@@ -124,49 +124,30 @@ class TestSplittingByFunctionOrCharacterRegex:
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
-    @pytest.mark.parametrize(
-        "split_by,split_length,split_overlap,content,expected_splits",
-        [
-            pytest.param("word", 3, 1, "t1 t2 t3", ["t1 t2 t3"], id="word-exact-fit-creates-one-chunk"),
-            pytest.param("word", 3, 1, "t1 t2 t3 ", ["t1 t2 t3 "], id="word-trailing-delimiter-creates-one-chunk"),
-            pytest.param("word", 3, 1, "t1 t2 t3 t4", ["t1 t2 t3 ", "t3 t4"], id="word-partial-final-chunk-is-kept"),
-            pytest.param(
-                "word",
-                3,
-                2,
-                "t1 t2 t3 t4",
-                ["t1 t2 t3 ", "t2 t3 t4"],
-                id="word-high-overlap-partial-final-chunk-is-kept",
-            ),
-            pytest.param(
-                "line", 3, 1, "l1\nl2\nl3\n", ["l1\nl2\nl3\n"], id="line-trailing-delimiter-creates-one-chunk"
-            ),
-            pytest.param(
-                "passage",
-                3,
-                1,
-                "p1\n\np2\n\np3\n\n",
-                ["p1\n\np2\n\np3\n\n"],
-                id="passage-trailing-delimiter-creates-one-chunk",
-            ),
-            pytest.param("period", 3, 1, "s1.s2.s3.", ["s1.s2.s3."], id="period-trailing-delimiter-creates-one-chunk"),
-            pytest.param(
-                "period",
-                3,
-                2,
-                "s1.s2.s3.s4.",
-                ["s1.s2.s3.", "s2.s3.s4."],
-                id="period-high-overlap-does-not-create-overlap-only-chunk",
-            ),
-            pytest.param("page", 3, 1, "a\fb\fc\f", ["a\fb\fc\f"], id="page-trailing-delimiter-creates-one-chunk"),
-        ],
-    )
-    def test_split_by_character_modes_skip_overlap_only_trailing_chunk(
-        self, split_by, split_length, split_overlap, content, expected_splits
-    ):
-        splitter = DocumentSplitter(split_by=split_by, split_length=split_length, split_overlap=split_overlap)
-        docs = splitter.run(documents=[Document(content=content)])["documents"]
-        assert [d.content for d in docs] == expected_splits
+    def test_split_by_character_modes_skip_overlap_only_trailing_chunk(self):
+        def run_split(split_by, split_length, split_overlap, text):
+            splitter = DocumentSplitter(split_by=split_by, split_length=split_length, split_overlap=split_overlap)
+            docs = splitter.run(documents=[Document(content=text)])["documents"]
+            return [d.content for d in docs]
+
+        # word: exact fit creates one chunk
+        assert run_split("word", 3, 1, "t1 t2 t3") == ["t1 t2 t3"]
+        # word: trailing delimiter creates one chunk
+        assert run_split("word", 3, 1, "t1 t2 t3 ") == ["t1 t2 t3 "]
+        # word: partial final chunk is kept
+        assert run_split("word", 3, 1, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t3 t4"]
+        # word: high overlap partial final chunk is kept
+        assert run_split("word", 3, 2, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t2 t3 t4"]
+        # line: trailing delimiter creates one chunk
+        assert run_split("line", 3, 1, "l1\nl2\nl3\n") == ["l1\nl2\nl3\n"]
+        # passage: trailing delimiter creates one chunk
+        assert run_split("passage", 3, 1, "p1\n\np2\n\np3\n\n") == ["p1\n\np2\n\np3\n\n"]
+        # period: trailing delimiter creates one chunk
+        assert run_split("period", 3, 1, "s1.s2.s3.") == ["s1.s2.s3."]
+        # period: high overlap does not create an overlap-only chunk
+        assert run_split("period", 3, 2, "s1.s2.s3.s4.") == ["s1.s2.s3.", "s2.s3.s4."]
+        # page: trailing delimiter creates one chunk
+        assert run_split("page", 3, 1, "a\fb\fc\f") == ["a\fb\fc\f"]
 
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
