@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Ensures ``PythonCodeSplitter`` emits syntactically valid chunks when ``strip_docstrings=True`` is used on a function or class whose docstring is its only statement.
