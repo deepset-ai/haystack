@@ -24,6 +24,8 @@ class CSVDocumentCleaner:
     for the optional ignoring of a specified number of rows and columns before performing
     the cleaning operation. Additionally, it provides options to keep document IDs and
     control whether empty rows and columns should be removed.
+
+    Nonempty strings such as `NA`, `NULL`, and `NaN` are preserved as text.
     """
 
     def __init__(
@@ -80,7 +82,9 @@ class CSVDocumentCleaner:
         cleaned_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)
+                df = pd.read_csv(
+                    StringIO(document.content), header=None, dtype=object, keep_default_na=False, na_values=[""]
+                )
             except Exception as e:
                 logger.exception(
                     "Error processing document {id}. Keeping it, but skipping cleaning. Error: {error}",
