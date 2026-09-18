@@ -416,6 +416,26 @@ class TestMemoryDocumentStore(
         assert results_with_embedding[0].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
         assert results_with_embedding[1].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
 
+    def test_embedding_retrieval_omitted_return_embedding_falls_back_to_store_setting(self):
+        # When return_embedding is omitted, the component initialization value must be used.
+        # Asserted in both directions so that hardcoding the default to True would not pass.
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+
+        store_true = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        store_true.write_documents(docs)
+        results = store_true.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=2)
+        assert results
+        assert all(doc.embedding is not None for doc in results)
+
+        store_false = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
+        store_false.write_documents(docs)
+        results_false = store_false.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=2)
+        assert results_false
+        assert all(doc.embedding is None for doc in results_false)
+
     def test_embedding_retrieval(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
@@ -626,6 +646,27 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    async def test_embedding_retrieval_async_omitted_return_embedding_falls_back_to_store_setting(self):
+        # The async path forwards the same parameter, so it must respect the
+        # component initialization value when return_embedding is omitted.
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+
+        store_true = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        await store_true.write_documents_async(docs)
+        results = await store_true.embedding_retrieval_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=2)
+        assert results
+        assert all(doc.embedding is not None for doc in results)
+
+        store_false = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
+        await store_false.write_documents_async(docs)
+        results_false = await store_false.embedding_retrieval_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=2)
+        assert results_false
+        assert all(doc.embedding is None for doc in results_false)
 
     @pytest.mark.asyncio
     async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore) -> None:
