@@ -124,6 +124,31 @@ class TestSplittingByFunctionOrCharacterRegex:
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
+    def test_split_by_character_modes_skip_overlap_only_trailing_chunk(self):
+        def run_split(split_by, split_length, split_overlap, text):
+            splitter = DocumentSplitter(split_by=split_by, split_length=split_length, split_overlap=split_overlap)
+            docs = splitter.run(documents=[Document(content=text)])["documents"]
+            return [d.content for d in docs]
+
+        # word: exact fit creates one chunk
+        assert run_split("word", 3, 1, "t1 t2 t3") == ["t1 t2 t3"]
+        # word: trailing delimiter creates one chunk
+        assert run_split("word", 3, 1, "t1 t2 t3 ") == ["t1 t2 t3 "]
+        # word: partial final chunk is kept
+        assert run_split("word", 3, 1, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t3 t4"]
+        # word: high overlap partial final chunk is kept
+        assert run_split("word", 3, 2, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t2 t3 t4"]
+        # line: trailing delimiter creates one chunk
+        assert run_split("line", 3, 1, "l1\nl2\nl3\n") == ["l1\nl2\nl3\n"]
+        # passage: trailing delimiter creates one chunk
+        assert run_split("passage", 3, 1, "p1\n\np2\n\np3\n\n") == ["p1\n\np2\n\np3\n\n"]
+        # period: trailing delimiter creates one chunk
+        assert run_split("period", 3, 1, "s1.s2.s3.") == ["s1.s2.s3."]
+        # period: high overlap does not create an overlap-only chunk
+        assert run_split("period", 3, 2, "s1.s2.s3.s4.") == ["s1.s2.s3.", "s2.s3.s4."]
+        # page: trailing delimiter creates one chunk
+        assert run_split("page", 3, 1, "a\fb\fc\f") == ["a\fb\fc\f"]
+
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
@@ -453,7 +478,10 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 2, 1, 1, 3]
+        # No overlap-only trailing chunks: " End." is fully contained in doc1's previous chunk and
+        # " More text." in doc2's previous chunk, so both are skipped instead of creating redundant
+        # chunks (the latter even carried a wrong page number).
+        expected_pages = [1, 1, 1, 1, 1]
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
