@@ -14,7 +14,7 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory init variables**           | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
+| **Mandatory init variables**           | `api_key`: An API key or endpoint token. Defaults to the `OPENAI_API_KEY` env var.                              |
 | **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat or a single string |
 | **Output variables**                   | `replies`: A list of alternative replies of the LLM to the input chat                                |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
@@ -27,7 +27,7 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 
 `OpenAIChatGenerator` supports OpenAI's chat completion models, such as `gpt-4o-mini`, `gpt-4.1-mini`, and the GPT-5 family. The default model is `gpt-5-mini`.
 
-`OpenAIChatGenerator` needs an OpenAI key to work. It uses an ` OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+`OpenAIChatGenerator` needs an OpenAI key when connecting to OpenAI. It uses an ` OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```python
 generator = OpenAIChatGenerator(model="gpt-4o-mini")
@@ -37,7 +37,102 @@ Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessa
 
 You can pass any chat completion parameters valid for the `openai.ChatCompletion.create` method directly to `OpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
-`OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
+`OpenAIChatGenerator` also supports OpenAI-compatible model servers through the `api_base_url` init parameter. See [OpenAI-compatible endpoints](#openai-compatible-endpoints).
+
+### OpenAI-compatible endpoints
+
+Use `api_base_url` to connect to a service that implements the OpenAI Chat Completions API. Set `api_key` to that service's credential and `model` to the identifier it serves. An OpenAI-issued API key is not required for these services. Support for tools, structured outputs, images, and other parameters depends on the deployed model server.
+
+#### RAG with a Nebius Serverless Endpoint
+
+This example retrieves local documents and sends the context to a model running on a [Nebius Serverless Endpoint](https://docs.nebius.com/serverless/endpoints/manage). It uses an existing endpoint serving an OpenAI-compatible chat model, such as vLLM. It does not create cloud resources or use the Nebius Token Factory managed model API.
+
+Before running the example:
+
+1. Deploy a chat model on a Serverless Endpoint and enable **token authentication** when creating it. Save the endpoint token; it is distinct from an IAM access token or a Token Factory API key.
+2. Copy the endpoint's managed HTTPS URL and set the environment variables below. Use the served model identifier, which may differ from the model's repository name if you configured an alias.
+3. Verify that an authenticated request to `<endpoint-URL>/v1/models` succeeds. A running endpoint may still be downloading or loading the model. See [How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
+
+```shell
+pip install haystack-ai
+
+# Managed HTTPS URL, without /v1 or /chat/completions.
+export NEBIUS_SERVERLESS_BASE_URL="https://<your-endpoint-host>"
+export NEBIUS_SERVERLESS_TOKEN="<your-endpoint-token>"
+export NEBIUS_SERVERLESS_MODEL="<your-served-model-id>"
+```
+
+The document store and BM25 retriever run locally, so this example does not require an embedding service:
+
+```python
+import os
+
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.utils import Secret
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents(
+    [
+        Document(content="The library opens at 09:00 on weekdays."),
+        Document(content="Library members can borrow five books at a time."),
+    ]
+)
+prompt_builder = ChatPromptBuilder(
+    template=[
+        ChatMessage.from_system(
+            "Answer using only the supplied context. If the answer is missing, say so."
+        ),
+        ChatMessage.from_user(
+            "Context:\n{% for doc in documents %}{{ doc.content }}\n{% endfor %}"
+            "Question: {{ question }}"
+        ),
+    ],
+    required_variables=["documents", "question"],
+)
+generator = OpenAIChatGenerator(
+    api_base_url=os.environ["NEBIUS_SERVERLESS_BASE_URL"].rstrip("/") + "/v1",
+    api_key=Secret.from_env_var("NEBIUS_SERVERLESS_TOKEN"),
+    model=os.environ["NEBIUS_SERVERLESS_MODEL"],
+    timeout=120.0,
+    max_retries=0,
+    generation_kwargs={"max_tokens": 256},
+)
+pipeline = Pipeline()
+pipeline.add_component(
+    "retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1)
+)
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("generator", generator)
+pipeline.connect("retriever.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "generator.messages")
+
+question = "When does the library open on weekdays?"
+result = pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+print(result["generator"]["replies"][0].text)
+```
+
+The example appends `/v1` once; the OpenAI client adds `/chat/completions`. `Secret.from_env_var` keeps the token out of serialized pipeline configuration. The URL and model identifier are serialized as values, so update them when moving a saved pipeline to another endpoint. Recreate the generator after rotating its token.
+
+To stream text, import `print_streaming_chunk` from `haystack.components.generators.utils` and pass `streaming_callback=print_streaming_chunk` when constructing the generator. The endpoint must support Chat Completions streaming; keep `n=1`. See [Streaming](#streaming) for callback details. Model-specific options, including reasoning output and token limits, depend on your model server.
+
+| Symptom | What to check |
+| --- | --- |
+| Authentication error (401/403) | Use the endpoint token configured at creation, not an IAM or Token Factory credential. |
+| Invalid request or not found (400/404) | Check the base URL, served model ID, and supported generation parameters. |
+| Gateway error (502/503) | Check model readiness and endpoint logs; a running container may not yet be ready to serve requests. |
+| Rate limit or timeout | Check endpoint load. The example disables automatic retries; a client timeout does not necessarily cancel server-side generation. |
+
+Requests use the existing endpoint, and ending the Python process does not stop it. Manage its lifecycle separately using the [Nebius endpoint guide](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 ### Structured Output
 
