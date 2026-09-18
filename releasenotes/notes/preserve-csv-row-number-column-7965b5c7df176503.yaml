@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    ``CSVToDocument`` in row mode now preserves a CSV column named ``row_number``
+    as ``csv_row_number`` instead of overwriting its value with the generated row
+    index. Existing metadata keys are preserved using numeric suffixes when needed.
+upgrade:
+  - |
+    For CSV inputs with a ``row_number`` column that is not the content column,
+    the original value is now available in document metadata under
+    ``csv_row_number`` (or a suffixed key on collision). ``row_number`` continues
+    to contain the zero-based row index. Other CSV inputs require no changes.
