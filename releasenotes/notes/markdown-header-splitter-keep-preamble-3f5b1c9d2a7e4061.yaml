@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` no longer drops the text that precedes the first header it splits on.
+    A document's opening paragraph, title block, or front matter was silently lost, and so was any
+    content above the first matching header when ``header_split_levels`` excluded the levels above it.
+    That text is now emitted as a leading chunk with no ``header`` metadata, which is the same shape
+    the splitter already returns for a document that has no headers at all.

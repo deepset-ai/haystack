@@ -412,7 +412,7 @@ class TestHeaderSplitLevels:
         assert docs[0].content == sample_text
 
     def test_deep_levels_only(self):
-        """Splitting on h3 only; h1/h2 headers above the first h3 are not captured in any chunk."""
+        """Splitting on h3 only; h1/h2 headers above the first h3 land in a leading header-less chunk."""
         text = (
             "# Top Level\n"
             "Ignored top content.\n"
@@ -426,16 +426,17 @@ class TestHeaderSplitLevels:
         splitter = MarkdownHeaderSplitter(header_split_levels=[3])
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        assert len(docs) == 2
-        assert docs[0].content == "### Deep Section A\nContent A.\n"
-        assert docs[1].content == "### Deep Section B\nContent B.\n"
+        assert len(docs) == 3
+        # Everything before the first h3 has no h3 chunk to be absorbed into, so it becomes its own
+        # header-less chunk instead of being dropped.
+        assert docs[0].content == "# Top Level\nIgnored top content.\n## Mid Level\nIgnored mid content.\n"
+        assert "header" not in docs[0].meta
+        assert docs[1].content == "### Deep Section A\nContent A.\n"
+        assert docs[2].content == "### Deep Section B\nContent B.\n"
 
-        headers = [doc.meta["header"] for doc in docs]
+        headers = [doc.meta["header"] for doc in docs[1:]]
         assert "Top Level" not in headers
         assert "Mid Level" not in headers
-        # text before the first h3 match is not absorbed — it is dropped entirely
-        assert "Ignored top content." not in docs[0].content
-        assert "Ignored mid content." not in docs[0].content
 
     def test_non_contiguous_levels(self):
         """Non-contiguous level selection (e.g. [1, 3]) splits on h1 and h3 but not h2."""
@@ -999,3 +1000,41 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
         split_contents.append(doc.content)
     assert "".join(split_contents) == text
     assert docs[-1].meta["header"] == ""
+
+
+def test_content_before_first_header_is_kept():
+    text = "Intro paragraph before any header.\n\n# Header 1\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    split_contents: list[str] = []
+    for doc in docs:
+        assert doc.content is not None
+        split_contents.append(doc.content)
+    assert "".join(split_contents) == text
+    # the preamble belongs to no section, so it is its own chunk and carries no header metadata
+    assert docs[0].content == "Intro paragraph before any header.\n\n"
+    assert "header" not in docs[0].meta
+    assert docs[0].meta["split_id"] == 0
+    assert docs[1].meta["header"] == "Header 1"
+
+
+def test_content_before_first_header_is_kept_with_keep_headers_false():
+    text = "Intro paragraph before any header.\n# Header 1\nContent.\n"
+    docs = MarkdownHeaderSplitter(keep_headers=False).run(documents=[Document(content=text)])["documents"]
+    assert docs[0].content == "Intro paragraph before any header.\n"
+    assert "header" not in docs[0].meta
+    assert docs[1].meta["header"] == "Header 1"
+
+
+def test_whitespace_only_content_before_first_header_is_not_emitted():
+    text = "\n\n# Header 1\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert len(docs) == 1
+    assert docs[0].meta["header"] == "Header 1"
+
+
+def test_page_number_of_content_before_first_header():
+    text = "Page one intro.\fPage two intro.\n# Header 1\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    # the preamble starts on page 1; the header that follows the page break starts on page 2
+    assert docs[0].meta["page_number"] == 1
+    assert docs[1].meta["page_number"] == 2
