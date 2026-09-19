@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``DocumentTypeRouter`` now routes documents whose MIME metadata is not a string to ``unclassified``,
+    instead of raising ``TypeError`` inside ``re.fullmatch``.
