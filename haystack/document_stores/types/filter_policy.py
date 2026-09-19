@@ -70,7 +70,7 @@ def combine_two_logical_filters(
     are combined so that each one still restricts the result. For `"AND"` that is a single `"AND"` holding the
     conditions of both. For any other operator the two filters are nested under an `"AND"` instead, because
     concatenating their conditions would not preserve them: `"OR"` would union the two filters and `"NOT"`
-    would negate their conjunction, either way matching more documents than either filter alone.
+    would negate their conjunction, either way potentially producing a broader result than applying both filters.
     Otherwise, the `init_logical_filter` is ignored and `runtime_logical_filter` is returned.
 
         __Example__:
@@ -90,9 +90,7 @@ def combine_two_logical_filters(
                 {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
             ]
         }
-        new_filters = combine_two_logical_filters(
-            init_logical_filter, runtime_logical_filter, "AND"
-        )
+        new_filters = combine_two_logical_filters(init_logical_filter, runtime_logical_filter)
         # Output:
         {
             "operator": "AND",
@@ -129,8 +127,8 @@ def combine_two_logical_filters(
             }
         # For OR and NOT, concatenating conditions is not the same as applying both
         # filters: OR would union them and NOT would negate their conjunction, either
-        # way matching more documents than either filter alone. Nest them under AND so
-        # both restrictions still hold.
+        # way potentially producing a broader result than applying both filters. Nest
+        # them under AND so both restrictions still hold.
         return {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
 
     logger.warning(

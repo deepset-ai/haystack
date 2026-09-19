@@ -240,7 +240,7 @@ def test_merge_two_logical_filters_with_non_and_operator_keeps_both_restrictions
 
     Result: both filters nested under AND, so each restriction still applies.
     Concatenating their conditions instead would union them (OR) or negate their
-    conjunction (NOT), matching more documents than either filter alone.
+    conjunction (NOT), potentially producing a broader result than applying both filters.
     """
     init_filters = {"operator": operator, "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
     runtime_filters = {
