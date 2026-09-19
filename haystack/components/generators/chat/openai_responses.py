@@ -365,12 +365,15 @@ class OpenAIResponsesChatGenerator:
         """
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
-        tools = data["init_parameters"].get("tools")
+        tools = data.get("init_parameters", {}).get("tools")
         if tools and (
             isinstance(tools, dict)
-            and tools.get("type") == "haystack.tools.toolset.Toolset"
+            and "type" in tools
+            and "data" in tools
             or isinstance(tools, list)
-            and tools[0].get("type") == "haystack.tools.tool.Tool"
+            and isinstance(tools[0], dict)
+            and "type" in tools[0]
+            and "data" in tools[0]
         ):
             deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
 
