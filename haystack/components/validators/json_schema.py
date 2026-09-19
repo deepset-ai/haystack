@@ -129,9 +129,12 @@ class JsonSchemaValidator:
         :return:  A dictionary with the following keys:
             - "validated": A list of messages if the last message is valid.
             - "validation_error": A list of messages if the last message is invalid.
-        :raises ValueError: If the last message has no text content, or if no JSON schema is provided either in
-            the `run` method or in the component init.
+        :raises ValueError: If `messages` is empty, if the last message has no text content, or if no JSON schema is
+            provided either in the `run` method or in the component init.
         """
+        if not messages:
+            raise ValueError("The provided list of messages is empty.")
+
         last_message = messages[-1]
         if last_message.text is None:
             raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {last_message}")

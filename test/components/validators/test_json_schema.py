@@ -85,6 +85,12 @@ class TestJsonSchemaValidator:
         assert len(result["validated"]) == 1
         assert result["validated"][0] == message
 
+    def test_empty_messages_raises_clear_error(self, json_schema_github_compare):
+        validator = JsonSchemaValidator(json_schema=json_schema_github_compare)
+
+        with pytest.raises(ValueError, match="The provided list of messages is empty"):
+            validator.run([])
+
     # Validates recursive_json_to_object method
     def test_recursive_json_to_object(self, genuine_fc_message):
         arguments_is_string = json.loads(genuine_fc_message)
