@@ -145,8 +145,8 @@ class SentenceWindowRetriever:
             # append the non-overlapping part to the merged text
             merged_text += doc.content[start - int(doc.meta["split_idx_start"]) :]
 
-            # update the last end index
-            last_idx_end = int(doc.meta["split_idx_start"]) + len(doc.content)
+            # A contained chunk must not move the covered end backwards.
+            last_idx_end = max(last_idx_end, int(doc.meta["split_idx_start"]) + len(doc.content))
 
         return merged_text
 

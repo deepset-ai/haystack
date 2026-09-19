@@ -62,6 +62,38 @@ class TestSentenceWindowRetriever:
         expected = "This is a text with some words. There is a second sentence. And there is also a third sentence"
         assert merged_text == expected
 
+    @pytest.mark.parametrize(
+        "spans",
+        [
+            [(0, 6), (2, 4), (4, 8)],
+            [(0, 6), (0, 3), (4, 8)],
+            [(0, 6), (2, 2), (4, 8)],
+            [(0, 6), (2, 4), (3, 5), (4, 8)],
+        ],
+    )
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_merge_documents_with_contained_chunks(self, spans: list[tuple[int, int]], reverse: bool) -> None:
+        text = "abcdefgh"
+        docs = [Document(content=text[start:end], meta={"split_idx_start": start}) for start, end in spans]
+        if reverse:
+            docs.reverse()
+
+        assert SentenceWindowRetriever.merge_documents_text(docs) == text
+
+    def test_run_with_contained_chunks(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        text = "The bird sings."
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=lambda content: [content[:8], content[4:6], content[6:]]
+        )
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        result = retriever.run(retrieved_documents=[docs[1]])
+
+        assert result["context_windows"] == [text]
+        assert result["context_documents"] == docs
+
     def test_to_dict(self, in_memory_doc_store):
         window_retriever = SentenceWindowRetriever(in_memory_doc_store)
         data = window_retriever.to_dict()
