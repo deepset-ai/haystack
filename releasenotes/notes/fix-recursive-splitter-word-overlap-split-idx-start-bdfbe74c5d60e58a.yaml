@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` with ``split_unit="word"`` and ``split_overlap > 0`` now reports the correct
+    ``split_idx_start`` and ``_split_overlap`` ranges. The overlap text is rebuilt with single spaces and no trailing
+    whitespace, so the start offset of every chunk after the first was shifted by the length of the previous chunk's
+    trailing separator (for example one character per chunk with the default separators). The offsets are now measured
+    from where the overlapping words start in the previous chunk, so ``document.content[split_idx_start:]`` again
+    begins with the chunk text. Character and token splitting are unchanged.

@@ -1282,3 +1282,58 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     for doc in result:
         assert doc.content is not None
         assert doc.content.strip()
+
+
+def _assert_offsets_and_overlaps_match_text(text: str, docs: list[Document]) -> None:
+    for doc in docs:
+        start = doc.meta["split_idx_start"]
+        assert text[start : start + len(doc.content)] == doc.content
+    # each "_split_overlap" entry stores a range into the document named by its "doc_id"
+    for previous, current in zip(docs, docs[1:], strict=False):
+        (into_current,) = [e["range"] for e in previous.meta["_split_overlap"] if e["doc_id"] == current.id]
+        (into_previous,) = [e["range"] for e in current.meta["_split_overlap"] if e["doc_id"] == previous.id]
+        overlap_text = previous.content[into_previous[0] : into_previous[1]]
+        assert overlap_text == current.content[into_current[0] : into_current[1]]
+        assert text[current.meta["split_idx_start"] :].startswith(overlap_text)
+
+
+def test_run_split_by_word_with_overlap_split_idx_start_when_chunk_ends_with_separator():
+    # the " " separator is kept at the end of each chunk; the overlap must not be measured without it
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, split_unit="word", separators=[" "])
+    splitter.warm_up()
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == [
+        "This is sentence one. ",
+        "one. This is sentence",
+        "sentence two. This is",
+        "is sentence three. This",
+        "This is sentence four.",
+    ]
+    assert [doc.meta["split_idx_start"] for doc in docs] == [0, 17, 30, 49, 68]
+    _assert_offsets_and_overlaps_match_text(text, docs)
+
+
+def test_run_split_by_word_with_overlap_split_idx_start_with_default_separators():
+    text = " ".join(f"w{i:02d}" for i in range(20))
+    splitter = RecursiveDocumentSplitter(split_length=6, split_overlap=2, split_unit="word")
+    splitter.warm_up()
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert len(docs) == 5
+    assert [doc.meta["split_idx_start"] for doc in docs] == [0, 16, 32, 48, 64]
+    _assert_offsets_and_overlaps_match_text(text, docs)
+
+
+def test_run_split_by_char_with_overlap_split_idx_start_unchanged():
+    text = "abcdefghij" * 5
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=5, split_unit="char", separators=["j"])
+    splitter.warm_up()
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert len(docs) > 1
+    _assert_offsets_and_overlaps_match_text(text, docs)
