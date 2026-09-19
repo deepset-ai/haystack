@@ -42,6 +42,9 @@ ISO639_TO_NLTK = {
 
 QUOTE_SPANS_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 
+# Closing brackets and quotes that can trail a sentence ending, as in `He said "Hi." Bye.` or `(Hi.) Bye.`
+SENTENCE_CLOSING_CHARS_RE = r"[\)\]}\"'’”»]*"
+
 if nltk_imports.is_successful():
 
     def load_sentence_tokenizer(
@@ -105,8 +108,10 @@ if nltk_imports.is_successful():
                     self._period_context_fmt
                     % {
                         "NonWord": self._re_non_word_chars,
-                        # SentEndChars might be followed by closing brackets, so we match them here.
-                        "SentEndChars": self._re_sent_end_chars + r"[\)\]}]*",
+                        # SentEndChars might be followed by closing brackets or quotes, so we match them here.
+                        # If we don't, the whitespace after e.g. `."` is behind the closing quote, the pattern
+                        # above can't reach it and it ends up in none of the sentences we return.
+                        "SentEndChars": self._re_sent_end_chars + SENTENCE_CLOSING_CHARS_RE,
                     },
                     re.UNICODE | re.VERBOSE,
                 )
@@ -201,6 +206,10 @@ class SentenceSplitter:
         start, end = span
         next_start, next_end = next_span
 
+        # with keep_white_spaces=True a span also covers the whitespace up to the next sentence, the rules below
+        # look at where the sentence itself ends
+        end = start + len(text[start:end].rstrip())
+
         # sentence. sentence"\nsentence -> no split (end << quote_end)
         # sentence.", sentence -> no split (end < quote_end)
         # sentence?", sentence -> no split (end < quote_end)
@@ -212,6 +221,16 @@ class SentenceSplitter:
         # sentence?" sentence -> no split (end == quote_end)
         if any(quote_start < end == quote_end and text[quote_end - 2] == "?" for quote_start, quote_end in quote_spans):
             # question is cited
+            return True
+
+        # sentence.", sentence -> no split (end == quote_end): widening the closing-char class (see
+        # period_context_re) moves the boundary just past the closing quote instead of leaving it inside,
+        # so continuation punctuation directly after the quote must still join rather than start a sentence.
+        if any(
+            quote_start < end == quote_end and quote_end < len(text) and text[quote_end] in ",;:—"
+            for quote_start, quote_end in quote_spans
+        ):
+            # e.g. `He said "Hi.", then left.` -> the punctuation continues the sentence
             return True
 
         if re.search(r"(^|\n)\s*\d{1,2}\.$", text[start:end]) is not None:
