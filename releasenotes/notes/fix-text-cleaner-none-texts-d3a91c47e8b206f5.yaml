@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``TextCleaner`` now treats ``None`` and non-string items as empty strings instead of raising
+    ``AttributeError`` when applying regex, case, or punctuation cleanup.
