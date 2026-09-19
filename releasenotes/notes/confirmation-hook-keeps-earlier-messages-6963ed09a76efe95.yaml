@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ConfirmationHook`` no longer drops the messages that come after the last user or tool message when it rewrites
+    the conversation, such as a system message added by another hook or an assistant answer followed by an
+    ``on_exit`` reminder. Before, those messages were removed from the history the Agent sends to the model.
