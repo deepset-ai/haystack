@@ -74,6 +74,30 @@ class TestLLMMessagesRouter:
         with pytest.raises(ValueError):
             router.run([ChatMessage.from_system("You are a helpful assistant.")])
 
+    def test_run_empty_replies_routes_unmatched(self):
+        chat_generator = Mock(spec=["run"])
+        chat_generator.run.return_value = {"replies": []}
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+        messages = [ChatMessage.from_user("Hello")]
+        result = router.run(messages)
+        assert result["chat_generator_text"] == ""
+        assert result["unmatched"] == messages
+        assert "safe" not in result
+        assert "unsafe" not in result
+
+    def test_run_none_reply_text_routes_unmatched(self):
+        chat_generator = Mock(spec=["run"])
+        chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(text=None)]}
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+        messages = [ChatMessage.from_user("Hello")]
+        result = router.run(messages)
+        assert result["chat_generator_text"] == ""
+        assert result["unmatched"] == messages
+
     def test_run_no_warm_up_with_unwarmable_chat_generator(self):
         chat_generator = Mock(spec=["run"])
         chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("safe")]}
