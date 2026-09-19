@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `expand_page_range` silently dropping pages when a reversed range (e.g. '7-5') appeared
+    alongside valid entries. Mixed inputs like ['1-3', '7-5', '8'] previously returned [1, 2, 3, 8]
+    with no warning, losing pages 5-7. A reversed range now raises `ValueError` with a descriptive
+    message identifying the offending range.
