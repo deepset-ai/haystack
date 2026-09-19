@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `PPTXToDocument` now reads the text inside grouped shapes and inside tables.
+    A group carries no text frame of its own and a table lives on a graphic
+    frame, so both were skipped and their text was dropped from the Document
+    without any error. Tables are written as CSV, the format `DOCXToDocument`
+    uses by default. `link_format` applies to grouped shapes and table cells too.
