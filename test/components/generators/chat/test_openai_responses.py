@@ -584,6 +584,50 @@ class TestRun:
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
 
+    def test_run_with_annotations(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from openai.types.responses import Response, ResponseOutputMessage, ResponseOutputText
+        from datetime import datetime
+
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        
+        mock_response = Response(
+            id="resp_mock_123",
+            created_at=float(datetime.now().timestamp()),
+            metadata={},
+            model="gpt-5-mini",
+            object="response",
+            output=[
+                ResponseOutputMessage(
+                    id="msg_mock_1",
+                    role="assistant",
+                    type="message",
+                    status="completed",
+                    content=[
+                        ResponseOutputText(
+                            text="The capital of France is Paris.",
+                            type="output_text",
+                            logprobs=None,
+                            annotations=[{"type": "file_citation", "text": "[1]"}]
+                        )
+                    ],
+                )
+            ],
+            parallel_tool_calls=True,
+            temperature=1.0,
+            tool_choice="auto",
+            tools=[]
+        )
+        
+        with patch("openai.resources.responses.Responses.create", return_value=mock_response):
+            component = OpenAIResponsesChatGenerator(model="gpt-4")
+            results = component.run(chat_messages)
+            
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert "annotations" in message.meta
+        assert message.meta["annotations"] == [{"type": "file_citation", "text": "[1]"}]
+
     def test_run_with_string_input(self, openai_mock_responses: MagicMock) -> None:
 
         component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
