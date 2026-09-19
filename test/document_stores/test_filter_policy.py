@@ -6,7 +6,9 @@ from typing import Literal
 
 import pytest
 
+from haystack import Document
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
+from haystack.utils.filters import document_matches_filter
 
 
 def test_merge_two_comparison_filters():
@@ -225,5 +227,80 @@ def test_merge_with_custom_logical_operator(logical_operator: Literal["AND", "OR
         "conditions": [
             {"field": "meta.date", "operator": ">=", "value": "2015-01-01"},
             {"field": "meta.type", "operator": "==", "value": "article"},
+        ],
+    }
+
+
+@pytest.mark.parametrize("operator", ["OR", "NOT"])
+def test_merge_two_logical_filters_with_non_and_operator_keeps_both_restrictions(
+    operator: Literal["OR", "NOT"],
+) -> None:
+    """
+    Merging two logical filters that share a non-AND operator
+
+    Result: both filters nested under AND, so each restriction still applies.
+    Concatenating their conditions instead would union them (OR) or negate their
+    conjunction (NOT), matching more documents than either filter alone.
+    """
+    init_filters = {"operator": operator, "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
+    runtime_filters = {
+        "operator": operator,
+        "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
+    }
+    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert result == {"operator": "AND", "conditions": [init_filters, runtime_filters]}
+
+
+@pytest.mark.parametrize("operator", ["OR", "NOT"])
+def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersection(
+    operator: Literal["OR", "NOT"],
+) -> None:
+    """
+    The merged filter selects exactly the documents both input filters select
+    """
+    documents = [
+        Document(id=str(index), meta=meta)
+        for index, meta in enumerate([{"a": 1, "b": 1}, {"a": 1, "b": 9}, {"a": 9, "b": 1}, {"a": 9, "b": 9}])
+    ]
+    init_filters = {
+        "operator": operator,
+        "conditions": [
+            {"field": "meta.a", "operator": "==", "value": 1},
+            {"field": "meta.b", "operator": "==", "value": 1},
+        ],
+    }
+    runtime_filters = {
+        "operator": operator,
+        "conditions": [
+            {"field": "meta.a", "operator": "==", "value": 9},
+            {"field": "meta.b", "operator": "==", "value": 9},
+        ],
+    }
+    merged = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert merged is not None
+
+    selected = [doc.id for doc in documents if document_matches_filter(merged, doc)]
+    intersection = [
+        doc.id
+        for doc in documents
+        if document_matches_filter(init_filters, doc) and document_matches_filter(runtime_filters, doc)
+    ]
+    assert selected == intersection
+
+
+def test_merge_two_and_logical_filters_still_flattens_conditions() -> None:
+    """
+    Merging two AND logical filters
+
+    Result: a single AND with the conditions of both, unchanged from before
+    """
+    init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
+    runtime_filters = {"operator": "AND", "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}]}
+    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert result == {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "article"},
+            {"field": "meta.genre", "operator": "==", "value": "economy"},
         ],
     }

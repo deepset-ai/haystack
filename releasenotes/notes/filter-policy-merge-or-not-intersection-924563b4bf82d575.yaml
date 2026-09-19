@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `FilterPolicy.MERGE` returning documents that the init filters exclude. When the init and
+    runtime filters were both logical filters sharing an `OR` or `NOT` operator, their conditions were
+    concatenated, which unions the two filters rather than applying both. They are now combined under
+    an `AND` so each filter still restricts the result. Merging two `AND` filters is unchanged.
