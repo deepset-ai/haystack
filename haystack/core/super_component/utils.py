@@ -13,9 +13,7 @@ class _delegate_default:
     """Custom object for delegating filling of default values to the underlying components."""
 
 
-def _is_compatible(
-    type1: type | UnionType, type2: type | UnionType, unwrap_nested: bool = True
-) -> tuple[bool, type | UnionType | None]:
+def _is_compatible(type1: Any, type2: Any, unwrap_nested: bool = True) -> tuple[bool, Any]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
@@ -147,6 +145,13 @@ def _unwrap_all(t: type | UnionType, recursive: bool) -> type | UnionType:
     if _is_variadic_type(t):
         t = _unwrap_variadics(t, recursive=recursive)
     else:
+        # `Annotated[T, m1, m2, ...]` is the same type as `T` for compatibility — the metadata is
+        # just an annotation, not a type modifier. Unwrap to T (recursively, for nested Annotated).
+        # Haystack Variadic markers are also expressed as Annotated[T, HAYSTACK_VARIADIC_ANNOTATION]
+        # — the `_is_variadic_type` branch above handles those, so this unwrap only fires for plain
+        # user-supplied Annotated.
+        if get_origin(t) is Annotated:
+            return _unwrap_all(get_args(t)[0], recursive)
         # If it's a generic type and we're unwrapping recursively
         origin = get_origin(t)
         if recursive and origin is not None and (args := get_args(t)):
