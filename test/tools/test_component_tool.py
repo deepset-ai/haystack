@@ -148,6 +148,18 @@ class DocumentProcessor:
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k] if doc.content)}
 
 
+@component
+class NoInputComponent:
+    """A component that takes no input at all."""
+
+    @component.output_types(reply=str)
+    def run(self) -> dict[str, str]:
+        """
+        Returns a fixed reply.
+        """
+        return {"reply": "Hello!"}
+
+
 def output_handler(old, new):
     """
     Output handler to test serialization.
@@ -193,6 +205,14 @@ class TestComponentTool:
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
         with pytest.raises(TypeError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})  # type: ignore[dict-item]
+
+    def test_from_component_with_inputs_from_state_and_no_input_sockets(self):
+        """A component without input sockets has no valid mapping target, so the typo must not pass silently."""
+        tool = ComponentTool(component=NoInputComponent())
+        assert tool.parameters == {"type": "object", "properties": {}}
+
+        with pytest.raises(ValueError, match="unknown parameter 'text'. Valid parameters are: set\\(\\)\\."):
+            ComponentTool(component=NoInputComponent(), inputs_from_state={"state_text": "text"})
 
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
