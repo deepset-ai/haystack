@@ -52,6 +52,8 @@ Tool result offloaded to 3 files:
 
 Images and files are stored as raw bytes, decoded from their base64 payload. A base64 payload is a costly way to carry a file through a conversation, so moving one out can free up a substantial part of the context window.
 
+The hook offloads a result as soon as it is produced, before the model has seen it. To keep fresh results directly in context and start offloading only once the conversation grows too large, use [`ToolResultOffloadCompactor`](./compaction/tool-result-offload-compactor.mdx) instead: it writes to the same stores in the same pointer format, but runs from `CompactionHook` rather than after every tool call.
+
 ## Usage
 
 ### Basic setup
@@ -252,3 +254,4 @@ With this tool available, the Agent can work with a compact conversation and sel
 - [Hooks](./hooks.mdx) — the general mechanism behind this feature, including the `after_tool` hook point
 - [Human in the Loop](./human-in-the-loop.mdx) — another ready-made hook, intercepting tool calls for human review
 - [State](./state.mdx) — the live run state hooks and policies receive
+- [ToolResultOffloadCompactor](./compaction/tool-result-offload-compactor.mdx) — the same offloading, deferred until context compaction is triggered
