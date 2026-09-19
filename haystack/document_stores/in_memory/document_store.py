@@ -36,6 +36,22 @@ BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
 
+def _make_metadata_value_hashable(value: Any) -> Any:
+    """Convert nested metadata values into values that can be used for deduplication."""
+    if isinstance(value, list):
+        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, dict):
+        return (
+            "dict",
+            frozenset(
+                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
+            ),
+        )
+    return value
+
+
 @dataclass
 class BM25DocumentStats:
     """
@@ -626,6 +642,8 @@ class InMemoryDocumentStore:
             Field names can include or omit the "meta." prefix.
         :returns: A dictionary mapping each metadata field name (without "meta." prefix)
             to the count of its unique values among the filtered documents.
+
+            JSON-serializable metadata values, including nested lists and dictionaries, are supported.
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
@@ -642,7 +660,11 @@ class InMemoryDocumentStore:
         result: dict[str, int] = {}
         for field in metadata_fields:
             key = field.removeprefix("meta.") if field.startswith("meta.") else field
-            values = {doc.meta.get(key) for doc in docs if key in doc.meta and doc.meta[key] is not None}
+            values = {
+                _make_metadata_value_hashable(doc.meta.get(key))
+                for doc in docs
+                if key in doc.meta and doc.meta[key] is not None
+            }
             result[key] = len(values)
         return result
 
@@ -991,6 +1013,8 @@ class InMemoryDocumentStore:
             Field names can include or omit the "meta." prefix.
         :returns: A dictionary mapping each metadata field name (without "meta." prefix)
             to the count of its unique values among the filtered documents.
+
+            JSON-serializable metadata values, including nested lists and dictionaries, are supported.
         """
         return await asyncio.get_running_loop().run_in_executor(
             self.executor,
