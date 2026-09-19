@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `DOCXToDocument` breaking a Markdown table when a cell contains a pipe
+    or spans several paragraphs. A pipe was emitted as a column separator, and a
+    cell's line break ended the row in the middle of it. Pipes are now escaped and
+    line breaks inside a cell are collapsed to a space, as the `csv` table format
+    already did by quoting them.
