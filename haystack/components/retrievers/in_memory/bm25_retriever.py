@@ -141,11 +141,14 @@ class InMemoryBM25Retriever:
             The retrieved documents.
 
         :raises ValueError:
-            If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+            If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance, or if the
+            resolved `top_k` is not greater than 0.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
+        if top_k <= 0:
+            raise ValueError(f"top_k must be greater than 0. Currently, the top_k is {top_k}")
         if scale_score is None:
             scale_score = self.scale_score
 
@@ -176,11 +179,14 @@ class InMemoryBM25Retriever:
             The retrieved documents.
 
         :raises ValueError:
-            If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+            If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance, or if the
+            resolved `top_k` is not greater than 0.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
+        if top_k <= 0:
+            raise ValueError(f"top_k must be greater than 0. Currently, the top_k is {top_k}")
         if scale_score is None:
             scale_score = self.scale_score
 
