@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add `keep_embedding` parameter to `CSVDocumentCleaner`. The component re-serializes the CSV
+    content during cleaning, so any precomputed embeddings no longer match the cleaned text.
+    When set to `False` (the default), both `embedding` and `sparse_embedding` are cleared on
+    cleaned documents. Set `keep_embedding=True` to retain the original embeddings.
