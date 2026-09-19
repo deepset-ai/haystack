@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Convert numeric and boolean values selected by ``JSONConverter.content_key`` to strings so JSON indexing pipelines no longer fail when creating documents. Preserve JSON ``null`` values as ``None``.

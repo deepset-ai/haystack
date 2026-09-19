@@ -11,8 +11,11 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack import Pipeline
 from haystack.components.converters import JSONConverter
+from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ByteStream
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 test_data = [
     {
@@ -509,6 +512,54 @@ def test_run_with_content_key(tmpdir):
     assert result["documents"][1].meta == {"file_path": os.path.basename(second_test_file)}
     assert result["documents"][2].content == "physics"
     assert result["documents"][2].meta == {}
+
+
+@pytest.mark.parametrize("jq_schema", [None, "."])
+@pytest.mark.parametrize(
+    ("value", "expected_content"),
+    [
+        (42, "42"),
+        (0, "0"),
+        (-7, "-7"),
+        (3.14, "3.14"),
+        (True, "True"),
+        (False, "False"),
+        ("text", "text"),
+        (None, None),
+    ],
+)
+def test_run_with_scalar_content_key(
+    jq_schema: str | None, value: str | int | float | bool | None, expected_content: str | None
+) -> None:
+    source = ByteStream.from_string(json.dumps({"value": value, "category": "measurement"}))
+    converter = JSONConverter(jq_schema=jq_schema, content_key="value", extra_meta_fields={"category"})
+
+    documents = converter.run(sources=[source])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == expected_content
+    assert documents[0].meta == {"category": "measurement"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_async", [False, True])
+async def test_pipeline_indexes_numeric_json_content(use_async: bool) -> None:
+    store = InMemoryDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_component("converter", JSONConverter(content_key="year"))
+    pipeline.add_component("writer", DocumentWriter(document_store=store))
+    pipeline.connect("converter.documents", "writer.documents")
+    data = {"converter": {"sources": [ByteStream.from_string('{"year": 2026}')]}}
+
+    try:
+        result = await pipeline.run_async(data) if use_async else pipeline.run(data)
+
+        assert result == {"writer": {"documents_written": 1}}
+        retrieved = store.bm25_retrieval(query="2026")
+        assert len(retrieved) == 1
+        assert retrieved[0].content == "2026"
+    finally:
+        store.shutdown()
 
 
 def test_run_with_content_key_and_extra_meta_fields(tmpdir):
