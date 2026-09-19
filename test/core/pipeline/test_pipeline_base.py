@@ -22,7 +22,7 @@ from haystack.core.errors import (
     PipelineRuntimeError,
 )
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import MAX_RUNS_PER_COMPONENT_LIMIT, ComponentPriority, PipelineBase
 from haystack.core.pipeline.component_checks import _NoOutputProduced
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
@@ -638,6 +638,20 @@ class TestPipelineBase:
             ],
         }
         assert res == expected
+
+    def test_init_valid_max_runs_per_component(self):
+        # the default, ordinary values and the hard limit are all accepted
+        assert PipelineBase()._max_runs_per_component == 100
+        assert PipelineBase(max_runs_per_component=1)._max_runs_per_component == 1
+        assert PipelineBase(max_runs_per_component=42)._max_runs_per_component == 42
+        assert PipelineBase(max_runs_per_component=MAX_RUNS_PER_COMPONENT_LIMIT)._max_runs_per_component == (
+            MAX_RUNS_PER_COMPONENT_LIMIT
+        )
+
+    @pytest.mark.parametrize("invalid_value", [0, -1, 10**9, 1.5, "100", None, True])
+    def test_init_rejects_invalid_max_runs_per_component(self, invalid_value):
+        with pytest.raises(ValueError, match="'max_runs_per_component' must be an integer"):
+            PipelineBase(max_runs_per_component=invalid_value)
 
     def test_describe_input_only_no_inputs_components(self):
         A = component_class("A", input_types={}, output={"x": 0})
@@ -1781,6 +1795,24 @@ class TestPipelineBaseFromDict:
                 "mandatory": True,
             },
         )
+
+    def test_from_dict_accepts_valid_max_runs_per_component(self):
+        # regular values and the hard limit are accepted; the value is not modified
+        for valid_value in [1, 100, 10_000, MAX_RUNS_PER_COMPONENT_LIMIT]:
+            data = {"metadata": {}, "max_runs_per_component": valid_value, "components": {}, "connections": []}
+            pipe = PipelineBase.from_dict(data)
+            assert pipe._max_runs_per_component == valid_value
+
+        # the default applies when the value is absent
+        pipe = PipelineBase.from_dict({"metadata": {}, "components": {}, "connections": []})
+        assert pipe._max_runs_per_component == 100
+
+    @pytest.mark.parametrize("malicious_value", [0, -1, 999_999_999, 10**12, 1.5, "100", None, True])
+    def test_from_dict_rejects_invalid_max_runs_per_component(self, malicious_value):
+        """A serialized pipeline cannot disable the loop protection with an out-of-range value."""
+        data = {"metadata": {}, "max_runs_per_component": malicious_value, "components": {}, "connections": []}
+        with pytest.raises(DeserializationError, match="'max_runs_per_component' must be an integer"):
+            PipelineBase.from_dict(data)
 
     # TODO: Remove this, this should be a component test.
     # The pipeline can't handle this in any case nor way.

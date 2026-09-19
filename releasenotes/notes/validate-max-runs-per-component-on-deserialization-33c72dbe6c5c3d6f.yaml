@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``Pipeline`` deserialization now validates ``max_runs_per_component``: it must be a positive integer no
+    greater than 1000000. A maliciously crafted serialized pipeline can no longer effectively disable the
+    pipeline's loop protection by setting an arbitrarily large value. The ``Pipeline`` constructor applies the
+    same validation and raises a ``ValueError`` for out-of-range values.
