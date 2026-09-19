@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `DOCXToDocument` now reads the text inside text boxes. A text box keeps its
+    paragraphs and tables under `w:txbxContent`, nested in the drawing inside a
+    run, so the anchoring paragraph's own text never reached them and the content
+    was dropped from the Document without any error. The `mc:Fallback` copy Word
+    writes alongside the modern one is skipped, so the text is not emitted twice.
