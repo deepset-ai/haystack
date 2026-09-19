@@ -16,7 +16,7 @@ class ListJoiner:
     A component that joins multiple lists into a single flat list.
 
     The ListJoiner receives multiple lists of the same type and concatenates them into a single flat list.
-    The output order respects the pipeline's execution sequence, with earlier inputs being added first.
+    The output order follows Pipeline.connect() / sender order for Variadic inputs.
 
     Usage example:
     ```python

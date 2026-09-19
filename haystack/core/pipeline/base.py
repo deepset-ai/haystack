@@ -593,10 +593,11 @@ class PipelineBase:  # noqa: PLW1641
         'component_name.connections_name'.
 
         If multiple senders are connected to the same list-typed receiver socket, the socket is
-        promoted to a lazy variadic socket so it can accept all incoming values. With the synchronous
-        `run`, the resulting list is ordered alphabetically by sender component name, not by the order in
-        which `connect()` was called. With the asynchronous run path (`run_async`), no ordering is
-        guaranteed, since components in different branches may run in parallel.
+        promoted to a lazy variadic socket so it can accept all incoming values. For those
+        auto-promoted sockets, sync `run` still delivers values in alphabetical sender-name order
+        (async arrival order is not guaranteed). Explicit `Variadic[...]` inputs (for example
+        DocumentJoiner) are instead aligned to `connect()` / sender order, and missing list-typed
+        senders are padded with `[]` so positional weights stay stable.
 
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
@@ -1357,12 +1358,11 @@ class PipelineBase:  # noqa: PLW1641
                     consumed_inputs[socket_name] = [socket_inputs_values[0]]
                 elif socket.is_lazy_variadic:
                     if socket.wrap_input_in_list:
-                        # We use all inputs provided to the socket on a lazy variadic socket.
-                        # So keep it wrapped in a list.
-                        consumed_inputs[socket_name] = socket_inputs_values
+                        # Explicit Variadic[...] (e.g. DocumentJoiner): align to connect()/sender
+                        # order so positional weights are stable across sync and async runs.
+                        consumed_inputs[socket_name] = _order_lazy_variadic_socket_values(socket, socket_inputs)
                     else:
-                        # We flatten one-level of lists for lazy variadic sockets that don't wrap inputs in lists.
-                        # This way the incoming inputs match the expected type of the socket.
+                        # Auto-promoted list sockets: preserve historical execution/arrival order.
                         consumed_inputs[socket_name] = list(itertools.chain.from_iterable(socket_inputs_values))
                 else:
                     # For a normal socket we only care about the first input provided to the socket.
@@ -1941,6 +1941,41 @@ def _validate_component_output_keys(
             component_type=component_type,
             extra_keys=extra_keys,
         )
+
+
+def _order_lazy_variadic_socket_values(socket: InputSocket, socket_inputs: list[dict[str, Any]]) -> list[Any]:
+    """
+    Order Variadic socket values by ``connect()`` / ``socket.senders`` order.
+
+    User-provided values (``sender is None``) are kept first. Pipeline sender values follow
+    ``socket.senders``. Missing senders or ``_NoOutputProduced`` entries are padded with ``[]`` when
+    the socket type is a list type (e.g. DocumentJoiner's ``Variadic[list[Document]]``), so positional
+    weights stay aligned. Non-list Variadic sockets omit missing senders.
+    """
+    by_sender: dict[str, Any] = {}
+    user_values: list[Any] = []
+    for sock in socket_inputs:
+        if isinstance(sock["value"], _NoOutputProduced):
+            continue
+        sender = sock["sender"]
+        if sender is None:
+            user_values.append(sock["value"])
+        else:
+            by_sender[sender] = sock["value"]
+
+    pad_missing = _safe_get_origin(socket.type) is list
+    ordered: list[Any] = list(user_values)
+    for sender in socket.senders:
+        if sender in by_sender:
+            ordered.append(by_sender[sender])
+        elif pad_missing:
+            ordered.append([])
+
+    known_senders = set(socket.senders)
+    for sender, value in by_sender.items():
+        if sender not in known_senders:
+            ordered.append(value)
+    return ordered
 
 
 def _write_to_lazy_variadic_socket(
