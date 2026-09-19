@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Fixed ``PythonCodeSplitter`` (``strip_docstrings=True``) emitting invalid Python
+    when a function, method, class, or nested class body consisted solely of a docstring.
+    Previously, removing the docstring from a unit whose body was only that docstring
+    left a header with no body (``def foo():\n`` or ``class Foo:\n``), which is a
+    ``SyntaxError``. The same bug also affected a class whose class-header slice
+    contained only the class-level docstring and no other body statement before
+    the first method. The docstring is now kept in place in these cases so the
+    emitted chunk remains valid Python, and it is not moved to
+    ``meta["docstrings"]`` (consistent with the existing behaviour for units
+    that have no docstring to strip). A function or class with both a docstring
+    and other body statements is unaffected — the docstring is still stripped
+    and moved to ``meta["docstrings"]`` as before.
