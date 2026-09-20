@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Correct two comments in ``breakpoint.py`` that said pipeline snapshot saving was
+    enabled by default. Saving is disabled unless ``HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED``
+    is set to ``true`` or ``1``.
