@@ -150,8 +150,8 @@ class ToolCallResult:
         :returns:
             Serialized version of the object only for tracing purposes.
         """
-        data = self.to_dict()
-        if isinstance(self.result, list):
+        trace_result: Any
+        if isinstance(self.result, Sequence) and not isinstance(self.result, str):
             trace_result = []
             for part in self.result:
                 key = _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.get(type(part))
@@ -159,8 +159,10 @@ class ToolCallResult:
                     trace_result.append({key: part._to_trace_dict()})
                 else:
                     trace_result.append(_serialize_content_part(part))
-            data["result"] = trace_result
-        return data
+        else:
+            trace_result = self.result
+
+        return {"result": trace_result, "origin": self.origin.to_dict(), "error": self.error}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
