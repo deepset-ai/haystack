@@ -95,6 +95,25 @@ class OpenAIChatGenerator:
         ]
     }
     ```
+
+    ### OpenAI-compatible endpoints without authentication
+
+    Some OpenAI-compatible endpoints don't authenticate requests, but the OpenAI client currently still requires an
+    API key value to be set. For a local endpoint, set a clearly nonsecret placeholder in `OPENAI_API_KEY` and configure
+    the base URL:
+
+    ```python
+    import os
+
+    from haystack.components.generators.chat import OpenAIChatGenerator
+
+    os.environ["OPENAI_API_KEY"] = "local-placeholder"
+    client = OpenAIChatGenerator(api_base_url="http://localhost:8000/v1")
+    ```
+
+    Keeping the placeholder in the environment preserves component serialization. For a component that won't be
+    serialized, you can instead import `Secret` from `haystack.utils` and pass
+    `api_key=Secret.from_token("local-placeholder")`; token-based secrets can't be serialized.
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
