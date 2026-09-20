@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``LinkContentFetcher`` mutating a caller-provided ``client_kwargs`` dictionary
+    while applying its default HTTP client settings.
