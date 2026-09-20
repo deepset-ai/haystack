@@ -143,6 +143,25 @@ class ToolCallResult:
             serialized["result"] = [_serialize_content_part(part) for part in self.result]
         return serialized
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert ToolCallResult into a dictionary for tracing, redacting large binary payloads.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        data = self.to_dict()
+        if isinstance(self.result, list):
+            trace_result = []
+            for part in self.result:
+                key = _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.get(type(part))
+                if key and hasattr(part, "_to_trace_dict"):
+                    trace_result.append({key: part._to_trace_dict()})
+                else:
+                    trace_result.append(_serialize_content_part(part))
+            data["result"] = trace_result
+        return data
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
         """
@@ -576,6 +595,8 @@ class ChatMessage:
                 serialized_part["image"] = part._to_trace_dict()
             elif isinstance(part, FileContent):
                 serialized_part["file"] = part._to_trace_dict()
+            elif isinstance(part, ToolCallResult):
+                serialized_part["tool_call_result"] = part._to_trace_dict()
             serialized["content"].append(serialized_part)
 
         return serialized

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Redact large base64-encoded binary payloads (``ImageContent`` and ``FileContent``) nested inside
+    ``ToolCallResult`` when tracing is enabled. Replaces raw base64 data with placeholder strings
+    (such as ``"Base64 string (N characters)"``), preventing multi-megabyte payloads from leaking into
+    pipeline tracing spans.
