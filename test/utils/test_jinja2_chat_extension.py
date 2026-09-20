@@ -91,6 +91,17 @@ class TestChatMessageExtension:
         with pytest.raises(TemplateSyntaxError, match="name must be a string"):
             jinja_env.from_string(template).render()
 
+    def test_message_name_from_variable(self, jinja_env):
+        template = """
+        {% message role="user" name=user_name %}
+        Hello!
+        {% endmessage %}
+        """
+        rendered = jinja_env.from_string(template).render(user_name="Bob")
+        output = json.loads(rendered.strip())
+        expected = {"role": "user", "name": "Bob", "content": [{"text": "Hello!"}], "meta": {}}
+        assert output == expected
+
     def test_system_message(self, jinja_env):
         template = """
         {% message role="system" %}

@@ -194,7 +194,7 @@ class ChatMessageExtension(Extension):
             parser.stream.skip()
             parser.stream.expect("assign")
             name_expr = parser.parse_expression()
-            if not isinstance(name_expr.value, str):
+            if isinstance(name_expr, nodes.Const) and not isinstance(name_expr.value, str):
                 raise TemplateSyntaxError("name must be a string", lineno)
 
         # Parse optional meta attribute
