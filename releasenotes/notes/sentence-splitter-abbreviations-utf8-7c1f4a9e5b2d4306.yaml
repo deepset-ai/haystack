@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `SentenceSplitter` now reads the abbreviation files with an explicit UTF-8 encoding. On systems whose default
+    text encoding is not UTF-8, such as Windows with a cp1252 locale, splitting text in a language with non-ASCII
+    abbreviations, such as German, raised a `UnicodeDecodeError`.
