@@ -124,30 +124,50 @@ class TestSplittingByFunctionOrCharacterRegex:
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
-    def test_split_by_character_modes_skip_overlap_only_trailing_chunk(self):
-        def run_split(split_by, split_length, split_overlap, text):
-            splitter = DocumentSplitter(split_by=split_by, split_length=split_length, split_overlap=split_overlap)
-            docs = splitter.run(documents=[Document(content=text)])["documents"]
-            return [d.content for d in docs]
+    def test_split_by_word_exact_fit_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3"]
 
-        # word: exact fit creates one chunk
-        assert run_split("word", 3, 1, "t1 t2 t3") == ["t1 t2 t3"]
-        # word: trailing delimiter creates one chunk
-        assert run_split("word", 3, 1, "t1 t2 t3 ") == ["t1 t2 t3 "]
-        # word: partial final chunk is kept
-        assert run_split("word", 3, 1, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t3 t4"]
-        # word: high overlap partial final chunk is kept
-        assert run_split("word", 3, 2, "t1 t2 t3 t4") == ["t1 t2 t3 ", "t2 t3 t4"]
-        # line: trailing delimiter creates one chunk
-        assert run_split("line", 3, 1, "l1\nl2\nl3\n") == ["l1\nl2\nl3\n"]
-        # passage: trailing delimiter creates one chunk
-        assert run_split("passage", 3, 1, "p1\n\np2\n\np3\n\n") == ["p1\n\np2\n\np3\n\n"]
-        # period: trailing delimiter creates one chunk
-        assert run_split("period", 3, 1, "s1.s2.s3.") == ["s1.s2.s3."]
-        # period: high overlap does not create an overlap-only chunk
-        assert run_split("period", 3, 2, "s1.s2.s3.s4.") == ["s1.s2.s3.", "s2.s3.s4."]
-        # page: trailing delimiter creates one chunk
-        assert run_split("page", 3, 1, "a\fb\fc\f") == ["a\fb\fc\f"]
+    def test_split_by_word_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 ")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 "]
+
+    def test_split_by_word_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t3 t4"]
+
+    def test_split_by_word_high_overlap_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t2 t3 t4"]
+
+    def test_split_by_line_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="line", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="l1\nl2\nl3\n")])
+        assert [doc.content for doc in result["documents"]] == ["l1\nl2\nl3\n"]
+
+    def test_split_by_passage_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="passage", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="p1\n\np2\n\np3\n\n")])
+        assert [doc.content for doc in result["documents"]] == ["p1\n\np2\n\np3\n\n"]
+
+    def test_split_by_period_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3."]
+
+    def test_split_by_period_high_overlap_skips_overlap_only_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.s4.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3.", "s2.s3.s4."]
+
+    def test_split_by_page_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="page", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="a\fb\fc\f")])
+        assert [doc.content for doc in result["documents"]] == ["a\fb\fc\f"]
 
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
