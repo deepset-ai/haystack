@@ -147,10 +147,10 @@ class JsonSchemaValidator:
             }
 
         last_message_content = json.loads(last_message.text)
-        json_schema = json_schema or self.json_schema
+        json_schema = self.json_schema if json_schema is None else json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
-        if not json_schema:
+        if json_schema is None:
             raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema
