@@ -67,7 +67,7 @@
 | haystack/components/extractors/llm\_metadata\_extractor.py                |      168 |       12 |     93% |311-319, 333-341, 414, 466 |
 | haystack/components/extractors/regex\_text\_extractor.py                  |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
-| haystack/components/fetchers/link\_content.py                             |      202 |       18 |     91% |210-218, 285, 334-338, 423-427, 466, 499 |
+| haystack/components/fetchers/link\_content.py                             |      202 |       18 |     91% |212-220, 288, 337-341, 426-430, 471, 504 |
 | haystack/components/generators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/azure.py                              |       92 |        3 |     97% |213, 371, 374 |
