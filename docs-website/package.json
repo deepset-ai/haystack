@@ -20,9 +20,10 @@
   "dependencies": {
     "@docusaurus/core": "^3.10.0",
     "@docusaurus/faster": "^3.10.0",
+    "@docusaurus/plugin-client-redirects": "^3.10.0",
     "@docusaurus/plugin-content-docs": "^3.10.0",
     "@docusaurus/plugin-ideal-image": "^3.10.0",
-    "@docusaurus/plugin-client-redirects": "^3.10.0",
+    "@docusaurus/plugin-vercel-analytics": "^3.10.2",
     "@docusaurus/preset-classic": "^3.10.0",
     "@mdx-js/react": "^3.0.0",
     "@types/turndown": "^5.0.6",
