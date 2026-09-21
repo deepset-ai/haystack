@@ -1,7 +1,6 @@
 ---
 fixes:
   - |
-    Fixed ``LLMDocumentContentExtractor`` treating a chat generator output that
-    carries its own ``error`` field (for example ``{"replies": [...], "error":
-    None}``) as a failed LLM call. Documents are now processed normally in that
-    case, and only genuine extraction failures land in ``failed_documents``.
+    Fixed ``LLMDocumentContentExtractor`` incorrectly treating a chat generator
+    output that carries its own ``error`` field as a failed LLM call. Such
+    documents are now processed normally.

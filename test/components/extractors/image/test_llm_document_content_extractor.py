@@ -386,9 +386,9 @@ class TestLLMDocumentContentExtractor:
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator())
-        result = extractor._run_on_thread(None)
-        assert "error" in result
-        assert result["error"] == "Document has no content, skipping LLM call."
+        doc, success = extractor._run_on_thread(Document(content="", meta={"file_path": "missing.pdf"}), None)
+        assert success is False
+        assert doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
