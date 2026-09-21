@@ -13,6 +13,7 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat.openai import _merge_tools_from_kwargs
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
@@ -577,6 +578,10 @@ class OpenAIResponsesChatGenerator:
                     tool_definitions.append({"type": "function", **function_spec})
 
             openai_tools = {"tools": tool_definitions}
+
+        # Same merge as OpenAIChatGenerator: tools passed via generation_kwargs are
+        # combined with the component's own tools rather than replacing them.
+        openai_tools = _merge_tools_from_kwargs(openai_tools=openai_tools, generation_kwargs=generation_kwargs)
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 

@@ -523,6 +523,91 @@ class TestOpenAIChatGenerator:
         assert kwargs["temperature"] == 0.9
         assert kwargs["max_completion_tokens"] == 10
 
+    def test_run_merged_tools_from_generation_kwargs(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        """Tools passed via generation_kwargs merge with the component's own tools
+        instead of silently replacing them. For a name in both, the kwargs spec wins."""
+
+        def haystack_tool() -> None: ...
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            tools=[
+                Tool(
+                    name="haystack_tool",
+                    description="hs",
+                    parameters={"type": "object", "properties": {}},
+                    function=haystack_tool,
+                )
+            ],
+        )
+        component.run(
+            chat_messages,
+            generation_kwargs={
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "raw_tool",
+                            "description": "raw",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ]
+            },
+        )
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        tool_names = [t["function"]["name"] for t in kwargs["tools"]]
+        assert tool_names == ["haystack_tool", "raw_tool"]
+
+    def test_run_generation_kwargs_tool_wins_on_name_collision(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        """When the same tool name appears in both, the generation_kwargs spec wins."""
+
+        def haystack_tool() -> None: ...
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            tools=[
+                Tool(
+                    name="shared_tool",
+                    description="component",
+                    parameters={"type": "object", "properties": {}},
+                    function=haystack_tool,
+                )
+            ],
+        )
+        component.run(
+            chat_messages,
+            generation_kwargs={
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "shared_tool",
+                            "description": "kwargs",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ]
+            },
+        )
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["tools"] == [
+            {
+                "type": "function",
+                "function": {
+                    "name": "shared_tool",
+                    "description": "kwargs",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
     ) -> None:

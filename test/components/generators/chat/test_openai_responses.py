@@ -603,6 +603,88 @@ class TestRun:
 
         assert "tools" not in openai_mock_responses.call_args.kwargs
 
+    def test_run_merged_tools_from_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
+        """Tools passed via generation_kwargs merge with the component's own tools
+        for the Responses API as well."""
+
+        def haystack_tool() -> None:
+            ...
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            tools=[
+                Tool(
+                    name="haystack_tool",
+                    description="hs",
+                    parameters={"type": "object", "properties": {}},
+                    function=haystack_tool,
+                )
+            ],
+        )
+        component.run(
+            [ChatMessage.from_user("What's the capital of France")],
+            generation_kwargs={
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "raw_tool",
+                            "description": "raw",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ]
+            },
+        )
+
+        kwargs = openai_mock_responses.call_args.kwargs
+        tool_names = [
+            t.get("name") if isinstance(t.get("name"), str) else t["function"]["name"] for t in kwargs["tools"]
+        ]
+        assert tool_names == ["haystack_tool", "raw_tool"]
+
+    def test_run_generation_kwargs_tool_wins_on_name_collision(self, openai_mock_responses: MagicMock) -> None:
+        """When the same tool name appears in both, the generation_kwargs spec wins."""
+
+        def haystack_tool() -> None:
+            ...
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            tools=[
+                Tool(
+                    name="shared_tool",
+                    description="component",
+                    parameters={"type": "object", "properties": {}},
+                    function=haystack_tool,
+                )
+            ],
+        )
+        component.run(
+            [ChatMessage.from_user("What's the capital of France")],
+            generation_kwargs={
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "shared_tool",
+                            "description": "kwargs",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ]
+            },
+        )
+
+        kwargs = openai_mock_responses.call_args.kwargs
+        shared = next(
+            t
+            for t in kwargs["tools"]
+            if t.get("name") == "shared_tool" or t.get("function", {}).get("name") == "shared_tool"
+        )
+        assert shared["function"]["name"] == "shared_tool"
+        assert shared["function"]["description"] == "kwargs"
+
     def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
 
         component = OpenAIResponsesChatGenerator(

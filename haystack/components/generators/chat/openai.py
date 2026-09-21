@@ -54,6 +54,37 @@ from haystack.utils.http_client import init_http_client
 logger = logging.getLogger(__name__)
 
 
+def _merge_tools_from_kwargs(openai_tools: dict[str, Any], generation_kwargs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Merge OpenAI tool specs passed via ``generation_kwargs`` into the component's tools.
+
+    Raw OpenAI tool specs passed via ``generation_kwargs["tools"]`` are combined with the
+    component's own tool definitions instead of letting them override each other. For a
+    tool name present in both, the spec from ``generation_kwargs`` wins, mirroring how
+    every other ``generation_kwargs`` key takes precedence. The ``tools`` key is removed
+    from ``generation_kwargs`` so the caller's parameter is not mutated.
+    """
+    kwargs_tools = generation_kwargs.pop("tools", None)
+    if not kwargs_tools:
+        return openai_tools
+
+    def _tool_name(tool: dict[str, Any]) -> str:
+        # chat.completions specs nest the name under "function"; Responses API specs
+        # put it at the top level. Accept both.
+        function = tool.get("function")
+        if isinstance(function, dict):
+            return str(function.get("name"))
+        return str(tool.get("name"))
+
+    # dict keyed by tool name so a later (kwargs) definition overrides an earlier one
+    merged: dict[str, dict[str, Any]] = {}
+    for tool in openai_tools.get("tools", []):
+        merged[_tool_name(tool)] = tool
+    for tool in kwargs_tools:
+        merged[_tool_name(tool)] = tool
+    return {"tools": list(merged.values())}
+
+
 @component
 class OpenAIChatGenerator:
     """
@@ -537,6 +568,12 @@ class OpenAIChatGenerator:
                     function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
+
+        # Merge tools passed via generation_kwargs (raw OpenAI specs) with the
+        # component's own tools instead of letting them override each other. For a
+        # tool name present in both, the spec from generation_kwargs wins, mirroring
+        # how every other generation_kwargs key takes precedence.
+        openai_tools = _merge_tools_from_kwargs(openai_tools=openai_tools, generation_kwargs=generation_kwargs)
 
         base_args = {
             "model": self.model,
