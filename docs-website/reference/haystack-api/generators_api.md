@@ -347,7 +347,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
-    tools: ToolsType | None = None,
+    tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None
 ) -> None
@@ -403,7 +403,7 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   - `generate_summary`: Whether to generate a summary of the reasoning.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+- **tools** (<code>ToolsType | list\[dict\] | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - **tools_strict** (<code>bool</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
