@@ -365,13 +365,15 @@ Creates a DocumentJoiner component.
   This parameter is ignored for
   `concatenate` or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
+  Each weight must be a non-negative number.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0.
+- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0,
+  or if any value in `weights` is negative.
 
 #### run
 
