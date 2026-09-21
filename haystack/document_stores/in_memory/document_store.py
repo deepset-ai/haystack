@@ -635,6 +635,8 @@ class InMemoryDocumentStore:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param filters: The filters to apply.
             For a detailed specification of the filters, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
@@ -642,8 +644,6 @@ class InMemoryDocumentStore:
             Field names can include or omit the "meta." prefix.
         :returns: A dictionary mapping each metadata field name (without "meta." prefix)
             to the count of its unique values among the filtered documents.
-
-            JSON-serializable metadata values, including nested lists and dictionaries, are supported.
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
@@ -723,6 +723,8 @@ class InMemoryDocumentStore:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
         :param search_term: Optional search term to filter values, matched as a case-insensitive substring
             against the metadata field's value.
@@ -732,17 +734,17 @@ class InMemoryDocumentStore:
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
-        unique_values: dict[tuple[str, str], Any] = {}
+        unique_values: dict[tuple[str, Any], Any] = {}
         for doc in self.filter_documents(filters=filters):
             value = doc.meta.get(key)
             if value is not None:
-                unique_values.setdefault((type(value).__name__, str(value)), value)
+                unique_values.setdefault((type(value).__name__, _make_metadata_value_hashable(value)), value)
 
         if search_term:
             search_term_lower = search_term.lower()
-            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k[1].lower()}
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in str(v).lower()}
 
-        sorted_keys = sorted(unique_values, key=lambda k: (k[1], k[0]))
+        sorted_keys = sorted(unique_values, key=lambda k: (str(unique_values[k]), k[0]))
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
@@ -1006,6 +1008,8 @@ class InMemoryDocumentStore:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param filters: The filters to apply.
             For a detailed specification of the filters, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
@@ -1013,8 +1017,6 @@ class InMemoryDocumentStore:
             Field names can include or omit the "meta." prefix.
         :returns: A dictionary mapping each metadata field name (without "meta." prefix)
             to the count of its unique values among the filtered documents.
-
-            JSON-serializable metadata values, including nested lists and dictionaries, are supported.
         """
         return await asyncio.get_running_loop().run_in_executor(
             self.executor,
@@ -1053,6 +1055,8 @@ class InMemoryDocumentStore:
     ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
         :param search_term: Optional search term to filter values, matched as a case-insensitive substring
