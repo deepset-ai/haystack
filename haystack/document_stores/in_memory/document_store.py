@@ -821,7 +821,7 @@ class InMemoryDocumentStore:
         filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: bool | None = False,
+        return_embedding: bool | None = None,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -832,7 +832,7 @@ class InMemoryDocumentStore:
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
         :param return_embedding: Whether to return the embedding of the retrieved Documents.
             If not provided, the value of the `return_embedding` parameter set at component
-            initialization will be used. Default is False.
+            initialization will be used.
         :returns: A list of the top_k documents most relevant to the query.
         :raises ValueError: if filters have invalid syntax.
         """
@@ -1102,7 +1102,7 @@ class InMemoryDocumentStore:
         filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: bool = False,
+        return_embedding: bool | None = None,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -1111,7 +1111,9 @@ class InMemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
-        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents.
+            If not provided, the value of the `return_embedding` parameter set at component
+            initialization will be used.
         :returns: A list of the top_k documents most relevant to the query.
         """
         return await asyncio.get_running_loop().run_in_executor(
