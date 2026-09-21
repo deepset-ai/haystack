@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed BM25 text tokenization in ``InMemoryDocumentStore`` so that CJK scripts are tokenized per character.
+    Chinese, Japanese and Korean text -- including Hangul (native jamo, compatibility jamo, syllables and the
+    jamo extension blocks), CJK ideographs, their Extension A and compatibility blocks, kana, and halfwidth
+    katakana -- is now split one token per character, so bare-term queries for single characters or short words
+    can match documents where those characters appear inside a longer unspaced run. Kana punctuation such as
+    the katakana middle dot is no longer emitted as a standalone token, and text is Unicode NFC-normalized
+    before tokenization so equivalent spellings (for example decomposed vs. composed Hangul) share the same
+    terms.

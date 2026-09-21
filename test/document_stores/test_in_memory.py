@@ -7,6 +7,7 @@ import gc
 import logging
 import math
 import tempfile
+import unicodedata
 from typing import Literal, cast
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.in_memory import document_store as in_memory_module
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -140,7 +142,7 @@ class TestMemoryDocumentStore(
         assert data == {
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
-                "bm25_tokenization_regex": r"(?u)\b\w+\b",
+                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
@@ -816,6 +818,46 @@ class TestMemoryDocumentStore(
     def test_bm25_tokenization_includes_single_char_tokens(self, in_memory_doc_store):
         tokens = in_memory_doc_store._tokenize_bm25("Luna is a dog")
         assert tokens == ["luna", "is", "a", "dog"]
+
+    def test_bm25_tokenization_splits_cjk_characters(self, in_memory_doc_store):
+        # A Hangul noun keeps its attached particle in the default tokenizer,
+        # which makes a bare-noun query have zero overlap with the document
+        # (e.g. query "서울" vs document containing only "서울은"). Each CJK
+        # character (Hangul syllables, CJK unified ideographs, kana) should be
+        # tokenized on its own so BM25 can match the bare form.
+        tokens = in_memory_doc_store._tokenize_bm25("서울은 대한민국의 수도")
+        assert "서울은" not in tokens
+        assert "서" in tokens and "울" in tokens and "은" in tokens
+        assert "대한민국의" not in tokens
+        assert "한" in tokens and "국" in tokens and "의" in tokens
+
+        # Mixed script: Latin words and digits keep their previous behaviour.
+        tokens2 = in_memory_doc_store._tokenize_bm25("Seoul 2026 시티")
+        assert tokens2[:2] == ["seoul", "2026"]
+        assert "시" in tokens2 and "티" in tokens2
+
+    def test_bm25_tokenization_handles_cjk_details(self, in_memory_doc_store):
+        tokenize = in_memory_doc_store._tokenize_bm25
+
+        # Kana punctuation such as the katakana middle dot (\u30fb) must not become a token of its own,
+        # so a name like john (katakana) splits only on the letters.
+        tokens = tokenize("\u30b8\u30e7\u30f3\u30fb\u30b9\u30df\u30b9")
+        assert "\u30fb" not in tokens
+        assert tokens == ["\u30b8", "\u30e7", "\u30f3", "\u30b9", "\u30df", "\u30b9"]
+
+        # Halfwidth katakana (U+FF66-U+FF9F) and CJK Extension A ideographs split per character too.
+        assert tokenize("\uff71\uff72\uff73") == ["\uff71", "\uff72", "\uff73"]
+        assert tokenize("\u3400\u3401\u3402") == ["\u3400", "\u3401", "\u3402"]
+        # CJK Compatibility Ideographs and the two Hangul Jamo Extended blocks split per character too.
+        assert tokenize("\ufa0e\ufa0f\ufa11") == ["\ufa0e", "\ufa0f", "\ufa11"]
+        assert tokenize("\ua960\ud7b0") == ["\ua960", "\ud7b0"]
+
+        # NFC-normalized Hangul and its decomposed NFD spelling tokenize identically, so a query in one
+        # form matches a document written in the other.
+        nfc = "\uc11c\uc6b8\uc740"
+        nfd = unicodedata.normalize("NFD", nfc)
+        assert nfd != nfc
+        assert tokenize(nfd) == tokenize(nfc) == ["\uc11c", "\uc6b8", "\uc740"]
 
     def test_bm25_retrieval_with_single_char_query(self, in_memory_doc_store):
         docs = [

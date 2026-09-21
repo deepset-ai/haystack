@@ -13,6 +13,7 @@ from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedd
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.document_stores.types import DuplicatePolicy
 
 
@@ -92,7 +93,7 @@ class TestTextEmbeddingRetriever:
                         "document_store": {
                             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                             "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                                 "bm25_algorithm": "BM25L",
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
