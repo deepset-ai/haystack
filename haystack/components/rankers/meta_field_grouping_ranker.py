@@ -124,7 +124,7 @@ class MetaFieldGroupingRanker:
                     # (e.g. an int and a str) would still raise a TypeError. In that case we keep the
                     # group's insertion order instead of crashing, mirroring MetaFieldRanker.
                     try:
-                        docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                        docs = sorted(docs, key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
                     except TypeError as error:
                         logger.warning(
                             "Tried to sort Documents with IDs {document_ids}, but got TypeError with the "

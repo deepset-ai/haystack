@@ -202,6 +202,22 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][0].content == "int value"
         assert result["documents"][1].content == "str value"
 
+    def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order_after_partial_sort(self) -> None:
+        """
+        A comparator TypeError during sort must not partially reorder the group: with more than
+        two documents, an in-place sort can reorder a comparable prefix before raising, so the
+        fallback must guarantee the original insertion order (regression for #12848).
+        """
+        docs = [
+            Document(content=f"doc-{i}", meta={"group": "g", "split_id": value})
+            for i, value in enumerate([3, 1, 2, "10"])
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs)
+        assert "documents" in result
+        # Original insertion order is preserved: [3, 1, 2, "10"]
+        assert [doc.meta["split_id"] for doc in result["documents"]] == [3, 1, 2, "10"]
+
     def test_run_deduplicates_documents(self) -> None:
         """
         Test that duplicate documents are removed before grouping.
