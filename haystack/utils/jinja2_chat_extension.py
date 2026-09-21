@@ -353,9 +353,12 @@ class ChatMessageExtension(Extension):
         :param name: The optional name of the message
         :return: A ChatMessage object
 
-        :raises ValueError: If content parts don't allow to build a valid ChatMessage object or the role is not
-                            supported
+        :raises ValueError: If content parts don't allow to build a valid ChatMessage object, the role is not
+                            supported, or ``name`` is not a string
         """
+
+        if name is not None and not isinstance(name, str):
+            raise ValueError(f"name must be a string, got {type(name).__name__}.")
 
         if role == "user":
             valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent, FileContent))]

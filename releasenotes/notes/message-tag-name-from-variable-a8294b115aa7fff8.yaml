@@ -5,4 +5,5 @@ fixes:
     is a template variable instead of a string literal. A template such as
     ``{% message role="user" name=user_name %}`` now renders the value of ``user_name``, matching how ``role`` and
     ``meta`` already accept expressions. A non-string literal such as ``name=123`` still raises
-    ``TemplateSyntaxError``.
+    ``TemplateSyntaxError`` at parse time, and a template variable that resolves to a non-string at render time
+    now raises a clear ``ValueError`` instead of producing an invalid ``ChatMessage``.

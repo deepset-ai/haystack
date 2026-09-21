@@ -102,6 +102,15 @@ class TestChatMessageExtension:
         expected = {"role": "user", "name": "Bob", "content": [{"text": "Hello!"}], "meta": {}}
         assert output == expected
 
+    def test_message_name_from_variable_not_str_raises_error(self, jinja_env):
+        template = """
+        {% message role="user" name=user_name %}
+        Hello!
+        {% endmessage %}
+        """
+        with pytest.raises(ValueError, match="name must be a string, got int"):
+            jinja_env.from_string(template).render(user_name=123)
+
     def test_system_message(self, jinja_env):
         template = """
         {% message role="system" %}
