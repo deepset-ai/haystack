@@ -257,6 +257,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             to: '/docs/tool',
           },
         ],
+        // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
+        // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
+        createRedirects(existingPath) {
+          const match = existingPath.match(
+            /^(\/docs\/(?:[\w.-]+\/)?)(amazonbedrock|anthropic|cohere|llamacpp|nvidia|ollama|togetherai|watsonx)chatgenerator$/,
+          );
+          if (match) {
+            return [`${match[1]}${match[2]}generator`];
+          }
+          return undefined;
+        },
       },
     ],
   ],
@@ -308,6 +319,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             docId: 'api-index',
             label: 'API Reference',
             position: 'left',
+          },
+          {
+            href: 'https://www.deepset.ai/products-and-services/haystack-enterprise-platform',
+            label: 'Haystack Enterprise Platform',
+            position: 'right',
           },
           {
             href: 'https://github.com/deepset-ai/haystack/blob/main/docs-website/CONTRIBUTING.md',

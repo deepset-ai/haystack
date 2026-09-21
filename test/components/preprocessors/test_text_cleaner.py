@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack import Pipeline
 from haystack.components.preprocessors import TextCleaner
 
 
@@ -72,3 +73,22 @@ def test_run_with_multiple_parameters():
     result = cleaner.run(texts=["Open%123. !$Source", "Haystack.AI##"])
     assert len(result) == 1
     assert result["texts"] == ["open source", "haystackai"]
+
+
+def test_serialization_keeps_init_parameters():
+    cleaner = TextCleaner(
+        remove_regexps=["World"], convert_to_lowercase=True, remove_punctuation=True, remove_numbers=True
+    )
+    pipeline = Pipeline()
+    pipeline.add_component("cleaner", cleaner)
+    assert pipeline.to_dict()["components"]["cleaner"]["init_parameters"] == {
+        "remove_regexps": ["World"],
+        "convert_to_lowercase": True,
+        "remove_punctuation": True,
+        "remove_numbers": True,
+    }
+
+    restored = Pipeline.loads(pipeline.dumps()).get_component("cleaner")
+
+    texts = ["Hello, World 42!"]
+    assert restored.run(texts=texts) == cleaner.run(texts=texts) == {"texts": ["hello  "]}

@@ -317,6 +317,16 @@ class TestSuperComponent:
         assert "retrieved_docs" in result  # non-leaf output
         assert isinstance(result["retrieved_docs"][0], Document)
 
+    @pytest.mark.asyncio
+    async def test_super_component_non_leaf_output_async(self, async_rag_pipeline):
+        output_mapping = {"retriever.documents": "retrieved_docs", "answer_builder.answers": "final_answers"}
+        wrapper = SuperComponent(pipeline=async_rag_pipeline, output_mapping=output_mapping)
+        wrapper.warm_up()
+        result = await wrapper.run_async(query="What is the capital of France?")
+        assert "final_answers" in result  # leaf output
+        assert "retrieved_docs" in result  # non-leaf output
+        assert isinstance(result["retrieved_docs"][0], Document)
+
     def test_custom_super_component_to_dict(self, rag_pipeline):
         custom_super_component = CustomSuperComponent(1)
         data = component_to_dict(custom_super_component, "custom_super_component")

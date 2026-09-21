@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated
+from typing import Annotated, Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,8 +10,9 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State, replace_values
 from haystack.components.generators.chat import MockChatGenerator
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.hooks import hook
+from haystack.hooks import FunctionHook, hook
 from haystack.tools import tool
 
 
@@ -172,6 +173,13 @@ class LifecycleHook:
     def run(self, state: State) -> None:
         pass
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LifecycleHook":
+        return default_from_dict(cls, data)
+
     def warm_up(self) -> None:
         self.warmed += 1
 
@@ -194,18 +202,21 @@ def _agent(generator, **kwargs):
 class TestAgentHooksValidation:
     def test_invalid_hook_point_raises(self):
         with pytest.raises(ValueError):
-            Agent(chat_generator=MockChatGenerator(), hooks={"bogus": [record_a]})
+            # Deliberately pass an invalid hook point to test runtime validation.
+            Agent(chat_generator=MockChatGenerator(), hooks={"bogus": [record_a]})  # type: ignore[dict-item]
 
     def test_non_callable_object_raises(self):
         with pytest.raises(TypeError, match="must have a callable 'run"):
-            Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [object()]})
+            # Deliberately pass an object that does not implement Hook.
+            Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [object()]})  # type: ignore[list-item]
 
     def test_unwrapped_function_hints_at_hook_decorator(self):
         def my_hook(state: State) -> None:
             pass
 
         with pytest.raises(TypeError, match="@hook decorator"):
-            Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [my_hook]})
+            # Deliberately omit the decorator to test the error for a bare function.
+            Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [my_hook]})  # type: ignore[list-item]
 
     def test_continue_run_is_a_reserved_state_schema_key(self):
         with pytest.raises(ValueError):
@@ -334,7 +345,7 @@ class TestAfterRunHook:
         assert result["trace"] == ["on_exit", "after_run"]
 
     def test_allowed_hook_points_is_enforced_for_new_points(self):
-        class BeforeRunOnlyHook:
+        class BeforeRunOnlyHook(LifecycleHook):
             allowed_hook_points = ("before_run",)
 
             def run(self, state: State) -> None:
@@ -729,9 +740,13 @@ class TestAgentHooksSerde:
         )
         restored = Agent.from_dict(agent.to_dict())
         assert set(restored.hooks) == {"before_run", "before_llm", "on_exit", "after_run"}
+        assert isinstance(restored.hooks["before_run"][0], FunctionHook)
         assert restored.hooks["before_run"][0].function is rewrite_query_into_brief.function
+        assert isinstance(restored.hooks["before_llm"][0], FunctionHook)
         assert restored.hooks["before_llm"][0].function is build_context.function
+        assert isinstance(restored.hooks["on_exit"][0], FunctionHook)
         assert restored.hooks["on_exit"][0].function is require_save.function
+        assert isinstance(restored.hooks["after_run"][0], FunctionHook)
         assert restored.hooks["after_run"][0].function is write_report.function
 
 
