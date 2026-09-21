@@ -735,6 +735,37 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 40
 
+    def test_prepare_api_call_keeps_owned_tools_when_generation_kwargs_have_tools(self, tools: list[Tool]) -> None:
+        """`generation_kwargs["tools"]` must add to the tools we built, not replace them."""
+        client_spec = {"type": "function", "function": {"name": "search_files", "description": "Client catalog tool"}}
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        api_args = component._prepare_api_call(
+            messages=[ChatMessage.from_user("test")], tools=tools[:1], generation_kwargs={"tools": [client_spec]}
+        )
+
+        assert [tool["function"]["name"] for tool in api_args["tools"]] == ["weather", "search_files"]
+
+    def test_prepare_api_call_passes_generation_kwargs_tools_when_no_owned_tools(self) -> None:
+        client_spec = {"type": "function", "function": {"name": "search_files"}}
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        api_args = component._prepare_api_call(
+            messages=[ChatMessage.from_user("test")], generation_kwargs={"tools": [client_spec]}
+        )
+
+        assert api_args["tools"] == [client_spec]
+
+    def test_prepare_api_call_generation_kwargs_tools_win_on_name_clash(self, tools: list[Tool]) -> None:
+        client_spec = {"type": "function", "function": {"name": "weather", "description": "Client definition"}}
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        api_args = component._prepare_api_call(
+            messages=[ChatMessage.from_user("test")], tools=tools[:1], generation_kwargs={"tools": [client_spec]}
+        )
+
+        assert api_args["tools"] == [client_spec]
+
     def test_run_with_tools_and_response_format(
         self, tools: list[Tool], mock_parsed_chat_completion: MagicMock
     ) -> None:

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    In ``OpenAIChatGenerator``, tool specs passed in ``generation_kwargs["tools"]`` replaced the tool
+    definitions built from the component's own ``tools``, so a call like
+    ``run(messages, tools=[my_tool], generation_kwargs={"tools": [...]})`` advertised only the
+    specs from ``generation_kwargs`` and silently dropped ``my_tool``. Both sets are advertised now.
+    When a name appears in both, the spec in ``generation_kwargs`` wins, which is how the other keys
+    in ``generation_kwargs`` already take precedence.

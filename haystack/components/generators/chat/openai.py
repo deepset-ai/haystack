@@ -179,6 +179,9 @@ class OpenAIChatGenerator:
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
                 - For structured outputs with streaming,
                   the `response_format` must be a JSON schema and not a Pydantic model.
+            - `tools`: Extra tool specs in OpenAI format to advertise to the model. They are sent alongside the
+                component's own `tools` rather than replacing them, and for a name defined in both, the spec given
+                here wins.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -527,7 +530,7 @@ class OpenAIChatGenerator:
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(flattened_tools)
 
-        openai_tools = {}
+        openai_tools: dict[str, Any] = {}
         if flattened_tools:
             tool_definitions = []
             for t in flattened_tools:
@@ -537,6 +540,15 @@ class OpenAIChatGenerator:
                     function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
+
+        # `generation_kwargs` is spliced after `openai_tools` below, so a `tools` key in it used to drop every
+        # definition built from the component's own tools. Both sets are advertised instead. When a name appears in
+        # both, the explicit spec wins, which is how the rest of `generation_kwargs` already takes precedence.
+        extra_tool_specs = generation_kwargs.pop("tools", None) or []
+        if extra_tool_specs:
+            explicit_names = {spec.get("function", {}).get("name") for spec in extra_tool_specs}
+            owned_specs = [d for d in openai_tools.get("tools", []) if d["function"]["name"] not in explicit_names]
+            openai_tools["tools"] = [*owned_specs, *extra_tool_specs]
 
         base_args = {
             "model": self.model,

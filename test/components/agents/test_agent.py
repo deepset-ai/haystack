@@ -14,7 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from jinja2 import TemplateSyntaxError
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, chat_completion_chunk
+from openai.types.chat.chat_completion import Choice
+from openai.types.completion_usage import CompletionUsage
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents.agent import Agent, _get_model_exit_reason
@@ -828,6 +830,43 @@ class TestAgentRun:
         assert response["token_usage"]["prompt_tokens"] > 0
         assert response["token_usage"]["completion_tokens"] > 0
         assert response["token_usage"]["total_tokens"] > 0
+
+    def test_run_advertises_both_agent_tools_and_generation_kwargs_tools(self, weather_tool: Tool) -> None:
+        """Tool specs given in `generation_kwargs` must not hide the tools the Agent owns."""
+        client_spec = {
+            "type": "function",
+            "function": {
+                "name": "search_knowledge_files",
+                "description": "Search files by filename.",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+            },
+        }
+        chat_generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"tools": [client_spec]}
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+        completion = ChatCompletion(
+            id="foo",
+            model="gpt-4o",
+            object="chat.completion",
+            created=0,
+            choices=[
+                Choice(
+                    finish_reason="stop",
+                    index=0,
+                    message=ChatCompletionMessage(role="assistant", content="The capital of Germany is Berlin."),
+                )
+            ],
+            usage=CompletionUsage(completion_tokens=1, prompt_tokens=1, total_tokens=2),
+        )
+
+        with patch("openai.resources.chat.completions.Completions.create", return_value=completion) as mock_create:
+            response = agent.run([ChatMessage.from_user("What is the capital of Germany?")])
+
+        advertised = [tool["function"]["name"] for tool in mock_create.call_args[1]["tools"]]
+        assert advertised == ["weather_tool", "search_knowledge_files"]
+        assert response["last_message"].text == "The capital of Germany is Berlin."
 
 
 class TestAgentStreaming:
