@@ -271,7 +271,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       },
     ],
     [
-      'vercel-analytics',
+      '@docusaurus/plugin-vercel-analytics',
       {
         mode: 'auto',
       },
