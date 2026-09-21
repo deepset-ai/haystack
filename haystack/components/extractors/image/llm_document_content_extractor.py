@@ -272,6 +272,11 @@ class LLMDocumentContentExtractor:
         meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
         return content, meta_updates, None
 
+    @staticmethod
+    def _fail(document: Document, error: str) -> tuple[Document, bool]:
+        """Return a copy of ``document`` with ``extraction_error`` set, flagged as failed."""
+        return replace(document, meta={**document.meta, "extraction_error": error}), False
+
     def _run_on_thread(
         self, document: Document, image_content: ImageContent | None, parent_span: tracing.Span | None = None
     ) -> tuple[Document, bool]:
@@ -285,8 +290,7 @@ class LLMDocumentContentExtractor:
             The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            new_meta = {**document.meta, "extraction_error": "Document has no content, skipping LLM call."}
-            return replace(document, meta=new_meta), False
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document/thread
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -305,8 +309,7 @@ class LLMDocumentContentExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            new_meta = {**document.meta, "extraction_error": "LLM failed with exception: " + str(e)}
-            return replace(document, meta=new_meta), False
+            return self._fail(document, "LLM failed with exception: " + str(e))
 
         return self._process_llm_results(document, result["replies"][0])
 
@@ -323,8 +326,7 @@ class LLMDocumentContentExtractor:
             The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            new_meta = {**document.meta, "extraction_error": "Document has no content, skipping LLM call."}
-            return replace(document, meta=new_meta), False
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -343,8 +345,7 @@ class LLMDocumentContentExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            new_meta = {**document.meta, "extraction_error": "LLM failed with exception: " + str(e)}
-            return replace(document, meta=new_meta), False
+            return self._fail(document, "LLM failed with exception: " + str(e))
 
         return self._process_llm_results(document, result["replies"][0])
 
