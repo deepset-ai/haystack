@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_37c05f4cbc7a936b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-21 14:45 +0000
+            created at 2026-09-21 14:48 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -229,10 +229,10 @@
     <p class="mis mis2 show_mis"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">            <span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t">        <span class="nam">last_message_content</span> <span class="op">=</span> <span class="nam">json</span><span class="op">.</span><span class="nam">loads</span><span class="op">(</span><span class="nam">last_message</span><span class="op">.</span><span class="nam">text</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">        <span class="nam">json_schema</span> <span class="op">=</span> <span class="nam">json_schema</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">json_schema</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">        <span class="nam">json_schema</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">json_schema</span> <span class="key">if</span> <span class="nam">json_schema</span> <span class="key">is</span> <span class="key">None</span> <span class="key">else</span> <span class="nam">json_schema</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t">        <span class="nam">error_template</span> <span class="op">=</span> <span class="nam">error_template</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">error_template</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">default_error_template</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t152" href="#t152">152</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t153" href="#t153">153</a></span><span class="t">        <span class="key">if</span> <span class="key">not</span> <span class="nam">json_schema</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t153" href="#t153">153</a></span><span class="t">        <span class="key">if</span> <span class="nam">json_schema</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t154" href="#t154">154</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&quot;Provide a JSON schema for validation either in the run method or in the component init.&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t155" href="#t155">155</a></span><span class="t">        <span class="com"># fc payload is json object but subtree `parameters` is string - we need to convert to json object</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t156" href="#t156">156</a></span><span class="t">        <span class="com"># we need complete json to validate it against schema</span>&nbsp;</span><span class="r"></span></p>
@@ -341,7 +341,7 @@
             <a class="nav" href="z_37c05f4cbc7a936b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-21 14:45 +0000
+            created at 2026-09-21 14:48 +0000
         </p>
     </div>
 </footer>
