@@ -253,8 +253,16 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty or non-string query provided to LLMRanker. Returning documents without reranking.")
+        if query is None:
+            logger.warning("Missing query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        if not isinstance(query, str):
+            logger.warning("Non-string query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        if not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
         self.warm_up()
@@ -320,8 +328,16 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty or non-string query provided to LLMRanker. Returning documents without reranking.")
+        if query is None:
+            logger.warning("Missing query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        if not isinstance(query, str):
+            logger.warning("Non-string query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        if not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
         await self.warm_up_async()
