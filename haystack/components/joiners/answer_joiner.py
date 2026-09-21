@@ -121,6 +121,10 @@ class AnswerJoiner:
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
+        If the instance was created with `sort_by_score=True`, the merged Answers are sorted by
+        score in descending order before `top_k` is applied; Answers without a score are handled
+        as if their score were -infinity. Otherwise, the input order is preserved.
+
         :param answers:
             Nested list of Answers to be merged.
 
@@ -130,7 +134,8 @@ class AnswerJoiner:
 
         :returns:
             A dictionary with the following keys:
-            - `answers`: Merged list of Answers
+            - `answers`: Merged list of Answers, sorted by score if `sort_by_score` was set to
+              `True` on the instance, otherwise in input order
 
         :raises ValueError:
             If `top_k` is negative.

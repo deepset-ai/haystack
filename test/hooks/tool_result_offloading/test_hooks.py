@@ -54,7 +54,9 @@ class TextOnlyToolResultStore(ToolResultStore):
     def __init__(self) -> None:
         self.data: dict[str, str] = {}
 
-    def write(self, *, key: str, content: str) -> str:
+    def write(self, *, key: str, content: str | bytes) -> str:
+        if isinstance(content, bytes):
+            raise TypeError("Binary content not supported")
         self.data[key] = content
         return key
 
@@ -131,7 +133,11 @@ class TestToolResultOffloadHookBehavior:
     def test_mixed_result_offloads_every_block_to_its_own_entry(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path)
         hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()}, preview_chars=4)
-        content = [TextContent("caption"), _image_block(), _file_block()]
+        content: list[TextContent | ImageContent | FileContent] = [
+            TextContent("caption"),
+            _image_block(),
+            _file_block(),
+        ]
         message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
         hook.run(state)
@@ -311,7 +317,7 @@ class TestToolResultOffloadHookWithTextOnlyStore:
 
     def test_image_and_file_results_stay_in_context(self, caplog):
         hook = ToolResultOffloadHook(store=TextOnlyToolResultStore(), offload_strategies={"*": AlwaysOffload()})
-        content = [TextContent("caption"), _file_block()]
+        content: list[TextContent | ImageContent | FileContent] = [TextContent("caption"), _file_block()]
         message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
         hook.run(state)
@@ -341,7 +347,7 @@ class TestToolResultOffloadHookInAgent:
         )
         agent = Agent(chat_generator=MockChatGenerator("done"), tools=[big_tool], hooks={"after_tool": [hook]})
         agent.warm_up()
-        agent.chat_generator.run = MagicMock(
+        agent.chat_generator.run = MagicMock(  # type: ignore[method-assign]
             side_effect=[
                 {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("big_tool", {"query": "x"})])]},
                 {"replies": [ChatMessage.from_assistant("done")]},
@@ -362,7 +368,7 @@ class TestToolResultOffloadHookInAgentAsync:
         )
         agent = Agent(chat_generator=MockChatGenerator("done"), tools=[big_tool], hooks={"after_tool": [hook]})
         agent.warm_up()
-        agent.chat_generator.run_async = AsyncMock(
+        agent.chat_generator.run_async = AsyncMock(  # type: ignore[attr-defined]
             side_effect=[
                 {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("big_tool", {"query": "x"})])]},
                 {"replies": [ChatMessage.from_assistant("done")]},
