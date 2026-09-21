@@ -390,7 +390,8 @@ __init__(
     vector_search_index: str,
     full_text_search_index: str,
     embedding_field: str = "embedding",
-    content_field: str = "content"
+    content_field: str = "content",
+    meta_project_mapping: dict[str, str] | None = None
 ) -> None
 ```
 
@@ -417,6 +418,10 @@ Creates a new MongoDBAtlasDocumentStore instance.
   This field allows defining which field to load into the Haystack Document object as content.
   It can be particularly useful when integrating with an existing collection for retrieval. We discourage
   using this parameter when working with collections created by Haystack.
+- **meta_project_mapping** (<code>dict\[str, str\] | None</code>) – A dictionary mapping metadata fields in the Haystack Document (keys)
+  to custom fields in the MongoDB document (values). Values must be bare field paths, e.g.
+  `"source"` or `"metadata.author"`. A leading `"$"` is accepted for backward compatibility
+  and is stripped once during initialization. Default is None.
 
 **Raises:**
 

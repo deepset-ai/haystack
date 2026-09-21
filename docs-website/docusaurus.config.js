@@ -270,6 +270,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         },
       },
     ],
+    [
+      '@docusaurus/plugin-vercel-analytics',
+      {
+        mode: 'auto',
+      },
+    ],
   ],
 
   themeConfig:
