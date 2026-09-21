@@ -149,7 +149,7 @@ class TestHTMLToDocument:
         """
         Test if the component correctly handles errors.
         """
-        sources = ["non_existing_file.html"]
+        sources: list[str | Path | ByteStream] = ["non_existing_file.html"]
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)

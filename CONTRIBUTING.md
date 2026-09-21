@@ -27,7 +27,7 @@ Use this checklist to stay on track for your first code PR:
 - **Sign the CLA** — A [Contributor Licence Agreement (CLA)](https://cla-assistant.io/deepset-ai/haystack) is required for all contributions. Sign when prompted so your PR is ready for review (see [CLA](#contributor-licence-agreement-cla)).
 - **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback.
 
-**Table of Contents**
+## Table of Contents
 
 - [Contributing to Haystack](#contributing-to-haystack)
   - [Your first PR — high-level to-do list](#your-first-pr--high-level-to-do-list)
@@ -460,7 +460,7 @@ is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaH
 (retrieved 4th November 2021).
 
 The agreement's main purpose is to protect the continued open use of Haystack. At the same time, it also helps in
-\protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
+protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
 open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as remove liabilities on
 your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You
 can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).

@@ -122,7 +122,11 @@ class MarkdownHeaderSplitter:
         return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
 
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
-        """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
+        """
+        Split text by ATX-style headers (#) and create chunks with appropriate metadata.
+
+        The internal `source_start_idx` field tracks where each chunk begins in the original text for page counting.
+        """
         logger.debug("Splitting text by markdown headers")
 
         # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python comments) are not
@@ -143,7 +147,7 @@ class MarkdownHeaderSplitter:
             logger.info(
                 "No headers found in document {doc_id}; returning full document as single chunk.", doc_id=doc_id
             )
-            return [{"content": text, "meta": {}}]
+            return [{"content": text, "meta": {}, "source_start_idx": 0}]
 
         # process headers and build chunks
         chunks: list[dict] = []
@@ -192,20 +196,31 @@ class MarkdownHeaderSplitter:
             if self.keep_headers:
                 # Slice from the first buffered empty header (if any) so the buffered header lines and
                 # the whitespace between them are preserved byte-exactly.
-                chunk_content = text[(pending_start if pending_start is not None else match.start()) : end]
+                source_start_idx = pending_start if pending_start is not None else match.start()
+                chunk_content = text[source_start_idx:end]
                 chunks.append(
-                    {"content": chunk_content, "meta": {"header": header_text, "parent_headers": parent_headers}}
+                    {
+                        "content": chunk_content,
+                        "meta": {"header": header_text, "parent_headers": parent_headers},
+                        "source_start_idx": source_start_idx,
+                    }
                 )
                 pending_start = None  # reset buffered headers
             else:
-                chunks.append({"content": content, "meta": {"header": header_text, "parent_headers": parent_headers}})
+                chunks.append(
+                    {
+                        "content": content,
+                        "meta": {"header": header_text, "parent_headers": parent_headers},
+                        "source_start_idx": start,
+                    }
+                )
 
         # return doc unchunked if no headers have content
         if not has_content:
             logger.info(
                 "Document {doc_id} contains only headers with no content; returning original document.", doc_id=doc_id
             )
-            return [{"content": text, "meta": {}}]
+            return [{"content": text, "meta": {}, "source_start_idx": 0}]
 
         # Flush any trailing headers that had no body text of their own. A header at the very end of the
         # document (or a run of such headers) never gets a following content chunk to be prepended to, so
@@ -216,6 +231,7 @@ class MarkdownHeaderSplitter:
                 {
                     "content": text[pending_start:],
                     "meta": {"header": pending_header_text, "parent_headers": parent_headers},
+                    "source_start_idx": pending_start,
                 }
             )
 
@@ -236,6 +252,7 @@ class MarkdownHeaderSplitter:
                 continue
 
             content_for_splitting: str = doc.content
+            secondary_content_start_idx = 0
 
             # Only strip a leading header line from chunks that actually came from a header split.
             # `from_header_split` is set structurally by _split_documents_by_markdown_headers, so it can't be
@@ -246,33 +263,33 @@ class MarkdownHeaderSplitter:
             if not self.keep_headers and from_header_split:
                 header_match = re.match(self._header_pattern, doc.content)
                 if header_match:
-                    content_for_splitting = doc.content[header_match.end() :]
+                    secondary_content_start_idx = header_match.end()
+                    content_for_splitting = doc.content[secondary_content_start_idx:]
 
-            # track page from meta
-            current_page = doc.meta.get("page_number", 1)
+            # The page this header chunk starts on; its splits are numbered relative to it.
+            chunk_start_page = doc.meta.get("page_number", 1)
 
-            # create a clean meta dict without split_id for secondary splitting
             clean_meta = {k: v for k, v in doc.meta.items() if k != "split_id"}
 
             secondary_splits = self.secondary_splitter.run(
                 documents=[Document(content=content_for_splitting, meta=clean_meta)]
             )["documents"]
 
-            # split processing
-            for i, split in enumerate(secondary_splits):
-                # calculate page number for this split
-                if i > 0 and secondary_splits[i - 1].content:
-                    current_page = self._update_page_number_with_breaks(secondary_splits[i - 1].content, current_page)
+            # Store where each page break ends so splits after it get the next page number.
+            page_break_ends = [match.end() for match in re.finditer(re.escape(self.page_break_character), doc.content)]
+            page_break_count = 0
 
-                # set page number and split_id to meta
-                split.meta["page_number"] = current_page
+            for split in secondary_splits:
+                split_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
+                while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
+                    page_break_count += 1
+
+                split.meta["page_number"] = chunk_start_page + page_break_count
                 split.meta["split_id"] = current_split_id
-                # ensure source_id is preserved from the original document
                 if "source_id" in doc.meta:
                     split.meta["source_id"] = doc.meta["source_id"]
                 current_split_id += 1
 
-                # preserve header metadata if we're not keeping headers in content
                 if not self.keep_headers:
                     for key in ["header", "parent_headers"]:
                         if key in doc.meta:
@@ -284,30 +301,6 @@ class MarkdownHeaderSplitter:
             "Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs)
         )
         return result_docs
-
-    def _update_page_number_with_breaks(self, content: str | None, current_page: int) -> int:
-        """
-        Update page number based on page breaks in content.
-
-        :param content: Content to check for page breaks
-        :param current_page: Current page number
-        :return: New current page number
-        """
-        if not isinstance(content, str):
-            return current_page
-
-        page_breaks = content.count(self.page_break_character)
-        new_page_number = current_page + page_breaks
-
-        if page_breaks > 0:
-            logger.debug(
-                "Found {page_breaks} page breaks, page number updated: {old} → {new}",
-                page_breaks=page_breaks,
-                old=current_page,
-                new=new_page_number,
-            )
-
-        return new_page_number
 
     def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool]]:
         """
@@ -326,28 +319,31 @@ class MarkdownHeaderSplitter:
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
             docs: list[tuple[Document, bool]] = []
 
-            current_page = doc.meta.get("page_number", 1) if doc.meta else 1
+            document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
             total_page_breaks = doc.content.count(self.page_break_character)
             logger.debug(
                 "Processing document with id={doc_id}: starting at page {start_page}, "
                 "contains {page_breaks} page breaks in total",
                 doc_id=doc.id,
-                start_page=current_page,
+                start_page=document_start_page,
                 page_breaks=total_page_breaks,
             )
             for split_idx, split in enumerate(splits):
                 meta = deepcopy(doc.meta) if doc.meta else {}
-                meta.update({"source_id": doc.id, "page_number": current_page, "split_id": split_idx})
+                chunk_start_page = document_start_page + doc.content.count(
+                    self.page_break_character, 0, split["source_start_idx"]
+                )
+                meta.update({"source_id": doc.id, "page_number": chunk_start_page, "split_id": split_idx})
                 from_header_split = bool(split.get("meta"))
                 if split.get("meta"):
                     meta.update(split["meta"])
-                current_page = self._update_page_number_with_breaks(split["content"], current_page)
                 docs.append((Document(content=split["content"], meta=meta), from_header_split))
+            final_page = document_start_page + total_page_breaks
             logger.debug(
-                "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
+                "Split into {num_docs} documents for id={doc_id}, final page: {final_page}",
                 num_docs=len(docs),
                 doc_id=doc.id,
-                current_page=current_page,
+                final_page=final_page,
             )
             result_docs.extend(docs)
         return result_docs

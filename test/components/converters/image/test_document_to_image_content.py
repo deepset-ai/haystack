@@ -68,13 +68,13 @@ class TestDocumentToImageContent:
         with pytest.raises(ValueError, match="has an unsupported MIME type"):
             _ = converter.run(documents=[docx_doc])
 
-    def test_run_with_invalid_file_path(self, caplog) -> None:
+    def test_run_with_invalid_file_path(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "wrong_name.jpg"})
         with pytest.raises(ValueError, match="has an invalid file path 'wrong_name.jpg'"):
             _ = converter.run(documents=[pdf_doc])
 
-    def test_run_with_pdf_missing_page_number(self, caplog) -> None:
+    def test_run_with_pdf_missing_page_number(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf"})
         with pytest.raises(ValueError, match="is missing the 'page_number' key"):
@@ -85,17 +85,18 @@ class TestDocumentToImageContent:
         image_doc = Document(content="test", meta={"file_path": "apple.jpg"})
         results = converter.run(documents=[image_doc])
         assert len(results["image_contents"]) == 1
-        assert results["image_contents"][0].meta == {"file_path": "apple.jpg"}
+        image_content = results["image_contents"][0]
+        assert image_content is not None
+        assert image_content.meta == {"file_path": "apple.jpg"}
 
     def test_run_with_pdf_documents(self) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 1})
         results = converter.run(documents=[pdf_doc])
         assert len(results["image_contents"]) == 1
-        assert results["image_contents"][0].meta == {
-            "file_path": "test/test_files/pdf/sample_pdf_1.pdf",
-            "page_number": 1,
-        }
+        image_content = results["image_contents"][0]
+        assert image_content is not None
+        assert image_content.meta == {"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 1}
 
     def test_run_with_mixed_document_types(self) -> None:
         converter = DocumentToImageContent(root_path="test/test_files")
