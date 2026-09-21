@@ -48,19 +48,26 @@ pip install qdrant-haystack
 This Retriever needs the `QdrantDocumentStore` and indexed Documents to run.
 
 ```python
+from haystack import Document
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 document_store = QdrantDocumentStore(
     ":memory:",
+    embedding_dim=3,
     recreate_index=True,
     return_embedding=True,
     wait_result_from_api=True,
 )
+document_store.write_documents(
+    [Document(content="Qdrant supports vector search.", embedding=[0.1, 0.2, 0.3])],
+)
 retriever = QdrantEmbeddingRetriever(document_store=document_store)
 
-# using a fake vector to keep the example simple
-retriever.run(query_embedding=[0.1] * 768)
+# Use matching fake vectors to keep the example independent of embedding models.
+result = retriever.run(query_embedding=[0.1, 0.2, 0.3])
+print(result["documents"][0].content)
+# Qdrant supports vector search.
 ```
 
 #### In a Pipeline

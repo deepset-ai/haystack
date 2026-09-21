@@ -550,7 +550,7 @@ class OpenAIResponsesChatGenerator:
         for message in messages:
             openai_formatted_messages.extend(_convert_chat_message_to_responses_api_format(message))
 
-        tools = tools or self.tools
+        tools = tools if tools is not None else self.tools
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
 
         openai_tools = {}

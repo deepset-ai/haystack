@@ -124,6 +124,51 @@ class TestSplittingByFunctionOrCharacterRegex:
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
+    def test_split_by_word_exact_fit_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3"]
+
+    def test_split_by_word_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 ")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 "]
+
+    def test_split_by_word_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t3 t4"]
+
+    def test_split_by_word_high_overlap_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t2 t3 t4"]
+
+    def test_split_by_line_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="line", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="l1\nl2\nl3\n")])
+        assert [doc.content for doc in result["documents"]] == ["l1\nl2\nl3\n"]
+
+    def test_split_by_passage_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="passage", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="p1\n\np2\n\np3\n\n")])
+        assert [doc.content for doc in result["documents"]] == ["p1\n\np2\n\np3\n\n"]
+
+    def test_split_by_period_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3."]
+
+    def test_split_by_period_high_overlap_skips_overlap_only_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.s4.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3.", "s2.s3.s4."]
+
+    def test_split_by_page_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="page", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="a\fb\fc\f")])
+        assert [doc.content for doc in result["documents"]] == ["a\fb\fc\f"]
+
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
@@ -453,7 +498,10 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 2, 1, 1, 3]
+        # No overlap-only trailing chunks: " End." is fully contained in doc1's previous chunk and
+        # " More text." in doc2's previous chunk, so both are skipped instead of creating redundant
+        # chunks (the latter even carried a wrong page number).
+        expected_pages = [1, 1, 1, 1, 1]
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
@@ -1012,10 +1060,21 @@ class TestSplittingByToken:
     @pytest.mark.parametrize(
         "split_length,split_overlap,split_threshold,content,expected_splits",
         [
-            (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
-            (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
-            (10, 0, 5, "t1 t2", ["t1 t2"]),
-            (3, 2, 2, "t1 t2 t3", ["t1 t2 t3", " t2 t3"]),
+            pytest.param(
+                3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"], id="four-tokens-create-two-overlapping-chunks"
+            ),
+            pytest.param(3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"], id="final-chunk-below-threshold-is-merged"),
+            pytest.param(10, 0, 5, "t1 t2", ["t1 t2"], id="short-document-without-overlap-creates-one-chunk"),
+            pytest.param(3, 1, 0, "t1 t2 t3", ["t1 t2 t3"], id="exact-fit-does-not-create-overlap-only-chunk"),
+            pytest.param(5, 4, 0, "t1 t2 t3", ["t1 t2 t3"], id="short-document-with-overlap-creates-one-chunk"),
+            pytest.param(
+                3,
+                2,
+                0,
+                "t1 t2 t3 t4",
+                ["t1 t2 t3", " t2 t3 t4"],
+                id="partial-final-chunk-does-not-create-overlap-only-chunks",
+            ),
         ],
     )
     def test_split_by_token_mock(

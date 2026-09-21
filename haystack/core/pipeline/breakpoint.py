@@ -73,6 +73,16 @@ def _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot: PipelineSnap
             f"are not part of the current pipeline."
         )
 
+    # A snapshot must describe the complete pipeline it resumes. If the current pipeline contains components that
+    # were not present when the snapshot was created, they would never be added to the resume queue and could be
+    # silently skipped.
+    missing_ordered_components = valid_components - set(pipeline_snapshot.ordered_component_names)
+    if missing_ordered_components:
+        raise PipelineInvalidPipelineSnapshotError(
+            f"Invalid pipeline snapshot: components {missing_ordered_components} in the current pipeline are not "
+            f"present in 'ordered_component_names'."
+        )
+
     # Check if the original_input_data is valid components in the pipeline
     serialized_input_data = pipeline_snapshot.original_input_data["serialized_data"]
     invalid_input_data = set(serialized_input_data.keys()) - valid_components

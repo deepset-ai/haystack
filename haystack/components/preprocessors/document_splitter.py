@@ -268,6 +268,7 @@ class DocumentSplitter:
 
         Encodes the full document text to tokens, slices into chunks of `split_length` tokens
         with `split_overlap` overlap, then decodes each chunk back to a string.
+        Stops once a chunk reaches the end of the document, avoiding overlap-only trailing chunks.
         """
         tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
         if not tokens:
@@ -301,6 +302,9 @@ class DocumentSplitter:
                 text_splits.append(full_text[chunk_start:chunk_end])
                 splits_pages.append(cur_page)
                 splits_start_idxs.append(chunk_start)
+
+            if i + chunk_token_count == len(tokens):
+                break
 
             non_overlap_end = offsets[min(i + step, len(tokens))]
             cur_page += full_text[prev_end:non_overlap_end].count("\f")
@@ -381,18 +385,33 @@ class DocumentSplitter:
         Keeps track of the original page number that each element belongs. If the length of the current units is less
         than the pre-defined `split_threshold`, it does not create a new split. Instead, it concatenates the current
         units with the last split, preventing the creation of excessively small splits.
+        A trailing segment that adds no new text beyond the already covered units (an overlap-only window,
+        or a window holding only the empty artifact of a trailing delimiter) is skipped instead of
+        creating a redundant chunk.
         """
+        step = split_length - split_overlap
 
         text_splits: list[str] = []
         splits_pages: list[int] = []
         splits_start_idxs: list[int] = []
         cur_start_idx = 0
         cur_page = 1
-        segments = windowed(elements, n=split_length, step=split_length - split_overlap)
+        segments = windowed(elements, n=split_length, step=step)
+        # Number of leading units already covered by previous segments. The yielded segments advance by
+        # `step`, so the segment at index i starts at unit i * step.
+        covered_unit_count = 0
 
-        for seg in segments:
+        for seg_index, seg in enumerate(segments):
             current_units = [unit for unit in seg if unit is not None]
             txt = "".join(current_units)
+
+            # Skip a segment that adds no new text: every unit past the already covered ones is empty.
+            # Emitting it would create a chunk fully contained in a previous chunk. This mirrors the
+            # overlap-only trailing chunk fix of `_split_by_token` for the character-based split modes.
+            new_units = current_units[max(0, covered_unit_count - seg_index * step) :]
+            if split_overlap > 0 and text_splits and not "".join(new_units):
+                continue
+            covered_unit_count = max(covered_unit_count, seg_index * step + len(current_units))
 
             # check if length of current units is below split_threshold
             if len(current_units) < split_threshold and len(text_splits) > 0:

@@ -515,6 +515,8 @@ get_async_response(
     model_name: str,
     input_type: str,
     truncate: str,
+    batch_size: int = 32,
+    progress_bar: bool = False,
     embedding_type: EmbeddingTypes | None = None,
 ) -> tuple[list[list[float]], dict[str, Any]]
 ```
@@ -529,6 +531,9 @@ Embeds a list of texts asynchronously using the Cohere API.
 - **input_type** (<code>str</code>) – one of "classification", "clustering", "search_document", "search_query".
   The type of input text provided to embed.
 - **truncate** (<code>str</code>) – one of "NONE", "START", "END". How the API handles text longer than the maximum token length.
+- **batch_size** (<code>int</code>) – the batch size to use. The Cohere embed endpoint caps the number of texts per call, so the
+  texts are sent in batches just like the synchronous path.
+- **progress_bar** (<code>bool</code>) – if `True`, show a progress bar
 - **embedding_type** (<code>EmbeddingTypes | None</code>) – the type of embeddings to return. Defaults to float embeddings.
 
 **Returns:**
