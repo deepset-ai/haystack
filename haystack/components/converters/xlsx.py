@@ -209,6 +209,10 @@ class XLSXToDocument:
                     if row_idx < len(df) and col_idx < len(df.columns):
                         cell_value = df.iat[row_idx, col_idx]
                         text = str(cell_value) if pd.notna(cell_value) else ""
+                        # Hyperlink text must be assignable to numeric and other typed columns.
+                        column = df.columns[col_idx]
+                        if df[column].dtype != object:
+                            df[column] = df[column].astype(object)
                         if self.link_format == "markdown":
                             df.iat[row_idx, col_idx] = f"[{text}]({url})"
                         else:
