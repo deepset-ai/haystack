@@ -235,7 +235,7 @@ class LLMRanker:
         Before ranking, duplicate documents are removed.
 
         :param query:
-            The query used for reranking. If `None`, the documents are returned unchanged.
+            The query used for reranking. If ``None``, the documents are returned unchanged.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
@@ -310,7 +310,7 @@ class LLMRanker:
         `run` method, it is executed in a thread to avoid blocking the event loop.
 
         :param query:
-            The query used for reranking. If `None`, the documents are returned unchanged.
+            The query used for reranking. If ``None``, the documents are returned unchanged.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
