@@ -1,0 +1,5 @@
+fixes:
+  - |
+    ``LLMRanker`` now returns documents unranked when ``query`` is ``None``
+    instead of raising an ``AttributeError``. This applies to both ``run`` and
+    ``run_async`` and matches the existing empty-query fallback behavior.

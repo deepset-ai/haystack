@@ -122,6 +122,14 @@ def test_run_whitespace_query_returns_fallback(mock_chat_generator):
     mock_chat_generator.run.assert_not_called()
 
 
+def test_run_none_query_returns_fallback(mock_chat_generator):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+    assert ranker.run(query=None, documents=documents) == {"documents": documents}
+    mock_chat_generator.run.assert_not_called()
+
+
 def test_run_successful_ranking():
     documents = [
         Document(id="1", content="first"),
@@ -416,6 +424,16 @@ class TestLLMRankerAsync:
 
         with pytest.raises(RuntimeError, match="generator failed"):
             await ranker.run_async(query="test query", documents=documents)
+
+    @pytest.mark.asyncio
+    async def test_run_async_none_query_returns_fallback(self):
+        documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+        assert await ranker.run_async(query=None, documents=documents) == {"documents": documents}
+        mock_chat_generator.run_async.assert_not_called()
 
     @pytest.mark.integration
     @pytest.mark.skipif(

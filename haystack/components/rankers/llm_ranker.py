@@ -228,14 +228,14 @@ class LLMRanker:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, query: str, documents: list[Document], top_k: int | None = None) -> dict[str, list[Document]]:
+    def run(self, query: str | None, documents: list[Document], top_k: int | None = None) -> dict[str, list[Document]]:
         """
         Rank documents for a query using an LLM.
 
         Before ranking, duplicate documents are removed.
 
         :param query:
-            The query used for reranking.
+            The query used for reranking. If `None`, the documents are returned unchanged.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
@@ -253,7 +253,7 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
@@ -290,7 +290,7 @@ class LLMRanker:
 
     @component.output_types(documents=list[Document])
     async def run_async(
-        self, query: str, documents: list[Document], top_k: int | None = None
+        self, query: str | None, documents: list[Document], top_k: int | None = None
     ) -> dict[str, list[Document]]:
         """
         Asynchronously rank documents for a query using an LLM.
@@ -302,7 +302,7 @@ class LLMRanker:
         `run` method, it is executed in a thread to avoid blocking the event loop.
 
         :param query:
-            The query used for reranking.
+            The query used for reranking. If `None`, the documents are returned unchanged.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
@@ -320,7 +320,7 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
