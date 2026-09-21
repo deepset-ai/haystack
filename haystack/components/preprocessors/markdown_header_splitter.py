@@ -126,6 +126,8 @@ class MarkdownHeaderSplitter:
         Split text by ATX-style headers (#) and create chunks with appropriate metadata.
 
         The internal `source_start_idx` field tracks where each chunk begins in the original text for page counting.
+        The internal `from_header_split` field records whether a chunk starts with a header line, which decides
+        whether the secondary split may strip that line.
         """
         logger.debug("Splitting text by markdown headers")
 
@@ -147,23 +149,34 @@ class MarkdownHeaderSplitter:
             logger.info(
                 "No headers found in document {doc_id}; returning full document as single chunk.", doc_id=doc_id
             )
-            return [{"content": text, "meta": {}, "source_start_idx": 0}]
+            return [{"content": text, "meta": {}, "source_start_idx": 0, "from_header_split": False}]
 
         # process headers and build chunks
         chunks: list[dict] = []
-
-        # Text before the first header belongs to no section, but it is still document content: a README's
-        # opening paragraph, a title block, or front matter. Emit it as its own header-less chunk, the same
-        # shape the no-headers-found path returns, instead of dropping it.
-        preamble = text[: matches[0].start()]
-        if preamble.strip():
-            chunks.append({"content": preamble, "meta": {}, "source_start_idx": 0})
-
         header_stack: list[str | None] = [None] * 6
         pending_start: int | None = None  # start offset in text of the first buffered empty header
         pending_header_text: str | None = None  # text of the last buffered empty header
         pending_level = 0  # level of the last buffered empty header
         has_content = False  # flag to track if any header has content
+
+        # Text before the first header belongs to no section, but it is document content in its own
+        # right: a README's opening paragraph, a title block, or front matter. It becomes a chunk with
+        # empty header metadata, which counts as content for the headers-only check below. When it holds
+        # only whitespace it is buffered instead, so it joins the first chunk that is emitted rather than
+        # becoming a chunk of its own; the chunks stay a byte-exact partition of the input either way.
+        preamble = text[: matches[0].start()]
+        if preamble.strip():
+            chunks.append(
+                {
+                    "content": preamble,
+                    "meta": {"header": "", "parent_headers": []},
+                    "source_start_idx": 0,
+                    "from_header_split": False,
+                }
+            )
+            has_content = True
+        elif preamble:
+            pending_start = 0
 
         for i, match in enumerate(matches):
             # extract header info
@@ -211,6 +224,7 @@ class MarkdownHeaderSplitter:
                         "content": chunk_content,
                         "meta": {"header": header_text, "parent_headers": parent_headers},
                         "source_start_idx": source_start_idx,
+                        "from_header_split": True,
                     }
                 )
                 pending_start = None  # reset buffered headers
@@ -220,6 +234,7 @@ class MarkdownHeaderSplitter:
                         "content": content,
                         "meta": {"header": header_text, "parent_headers": parent_headers},
                         "source_start_idx": start,
+                        "from_header_split": True,
                     }
                 )
 
@@ -228,7 +243,7 @@ class MarkdownHeaderSplitter:
             logger.info(
                 "Document {doc_id} contains only headers with no content; returning original document.", doc_id=doc_id
             )
-            return [{"content": text, "meta": {}, "source_start_idx": 0}]
+            return [{"content": text, "meta": {}, "source_start_idx": 0, "from_header_split": False}]
 
         # Flush any trailing headers that had no body text of their own. A header at the very end of the
         # document (or a run of such headers) never gets a following content chunk to be prepended to, so
@@ -240,6 +255,7 @@ class MarkdownHeaderSplitter:
                     "content": text[pending_start:],
                     "meta": {"header": pending_header_text, "parent_headers": parent_headers},
                     "source_start_idx": pending_start,
+                    "from_header_split": True,
                 }
             )
 
@@ -262,12 +278,13 @@ class MarkdownHeaderSplitter:
             content_for_splitting: str = doc.content
             secondary_content_start_idx = 0
 
-            # Only strip a leading header line from chunks that actually came from a header split.
-            # `from_header_split` is set structurally by _split_documents_by_markdown_headers, so it can't be
-            # fooled by a "header" key that happens to already be present on the input document's own metadata.
-            # The fallback paths of _split_text_by_markdown_headers (no headers found / only headers with no
-            # content) return the document with empty split meta, so stripping there would drop the header text
-            # from the output entirely.
+            # Only strip a leading header line from chunks that actually start with one.
+            # `from_header_split` is set by the chunk builder in _split_text_by_markdown_headers and carried
+            # through, rather than inferred from the presence of header metadata: the chunk holding the text
+            # before the first header carries header metadata too, and its first line can be a header at a
+            # level that is not being split on. Inferring the flag would strip that line and lose it. The
+            # fallback paths (no headers found / only headers with no content) return the whole document for
+            # the same reason.
             if not self.keep_headers and from_header_split:
                 header_match = re.match(self._header_pattern, doc.content)
                 if header_match:
@@ -342,8 +359,8 @@ class MarkdownHeaderSplitter:
                     self.page_break_character, 0, split["source_start_idx"]
                 )
                 meta.update({"source_id": doc.id, "page_number": chunk_start_page, "split_id": split_idx})
-                from_header_split = bool(split.get("meta"))
-                if split.get("meta"):
+                from_header_split = split["from_header_split"]
+                if split["meta"]:
                     meta.update(split["meta"])
                 docs.append((Document(content=split["content"], meta=meta), from_header_split))
             final_page = document_start_page + total_page_breaks

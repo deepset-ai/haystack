@@ -428,9 +428,10 @@ class TestHeaderSplitLevels:
 
         assert len(docs) == 3
         # Everything before the first h3 has no h3 chunk to be absorbed into, so it becomes its own
-        # header-less chunk instead of being dropped.
+        # chunk with empty header metadata.
         assert docs[0].content == "# Top Level\nIgnored top content.\n## Mid Level\nIgnored mid content.\n"
-        assert "header" not in docs[0].meta
+        assert docs[0].meta["header"] == ""
+        assert docs[0].meta["parent_headers"] == []
         assert docs[1].content == "### Deep Section A\nContent A.\n"
         assert docs[2].content == "### Deep Section B\nContent B.\n"
 
@@ -1002,34 +1003,44 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
     assert docs[-1].meta["header"] == ""
 
 
-def test_content_before_first_header_is_kept():
-    text = "Intro paragraph before any header.\n\n# Header 1\nContent.\n"
-    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
-    split_contents: list[str] = []
-    for doc in docs:
-        assert doc.content is not None
-        split_contents.append(doc.content)
-    assert "".join(split_contents) == text
-    # the preamble belongs to no section, so it is its own chunk and carries no header metadata
-    assert docs[0].content == "Intro paragraph before any header.\n\n"
-    assert "header" not in docs[0].meta
-    assert docs[0].meta["split_id"] == 0
-    assert docs[1].meta["header"] == "Header 1"
+@pytest.mark.parametrize(
+    ("text", "keep_headers", "expected_contents", "expected_headers"),
+    [
+        pytest.param(
+            "Intro paragraph before any header.\n\n# Header 1\nContent.\n",
+            True,
+            ["Intro paragraph before any header.\n\n", "# Header 1\nContent.\n"],
+            ["", "Header 1"],
+            id="prose-preamble",
+        ),
+        pytest.param(
+            "Intro paragraph before any header.\n# Header 1\nContent.\n",
+            False,
+            ["Intro paragraph before any header.\n", "\nContent.\n"],
+            ["", "Header 1"],
+            id="prose-preamble-headers-in-metadata",
+        ),
+        pytest.param(
+            "\n\n# Header 1\nContent.\n",
+            True,
+            ["\n\n# Header 1\nContent.\n"],
+            ["Header 1"],
+            id="whitespace-only-preamble-joins-the-first-chunk",
+        ),
+    ],
+)
+def test_content_before_first_header_is_kept(
+    text: str, keep_headers: bool, expected_contents: list[str], expected_headers: list[str]
+):
+    docs = MarkdownHeaderSplitter(keep_headers=keep_headers).run(documents=[Document(content=text)])["documents"]
 
-
-def test_content_before_first_header_is_kept_with_keep_headers_false():
-    text = "Intro paragraph before any header.\n# Header 1\nContent.\n"
-    docs = MarkdownHeaderSplitter(keep_headers=False).run(documents=[Document(content=text)])["documents"]
-    assert docs[0].content == "Intro paragraph before any header.\n"
-    assert "header" not in docs[0].meta
-    assert docs[1].meta["header"] == "Header 1"
-
-
-def test_whitespace_only_content_before_first_header_is_not_emitted():
-    text = "\n\n# Header 1\nContent.\n"
-    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
-    assert len(docs) == 1
-    assert docs[0].meta["header"] == "Header 1"
+    assert [doc.content for doc in docs] == expected_contents
+    # the preamble belongs to no section, so it carries the header metadata every chunk carries, empty
+    assert [doc.meta["header"] for doc in docs] == expected_headers
+    assert [doc.meta["parent_headers"] for doc in docs] == [[]] * len(docs)
+    assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
+    if keep_headers:
+        assert "".join(expected_contents) == text
 
 
 def test_page_number_of_content_before_first_header():
@@ -1038,3 +1049,44 @@ def test_page_number_of_content_before_first_header():
     # the preamble starts on page 1; the header that follows the page break starts on page 2
     assert docs[0].meta["page_number"] == 1
     assert docs[1].meta["page_number"] == 2
+
+
+def test_content_before_first_header_survives_a_secondary_split():
+    """The preamble carries header metadata but no header line, so the secondary split must not strip it."""
+    text = "aa bb\fcc dd ee\n# H1\nff gg\n"
+    splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=2)
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert "aa bb" in docs[0].content
+    assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
+    # the page break sits inside the preamble, so its later splits are on page 2, as is everything after it
+    assert docs[0].meta["page_number"] == 1
+    assert [doc.meta["page_number"] for doc in docs[1:]] == [2] * (len(docs) - 1)
+
+
+def test_preamble_is_kept_when_every_header_is_empty():
+    """A document whose headers are all empty still has content when text precedes the first one."""
+    text = "Meeting notes draft.\n\n# Agenda\n\n# Actions\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert "".join(doc.content for doc in docs) == text
+    assert docs[0].content == "Meeting notes draft.\n\n"
+    assert docs[0].meta["header"] == ""
+    assert docs[-1].meta["header"] == "Actions"
+
+
+def test_leading_non_split_header_is_kept_through_a_secondary_split():
+    """A preamble may start with a header at a level that is not being split on.
+
+    The secondary split strips a leading header line from chunks that came from a header split. The
+    preamble is not one, and the header pattern matches every level, so treating it as one would drop
+    the line.
+    """
+    text = "# Top Level\nTop content.\n### Deep Section\nDeep content.\n"
+    splitter = MarkdownHeaderSplitter(
+        header_split_levels=[3], keep_headers=False, secondary_split="word", split_length=100
+    )
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert "# Top Level" in docs[0].content
+    assert "Top content." in docs[0].content
