@@ -19,6 +19,10 @@ if typing.TYPE_CHECKING:
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 
+# Upper bound for a single rendered log field. Log shippers reject oversized lines, so an unbounded value can
+# stall a whole log pipeline rather than just producing noise.
+MAX_LOG_VALUE_LENGTH = 4096
+
 # Attribute set on a logger once we have patched its methods. `logging.getLogger` returns a shared singleton, so we
 # use this marker to patch each logger only once and avoid wrapping the already-wrapped methods on repeated calls.
 _PATCHED_MARKER = "_haystack_patched"
@@ -313,6 +317,27 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
     return event_dict
 
 
+def bound_event_dict_values(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
+    """
+    Keep individual log values from growing without bound.
+
+    Exceptions are rendered with ``str`` rather than ``repr``, because some carry their whole input in their
+    ``repr``: ``UnicodeDecodeError`` keeps the entire buffer it failed to decode, so logging one raised while
+    decoding a large file would otherwise emit that whole file as a single log line.
+    """
+    for key, value in list(event_dict.items()):
+        if key == "exc_info":  # `ExceptionRenderer` runs after this processor and needs it untouched
+            continue
+        if isinstance(value, BaseException):
+            value = f"{type(value).__name__}: {value}"
+        elif not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+            value = repr(value)  # what the renderer would do anyway, but here the result can be bounded
+        if isinstance(value, str) and len(value) > MAX_LOG_VALUE_LENGTH:
+            value = f"{value[:MAX_LOG_VALUE_LENGTH]}... [truncated, {len(value)} chars]"
+        event_dict[key] = value
+    return event_dict
+
+
 def configure_logging(
     use_json: bool | None = None,
     logger_name: str | Sequence[str] = ("haystack", "haystack_integrations", "haystack_experimental"),
@@ -432,6 +457,8 @@ def configure_logging(
         processors=[
             # Remove _record & _from_structlog. to avoid that this metadata is added to the final log record
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            # Bound every value before it reaches a renderer, for both the JSON and the console output
+            bound_event_dict_values,
             *renderers,
         ],
     )
