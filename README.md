@@ -212,7 +212,7 @@
 | haystack/marshal/yaml.py                                                  |       21 |        1 |     95% |        42 |
 | haystack/skill\_stores/\_\_init\_\_.py                                    |        0 |        0 |    100% |           |
 | haystack/skill\_stores/file\_system/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
-| haystack/skill\_stores/file\_system/skill\_store.py                       |       95 |        1 |     99% |       119 |
+| haystack/skill\_stores/file\_system/skill\_store.py                       |      105 |        2 |     98% |  102, 136 |
 | haystack/skill\_stores/types/\_\_init\_\_.py                              |        2 |        0 |    100% |           |
 | haystack/skill\_stores/types/protocol.py                                  |       11 |        0 |    100% |           |
 | haystack/telemetry/\_\_init\_\_.py                                        |        1 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17253** |  **748** | **96%** |           |
+| **TOTAL**                                                                 | **17263** |  **749** | **96%** |           |
 
 
 ## Setup coverage badge
