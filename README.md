@@ -206,7 +206,7 @@
 | haystack/hooks/tool\_result\_offloading/types/protocol.py                 |       19 |        2 |     89% |    56, 61 |
 | haystack/hooks/utils.py                                                   |       47 |        0 |    100% |           |
 | haystack/lazy\_imports.py                                                 |       13 |        0 |    100% |           |
-| haystack/logging.py                                                       |      129 |        4 |     97% |247-248, 358-360 |
+| haystack/logging.py                                                       |      142 |        4 |     97% |251-252, 383-385 |
 | haystack/marshal/\_\_init\_\_.py                                          |        5 |        0 |    100% |           |
 | haystack/marshal/protocol.py                                              |        4 |        0 |    100% |           |
 | haystack/marshal/yaml.py                                                  |       21 |        1 |     95% |        42 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17263** |  **749** | **96%** |           |
+| **TOTAL**                                                                 | **17276** |  **749** | **96%** |           |
 
 
 ## Setup coverage badge
