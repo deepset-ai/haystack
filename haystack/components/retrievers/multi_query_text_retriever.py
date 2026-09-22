@@ -63,7 +63,8 @@ class MultiQueryTextRetriever:
         Initialize MultiQueryTextRetriever.
 
         :param retriever: The text-based retriever to use for document retrieval.
-        :param max_workers: Maximum number of worker threads for parallel processing. Default is 3.
+        :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
+            `run_async`. Default is 3.
         """
         self.retriever = retriever
         self.max_workers = max_workers

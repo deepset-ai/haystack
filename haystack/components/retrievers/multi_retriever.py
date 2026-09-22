@@ -104,7 +104,7 @@ class MultiRetriever:
             `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
             `top_k`. If None, all results are returned.
         :param max_workers:
-            The maximum number of threads to use for parallel retrieval.
+            The maximum number of threads in `run` and of concurrent retriever calls in `run_async`.
         :param join_mode:
             How to merge results from multiple retrievers. Available modes:
             - `concatenate`: Combines all results into a single list and deduplicates.

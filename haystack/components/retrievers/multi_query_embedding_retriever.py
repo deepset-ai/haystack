@@ -80,7 +80,8 @@ class MultiQueryEmbeddingRetriever:
 
         :param retriever: The embedding-based retriever to use for document retrieval.
         :param query_embedder: The query embedder to convert text queries to embeddings.
-        :param max_workers: Maximum number of worker threads for parallel processing.
+        :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
+            `run_async`.
         """
         self.retriever = retriever
         self.query_embedder = query_embedder
