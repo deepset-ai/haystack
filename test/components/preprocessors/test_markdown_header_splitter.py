@@ -1031,7 +1031,7 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
 )
 def test_content_before_first_header_is_kept(
     text: str, keep_headers: bool, expected_contents: list[str], expected_headers: list[str]
-):
+) -> None:
     docs = MarkdownHeaderSplitter(keep_headers=keep_headers).run(documents=[Document(content=text)])["documents"]
 
     assert [doc.content for doc in docs] == expected_contents
@@ -1057,7 +1057,9 @@ def test_content_before_first_header_survives_a_secondary_split():
     splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=2)
     docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-    assert "aa bb" in docs[0].content
+    first_content = docs[0].content
+    assert first_content is not None
+    assert "aa bb" in first_content
     assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
     # the page break sits inside the preamble, so its later splits are on page 2, as is everything after it
     assert docs[0].meta["page_number"] == 1
@@ -1069,7 +1071,11 @@ def test_preamble_is_kept_when_every_header_is_empty():
     text = "Meeting notes draft.\n\n# Agenda\n\n# Actions\n"
     docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
 
-    assert "".join(doc.content for doc in docs) == text
+    split_contents: list[str] = []
+    for doc in docs:
+        assert doc.content is not None
+        split_contents.append(doc.content)
+    assert "".join(split_contents) == text
     assert docs[0].content == "Meeting notes draft.\n\n"
     assert docs[0].meta["header"] == ""
     assert docs[-1].meta["header"] == "Actions"
@@ -1088,5 +1094,7 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     )
     docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-    assert "# Top Level" in docs[0].content
-    assert "Top content." in docs[0].content
+    first_content = docs[0].content
+    assert first_content is not None
+    assert "# Top Level" in first_content
+    assert "Top content." in first_content
