@@ -9,6 +9,7 @@ from typing import Any, overload
 from pydantic import create_model
 
 from haystack.components.agents.state.state import State
+from haystack.core.type_utils import _resolve_parameter_types
 
 from .errors import SchemaGenerationError
 from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
@@ -133,34 +134,38 @@ def create_tool_from_function(
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
+    # resolve postponed annotations (`from __future__ import annotations`), keeping `Annotated` descriptions
+    param_types = _resolve_parameter_types(function, include_extras=True)
 
     # collect fields (types and defaults) and descriptions from function parameters
     fields: dict[str, Any] = {}
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
+        annotation = param_types[param_name]
+
         # Skip adding parameter names that will be passed to the tool from State
         if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
         # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
-        if _unwrap_optional(param.annotation) is State:
+        if _unwrap_optional(annotation) is State:
             continue
 
-        if param.annotation is param.empty:
+        if annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
 
         # Skip Callable types since Pydantic cannot generate JSON schemas for them
-        if _contains_callable_type(param.annotation):
+        if _contains_callable_type(annotation):
             continue
 
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
         default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (param.annotation, default)
+        fields[param_name] = (annotation, default)
 
-        if hasattr(param.annotation, "__metadata__"):
-            descriptions[param_name] = param.annotation.__metadata__[0]
+        if hasattr(annotation, "__metadata__"):
+            descriptions[param_name] = annotation.__metadata__[0]
 
     # create Pydantic model and generate JSON schema
     try:

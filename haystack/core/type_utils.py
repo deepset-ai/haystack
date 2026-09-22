@@ -41,7 +41,7 @@ _STRATEGY_PRIORITY = (
 )
 
 
-def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
+def _resolve_parameter_types(target: Callable, *, include_extras: bool = False) -> dict[str, Any]:
     """
     Map the parameter names of a callable to their type annotations, resolving postponed annotations.
 
@@ -50,13 +50,14 @@ def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
     others the annotation from the signature is kept.
 
     :param target: The callable to inspect.
+    :param include_extras: If `True`, resolved `Annotated` types keep their metadata instead of being unwrapped.
     :returns: A dict mapping parameter names to their type annotations. Annotations that cannot be resolved, and
         parameters without an annotation, are returned as they appear in the signature.
     """
     parameters = inspect.signature(target).parameters
     if any(isinstance(param.annotation, str) for param in parameters.values()):
         try:
-            hints = get_type_hints(target)
+            hints = get_type_hints(target, include_extras=include_extras)
         except Exception:
             # TypeError is raised for objects that cannot carry annotations, NameError for names that are not
             # importable at runtime. Either way we fall back to the unresolved annotations.
