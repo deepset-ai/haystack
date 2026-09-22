@@ -13,6 +13,7 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import IMAGE_MIME_TYPES, ImageContent
 from haystack.dataclasses.skill_info import SkillInfo
+from haystack.utils import Secret
 
 SKILL_FILE_NAME = "SKILL.md"
 
@@ -71,21 +72,36 @@ class FileSystemSkillStore:
     are read lazily when the agent calls the corresponding tool.
     """
 
-    def __init__(self, skills_dir: str | Path) -> None:
+    def __init__(self, skills_dir: str | Path | Secret) -> None:
         """
         Initialize the store with the root directory to scan.
 
         No filesystem access happens here; the directory is scanned lazily on first use (see `warm_up`), so the store
         can be constructed cheaply.
 
-        :param skills_dir: Root directory that contains one sub-directory per skill.
+        :param skills_dir: Root directory that contains one sub-directory per skill. Can also be a `Secret`
+            (e.g. `Secret.from_env_var("SKILLS_DIR")`) to source the path from an environment variable rather than
+            hard-coding it.
         """
-        self.skills_dir = Path(skills_dir)
+        self.skills_dir = skills_dir
         # Public metadata catalog returned by `list_skills`, populated on warm_up.
         self._skills: dict[str, SkillInfo] = {}
         # Private locator: maps each skill name to its directory, used to read content lazily.
         self._skill_dirs: dict[str, Path] = {}
         self._is_warmed_up = False
+
+    def _resolve_skills_dir(self) -> Path:
+        """
+        Resolve `skills_dir` to a concrete filesystem path, reading the `Secret`'s value if one was passed.
+
+        :returns: The root directory that contains one sub-directory per skill.
+        """
+        if isinstance(self.skills_dir, Secret):
+            resolved = self.skills_dir.resolve_value()
+            if resolved is None:
+                raise ValueError("The 'skills_dir' secret did not resolve to a value.")
+            return Path(resolved)
+        return Path(self.skills_dir)
 
     def warm_up(self) -> None:
         """
@@ -99,15 +115,16 @@ class FileSystemSkillStore:
         """
         if self._is_warmed_up:
             return
-        if not self.skills_dir.is_dir():
-            raise ValueError(f"Skills directory '{self.skills_dir}' does not exist or is not a directory.")
+        skills_dir = self._resolve_skills_dir()
+        if not skills_dir.is_dir():
+            raise ValueError(f"Skills directory '{skills_dir}' does not exist or is not a directory.")
 
         # Build into locals and swap at the end: if the scan fails halfway, no partial state is left behind (a retry
         # after fixing the offending skill starts clean), and concurrent callers only ever observe either an empty or
         # a complete catalog.
         skills: dict[str, SkillInfo] = {}
         skill_dirs: dict[str, Path] = {}
-        for skill_file in sorted(self.skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
+        for skill_file in sorted(skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
             frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
 
@@ -116,7 +133,7 @@ class FileSystemSkillStore:
             if not description:
                 raise ValueError(f"Skill '{name}' ({skill_file}) is missing a 'description' in its frontmatter.")
             if name in skills:
-                raise ValueError(f"Duplicate skill name '{name}' found in '{self.skills_dir}'.")
+                raise ValueError(f"Duplicate skill name '{name}' found in '{skills_dir}'.")
 
             skills[name] = SkillInfo(name=name, description=description)
             skill_dirs[name] = skill_dir
@@ -243,7 +260,8 @@ class FileSystemSkillStore:
 
         :returns: Dictionary representation of the store.
         """
-        return default_to_dict(self, skills_dir=str(self.skills_dir))
+        skills_dir = self.skills_dir if isinstance(self.skills_dir, Secret) else str(self.skills_dir)
+        return default_to_dict(self, skills_dir=skills_dir)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileSystemSkillStore":
