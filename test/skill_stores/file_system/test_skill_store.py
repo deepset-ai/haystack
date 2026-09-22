@@ -163,6 +163,18 @@ class TestFileSystemSkillStore:
         store = FileSystemSkillStore(tmp_path)
         assert store.load_skill("pdf-forms") == ("Step 1. Do the thing.", [])
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlinks require elevated privileges on Windows")
+    def test_load_skill_excludes_symlinks_outside_skill_directory(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d", files={"inside.md": "inside"})
+        outside = tmp_path / "outside.txt"
+        outside.write_text("secret", encoding="utf-8")
+        (skill_dir / "outside-link.txt").symlink_to(outside)
+        store = FileSystemSkillStore(tmp_path)
+
+        _, files = store.load_skill("pdf-forms")
+
+        assert files == ["inside.md"]
+
     def test_load_skill_unknown_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
         store = FileSystemSkillStore(tmp_path)
@@ -235,15 +247,3 @@ class TestFileSystemSkillStore:
         store = FileSystemSkillStore(tmp_path)
         with pytest.raises(KeyError):
             store.read_skill_file("nope", "anything.md")
-
-@pytest.mark.skipif(sys.platform == "win32", reason="symlinks require elevated privileges on Windows")
-def test_load_skill_excludes_symlinks_outside_skill_directory(tmp_path):
-    skill_dir = _write_skill(tmp_path, "pdf-forms", description="d", files={"inside.md": "inside"})
-    outside = tmp_path / "outside.txt"
-    outside.write_text("secret", encoding="utf-8")
-    (skill_dir / "outside-link.txt").symlink_to(outside)
-    store = FileSystemSkillStore(tmp_path)
-
-    _, files = store.load_skill("pdf-forms")
-
-    assert files == ["inside.md"]
