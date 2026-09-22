@@ -127,6 +127,12 @@ def test_run_none_query_returns_fallback(mock_chat_generator):
     ranker = LLMRanker(chat_generator=mock_chat_generator)
 
     assert ranker.run(query=None, documents=documents) == {"documents": documents}
+
+@pytest.mark.parametrize("bad_query", [None, 123])
+def test_run_non_string_query_returns_fallback(mock_chat_generator, bad_query):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    assert ranker.run(query=bad_query, documents=documents) == {"documents": documents}
     mock_chat_generator.run.assert_not_called()
 
 
@@ -431,8 +437,9 @@ class TestLLMRankerAsync:
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run_async = AsyncMock()
         ranker = LLMRanker(chat_generator=mock_chat_generator)
-
         assert await ranker.run_async(query=None, documents=documents) == {"documents": documents}
+        assert await ranker.run_async(query=None, documents=documents) == {"documents": documents}  # type: ignore[arg-type]
+
         mock_chat_generator.run_async.assert_not_called()
 
     @pytest.mark.integration
