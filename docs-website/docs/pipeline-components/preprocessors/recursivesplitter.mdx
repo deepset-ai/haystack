@@ -31,6 +31,8 @@ The `RecursiveDocumentSplitter` expects a list of documents as input and returns
 - `separators`: An optional list of separator strings to use for splitting the text. If you don’t provide any separators, the default ones are `["\n\n", "sentence", "\n", " "]`. The string separators will be treated as regular expressions. If the separator is `"sentence"`, the text will be split into sentences using a custom sentence tokenizer based on NLTK. See [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116) code for more information.
 - `sentence_splitter_params`: Optional parameters to pass to the [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116).
 
+When `split_unit="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
+
 The separators are applied in the same order as they are defined in the list. The first separator is used on the text; any resulting chunk that is within the specified `chunk_size` is retained. For chunks that exceed the defined `chunk_size`, the next separator in the list is applied. If all separators are used and the chunk still exceeds the `chunk_size`, a hard split occurs based on the `chunk_size`, taking into account whether words or characters are used as counting units. This process is repeated until all chunks are within the limits of the specified `chunk_size`.
 
 ## Usage

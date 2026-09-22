@@ -930,6 +930,32 @@ def test_run_serialization_in_pipeline():
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("split_overlap", [0, 2])
+def test_special_token_strings_are_split_as_literal_text(split_overlap):
+    splitter = RecursiveDocumentSplitter(
+        split_length=5, split_overlap=split_overlap, separators=["."], split_unit="token"
+    )
+    text = "First <|endoftext|> example. Second <|endoftext|> example. Third <|endoftext|> example."
+    source = Document(content=text)
+
+    chunks = splitter.run(documents=[source])["documents"]
+
+    assert len(chunks) > 1
+    assert splitter.tiktoken_tokenizer is not None
+    reconstructed = ""
+    for split_id, chunk in enumerate(chunks):
+        assert chunk.content is not None
+        assert len(splitter.tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 5
+        assert chunk.meta["source_id"] == source.id
+        assert chunk.meta["split_id"] == split_id
+        start = chunk.meta["split_idx_start"]
+        assert text[start : start + len(chunk.content)] == chunk.content
+        assert chunk.meta["page_number"] == 1
+        reconstructed += chunk.content[len(reconstructed) - start :]
+    assert reconstructed == text
+
+
+@pytest.mark.integration
 def test_run_split_by_token_count():
     splitter = RecursiveDocumentSplitter(split_length=5, separators=["."], split_unit="token")
 

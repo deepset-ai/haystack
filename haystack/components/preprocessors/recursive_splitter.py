@@ -74,6 +74,7 @@ class RecursiveDocumentSplitter:
             `split_unit`) between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
             If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+            Special-token strings in document content are encoded as ordinary text.
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
@@ -162,7 +163,7 @@ class RecursiveDocumentSplitter:
             return current_chunk, remaining_chars
 
         # at this point we know that the tokenizer is already initialized
-        tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
+        tokens = self.tiktoken_tokenizer.encode_ordinary(current_chunk)  # type: ignore
         current_tokens = tokens[: self.split_length]
         remaining_tokens = tokens[self.split_length :]
         return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
@@ -207,8 +208,8 @@ class RecursiveDocumentSplitter:
                     elif self.split_units == "token":
                         # For token-based splitting, combine at token level
                         # at this point we know that the tokenizer is already initialized
-                        remaining_tokens = self.tiktoken_tokenizer.encode(remaining_text)  # type: ignore
-                        next_chunk_tokens = self.tiktoken_tokenizer.encode(chunks[idx + 1])  # type: ignore
+                        remaining_tokens = self.tiktoken_tokenizer.encode_ordinary(remaining_text)  # type: ignore
+                        next_chunk_tokens = self.tiktoken_tokenizer.encode_ordinary(chunks[idx + 1])  # type: ignore
                         chunks[idx + 1] = self.tiktoken_tokenizer.decode(remaining_tokens + next_chunk_tokens)  # type: ignore
                     else:  # char
                         chunks[idx + 1] = remaining_text + chunks[idx + 1]
@@ -250,8 +251,8 @@ class RecursiveDocumentSplitter:
         elif self.split_units == "token":
             # For token-based splitting, combine at token level
             # at this point we know that the tokenizer is already initialized
-            overlap_tokens = self.tiktoken_tokenizer.encode(overlap)  # type: ignore
-            chunk_tokens = self.tiktoken_tokenizer.encode(chunk)  # type: ignore
+            overlap_tokens = self.tiktoken_tokenizer.encode_ordinary(overlap)  # type: ignore
+            chunk_tokens = self.tiktoken_tokenizer.encode_ordinary(chunk)  # type: ignore
             current_chunk = self.tiktoken_tokenizer.decode(overlap_tokens + chunk_tokens)  # type: ignore
         else:  # char
             current_chunk = overlap + chunk
@@ -268,7 +269,7 @@ class RecursiveDocumentSplitter:
         elif self.split_units == "token":
             # For token-based splitting, handle overlap at token level
             # at this point we know that the tokenizer is already initialized
-            tokens = self.tiktoken_tokenizer.encode(prev_chunk)  # type: ignore
+            tokens = self.tiktoken_tokenizer.encode_ordinary(prev_chunk)  # type: ignore
             overlap_tokens = tokens[overlap_start:]
             overlap = self.tiktoken_tokenizer.decode(overlap_tokens)  # type: ignore
         else:  # char
@@ -290,7 +291,7 @@ class RecursiveDocumentSplitter:
             return len(text)
         # token
         # at this point we know that the tokenizer is already initialized
-        return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
+        return len(self.tiktoken_tokenizer.encode_ordinary(text))  # type: ignore
 
     def _chunk_text(self, text: str) -> list[str]:
         """
@@ -418,7 +419,7 @@ class RecursiveDocumentSplitter:
                 chunks.append(text[i : i + self.split_length])
         else:  # token
             # at this point we know that the tokenizer is already initialized
-            tokens = self.tiktoken_tokenizer.encode(text)  # type: ignore
+            tokens = self.tiktoken_tokenizer.encode_ordinary(text)  # type: ignore
             for i in range(0, len(tokens), self.split_length):
                 chunk_tokens = tokens[i : i + self.split_length]
                 chunks.append(self.tiktoken_tokenizer.decode(chunk_tokens))  # type: ignore
