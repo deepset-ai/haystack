@@ -429,6 +429,20 @@ class TestRouter:
         assert result["reply"] == [1, 2, 3]
         assert isinstance(result["reply"], list)
 
+    def test_optional_str_output_type_recovers_none(self):
+        # A rendered value of "None" for an Optional[str]/str | None output must still be recovered as the
+        # Python singleton None, matching the pre-fix behavior for a plain str | None Union member.
+        routes: list[Route] = [
+            {
+                "condition": "{{ True }}",
+                "output": "{{ reply }}",
+                "output_name": "reply",
+                "output_type": str | None,  # type: ignore[typeddict-item]
+            }
+        ]
+        result = ConditionalRouter(routes, validate_output_type=True).run(reply=None)
+        assert result["reply"] is None
+
     def test_sede_with_custom_filter(self):
         routes: list[Route] = [
             {

@@ -458,13 +458,20 @@ class ConditionalRouter:
                         # we try to evaluate it and would fail.
                         # This must be done cause the output could be different literal structures.
                         # This doesn't support any user types.
-                        # When the declared output_type is str, or a Union that includes str (e.g. str | None),
-                        # we skip literal evaluation so that a rendered string that happens to be a valid Python
-                        # literal (e.g. "1,000" -> (1, 0), "42" -> 42, "None" -> None) is returned unchanged
-                        # instead of being coerced to another type, which would violate the declared output_type.
+                        # When the declared output_type is exactly str, literal evaluation never runs, so a
+                        # rendered string that happens to be a valid Python literal (e.g. "1,000" -> (1, 0),
+                        # "42" -> 42) is returned unchanged.
+                        # For a Union that includes str (e.g. str | None), we still evaluate, but only keep the
+                        # evaluated value if it matches the declared type; otherwise we fall back to the rendered
+                        # string. This lets "None" -> None through (matches the Union) while still rejecting
+                        # "42" -> 42 for a str | None output (doesn't match, so the string "42" is kept).
                         with contextlib.suppress(Exception):
-                            if not self._unsafe and not self._output_type_includes_str(output_type):
-                                output_value = ast.literal_eval(output_value)
+                            if not self._unsafe and output_type is not str:
+                                evaluated_value = ast.literal_eval(output_value)
+                                if not self._output_type_includes_str(output_type) or self._output_matches_type(
+                                    evaluated_value, output_type
+                                ):
+                                    output_value = evaluated_value
 
                     # Validate output type if needed
                     if self._validate_output_type and not self._output_matches_type(output_value, output_type):
