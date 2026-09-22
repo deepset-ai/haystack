@@ -433,7 +433,7 @@ class TestLLMRankerAsync:
         mock_chat_generator.run_async = AsyncMock()
         ranker = LLMRanker(chat_generator=mock_chat_generator)
 
-        assert await ranker.run_async(query=None, documents=documents) == {"documents": documents}
+        assert await ranker.run_async(query=None, documents=documents) == {"documents": documents}  # type: ignore[arg-type]
         mock_chat_generator.run_async.assert_not_called()
 
     @pytest.mark.integration
