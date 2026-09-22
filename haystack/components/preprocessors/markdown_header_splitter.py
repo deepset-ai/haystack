@@ -162,8 +162,8 @@ class MarkdownHeaderSplitter:
         # Text before the first header belongs to no section, but it is document content in its own
         # right: a README's opening paragraph, a title block, or front matter. It becomes a chunk with
         # empty header metadata, which counts as content for the headers-only check below. When it holds
-        # only whitespace it is buffered instead, so it joins the first chunk that is emitted rather than
-        # becoming a chunk of its own; the chunks stay a byte-exact partition of the input either way.
+        # only whitespace it is buffered onto the first chunk that keeps its header line, so the chunks
+        # stay a byte-exact partition of the input without an empty chunk appearing in them.
         preamble = text[: matches[0].start()]
         if preamble.strip():
             chunks.append(
@@ -175,7 +175,10 @@ class MarkdownHeaderSplitter:
                 }
             )
             has_content = True
-        elif preamble:
+        elif preamble and self.keep_headers:
+            # Buffering is the mechanism that carries text into a later chunk, and only the
+            # `keep_headers` branch consumes and clears it. With headers in metadata the chunk
+            # content starts after the header line anyway, so there is nothing to carry into.
             pending_start = 0
 
         for i, match in enumerate(matches):

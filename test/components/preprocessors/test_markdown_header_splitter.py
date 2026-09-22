@@ -1027,6 +1027,13 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
             ["Header 1"],
             id="whitespace-only-preamble-joins-the-first-chunk",
         ),
+        pytest.param(
+            "\n\n# Header 1\nContent.\n",
+            False,
+            ["\nContent.\n"],
+            ["Header 1"],
+            id="whitespace-only-preamble-headers-in-metadata",
+        ),
     ],
 )
 def test_content_before_first_header_is_kept(
