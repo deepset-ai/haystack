@@ -201,11 +201,11 @@ class FileSystemSkillStore:
         :returns: Sorted list of POSIX-style paths relative to the skill directory. Empty when there are none.
         :raises KeyError: If no skill with `name` exists.
         """
-        skill_dir = self._skill_dir(name)
+        skill_dir = self._skill_dir(name).resolve()
         return sorted(
             p.relative_to(skill_dir).as_posix()
             for p in skill_dir.rglob("*")
-            if p.is_file() and p.name != SKILL_FILE_NAME
+            if p.is_file() and p.name != SKILL_FILE_NAME and p.resolve().is_relative_to(skill_dir)
         )
 
     def read_skill_file(self, name: str, path: str) -> str | ImageContent | FileContent:
