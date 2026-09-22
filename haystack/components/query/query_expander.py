@@ -198,11 +198,11 @@ class QueryExpander:
 
         self.warm_up()
 
-        response = {"queries": [query] if self.include_original_query else []}
-
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to QueryExpander")
-            return response
+            return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
+
+        response = {"queries": [query] if self.include_original_query else []}
 
         expansion_count = n_expansions if n_expansions is not None else self.n_expansions
         if expansion_count <= 0:
@@ -268,11 +268,11 @@ class QueryExpander:
 
         await self.warm_up_async()
 
-        response = {"queries": [query] if self.include_original_query else []}
-
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to QueryExpander")
-            return response
+            return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
+
+        response = {"queries": [query] if self.include_original_query else []}
 
         expansion_count = n_expansions if n_expansions is not None else self.n_expansions
         if expansion_count <= 0:

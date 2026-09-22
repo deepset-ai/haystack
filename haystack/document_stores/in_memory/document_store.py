@@ -36,6 +36,22 @@ BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
 
+def _make_metadata_value_hashable(value: Any) -> Any:
+    """Convert nested metadata values into values that can be used for deduplication."""
+    if isinstance(value, list):
+        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, dict):
+        return (
+            "dict",
+            frozenset(
+                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
+            ),
+        )
+    return value
+
+
 @dataclass
 class BM25DocumentStats:
     """
@@ -619,6 +635,8 @@ class InMemoryDocumentStore:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param filters: The filters to apply.
             For a detailed specification of the filters, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
@@ -642,7 +660,11 @@ class InMemoryDocumentStore:
         result: dict[str, int] = {}
         for field in metadata_fields:
             key = field.removeprefix("meta.") if field.startswith("meta.") else field
-            values = {doc.meta.get(key) for doc in docs if key in doc.meta and doc.meta[key] is not None}
+            values = {
+                _make_metadata_value_hashable(doc.meta.get(key))
+                for doc in docs
+                if key in doc.meta and doc.meta[key] is not None
+            }
             result[key] = len(values)
         return result
 
@@ -701,6 +723,8 @@ class InMemoryDocumentStore:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
         :param search_term: Optional search term to filter values, matched as a case-insensitive substring
             against the metadata field's value.
@@ -710,17 +734,17 @@ class InMemoryDocumentStore:
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
-        unique_values: dict[tuple[str, str], Any] = {}
+        unique_values: dict[tuple[str, Any], Any] = {}
         for doc in self.filter_documents(filters=filters):
             value = doc.meta.get(key)
             if value is not None:
-                unique_values.setdefault((type(value).__name__, str(value)), value)
+                unique_values.setdefault((type(value).__name__, _make_metadata_value_hashable(value)), value)
 
         if search_term:
             search_term_lower = search_term.lower()
-            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k[1].lower()}
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in str(v).lower()}
 
-        sorted_keys = sorted(unique_values, key=lambda k: (k[1], k[0]))
+        sorted_keys = sorted(unique_values, key=lambda k: (str(unique_values[k]), k[0]))
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
@@ -984,6 +1008,8 @@ class InMemoryDocumentStore:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
         :param filters: The filters to apply.
             For a detailed specification of the filters, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
@@ -1029,6 +1055,8 @@ class InMemoryDocumentStore:
     ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+        JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
         :param search_term: Optional search term to filter values, matched as a case-insensitive substring
