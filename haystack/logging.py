@@ -321,8 +321,8 @@ def bound_event_dict_values(_: "WrappedLogger", __: str, event_dict: "EventDict"
     """
     Keep individual log values from growing without bound.
 
-    Exceptions are rendered with ``str`` rather than ``repr``, because some carry their whole input in their
-    ``repr``: ``UnicodeDecodeError`` keeps the entire buffer it failed to decode, so logging one raised while
+    Exceptions are rendered with `str` rather than `repr`, because some carry their whole input in their
+    `repr`: `UnicodeDecodeError` keeps the entire buffer it failed to decode, so logging one raised while
     decoding a large file would otherwise emit that whole file as a single log line.
     """
     for key, value in list(event_dict.items()):
