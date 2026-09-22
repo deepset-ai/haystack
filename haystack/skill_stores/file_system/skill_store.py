@@ -188,9 +188,7 @@ class FileSystemSkillStore:
         return sorted(
             p.relative_to(skill_dir).as_posix()
             for p in skill_dir.rglob("*")
-            if p.is_file()
-            and p.name != SKILL_FILE_NAME
-            and (resolved := p.resolve()).is_relative_to(skill_dir)
+            if p.is_file() and p.name != SKILL_FILE_NAME and p.resolve().is_relative_to(skill_dir)
         )
 
     def read_skill_file(self, name: str, path: str) -> str | ImageContent | FileContent:
