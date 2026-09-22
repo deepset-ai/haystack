@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_8f41eaad49a0f53b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-22 12:17 +0000
+            created at 2026-09-22 12:47 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -283,11 +283,11 @@
     <p class="pln"><span class="n"><a id="t201" href="#t201">201</a></span><span class="t"><span class="str">        :returns: Sorted list of POSIX-style paths relative to the skill directory. Empty when there are none.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t202" href="#t202">202</a></span><span class="t"><span class="str">        :raises KeyError: If no skill with `name` exists.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t203" href="#t203">203</a></span><span class="t"><span class="str">        &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t204" href="#t204">204</a></span><span class="t">        <span class="nam">skill_dir</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_skill_dir</span><span class="op">(</span><span class="nam">name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t204" href="#t204">204</a></span><span class="t">        <span class="nam">skill_dir</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_skill_dir</span><span class="op">(</span><span class="nam">name</span><span class="op">)</span><span class="op">.</span><span class="nam">resolve</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t205" href="#t205">205</a></span><span class="t">        <span class="key">return</span> <span class="nam">sorted</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t206" href="#t206">206</a></span><span class="t">            <span class="nam">p</span><span class="op">.</span><span class="nam">relative_to</span><span class="op">(</span><span class="nam">skill_dir</span><span class="op">)</span><span class="op">.</span><span class="nam">as_posix</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t207" href="#t207">207</a></span><span class="t">            <span class="key">for</span> <span class="nam">p</span> <span class="key">in</span> <span class="nam">skill_dir</span><span class="op">.</span><span class="nam">rglob</span><span class="op">(</span><span class="str">&quot;*&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t208" href="#t208">208</a></span><span class="t">            <span class="key">if</span> <span class="nam">p</span><span class="op">.</span><span class="nam">is_file</span><span class="op">(</span><span class="op">)</span> <span class="key">and</span> <span class="nam">p</span><span class="op">.</span><span class="nam">name</span> <span class="op">!=</span> <span class="nam">SKILL_FILE_NAME</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t208" href="#t208">208</a></span><span class="t">            <span class="key">if</span> <span class="nam">p</span><span class="op">.</span><span class="nam">is_file</span><span class="op">(</span><span class="op">)</span> <span class="key">and</span> <span class="nam">p</span><span class="op">.</span><span class="nam">name</span> <span class="op">!=</span> <span class="nam">SKILL_FILE_NAME</span> <span class="key">and</span> <span class="nam">p</span><span class="op">.</span><span class="nam">resolve</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">is_relative_to</span><span class="op">(</span><span class="nam">skill_dir</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t209" href="#t209">209</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t210" href="#t210">210</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t211" href="#t211">211</a></span><span class="t">    <span class="key">def</span> <span class="nam">read_skill_file</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">name</span><span class="op">:</span> <span class="nam">str</span><span class="op">,</span> <span class="nam">path</span><span class="op">:</span> <span class="nam">str</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="nam">str</span> <span class="op">|</span> <span class="nam">ImageContent</span> <span class="op">|</span> <span class="nam">FileContent</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -363,7 +363,7 @@
             <a class="nav" href="z_8f41eaad49a0f53b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-22 12:17 +0000
+            created at 2026-09-22 12:47 +0000
         </p>
     </div>
 </footer>
