@@ -103,7 +103,7 @@
 | haystack/components/query/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
 | haystack/components/query/query\_expander.py                              |      137 |       10 |     93% |274-275, 279, 289-290, 297-303, 314-317 |
 | haystack/components/rankers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/rankers/llm\_ranker.py                                |      154 |        7 |     95% |317, 324-325, 349, 376, 385, 389 |
+| haystack/components/rankers/llm\_ranker.py                                |      154 |        5 |     97% |317, 349, 376, 385, 389 |
 | haystack/components/rankers/lost\_in\_the\_middle.py                      |       43 |        2 |     95% |   83, 117 |
 | haystack/components/rankers/meta\_field.py                                |      117 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py              |       38 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17253** |  **750** | **96%** |           |
+| **TOTAL**                                                                 | **17253** |  **748** | **96%** |           |
 
 
 ## Setup coverage badge
