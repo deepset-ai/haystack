@@ -6,7 +6,7 @@
 # Pinned by digest for supply-chain integrity. Bump periodically (the OSS-Fuzz
 # base-builder is updated frequently with toolchain fixes); resolve a fresh digest with:
 #   docker buildx imagetools inspect gcr.io/oss-fuzz-base/base-builder-python:latest --format '{{.Manifest.Digest}}'
-FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:030add5351585b43fb46a1939aad7c82dc11c7e690eaaaf118e8b71e3b674519
+FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:140e90791e768fdcbbbd9f7299e5d4d9fc8cfd1ed3c906aa1ca555c9dfe69fa6
 
 COPY . $SRC/haystack
 WORKDIR $SRC/haystack
