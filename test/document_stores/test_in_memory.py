@@ -83,6 +83,29 @@ class TestMemoryDocumentStore(
         yield store
         store.shutdown()
 
+    @pytest.fixture
+    def documents_with_composite_metadata(self) -> list[Document]:
+        return [
+            Document(
+                id="1",
+                content="Document 1",
+                meta={"tags": ["news", "ai"], "source": {"section": {"id": 1}, "type": "docs"}},
+            ),
+            Document(
+                id="2",
+                content="Document 2",
+                meta={"tags": ["news", "ai"], "source": {"type": "docs", "section": {"id": 1}}},
+            ),
+            Document(
+                id="3",
+                content="Document 3",
+                meta={"tags": ["ai", "news"], "source": {"section": {"id": 1}, "type": "docs"}},
+            ),
+            Document(
+                id="4", content="Document 4", meta={"tags": ["news"], "source": {"section": {"id": 2}, "type": "docs"}}
+            ),
+        ]
+
     def test_filter_documents_date_equality_with_equivalent_iso_formats(
         self, document_store: InMemoryDocumentStore
     ) -> None:
@@ -603,6 +626,52 @@ class TestMemoryDocumentStore(
         DocumentStoreBaseTests().assert_documents_are_equal(
             result, [d for d in filterable_docs if d.meta.get("number") == 100]
         )
+
+    def test_count_unique_metadata_by_filter_with_unhashable_values(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        document_store.write_documents(documents_with_composite_metadata)
+
+        counts = document_store.count_unique_metadata_by_filter(filters={}, metadata_fields=["tags", "source"])
+
+        assert counts == {"tags": 3, "source": 2}
+
+    def test_get_metadata_field_unique_values_with_composite_metadata(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        document_store.write_documents(documents_with_composite_metadata)
+
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="source", size=10)
+        counts = document_store.count_unique_metadata_by_filter(filters={}, metadata_fields=["source"])
+
+        assert total_count == counts["source"] == 2
+        assert {value["section"]["id"] for value in values} == {1, 2}
+
+    @pytest.mark.asyncio
+    async def test_count_unique_metadata_by_filter_async_with_unhashable_values(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        await document_store.write_documents_async(documents_with_composite_metadata)
+
+        counts = await document_store.count_unique_metadata_by_filter_async(
+            filters={}, metadata_fields=["tags", "source"]
+        )
+
+        assert counts == {"tags": 3, "source": 2}
+
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_async_with_composite_metadata(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        await document_store.write_documents_async(documents_with_composite_metadata)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(
+            metadata_field="source", size=10
+        )
+        counts = await document_store.count_unique_metadata_by_filter_async(filters={}, metadata_fields=["source"])
+
+        assert total_count == counts["source"] == 2
+        assert {value["section"]["id"] for value in values} == {1, 2}
 
     @pytest.mark.asyncio
     async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore) -> None:
