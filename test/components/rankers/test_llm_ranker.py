@@ -128,6 +128,7 @@ def test_run_none_query_returns_fallback(mock_chat_generator):
 
     assert ranker.run(query=None, documents=documents) == {"documents": documents}
 
+
 @pytest.mark.parametrize("bad_query", [None, 123])
 def test_run_non_string_query_returns_fallback(mock_chat_generator, bad_query):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
