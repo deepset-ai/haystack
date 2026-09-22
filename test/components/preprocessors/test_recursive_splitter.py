@@ -365,6 +365,36 @@ def test_run_split_by_sentence_count_page_breaks_split_unit_char() -> None:
     assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
 
 
+def test_run_count_page_breaks_once_with_overlap_split_unit_char() -> None:
+    # A page break that falls inside an overlapping region is repeated in consecutive chunks. It must only
+    # advance the page counter once, otherwise every chunk after it gets a page number that is too high.
+    splitter = RecursiveDocumentSplitter(split_length=14, split_overlap=5, separators=[" "], split_unit="char")
+
+    text = "This is page one.\fThis is page two, it is longer."
+
+    documents = splitter.run(documents=[Document(content=text)])
+    chunks_docs = documents["documents"]
+    assert len(chunks_docs) == 5
+
+    assert chunks_docs[0].content == "This is page "
+    assert chunks_docs[0].meta["page_number"] == 1
+
+    # the page break is part of this chunk and of the overlapping tail repeated in the next chunk
+    assert chunks_docs[1].content == "page one.\fThis"
+    assert chunks_docs[1].meta["page_number"] == 2
+
+    # the repeated page break was previously counted a second time, pushing these chunks to page 3
+    # even though the document only has two pages
+    assert chunks_docs[2].content == "\fThis is page "
+    assert chunks_docs[2].meta["page_number"] == 2
+
+    assert chunks_docs[3].content == "page two, it i"
+    assert chunks_docs[3].meta["page_number"] == 2
+
+    assert chunks_docs[4].content == " it is longer."
+    assert chunks_docs[4].meta["page_number"] == 2
+
+
 def test_run_split_document_with_overlap_character_unit():
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=10, separators=["."], split_unit="char")
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""
