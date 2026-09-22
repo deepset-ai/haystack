@@ -10,6 +10,7 @@ import pytest
 
 from haystack.dataclasses import FileContent, ImageContent
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, _parse_frontmatter
+from haystack.utils import Secret
 
 
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
@@ -106,6 +107,47 @@ class TestFileSystemSkillStore:
         store = FileSystemSkillStore(tmp_path / "nope")
         with pytest.raises(ValueError, match="does not exist"):
             store.list_skills()
+
+    def test_to_dict(self, tmp_path):
+        store = FileSystemSkillStore(str(tmp_path))
+        assert store.to_dict() == {
+            "type": "haystack.skill_stores.file_system.skill_store.FileSystemSkillStore",
+            "init_parameters": {"skills_dir": str(tmp_path)},
+        }
+
+    def test_from_dict(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Fill PDF forms.")
+        data = {
+            "type": "haystack.skill_stores.file_system.skill_store.FileSystemSkillStore",
+            "init_parameters": {"skills_dir": str(tmp_path)},
+        }
+        store = FileSystemSkillStore.from_dict(data)
+        assert set(store.list_skills()) == {"pdf-forms"}
+
+    def test_skills_dir_as_secret(self, tmp_path, monkeypatch):
+        _write_skill(tmp_path, "pdf-forms", description="Fill PDF forms.")
+        monkeypatch.setenv("SKILLS_DIR", str(tmp_path))
+        store = FileSystemSkillStore(Secret.from_env_var("SKILLS_DIR"))
+        assert set(store.list_skills()) == {"pdf-forms"}
+
+    def test_to_dict_with_secret_skills_dir(self, monkeypatch):
+        monkeypatch.setenv("SKILLS_DIR", "/tmp/skills")
+        store = FileSystemSkillStore(Secret.from_env_var("SKILLS_DIR"))
+        assert store.to_dict() == {
+            "type": "haystack.skill_stores.file_system.skill_store.FileSystemSkillStore",
+            "init_parameters": {"skills_dir": {"type": "env_var", "env_vars": ["SKILLS_DIR"], "strict": True}},
+        }
+
+    def test_from_dict_with_secret_skills_dir(self, tmp_path, monkeypatch):
+        _write_skill(tmp_path, "pdf-forms", description="Fill PDF forms.")
+        monkeypatch.setenv("SKILLS_DIR", str(tmp_path))
+        data = {
+            "type": "haystack.skill_stores.file_system.skill_store.FileSystemSkillStore",
+            "init_parameters": {"skills_dir": {"type": "env_var", "env_vars": ["SKILLS_DIR"], "strict": True}},
+        }
+        store = FileSystemSkillStore.from_dict(data)
+        assert isinstance(store.skills_dir, Secret)
+        assert set(store.list_skills()) == {"pdf-forms"}
 
     def test_missing_description_raises(self, tmp_path):
         _write_skill(tmp_path, "broken", description=None)
