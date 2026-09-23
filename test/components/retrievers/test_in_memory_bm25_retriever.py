@@ -133,7 +133,7 @@ class TestMemoryBM25Retriever:
         in_memory_doc_store.write_documents(mock_docs)
 
         retriever = InMemoryBM25Retriever(in_memory_doc_store, top_k=5)
-        result = retriever.run(query="PHP")
+        result = retriever.run(query="PHP popular")
 
         assert "documents" in result
         assert len(result["documents"]) == 5
@@ -236,9 +236,9 @@ class TestMemoryBM25Retriever:
     @pytest.mark.parametrize(
         "query, query_result, top_k",
         [
-            ("Javascript", "Javascript is a popular programming language", 1),
-            ("Java", "Java is a popular programming language", 2),
-            ("Ruby", "Ruby is a popular programming language", 3),
+            ("Javascript popular", "Javascript is a popular programming language", 1),
+            ("Java popular", "Java is a popular programming language", 2),
+            ("Ruby popular", "Ruby is a popular programming language", 3),
         ],
     )
     def test_run_with_pipeline_and_top_k(

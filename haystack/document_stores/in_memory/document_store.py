@@ -251,6 +251,10 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25L computation."""
             freq_term = freq.get(token, 0.0)
+            # The lower bound (delta) only applies to terms that occur in the document;
+            # a missing term contributes nothing.
+            if freq_term == 0:
+                return 0.0
             ctd = freq_term / (1 - b + b * doc_len / self._avg_doc_len)
             return (1.0 + k) * (ctd + delta) / (k + ctd + delta)
 
@@ -359,6 +363,10 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: float) -> float:
             """Per-token normalized term frequency."""
             freq_term = freq.get(token, 0.0)
+            # The lower bound (delta) only applies to terms that occur in the document;
+            # a missing term contributes nothing.
+            if freq_term == 0:
+                return 0.0
             freq_damp = k * (1 - b + b * doc_len / self._avg_doc_len)
             return freq_term * (1.0 + k) / (freq_term + freq_damp) + delta
 
