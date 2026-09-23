@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``RegexTextExtractor`` now returns ``{"captured_text": ""}`` when the pattern matches but its first capture
+    group is not part of the match, for example the other branch of an alternation such as
+    ``Answer: (\w+)|No answer found``, or an optional group like ``(https://\S+)?\s*DONE``. Previously it returned
+    ``{"captured_text": None}``, which broke the component's ``str`` output type for downstream components.

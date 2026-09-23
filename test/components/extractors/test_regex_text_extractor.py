@@ -186,6 +186,15 @@ class TestRegexTextExtractor:
 
         assert result == {"captured_text": "username"}
 
+    @pytest.mark.parametrize(
+        ("pattern", "text"), [(r"Answer: (\w+)|No answer found", "No answer found"), (r"(https://\S+)?\s*DONE", "DONE")]
+    )
+    def test_first_capture_group_not_in_match_returns_empty_string(self, pattern, text):
+        extractor = RegexTextExtractor(regex_pattern=pattern)
+
+        assert extractor.run(text_or_messages=text) == {"captured_text": ""}
+        assert extractor.run(text_or_messages=[ChatMessage.from_assistant(text)]) == {"captured_text": ""}
+
     def test_pipeline_integration(self):
         """Test component integration in a Haystack pipeline."""
         pattern = r'<issue url="(.+?)">'
