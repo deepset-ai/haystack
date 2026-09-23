@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MetaFieldGroupingRanker`` no longer partially reorders a group before falling back on a
+    ``TypeError``. When ``sort_docs_by`` values are mutually non-comparable (e.g. int and str),
+    the group's original insertion order is now guaranteed, as the sorting happens on a copy
+    instead of in place.
