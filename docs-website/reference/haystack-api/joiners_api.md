@@ -100,6 +100,10 @@ run(
 
 Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
+If the instance was created with `sort_by_score=True`, the merged Answers are sorted by
+score in descending order before `top_k` is applied; Answers without a score are handled
+as if their score were -infinity. Otherwise, the input order is preserved.
+
 **Parameters:**
 
 - **answers** (<code>Variadic\[list\[AnswerType\]\]</code>) – Nested list of Answers to be merged.
@@ -109,7 +113,8 @@ Joins multiple lists of Answers into a single list depending on the `join_mode` 
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `answers`: Merged list of Answers
+- `answers`: Merged list of Answers, sorted by score if `sort_by_score` was set to
+  `True` on the instance, otherwise in input order
 
 **Raises:**
 
@@ -360,13 +365,15 @@ Creates a DocumentJoiner component.
   This parameter is ignored for
   `concatenate` or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
+  Each weight must be a non-negative number.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0.
+- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0,
+  or if any value in `weights` is negative.
 
 #### run
 

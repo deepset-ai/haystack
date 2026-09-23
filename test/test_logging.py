@@ -383,6 +383,40 @@ class TestStructuredLoggingJSONRendering:
             ],
         }
 
+    def test_exception_values_do_not_leak_their_payload(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """Regression test: `repr(UnicodeDecodeError)` carries the whole buffer that failed to decode."""
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        try:
+            (b"%PDF-1.7\r%\xe2\xe3\xcf\xd3" + b"A" * 100_000).decode("utf-8")
+        except UnicodeDecodeError as error:
+            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"error": error})
+
+        output = capfd.readouterr().err
+        assert len(output) < 1_000
+        assert json.loads(output)["error"] == (
+            "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte"
+        )
+
+    def test_long_values_are_truncated(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"key": "x" * 10_000})
+
+        expected = "x" * haystack_logging.MAX_LOG_VALUE_LENGTH + "... [truncated, 10000 chars]"
+        assert json.loads(capfd.readouterr().err)["key"] == expected
+
+    def test_console_rendering_also_bounds_values(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """The console renderer shares the processor, so a JSONRenderer-only fix would miss it."""
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
+        haystack_logging.configure_logging()
+
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"key": "x" * 100_000})
+
+        assert len(capfd.readouterr().err) < 5_000
+
 
 class TestLogTraceCorrelation:
     def test_trace_log_correlation_python_logs_with_console_rendering(

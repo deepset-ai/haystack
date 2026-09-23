@@ -7,7 +7,21 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import pytest
 
@@ -1244,6 +1258,12 @@ def unresolvable_annotation(document: "Unimportable") -> None: ...  # type: igno
 class TestResolveParameterTypes:
     def test_resolves_postponed_annotations(self):
         assert _resolve_parameter_types(retrieve) == {"query": str, "documents": list[Document], "top_k": Optional[int]}
+
+    def test_keeps_annotated_metadata_with_include_extras(self):
+        def function(city: "Annotated[str, 'the city']") -> None: ...
+
+        assert _resolve_parameter_types(function) == {"city": str}
+        assert _resolve_parameter_types(function, include_extras=True) == {"city": Annotated[str, "the city"]}
 
     def test_keeps_eagerly_evaluated_annotations(self):
         # `top_k` keeps the annotation it was written with, it is not widened to `int | None` because of its default.

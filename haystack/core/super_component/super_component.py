@@ -160,7 +160,10 @@ class _SuperComponent:
         # `is not`, not `!=`: numpy/pandas/torch override `__ne__` element-wise and would crash here.
         filtered_inputs = {param: value for param, value in kwargs.items() if value is not _delegate_default}
         pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
-        pipeline_outputs = await self.pipeline.run_async(data=pipeline_inputs)
+        include_outputs_from = self._get_include_outputs_from()
+        pipeline_outputs = await self.pipeline.run_async(
+            data=pipeline_inputs, include_outputs_from=include_outputs_from
+        )
         return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
 
     @staticmethod

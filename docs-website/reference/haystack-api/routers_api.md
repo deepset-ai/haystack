@@ -646,7 +646,7 @@ Initialize the LLMMessagesRouter component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator instance which represents the LLM.
 - **output_names** (<code>list\[str\]</code>) – A list of output connection names. These can be used to connect the router to other
-  components.
+  components. `"chat_generator_text"` and `"unmatched"` are reserved output names and cannot be used here.
 - **output_patterns** (<code>list\[str\]</code>) – A list of regular expressions to be matched against the output of the LLM. Each pattern
   corresponds to an output name. Patterns are evaluated in order.
   When using moderation models, refer to the model card to understand the expected outputs.
@@ -655,7 +655,8 @@ Initialize the LLMMessagesRouter component.
 
 **Raises:**
 
-- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length.
+- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length, or if
+  output_names uses the reserved names `"chat_generator_text"` or `"unmatched"`.
 
 #### warm_up
 

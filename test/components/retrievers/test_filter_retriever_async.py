@@ -95,7 +95,7 @@ class TestFilterRetrieverAsync:
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["de_docs"])
 
-        result: dict[str, Any] = await pipeline.run_async(
+        result = await pipeline.run_async(
             data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}}
         )
 
@@ -105,7 +105,7 @@ class TestFilterRetrieverAsync:
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["en_docs"])
 
-        result: dict[str, Any] = await pipeline.run_async(data={"retriever": {"filters": {}}})
+        result = await pipeline.run_async(data={"retriever": {"filters": {}}})
 
         assert result
         assert "retriever" in result

@@ -265,6 +265,8 @@ count_unique_metadata_by_filter(
 
 Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply.
@@ -322,6 +324,8 @@ get_metadata_field_unique_values(
 ```
 
 Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
 **Parameters:**
 
@@ -487,6 +491,8 @@ count_unique_metadata_by_filter_async(
 
 Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply.
@@ -544,6 +550,8 @@ get_metadata_field_unique_values_async(
 ```
 
 Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
 **Parameters:**
 

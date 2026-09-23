@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -137,7 +138,7 @@ def test_run(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
 
     converter = JSONConverter(jq_schema='.laureates[] | .firstname + " " + .surname + " " + .motivation')
     result = converter.run(sources=sources)
@@ -172,7 +173,7 @@ def test_run_with_store_full_path_false(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
 
     converter = JSONConverter(
         jq_schema='.laureates[] | .firstname + " " + .surname + " " + .motivation', store_full_path=False
@@ -202,7 +203,7 @@ def test_run_with_non_json_file(tmpdir, caplog):
     test_file = Path(tmpdir / "test_file.md")
     test_file.write_text("This is not a JSON file.", "utf-8")
 
-    sources = [test_file]
+    sources: list[str | Path | ByteStream] = [test_file]
     converter = JSONConverter(".laureates | .motivation")
 
     caplog.clear()
@@ -223,7 +224,7 @@ def test_run_with_bad_filter(tmpdir, caplog):
     test_file = Path(tmpdir / "test_file.json")
     test_file.write_text(json.dumps(test_data[0]), "utf-8")
 
-    sources = [test_file]
+    sources: list[str | Path | ByteStream] = [test_file]
     converter = JSONConverter(".laureates | .motivation")
 
     caplog.clear()
@@ -243,7 +244,7 @@ def test_run_with_bad_encoding(tmpdir, caplog):
     test_file = Path(tmpdir / "test_file.json")
     test_file.write_text(json.dumps(test_data[0]), "utf-16")
 
-    sources = [test_file]
+    sources: list[str | Path | ByteStream] = [test_file]
     converter = JSONConverter(".laureates")
 
     caplog.clear()
@@ -262,7 +263,7 @@ def test_run_with_malformed_json_and_content_key(tmpdir, caplog):
     test_file = Path(tmpdir / "test_file.json")
     test_file.write_text("This is not valid JSON.", "utf-8")
 
-    sources = [test_file]
+    sources: list[str | Path | ByteStream] = [test_file]
     converter = JSONConverter(content_key="motivation")
 
     caplog.clear()
@@ -328,7 +329,7 @@ def test_run_with_single_meta(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     meta = {"creation_date": "1945-05-25T00:00:00"}
     converter = JSONConverter(jq_schema='.laureates[] | .firstname + " " + .surname + " " + .motivation')
     result = converter.run(sources=sources, meta=meta)
@@ -369,7 +370,7 @@ def test_run_with_meta_list(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     meta = [
         {"creation_date": "1945-05-25T00:00:00"},
         {"creation_date": "1943-09-03T00:00:00"},
@@ -407,9 +408,9 @@ def test_run_with_meta_list(tmpdir):
 
 
 def test_run_with_meta_list_of_differing_length(tmpdir):
-    sources = ["random_file.json"]
+    sources: list[str | Path | ByteStream] = ["random_file.json"]
 
-    meta = [{}, {}]
+    meta: list[dict[str, Any]] = [{}, {}]
     converter = JSONConverter(jq_schema=".")
     with pytest.raises(ValueError, match="The length of the metadata list must match the number of sources."):
         converter.run(sources=sources, meta=meta)
@@ -423,7 +424,7 @@ def test_run_with_jq_schema_and_content_key(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(jq_schema=".laureates[]", content_key="motivation")
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -453,7 +454,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(
         jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
     )
@@ -497,7 +498,7 @@ def test_run_with_content_key(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(content_key="category")
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -518,7 +519,7 @@ def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(content_key="category", extra_meta_fields={"year"})
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -539,7 +540,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
     second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
-    sources = [str(first_test_file), second_test_file, byte_stream]
+    sources: list[str | Path | ByteStream] = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(jq_schema=".laureates[]", content_key="motivation", extra_meta_fields="*")
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -578,3 +579,51 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         "and for his related discovery of nuclear reactions brought about by slow neutrons"
     )
     assert result["documents"][3].meta == {"id": "46", "firstname": "Enrico", "surname": "Fermi", "share": "1"}
+
+
+def test_run_utf8_with_bom(tmp_path: Path) -> None:
+    """
+    A JSON file saved as UTF-8 with a byte order mark must still be converted.
+
+    Before this was fixed the decode raised UnicodeError, which was caught and turned
+    into a warning, so the file was skipped and the document silently disappeared from
+    the output. In an indexing pipeline that means a document missing from the corpus
+    with no error raised anywhere. The BOM is in the bytes, so this is not platform
+    specific.
+    """
+    path = tmp_path / "bom.json"
+    path.write_text(json.dumps({"content": "bravo"}), encoding="utf-8-sig")
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(path)])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "bravo"
+
+
+def test_run_utf8_with_bom_is_not_silently_skipped(tmp_path: Path) -> None:
+    """A BOM-encoded source must not be dropped from a batch of otherwise valid sources."""
+    plain_a = tmp_path / "a.json"
+    plain_a.write_text(json.dumps({"content": "alpha"}), encoding="utf-8")
+    with_bom = tmp_path / "b.json"
+    with_bom.write_text(json.dumps({"content": "bravo"}), encoding="utf-8-sig")
+    plain_c = tmp_path / "c.json"
+    plain_c.write_text(json.dumps({"content": "charlie"}), encoding="utf-8")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(plain_a), str(with_bom), str(plain_c)])[
+        "documents"
+    ]
+
+    assert [document.content for document in documents] == ["alpha", "bravo", "charlie"]
+
+
+def test_run_utf8_without_bom_is_unchanged(tmp_path: Path) -> None:
+    """Reading plain UTF-8 JSON must keep working, including non-ASCII content."""
+    path = tmp_path / "plain.json"
+    path.write_text(json.dumps({"content": "café 日本語"}, ensure_ascii=False), encoding="utf-8")
+    assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+    documents = JSONConverter(content_key="content").run(sources=[str(path)])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "café 日本語"

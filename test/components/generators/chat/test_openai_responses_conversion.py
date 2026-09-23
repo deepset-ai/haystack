@@ -1017,7 +1017,6 @@ class TestConversionToStreamingChunks:
             ResponseFunctionCallArgumentsDoneEvent(
                 arguments='{"city":"Paris"}',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                name="weather",  # added name here because pydantic complains otherwise API returns a none here
                 output_index=1,
                 sequence_number=10,
                 type="response.function_call_arguments.done",
@@ -1212,7 +1211,6 @@ class TestConversionToStreamingChunks:
                     "received_at": ANY,
                     "arguments": '{"city":"Paris"}',
                     "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                    "name": "weather",
                     "output_index": 1,
                     "sequence_number": 10,
                     "type": "response.function_call_arguments.done",
