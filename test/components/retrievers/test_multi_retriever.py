@@ -640,11 +640,15 @@ class TestMultiRetrieverAsync:
         @component
         class TrackingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
                 state["current"] += 1
                 state["peak"] = max(state["peak"], state["current"])
                 await asyncio.sleep(0.02)
