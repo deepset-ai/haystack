@@ -25,7 +25,7 @@ Use this checklist to stay on track for your first code PR:
 - **Release notes** — Add a release note under `releasenotes/notes` with `hatch run release-note your-change-name` (see [Release notes](#release-notes)); maintainers can add `ignore-for-release-notes` for tests-only or CI-only changes.
 - **Open the PR** — Use a [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) title, fill the [PR template](.github/pull_request_template.md), and if the PR was fully AI-generated, add a [short disclaimer](#using-ai-assistants-to-contribute). Enable "Allow edits and access to secrets by maintainers" on the PR.
 - **Sign the CLA** — A [Contributor Licence Agreement (CLA)](https://cla-assistant.io/deepset-ai/haystack) is required for all contributions. Sign when prompted so your PR is ready for review (see [CLA](#contributor-licence-agreement-cla)).
-- **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback.
+- **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback. Until your first PR is approved, keep it your only open PR in this repository: additional PRs are [closed automatically](#requirements-for-pull-requests).
 
 ## Table of Contents
 
@@ -307,6 +307,10 @@ To ease the review process, please follow the instructions in this paragraph whe
 - For the body, follow the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md) to describe and document your changes.
 - If you used an AI assistant and the PR was **fully AI-generated**, include a brief disclaimer in the PR description
   (see [Using AI assistants to contribute](#using-ai-assistants-to-contribute)).
+- **First-time contributors can have at most one open pull request** in this repository until it has been approved
+  by a maintainer. Additional PRs opened in the meantime are closed automatically and can be reopened once your first
+  PR is approved. After that, you are free to open more PRs as usual. This lets us give each new contributor's first
+  contribution the attention it deserves while keeping the review queue manageable.
 
 ### Release notes
 
