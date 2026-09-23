@@ -113,9 +113,9 @@
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
-| haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       78 |        2 |     97% |  194, 213 |
-| haystack/components/retrievers/multi\_query\_text\_retriever.py           |       68 |        3 |     96% |123, 170, 185 |
-| haystack/components/retrievers/multi\_retriever.py                        |      115 |        1 |     99% |       135 |
+| haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       82 |        2 |     98% |  202, 221 |
+| haystack/components/retrievers/multi\_query\_text\_retriever.py           |       72 |        3 |     96% |124, 178, 193 |
+| haystack/components/retrievers/multi\_retriever.py                        |      117 |        1 |     99% |       135 |
 | haystack/components/retrievers/sentence\_window\_retriever.py             |      103 |        5 |     95% |138, 270-277, 292-299 |
 | haystack/components/retrievers/text\_embedding\_retriever.py              |       52 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17279** |  **749** | **96%** |           |
+| **TOTAL**                                                                 | **17289** |  **749** | **96%** |           |
 
 
 ## Setup coverage badge
