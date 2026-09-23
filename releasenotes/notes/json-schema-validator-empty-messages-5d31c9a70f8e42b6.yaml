@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `JsonSchemaValidator.run()` now raises a descriptive `ValueError` when it is given an empty list of messages,
+    instead of an `IndexError` from reading the last message.

@@ -85,6 +85,12 @@ class TestJsonSchemaValidator:
         assert len(result["validated"]) == 1
         assert result["validated"][0] == message
 
+    def test_rejects_an_empty_message_list(self):
+        validator = JsonSchemaValidator(json_schema={"type": "object"})
+
+        with pytest.raises(ValueError, match="empty"):
+            validator.run([])
+
     def test_accepts_empty_json_schema(self):
         validator = JsonSchemaValidator(json_schema={})
         message = ChatMessage.from_assistant('{"anything": "is valid"}')
