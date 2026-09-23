@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``InMemoryDocumentStore.count_unique_metadata_by_filter`` and
+    ``count_unique_metadata_by_filter_async`` raising ``TypeError`` when
+    metadata values are JSON-serializable lists or dictionaries, and make
+    composite metadata deduplication consistent with
+    ``get_metadata_field_unique_values``.

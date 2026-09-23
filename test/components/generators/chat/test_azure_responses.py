@@ -11,7 +11,7 @@ import pytest
 from pydantic import BaseModel
 
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator, OpenAIResponsesChatGenerator
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -75,12 +75,6 @@ def tools():
 
 
 class TestInitialization:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert (
-            AzureOpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-            is OpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-        )
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIResponsesChatGenerator.SUPPORTED_MODELS
@@ -359,6 +353,32 @@ class TestSerDe:
         assert isinstance(deserialized_component.tools, Toolset)
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    def test_from_dict_with_component_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component_tool = ComponentTool(
+            name="message_extractor", description="Extracts messages", component=MessageExtractor()
+        )
+        generator = AzureOpenAIResponsesChatGenerator(
+            azure_endpoint="some-non-existing-endpoint", tools=[component_tool]
+        )
+        data = generator.to_dict()
+
+        deserialized_generator = AzureOpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools is not None
+        assert isinstance(deserialized_generator.tools[0], ComponentTool)
+        assert deserialized_generator.tools[0].name == "message_extractor"
+
+    def test_from_dict_with_raw_openai_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        raw_tools: list[dict[str, Any]] = [{"type": "function", "name": "custom_func", "parameters": {}}]
+        generator = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=raw_tools)
+        data = generator.to_dict()
+
+        deserialized_generator = AzureOpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools == raw_tools
 
     def test_pipeline_serialization_deserialization(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 

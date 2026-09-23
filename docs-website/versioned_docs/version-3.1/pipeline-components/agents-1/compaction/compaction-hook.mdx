@@ -1,0 +1,102 @@
+---
+title: "CompactionHook"
+id: compaction-hook
+slug: "/compaction-hook"
+description: "Use CompactionHook to shorten an Agent's conversation before it exceeds the model's context window."
+---
+
+# CompactionHook
+
+`CompactionHook` monitors an Agent's conversation before each LLM call. When the estimated context reaches a configured threshold, the hook passes the messages to a `Compactor` and writes the shorter conversation back to the Agent's state.
+
+:::warning[Experimental]
+
+`CompactionHook` is experimental and may change without a deprecation cycle.
+:::
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on** | The [`Agent`](../agent.mdx) component under the `before_llm` [hook point](../hooks.mdx) |
+| **Mandatory init variables** | `compactor`: The strategy used to shorten the messages <br /> <br /> `context_window`: The model's context-window size in tokens |
+| **Import path** | `haystack.hooks.compaction.CompactionHook` |
+| **API reference** | [Hooks](/reference/hooks-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/hooks.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Register the hook under `before_llm` and configure the context window of the Agent's model:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=400_000,  # gpt-5.4-nano's context window
+    compact_at=0.7,
+    compact_to=0.4,
+)
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[],
+    hooks={"before_llm": [compaction_hook]},
+    max_agent_steps=50,
+)
+```
+
+`CompactionHook` can only be registered under `before_llm`. The Agent raises a `ValueError` if you register it at another hook point.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `compactor` | No default | A `Compactor` implementation that decides how to shorten the messages. |
+| `context_window` | No default | The model's full context-window size in tokens. It must be greater than zero. |
+| `compact_at` | `0.7` | The fraction of the context window at which compaction starts. Leave enough space above it for the next model response and tool results. |
+| `compact_to` | `0.4` | The fraction of the context window that compaction targets. A lower value compacts less often but removes more context each time. |
+| `token_counter` | `ApproximateTokenCounter()` | The counter used to estimate messages not yet included in provider-reported usage. |
+
+The thresholds must satisfy `0 < compact_to < compact_at <= 1`. A target at or above the trigger would leave the conversation ready to compact again on the next step, so the hook rejects that configuration.
+
+## How the hook measures context
+
+After an LLM call, the Agent stores the generator's reported prompt-plus-completion usage in `state.data["context_tokens"]`. This count includes the system prompt, tool schemas, and provider-specific chat-template overhead. Messages appended since that call, typically tool results, are measured locally with the configured [`TokenCounter`](../../../token-counters.mdx).
+
+If the generator does not report usage and `context_tokens` remains `0`, the hook estimates the complete conversation and tool schemas locally. The default `ApproximateTokenCounter` needs no extra dependency. You can provide another built-in or custom counter:
+
+```python
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+from haystack.token_counters import TiktokenCounter
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=128_000,
+    token_counter=TiktokenCounter(encoding="o200k_base"),
+)
+```
+
+The hook subtracts estimated non-message overhead from the target passed to the compactor. This prevents the compactor from treating tool schemas or provider formatting as message tokens it can remove.
+
+## Choosing a compactor
+
+The compactor controls what information survives:
+
+| Compactor | Strategy |
+| --- | --- |
+| [`SlidingWindowCompactor`](sliding-window-compactor.mdx) | Keeps the current task and as much complete recent conversation as fits, removing complete historical turns before it trims the task's own steps. |
+| [`ToolResultPruningCompactor`](tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while keeping recent results intact. |
+
+You can also implement the `Compactor` protocol for a custom strategy. See [Context Compaction](../compaction.mdx#creating-a-custom-compactor) for its requirements.
+
+## Lifecycle and serialization
+
+The hook warms up its token counter and compactor when they provide a `warm_up` method, and delegates `close` to the compactor when supported. Its asynchronous lifecycle methods prefer the compactor's async implementation when one exists.
+
+`to_dict()` serializes the hook together with its compactor and token counter. `from_dict()` reconstructs both nested objects, so an Agent configured with the hook can be serialized and restored.

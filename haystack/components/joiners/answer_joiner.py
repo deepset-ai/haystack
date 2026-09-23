@@ -8,9 +8,11 @@ from enum import Enum
 from math import inf
 from typing import Any
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
+
+logger = logging.getLogger(__name__)
 
 AnswerType = GeneratedAnswer | ExtractedAnswer
 
@@ -96,8 +98,8 @@ class AnswerJoiner:
         :param top_k:
             The maximum number of Answers to return. Must be `None` or greater than 0.
         :param sort_by_score:
-            If `True`, sorts the documents by score in descending order.
-            If a document has no score, it is handled as if its score is -infinity.
+            If `True`, sorts the answers by score in descending order.
+            If an answer has no score, it is handled as if its score is -infinity.
 
         :raises ValueError:
             If `top_k` is not `None` and is less than or equal to 0.
@@ -119,6 +121,10 @@ class AnswerJoiner:
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
+        If the instance was created with `sort_by_score=True`, the merged Answers are sorted by
+        score in descending order before `top_k` is applied; Answers without a score are handled
+        as if their score were -infinity. Otherwise, the input order is preserved.
+
         :param answers:
             Nested list of Answers to be merged.
 
@@ -128,7 +134,8 @@ class AnswerJoiner:
 
         :returns:
             A dictionary with the following keys:
-            - `answers`: Merged list of Answers
+            - `answers`: Merged list of Answers, sorted by score if `sort_by_score` was set to
+              `True` on the instance, otherwise in input order
 
         :raises ValueError:
             If `top_k` is negative.
@@ -143,6 +150,11 @@ class AnswerJoiner:
                 key=lambda answer: score if (score := getattr(answer, "score", None)) is not None else -inf,
                 reverse=True,
             )
+            if any(getattr(answer, "score", None) is None for answer in output_answers):
+                logger.info(
+                    "Some of the Answers AnswerJoiner got have score=None. It was configured to sort Answers by "
+                    "score, so those with score=None were sorted as if they had a score of -infinity."
+                )
 
         if top_k is not None:
             if top_k < 0:
@@ -154,7 +166,7 @@ class AnswerJoiner:
 
     def _concatenate(self, answer_lists: list[list[AnswerType]]) -> list[AnswerType]:
         """
-        Concatenate multiple lists of Answers, flattening them into a single list and sorting by score.
+        Concatenate multiple lists of Answers, flattening them into a single list.
 
         :param answer_lists: List of lists of Answers to be flattened.
         """

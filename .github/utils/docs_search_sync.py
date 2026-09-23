@@ -12,6 +12,7 @@ It is used in the docs_search_sync.yml workflow.
 """
 
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -34,13 +35,15 @@ def collect_docs_files(version: int) -> list[DeepsetCloudFile]:
     """
     repo_root = Path(__file__).parent.parent.parent
     build_dir = repo_root / "docs-website" / "build"
-    # we want to exclude previous and temporarily unstable versions (2.x) and next version (next)
-    exclude = ("2.", "next")
+    # The stable version is served at the root of the section: docs/agents/index.html.
+    # The other versions have their own directory: docs/2.31/agents/index.html, docs/3.1-unstable/agents/index.html,
+    # docs/next/agents/index.html. We want to exclude those directories.
+    exclude_dir = re.compile(r"\d+\.\d+(-unstable)?|next")
 
     files = []
     for section in ("docs", "reference"):
         for subfolder in (build_dir / section).iterdir():
-            if subfolder.is_dir() and not any(x in subfolder.name for x in exclude):
+            if subfolder.is_dir() and not exclude_dir.fullmatch(subfolder.name):
                 for html_file in subfolder.rglob("*.html"):
                     files.append(
                         DeepsetCloudFile(

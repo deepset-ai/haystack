@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from haystack.components.agents import Agent
-from haystack.components.agents.agent import _EXIT_REASON_MAX_STEPS
+from haystack.components.agents.agent import _EXIT_REASON_CONTENT_FILTER, _EXIT_REASON_LENGTH, _EXIT_REASON_MAX_STEPS
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import _deserialize_outputs_to_state, _deserialize_outputs_to_string
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -38,8 +38,13 @@ def agent_result_to_string(result: dict[str, Any]) -> str:
     """Default `outputs_to_string` handler"""
     last_message = result["last_message"]
     text = last_message.text or json.dumps(last_message.to_dict())
-    if result["exit_reason"] == _EXIT_REASON_MAX_STEPS:
+    exit_reason = result["exit_reason"]
+    if exit_reason == _EXIT_REASON_MAX_STEPS:
         text += "\n\n[The Agent reached max_agent_steps and stopped, so this result may be incomplete.]"
+    elif exit_reason == _EXIT_REASON_LENGTH:
+        text += "\n\n[The Agent reached the model's output limit and stopped, so this result may be incomplete.]"
+    elif exit_reason == _EXIT_REASON_CONTENT_FILTER:
+        text += "\n\n[The Agent's response was stopped by a content filter, so this result may be incomplete.]"
     return text
 
 
@@ -121,7 +126,8 @@ class AgentTool(ComponentTool):
         :param outputs_to_string:
             Optional dictionary defining how tool outputs should be converted into string(s) or results.
             If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
-            the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+            the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,
+            reached the model's output limit, or had its response stopped by a content filter.
 
             `outputs_to_string` supports two formats:
 

@@ -25,7 +25,7 @@ This component recursively breaks down text into smaller chunks by applying a gi
 
 The `RecursiveDocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. You can set the following parameters when initializing the component:
 
-- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the the unit.
+- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the unit.
 - `split_overlap`: The number of characters or words that overlap between consecutive chunks.
 - `split_unit`: The unit of the `split_length` parameter. Can be either `"word"`, `"char"`, or `"token"`.
 - `separators`: An optional list of separator strings to use for splitting the text. If you don’t provide any separators, the default ones are `["\n\n", "sentence", "\n", " "]`. The string separators will be treated as regular expressions. If the separator is `"sentence"`, the text will be split into sentences using a custom sentence tokenizer based on NLTK. See [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116) code for more information.
@@ -39,20 +39,22 @@ The separators are applied in the same order as they are defined in the list. Th
 from haystack import Document
 from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
-text = ('''Artificial intelligence (AI) - Introduction
+chunker = RecursiveDocumentSplitter(
+    split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "]
+)
+text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
-AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
+AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games."""
 doc = Document(content=text)
 doc_chunks = chunker.run([doc])
 print(doc_chunks["documents"])
->[
->Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': None, 'page_number': 1})
->Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': None, 'page_number': 1})
->Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': None, 'page_number': 1})
->Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': None, 'page_number': 1})
->]
+# >> [
+# >> Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': None, 'page_number': 1})
+# >> Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': None, 'page_number': 1})
+# >> Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': None, 'page_number': 1})
+# >> Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': None, 'page_number': 1})
+# >> ]
 ```
 
 ### In a pipeline

@@ -1,0 +1,7 @@
+fixes:
+  - |
+    Correct the ``split_overlap`` validation message in ``RecursiveDocumentSplitter`` (0 is the
+    default and only negative values are rejected) and clarify that overlap is measured in
+    ``split_units``. Also fix stale docstrings in ``AnswerJoiner`` (documented parameters the
+    methods do not take, and claimed sorting that only happens for answers) and the
+    ``meta_field`` ranker (referenced a nonexistent ``score`` mode).

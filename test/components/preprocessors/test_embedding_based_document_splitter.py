@@ -59,7 +59,7 @@ class TestEmbeddingBasedDocumentSplitter:
         splitter.sentence_splitter = Mock()
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
-            splitter.run(documents="not a list")
+            splitter.run(documents="not a list")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_run_invalid_input_async(self) -> None:
@@ -68,7 +68,7 @@ class TestEmbeddingBasedDocumentSplitter:
         splitter.sentence_splitter = AsyncMock()
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
-            await splitter.run_async(documents="not a list")
+            await splitter.run_async(documents="not a list")  # type: ignore[arg-type]
 
     def test_run_document_with_none_content(self):
         mock_embedder = Mock()
@@ -185,7 +185,7 @@ class TestEmbeddingBasedDocumentSplitter:
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
 
         sentence_groups = ["Group 1 ", "Group 2 ", "Group 3"]
-        split_points = []
+        split_points: list[int] = []
 
         splits = splitter._create_splits_from_points(sentence_groups, split_points)
         assert splits == ["Group 1 Group 2 Group 3"]
@@ -214,6 +214,36 @@ class TestEmbeddingBasedDocumentSplitter:
         assert merged[0] == "123456"
         # Second split is merged with third split to get above min_length and still beneath max_length
         assert merged[1] == "1234567891234"
+
+    def test_merge_small_splits_merges_short_trailing_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # The loop only merges forward, so the final accumulator has nothing left to absorb.
+        splits = ["Long enough text ", "Ok."]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["Long enough text Ok."]
+
+    def test_merge_small_splits_keeps_short_trailing_split_when_max_length_blocks(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10, max_length=15)
+
+        # Merging backwards would reach max_length, so the short tail stays on its own,
+        # matching how a blocked forward merge already behaves.
+        splits = ["123456789012", "1234"]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["123456789012", "1234"]
+
+    def test_merge_small_splits_keeps_a_lone_short_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # Nothing to merge into.
+        merged = splitter._merge_small_splits(splits=["Ok."])
+
+        assert merged == ["Ok."]
 
     def test_create_documents_from_splits(self):
         mock_embedder = Mock()
@@ -283,6 +313,7 @@ class TestEmbeddingBasedDocumentSplitter:
         assert documents[2].meta["split_idx_start"] == len("First chunk. ") + len("Second chunk. ")
         # Cross-check: split_idx_start correctly points into the original text
         for doc in documents:
+            assert doc.content is not None
             start = doc.meta["split_idx_start"]
             assert text[start : start + len(doc.content)] == doc.content
 
@@ -321,6 +352,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
         # split_idx_start must point to the correct position in the original text
         for chunk in chunks:
+            assert chunk.content is not None
             start = chunk.meta["split_idx_start"]
             assert text[start : start + len(chunk.content)] == chunk.content
 
@@ -408,11 +440,14 @@ class TestEmbeddingBasedDocumentSplitter:
         # There should be more than one split
         assert len(split_docs) > 1
         # Each split should be non-empty and respect min_length
+        split_contents: list[str] = []
         for split_doc in split_docs:
+            assert split_doc.content is not None
             assert split_doc.content.strip() != ""
             assert len(split_doc.content) >= 30
+            split_contents.append(split_doc.content)
         # The splits should cover the original text
-        combined = "".join([d.content for d in split_docs])
+        combined = "".join(split_contents)
         original = text
         assert combined in original or original in combined
 
@@ -444,11 +479,14 @@ class TestEmbeddingBasedDocumentSplitter:
         # There should be more than one split
         assert len(split_docs) > 1
         # Each split should be non-empty and respect min_length
+        split_contents: list[str] = []
         for split_doc in split_docs:
+            assert split_doc.content is not None
             assert split_doc.content.strip() != ""
             assert len(split_doc.content) >= 30
+            split_contents.append(split_doc.content)
         # The splits should cover the original text
-        combined = "".join([d.content for d in split_docs])
+        combined = "".join(split_contents)
         original = text
         assert combined in original or original in combined
 
@@ -582,12 +620,17 @@ The history of software is closely tied to the development of digital computers 
 
         assert len(split_docs) == 1
 
+        split_contents: list[str] = []
+        for split_doc in split_docs:
+            assert split_doc.content is not None
+            split_contents.append(split_doc.content)
+
         # If the chunk cannot be split further, it is allowed to be larger than max_length
         # At least one split should be larger than max_length in this test case
-        assert any(len(split_doc.content) > 1000 for split_doc in split_docs)
+        assert any(len(split_content) > 1000 for split_content in split_contents)
 
         # Verify that the splits cover the original content
-        combined_content = "".join([d.content for d in split_docs])
+        combined_content = "".join(split_contents)
         assert combined_content == text
 
         for i, split_doc in enumerate(split_docs):
@@ -623,12 +666,17 @@ The history of software is closely tied to the development of digital computers 
 
         assert len(split_docs) == 1
 
+        split_contents: list[str] = []
+        for split_doc in split_docs:
+            assert split_doc.content is not None
+            split_contents.append(split_doc.content)
+
         # If the chunk cannot be split further, it is allowed to be larger than max_length
         # At least one split should be larger than max_length in this test case
-        assert any(len(split_doc.content) > 1000 for split_doc in split_docs)
+        assert any(len(split_content) > 1000 for split_content in split_contents)
 
         # Verify that the splits cover the original content
-        combined_content = "".join([d.content for d in split_docs])
+        combined_content = "".join(split_contents)
         assert combined_content == text
 
         for i, split_doc in enumerate(split_docs):
@@ -700,8 +748,13 @@ Artificial intelligence is transforming education by enabling personalized learn
 
         assert len(split_docs) == 11
 
+        split_contents: list[str] = []
+        for split_doc in split_docs:
+            assert split_doc.content is not None
+            split_contents.append(split_doc.content)
+
         # Verify that the splits cover the original content
-        combined_content = "".join([d.content for d in split_docs])
+        combined_content = "".join(split_contents)
         assert combined_content == text
 
         for i, split_doc in enumerate(split_docs):
@@ -783,8 +836,13 @@ Artificial intelligence is transforming education by enabling personalized learn
 
         assert len(split_docs) == 11
 
+        split_contents: list[str] = []
+        for split_doc in split_docs:
+            assert split_doc.content is not None
+            split_contents.append(split_doc.content)
+
         # Verify that the splits cover the original content
-        combined_content = "".join([d.content for d in split_docs])
+        combined_content = "".join(split_contents)
         assert combined_content == text
 
         for i, split_doc in enumerate(split_docs):
@@ -800,6 +858,38 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 3
             if i in [9, 10]:
                 assert split_doc.meta["page_number"] == 4
+
+    @pytest.mark.asyncio
+    async def test_recursive_split_of_large_chunks_stays_async(self) -> None:
+        """
+        `run_async` must embed through the embedder's async path, including while recursively splitting
+        chunks that came out longer than max_length. Reaching for the synchronous `run` there blocks the
+        event loop on the embedder's network calls.
+        """
+        calls = {"sync": 0, "async": 0}
+
+        def embed(documents: list[Document]) -> dict[str, list[Document]]:
+            # Alternating embeddings so consecutive groups look unrelated and the text keeps splitting.
+            return {"documents": [replace(doc, embedding=[float(i % 3), 1.0, 0.0]) for i, doc in enumerate(documents)]}
+
+        class RecordingEmbedder:
+            def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["sync"] += 1
+                return embed(documents)
+
+            async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["async"] += 1
+                return embed(documents)
+
+        text = " ".join(f"Sentence number {i} about topic {i % 4}." for i in range(40))
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=RecordingEmbedder(), min_length=10, max_length=120)
+        splitter.warm_up()
+
+        await splitter.run_async(documents=[Document(content=text)])
+
+        # The first pass is async, and the recursion into the over-long chunk has to be too.
+        assert calls["async"] > 1
+        assert calls["sync"] == 0
 
 
 class TestComponentLifecycle:

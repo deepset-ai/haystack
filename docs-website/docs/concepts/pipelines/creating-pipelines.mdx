@@ -59,7 +59,23 @@ query_pipeline = Pipeline()
 
 ### 4\. Add components
 
-Add components to the pipeline one by one. The order in which you do this doesn't matter:
+Add components to the pipeline. The order in which you do this doesn't matter. You can add several components at
+once by passing a dictionary to `add_components()`:
+
+```python
+query_pipeline.add_components(
+    {
+        "text_embedder": text_embedder,
+        "retriever": retriever,
+    }
+)
+```
+
+Before adding anything, Haystack checks that every name is valid, every value is a Haystack component instance, no
+name belongs to a different component, and no instance is already assigned to another name or pipeline. If any check
+fails, the pipeline remains unchanged.
+
+You can instead add components individually with `add_component()`:
 
 ```python
 query_pipeline.add_component("component_name", component_type)
@@ -76,9 +92,28 @@ query_pipeline.add_component(
 )
 ```
 
+Adding the exact same component instance again under the same name is a no-op. A name cannot refer to a different
+component, and a component instance cannot appear under multiple names or belong to multiple pipelines at once.
+Both `add_component()` and `add_components()` return the pipeline, so you can chain further pipeline-building calls.
+
 ### 5\. Connect components
 
 Connect the components by indicating which output of a component should be connected to the input of the next component. If a component has only one input or output and the connection is obvious, you can just pass the component name without specifying the input or output.
+
+To create several connections in one call, pass `(sender, receiver)` pairs to `connect_many()`:
+
+```python
+query_pipeline.connect_many(
+    [
+        ("text_embedder.embedding", "retriever"),
+        ("retriever", "prompt_builder.documents"),
+        ("prompt_builder", "llm"),
+    ]
+)
+```
+
+Haystack creates the connections in the order provided. If a pair cannot be connected, subsequent pairs are not
+processed, while earlier successful connections remain in the pipeline. Repeating an existing connection is a no-op.
 
 To understand what inputs are expected to run your pipeline, use an `.inputs()` pipeline function. See a detailed examples in the [Pipeline Inputs](#pipeline-inputs) section below.
 
@@ -104,7 +139,7 @@ pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 pipeline.connect("text_embedder.embedding", "retriever")
 ```
 
-You need to link all the components together, connecting them gradually in pairs. Here's an explicit example for the pipeline we're assembling:
+You can also connect components individually. Here's an explicit example for the pipeline we're assembling:
 
 ```python
 # Imagine this pipeline has four components: text_embedder, retriever, prompt_builder and llm.
@@ -113,6 +148,29 @@ You need to link all the components together, connecting them gradually in pairs
 query_pipeline.connect("text_embedder.embedding", "retriever")
 query_pipeline.connect("retriever", "prompt_builder.documents")
 query_pipeline.connect("prompt_builder", "llm")
+```
+
+Because the component-addition and connection methods return the pipeline, you can build a pipeline fluently:
+
+```python
+query_pipeline = (
+    Pipeline()
+    .add_components(
+        {
+            "text_embedder": text_embedder,
+            "retriever": retriever,
+            "prompt_builder": prompt_builder,
+            "llm": llm,
+        }
+    )
+    .connect_many(
+        [
+            ("text_embedder.embedding", "retriever"),
+            ("retriever", "prompt_builder.documents"),
+            ("prompt_builder", "llm"),
+        ]
+    )
+)
 ```
 
 ### 6\. Run the pipeline

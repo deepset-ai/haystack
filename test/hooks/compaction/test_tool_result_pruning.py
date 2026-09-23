@@ -39,7 +39,13 @@ class TestToolResultPruningCompactor:
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
         assert compacted[4:] == messages[4:]
         # Ensure compaction returns new messages instead of changing the input.
-        assert [messages[index].tool_call_result.result for index in (2, 4, 6)] == ["a" * 400, "b" * 400, "c" * 400]
+        original_results = [messages[index].tool_call_result for index in (2, 4, 6)]
+        assert all(tool_call_result is not None for tool_call_result in original_results)
+        assert [tool_call_result.result for tool_call_result in original_results if tool_call_result is not None] == [
+            "a" * 400,
+            "b" * 400,
+            "c" * 400,
+        ]
 
     def test_prunes_multiple_results_in_one_call(self):
         messages = _conversation("a" * 400, "b" * 400, "newest")
@@ -48,8 +54,9 @@ class TestToolResultPruningCompactor:
         )
         assert compacted is not None
         for index in (2, 4):
-            assert compacted[index].tool_call_result is not None
-            assert compacted[index].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
+            tool_call_result = compacted[index].tool_call_result
+            assert tool_call_result is not None
+            assert tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
         assert compacted[5:] == messages[5:]
 
     def test_keeps_min_keep_steps(self):

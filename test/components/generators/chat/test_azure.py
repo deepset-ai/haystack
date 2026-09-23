@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import haystack.components.generators.chat.azure as azure_chat_module
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -78,12 +78,6 @@ def tools():
 
 
 class TestAzureOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert (
-            AzureOpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-            is OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-        )
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIChatGenerator.SUPPORTED_MODELS
@@ -335,8 +329,22 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "rf",
+        [
+            {"type": "json_object"},
+            {"type": "json_schema", "json_schema": {"name": "MySchema", "strict": True, "schema": {}}},
+        ],
+    )
+    def test_to_dict_with_dict_response_format(self, monkeypatch: pytest.MonkeyPatch, rf: dict[str, Any]) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint="some-non-existing-endpoint", generation_kwargs={"response_format": rf}
+        )
+        data = component.to_dict()
+        assert data["init_parameters"]["generation_kwargs"]["response_format"] == rf
 
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
         data = {

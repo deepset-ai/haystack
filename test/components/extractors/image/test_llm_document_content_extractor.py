@@ -4,6 +4,7 @@
 
 import asyncio
 import os
+import threading
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -18,6 +19,27 @@ from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 
 
 class TestLLMDocumentContentExtractor:
+    def test_generator_output_with_error_key_is_not_treated_as_failure(self):
+        """A generator whose output dict includes an "error" field must not fail the document."""
+
+        class ErrorKeyChatGenerator:
+            def run(self, messages, **kwargs):
+                return {"replies": [ChatMessage.from_assistant("extracted text")], "error": None}
+
+        extractor = LLMDocumentContentExtractor(chat_generator=ErrorKeyChatGenerator())
+
+        with patch.object(DocumentToImageContent, "run") as mock_convert:
+            mock_convert.return_value = {
+                "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+            }
+            doc = Document(content="", meta={"file_path": "/path/to/image.pdf"})
+            result = extractor.run(documents=[doc])
+
+        assert result["failed_documents"] == []
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "extracted text"
+        assert "extraction_error" not in result["documents"][0].meta
+
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
@@ -68,7 +90,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
-            LLMDocumentContentExtractor()
+            LLMDocumentContentExtractor()  # type: ignore[call-arg]
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -364,9 +386,9 @@ class TestLLMDocumentContentExtractor:
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator())
-        result = extractor._run_on_thread(None)
-        assert "error" in result
-        assert result["error"] == "Document has no content, skipping LLM call."
+        doc, success = extractor._run_on_thread(Document(content="", meta={"file_path": "missing.pdf"}), None)
+        assert success is False
+        assert doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -582,6 +604,33 @@ class TestLLMDocumentContentExtractorAsync:
 
     @pytest.mark.asyncio
     @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_converts_images_off_the_event_loop(self, mock_doc_to_image_run):
+        """
+        Turning documents into images reads the files and renders PDF pages, and `DocumentToImageContent`
+        only has a synchronous `run`, so `run_async` has to hand that work to a thread.
+        """
+        conversion_thread = None
+
+        def record_thread(documents):
+            nonlocal conversion_thread
+            conversion_thread = threading.current_thread()
+            return {"image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]}
+
+        mock_doc_to_image_run.side_effect = record_thread
+
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant(text='{"document_content": "Extracted"}')]}
+        )
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+
+        await extractor.run_async(documents=[Document(content="", meta={"file_path": "/path/to/image.pdf"})])
+
+        assert conversion_thread is not None
+        assert conversion_thread is not threading.current_thread()
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
     async def test_run_async_respects_max_workers(self, mock_doc_to_image_run):
         max_workers = 2
         in_flight = 0
@@ -627,7 +676,9 @@ class TestLLMDocumentContentExtractorAsync:
 
         assert len(result["failed_documents"]) == 0
         assert len(result["documents"]) == 1
-        assert len(result["documents"][0].content) > 0
+        extracted_content = result["documents"][0].content
+        assert extracted_content is not None
+        assert len(extracted_content) > 0
 
 
 class TestComponentLifecycle:

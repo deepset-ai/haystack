@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``EmbeddingBasedDocumentSplitter.run_async`` embedding through the synchronous path while
+    recursively splitting chunks longer than ``max_length``. Only the first pass was async: the recursion
+    called the sync splitting helper, so the embedder's blocking ``run`` ran on the event loop for every
+    over-long chunk. The recursion now embeds through ``run_async`` as well.

@@ -14,6 +14,7 @@ from haystack.core.errors import DeserializationError, SerializationError
 # from haystack.core.serialization.
 # The redundant `as` alias marks it as an intentional re-export so ruff does not flag it (F401).
 from haystack.core.serialization_security import allow_deserialization_module as allow_deserialization_module
+from haystack.core.serialization_security import mark_deserialization_internal
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import _import_class_by_name
@@ -361,6 +362,7 @@ def _init_parameter_names(cls: type[object]) -> set[str] | None:
     return names
 
 
+@mark_deserialization_internal
 def import_class_by_name(fully_qualified_name: str) -> type[object]:
     """
     Utility function to import (load) a class object based on its fully qualified class name.

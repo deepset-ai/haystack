@@ -117,8 +117,10 @@ def combine_two_logical_filters(
         init_logical_filter=init_logical_filter,
         runtime_logical_filter=runtime_logical_filter,
     )
-    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
-    return runtime_logical_filter
+    return {
+        "operator": str(runtime_logical_filter["operator"]),
+        "conditions": list(runtime_logical_filter["conditions"]),
+    }
 
 
 def combine_init_comparison_and_runtime_logical_filters(
@@ -158,7 +160,7 @@ def combine_init_comparison_and_runtime_logical_filters(
     ```
     """
     if runtime_logical_filter["operator"] == logical_operator:
-        conditions = runtime_logical_filter["conditions"]
+        conditions = list(runtime_logical_filter["conditions"])
         fields = {c.get("field") for c in conditions}
         if init_comparison_filter["field"] not in fields:
             conditions.append(init_comparison_filter)
@@ -177,8 +179,10 @@ def combine_init_comparison_and_runtime_logical_filters(
         logical_operator=logical_operator,
         filters_logical_operator=runtime_logical_filter["operator"],
     )
-    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
-    return runtime_logical_filter
+    return {
+        "operator": str(runtime_logical_filter["operator"]),
+        "conditions": list(runtime_logical_filter["conditions"]),
+    }
 
 
 def combine_runtime_comparison_and_init_logical_filters(
@@ -218,7 +222,7 @@ def combine_runtime_comparison_and_init_logical_filters(
     ```
     """
     if init_logical_filter["operator"] == logical_operator:
-        conditions = init_logical_filter["conditions"]
+        conditions = list(init_logical_filter["conditions"])
         fields = {c.get("field") for c in conditions}
         if runtime_comparison_filter["field"] in fields:
             logger.warning(

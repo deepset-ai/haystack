@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``LinkContentFetcher`` now performs the configured number of retries in synchronous runs.
+    Previously, ``retry_attempts`` counted the initial request as an attempt, so synchronous runs
+    performed one fewer retry than configured and behaved differently from asynchronous runs.

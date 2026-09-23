@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the parent of the ``haystack.agent.step.tool`` spans when an Agent step invokes several tools. The parent span
+    is now resolved once before the tools run, so all tool calls of a step appear as siblings. Previously each span
+    asked the tracer for the currently active span from inside its own concurrent invocation, which made the tool calls
+    after the first one appear nested under a sibling tool call.

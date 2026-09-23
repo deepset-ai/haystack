@@ -23,6 +23,7 @@ class ToolResultPruningCompactor(Compactor):
     This compactor rewrites those results in place rather than removing messages, so every tool call keeps its matching
     result and the model can see what it ran and re-run it if needed.
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator

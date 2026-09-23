@@ -18,10 +18,10 @@ Context compaction separates three responsibilities:
 | Responsibility | Abstraction | Purpose |
 | --- | --- | --- |
 | Decide when to compact | [`CompactionHook`](compaction/compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
-| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
+| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx), [`SummarizationCompactor`](compaction/summarization-compactor.mdx), and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
 | Measure the conversation | [`TokenCounter`](../../token-counters.mdx) protocol | Estimates the size of messages and tool schemas before they are sent to a model. |
 
-This separation lets you combine a standard trigger with different compaction strategies and token counters. For example, a local sliding window can remove old history without making an additional model call, while a custom compactor could summarize the same history with an LLM.
+This separation lets you combine a standard trigger with different compaction strategies and token counters. For example, a local sliding window can remove old history without making an additional model call, while a summarization compactor can condense the same history with an LLM.
 
 ## Basic setup
 
@@ -73,6 +73,7 @@ Compactors receive the current messages, a target token count, and the same toke
 | Compactor | Strategy | Trade-off |
 | --- | --- | --- |
 | [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions and latest user task, keeps complete historical turns while they fit, and trims the current task's own Agent steps only when that is not enough. | Fast and local, but discarded information is not summarized. |
+| [`SummarizationCompactor`](compaction/summarization-compactor.mdx) | Progressively replaces historical turns and current-task steps with LLM-generated summaries, then combines older summaries only as needed. | Preserves a condensed record of earlier work, but adds model cost and latency and remains lossy. |
 | [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while preserving tool-call/result structure. | Retains the shape of the run and recent results, but removes the content of pruned results. |
 
 ## Combining compaction strategies
@@ -112,7 +113,7 @@ If pruning brings the updated context below `compact_at`, the sliding-window hoo
 
 ### Creating a custom compactor
 
-Implement the `Compactor` protocol when you need a different strategy, such as summarizing older messages or selectively shortening tool results.
+Implement the `Compactor` protocol when you need a different strategy, such as preserving application-specific messages or selectively shortening content using custom metadata.
 
 ```python
 from typing import Any

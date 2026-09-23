@@ -207,6 +207,7 @@ class SlidingWindowCompactor(Compactor):
     only historical turns were removed, and directly after the latest user message when the current task's own steps
     were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator

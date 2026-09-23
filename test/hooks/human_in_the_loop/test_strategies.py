@@ -21,6 +21,7 @@ from haystack.hooks.human_in_the_loop import (
 )
 from haystack.hooks.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
+    _bind_decision_to_tool_call,
     _process_confirmation_strategies,
     _run_confirmation_strategies,
     _run_confirmation_strategies_async,
@@ -328,110 +329,60 @@ class TestApplyToolExecutionDecisions:
             ),
         ]
 
-    def test_two_teds_same_name_no_ids(self):
-        message_with_tool_calls = ChatMessage.from_assistant(
-            text="I'll extract the information about the people mentioned in the context.",
-            # Same tool name with different params but missing IDs
-            tool_calls=[
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
-            ],
-        )
-        # This raises a ValueError because tool_call_id is missing and there are multiple tool calls with the same name
-        # so we cannot disambiguate which TED applies to which tool call.
-        with pytest.raises(
-            ValueError,
-            match="ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name",
-        ):
-            _apply_tool_execution_decisions(
-                tool_call_messages=[message_with_tool_calls],
-                tool_execution_decisions=[
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Malte"}
-                    ),
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
-                    ),
-                ],
-            )
-
     def test_two_teds_same_name_no_ids_and_one_with_an_id(self):
         message_with_tool_calls = ChatMessage.from_assistant(
             tool_calls=[
-                ToolCall(tool_name="get_weather", arguments={"city": "Berlin"}, id="1"),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
+                # Two tool calls with the same name but no IDs
+                ToolCall("tool", {"value": 1}),
+                ToolCall("tool", {"value": 2}),
+                # One tool call with a different name and an ID
+                ToolCall("other", {}, id="1"),
             ]
         )
-        # The two decisions without an ID are still ambiguous, even though an unrelated decision in the same batch
-        # carries one.
-        with pytest.raises(
-            ValueError,
-            match="ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name",
-        ):
+        decisions = [
+            ToolExecutionDecision("tool", execute=True),
+            ToolExecutionDecision("tool", execute=False),
+            ToolExecutionDecision("other", execute=True, tool_call_id="1"),
+        ]
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
             _apply_tool_execution_decisions(
-                tool_call_messages=[message_with_tool_calls],
-                tool_execution_decisions=[
-                    ToolExecutionDecision(
-                        tool_name="get_weather", execute=True, tool_call_id="1", final_tool_params={"city": "Berlin"}
-                    ),
-                    ToolExecutionDecision(tool_name="add_database_tool", execute=False, feedback="Not this one"),
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
-                    ),
-                ],
+                tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
             )
 
     def test_ted_with_an_id_is_not_matched_by_name(self):
-        rejected_tool_call = ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"})
-        message_with_tool_calls = ChatMessage.from_assistant(
-            tool_calls=[
-                rejected_tool_call,
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}, id="2"),
-            ]
-        )
-
+        # Two tools with the same name, and only one has an ID.
+        rejected_tool_call = ToolCall("tool", {"value": 1})
+        confirmed_tool_call = ToolCall("tool", {"value": 2}, id="2")
+        message_with_tool_calls = ChatMessage.from_assistant(tool_calls=[rejected_tool_call, confirmed_tool_call])
         rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
             tool_call_messages=[message_with_tool_calls],
+            # Similarly the TEDs match the same level of info as the tool calls so we can disambiguate them.
             tool_execution_decisions=[
-                ToolExecutionDecision(tool_name="add_database_tool", execute=False, feedback="Malte is already in"),
-                ToolExecutionDecision(
-                    tool_name="add_database_tool", execute=True, tool_call_id="2", final_tool_params={"name": "Milos"}
-                ),
+                ToolExecutionDecision("tool", execute=False),
+                ToolExecutionDecision("tool", execute=True, tool_call_id="2", final_tool_params={"value": 2}),
             ],
         )
+        assert rejection_messages[0].tool_calls == [rejected_tool_call]
+        assert new_tool_call_messages[0].tool_calls == [confirmed_tool_call]
 
-        assert rejection_messages == [
-            ChatMessage.from_assistant(tool_calls=[rejected_tool_call]),
-            ChatMessage.from_tool(tool_result="Malte is already in", origin=rejected_tool_call, error=True),
-        ]
-        assert new_tool_call_messages == [
-            ChatMessage.from_assistant(
-                tool_calls=[ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}, id="2")]
-            )
-        ]
-
-    def test_ted_with_an_empty_name_and_no_id(self):
+    def test_decision_with_mismatched_tool_name_raises(self):
         message_with_tool_calls = ChatMessage.from_assistant(
-            tool_calls=[
-                ToolCall(tool_name="get_weather", arguments={"city": "Berlin"}, id="1"),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
-            ]
+            tool_calls=[ToolCall("tool", {}), ToolCall("other", {}, id="1")]
         )
-        # Without an ID or a name there is nothing left to match on, so the batch is rejected instead of the decision
-        # being dropped.
-        with pytest.raises(
-            ValueError,
-            match="ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name",
-        ):
+        decisions = [
+            ToolExecutionDecision("different_tool", execute=False),
+            ToolExecutionDecision("other", execute=True, tool_call_id="1"),
+        ]
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
             _apply_tool_execution_decisions(
-                tool_call_messages=[message_with_tool_calls],
-                tool_execution_decisions=[
-                    ToolExecutionDecision(
-                        tool_name="get_weather", execute=True, tool_call_id="1", final_tool_params={"city": "Berlin"}
-                    ),
-                    ToolExecutionDecision(tool_name="", execute=False),
-                ],
+                tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
+            )
+
+    def test_one_decision_cannot_match_multiple_tool_calls(self):
+        message = ChatMessage.from_assistant(tool_calls=[ToolCall("tool", {}), ToolCall("tool", {})])
+        with pytest.raises(ValueError, match="Expected one ToolExecutionDecision for each tool call"):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message], tool_execution_decisions=[ToolExecutionDecision("tool", execute=True)]
             )
 
 
@@ -823,75 +774,8 @@ class TestAsyncConfirmationStrategies:
         ]
 
 
-class IdDroppingConfirmationStrategy:
-    """A strategy that ignores the tool_call_id it is given, as a custom strategy is free to do."""
-
-    def run(
-        self,
-        tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: str | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
-    ) -> ToolExecutionDecision:
-        return ToolExecutionDecision(tool_name=tool_name, execute=True, final_tool_params=tool_params)
-
-    async def run_async(
-        self,
-        tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: str | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
-    ) -> ToolExecutionDecision:
-        return ToolExecutionDecision(tool_name=tool_name, execute=True, final_tool_params=tool_params)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"type": "test.IdDroppingConfirmationStrategy", "init_parameters": {}}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "IdDroppingConfirmationStrategy":
-        return cls()
-
-
-class TestDecisionsCarryTheirToolCallId:
-    def test_id_is_restored_when_the_strategy_drops_it(self, tools):
-        teds = _run_confirmation_strategies(
-            confirmation_strategies={tools[0].name: IdDroppingConfirmationStrategy()},
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(
-                    tool_calls=[
-                        ToolCall(tools[0].name, {"a": 1, "b": 2}, id="1"),
-                        ToolCall(tools[0].name, {"a": 3, "b": 4}, id="2"),
-                    ]
-                )
-            ],
-            tools=tools,
-        )
-        assert [ted.tool_call_id for ted in teds] == ["1", "2"]
-
-    def test_id_is_left_alone_when_the_tool_call_has_none(self, tools):
-        teds = _run_confirmation_strategies(
-            confirmation_strategies={tools[0].name: IdDroppingConfirmationStrategy()},
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
-            ],
-            tools=tools,
-        )
-        assert teds[0].tool_call_id is None
-
-    @pytest.mark.asyncio
-    async def test_id_is_restored_when_the_strategy_drops_it_async(self, tools):
-        teds = await _run_confirmation_strategies_async(
-            confirmation_strategies={tools[0].name: IdDroppingConfirmationStrategy()},
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(
-                    tool_calls=[
-                        ToolCall(tools[0].name, {"a": 1, "b": 2}, id="1"),
-                        ToolCall(tools[0].name, {"a": 3, "b": 4}, id="2"),
-                    ]
-                )
-            ],
-            tools=tools,
-        )
-        assert [ted.tool_call_id for ted in teds] == ["1", "2"]
+@pytest.mark.parametrize(("tool_call_id", "decision_id"), [("1", None), ("1", "wrong"), (None, "wrong"), ("1", "1")])
+def test_bind_decision_to_tool_call(tool_call_id: str | None, decision_id: str | None) -> None:
+    decision = ToolExecutionDecision("tool", execute=True, tool_call_id=decision_id)
+    bound_decision = _bind_decision_to_tool_call(decision=decision, tool_call=ToolCall("tool", {}, id=tool_call_id))
+    assert bound_decision.tool_call_id == tool_call_id

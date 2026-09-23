@@ -183,6 +183,18 @@ class TestMetaFieldRanker:
                 "provided Documents with IDs 1,2,3 are strings." in caplog.text
             )
 
+    @pytest.mark.parametrize("meta_value", [[1, 2, 3], {"score": 5}])
+    def test_warning_meta_value_type_with_unhashable_value(self, meta_value, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": meta_value}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+        assert output["documents"] == docs_before
+        assert "not all of meta values in the provided Documents with IDs 1,2 are strings" in caplog.text
+
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")  # type: ignore[arg-type]

@@ -10,6 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "hooks": ["CompactionHook"],
     "sliding_window": ["SlidingWindowCompactor"],
+    "summarization": ["SummarizationCompactor"],
     "tool_result_pruning": ["ToolResultPruningCompactor"],
     "types": ["Compactor"],
 }
@@ -17,6 +18,7 @@ _import_structure = {
 if TYPE_CHECKING:
     from .hooks import CompactionHook as CompactionHook
     from .sliding_window import SlidingWindowCompactor as SlidingWindowCompactor
+    from .summarization import SummarizationCompactor as SummarizationCompactor
     from .tool_result_pruning import ToolResultPruningCompactor as ToolResultPruningCompactor
     from .types import Compactor as Compactor
 else:

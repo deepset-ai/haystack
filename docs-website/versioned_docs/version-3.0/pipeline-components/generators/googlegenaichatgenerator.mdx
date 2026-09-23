@@ -40,11 +40,17 @@ This allows you to organize related tools into logical groups while also includi
 
 ```python
 from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -202,8 +208,8 @@ messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?
 replies = genai_chat.run(messages=messages)["replies"]
 
 print(replies[0].tool_calls)
->>> [ToolCall(tool_name='get_current_weather',
->>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None, extra=None)]
+# >> [ToolCall(tool_name='get_current_weather',
+# >>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None, extra=None)]
 
 tool_messages = []
 for tool_call in replies[0].tool_calls:
@@ -214,7 +220,7 @@ messages = messages + replies + tool_messages
 
 final_replies = genai_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
->>> The temperature in Berlin is 20 degrees Celsius.
+# >> The temperature in Berlin is 20 degrees Celsius.
 ```
 
 #### With an Agent
@@ -240,7 +246,7 @@ result = agent.run(
     messages=[ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
 )
 print(result["last_message"].text)
->>> The temperature in Berlin is 20 degrees Celsius.
+# >> The temperature in Berlin is 20 degrees Celsius.
 ```
 
 #### With Streaming

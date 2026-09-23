@@ -347,7 +347,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
-    tools: ToolsType | None = None,
+    tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None
 ) -> None
@@ -403,7 +403,7 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   - `generate_summary`: Whether to generate a summary of the reasoning.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+- **tools** (<code>ToolsType | list\[dict\] | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - **tools_strict** (<code>bool</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
@@ -700,8 +700,9 @@ Process messages and generate a response from the language model.
   required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
   variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
-  will override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **kwargs** (<code>Any</code>) – Additional keyword arguments. These are used to fill template variables in `user_prompt` or
   `system_prompt` (the keys must match template variable names).
 
@@ -733,8 +734,9 @@ Asynchronously process messages and generate a response from the language model.
   variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed
   from the LLM.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
-  will override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **kwargs** (<code>Any</code>) – Additional keyword arguments. These are used to fill template variables in `user_prompt` or
   `system_prompt` (the keys must match template variable names).
 
@@ -1159,8 +1161,9 @@ Invokes chat completion based on the provided messages and generation parameters
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
   to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.
@@ -1197,8 +1200,9 @@ but can be used with `await` in async code.
   to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream. Async callbacks are
   preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.
@@ -1448,8 +1452,9 @@ Invokes response generation based on the provided messages and generation parame
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create).
 - **tools** (<code>ToolsType | list\[dict\] | None</code>) – The tools that the model can use to prepare calls. If set, it will override the
   `tools` parameter set during component initialization. This parameter can accept either a
@@ -1490,8 +1495,9 @@ but can be used with `await` in async code.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream. Async callbacks are
   preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
   For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create).
 - **tools** (<code>ToolsType | list\[dict\] | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
   `tools` parameter set during component initialization. This parameter can accept either a list of

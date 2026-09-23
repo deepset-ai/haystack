@@ -176,8 +176,9 @@ def test_output_builtin_type_deserialization():
 def test_dangerous_builtins_rejected(name):
     # `builtins` is on the allowlist, but a type annotation must resolve to an actual type. Builtin
     # functions are rejected both with the `builtins.` prefix and via the bare-name fallback (which
-    # skips the allowlist).
-    with pytest.raises(DeserializationError, match="not a type"):
+    # skips the allowlist). The dunder-named ones (`__import__`, `__build_class__`) are refused even
+    # earlier by the object-internals traversal guard when a `builtins.` prefix is used.
+    with pytest.raises(DeserializationError, match="not a type|internal attribute"):
         deserialize_type(f"builtins.{name}")
     with pytest.raises(DeserializationError, match="not a type"):
         deserialize_type(name)

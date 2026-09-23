@@ -170,7 +170,7 @@ def test_calculate_dcg_without_scores():
 def test_calculate_dcg_empty():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [Document(content="doc1")]
-    ret_docs = []
+    ret_docs: list[Document] = []
     dcg = evaluator.calculate_dcg(gt_docs, ret_docs)
     assert dcg == 0
 
@@ -198,7 +198,7 @@ def test_calculate_idcg_without_scores():
 
 def test_calculate_idcg_empty():
     evaluator = DocumentNDCGEvaluator()
-    gt_docs = []
+    gt_docs: list[Document] = []
     idcg = evaluator.calculate_idcg(gt_docs)
     assert idcg == 0
 

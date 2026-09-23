@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Prevent ``FilterPolicy.MERGE`` from mutating initialization or runtime filters
+    when combining logical filters. Reusing a retriever for multiple runs now
+    applies each runtime filter independently.

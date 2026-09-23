@@ -11,6 +11,21 @@ from haystack.dataclasses import ByteStream, Document
 
 
 class TestMetadataRouter:
+    @pytest.mark.parametrize("output_type", [list[Document], list[ByteStream]])
+    def test_init_rejects_reserved_output_name(self, output_type: type) -> None:
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter(
+                rules={"unmatched": {"field": "meta.language", "operator": "==", "value": "en"}},
+                output_type=output_type,
+            )
+
+    def test_from_dict_rejects_reserved_output_name(self) -> None:
+        data = MetadataRouter(rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}}).to_dict()
+        rules = data["init_parameters"]["rules"]
+        rules["unmatched"] = rules.pop("english")
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter.from_dict(data)
+
     def test_run(self):
         rules = {
             "edge_1": {
@@ -47,6 +62,8 @@ class TestMetadataRouter:
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=list[ByteStream]
         )
         output = router.run(documents=docs)
+        assert isinstance(output["en"][0], ByteStream)
+        assert isinstance(output["unmatched"][0], ByteStream)
         assert output["en"][0].data == byt1.data
         assert output["unmatched"][0].data == byt2.data
 
@@ -55,12 +72,18 @@ class TestMetadataRouter:
         byt2 = ByteStream.from_string(text="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
         doc1 = Document(content="What is this", meta={"language": "en"})
         doc2 = Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
-        docs = [byt1, byt2, doc1, doc2]
+        docs: list[Document | ByteStream] = [byt1, byt2, doc1, doc2]
         router = MetadataRouter(
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
             output_type=list[Document | ByteStream],
         )
-        output = router.run(documents=docs)
+        # `MetadataRouter.run` is annotated `list[Document] | list[ByteStream]`, which excludes the mixed
+        # list this test exercises. Routing handles it fine at runtime.
+        output = router.run(documents=docs)  # type: ignore[arg-type]
+        assert isinstance(output["en"][0], ByteStream)
+        assert isinstance(output["en"][1], Document)
+        assert isinstance(output["unmatched"][0], ByteStream)
+        assert isinstance(output["unmatched"][1], Document)
         assert output["en"][0].data == byt1.data
         assert output["en"][1].content == "What is this"
         assert output["unmatched"][0].data == byt2.data

@@ -139,6 +139,14 @@ Download a file from S3.
 - <code>S3StorageError</code> – If the file does not exist in the S3 bucket
   or the file cannot be downloaded.
 
+#### close
+
+```python
+close() -> None
+```
+
+Close the S3 client owned by this storage instance.
+
 #### from_env
 
 ```python
@@ -236,12 +244,14 @@ and `aws_region_name`.
 - **file_root_path** (<code>str | None</code>) – The path where the file will be downloaded.
   Can be set through this parameter or the `FILE_ROOT_PATH` environment variable.
   If none of them is set, a `ValueError` is raised.
+  Downloads are confined to this directory: a document whose file name resolves outside of it
+  (for example an absolute path or one containing `..`) is logged and skipped instead of written.
 - **file_extensions** (<code>list\[str\] | None</code>) – The file extensions that are permitted to be downloaded.
   By default, all file extensions are allowed.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use for concurrent downloads.
 - **max_cache_size** (<code>int</code>) – The maximum number of files to cache.
 - **file_name_meta_key** (<code>str</code>) – The name of the meta key that contains the file name to download. The file name
-  will also be used to create local file path for download.
+  will also be used to create local file path for download, relative to `file_root_path`.
   By default, the `Document.meta["file_name"]` is used. If you want to use a
   different key in `Document.meta`, you can set it here.
 - **s3_key_generation_function** (<code>Callable\\[[Document\], str\] | None</code>) – An optional function that generates the S3 key for the file to download.
@@ -256,6 +266,7 @@ and `aws_region_name`.
 
 - <code>ValueError</code> – If the `file_root_path` is not set through
   the constructor or the `FILE_ROOT_PATH` environment variable.
+- <code>AWSConfigurationError</code> – If the provided AWS credentials are invalid.
 
 #### warm_up
 
@@ -264,6 +275,20 @@ warm_up() -> None
 ```
 
 Warm up the component by initializing the settings and storage.
+
+**Raises:**
+
+- <code>ValueError</code> – If the environment variable naming the S3 bucket (`s3_bucket_name_env`, by default
+  `S3_DOWNLOADER_BUCKET`) is not set.
+- <code>S3ConfigurationError</code> – If the S3 client cannot be created.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the owned S3 client.
 
 #### run
 
@@ -282,12 +307,12 @@ Return enriched `Document`s with the path of the downloaded file.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
-- `documents`: The downloaded `Document`s; each has `meta['file_path']`.
+- `documents`: The downloaded `Document`s; each has `meta['file_path']`. Documents whose file name
+  is missing, or resolves outside of `file_root_path`, are logged and skipped.
 
 **Raises:**
 
 - <code>S3Error</code> – If a download attempt fails or the file does not exist in the S3 bucket.
-- <code>ValueError</code> – If the path where files will be downloaded is not set.
 
 #### to_dict
 
@@ -416,6 +441,22 @@ and `aws_region_name`.
 
 - <code>ValueError</code> – If the model is not supported.
 - <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client.
 
 #### run
 
@@ -568,6 +609,22 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
 - <code>ValueError</code> – If the model is not supported.
 - <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client.
+
 #### to_dict
 
 ```python
@@ -701,6 +758,22 @@ and `aws_region_name`.
 - <code>ValueError</code> – If the model is not supported.
 - <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client.
+
 #### run
 
 ```python
@@ -750,284 +823,6 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>AmazonBedrockTextEmbedder</code> – Deserialized component.
-
-## haystack_integrations.components.generators.amazon_bedrock.adapters
-
-### BedrockModelAdapter
-
-Bases: <code>ABC</code>
-
-Base class for Amazon Bedrock model adapters.
-
-Each subclass of this class is designed to address the unique specificities of a particular LLM it adapts,
-focusing on preparing the requests and extracting the responses from the Amazon Bedrock hosted LLMs.
-
-**Parameters:**
-
-- **model_kwargs** (<code>dict\[str, Any\]</code>) – Keyword arguments for the model. You can find the full list of parameters in the
-  Amazon Bedrock API [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
-- **max_length** (<code>int | None</code>) – Maximum length of generated text. This is mapped to the correct parameter for each model.
-  It will be overridden by the corresponding parameter in the `model_kwargs` if it is present.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Amazon Bedrock request.
-
-Each subclass should implement this method to prepare the request body for the specific model.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the body for the request.
-
-#### get_responses
-
-```python
-get_responses(response_body: dict[str, Any]) -> list[str]
-```
-
-Extracts the responses from the Amazon Bedrock response.
-
-**Parameters:**
-
-- **response_body** (<code>dict\[str, Any\]</code>) – The response body from the Amazon Bedrock request.
-
-**Returns:**
-
-- <code>list\[str\]</code> – A list of responses.
-
-#### get_stream_responses
-
-```python
-get_stream_responses(
-    stream: EventStream, streaming_callback: SyncStreamingCallbackT
-) -> list[str]
-```
-
-Extracts the responses from the Amazon Bedrock streaming response.
-
-**Parameters:**
-
-- **stream** (<code>EventStream</code>) – The streaming response from the Amazon Bedrock request.
-- **streaming_callback** (<code>SyncStreamingCallbackT</code>) – The handler for the streaming response.
-
-**Returns:**
-
-- <code>list\[str\]</code> – A list of string responses.
-
-#### get_stream_responses_and_metadata
-
-```python
-get_stream_responses_and_metadata(
-    stream: EventStream, streaming_callback: SyncStreamingCallbackT
-) -> tuple[list[str], dict[str, Any]]
-```
-
-Extracts both the responses and normalized metadata from the Amazon Bedrock streaming response.
-
-**Parameters:**
-
-- **stream** (<code>EventStream</code>) – The streaming response from the Amazon Bedrock request.
-- **streaming_callback** (<code>SyncStreamingCallbackT</code>) – The handler for the streaming response.
-
-**Returns:**
-
-- <code>tuple\[list\[str\], dict\[str, Any\]\]</code> – A tuple of `(responses, metadata)` where `responses` is a list of string
-  responses and `metadata` is a dictionary that may contain a normalized `usage` block.
-
-### AnthropicClaudeAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for the Anthropic Claude models.
-
-**Parameters:**
-
-- **model_kwargs** (<code>dict\[str, Any\]</code>) – Keyword arguments for the model. You can find the full list of parameters in the
-  Amazon Bedrock API documentation for the Claude model
-  [here](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-claude.html).
-  Some example parameters are:
-- use_messages_api: Whether to use the messages API, default: True
-- include_thinking: Whether to include thinking output, default: True
-- thinking_tag: XML tag for thinking content, default: "thinking"
-- **max_length** (<code>int | None</code>) – Maximum length of generated text
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Claude model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### MistralAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for the Mistral models.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Mistral model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### CohereCommandAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for the Cohere Command model.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Command model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### CohereCommandRAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for the Cohere Command R models.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Command model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### AI21LabsJurassic2Adapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Model adapter for AI21 Labs' Jurassic 2 models.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Jurassic 2 model.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### AmazonTitanAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for Amazon's Titan models.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Titan model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys
-- `inputText`: The prompt to be sent to the model.
-- specified inference parameters.
-
-### MetaLlamaAdapter
-
-Bases: <code>BedrockModelAdapter</code>
-
-Adapter for Meta's Llama2 models.
-
-#### prepare_body
-
-```python
-prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
-```
-
-Prepares the body for the Llama2 model
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to be sent to the model.
-- **inference_kwargs** (<code>Any</code>) – Additional keyword arguments passed to the handler.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `prompt`: The prompt to be sent to the model.
-- specified inference parameters.
 
 ## haystack_integrations.components.generators.amazon_bedrock.chat.chat_generator
 
@@ -1302,6 +1097,22 @@ and `aws_region_name`.
 - <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly or the model is
   not supported.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Amazon Bedrock client.
+
 #### to_dict
 
 ```python
@@ -1350,7 +1161,9 @@ Supports both standard and streaming responses depending on whether a streaming 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
@@ -1386,8 +1199,10 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional async-compatible callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs. Async callbacks are preferred.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
@@ -1403,182 +1218,6 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 **Raises:**
 
 - <code>AmazonBedrockInferenceError</code> – If the Bedrock inference API call fails.
-
-## haystack_integrations.components.generators.amazon_bedrock.generator
-
-### AmazonBedrockGenerator
-
-Generates text using models hosted on Amazon Bedrock.
-
-For example, to use the Anthropic Claude model, pass 'anthropic.claude-v2' in the `model` parameter.
-Provide AWS credentials either through the local AWS profile or directly through
-`aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`, and `aws_region_name` parameters.
-
-### Usage example
-
-```python
-from haystack_integrations.components.generators.amazon_bedrock import (
-    AmazonBedrockGenerator,
-)
-
-generator = AmazonBedrockGenerator(model="anthropic.claude-v2", max_length=99)
-
-print(generator.run("Who is the best American actor?"))
-```
-
-AmazonBedrockGenerator uses AWS for authentication. You can use the AWS CLI to authenticate through your IAM.
-For more information on setting up an IAM identity-based policy, see [Amazon Bedrock documentation]
-(https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
-If the AWS environment is configured correctly, the AWS credentials are not required as they're loaded
-automatically from the environment or the AWS configuration file.
-If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
-`aws_session_token`, and `aws_region_name` as environment variables or pass them as
-[Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
-supports Amazon Bedrock.
-
-#### __init__
-
-```python
-__init__(
-    model: str,
-    aws_access_key_id: Secret | None = Secret.from_env_var(
-        "AWS_ACCESS_KEY_ID", strict=False
-    ),
-    aws_secret_access_key: Secret | None = Secret.from_env_var(
-        "AWS_SECRET_ACCESS_KEY", strict=False
-    ),
-    aws_session_token: Secret | None = Secret.from_env_var(
-        "AWS_SESSION_TOKEN", strict=False
-    ),
-    aws_region_name: Secret | str | None = Secret.from_env_var(
-        "AWS_DEFAULT_REGION", strict=False
-    ),
-    aws_profile_name: Secret | None = Secret.from_env_var(
-        "AWS_PROFILE", strict=False
-    ),
-    max_length: int | None = None,
-    truncate: bool | None = None,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None,
-    boto3_config: dict[str, Any] | None = None,
-    model_family: MODEL_FAMILIES | None = None,
-    **kwargs: Any
-) -> None
-```
-
-Create a new `AmazonBedrockGenerator` instance.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The name of the model to use.
-- **aws_access_key_id** (<code>Secret | None</code>) – The AWS access key ID.
-- **aws_secret_access_key** (<code>Secret | None</code>) – The AWS secret access key.
-- **aws_session_token** (<code>Secret | None</code>) – The AWS session token.
-- **aws_region_name** (<code>Secret | str | None</code>) – The AWS region name. Make sure the region you set supports Amazon Bedrock.
-- **aws_profile_name** (<code>Secret | None</code>) – The AWS profile name.
-- **max_length** (<code>int | None</code>) – The maximum length of the generated text. This can also be set in the `kwargs` parameter
-  by using the model specific parameter name.
-- **truncate** (<code>bool | None</code>) – Deprecated. This parameter no longer has any effect.
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
-  The callback function accepts StreamingChunk as an argument.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
-  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
-  and other low-level settings like timeouts and connection management.
-- **model_family** (<code>MODEL_FAMILIES | None</code>) – The model family to use. If not provided, the model adapter is selected based on the model
-  name.
-- **kwargs** (<code>Any</code>) – Additional keyword arguments to be passed to the model.
-  You can find the model specific arguments in AWS Bedrock's
-  [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
-  These arguments are specific to the model. You can find them in the model's documentation.
-
-**Raises:**
-
-- <code>ValueError</code> – If the model name is empty or None.
-- <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly or the model is
-  not supported.
-
-#### run
-
-```python
-run(
-    prompt: str,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-) -> dict[str, list[str] | dict[str, Any]]
-```
-
-Generates a list of string response to the given prompt.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The prompt to generate a response for.
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments passed to the generator.
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | dict\[str, Any\]\]</code> – A dictionary with the following keys:
-- `replies`: A list of generated responses.
-- `meta`: A dictionary containing response metadata.
-
-**Raises:**
-
-- <code>ValueError</code> – If the prompt is empty or None.
-- <code>AmazonBedrockInferenceError</code> – If the model cannot be invoked.
-
-#### get_model_adapter
-
-```python
-get_model_adapter(
-    model: str, model_family: str | None = None
-) -> type[BedrockModelAdapter]
-```
-
-Gets the model adapter for the given model.
-
-If `model_family` is provided, the adapter for the model family is returned.
-If `model_family` is not provided, the adapter is auto-detected based on the model name.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The model name.
-- **model_family** (<code>str | None</code>) – The model family.
-
-**Returns:**
-
-- <code>type\[BedrockModelAdapter\]</code> – The model adapter class, or None if no adapter is found.
-
-**Raises:**
-
-- <code>AmazonBedrockConfigurationError</code> – If the model family is not supported or the model cannot be
-  auto-detected.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> AmazonBedrockGenerator
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>AmazonBedrockGenerator</code> – Deserialized component.
 
 ## haystack_integrations.components.rankers.amazon_bedrock.ranker
 
@@ -1675,6 +1314,22 @@ Creates an instance of the 'AmazonBedrockRanker'.
 
 - <code>ValueError</code> – If `model` is empty or if `top_k` is not > 0.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client.
+
 #### to_dict
 
 ```python
@@ -1727,3 +1382,292 @@ Use the Amazon Bedrock Reranker to re-rank the list of documents based on the qu
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not > 0.
+
+## haystack_integrations.components.retrievers.amazon_bedrock.knowledge_base_retriever
+
+### AmazonBedrockKnowledgeBaseRetriever
+
+Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
+
+Uses AgenticRetrieveStream when available, falling back to the standard Retrieve API otherwise.
+
+Usage example:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.retrievers.amazon_bedrock import AmazonBedrockKnowledgeBaseRetriever
+
+retriever = AmazonBedrockKnowledgeBaseRetriever(
+    knowledge_base_id="ABCDEFGHIJ",
+    aws_region_name=Secret.from_token("eu-central-1"),
+)
+
+result = retriever.run(query="What are the benefits of managed knowledge bases?")
+for doc in result["documents"]:
+    print(doc.content)
+    print(doc.meta["source"])
+    print(doc.score)
+```
+
+AmazonBedrockKnowledgeBaseRetriever uses AWS for authentication. You can use the AWS CLI to authenticate through
+your IAM. For more information on setting up an IAM identity-based policy, see [Amazon Bedrock documentation]
+(https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+If the AWS environment is configured correctly, the AWS credentials are not required as they're loaded
+automatically from the environment or the AWS configuration file.
+If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
+and `aws_region_name` as environment variables or pass them as
+[Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments.
+
+#### __init__
+
+```python
+__init__(
+    knowledge_base_id: str | None = None,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        "AWS_ACCESS_KEY_ID", strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        "AWS_SECRET_ACCESS_KEY", strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        "AWS_SESSION_TOKEN", strict=False
+    ),
+    aws_region_name: Secret | str | None = Secret.from_env_var(
+        "AWS_DEFAULT_REGION", strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        "AWS_PROFILE", strict=False
+    ),
+    number_of_results: int = 5,
+    use_agentic_retrieval: bool | None = None,
+) -> None
+```
+
+Create the AmazonBedrockKnowledgeBaseRetriever component.
+
+**Parameters:**
+
+- **knowledge_base_id** (<code>str | None</code>) – The ID of the Bedrock Knowledge Base. Falls back to the AWS_KNOWLEDGE_BASE_ID
+  environment variable.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | str | None</code>) – AWS region name.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **number_of_results** (<code>int</code>) – Maximum number of results to return.
+- **use_agentic_retrieval** (<code>bool | None</code>) – If True, try AgenticRetrieveStream before plain Retrieve.
+  Defaults to the USE_AGENTIC_RETRIEVAL environment variable, or True.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Amazon Bedrock client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client.
+
+#### run
+
+```python
+run(query: str, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the Bedrock Knowledge Base.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The search query.
+- **top_k** (<code>int | None</code>) – Maximum number of results. Overrides number_of_results if provided.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with a "documents" key containing the retrieved Documents.
+
+**Raises:**
+
+- <code>AmazonBedrockInferenceError</code> – If the retrieval call fails.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AmazonBedrockKnowledgeBaseRetriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>AmazonBedrockKnowledgeBaseRetriever</code> – The deserialized component.
+
+## haystack_integrations.token_counters.amazon_bedrock.token_counter
+
+### AmazonBedrockTokenCounter
+
+Counts tokens with Amazon Bedrock's `CountTokens` API.
+
+Implements Haystack's `TokenCounter` protocol. Unlike local, tokenizer-based counters, this counter sends the
+input to Bedrock's `CountTokens` operation, so the returned count reflects the model's exact tokenization,
+including the formatting Bedrock applies to messages, system prompts, and tool schemas.
+
+The messages and tools are converted to the Bedrock `Converse` format (the same conversion the
+`AmazonBedrockChatGenerator` uses), so the count matches what an equivalent `Converse` request would consume.
+
+Because it delegates to a server-side API, `count()` measures a complete, valid conversation rather than an
+arbitrary set of messages: Bedrock validates the input the same way the `Converse` inference API does (it must
+begin with a user message, and tool results must pair with the tool calls that produced them). This is the right
+fit for sizing a whole request before sending it - its intended use - but it cannot size a stand-alone fragment
+such as a single tool-result message. For fragment-level counting (for example inside a compactor that measures
+individual messages), use a local counter such as `ApproximateTokenCounter`.
+
+## Usage Example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.amazon_bedrock import AmazonBedrockTokenCounter
+
+counter = AmazonBedrockTokenCounter(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+messages = [ChatMessage.from_user("Hello, how are you?")]
+token_count = counter.count(messages)
+print(f"Token count: {token_count}")
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        ["AWS_ACCESS_KEY_ID"], strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        ["AWS_SECRET_ACCESS_KEY"], strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        ["AWS_SESSION_TOKEN"], strict=False
+    ),
+    aws_region_name: Secret | str | None = Secret.from_env_var(
+        ["AWS_DEFAULT_REGION"], strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        ["AWS_PROFILE"], strict=False
+    ),
+    boto3_config: dict[str, Any] | None = None
+) -> None
+```
+
+Initialize the counter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The Bedrock model id (or ARN) whose tokenization should be used, for example
+  `"anthropic.claude-3-5-sonnet-20240620-v1:0"`. Token counts are model-specific.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | str | None</code>) – AWS region name. Make sure the region you set supports Amazon Bedrock.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+
+**Raises:**
+
+- <code>ValueError</code> – If `model` is empty.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Amazon Bedrock client.
+
+**Raises:**
+
+- <code>AmazonBedrockConfigurationError</code> – If the AWS environment is not configured correctly.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Return the number of input tokens Bedrock will use for the given messages and tools.
+
+`messages` must form a complete, valid conversation: Bedrock validates it the same way the `Converse`
+inference API does (it must begin with a user message, and tool results must pair with their tool calls).
+To size an arbitrary fragment such as a single message, use a local counter like `ApproximateTokenCounter`.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The messages to measure.
+- **tools** (<code>ToolsType | None</code>) – Tools whose schemas are sent alongside the messages, and so consume tokens too. Pass them to
+  have them counted; leave as None to measure the messages alone.
+
+**Returns:**
+
+- <code>int</code> – The token count, or `0` when there is nothing to measure.
+
+**Raises:**
+
+- <code>AmazonBedrockInferenceError</code> – If the Bedrock `CountTokens` request fails.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Amazon Bedrock client and release its resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AmazonBedrockTokenCounter
+```
+
+Deserialize the counter.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – A dictionary representation of the counter.
+
+**Returns:**
+
+- <code>AmazonBedrockTokenCounter</code> – The deserialized counter.

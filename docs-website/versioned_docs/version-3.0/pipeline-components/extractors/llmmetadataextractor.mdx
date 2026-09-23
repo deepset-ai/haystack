@@ -114,35 +114,33 @@ Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to e
 
 ```python
 chat_generator = OpenAIChatGenerator(
-  generation_kwargs={
-    "max_completion_tokens": 500,
-    "seed": 0,
-    "response_format": {"type": "json_object"},
-  },
-  max_retries=1,
-  timeout=60.0,
+    generation_kwargs={
+        "max_completion_tokens": 500,
+        "seed": 0,
+        "response_format": {"type": "json_object"},
+    },
+    max_retries=1,
+    timeout=60.0,
 )
 
 extractor = LLMMetadataExtractor(
-  prompt=NER_PROMPT,
-  chat_generator=chat_generator,
-  expected_keys=["entities"],
-  raise_on_failure=False,
+    prompt=NER_PROMPT,
+    chat_generator=chat_generator,
+    expected_keys=["entities"],
+    raise_on_failure=False,
 )
 
 extractor.run(documents=docs)
-
->> {'documents': [
-  Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-           meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'},
-                               {'entity': 'Haystack', 'entity_type': 'product'}]}),
-  Document(id=.., content: 'Hugging Face is a company founded in New York, USA and is known for its Transformers library',
-           meta: {'entities': [
-             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'USA', 'entity_type': 'country'},
-             {'entity': 'Transformers Library', 'entity_type': 'product'}
-           ]})
-   ],
-    'failed_documents': []
-   }
->>
+# >> {'documents': [
+# >>   Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+# >>            meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'},
+# >>                                {'entity': 'Haystack', 'entity_type': 'product'}]}),
+# >>   Document(id=.., content: 'Hugging Face is a company founded in New York, USA and is known for its Transformers library',
+# >>            meta: {'entities': [
+# >>              {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'USA', 'entity_type': 'country'},
+# >>              {'entity': 'Transformers Library', 'entity_type': 'product'}
+# >>            ]})
+# >>    ],
+# >>     'failed_documents': []
+# >>    }
 ```

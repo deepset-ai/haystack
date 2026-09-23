@@ -6,6 +6,91 @@ slug: "/hooks-api"
 ---
 
 
+## budget/hooks
+
+### TokenBudgetHook
+
+Stop an Agent run when its token usage reaches a configured budget.
+
+The hook runs at the `before_llm` hook point and checks the cumulative token usage recorded in the Agent state.
+When the budget is reached, the run ends before the next LLM call with the exit reason `"token_budget_exceeded"`.
+
+Only calls made by the Agent's chat generator contribute to `token_usage`; calls made by tools or other hooks are
+not included.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.hooks.budget import TokenBudgetHook
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[web_search],
+    hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
+)
+
+result = agent.run(messages=[...])
+```
+
+#### __init__
+
+```python
+__init__(*, max_total_tokens: int, add_final_message: bool = False) -> None
+```
+
+Create a token budget hook.
+
+**Parameters:**
+
+- **max_total_tokens** (<code>int</code>) – Maximum cumulative token usage before the Agent is stopped.
+- **add_final_message** (<code>bool</code>) – Whether to append an assistant message explaining why the Agent stopped.
+
+**Raises:**
+
+- <code>ValueError</code> – If `max_total_tokens` is less than 1.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Stop the Agent if its cumulative token usage has reached the budget.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state containing the cumulative token usage.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> TokenBudgetHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>TokenBudgetHook</code> – The deserialized hook.
+
 ## compaction/hooks
 
 ### CompactionHook
@@ -15,6 +100,8 @@ Compacts an Agent's conversation once it fills too much of the model's context w
 This `before_llm` Agent hook estimates the size of the conversation before each chat-generator call and, once it
 reaches `compact_at` of the window, hands it to a `Compactor` to bring back down to `compact_to`. Register it on an
 `Agent` under the `before_llm` hook point:
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.agents import Agent
@@ -185,6 +272,8 @@ An `omission_note` is left where the removed messages used to sit: directly afte
 only historical turns were removed, and directly after the latest user message when the current task's own steps
 were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
@@ -257,6 +346,183 @@ Serialize the compactor.
 
 - <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
 
+## compaction/summarization
+
+### SummarizationCompactor
+
+Bases: <code>Compactor</code>
+
+A compactor that progressively summarizes a conversation until it fits a target token budget.
+
+In typical Agent use, the `CompactionHook` supplies the target (aka `target_tokens`) to `compact`. It derives it
+from the hook's `context_window` and `compact_to` settings after accounting for non-message overhead.
+
+The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
+real user message; the current task runs from that user message to the end. Compaction always summarizes history
+before it summarizes the current task. Within history it summarizes complete turns before combining standalone
+historical summaries; within the current task it summarizes eligible Agent steps before combining current-task
+summaries.
+
+Each round of summarization happens in one of four tiers, in this order:
+
+1. `historical_turns`: Starting with the oldest, as few complete historical turns as needed to reach the target are
+   summarized.
+1. `historical_summaries`: Next if no complete historical turns remain, as few of the oldest historical summaries
+   as needed to reach the target are combined.
+1. `current_task_steps`: Third the fewest oldest steps of the current task are summarized to reach the target,
+   but always keeping the `min_keep_steps` newest.
+1. `current_task_summaries`: Last if no steps of the current task can be given up because of `min_keep_steps`, as
+   few of its oldest summaries as needed to reach the target are combined.
+
+Each summary is marked as belonging to this compaction strategy under the `context_compaction` key in its `meta`,
+alongside `summarized_messages`, the number of messages it replaced.
+
+The SummarizationCompactor has a floor it cannot go below: the leading system messages, one combined historical
+summary, the latest user message, one combined current-task summary, and the `min_keep_steps` newest steps. Once a
+conversation is reduced to that, `compact` returns None however small the target is, because there is nothing left
+that may be given up.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+
+summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+hook = CompactionHook(
+    compactor=SummarizationCompactor(chat_generator=summary_generator),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+agent = Agent(chat_generator=agent_generator, tools=[web_search], hooks={"before_llm": [hook]})
+```
+
+#### __init__
+
+```python
+__init__(
+    chat_generator: ChatGenerator,
+    *,
+    min_keep_steps: int = 1,
+    approximate_summary_tokens: int = 1024,
+    summary_instruction: str = _DEFAULT_SUMMARY_INSTRUCTION,
+    raise_on_failure: bool = False
+) -> None
+```
+
+Initialize the compactor.
+
+**Parameters:**
+
+- **chat_generator** (<code>ChatGenerator</code>) – The Chat Generator used to write summaries.
+- **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep, even when they exceed the target.
+- **approximate_summary_tokens** (<code>int</code>) – About how long you expect a summary to come out. This is an estimate used
+  for planning, not a limit imposed on the model. The compactor uses it to work out how much of the
+  conversation to summarize. A higher value causes the compactor to summarize more of the conversation per
+  round, so the result is likelier to land under the target, at the cost of giving up more of the
+  conversation. A lower value summarizes less per round and keeps more, but may leave the result above the
+  target.
+- **summary_instruction** (<code>str</code>) – The prompt instructions for how to summarize a portion of the conversation.
+  The default instructions ask for a summary with fixed sections covering the objective, decisions and
+  constraints, completed work, exact identifiers, and unresolved work.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails or returns a summary that
+  does not shrink the conversation. By default the failure is logged and any successful partial compaction
+  is returned.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is negative or `approximate_summary_tokens` is not positive.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Return a progressively summarized conversation, or None when no useful reduction is possible.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, ordered oldest to newest.
+- **target_tokens** (<code>int</code>) – The token budget the compacted messages should aim to fit.
+- **token_counter** (<code>TokenCounter</code>) – The counter used both to plan compaction and verify generated summaries.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – A smaller replacement conversation, or None when nothing was reduced.
+
+#### compact_async
+
+```python
+compact_async(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Asynchronously return a progressively summarized conversation.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, ordered oldest to newest.
+- **target_tokens** (<code>int</code>) – The token budget the compacted messages should aim to fit.
+- **token_counter** (<code>TokenCounter</code>) – The counter used both to plan compaction and verify generated summaries.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – A smaller replacement conversation, or None when nothing was reduced.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the Chat Generator that writes summaries.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the Chat Generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the Chat Generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the Chat Generator's resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor and its Chat Generator.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SummarizationCompactor
+```
+
+Deserialize the compactor and reconstruct its Chat Generator.
+
 ## compaction/tool_result_pruning
 
 ### ToolResultPruningCompactor
@@ -268,6 +534,8 @@ Replaces the content of older tool results with a short placeholder, keeping the
 Tool output usually dominates a long Agent run, and most of it stops being useful once the model has acted on it.
 This compactor rewrites those results in place rather than removing messages, so every tool call keeps its matching
 result and the model can see what it ran and re-run it if needed.
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.agents import Agent
@@ -1145,10 +1413,10 @@ A key may be a single tool name, a tuple of tool names sharing one policy, or th
 any tool without a more specific entry. More specific keys win. A tool with no matching key (and no `"*"`) is not
 offloaded.
 
-Only successful, text tool output is offloaded. Error results (including `before_tool` human-in-the-loop
-rejections) are always left in context. Non-text results (image or file content) are also left in context, and a
-warning is logged when such a result has a matching offload policy; supporting only text is a deliberate choice
-for now. Each result is offloaded at most once, even though the hook runs on every tool step.
+Only successful tool output is offloaded; error results are always left in context. Each part of a result is
+written to its own store entry and the pointer says where each one went. Image and file content is only offloaded
+to a store that sets `supports_binary_content`; with a text-only store the result stays in context and a warning
+is logged. Each result is offloaded at most once, even though the hook runs on every tool step.
 
 The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
 `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -1176,8 +1444,9 @@ Initialize the hook with a store and per-tool offload strategies.
 - **store** (<code>ToolResultStore</code>) – Where offloaded results are written. Can be overridden per run via `hook_context`.
 - **offload_strategies** (<code>dict\[str | tuple\[str, ...\], OffloadPolicy\]</code>) – Mapping of tool name (or a tuple of tool names, or the wildcard `"*"`) to the
   `OffloadPolicy` that decides whether that tool's results are offloaded.
-- **preview_chars** (<code>int</code>) – Number of leading characters of the original result to include in the pointer left in
-  the conversation, so the model knows roughly what was offloaded.
+- **preview_chars** (<code>int</code>) – Number of leading characters of each offloaded text to include in the pointer left in
+  the conversation, so the model knows roughly what was offloaded. Image and file blocks are described by
+  their MIME type and size instead.
 
 #### run
 
@@ -1352,6 +1621,9 @@ reference = store.write(key="search_1.txt", content="...")
 store.read(reference)
 ```
 
+Binary content is supported too: `write` takes bytes (an offloaded image or file) and `read` returns them
+unchanged.
+
 #### __init__
 
 ```python
@@ -1367,10 +1639,12 @@ Initialize the store with the root directory results are written under.
 #### write
 
 ```python
-write(*, key: str, content: str) -> str
+write(*, key: str, content: str | bytes) -> str
 ```
 
 Write `content` to `<root>/<key>`, creating parent directories, and return the file path.
+
+Text is written UTF-8 encoded; bytes (an offloaded image or file) are written verbatim.
 
 The resolved target must stay within the root directory: a `key` that escapes it (e.g. containing `../` or an
 absolute path) is rejected, so a tool-provided key cannot write outside the store.
@@ -1378,7 +1652,7 @@ absolute path) is rejected, so a tool-provided key cannot write outside the stor
 **Parameters:**
 
 - **key** (<code>str</code>) – Relative file name for the result within the store root.
-- **content** (<code>str</code>) – The tool result to persist.
+- **content** (<code>str | bytes</code>) – The tool result to persist, as text or as raw bytes.
 
 **Returns:**
 
@@ -1391,13 +1665,16 @@ absolute path) is rejected, so a tool-provided key cannot write outside the stor
 #### read
 
 ```python
-read(reference: str) -> str
+read(reference: str) -> str | bytes
 ```
 
 Read back the content previously written to `reference`.
 
-The resolved reference must stay within the store root: callers must treat it as an opaque
-store-scoped reference, not as an arbitrary filesystem path.
+A file whose bytes are valid UTF-8 is returned as a string, so text results round trip unchanged; anything
+else (an offloaded image or file) is returned as raw bytes.
+
+The resolved reference must stay within the store root: it is a store-scoped reference returned by `write`,
+to be passed back unchanged, not an arbitrary filesystem path callers can build themselves.
 
 **Parameters:**
 
@@ -1405,7 +1682,7 @@ store-scoped reference, not as an arbitrary filesystem path.
 
 **Returns:**
 
-- <code>str</code> – The stored content.
+- <code>str | bytes</code> – The stored content, as text when it decodes as UTF-8 and as bytes otherwise.
 
 **Raises:**
 
@@ -1448,8 +1725,12 @@ Bases: <code>Protocol</code>
 A place a `ToolResultOffloadHook` writes offloaded tool results to, and reads them back from.
 
 Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
-storage, ...). `write` returns an opaque reference string that the Agent puts in the conversation in place of the
-full result; `read` resolves that reference back to the original content.
+storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full
+result; `read` resolves that reference back to the original content. Only the store interprets a reference -
+callers pass it back to `read` unchanged.
+
+A store that sets `supports_binary_content` takes bytes in `write` and gives them back from `read`. One that
+leaves it False is only ever given text, and image and file results stay in the conversation instead.
 
 Implement both `to_dict` and `from_dict` to make a custom store serializable; the default implementations below
 cover stores whose constructor takes no arguments.
@@ -1457,15 +1738,18 @@ cover stores whose constructor takes no arguments.
 #### write
 
 ```python
-write(*, key: str, content: str) -> str
+write(*, key: str, content: str | bytes) -> str
 ```
 
-Persist `content` under `key` and return an opaque reference to it.
+Persist `content` under `key` and return a reference to it.
 
 **Parameters:**
 
-- **key** (<code>str</code>) – A stable, per-result identifier the hook derives from the tool call (e.g. a file name).
-- **content** (<code>str</code>) – The tool result to persist.
+- **key** (<code>str</code>) – A stable, per-result identifier the hook derives from the tool call (e.g. a file name). It carries
+  an extension matching the content, so a store that maps keys to files can use it as-is.
+- **content** (<code>str | bytes</code>) – The tool result to persist. Text arrives as a string. Image and file content arrives as the
+  decoded bytes of its base64 payload, and only when the store sets `supports_binary_content` to True - a
+  text-only store may narrow this parameter to `str`.
 
 **Returns:**
 
@@ -1474,10 +1758,19 @@ Persist `content` under `key` and return an opaque reference to it.
 #### read
 
 ```python
-read(reference: str) -> str
+read(reference: str) -> str | bytes
 ```
 
 Return the content previously stored under `reference`.
+
+**Parameters:**
+
+- **reference** (<code>str</code>) – A reference string returned by `write`.
+
+**Returns:**
+
+- <code>str | bytes</code> – The stored content: a string for content written as text, bytes for binary content such as an
+  offloaded image or file. A store that does not support binary content only ever returns a string.
 
 #### to_dict
 
@@ -1518,7 +1811,9 @@ Return whether the given tool result should be offloaded.
 **Parameters:**
 
 - **tool_name** (<code>str</code>) – The name of the tool that produced the result.
-- **result** (<code>str</code>) – The tool result as a string (the content that would otherwise stay in the conversation).
+- **result** (<code>str</code>) – The tool result as a string (the content that would otherwise stay in the conversation). For a
+  result carrying image or file blocks, this is the text and base64 payloads of all its blocks joined
+  together, so its length reflects the context the result actually occupies.
 - **state** (<code>State</code>) – The Agent's live `State`, for policies that decide based on run context.
 
 **Returns:**

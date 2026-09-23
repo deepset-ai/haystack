@@ -25,9 +25,9 @@ Use this checklist to stay on track for your first code PR:
 - **Release notes** — Add a release note under `releasenotes/notes` with `hatch run release-note your-change-name` (see [Release notes](#release-notes)); maintainers can add `ignore-for-release-notes` for tests-only or CI-only changes.
 - **Open the PR** — Use a [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) title, fill the [PR template](.github/pull_request_template.md), and if the PR was fully AI-generated, add a [short disclaimer](#using-ai-assistants-to-contribute). Enable "Allow edits and access to secrets by maintainers" on the PR.
 - **Sign the CLA** — A [Contributor Licence Agreement (CLA)](https://cla-assistant.io/deepset-ai/haystack) is required for all contributions. Sign when prompted so your PR is ready for review (see [CLA](#contributor-licence-agreement-cla)).
-- **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback.
+- **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback. Until your first PR is approved, keep it your only open PR in this repository: additional PRs are [closed automatically](#requirements-for-pull-requests).
 
-**Table of Contents**
+## Table of Contents
 
 - [Contributing to Haystack](#contributing-to-haystack)
   - [Your first PR — high-level to-do list](#your-first-pr--high-level-to-do-list)
@@ -288,6 +288,11 @@ To check for static type errors, run:
 hatch run test:types
 ```
 
+Note that type checking targets Python 3.12, even though Haystack supports 3.10 and above. numpy's
+type stubs use [PEP 695](https://peps.python.org/pep-0695/) `type` statements, which mypy rejects as
+a syntax error below 3.12. Support for the older versions is covered by the unit test matrix, which
+runs on Python 3.10.
+
 To format your code and perform linting using Ruff (with automatic fixes), run:
 ```sh
 hatch run fmt
@@ -302,6 +307,10 @@ To ease the review process, please follow the instructions in this paragraph whe
 - For the body, follow the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md) to describe and document your changes.
 - If you used an AI assistant and the PR was **fully AI-generated**, include a brief disclaimer in the PR description
   (see [Using AI assistants to contribute](#using-ai-assistants-to-contribute)).
+- **First-time contributors can have at most one open pull request** in this repository until it has been approved
+  by a maintainer. Additional PRs opened in the meantime are closed automatically and can be reopened once your first
+  PR is approved. This lets us give each new contributor's first
+  contribution the attention it deserves while keeping the review queue manageable.
 
 ### Release notes
 
@@ -455,7 +464,7 @@ is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaH
 (retrieved 4th November 2021).
 
 The agreement's main purpose is to protect the continued open use of Haystack. At the same time, it also helps in
-\protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
+protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
 open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as remove liabilities on
 your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You
 can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).

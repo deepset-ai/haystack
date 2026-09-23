@@ -91,6 +91,7 @@ The compactor controls what information survives:
 | Compactor | Strategy |
 | --- | --- |
 | [`SlidingWindowCompactor`](sliding-window-compactor.mdx) | Keeps the current task and as much complete recent conversation as fits, removing complete historical turns before it trims the task's own steps. |
+| [`SummarizationCompactor`](summarization-compactor.mdx) | Progressively summarizes historical turns before the current task, preserving the newest configured Agent steps. |
 | [`ToolResultPruningCompactor`](tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while keeping recent results intact. |
 
 You can also implement the `Compactor` protocol for a custom strategy. See [Context Compaction](../compaction.mdx#creating-a-custom-compactor) for its requirements.

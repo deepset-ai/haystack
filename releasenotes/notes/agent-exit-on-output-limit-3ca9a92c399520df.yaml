@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Prevent ``Agent`` from retrying an empty response when a chat generator reports
+    ``finish_reason="length"``. This can happen when reasoning tokens exhaust the maximum output token budget.
+    ``OpenAIResponsesChatGenerator`` now maps terminal Responses API events to Haystack ``FinishReason`` values
+    and attaches ``finish_reason`` to the returned ``ChatMessage``.

@@ -195,7 +195,7 @@ class MetaFieldRanker:
         :param ranking_mode:
             (optional) The mode used to combine the Retriever's and Ranker's scores.
             Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-            Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+            Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
             If not provided, the ranking_mode provided at initialization time is used.
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.
@@ -335,8 +335,7 @@ class MetaFieldRanker:
         if meta_value_type is None:
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
-        unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
-        if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
+        if not all(isinstance(doc.meta[self.meta_field], str) for doc in docs_with_meta_field):
             logger.warning(
                 "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
                 "provided Documents with IDs {document_ids} are strings.\n"

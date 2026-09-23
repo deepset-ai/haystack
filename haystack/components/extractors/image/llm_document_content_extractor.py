@@ -6,7 +6,6 @@ import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from functools import partial
 from typing import Any, Literal
 
 from jinja2 import meta
@@ -273,19 +272,25 @@ class LLMDocumentContentExtractor:
         meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
         return content, meta_updates, None
 
+    @staticmethod
+    def _fail(document: Document, error: str) -> tuple[Document, bool]:
+        """Return a copy of ``document`` with ``extraction_error`` set, flagged as failed."""
+        return replace(document, meta={**document.meta, "extraction_error": error}), False
+
     def _run_on_thread(
-        self, image_content: ImageContent | None, parent_span: tracing.Span | None = None
-    ) -> dict[str, Any]:
+        self, document: Document, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
         """
         Execute the LLM inference in a separate thread for each document.
 
-        :param image_content: The image content for one document, or None if conversion failed.
+        :param document: The document to extract content for.
+        :param image_content: The image content for the document, or None if conversion failed.
         :param parent_span: Span to nest the generator span under, captured on the calling thread.
         :returns:
-            The LLM response if successful, or a dictionary with an "error" key on failure.
+            The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            return {"error": "Document has no content, skipping LLM call."}
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document/thread
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -304,23 +309,24 @@ class LLMDocumentContentExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            result = {"error": "LLM failed with exception: " + str(e)}
+            return self._fail(document, "LLM failed with exception: " + str(e))
 
-        return result
+        return self._process_llm_results(document, result["replies"][0])
 
     async def _run_async(
-        self, image_content: ImageContent | None, parent_span: tracing.Span | None = None
-    ) -> dict[str, Any]:
+        self, document: Document, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
         """
         Execute the LLM inference asynchronously for each document.
 
-        :param image_content: The image content for one document, or None if conversion failed.
+        :param document: The document to extract content for.
+        :param image_content: The image content for the document, or None if conversion failed.
         :param parent_span: Span to nest the generator span under, captured on the calling task.
         :returns:
-            The LLM response if successful, or a dictionary with an "error" key on failure.
+            The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            return {"error": "Document has no content, skipping LLM call."}
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -339,28 +345,23 @@ class LLMDocumentContentExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            result = {"error": "LLM failed with exception: " + str(e)}
+            return self._fail(document, "LLM failed with exception: " + str(e))
 
-        return result
+        return self._process_llm_results(document, result["replies"][0])
 
     @staticmethod
-    def _process_llm_results(document: Document, result: dict[str, Any]) -> tuple[Document, bool]:
+    def _process_llm_results(document: Document, reply: ChatMessage) -> tuple[Document, bool]:
         """
-        Process one document's LLM result using the unified response logic.
+        Process one document's LLM reply using the unified response logic.
 
         Returns (updated_document, True if success else False).
         """
-        if "error" in result:
-            new_meta = {**document.meta, "extraction_error": result["error"]}
-            return replace(document, meta=new_meta), False
-
         # remove potentially existing error metadata from previous runs
         new_meta = {**document.meta}
         new_meta.pop("extraction_error", None)
 
         # process the LLM response considering the possible response formats
-        response_text = result["replies"][0].text
-        content, meta_updates, error = LLMDocumentContentExtractor._process_response(response_text)
+        content, meta_updates, error = LLMDocumentContentExtractor._process_response(reply.text or "")
 
         if error:
             new_meta["extraction_error"] = error
@@ -390,12 +391,15 @@ class LLMDocumentContentExtractor:
         parent_span = tracing.tracer.current_span()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(partial(self._run_on_thread, parent_span=parent_span), image_contents)
+            results = executor.map(
+                lambda document, image_content: self._run_on_thread(document, image_content, parent_span=parent_span),
+                documents,
+                image_contents,
+            )
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results, strict=True):
-            doc, success = self._process_llm_results(document, result)
+        for doc, success in results:
             if success:
                 successful_documents.append(doc)
             else:
@@ -422,7 +426,10 @@ class LLMDocumentContentExtractor:
 
         await self.warm_up_async()
 
-        image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
+        # Reading the files and rendering PDF pages is blocking work and `DocumentToImageContent` has no
+        # `run_async`, so it runs in a thread instead of on the event loop.
+        conversion_result = await _execute_component_async(self._document_to_image_content, documents=documents)
+        image_contents = conversion_result["image_contents"]
 
         # Capture the current span here so concurrent tasks nest their generator spans under the component span.
         parent_span = tracing.tracer.current_span()
@@ -430,16 +437,20 @@ class LLMDocumentContentExtractor:
         # Run the LLM on each image content, bounding concurrency per task so max_workers is enforced.
         sem = asyncio.Semaphore(max(1, self.max_workers))
 
-        async def _bounded_run(image_content: ImageContent | None) -> dict[str, Any]:
+        async def _bounded_run(document: Document, image_content: ImageContent | None) -> tuple[Document, bool]:
             async with sem:
-                return await self._run_async(image_content, parent_span=parent_span)
+                return await self._run_async(document, image_content, parent_span=parent_span)
 
-        results = await asyncio.gather(*[_bounded_run(image_content) for image_content in image_contents])
+        results = await asyncio.gather(
+            *[
+                _bounded_run(document, image_content)
+                for document, image_content in zip(documents, image_contents, strict=True)
+            ]
+        )
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results, strict=True):
-            doc, success = self._process_llm_results(document, result)
+        for doc, success in results:
             if success:
                 successful_documents.append(doc)
             else:

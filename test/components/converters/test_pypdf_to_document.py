@@ -307,7 +307,7 @@ class TestPyPDFToDocument:
             "A wiki (/ˈwɪki/ (About this soundlisten) WIK-ee) is a hypertext publication collaboratively\n"
             "edited and managed by its own audience directly using a web browser. A typical wiki\ncontains "
             "multiple pages for the subjects or scope of the project and may be either open\nto the public or "
-            "limited to use within an organization for maintaining its internal knowledge\nbase. Wikis are "
+            "limited to use within an organization for maintaining its inter nal knowledge\nbase. Wikis are "
             "enabled by wiki software, otherwise known as wiki engines. A wiki engine,\nbeing a form of a "
             "content management system, diﬀers from other web-based systems\nsuch as blog software, in that "
             "the content is created without any deﬁned owner or leader,\nand wikis have little inherent "

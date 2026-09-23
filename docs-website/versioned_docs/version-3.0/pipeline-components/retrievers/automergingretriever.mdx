@@ -56,7 +56,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 # create a hierarchical document structure with 3 levels, where the parent document has 3 children
 text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
 original_document = Document(content=text)
-builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
+builder = HierarchicalDocumentSplitter(
+    block_sizes={10, 3}, split_overlap=0, split_by="word"
+)
 docs = builder.run([original_document])["documents"]
 
 # store the root document and the level-1 parent documents, then initialize the retriever
@@ -70,10 +72,10 @@ retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
 # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.5)
 leaf_docs = [doc for doc in docs if not doc.meta["__children_ids"]]
 retrieved_docs = retriever.run(leaf_docs[4:6])
->> retrieved_docs["documents"]
->> [Document(id=bcc..., content: 'warm glow over the trees. Birds began to sing.',
->> meta: {'__block_size': 10, '__parent_id': '835...', '__children_ids': ['a93...', 'c3e...', 'c61...'], '__level': 1,
->> 'source_id': '835...', 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]
+print(retrieved_docs["documents"])
+# >> [Document(id=bcc..., content: 'warm glow over the trees. Birds began to sing.',
+# >> meta: {'__block_size': 10, '__parent_id': '835...', '__children_ids': ['a93...', 'c3e...', 'c61...'], '__level': 1,
+# >> 'source_id': '835...', 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]
 ```
 
 ### In a pipeline
