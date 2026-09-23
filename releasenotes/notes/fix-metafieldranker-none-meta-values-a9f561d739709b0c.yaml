@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` now treats a Document whose ``meta_field`` value is ``None`` the same as a Document that is
+    missing the field, applying the ``missing_meta`` setting to it. Previously a single ``None`` value made sorting
+    fail, so the ranker logged a warning and returned all Documents in their original order, ignoring
+    ``missing_meta="drop"`` as well.
