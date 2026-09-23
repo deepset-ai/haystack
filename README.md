@@ -25,7 +25,7 @@
 | haystack/components/converters/file\_to\_file\_content.py                 |       32 |        0 |    100% |           |
 | haystack/components/converters/html.py                                    |       50 |        0 |    100% |           |
 | haystack/components/converters/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/components/converters/image/document\_to\_image.py               |       43 |        0 |    100% |           |
+| haystack/components/converters/image/document\_to\_image.py               |       47 |        0 |    100% |           |
 | haystack/components/converters/image/file\_to\_document.py                |       27 |        1 |     96% |        94 |
 | haystack/components/converters/image/file\_to\_image.py                   |       53 |        0 |    100% |           |
 | haystack/components/converters/image/image\_utils.py                      |      128 |        5 |     96% |78-82, 104, 109-110 |
@@ -63,7 +63,7 @@
 | haystack/components/evaluators/sas\_evaluator.py                          |       57 |       25 |     56% |111-125, 153-188 |
 | haystack/components/extractors/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/components/extractors/image/llm\_document\_content\_extractor.py |      152 |        1 |     99% |       329 |
+| haystack/components/extractors/image/llm\_document\_content\_extractor.py |      152 |        0 |    100% |           |
 | haystack/components/extractors/llm\_metadata\_extractor.py                |      168 |       12 |     93% |311-319, 333-341, 414, 466 |
 | haystack/components/extractors/regex\_text\_extractor.py                  |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17297** |  **744** | **96%** |           |
+| **TOTAL**                                                                 | **17301** |  **743** | **96%** |           |
 
 
 ## Setup coverage badge
