@@ -74,7 +74,9 @@ class TiktokenCounter(TokenCounter):
         if not messages and not tools:
             return 0
         self.warm_up()
-        text_tokens = len(self._encoder.encode(_rendered_conversation(messages) + _rendered_tools(tools)))
+        # Encode as ordinary text so literal special-token strings (e.g. `<|endoftext|>`) in
+        # messages or tool schemas are counted instead of raising `ValueError`.
+        text_tokens = len(self._encoder.encode_ordinary(_rendered_conversation(messages) + _rendered_tools(tools)))
         return text_tokens + _non_text_tokens(
             messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
         )
