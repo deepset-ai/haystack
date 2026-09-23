@@ -202,11 +202,10 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][0].content == "int value"
         assert result["documents"][1].content == "str value"
 
-    def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order_after_partial_sort(self) -> None:
+    def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order(self) -> None:
         """
-        A comparator TypeError during sort must not partially reorder the group: with more than
-        two documents, an in-place sort can reorder a comparable prefix before raising, so the
-        fallback must guarantee the original insertion order (regression for #12848).
+        When sort_docs_by values are mutually non-comparable, the group keeps its original
+        insertion order (regression for #12848).
         """
         docs = [
             Document(content=f"doc-{i}", meta={"group": "g", "split_id": value})
