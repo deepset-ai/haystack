@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``TiktokenCounter`` failing on messages or tool schemas containing strings such as
+    ``<|endoftext|>``. These strings are now counted as ordinary text instead of raising a
+    ``ValueError``.

@@ -77,3 +77,7 @@ counter = TiktokenCounter(
 ```
 
 The counter includes non-text content attached directly to a message as well as content nested inside tool results.
+
+## Special-token strings
+
+Strings that look like special tokens, such as `<|endoftext|>`, are counted as ordinary text. They are measured like any other source text, so a message or tool schema that contains one is not rejected.

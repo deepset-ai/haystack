@@ -24,6 +24,9 @@ class TiktokenCounter(TokenCounter):
       than a real count.
     - **It is OpenAI's encoder.** Other providers tokenize differently, so expect the count to drift on them.
 
+    Strings that look like special tokens, such as `<|endoftext|>`, are counted as ordinary text instead of being
+    rejected.
+
     ## Usage Example:
     ```python
     from haystack.dataclasses import ChatMessage
@@ -74,7 +77,7 @@ class TiktokenCounter(TokenCounter):
         if not messages and not tools:
             return 0
         self.warm_up()
-        text_tokens = len(self._encoder.encode(_rendered_conversation(messages) + _rendered_tools(tools)))
+        text_tokens = len(self._encoder.encode_ordinary(_rendered_conversation(messages) + _rendered_tools(tools)))
         return text_tokens + _non_text_tokens(
             messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
         )
