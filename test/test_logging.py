@@ -19,14 +19,15 @@ import structlog.stdlib
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from structlog.typing import EventDict
 
 import haystack.utils.jupyter
 from haystack import logging as haystack_logging
-from test.tracing.utils import SpyingTracer
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 @pytest.fixture(autouse=True)
-def reset_logging_config() -> None:
+def reset_logging_config() -> Generator[None, None, None]:
     # `configure_logging` attaches its handler to Haystack's own namespaces (and may flip `propagate`), so we snapshot
     # and restore the root logger plus those namespaces to keep tests isolated.
     names = ["haystack", "haystack_integrations", "haystack_experimental"]
@@ -77,7 +78,7 @@ def restore_structlog_config() -> Generator[None, None, None]:
         structlog.reset_defaults()
 
 
-def _sentinel_processor(logger: object, method_name: str, event_dict: dict) -> dict:
+def _sentinel_processor(logger: object, method_name: str, event_dict: EventDict) -> EventDict:
     """A no-op processor used to detect whether an existing structlog config was left untouched."""
     return event_dict
 
@@ -441,6 +442,7 @@ class TestLogTraceCorrelation:
         output = capfd.readouterr().err
         parsed_output = json.loads(output)
 
+        assert isinstance(span, SpyingSpan)
         assert parsed_output == {
             "event": "Hello, structured logging!",
             "key1": "value1",
@@ -532,7 +534,7 @@ class TestCompositeLogger:
             ("critical", "critical"),
         ],
     )
-    def test_various_levels(self, capfd: LogCaptureFixture, method: str, expected_level: str) -> None:
+    def test_various_levels(self, capfd: CaptureFixture, method: str, expected_level: str) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -555,7 +557,7 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log(self, capfd: LogCaptureFixture) -> None:
+    def test_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -577,7 +579,7 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log_json_content(self, capfd: LogCaptureFixture) -> None:
+    def test_log_json_content(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -599,7 +601,7 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
+    def test_log_with_string_cast(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
