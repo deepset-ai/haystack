@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
@@ -325,12 +326,12 @@ class QueryExpander:
 
     async def warm_up_async(self) -> None:
         """
-        Warm up the underlying chat generator on the serving event loop.
+        Warm up the underlying chat generator without blocking the serving event loop.
         """
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
         elif hasattr(self.chat_generator, "warm_up"):
-            self.chat_generator.warm_up()
+            await asyncio.to_thread(self.chat_generator.warm_up)
 
     def close(self) -> None:
         """
@@ -341,12 +342,12 @@ class QueryExpander:
 
     async def close_async(self) -> None:
         """
-        Release the underlying chat generator's async resources.
+        Release the underlying chat generator's resources without blocking the serving event loop.
         """
         if hasattr(self.chat_generator, "close_async"):
             await self.chat_generator.close_async()
         elif hasattr(self.chat_generator, "close"):
-            self.chat_generator.close()
+            await asyncio.to_thread(self.chat_generator.close)
 
     @staticmethod
     def _parse_expanded_queries(generator_response: str) -> list[str]:

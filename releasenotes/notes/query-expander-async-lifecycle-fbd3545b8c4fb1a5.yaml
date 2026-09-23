@@ -1,0 +1,4 @@
+fixes:
+  - |
+    Run synchronous ``QueryExpander`` lifecycle fallbacks in a worker thread so
+    ``warm_up_async()`` and ``close_async()`` do not block the event loop.

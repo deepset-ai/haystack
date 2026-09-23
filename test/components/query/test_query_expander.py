@@ -4,6 +4,7 @@
 
 import logging
 import os
+import threading
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -521,9 +522,18 @@ class TestComponentLifecycle:
 
     async def test_warm_up_async_falls_back_to_sync_warm_up(self):
         chat_generator = Mock(spec=["run", "warm_up"])
+        event_loop_thread = threading.get_ident()
+        worker_thread = None
+
+        def warm_up():
+            nonlocal worker_thread
+            worker_thread = threading.get_ident()
+
+        chat_generator.warm_up.side_effect = warm_up
         expander = QueryExpander(chat_generator=chat_generator)
         await expander.warm_up_async()
         chat_generator.warm_up.assert_called_once()
+        assert worker_thread != event_loop_thread
 
     def test_close_delegates_to_chat_generator(self, mock_chat_generator):
         expander = QueryExpander(chat_generator=mock_chat_generator)
@@ -538,9 +548,18 @@ class TestComponentLifecycle:
 
     async def test_close_async_falls_back_to_sync_close(self):
         chat_generator = Mock(spec=["run", "close"])
+        event_loop_thread = threading.get_ident()
+        worker_thread = None
+
+        def close():
+            nonlocal worker_thread
+            worker_thread = threading.get_ident()
+
+        chat_generator.close.side_effect = close
         expander = QueryExpander(chat_generator=chat_generator)
         await expander.close_async()
         chat_generator.close.assert_called_once()
+        assert worker_thread != event_loop_thread
 
     def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
         chat_generator = Mock(spec=["run"])
