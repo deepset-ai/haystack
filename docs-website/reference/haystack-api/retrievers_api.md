@@ -668,7 +668,8 @@ Initialize MultiQueryEmbeddingRetriever.
 
 - **retriever** (<code>EmbeddingRetriever</code>) – The embedding-based retriever to use for document retrieval.
 - **query_embedder** (<code>TextEmbedder</code>) – The query embedder to convert text queries to embeddings.
-- **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
+  `run_async`.
 
 #### warm_up
 
@@ -830,7 +831,8 @@ Initialize MultiQueryTextRetriever.
 **Parameters:**
 
 - **retriever** (<code>TextRetriever</code>) – The text-based retriever to use for document retrieval.
-- **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing. Default is 3.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
+  `run_async`. Default is 3.
 
 #### warm_up
 
@@ -1024,7 +1026,7 @@ Create the MultiRetriever component.
   retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
   `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
   `top_k`. If None, all results are returned.
-- **max_workers** (<code>int</code>) – The maximum number of threads to use for parallel retrieval.
+- **max_workers** (<code>int</code>) – The maximum number of threads in `run` and of concurrent retriever calls in `run_async`.
 - **join_mode** (<code>Literal['concatenate', 'reciprocal_rank_fusion']</code>) – How to merge results from multiple retrievers. Available modes:
 - `concatenate`: Combines all results into a single list and deduplicates.
 - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
