@@ -85,6 +85,22 @@ class TestJsonSchemaValidator:
         assert len(result["validated"]) == 1
         assert result["validated"][0] == message
 
+    def test_accepts_empty_json_schema(self):
+        validator = JsonSchemaValidator(json_schema={})
+        message = ChatMessage.from_assistant('{"anything": "is valid"}')
+
+        result = validator.run([message])
+
+        assert result == {"validated": [message]}
+
+    def test_run_empty_json_schema_overrides_init_schema(self):
+        validator = JsonSchemaValidator(json_schema={"type": "object", "required": ["name"]})
+        message = ChatMessage.from_assistant("{}")
+
+        result = validator.run([message], json_schema={})
+
+        assert result == {"validated": [message]}
+
     # Validates recursive_json_to_object method
     def test_recursive_json_to_object(self, genuine_fc_message):
         arguments_is_string = json.loads(genuine_fc_message)
