@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``TiktokenCounter`` raising a ``ValueError`` when messages or tool schemas contain literal tiktoken
+    special-token strings such as ``<|endoftext|>``. Literal markers are now counted as ordinary text.

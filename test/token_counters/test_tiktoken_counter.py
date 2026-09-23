@@ -27,7 +27,7 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
@@ -116,6 +116,12 @@ def search(query: Annotated[str, "the search query"]) -> str:
     return "result"
 
 
+@tool
+def describe_marker() -> str:
+    """Describe the literal <|endoftext|> marker."""
+    return "marker"
+
+
 class TestTiktokenCounterTools:
     def test_tool_schemas_add_to_the_count(self, fake_encoder):
         # A provider is sent the schemas alongside the messages, so they consume tokens too.
@@ -135,6 +141,16 @@ class TestTiktokenCounterTools:
 @pytest.mark.integration
 class TestTiktokenCounterIntegration:
     """Exercises the real encoder, which downloads its vocabulary on first use."""
+
+    def test_counts_literal_special_token_in_message_as_ordinary_text(self):
+        counter = TiktokenCounter()
+
+        assert counter.count([ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]) > 0
+
+    def test_counts_literal_special_token_in_tool_description_as_ordinary_text(self):
+        counter = TiktokenCounter()
+
+        assert counter.count([], tools=[describe_marker]) > 0
 
     def test_counts_grow_with_content(self):
         counter = TiktokenCounter()
