@@ -113,23 +113,30 @@ class DocumentToImageContent:
         :returns:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-                data and metadata. The order corresponds to order of input documents.
-        :raises ValueError:
-            If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-            MIME type. The error message will specify which document and what information is missing or incorrect.
+                data and metadata. The order corresponds to order of input documents. A document that is missing the
+                required metadata keys, has an invalid file path, or has an unsupported MIME type gets None in its
+                position and a logged warning with the reason.
         """
         if not documents:
             return {"image_contents": []}
-
-        images_source_info = _extract_image_sources_info(
-            documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
-        )
 
         image_contents: list[ImageContent | None] = [None] * len(documents)
 
         pdf_page_infos: list[_PDFPageInfo] = []
 
-        for doc_idx, image_source_info in enumerate(images_source_info):
+        for doc_idx, document in enumerate(documents):
+            # Validate each document on its own so one invalid document leaves None in its slot
+            # instead of failing the whole batch
+            try:
+                image_source_info = _extract_image_sources_info(
+                    documents=[document], file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
+                )[0]
+            except ValueError as error:
+                logger.warning(
+                    "Skipping document with ID {document_id}: {error}", document_id=document.id, error=str(error)
+                )
+                continue
+
             mime_type = image_source_info["mime_type"]
             path = image_source_info["path"]
             if mime_type == "application/pdf":
@@ -146,7 +153,7 @@ class DocumentToImageContent:
                     base64_image=base64_image,
                     mime_type=mime_type,
                     detail=self.detail,
-                    meta={"file_path": documents[doc_idx].meta[self.file_path_meta_field]},
+                    meta={"file_path": document.meta[self.file_path_meta_field]},
                 )
 
         # efficiently convert PDF pages to images: each PDF is opened and processed only once
