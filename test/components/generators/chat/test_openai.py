@@ -735,6 +735,82 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 40
 
+    def test_run_with_tools_and_generation_kwargs_tools_are_merged(
+        self, tools: list[Tool], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        """
+        The component's own `tools` and an OpenAI tool spec passed via `generation_kwargs["tools"]` must both
+        reach the API call, since `generation_kwargs` merges on top of every other run parameter without
+        wiping it out. On a name clash, the spec from `generation_kwargs` wins.
+        """
+        client_tool_spec = {
+            "type": "function",
+            "function": {
+                "name": "search_knowledge_files",
+                "description": "Client catalog.",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+            },
+        }
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run(
+            [ChatMessage.from_user("What's the weather like in Paris?")],
+            generation_kwargs={"tools": [client_tool_spec]},
+        )
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        tool_names = [t["function"]["name"] for t in kwargs["tools"]]
+        assert tool_names == ["weather", "search_knowledge_files"]
+
+    def test_run_with_tools_and_generation_kwargs_tools_conflict(
+        self, tools: list[Tool], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        """
+        When `generation_kwargs["tools"]` contains a spec with the same name as one of the component's own
+        tools, the `generation_kwargs` spec wins, matching how every other `generation_kwargs` key already
+        overrides the component's defaults.
+        """
+        overriding_tool_spec = {
+            "type": "function",
+            "function": {
+                "name": "weather",
+                "description": "Overridden by generation_kwargs.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run(
+            [ChatMessage.from_user("What's the weather like in Paris?")],
+            generation_kwargs={"tools": [overriding_tool_spec]},
+        )
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["tools"] == [overriding_tool_spec]
+
+    def test_run_with_generation_kwargs_tools_without_function_key(
+        self, tools: list[Tool], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        """
+        Not every OpenAI tool spec is a `function` one: built-in and `custom` tools nest their body under the
+        key named by their `type`, and some carry no name at all. Merging must keep them instead of raising.
+        """
+        custom_tool_spec = {"type": "custom", "custom": {"name": "run_python", "description": "Freeform code."}}
+        unnamed_tool_spec = {"type": "web_search"}
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run(
+            [ChatMessage.from_user("What's the weather like in Paris?")],
+            generation_kwargs={"tools": [custom_tool_spec, unnamed_tool_spec]},
+        )
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["tools"] == [
+            {"type": "function", "function": tools[0].tool_spec},
+            custom_tool_spec,
+            unnamed_tool_spec,
+        ]
+
     def test_run_with_tools_and_response_format(
         self, tools: list[Tool], mock_parsed_chat_completion: MagicMock
     ) -> None:

@@ -538,6 +538,16 @@ class OpenAIChatGenerator:
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
+        # `generation_kwargs` may carry its own OpenAI-formatted `tools` (e.g. built-in tool specs that cannot be
+        # expressed as Haystack `Tool` objects). Merge them with the component's own tools instead of letting the
+        # `{**openai_tools, **generation_kwargs}` splice below silently drop the latter. On a name clash, the spec
+        # from `generation_kwargs` wins, same as every other `generation_kwargs` key already does.
+        generation_kwargs_tools = generation_kwargs.pop("tools", None)
+        if generation_kwargs_tools is not None:
+            overridden = {name for name in map(_tool_spec_name, generation_kwargs_tools) if name is not None}
+            kept = [spec for spec in openai_tools.get("tools", []) if _tool_spec_name(spec) not in overridden]
+            openai_tools = {"tools": [*kept, *generation_kwargs_tools]}
+
         base_args = {
             "model": self.model,
             "messages": openai_formatted_messages,
@@ -597,6 +607,18 @@ class OpenAIChatGenerator:
             raise  # Re-raise to propagate cancellation
 
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+
+
+def _tool_spec_name(tool_spec: dict[str, Any]) -> str | None:
+    """
+    Return the name of an OpenAI tool spec, or None when it carries no name.
+
+    An OpenAI tool nests its body under the key named by its own `type` — `{"type": "function", "function": {...}}`
+    for the function tools built from Haystack `Tool` objects, `{"type": "custom", "custom": {...}}` for freeform
+    ones. Built-in tools such as `{"type": "web_search"}` have no body and therefore no name to match on.
+    """
+    tool_body = tool_spec.get(tool_spec.get("type", ""))
+    return tool_body.get("name") if isinstance(tool_body, dict) else None
 
 
 def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:

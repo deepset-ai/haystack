@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``OpenAIChatGenerator`` silently dropping the component's own ``tools`` when
+    ``generation_kwargs`` also contained a ``tools`` key. The two lists are now merged by tool name,
+    with the spec from ``generation_kwargs`` taking precedence on a name clash, consistent with how
+    every other ``generation_kwargs`` key already overrides the component's defaults.
