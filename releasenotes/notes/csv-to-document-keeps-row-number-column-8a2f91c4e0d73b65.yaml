@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `CSVToDocument` in `row` conversion mode no longer drops a CSV column named `row_number`. The generated row
+    index is reserved before the columns are merged, so the original value is kept under `csv_row_number`, the
+    same collision handling the other columns already use.

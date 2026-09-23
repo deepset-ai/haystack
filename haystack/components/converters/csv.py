@@ -217,6 +217,10 @@ class CSVToDocument:
         """
         row_meta = dict(base_meta)
 
+        # Reserve the generated row number before merging the columns, so that a CSV column of the same name
+        # is kept under a "csv_" prefixed key by the collision handling below instead of being overwritten.
+        row_meta["row_number"] = row_index
+
         # content (strict: content_column must exist; validated by caller)
         content = self._safe_value(row.get(content_column))
 
@@ -235,5 +239,4 @@ class CSVToDocument:
                     suffix += 1
             row_meta[key_to_use] = self._safe_value(v)
 
-        row_meta["row_number"] = row_index
         return Document(content=content, meta=row_meta)

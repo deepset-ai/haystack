@@ -161,6 +161,47 @@ class TestCSVToDocument:
         assert d.meta["row_number"] == 0
         assert d.content == "ok"
 
+    def test_row_mode_keeps_a_csv_column_named_row_number(self, tmp_path):
+        # The generated row number must not overwrite a CSV column of the same name.
+        csv_text = "text,row_number\r\nhello,record-42\r\n"
+        f = tmp_path / "rownum.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        conv = CSVToDocument(conversion_mode="row")
+        d = conv.run(sources=[ByteStream.from_file_path(f)], content_column="text")["documents"][0]
+
+        assert d.content == "hello"
+        assert d.meta["row_number"] == 0
+        assert d.meta["csv_row_number"] == "record-42"
+
+    def test_row_mode_row_number_collision_uses_the_next_suffix(self, tmp_path):
+        csv_text = "text,row_number\r\nhello,record-42\r\n"
+        f = tmp_path / "rownum_multi.csv"
+        f.write_text(csv_text, encoding="utf-8")
+        extra_meta = {"csv_row_number": "existing0", "csv_row_number_1": "existing1"}
+
+        conv = CSVToDocument(conversion_mode="row")
+        d = conv.run(
+            sources=[ByteStream.from_file_path(f)], meta=[extra_meta], content_column="text"
+        )["documents"][0]
+
+        assert d.meta["row_number"] == 0
+        assert d.meta["csv_row_number"] == "existing0"
+        assert d.meta["csv_row_number_1"] == "existing1"
+        assert d.meta["csv_row_number_2"] == "record-42"
+
+    def test_row_mode_row_number_as_content_column(self, tmp_path):
+        # Control: selecting row_number as the content column still works.
+        csv_text = "row_number,comment\r\nrecord-42,ok\r\n"
+        f = tmp_path / "rownum_content.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        conv = CSVToDocument(conversion_mode="row")
+        d = conv.run(sources=[ByteStream.from_file_path(f)], content_column="row_number")["documents"][0]
+
+        assert d.content == "record-42"
+        assert d.meta["row_number"] == 0
+
     def test_row_mode_meta_collision_multiple_suffixes(self, tmp_path):
         """
         If meta already has csv_file_path and csv_file_path_1, we should write the next as csv_file_path_2.
