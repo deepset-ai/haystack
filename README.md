@@ -246,7 +246,7 @@
 | haystack/tracing/utils.py                                                 |       26 |        0 |    100% |           |
 | haystack/utils/\_\_init\_\_.py                                            |        5 |        0 |    100% |           |
 | haystack/utils/async\_utils.py                                            |       19 |        0 |    100% |           |
-| haystack/utils/auth.py                                                    |      105 |       11 |     90% |22, 116, 124, 128, 133, 161, 234-238 |
+| haystack/utils/auth.py                                                    |      105 |        6 |     94% |22, 116, 124, 128, 133, 161 |
 | haystack/utils/azure.py                                                   |        6 |        2 |     67% |     15-16 |
 | haystack/utils/base\_serialization.py                                     |      136 |        9 |     93% |186-189, 210, 221, 331-335 |
 | haystack/utils/callable\_serialization.py                                 |       66 |        8 |     88% |56, 60, 117-119, 129, 140, 171 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17297** |  **749** | **96%** |           |
+| **TOTAL**                                                                 | **17297** |  **744** | **96%** |           |
 
 
 ## Setup coverage badge
