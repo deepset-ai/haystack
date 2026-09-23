@@ -69,12 +69,16 @@ class TiktokenCounter(TokenCounter):
 
         :param messages: The messages to measure.
         :param tools: Tools whose schemas are sent alongside the messages, and so consume tokens too.
-        :returns: The estimated token count, or `0` when there is nothing to measure.
+        :returns: The estimated token count, or `0` when there is nothing to measure. Special-token strings in the
+            messages are counted as ordinary text.
         """
         if not messages and not tools:
             return 0
         self.warm_up()
-        text_tokens = len(self._encoder.encode(_rendered_conversation(messages) + _rendered_tools(tools)))
+        # `encode_ordinary` treats special-token strings such as `<|endoftext|>` as ordinary text. Plain `encode`
+        # raises on them, which would break counting for conversations that merely mention them.
+        rendered = _rendered_conversation(messages) + _rendered_tools(tools)
+        text_tokens = len(self._encoder.encode_ordinary(rendered))
         return text_tokens + _non_text_tokens(
             messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
         )
