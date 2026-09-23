@@ -443,6 +443,7 @@ Initialize DocumentSplitter.
   from non-textual documents.
 - **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
   `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+  Special-token strings in document content are encoded as ordinary text.
 
 #### warm_up
 
@@ -956,6 +957,7 @@ Initializes a RecursiveDocumentSplitter.
   `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
   If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
   text will be split into sentences using a custom sentence tokenizer based on NLTK.
