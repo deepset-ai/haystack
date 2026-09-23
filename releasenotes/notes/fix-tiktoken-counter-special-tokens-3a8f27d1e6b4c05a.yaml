@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``TiktokenCounter.count`` raising ``ValueError`` when message or tool text
+    contained literal special-token strings such as ``<|endoftext|>``.
+    These strings are now counted as ordinary text, consistent with the behavior
+    already fixed for the token-based document splitters.
