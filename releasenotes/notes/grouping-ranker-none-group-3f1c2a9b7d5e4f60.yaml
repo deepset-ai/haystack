@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `MetaFieldGroupingRanker` now treats a `group_by` or `subgroup_by` value of `None` as missing, the same way it
+    already treats `sort_docs_by`. Documents with `None` go to the end with the other ungrouped documents, instead
+    of forming a group named `"None"` that also absorbed documents whose value was the string `"None"`.
