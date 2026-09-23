@@ -1237,6 +1237,12 @@ class PipelineBase:  # noqa: PLW1641
         # check whether the data is a nested dictionary of component inputs where each key is a component name
         # and each value is a dictionary of input parameters for that component
         is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if is_nested_component_input and not any(name in self.graph.nodes for name in data):
+            # Dictionary values can also be flat inputs, so check the socket names before treating keys as components.
+            available_input_sockets = self.inputs()
+            is_nested_component_input = not any(
+                name in component_inputs for name in data for component_inputs in available_input_sockets.values()
+            )
         if not is_nested_component_input:
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
