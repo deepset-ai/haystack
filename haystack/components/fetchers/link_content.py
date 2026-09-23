@@ -143,7 +143,8 @@ class LinkContentFetcher:
         self.retry_attempts = retry_attempts
         self.timeout = timeout
         self.http2 = http2
-        self.client_kwargs = client_kwargs or {}
+        # Copy so that applying the defaults below does not change the caller's dictionary.
+        self.client_kwargs = dict(client_kwargs or {})
         self.request_headers = request_headers or {}
 
         # Configure default client settings
