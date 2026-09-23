@@ -205,7 +205,7 @@ class TestMetaFieldGroupingRanker:
     def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order(self) -> None:
         """
         When sort_docs_by values are mutually non-comparable, the group keeps its original
-        insertion order (regression for #12848).
+        insertion order.
         """
         docs = [
             Document(content=f"doc-{i}", meta={"group": "g", "split_id": value})
