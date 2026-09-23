@@ -101,6 +101,7 @@ class DocumentSplitter:
             from non-textual documents.
         :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to
             `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+            Special-token strings in document content are encoded as ordinary text.
         """
 
         self.split_by = split_by
@@ -270,7 +271,7 @@ class DocumentSplitter:
         with `split_overlap` overlap, then decodes each chunk back to a string.
         Stops once a chunk reaches the end of the document, avoiding overlap-only trailing chunks.
         """
-        tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
+        tokens = self._tiktoken_tokenizer.encode_ordinary(doc.content)  # type: ignore[union-attr, arg-type]
         if not tokens:
             if self.skip_empty_documents:
                 return []

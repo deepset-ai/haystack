@@ -998,7 +998,9 @@ def mock_tiktoken_tokenizer():
         return full_text, offsets
 
     mock_tokenizer = Mock()
-    mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+    mock_tokenizer.encode_ordinary.side_effect = lambda text: [
+        f" {w}" if i > 0 else w for i, w in enumerate(text.split())
+    ]
     mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
     return mock_tokenizer
 
@@ -1091,7 +1093,7 @@ class TestSplittingByToken:
     @pytest.mark.parametrize("skip_empty_documents,expected_count", [(True, 0), (False, 1)])
     def test_split_by_token_skip_empty_documents_mock(self, skip_empty_documents, expected_count):
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.return_value = []
+        mock_tokenizer.encode_ordinary.return_value = []
 
         splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=skip_empty_documents)
         splitter._tiktoken_tokenizer = mock_tokenizer
@@ -1109,6 +1111,32 @@ class TestSplittingByToken:
 @pytest.mark.integration
 class TestSplittingByTokenIntegration:
     """Integration tests for split_by="token" mode requiring real tiktoken."""
+
+    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+    @pytest.mark.parametrize("split_overlap", [0, 2])
+    def test_special_token_strings_are_split_as_literal_text(self, encoding, split_overlap):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=5, split_overlap=split_overlap, tokenizer_encoding=encoding
+        )
+        text = (
+            "The manual documents <|endoftext|> as a literal marker.\f"
+            "A second example includes <|fim_suffix|> in the source."
+        )
+        source = Document(content=text)
+
+        chunks = splitter.run(documents=[source])["documents"]
+
+        assert len(chunks) > 1
+        assert merge_documents(chunks) == text
+        assert splitter._tiktoken_tokenizer is not None
+        for split_id, chunk in enumerate(chunks):
+            assert chunk.content is not None
+            assert len(splitter._tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 5
+            assert chunk.meta["source_id"] == source.id
+            assert chunk.meta["split_id"] == split_id
+            start = chunk.meta["split_idx_start"]
+            assert text[start : start + len(chunk.content)] == chunk.content
+            assert chunk.meta["page_number"] == 1 + text[:start].count("\f")
 
     def test_basic_chunking(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
