@@ -84,8 +84,11 @@ class TextCleaner:
         :param texts: List of strings to clean.
         :returns: A dictionary with the following key:
             - `texts`:  the cleaned list of strings.
+        :raises TypeError:
+            If any element of ``texts`` is not a ``str``.
         """
-        texts = [text if isinstance(text, str) else "" for text in texts]
+        if not all(isinstance(text, str) for text in texts):
+            raise TypeError("`texts` must be a list of strings.")
 
         if self._regex:
             texts = [self._regex.sub("", text) for text in texts]

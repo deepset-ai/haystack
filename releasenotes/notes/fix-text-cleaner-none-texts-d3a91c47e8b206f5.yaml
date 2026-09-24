@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    ``TextCleaner`` now treats ``None`` and non-string items as empty strings instead of raising
-    ``AttributeError`` when applying regex, case, or punctuation cleanup.
+    ``TextCleaner.run`` now raises a clear ``TypeError`` when any element of ``texts`` is not a
+    ``str``, instead of failing later with ``AttributeError`` during cleanup.

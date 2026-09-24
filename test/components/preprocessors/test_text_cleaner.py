@@ -31,10 +31,13 @@ def test_run_with_empty_inputs():
     assert result["texts"] == []
 
 
-def test_run_with_none_and_non_string_inputs():
+def test_run_rejects_non_string_inputs():
     cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=True)
-    result = cleaner.run(texts=["Hello, World!", None, 42, ""])  # type: ignore[list-item]
-    assert result["texts"] == ["hello world", "", "", ""]
+    try:
+        cleaner.run(texts=["Hello, World!", None, 42, ""])  # type: ignore[list-item]
+        assert False, "expected TypeError"
+    except TypeError as e:
+        assert "list of strings" in str(e)
 
 
 def test_run_with_regex():
