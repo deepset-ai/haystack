@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
-    Fixed `ChatPromptBuilder` dropping content parts when the template is a list of `ChatMessage` objects.
-    Only the first `TextContent` part was rendered, and every other part — additional texts, images, files —
+    Fixed ``ChatPromptBuilder`` dropping content parts when the template is a list of ``ChatMessage`` objects.
+    Only the first ``TextContent`` part was rendered, and every other part - additional texts, images, files -
     was removed from the rendered prompt without a warning. Template variables used in those dropped parts
-    were not detected either, so they were not reported as required inputs. Now all `TextContent` parts are
+    were not detected either, so they were not reported as required inputs. Now all ``TextContent`` parts are
     rendered and the remaining content parts are passed through unchanged.
