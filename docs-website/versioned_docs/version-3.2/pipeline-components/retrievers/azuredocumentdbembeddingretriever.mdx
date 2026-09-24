@@ -1,0 +1,159 @@
+---
+title: "AzureDocumentDBEmbeddingRetriever"
+id: azuredocumentdbembeddingretriever
+slug: "/azuredocumentdbembeddingretriever"
+description: "An embedding-based Retriever compatible with the Azure DocumentDB Document Store."
+---
+
+# AzureDocumentDBEmbeddingRetriever
+
+An embedding-based Retriever compatible with the Azure DocumentDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a [Text Embedder](../embedders.mdx) and before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a [Text Embedder](../embedders.mdx) and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [AzureDocumentDBDocumentStore](../../document-stores/azuredocumentdbdocumentstore.mdx) |
+| **Mandatory run variables**            | `query_embedding`: A list of floats |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [Azure DocumentDB](/reference/integrations-azure-documentdb) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_documentdb |
+| **Package name** | `azure-documentdb-haystack` |
+
+</div>
+
+## Overview
+
+`AzureDocumentDBEmbeddingRetriever` compares the query and document embeddings and fetches the documents most relevant to the query from [`AzureDocumentDBDocumentStore`](../../document-stores/azuredocumentdbdocumentstore.mdx). It runs a `cosmosSearch` vector search, which needs a vector index on the collection. You can create one with the Document Store's `create_vector_index` method.
+
+When using the `AzureDocumentDBEmbeddingRetriever` in your pipeline, the query needs to be turned into an embedding first. You can do so with a [Text Embedder](../embedders.mdx). Documents need to have been indexed with embeddings created by the corresponding [Document Embedder](../embedders.mdx), and the embedding size must match the `dimensions` of the vector index.
+
+### Parameters
+
+In addition to the `query_embedding`, the `AzureDocumentDBEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space. The `filter_policy` parameter controls how filters passed at run time combine with the filters set at initialization.
+
+Filters are applied inside the vector search, before the nearest neighbors are ranked, so the search still returns up to `top_k` documents. Every metadata field you filter on needs a regular index in the collection, such as one on `meta.category`.
+
+The returned documents have their similarity `score` set. The Retriever also has a `run_async` method, which uses the Document Store's async client.
+
+:::note[Query-time search options]
+
+The Retriever doesn't set the query-time options of the vector index, so Azure DocumentDB uses their defaults. With a DiskANN index, `top_k` can't be larger than `lSearch`, which defaults to 40. With an IVF index, only the closest list is searched, because `nProbes` defaults to 1.
+
+:::
+
+## Usage
+
+### Installation
+
+To start using Azure DocumentDB with Haystack, install the package with:
+
+```shell
+pip install azure-documentdb-haystack
+```
+
+The examples on this page connect with Microsoft Entra ID and read the cluster name from the `AZURE_DOCUMENTDB_CLUSTER_NAME` environment variable. See [Authentication](../../document-stores/azuredocumentdbdocumentstore.mdx#authentication) for details.
+
+### On its own
+
+This Retriever needs an instance of `AzureDocumentDBDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.components.retrievers.azure_documentdb import (
+    AzureDocumentDBEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.azure_documentdb import (
+    AzureDocumentDBDocumentStore,
+)
+
+document_store = AzureDocumentDBDocumentStore(
+    database_name="haystack", collection_name="documents"
+)
+
+retriever = AzureDocumentDBEmbeddingRetriever(document_store=document_store)
+
+# using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1] * 1536)
+```
+
+### In a Pipeline
+
+This RAG example indexes documents with their embeddings, then embeds the question, retrieves the most relevant documents, and passes them to an LLM. It uses OpenAI models, so set the `OPENAI_API_KEY` environment variable before running it.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.writers import DocumentWriter
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.retrievers.azure_documentdb import (
+    AzureDocumentDBEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.azure_documentdb import (
+    AzureDocumentDBDocumentStore,
+)
+
+document_store = AzureDocumentDBDocumentStore(
+    database_name="haystack", collection_name="documents"
+)
+# Run once per collection. 1536 is the embedding size of the default OpenAI embedding model.
+# The default HNSW index needs an M30 or higher tier; on smaller tiers, pass kind="vector-ivf".
+document_store.create_vector_index(dimensions=1536)
+
+documents = [
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome."),
+]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("embedder", OpenAIDocumentEmbedder())
+indexing_pipeline.add_component(
+    "writer",
+    DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE),
+)
+indexing_pipeline.connect("embedder", "writer")
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+prompt_template = [
+    ChatMessage.from_user(
+        """
+Given these documents, answer the question.
+Documents:
+{% for doc in documents %}
+    {{ doc.content }}
+{% endfor %}
+
+Question: {{question}}
+Answer:
+""",
+    ),
+]
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component("text_embedder", OpenAITextEmbedder())
+rag_pipeline.add_component(
+    "retriever", AzureDocumentDBEmbeddingRetriever(document_store=document_store)
+)
+rag_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(template=prompt_template, required_variables="*"),
+)
+rag_pipeline.add_component("llm", OpenAIChatGenerator())
+rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+question = "Where does Mark live?"
+result = rag_pipeline.run(
+    {
+        "text_embedder": {"text": question},
+        "prompt_builder": {"question": question},
+    }
+)
+print(result["llm"]["replies"][0].text)
+# >> Mark lives in Berlin.
+```

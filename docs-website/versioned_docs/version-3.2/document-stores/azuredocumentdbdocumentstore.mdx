@@ -1,0 +1,103 @@
+---
+title: "AzureDocumentDBDocumentStore"
+id: azuredocumentdbdocumentstore
+slug: "/azuredocumentdbdocumentstore"
+description: "A Document Store for storing and retrieval from Azure DocumentDB."
+---
+
+# AzureDocumentDBDocumentStore
+
+A Document Store for storing and retrieval from Azure DocumentDB.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Azure DocumentDB](/reference/integrations-azure-documentdb)                                       |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_documentdb |
+
+</div>
+
+[Azure DocumentDB](https://learn.microsoft.com/azure/documentdb/overview) is a fully managed, MongoDB-compatible document database on Azure, built on the open source [DocumentDB](https://documentdb.io/) engine. It has integrated vector search, so documents, their metadata, and their embeddings live in the same collection and you don't need a separate vector database.
+
+The Document Store connects to Azure DocumentDB through PyMongo and supports every operation both synchronously and asynchronously.
+
+## Installation
+
+```shell
+pip install azure-documentdb-haystack
+```
+
+## Authentication
+
+By default, the Document Store authenticates with Microsoft Entra ID through `DefaultAzureCredential`, which picks up your Azure CLI login locally and a managed identity or workload identity in production. New clusters only allow native authentication, so first [enable Microsoft Entra ID on the cluster](https://learn.microsoft.com/azure/documentdb/how-to-connect-role-based-access-control) and assign your identity a role. Then tell the Document Store which cluster to connect to with the `AZURE_DOCUMENTDB_CLUSTER_NAME` environment variable or the `cluster_name` parameter:
+
+```shell
+export AZURE_DOCUMENTDB_CLUSTER_NAME="my-cluster"
+```
+
+To use a different credential, pass any `TokenCredential` as `azure_token_credential`. A credential object can't be serialized, so pass it again after loading a serialized pipeline.
+
+For local development and testing, the Document Store can also connect with a connection string read from the `AZURE_DOCUMENTDB_CONNECTION_STRING` environment variable. When a connection string is set, the Document Store uses it instead of Microsoft Entra ID and logs a warning, because connection strings contain credentials and aren't recommended in production.
+
+## Initialization
+
+To get started, [create an Azure DocumentDB cluster](https://learn.microsoft.com/azure/documentdb/quickstart-portal). The database and collection must exist before you use the Document Store: it doesn't create them. On first use, the Document Store creates a unique index on the Haystack document `id`.
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.azure_documentdb import (
+    AzureDocumentDBDocumentStore,
+)
+
+document_store = AzureDocumentDBDocumentStore(
+    database_name="haystack", collection_name="documents"
+)
+document_store.write_documents(
+    [Document(content="This is first"), Document(content="This is second")]
+)
+print(document_store.count_documents())
+# >> 2
+```
+
+The Document Store stores content in the `content` field and embeddings in the `embedding` field. To work with an existing collection that uses other field names, set `content_field` and `embedding_field`.
+
+Azure DocumentDB vector indexes only hold dense vectors, so the Document Store ignores sparse embeddings and logs a warning when a document has one.
+
+## Vector Index
+
+To use the [`AzureDocumentDBEmbeddingRetriever`](../pipeline-components/retrievers/azuredocumentdbembeddingretriever.mdx), the collection needs a `cosmosSearch` vector index on the embedding field. Create it once per collection, either with `create_vector_index` or when you provision the collection:
+
+```python
+document_store.create_vector_index(dimensions=1536)
+```
+
+`dimensions` must match the output size of your embedding model. You can also set:
+
+- `similarity`: `COS` (cosine, default), `L2` (Euclidean distance), or `IP` (inner product).
+- `kind`: the index algorithm, one of `vector-hnsw` (default), `vector-diskann`, or `vector-ivf`. HNSW and DiskANN indexes need an M30 or higher cluster tier. On smaller tiers, use `vector-ivf`.
+- Algorithm-specific options as extra keyword arguments: `m` and `efConstruction` for HNSW, `maxDegree` and `lBuild` for DiskANN, or `numLists` for IVF.
+
+```python
+document_store.create_vector_index(dimensions=1536, kind="vector-ivf", numLists=1)
+```
+
+Each embedding field can have only one vector index. For help choosing an index kind and its options, and for dimension limits, see [vector search in Azure DocumentDB](https://learn.microsoft.com/azure/documentdb/vector-search).
+
+## Filters
+
+The Document Store translates Haystack [metadata filters](../concepts/metadata-filtering.mdx) into MongoDB queries. For ordered comparisons (`>`, `>=`, `<`, `<=`), values must be numbers or ISO-formatted date strings.
+
+The `AzureDocumentDBEmbeddingRetriever` applies filters inside the vector search, before the nearest neighbors are ranked. For this to work, every metadata field you filter on needs a regular index, such as one on `meta.category`.
+
+## Supported Retrievers
+
+- [`AzureDocumentDBEmbeddingRetriever`](../pipeline-components/retrievers/azuredocumentdbembeddingretriever.mdx): Compares the query and document embeddings and fetches the documents most relevant to the query.
+- [`AzureDocumentDBFullTextRetriever`](../pipeline-components/retrievers/azuredocumentdbfulltextretriever.mdx): A keyword-based Retriever that uses Azure DocumentDB's BM25 full-text search.
+
+## Extended Methods
+
+Beyond the standard Document Store protocol, `AzureDocumentDBDocumentStore` supports these methods, each with an async twin:
+
+- `delete_by_filter` / `update_by_filter`: delete or update the metadata of all documents matching a filter.
+- `delete_all_documents`: delete every document. With `recreate_collection=True`, it drops and recreates the collection instead, keeping its options and indexes.

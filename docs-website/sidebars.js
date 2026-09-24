@@ -111,6 +111,7 @@ export default {
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
+        'document-stores/azuredocumentdbdocumentstore',
         'document-stores/chromadocumentstore',
         'document-stores/dynamodbdocumentstore',
         {
@@ -607,6 +608,8 @@ export default {
             'pipeline-components/retrievers/azureaisearchbm25retriever',
             'pipeline-components/retrievers/azureaisearchembeddingretriever',
             'pipeline-components/retrievers/azureaisearchhybridretriever',
+            'pipeline-components/retrievers/azuredocumentdbembeddingretriever',
+            'pipeline-components/retrievers/azuredocumentdbfulltextretriever',
             'pipeline-components/retrievers/chromaembeddingretriever',
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/dynamodbembeddingretriever',
