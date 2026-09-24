@@ -134,6 +134,20 @@ class TestQueryExpander:
         assert result["queries"] == ["\t\n  \r"]
         assert "Empty query provided" in caplog.text
 
+    def test_run_none_query(self, monkeypatch, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander()
+        with caplog.at_level(logging.WARNING):
+            result = expander.run(None)  # type: ignore[arg-type]
+        assert result["queries"] == []
+        assert "Empty query provided" in caplog.text
+
+    def test_run_none_query_include_original(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander(include_original_query=False)
+        result = expander.run(None)  # type: ignore[arg-type]
+        assert result["queries"] == []
+
     def test_run_generator_no_replies(self, mock_chat_generator):
         mock_chat_generator.run.return_value = {"replies": []}
         expander = QueryExpander(chat_generator=mock_chat_generator)

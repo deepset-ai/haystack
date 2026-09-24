@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Log values are now bounded in size. Exceptions passed to a logger are rendered with ``str`` instead of
+    ``repr``, because some carry their whole input in their ``repr`` - ``UnicodeDecodeError`` keeps the entire
+    buffer it failed to decode, so logging one raised while decoding a large file would emit that whole file as
+    a single log line. Any remaining value longer than 4096 characters is truncated.
