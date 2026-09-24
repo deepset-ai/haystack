@@ -111,11 +111,11 @@
 | haystack/components/retrievers/auto\_merging\_retriever.py                |       86 |        0 |    100% |           |
 | haystack/components/retrievers/filter\_retriever.py                       |       30 |        1 |     97% |        55 |
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
-| haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
-| haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
+| haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       48 |        0 |    100% |           |
+| haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       53 |        1 |     98% |       102 |
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       82 |        2 |     98% |  202, 221 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py           |       72 |        3 |     96% |124, 178, 193 |
-| haystack/components/retrievers/multi\_retriever.py                        |      117 |        1 |     99% |       135 |
+| haystack/components/retrievers/multi\_retriever.py                        |      131 |        1 |     99% |       160 |
 | haystack/components/retrievers/sentence\_window\_retriever.py             |      103 |        5 |     95% |138, 270-277, 292-299 |
 | haystack/components/retrievers/text\_embedding\_retriever.py              |       52 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17314** |  **743** | **96%** |           |
+| **TOTAL**                                                                 | **17336** |  **743** | **96%** |           |
 
 
 ## Setup coverage badge
