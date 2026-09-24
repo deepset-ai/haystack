@@ -1,0 +1,14 @@
+---
+security:
+  - |
+    Fixed a Jinja sandbox escape in ``PromptBuilder``, ``ChatPromptBuilder``, ``OutputAdapter``, and
+    ``ConditionalRouter`` that allowed a caller-supplied template to write and read arbitrary files, and
+    to read arbitrary environment variables. ``HaystackSandboxedEnvironment`` previously only blocked
+    calls into a denylist of standard-library modules (``os``, ``subprocess``, ...), so calling public
+    methods of Haystack's own data classes placed in the template context, such as
+    ``Document.from_dict()``, ``ByteStream.to_file()``, ``ByteStream.from_file_path()``, and
+    ``Secret.resolve_value()``, was not restricted. A template like
+    ``{{ documents[0].from_dict({"blob": {...}}).blob.to_file("/some/path") }}`` could therefore write
+    or read files, or resolve secrets, as the process user. Calls into ``haystack.dataclasses`` and
+    ``haystack.utils.auth`` are now denied from templates; plain attribute access (``doc.content``,
+    ``doc.meta``) is unaffected.
