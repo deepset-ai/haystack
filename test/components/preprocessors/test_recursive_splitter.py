@@ -1308,3 +1308,23 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     for doc in result:
         assert doc.content is not None
         assert doc.content.strip()
+
+
+def test_run_sentence_separator_keeps_trailing_page_breaks_and_whitespace() -> None:
+    splitter = RecursiveDocumentSplitter(split_length=6, split_overlap=0, split_unit="word")
+    splitter.warm_up()
+    text = (
+        "Intro para one. It has two sentences.\f\n\nSecond page starts. Also two sentences here.\f\n\nThird page. End."
+    )
+
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert "".join(chunk.content for chunk in chunks) == text
+    for chunk in chunks:
+        start = chunk.meta["split_idx_start"]
+        assert text[start : start + len(chunk.content)] == chunk.content
+    assert chunks[1].content == "It has two sentences.\f\n\n"
+    assert chunks[2].content == "Second page starts. "
+    assert chunks[2].meta["page_number"] == 2
+    assert chunks[4].content == "Third page. End."
+    assert chunks[4].meta["page_number"] == 3
