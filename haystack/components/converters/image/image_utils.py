@@ -164,7 +164,11 @@ def _convert_pdf_to_images(
 
     for page_number in resolved_page_range:
         if page_number < 1 or page_number > num_pages:
-            logger.warning("Page {page_number} is out of range for the PDF file. Skipping it.", page_number=page_number)
+            logger.warning(
+                "Page {page_number} is out of range for the PDF file {file_path}. Skipping it.",
+                page_number=page_number,
+                file_path=bytestream.meta.get("file_path"),
+            )
             continue
 
         # Get dimensions of the page
@@ -326,7 +330,7 @@ def _batch_convert_pdf_pages_to_images(
 
     for pdf_path, page_infos_for_pdf in page_infos_by_pdf_path.items():
         page_numbers_to_convert = [info["page_number"] for info in page_infos_for_pdf]
-        bytestream = ByteStream.from_file_path(pdf_path)
+        bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         converted_pages = _convert_pdf_to_images(
             bytestream=bytestream, return_base64=return_base64, page_range=page_numbers_to_convert, size=size

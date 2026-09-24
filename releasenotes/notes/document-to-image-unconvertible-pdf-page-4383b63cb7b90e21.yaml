@@ -4,3 +4,4 @@ fixes:
     ``DocumentToImageContent`` no longer raises a ``KeyError`` for the whole batch when a document points to a PDF
     page that cannot be converted, because the page is out of range or the PDF cannot be read. That document now
     gets ``None`` in ``image_contents``, like other invalid documents, and the rest of the batch is still converted.
+    The logged warnings now include the path of the PDF file.
