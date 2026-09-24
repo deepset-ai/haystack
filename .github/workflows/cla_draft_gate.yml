@@ -8,7 +8,10 @@ name: CLA draft gate
 #    handed back too: the reviewers we removed are unassigned and the issue is
 #    moved out of the review column of the Open Source project board, undoing
 #    what linked_issue_review.yml did when the PR was opened. Otherwise a parked
-#    PR keeps its issue looking taken and in review.
+#    PR keeps its issue looking taken and in review. Where the issue lands
+#    depends on whether it has been triaged: one that already carries a priority
+#    label (P0-P3) goes back to the backlog, one that doesn't goes to the triage
+#    ("new") column.
 #  - When the CLA is signed (the `license/cla` commit status turns green), mark
 #    the PR ready for review again and re-request the same reviewers. This also
 #    covers the case where the contributor marks the PR ready for review
@@ -69,11 +72,12 @@ jobs:
             const REMINDER_MARKER = "<!-- cla-reminder-5d -->";
             const WARNING_MARKER = "<!-- cla-warning-10d -->";
             const FIRST_TIMER = new Set(["FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"]);
+            const PRIORITY_LABEL = /^P[0-3]$/i;
             const { owner, repo } = context.repo;
 
-            // Node ids of the linked issues released by this run, handed to the
-            // next step (which needs a different token to touch the project).
-            const parkedIssueIds = new Set();
+            // Linked issues released by this run, each mapped to the board column
+            // it should go back to.
+            const parkedIssues = new Map();
 
             // Team members must never be gated. author_association is unreliable
             // for this: PRIVATE org members show up as CONTRIBUTOR/NONE in webhook
@@ -140,7 +144,10 @@ jobs:
                   repository(owner: $owner, name: $repo) {
                     pullRequest(number: $number) {
                       closingIssuesReferences(first: 10) {
-                        nodes { id number repository { nameWithOwner } }
+                        nodes {
+                          id number repository { nameWithOwner }
+                          labels(first: 100) { nodes { name } }
+                        }
                       }
                     }
                   }
@@ -155,8 +162,13 @@ jobs:
                 await github.rest.issues.removeAssignees({
                   owner, repo, issue_number: issue.number, assignees,
                 });
-                parkedIssueIds.add(issue.id);
-                core.info(`Released linked issue #${issue.number} of PR #${pr.number}`);
+                // An issue without P0-P3 belongs in the triage ("new") column.
+                const triaged = issue.labels.nodes.some((l) => PRIORITY_LABEL.test(l.name.trim()));
+                const target = triaged ? "backlog" : "new";
+                parkedIssues.set(issue.id, target);
+                core.info(
+                  `Released linked issue #${issue.number} of PR #${pr.number} (-> ${target})`,
+                );
               }
             }
 
@@ -386,13 +398,16 @@ jobs:
               }
             }
 
-            core.setOutput("backlog_issue_ids", JSON.stringify([...parkedIssueIds]));
+            core.setOutput(
+              "parked_issues",
+              JSON.stringify([...parkedIssues].map(([id, target]) => ({ id, target }))),
+            );
 
-      - name: Move released issues back to the backlog
-        if: steps.gate.outputs.backlog_issue_ids && steps.gate.outputs.backlog_issue_ids != '[]'
+      - name: Move released issues out of the review column
+        if: steps.gate.outputs.parked_issues && steps.gate.outputs.parked_issues != '[]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          ISSUE_NODE_IDS: ${{ steps.gate.outputs.backlog_issue_ids }}
+          PARKED_ISSUES: ${{ steps.gate.outputs.parked_issues }}
           PROJECT_ORG: deepset-ai
           PROJECT_NUMBER: "5"
           # Names of the Status options, matched case-insensitively and falling
@@ -400,12 +415,15 @@ jobs:
           # This only undoes the move linked_issue_review.yml made, so an issue is
           # left alone unless it currently sits in the review column.
           REVIEW_STATUS_NAME: In review
+          # Issues carrying a P0-P3 label go back to the backlog; untriaged ones
+          # go to the triage column instead.
           BACKLOG_STATUS_NAME: Backlog
+          NEW_STATUS_NAME: New
         with:
           # The default GITHUB_TOKEN cannot access org-level projects.
           github-token: ${{ secrets.GH_PROJECT_PAT }}
           script: |
-            const issueIds = JSON.parse(process.env.ISSUE_NODE_IDS);
+            const parked = JSON.parse(process.env.PARKED_ISSUES);
 
             const result = await github.graphql(
               `query($org: String!, $number: Int!) {
@@ -426,18 +444,24 @@ jobs:
               field.options.find((o) => o.name.toLowerCase() === name.toLowerCase()) ??
               field.options.find((o) => o.name.toLowerCase().includes(name.toLowerCase()));
 
-            const backlog = optionFor(process.env.BACKLOG_STATUS_NAME);
             const review = optionFor(process.env.REVIEW_STATUS_NAME);
-            if (!backlog || !review) {
+            const targets = {
+              backlog: optionFor(process.env.BACKLOG_STATUS_NAME),
+              new: optionFor(process.env.NEW_STATUS_NAME),
+            };
+            if (!review || !targets.backlog || !targets.new) {
               core.warning(
-                `No Status option matching "${process.env.BACKLOG_STATUS_NAME}" and ` +
-                  `"${process.env.REVIEW_STATUS_NAME}" in project ${process.env.PROJECT_NUMBER}. ` +
+                `Missing a Status option among "${process.env.REVIEW_STATUS_NAME}", ` +
+                  `"${process.env.BACKLOG_STATUS_NAME}" and "${process.env.NEW_STATUS_NAME}" ` +
+                  `in project ${process.env.PROJECT_NUMBER}. ` +
                   `Available: ${field.options.map((o) => o.name).join(", ")}`,
               );
               return;
             }
 
-            for (const issueId of issueIds) {
+            for (const { id: issueId, target } of parked) {
+              const option = targets[target];
+              if (!option) continue;
               const node = await github.graphql(
                 `query($id: ID!) {
                   node(id: $id) {
@@ -469,7 +493,7 @@ jobs:
                     }
                   ) { projectV2Item { id } }
                 }`,
-                { projectId: project.id, itemId: item.id, fieldId: field.id, optionId: backlog.id },
+                { projectId: project.id, itemId: item.id, fieldId: field.id, optionId: option.id },
               );
-              core.info(`Moved issue ${issueId} back to "${backlog.name}"`);
+              core.info(`Moved issue ${issueId} to "${option.name}"`);
             }

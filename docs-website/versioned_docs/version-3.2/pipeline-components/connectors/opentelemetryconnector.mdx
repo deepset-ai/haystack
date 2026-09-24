@@ -1,0 +1,126 @@
+---
+title: "OpenTelemetryConnector"
+id: opentelemetryconnector
+slug: "/opentelemetryconnector"
+description: "Learn how to work with OpenTelemetry in Haystack."
+---
+
+# OpenTelemetryConnector
+
+Learn how to work with OpenTelemetry in Haystack.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
+| **Mandatory init variables** | None. The tracer is created at initialization time |
+| **Output variables** | `name`: The name of the tracing component |
+| **API reference** | [opentelemetry](/reference/integrations-opentelemetry) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opentelemetry |
+| **Package name** | `opentelemetry-haystack` |
+
+</div>
+
+## Overview
+
+`OpenTelemetryConnector` integrates tracing capabilities into Haystack pipelines using [OpenTelemetry](https://opentelemetry.io/), through the [OpenTelemetry SDK](https://opentelemetry.io/docs/languages/python/). It captures detailed information about pipeline runs, like API calls, context data, prompts, and more, so you can see the complete trace of your pipeline execution in any OpenTelemetry-compatible backend.
+
+OpenTelemetry tracing is enabled as soon as the `OpenTelemetryConnector` is initialized, so you only need to add it to your pipeline – it does not need to be connected to other components or to run to take effect.
+
+You can optionally pass a `name` to identify this tracing component (it defaults to `opentelemetry`).
+
+### Prerequisites
+
+These are the things that you need before working with the `OpenTelemetryConnector`:
+
+1. A configured OpenTelemetry `TracerProvider` with an exporter (for example, an OTLP exporter that sends traces to a collector or a backend). Set up the provider before initializing the connector.
+2. Set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable to `true` – this will enable content tracing (inputs and outputs) in your pipelines.
+3. To add traces at even deeper levels, check out the available [OpenTelemetry instrumentations](https://opentelemetry.io/ecosystem/registry/?s=python), such as `opentelemetry-instrumentation-openai-v2` for tracing OpenAI requests.
+
+### Installation
+
+First, install the `opentelemetry-haystack` package to use the `OpenTelemetryConnector`:
+
+```shell
+pip install opentelemetry-haystack
+```
+
+<br />
+
+:::info[Usage Notice]
+
+To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environment variables and then import the relevant Haystack components.
+
+Alternatively, an even better practice is to set these environment variables in your shell before running the script. This approach keeps configuration separate from code and allows for easier management of different environments.
+:::
+
+## Usage
+
+In the example below, we are adding `OpenTelemetryConnector` to the pipeline as a _tracer_. Each pipeline run will produce a trace that includes the entire execution context, including prompts, completions, and metadata. You can then view the traces in your OpenTelemetry backend.
+
+```python
+import os
+
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.semconv.resource import ResourceAttributes
+
+# Configure the OpenTelemetry SDK. A service name is required for most backends.
+resource = Resource(attributes={ResourceAttributes.SERVICE_NAME: "haystack"})
+tracer_provider = TracerProvider(resource=resource)
+tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")),
+)
+trace.set_tracer_provider(tracer_provider)
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.connectors.opentelemetry import (
+    OpenTelemetryConnector,
+)
+
+pipe = Pipeline()
+pipe.add_component("tracer", OpenTelemetryConnector("Chat example"))
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator())
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": "Berlin"},
+            "template": messages,
+        },
+    },
+)
+print(response["llm"]["replies"][0])
+```
+
+### Configuring the tracing backend directly
+
+Instead of using the `OpenTelemetryConnector`, you can configure the OpenTelemetry tracing backend directly by enabling an `OpenTelemetryTracer`. Make sure to set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable and configure your `TracerProvider` before importing any Haystack components.
+
+```python
+from opentelemetry import trace
+
+from haystack import tracing
+from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
+
+tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
+```

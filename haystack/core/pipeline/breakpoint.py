@@ -18,7 +18,7 @@ from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
 
-# Environment variable to control pipeline snapshot file saving (enabled by default)
+# Environment variable to control pipeline snapshot file saving (disabled by default)
 HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED"
 
 # Type alias for snapshot callback function
@@ -71,6 +71,16 @@ def _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot: PipelineSnap
         raise PipelineInvalidPipelineSnapshotError(
             f"Invalid pipeline snapshot: components {invalid_ordered_components} in 'ordered_component_names' "
             f"are not part of the current pipeline."
+        )
+
+    # A snapshot must describe the complete pipeline it resumes. If the current pipeline contains components that
+    # were not present when the snapshot was created, they would never be added to the resume queue and could be
+    # silently skipped.
+    missing_ordered_components = valid_components - set(pipeline_snapshot.ordered_component_names)
+    if missing_ordered_components:
+        raise PipelineInvalidPipelineSnapshotError(
+            f"Invalid pipeline snapshot: components {missing_ordered_components} in the current pipeline are not "
+            f"present in 'ordered_component_names'."
         )
 
     # Check if the original_input_data is valid components in the pipeline
@@ -175,7 +185,7 @@ def _save_pipeline_snapshot(
                 raise
             return None
 
-    # Check if snapshot saving is enabled via environment variable (enabled by default)
+    # Check if snapshot saving is enabled via environment variable (disabled by default)
     if not _is_snapshot_save_enabled():
         logger.debug("Pipeline snapshot file saving is disabled via HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED env var.")
         return None

@@ -242,3 +242,32 @@ class TestCSVToDocument:
         # Surplus value is preserved under an explicit (non-None) string meta key.
         assert None not in ragged_doc.meta
         assert "state" in ragged_doc.meta["extra_columns"]
+
+    def test_run_utf8_with_bom(self, tmp_path):
+        """
+        A CSV saved as UTF-8 with a byte order mark must not leak the BOM into the content.
+
+        Excel's "CSV UTF-8 (Comma delimited)" export writes a BOM, so this is the most
+        common way a spreadsheet-authored CSV reaches a pipeline. The BOM is in the bytes,
+        so this is not platform specific.
+        """
+        path = tmp_path / "bom.csv"
+        path.write_text("Name,Age\r\nJohn Doe,27\r\n", encoding="utf-8-sig", newline="")
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,Age\r\nJohn Doe,27\r\n"
+        assert not docs[0].content.startswith("﻿")
+
+    def test_run_utf8_without_bom_is_unchanged(self, tmp_path):
+        """Reading a plain UTF-8 CSV must keep working, including non-ASCII content."""
+        path = tmp_path / "plain.csv"
+        path.write_text("Name,City\r\nJosé,München\r\n", encoding="utf-8", newline="")
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,City\r\nJosé,München\r\n"

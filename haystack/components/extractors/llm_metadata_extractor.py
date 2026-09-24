@@ -5,10 +5,8 @@
 import copy
 import json
 from asyncio import Semaphore, gather
-from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from functools import partial
 from typing import Any
 
 from jinja2 import meta
@@ -268,20 +266,6 @@ class LLMMetadataExtractor:
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
-    def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
-        try:
-            parsed_metadata = _parse_dict_from_json(llm_answer, expected_keys=self.expected_keys, raise_on_failure=True)
-        except (ValueError, json.JSONDecodeError) as e:
-            logger.warning(
-                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
-                response=llm_answer,
-            )
-            if self.raise_on_failure:
-                raise e
-            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
-
-        return parsed_metadata
-
     def _prepare_prompts(
         self, documents: list[Document], expanded_range: list[int] | None = None
     ) -> list[ChatMessage | None]:
@@ -311,10 +295,17 @@ class LLMMetadataExtractor:
 
         return all_prompts
 
-    def _run_on_thread(self, prompt: ChatMessage | None, parent_span: tracing.Span | None = None) -> dict[str, Any]:
-        # If prompt is None, return an error dictionary
+    @staticmethod
+    def _fail(document: Document, error: str, response: ChatMessage | None = None) -> tuple[Document, bool]:
+        """Return a copy of ``document`` with the failure metadata set, flagged as failed."""
+        new_meta = {**document.meta, "metadata_extraction_error": error, "metadata_extraction_response": response}
+        return replace(document, meta=new_meta), False
+
+    def _run_on_thread(
+        self, document: Document, prompt: ChatMessage | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
         if prompt is None:
-            return {"error": "Document has no content, skipping LLM call."}
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         try:
             with _trace_chat_generator_run(
@@ -330,13 +321,14 @@ class LLMMetadataExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            result = {"error": "LLM failed with exception: " + str(e)}
-        return result
+            return self._fail(document, "LLM failed with exception: " + str(e))
+        return self._process_reply(document, result["replies"][0])
 
-    async def _run_async(self, prompt: ChatMessage | None, parent_span: tracing.Span | None = None) -> dict[str, Any]:
-        # If prompt is None, return an error dictionary
+    async def _run_async(
+        self, document: Document, prompt: ChatMessage | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
         if prompt is None:
-            return {"error": "Document has no content, skipping LLM call."}
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         try:
             with _trace_chat_generator_run(
@@ -352,36 +344,33 @@ class LLMMetadataExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            result = {"error": "LLM failed with exception: " + str(e)}
-        return result
+            return self._fail(document, "LLM failed with exception: " + str(e))
+        return self._process_reply(document, result["replies"][0])
 
-    def _process_results(
-        self, documents: list[Document], results: Iterable[dict[str, Any]]
-    ) -> tuple[list[Document], list[Document]]:
-        successful_documents = []
-        failed_documents = []
-        for document, result in zip(documents, results, strict=True):
-            new_meta = {**document.meta}
-            if "error" in result:
-                new_meta["metadata_extraction_error"] = result["error"]
-                new_meta["metadata_extraction_response"] = None
-                failed_documents.append(replace(document, meta=new_meta))
-                continue
+    def _process_reply(self, document: Document, reply: ChatMessage) -> tuple[Document, bool]:
+        """
+        Parse one document's LLM reply into metadata.
 
-            parsed_metadata = self._extract_metadata(result["replies"][0].text)
-            if "error" in parsed_metadata:
-                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
-                new_meta["metadata_extraction_response"] = result["replies"][0]
-                failed_documents.append(replace(document, meta=new_meta))
-                continue
+        Returns (updated_document, True if success else False).
+        """
+        try:
+            parsed_metadata = _parse_dict_from_json(
+                reply.text or "", expected_keys=self.expected_keys, raise_on_failure=True
+            )
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.warning(
+                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
+                response=reply.text,
+            )
+            if self.raise_on_failure:
+                raise
+            return self._fail(document, "Response is not valid JSON or missing keys. Error: " + str(e), response=reply)
 
-            for key in parsed_metadata:
-                new_meta[key] = parsed_metadata[key]
-                # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
-                new_meta.pop("metadata_extraction_error", None)
-                new_meta.pop("metadata_extraction_response", None)
-            successful_documents.append(replace(document, meta=new_meta))
-        return successful_documents, failed_documents
+        new_meta = {**document.meta, **parsed_metadata}
+        # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs.
+        new_meta.pop("metadata_extraction_error", None)
+        new_meta.pop("metadata_extraction_response", None)
+        return replace(document, meta=new_meta), True
 
     @component.output_types(documents=list[Document], failed_documents=list[Document])
     def run(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
@@ -426,9 +415,19 @@ class LLMMetadataExtractor:
 
         # Run the LLM on each prompt
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(partial(self._run_on_thread, parent_span=parent_span), all_prompts)
+            results = executor.map(
+                lambda document, prompt: self._run_on_thread(document, prompt, parent_span=parent_span),
+                documents,
+                all_prompts,
+            )
 
-        successful_documents, failed_documents = self._process_results(documents, results)
+        successful_documents = []
+        failed_documents = []
+        for doc, success in results:
+            if success:
+                successful_documents.append(doc)
+            else:
+                failed_documents.append(doc)
 
         return {"documents": successful_documents, "failed_documents": failed_documents}
 
@@ -479,12 +478,20 @@ class LLMMetadataExtractor:
         # Run the LLM on each prompt, bounding concurrency per task so max_workers is enforced.
         sem = Semaphore(max(1, self.max_workers))
 
-        async def _bounded_run(prompt: ChatMessage | None) -> dict[str, Any]:
+        async def _bounded_run(document: Document, prompt: ChatMessage | None) -> tuple[Document, bool]:
             async with sem:
-                return await self._run_async(prompt, parent_span=parent_span)
+                return await self._run_async(document, prompt, parent_span=parent_span)
 
-        results = await gather(*[_bounded_run(prompt) for prompt in all_prompts])
+        results = await gather(
+            *[_bounded_run(document, prompt) for document, prompt in zip(documents, all_prompts, strict=True)]
+        )
 
-        successful_documents, failed_documents = self._process_results(documents, results)
+        successful_documents = []
+        failed_documents = []
+        for doc, success in results:
+            if success:
+                successful_documents.append(doc)
+            else:
+                failed_documents.append(doc)
 
         return {"documents": successful_documents, "failed_documents": failed_documents}

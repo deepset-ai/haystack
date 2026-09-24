@@ -550,3 +550,62 @@ async def test_run_async_raises_when_multi_element_list_is_unwrapped_at_runtime(
 
     with pytest.raises(PipelineRuntimeError, match="Cannot unwrap a list of 3 items"):
         await pipe.run_async({})
+
+
+@pytest.mark.asyncio
+async def test_run_async_does_not_double_wrap_a_nested_pipeline_runtime_error():
+    """
+    A component that internally runs a pipeline and lets a PipelineRuntimeError escape (e.g. an Agent
+    carrying a snapshot) should have that error propagate unchanged, not wrapped in another
+    PipelineRuntimeError. This matches the synchronous _run_component.
+    """
+    from haystack.core.errors import PipelineRuntimeError
+
+    inner_error = PipelineRuntimeError(component_name="inner", component_type=None, message="inner failure")
+
+    @component
+    class NestedPipelineComponent:
+        @component.output_types(value=str)
+        def run(self, text: str) -> dict[str, str]:  # pragma: no cover - async path is under test
+            raise inner_error
+
+        @component.output_types(value=str)
+        async def run_async(self, text: str) -> dict[str, str]:
+            raise inner_error
+
+    pp = Pipeline()
+    pp.add_component("nested", NestedPipelineComponent())
+
+    with pytest.raises(PipelineRuntimeError) as exc_info:
+        await pp.run_async({"nested": {"text": "x"}})
+
+    assert exc_info.value is inner_error
+    assert not isinstance(exc_info.value.__cause__, PipelineRuntimeError)
+
+
+@pytest.mark.asyncio
+async def test_run_async_lets_a_nested_breakpoint_exception_bubble_up():
+    """A BreakpointException raised by a nested component must reach the caller as-is, not wrapped."""
+    from haystack.core.errors import BreakpointException
+    from haystack.dataclasses.breakpoints import Breakpoint
+
+    break_point = Breakpoint(component_name="inner", visit_count=0)
+    breakpoint_error = BreakpointException.from_triggered_breakpoint(break_point)
+
+    @component
+    class BreakpointingComponent:
+        @component.output_types(value=str)
+        def run(self, text: str) -> dict[str, str]:  # pragma: no cover - async path is under test
+            raise breakpoint_error
+
+        @component.output_types(value=str)
+        async def run_async(self, text: str) -> dict[str, str]:
+            raise breakpoint_error
+
+    pp = Pipeline()
+    pp.add_component("bp", BreakpointingComponent())
+
+    with pytest.raises(BreakpointException) as exc_info:
+        await pp.run_async({"bp": {"text": "x"}})
+
+    assert exc_info.value is breakpoint_error

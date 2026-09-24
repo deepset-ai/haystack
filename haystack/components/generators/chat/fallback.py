@@ -128,10 +128,8 @@ class FallbackChatGenerator:
             "tools": tools,
             "streaming_callback": streaming_callback,
         }
-        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs) as span:
-            result = gen.run(**generator_inputs)
-            span.set_content_tag(key="haystack.component.output", value=result)
-            return result
+        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs):
+            return gen.run(**generator_inputs)
 
     async def _run_single_async(
         self,
@@ -147,10 +145,8 @@ class FallbackChatGenerator:
             "tools": tools,
             "streaming_callback": streaming_callback,
         }
-        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs) as span:
-            result = await _execute_component_async(component_instance=gen, **generator_inputs)
-            span.set_content_tag(key="haystack.component.output", value=result)
-            return result
+        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs):
+            return await _execute_component_async(component_instance=gen, **generator_inputs)
 
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     def run(

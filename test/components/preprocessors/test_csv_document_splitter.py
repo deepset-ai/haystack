@@ -7,6 +7,7 @@ from io import StringIO
 
 import pytest
 from pandas import read_csv
+from pytest import LogCaptureFixture
 
 from haystack import Document
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
@@ -62,14 +63,14 @@ class TestFindSplitIndices:
     def test_find_split_indices_row_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_rows: str
     ) -> None:
-        df = read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3)]
 
     def test_find_split_indices_row_two_tables_with_empty_row(
         self, splitter: CSVDocumentSplitter, three_tables_sep_by_empty_rows: str
     ) -> None:
-        df = read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(3, 4)]
 
@@ -84,7 +85,7 @@ X,Y,Z
 ,,
 P,Q,R
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3), (6, 7)]
 
@@ -108,7 +109,7 @@ X,Y,Z
     def test_find_split_indices_column_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str
     ) -> None:
-        df = read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=1, axis="column")
         assert result == [(2, 3)]
 
@@ -117,7 +118,7 @@ X,Y,Z
 1,,2,,,7,8
 3,,4,,,9,10
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(3, 4)]
 
@@ -126,7 +127,7 @@ X,Y,Z
 1,2,,,7,8,,,11,12
 3,4,,,9,10,,,13,14
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(2, 3), (6, 7)]
 
@@ -386,7 +387,7 @@ E,F,,,G,H
         assert result[1].content == "1,2,3\n"
         assert result[2].content == "X,Y,Z\n"
 
-    def test_split_by_row_with_empty_rows(self, caplog) -> None:
+    def test_split_by_row_with_empty_rows(self, caplog: LogCaptureFixture) -> None:
         splitter = CSVDocumentSplitter(split_mode="row-wise")
         doc = Document(content="")
         with caplog.at_level(logging.ERROR):
@@ -396,4 +397,4 @@ E,F,,,G,H
 
     def test_incorrect_split_mode(self) -> None:
         with pytest.raises(ValueError, match="not recognized"):
-            CSVDocumentSplitter(split_mode="incorrect_mode")
+            CSVDocumentSplitter(split_mode="incorrect_mode")  # type: ignore[arg-type]

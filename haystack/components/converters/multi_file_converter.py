@@ -52,14 +52,14 @@ class MultiFileConverter:
 
     Usage example:
     ```
-    from haystack.super_components.converters import MultiFileConverter
+    from haystack.components.converters import MultiFileConverter
 
     converter = MultiFileConverter()
     converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sample_pdf_1.pdf"], meta={})
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", json_content_key: str = "content") -> None:
+    def __init__(self, encoding: str = "utf-8-sig", json_content_key: str = "content") -> None:
         """
         Initialize the MultiFileConverter.
 

@@ -7,7 +7,9 @@ import json
 import logging
 import os
 from io import StringIO
+from pathlib import Path
 
+import docx
 import pytest
 
 from haystack import Document, Pipeline
@@ -18,6 +20,22 @@ from haystack.dataclasses import ByteStream
 @pytest.fixture
 def docx_converter():
     return DOCXToDocument()
+
+
+def _convert_docx_table(tmp_path: Path, cells: list[list[str]], table_format: str) -> str:
+    """Converts a DOCX holding one table; a newline in a cell starts a new paragraph, as Enter does in Word."""
+    doc = docx.Document()
+    table = doc.add_table(rows=len(cells), cols=len(cells[0]))
+    for i, row in enumerate(cells):
+        for j, text in enumerate(row):
+            first_paragraph, *more_paragraphs = text.split("\n")
+            cell = table.cell(i, j)
+            cell.text = first_paragraph
+            for paragraph in more_paragraphs:
+                cell.add_paragraph(paragraph)
+    path = tmp_path / "table.docx"
+    doc.save(str(path))
+    return DOCXToDocument(table_format=table_format).run(sources=[path])["documents"][0].content
 
 
 class TestDOCXToDocument:
@@ -284,6 +302,26 @@ class TestDOCXToDocument:
             assert rows[0] == expected_header
             assert rows[1] == expected_row_one
             assert rows[2] == expected_row_two
+
+    @pytest.mark.parametrize(
+        ("cells", "expected_row"),
+        [
+            pytest.param([["Name", "Pattern"], ["alternation", "a|b"]], "| alternation | a\\|b    |", id="pipe"),
+            pytest.param(
+                [["Step", "Notes"], ["1", "first line\nsecond line"]],
+                "| 1    | first line second line |",
+                id="line-break",
+            ),
+        ],
+    )
+    def test_markdown_table_escapes_cell_content(self, tmp_path, cells, expected_row):
+        """A pipe would be read as a column separator, and a line break would end the row in the middle of it."""
+        rows = _convert_docx_table(tmp_path, cells=cells, table_format="markdown").split("\n")
+
+        assert len(rows) == 3
+        assert rows[2] == expected_row
+        # Every row describes the same number of columns as the header.
+        assert all(row.count("|") - row.count("\\|") == 3 for row in rows)
 
     def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]

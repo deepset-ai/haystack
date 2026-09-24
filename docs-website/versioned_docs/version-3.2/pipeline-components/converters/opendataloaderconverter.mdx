@@ -1,0 +1,132 @@
+---
+title: "OpenDataLoaderConverter"
+id: opendataloaderconverter
+slug: "/opendataloaderconverter"
+description: "`OpenDataLoaderConverter` converts PDF files to Haystack Documents using OpenDataLoader PDF, a local PDF parser that extracts layout-aware Markdown, text, HTML, or JSON."
+---
+
+# OpenDataLoaderConverter
+
+`OpenDataLoaderConverter` converts PDF files to Haystack Documents using [OpenDataLoader PDF](https://opendataloader.org/), a local PDF parser that extracts layout-aware Markdown, text, HTML, or JSON.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory run variables** | `sources`: A list of PDF file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Opendataloader Pdf](/reference/integrations-opendataloader-pdf) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opendataloader_pdf |
+| **Package name** | `opendataloader-pdf-haystack` |
+
+</div>
+
+## Overview
+
+`OpenDataLoaderConverter` takes a list of PDF file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects and runs OpenDataLoader PDF over them. Everything is processed locally, with no external API calls.
+
+OpenDataLoader analyzes the layout of a PDF (headings, paragraphs, lists, and tables) and serializes it into the format you pick with `output_format`:
+
+- `"markdown"` (default): structured Markdown with headings, lists, and tables
+- `"text"`: plain text
+- `"html"`: HTML markup
+- `"json"`: the full structured representation, including layout information
+
+The component returns one [`Document`](../../concepts/data-classes.mdx#document) per source. Each document's metadata contains the `file_path` of the source and the `output_format` that produced its content, plus any metadata you pass through the `meta` run variable. For `ByteStream` sources, the metadata of the stream is preserved as well.
+
+Only PDFs are supported. Passing a file with another extension, or a `ByteStream` whose MIME type is not `application/pdf`, raises a `ValueError`.
+
+:::info
+OpenDataLoader PDF runs on a Java engine, so Java 11 or newer must be installed and `java` must be available on your `PATH`. The component checks for this when it runs and raises a `RuntimeError` if no usable Java runtime is found.
+:::
+
+Image extraction is turned off by default so that documents contain text only. To turn it back on, pass `image_output` (and, if needed, `image_format` and `image_dir`) through `convert_kwargs`. See the [OpenDataLoader convert options](https://opendataloader.org/docs/quick-start-python#convert-options) for the accepted values.
+
+## Usage
+
+Install the OpenDataLoader PDF integration:
+
+```shell
+pip install opendataloader-pdf-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.converters.opendataloader_pdf import (
+    OpenDataLoaderConverter,
+)
+
+converter = OpenDataLoaderConverter()
+result = converter.run(sources=["report.pdf", "invoice.pdf"])
+documents = result["documents"]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", OpenDataLoaderConverter())
+pipeline.add_component(
+    "splitter", DocumentSplitter(split_by="sentence", split_length=5)
+)
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": ["report.pdf"]}})
+```
+
+## Additional Features
+
+### Choosing an Output Format
+
+Set `output_format` to control what the content of the resulting documents looks like:
+
+```python
+converter = OpenDataLoaderConverter(output_format="json")
+```
+
+### Extraction Settings
+
+Pass any [OpenDataLoader PDF option](https://opendataloader.org/docs/quick-start-python#convert-options) through `convert_kwargs`. For example, to convert a page range of an encrypted PDF, keep page separators in the Markdown output, and redact sensitive data:
+
+```python
+converter = OpenDataLoaderConverter(
+    output_format="markdown",
+    convert_kwargs={
+        "pages": "1,3,5-7",
+        "password": "secret",
+        "markdown_page_separator": "--- page %page-number% ---",
+        "sanitize": True,
+    },
+)
+```
+
+Other frequently used options are `table_method="cluster"` for table-heavy PDFs, `use_struct_tree=True` to follow the structure tree of a tagged PDF, and `include_header_footer=True` to keep page headers and footers.
+
+### Converting ByteStreams
+
+Sources coming from a fetcher or a file store can be passed as `ByteStream` objects, optionally together with metadata:
+
+```python
+from pathlib import Path
+
+from haystack.dataclasses import ByteStream
+
+stream = ByteStream.from_file_path(
+    Path("report.pdf"), mime_type="application/pdf", meta={"file_path": "report.pdf"}
+)
+
+converter = OpenDataLoaderConverter()
+result = converter.run(sources=[stream], meta={"source": "internal-reports"})
+```

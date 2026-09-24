@@ -74,7 +74,8 @@
           },
           "items": [
             "concepts/data-classes/chatmessage",
-            "concepts/data-classes/filecontent"
+            "concepts/data-classes/filecontent",
+            "concepts/data-classes/imagecontent"
           ]
         },
         {
@@ -107,6 +108,7 @@
         "document-stores/astradocumentstore",
         "document-stores/azureaisearchdocumentstore",
         "document-stores/chromadocumentstore",
+        "document-stores/dynamodbdocumentstore",
         {
           "type": "link",
           "label": "CouchbaseDocumentStore",
@@ -137,6 +139,7 @@
         "document-stores/pgvectordocumentstore",
         "document-stores/pinecone-document-store",
         "document-stores/qdrant-document-store",
+        "document-stores/solrdocumentstore",
         "document-stores/supabasedocumentstore",
         "document-stores/valkeydocumentstore",
         "document-stores/vespadocumentstore",
@@ -446,16 +449,13 @@
               ]
             },
             "pipeline-components/generators/amazonbedrockchatgenerator",
-            "pipeline-components/generators/amazonbedrockgenerator",
             "pipeline-components/generators/aimllapichatgenerator",
             "pipeline-components/generators/anthropicchatgenerator",
             "pipeline-components/generators/anthropicfoundrychatgenerator",
-            "pipeline-components/generators/anthropicgenerator",
             "pipeline-components/generators/anthropicvertexchatgenerator",
             "pipeline-components/generators/azureopenaichatgenerator",
             "pipeline-components/generators/azureopenairesponseschatgenerator",
             "pipeline-components/generators/coherechatgenerator",
-            "pipeline-components/generators/coheregenerator",
             "pipeline-components/generators/cometapichatgenerator",
             "pipeline-components/generators/edenaichatgenerator",
             "pipeline-components/generators/fallbackchatgenerator",
@@ -466,25 +466,22 @@
             "pipeline-components/generators/huggingfaceapichatgenerator",
             "pipeline-components/generators/litellmchatgenerator",
             "pipeline-components/generators/llamacppchatgenerator",
-            "pipeline-components/generators/llamacppgenerator",
             "pipeline-components/generators/llamastackchatgenerator",
             "pipeline-components/generators/metallamachatgenerator",
             "pipeline-components/generators/mistralchatgenerator",
             "pipeline-components/generators/mockchatgenerator",
             "pipeline-components/generators/nvidiachatgenerator",
-            "pipeline-components/generators/nvidiagenerator",
             "pipeline-components/generators/ollamachatgenerator",
-            "pipeline-components/generators/ollamagenerator",
             "pipeline-components/generators/openaichatgenerator",
             "pipeline-components/generators/openairesponseschatgenerator",
             "pipeline-components/generators/openaiimagegenerator",
             "pipeline-components/generators/openrouterchatgenerator",
             "pipeline-components/generators/orcarouterchatgenerator",
+            "pipeline-components/generators/parallelchatgenerator",
             "pipeline-components/generators/perplexitychatgenerator",
             "pipeline-components/generators/sagemakergenerator",
             "pipeline-components/generators/stackitchatgenerator",
             "pipeline-components/generators/togetheraichatgenerator",
-            "pipeline-components/generators/togetheraigenerator",
             "pipeline-components/generators/transformerschatgenerator",
             "pipeline-components/generators/vertexaicodegenerator",
             "pipeline-components/generators/vertexaigeminichatgenerator",
@@ -495,7 +492,6 @@
             "pipeline-components/generators/vertexaitextgenerator",
             "pipeline-components/generators/vllmchatgenerator",
             "pipeline-components/generators/watsonxchatgenerator",
-            "pipeline-components/generators/watsonxgenerator",
             "pipeline-components/generators/external-integrations-generators"
           ]
         },
@@ -597,6 +593,7 @@
           "items": [
             "pipeline-components/retrievers/alloydbembeddingretriever",
             "pipeline-components/retrievers/alloydbkeywordretriever",
+            "pipeline-components/retrievers/amazonbedrockknowledgebaseretriever",
             "pipeline-components/retrievers/arangoembeddingretriever",
             "pipeline-components/retrievers/arcadedbembeddingretriever",
             "pipeline-components/retrievers/astraretriever",
@@ -606,6 +603,7 @@
             "pipeline-components/retrievers/azureaisearchhybridretriever",
             "pipeline-components/retrievers/chromaembeddingretriever",
             "pipeline-components/retrievers/chromaqueryretriever",
+            "pipeline-components/retrievers/dynamodbembeddingretriever",
             "pipeline-components/retrievers/elasticsearchbm25retriever",
             "pipeline-components/retrievers/elasticsearchembeddingretriever",
             "pipeline-components/retrievers/elasticsearchhybridretriever",
@@ -642,6 +640,9 @@
             "pipeline-components/retrievers/qdrantsparseembeddingretriever",
             "pipeline-components/retrievers/sentencewindowretriever",
             "pipeline-components/retrievers/snowflaketableretriever",
+            "pipeline-components/retrievers/solrbm25retriever",
+            "pipeline-components/retrievers/solrembeddingretriever",
+            "pipeline-components/retrievers/solrhybridretriever",
             "pipeline-components/retrievers/sqlalchemytableretriever",
             "pipeline-components/retrievers/supabasegroongabm25retriever",
             "pipeline-components/retrievers/supabasepgvectorembeddingretriever",
@@ -707,10 +708,12 @@
             "pipeline-components/websearch/ddgswebsearch",
             "pipeline-components/websearch/firecrawlwebsearch",
             "pipeline-components/websearch/linkupwebsearch",
+            "pipeline-components/websearch/parallelwebsearch",
             "pipeline-components/websearch/perplexitywebsearch",
             "pipeline-components/websearch/searchapiwebsearch",
             "pipeline-components/websearch/serperdevwebsearch",
             "pipeline-components/websearch/tavilywebsearch",
+            "pipeline-components/websearch/youcomwebsearch",
             "pipeline-components/websearch/external-integrations-websearch"
           ]
         },
@@ -769,7 +772,10 @@
       "items": [
         "token-counters/approximatetokencounter",
         "token-counters/tiktokencounter",
-        "token-counters/openaitokencounter"
+        "token-counters/openaitokencounter",
+        "token-counters/anthropictokencounter",
+        "token-counters/googlegenaitokencounter",
+        "token-counters/amazonbedrocktokencounter"
       ]
     },
     {
@@ -827,6 +833,7 @@
             "development/tracing/datadog",
             "development/tracing/langfuse",
             "development/tracing/weave",
+            "development/tracing/rhesis",
             "development/tracing/logging-tracer",
             "development/tracing/custom-tracer"
           ]
