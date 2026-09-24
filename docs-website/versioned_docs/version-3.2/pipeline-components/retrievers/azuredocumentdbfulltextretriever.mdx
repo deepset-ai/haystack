@@ -1,0 +1,156 @@
+---
+title: "AzureDocumentDBFullTextRetriever"
+id: azuredocumentdbfulltextretriever
+slug: "/azuredocumentdbfulltextretriever"
+description: "A keyword-based Retriever that fetches documents matching a query from the Azure DocumentDB Document Store using BM25 full-text search."
+---
+
+# AzureDocumentDBFullTextRetriever
+
+A keyword-based Retriever that fetches documents matching a query from the Azure DocumentDB Document Store using BM25 full-text search.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the keyword search pipeline 3. Before a [`DocumentJoiner`](../joiners/documentjoiner.mdx) in a hybrid retrieval pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [AzureDocumentDBDocumentStore](../../document-stores/azuredocumentdbdocumentstore.mdx) |
+| **Mandatory run variables**            | `query`: A string or a list of strings |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [Azure DocumentDB](/reference/integrations-azure-documentdb) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_documentdb |
+| **Package name** | `azure-documentdb-haystack` |
+
+</div>
+
+## Overview
+
+`AzureDocumentDBFullTextRetriever` is a keyword-based Retriever that fetches documents matching a query from [`AzureDocumentDBDocumentStore`](../../document-stores/azuredocumentdbdocumentstore.mdx). It uses Azure DocumentDB full-text search, which ranks documents with the BM25 algorithm, a weighted word overlap between the query and the document content.
+
+Keyword retrieval is good at finding exact matches for names of people or products, IDs, or error messages. If you want a semantic match between a query and documents, use the [`AzureDocumentDBEmbeddingRetriever`](azuredocumentdbembeddingretriever.mdx), or combine both Retrievers in a hybrid pipeline as shown below.
+
+### Full-text search index
+
+The Retriever searches the full-text search index named in the Document Store's `full_text_search_index` parameter. If this parameter isn't set, the Retriever raises a `ValueError`. Create the index on the content field with the `createSearchIndexes` command, for example in the MongoDB shell:
+
+```javascript
+db.runCommand({
+  createSearchIndexes: "documents",
+  indexes: [
+    {
+      name: "content_index",
+      definition: {
+        mappings: { dynamic: false, fields: { content: { type: "string" } } },
+      },
+    },
+  ],
+});
+```
+
+Azure DocumentDB builds the index asynchronously, so newly written documents can take a moment to become searchable.
+
+### Parameters
+
+In addition to the `query`, the `AzureDocumentDBFullTextRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space. Filters are applied to the matching documents before the results are cut to `top_k`. The `filter_policy` parameter controls how filters passed at run time combine with the filters set at initialization.
+
+At run time, you can also pass `fuzzy` to match terms that are spelled slightly differently, for example `fuzzy={"maxEdits": 1}`. `maxEdits` accepts `1` or `2`.
+
+The returned documents have their BM25 `score` set. The Retriever also has a `run_async` method, which uses the Document Store's async client.
+
+## Usage
+
+### Installation
+
+To start using Azure DocumentDB with Haystack, install the package with:
+
+```shell
+pip install azure-documentdb-haystack
+```
+
+The examples on this page connect with Microsoft Entra ID and read the cluster name from the `AZURE_DOCUMENTDB_CLUSTER_NAME` environment variable. See [Authentication](../../document-stores/azuredocumentdbdocumentstore.mdx#authentication) for details.
+
+### On its own
+
+This Retriever needs an instance of `AzureDocumentDBDocumentStore` with a full-text search index and indexed documents to run.
+
+```python
+from haystack_integrations.components.retrievers.azure_documentdb import (
+    AzureDocumentDBFullTextRetriever,
+)
+from haystack_integrations.document_stores.azure_documentdb import (
+    AzureDocumentDBDocumentStore,
+)
+
+document_store = AzureDocumentDBDocumentStore(
+    database_name="haystack",
+    collection_name="documents",
+    full_text_search_index="content_index",
+)
+
+retriever = AzureDocumentDBFullTextRetriever(document_store=document_store)
+
+result = retriever.run(query="How to make a pizza", top_k=3)
+print(result["documents"])
+```
+
+### In a Pipeline
+
+This hybrid retrieval example combines the `AzureDocumentDBFullTextRetriever` with the `AzureDocumentDBEmbeddingRetriever` and fuses their results with a [`DocumentJoiner`](../joiners/documentjoiner.mdx). The collection needs both a vector index and a full-text search index. The example uses OpenAI embedding models, so set the `OPENAI_API_KEY` environment variable before running it.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
+from haystack.components.joiners import DocumentJoiner
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.retrievers.azure_documentdb import (
+    AzureDocumentDBEmbeddingRetriever,
+    AzureDocumentDBFullTextRetriever,
+)
+from haystack_integrations.document_stores.azure_documentdb import (
+    AzureDocumentDBDocumentStore,
+)
+
+document_store = AzureDocumentDBDocumentStore(
+    database_name="haystack",
+    collection_name="documents",
+    full_text_search_index="content_index",
+)
+
+documents = [
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome."),
+    Document(content="Azure DocumentDB offers vector search and full-text search."),
+]
+documents_with_embeddings = OpenAIDocumentEmbedder().run(documents=documents)
+document_store.write_documents(
+    documents_with_embeddings["documents"], policy=DuplicatePolicy.OVERWRITE
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", OpenAITextEmbedder())
+query_pipeline.add_component(
+    "embedding_retriever",
+    AzureDocumentDBEmbeddingRetriever(document_store=document_store, top_k=3),
+)
+query_pipeline.add_component(
+    "full_text_retriever",
+    AzureDocumentDBFullTextRetriever(document_store=document_store, top_k=3),
+)
+query_pipeline.add_component(
+    "joiner", DocumentJoiner(join_mode="reciprocal_rank_fusion", top_k=3)
+)
+query_pipeline.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
+query_pipeline.connect("embedding_retriever", "joiner")
+query_pipeline.connect("full_text_retriever", "joiner")
+
+question = "Where does Mark live?"
+result = query_pipeline.run(
+    {
+        "text_embedder": {"text": question},
+        "full_text_retriever": {"query": question},
+    }
+)
+print(result["joiner"]["documents"][0].content)
+# >> My name is Mark and I live in Berlin.
+```
