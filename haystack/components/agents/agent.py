@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -51,6 +52,7 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
+    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -66,11 +68,13 @@ from haystack.utils.deserialization import deserialize_component_inplace
 logger = logging.getLogger(__name__)
 
 # `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, an
-# incomplete model generation, or the `max_agent_steps` budget running out.
+# incomplete model generation, the `max_agent_steps` budget running out, or client-side tool calls the Agent
+# does not invoke.
 _EXIT_REASON_TEXT = "text"
 _EXIT_REASON_LENGTH = "length"
 _EXIT_REASON_CONTENT_FILTER = "content_filter"
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
+_EXIT_REASON_CLIENT_TOOLS = "client_tools"
 
 # Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
 # `state_schema`, and they are exposed as Agent outputs only (not inputs).
@@ -199,6 +203,105 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     return [last_message] if last_message.tool_calls else []
 
 
+def _client_side_tool_placeholder(**_kwargs: Any) -> str:
+    raise RuntimeError("Client-side tool; the Agent does not invoke this.")
+
+
+def _tools_from_openai_tool_defs(tools: Any) -> list[Tool]:
+    """Turn OpenAI function ``tools`` entries from ``generation_kwargs`` into spec-only Haystack Tools."""
+    if not isinstance(tools, list):
+        return []
+    result: list[Tool] = []
+    for item in tools:
+        if not isinstance(item, dict):
+            continue
+        nested = item.get("function")
+        function = nested if isinstance(nested, dict) else item
+        name = function.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        parameters = function.get("parameters")
+        if not isinstance(parameters, dict) or not parameters:
+            parameters = {"type": "object", "properties": {}}
+        description = function.get("description")
+        result.append(
+            Tool(
+                name=name,
+                description=description if isinstance(description, str) else "",
+                parameters=parameters,
+                function=_client_side_tool_placeholder,
+            )
+        )
+    return result
+
+
+def _tools_offered_to_llm(agent_tools: list[Tool], client_side_tools: list[Tool]) -> list[Tool]:
+    agent_names = {tool.name for tool in agent_tools}
+    extras = [tool for tool in client_side_tools if tool.name not in agent_names]
+    return [*agent_tools, *extras]
+
+
+def _tool_call_names(messages: list[ChatMessage]) -> list[str]:
+    return [tool_call.tool_name for message in messages for tool_call in (message.tool_calls or [])]
+
+
+def _messages_with_owned_tool_calls(messages: list[ChatMessage], owned_names: set[str]) -> list[ChatMessage]:
+    filtered: list[ChatMessage] = []
+    for message in messages:
+        owned = [tool_call for tool_call in (message.tool_calls or []) if tool_call.tool_name in owned_names]
+        if not owned:
+            continue
+        if len(owned) == len(message.tool_calls or []):
+            filtered.append(message)
+            continue
+        # Rebuild the assistant turn for tool execution only: keep non-tool content from the
+        # original message, but drop client-side tool calls so _run_tool does not hit ToolNotFound.
+        filtered.append(
+            ChatMessage.from_assistant(
+                text=message.text,
+                meta=message.meta or None,
+                name=message.name,
+                tool_calls=owned,
+                reasoning=message.reasoning,
+            )
+        )
+    return filtered
+
+
+@dataclass(frozen=True)
+class _PendingToolCallPlan:
+    invoke_messages: list[ChatMessage] | None
+    stop_for_client_tools: bool
+
+
+def _plan_pending_tool_calls(
+    pending_tool_call_messages: list[ChatMessage], *, current_tools: list[Tool], client_side_tools: list[Tool]
+) -> _PendingToolCallPlan:
+    """
+    Decide which pending tool calls the Agent should invoke.
+
+    Names from ``generation_kwargs["tools"]`` are client-side: the Agent offers them to the LLM but does not
+    invoke them, but may request that the client invoke them. Truly unknown tool names raise `ToolNotFound`.
+    """
+    owned_names = {tool.name for tool in current_tools}
+    client_names = {tool.name for tool in client_side_tools}
+    call_names = _tool_call_names(pending_tool_call_messages)
+    owned_calls = [name for name in call_names if name in owned_names]
+    client_calls = [name for name in call_names if name in client_names]
+    unknown_calls = [name for name in call_names if name not in owned_names and name not in client_names]
+
+    if unknown_calls:
+        return _PendingToolCallPlan(invoke_messages=pending_tool_call_messages, stop_for_client_tools=False)
+    if client_calls and not owned_calls:
+        return _PendingToolCallPlan(invoke_messages=None, stop_for_client_tools=True)
+    if client_calls:
+        return _PendingToolCallPlan(
+            invoke_messages=_messages_with_owned_tool_calls(pending_tool_call_messages, owned_names),
+            stop_for_client_tools=True,
+        )
+    return _PendingToolCallPlan(invoke_messages=pending_tool_call_messages, stop_for_client_tools=False)
+
+
 @dataclass(kw_only=True)
 class _ExecutionContext:
     """
@@ -211,6 +314,8 @@ class _ExecutionContext:
         generator and tool execution receive a freshly flattened snapshot per step.
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator (tools are injected per step).
     :param tool_execution_inputs: Runtime inputs to be passed to tool execution (tools are injected per step).
+    :param client_side_tools: Spec-only tools taken from ``generation_kwargs["tools"]``. Offered to the
+        LLM alongside Agent tools. The Agent never invokes them directly, but may request that the client invoke them.
     :param counter: A counter to track the number of steps taken in the agent's run.
     """
 
@@ -218,7 +323,87 @@ class _ExecutionContext:
     tools: ToolsType
     chat_generator_inputs: dict
     tool_execution_inputs: dict
+    client_side_tools: list[Tool]
     counter: int = 0
+
+
+def _stop_step_for_client_tools(exe_context: _ExecutionContext) -> None:
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+
+
+def _plan_tool_step(
+    exe_context: _ExecutionContext, *, current_tools: list[Tool], client_side_tools: list[Tool]
+) -> tuple[_PendingToolCallPlan, list[ChatMessage]] | None:
+    """
+    Plan tool invocation for the current step.
+
+    :returns: ``(plan, pending_tool_call_messages)``, or ``None`` if the step stops for client-only tool calls.
+    """
+    pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
+    plan = _plan_pending_tool_calls(
+        pending_tool_call_messages, current_tools=current_tools, client_side_tools=client_side_tools
+    )
+    if plan.stop_for_client_tools and plan.invoke_messages is None:  # only client-side tools to invoke
+        _stop_step_for_client_tools(exe_context)
+        return None
+    return plan, pending_tool_call_messages
+
+
+def _commit_tool_results(exe_context: _ExecutionContext, tool_messages: list[ChatMessage]) -> None:
+    exe_context.state.set("messages", tool_messages)
+    _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+
+
+def _finish_tool_step(
+    exe_context: _ExecutionContext,
+    *,
+    exit_conditions: list[str],
+    plan: _PendingToolCallPlan,
+    pending_tool_call_messages: list[ChatMessage],
+    tool_messages: list[ChatMessage],
+    check_exit_conditions: Callable[[list[ChatMessage], list[ChatMessage]], str | None],
+    continue_after_exit: Callable[[], bool],
+) -> bool:
+    """Returns True to continue the agent loop, False to stop."""
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    if plan.stop_for_client_tools:
+        exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+        return False
+    exit_condition_tool = (
+        None if exit_conditions == ["text"] else check_exit_conditions(pending_tool_call_messages, tool_messages)
+    )
+    if exit_condition_tool is not None:
+        exe_context.state.set("exit_reason", exit_condition_tool)
+        return continue_after_exit()
+    return True
+
+
+async def _finish_tool_step_async(
+    exe_context: _ExecutionContext,
+    *,
+    exit_conditions: list[str],
+    plan: _PendingToolCallPlan,
+    pending_tool_call_messages: list[ChatMessage],
+    tool_messages: list[ChatMessage],
+    check_exit_conditions: Callable[[list[ChatMessage], list[ChatMessage]], str | None],
+    continue_after_exit: Callable[[], Awaitable[bool]],
+) -> bool:
+    """Returns True to continue the agent loop, False to stop."""
+    exe_context.counter += 1
+    exe_context.state.set("step_count", exe_context.counter)
+    if plan.stop_for_client_tools:
+        exe_context.state.set("exit_reason", _EXIT_REASON_CLIENT_TOOLS)
+        return False
+    exit_condition_tool = (
+        None if exit_conditions == ["text"] else check_exit_conditions(pending_tool_call_messages, tool_messages)
+    )
+    if exit_condition_tool is not None:
+        exe_context.state.set("exit_reason", exit_condition_tool)
+        return await continue_after_exit()
+    return True
 
 
 @component
@@ -722,7 +907,8 @@ class Agent:
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
             with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
-            precedence, keys set only at initialization are kept.
+            precedence, keys set only at initialization are kept. A `tools` entry is treated as extra client-side
+            tool specs for the LLM; it is not bound to `agent.tools` and does not replace them.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -779,7 +965,10 @@ class Agent:
         generator_inputs: dict[str, Any] = {}
         if streaming_callback is not None:
             generator_inputs["streaming_callback"] = streaming_callback
+        client_side_tools: list[Tool] = []
         if generation_kwargs is not None:
+            generation_kwargs = dict(generation_kwargs)
+            client_side_tools = _tools_from_openai_tool_defs(generation_kwargs.pop("tools", None))
             generator_inputs["generation_kwargs"] = generation_kwargs
 
         tool_execution_inputs: dict[str, Any] = {
@@ -794,6 +983,7 @@ class Agent:
             tools=selected_tools,
             chat_generator_inputs=generator_inputs,
             tool_execution_inputs=tool_execution_inputs,
+            client_side_tools=client_side_tools,
         )
 
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
@@ -844,7 +1034,8 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
             with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
-            precedence, keys set only at initialization are kept.
+            precedence, keys set only at initialization are kept. A `tools` entry is treated as extra client-side
+            tool specs for the LLM; it is not bound to `agent.tools` and does not replace them.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -867,7 +1058,8 @@ class Agent:
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+              tool's result), `"client_tools"` (the model called a tool from `generation_kwargs["tools"]` that the
+              Agent does not invoke), `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
               condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
@@ -931,7 +1123,8 @@ class Agent:
             LLM. The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
             with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
-            precedence, keys set only at initialization are kept.
+            precedence, keys set only at initialization are kept. A `tools` entry is treated as extra client-side
+            tool specs for the LLM; it is not bound to `agent.tools` and does not replace them.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
@@ -953,7 +1146,8 @@ class Agent:
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+              tool's result), `"client_tools"` (the model called a tool from `generation_kwargs["tools"]` that the
+              Agent does not invoke), `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
               condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
@@ -1016,8 +1210,9 @@ class Agent:
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
-            if current_tools:
-                chat_generator_inputs["tools"] = current_tools
+            llm_tools = _tools_offered_to_llm(current_tools, exe_context.client_side_tools)
+            if llm_tools:
+                chat_generator_inputs["tools"] = llm_tools
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
@@ -1036,32 +1231,31 @@ class Agent:
                 return self._continue_after_exit_hooks(exe_context=exe_context)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
-            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
-            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
+            planned = _plan_tool_step(
+                exe_context, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
+            )
+            if planned is None:
+                return False
+            plan, pending_tool_call_messages = planned
 
-            tool_execution_inputs = {
-                "messages": pending_tool_call_messages,
-                "state": exe_context.state,
+            tool_messages, exe_context.state = _run_tool(
+                messages=plan.invoke_messages,
+                state=exe_context.state,
+                tools=current_tools,
                 **exe_context.tool_execution_inputs,
-                "tools": current_tools,
-            }
-            tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
-            exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            )
+            _commit_tool_results(exe_context, tool_messages)
             _run_hooks(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
-            exe_context.counter += 1
-            exe_context.state.set("step_count", exe_context.counter)
-            exit_condition_tool = (
-                None
-                if self.exit_conditions == ["text"]
-                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
+            return _finish_tool_step(
+                exe_context,
+                exit_conditions=self.exit_conditions,
+                plan=plan,
+                pending_tool_call_messages=pending_tool_call_messages,
+                tool_messages=tool_messages,
+                check_exit_conditions=self._check_exit_conditions,
+                continue_after_exit=lambda: self._continue_after_exit_hooks(exe_context=exe_context),
             )
-            if exit_condition_tool is not None:
-                exe_context.state.set("exit_reason", exit_condition_tool)
-                return self._continue_after_exit_hooks(exe_context=exe_context)
-            return True
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
@@ -1084,8 +1278,9 @@ class Agent:
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
-            if current_tools:
-                chat_generator_inputs["tools"] = current_tools
+            llm_tools = _tools_offered_to_llm(current_tools, exe_context.client_side_tools)
+            if llm_tools:
+                chat_generator_inputs["tools"] = llm_tools
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 # For sync-only generators, _execute_component_async dispatches to a thread via asyncio.to_thread,
@@ -1106,32 +1301,31 @@ class Agent:
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
-            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
-            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
+            planned = _plan_tool_step(
+                exe_context, current_tools=current_tools, client_side_tools=exe_context.client_side_tools
+            )
+            if planned is None:
+                return False
+            plan, pending_tool_call_messages = planned
 
-            tool_execution_inputs = {
-                "messages": pending_tool_call_messages,
-                "state": exe_context.state,
+            tool_messages, exe_context.state = await _run_tool_async(
+                messages=plan.invoke_messages,
+                state=exe_context.state,
+                tools=current_tools,
                 **exe_context.tool_execution_inputs,
-                "tools": current_tools,
-            }
-            tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
-            exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            )
+            _commit_tool_results(exe_context, tool_messages)
             await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
-            exe_context.counter += 1
-            exe_context.state.set("step_count", exe_context.counter)
-            exit_condition_tool = (
-                None
-                if self.exit_conditions == ["text"]
-                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
+            return await _finish_tool_step_async(
+                exe_context,
+                exit_conditions=self.exit_conditions,
+                plan=plan,
+                pending_tool_call_messages=pending_tool_call_messages,
+                tool_messages=tool_messages,
+                check_exit_conditions=self._check_exit_conditions,
+                continue_after_exit=lambda: self._continue_after_exit_hooks_async(exe_context=exe_context),
             )
-            if exit_condition_tool is not None:
-                exe_context.state.set("exit_reason", exit_condition_tool)
-                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
-            return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
         """

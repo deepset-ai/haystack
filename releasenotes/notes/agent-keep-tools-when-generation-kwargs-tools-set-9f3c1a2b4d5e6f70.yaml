@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Agent no longer lets ``generation_kwargs["tools"]`` replace its own tools on the chat generator
+    call. Extra OpenAI tool specs are offered to the LLM alongside Agent tools, but only Agent tools
+    are invoked. When the model calls a client-side tool name, the Agent stops with
+    ``exit_reason="client_tools"`` and leaves the tool call on the last assistant message for the
+    caller to execute. OpenAI chat generators merge ``generation_kwargs["tools"]`` with the ``tools``
+    run argument instead of overwriting it.
