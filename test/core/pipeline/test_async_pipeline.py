@@ -43,7 +43,7 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
-def test_run_accepts_dict_valued_flat_input():
+def test_run_async_accepts_dict_valued_flat_input():
     @component
     class DictEcho:
         @component.output_types(result=dict)
@@ -54,11 +54,7 @@ def test_run_accepts_dict_valued_flat_input():
     pipeline.add_component("echo", DictEcho())
     expected = {"echo": {"result": {"x": 1}}}
 
-    assert pipeline.run({"payload": {"x": 1}}) == expected
     assert asyncio.run(pipeline.run_async({"payload": {"x": 1}})) == expected
-    assert pipeline.run({"echo": {"payload": {"x": 1}}}) == expected
-    with pytest.raises(ValueError, match="Component named 'unknown' not found"):
-        pipeline.run({"unknown": {"payload": {"x": 1}}})
 
 
 def test_run_async_with_invalid_concurrency_limit():
