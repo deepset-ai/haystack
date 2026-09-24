@@ -225,9 +225,9 @@ class SentenceSplitter:
 
         # sentence.", sentence -> no split (end == quote_end): widening the closing-char class (see
         # period_context_re) moves the boundary just past the closing quote instead of leaving it inside,
-        # so continuation punctuation directly after the quote must still join rather than start a sentence.
+        # so anything other than whitespace directly after the quote continues the sentence.
         if any(
-            quote_start < end == quote_end and quote_end < len(text) and text[quote_end] in ",;:—"
+            quote_start < end == quote_end and quote_end < len(text) and not text[quote_end].isspace()
             for quote_start, quote_end in quote_spans
         ):
             # e.g. `He said "Hi.", then left.` -> the punctuation continues the sentence

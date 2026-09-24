@@ -148,11 +148,14 @@ def test_split_sentences_keeps_a_cited_question_joined() -> None:
         'He said "Hi."; then left.',  # semicolon
         'He said "Hi.": then left.',  # colon
         'He said "Hi."—then left.',  # em dash
+        'He said "Hi."–then left.',  # en dash
+        'He said "Hi."-then left.',  # hyphen
+        'He said "Hi."then left.',  # no space at all
     ],
 )
 def test_split_sentences_keeps_a_quote_with_trailing_punctuation_joined(text: str) -> None:
-    # a closing quote directly followed by continuation punctuation is not a sentence boundary; widening
-    # the closing-char class must not turn e.g. `.",` into a split that would start a chunk with a comma
+    # a closing quote that is not followed by whitespace is not a sentence boundary; widening the
+    # closing-char class must not turn e.g. `.",` into a split that would start a chunk with a comma
     splitter = SentenceSplitter(language="en", keep_white_spaces=True)
 
     sentences = splitter.split_sentences(text)
