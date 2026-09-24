@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    As part of the fix for issue #12893, we corrected `LinkContentFetcher._resolve_handler`:
+    the docstring no longer claims a "text/plain" handler (which was never registered), and the
+    fallback for content types that match no registered pattern now explicitly uses the
+    `defaultdict` factory, which is the text content handler.

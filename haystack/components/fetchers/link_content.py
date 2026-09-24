@@ -486,10 +486,11 @@ class LinkContentFetcher:
 
         First, it tries to find a direct match for the content type in the handlers dictionary.
         If no direct match is found, it tries to find a pattern match using the fnmatch function.
-        If no pattern match is found, it returns the default handler for text/plain.
+        If no direct or pattern match is found, it returns the default text handler, which is registered as
+        the `defaultdict` factory in `__init__` and is also used for the "text/*" pattern.
 
         :param content_type: The content type to resolve the handler for.
-        :returns: The handler for the given content type, if found. Otherwise, the default handler for text/plain.
+        :returns: The handler for the given content type, if found. Otherwise, the default text handler.
         """
         # direct match
         if content_type in self.handlers:
@@ -500,5 +501,6 @@ class LinkContentFetcher:
             if fnmatch(content_type, pattern):
                 return handler
 
-        # default handler
-        return self.handlers["text/plain"]
+        # default handler — for content types that don't match any registered
+        # pattern, the defaultdict factory from __init__ returns the text handler
+        return self.handlers.default_factory()
