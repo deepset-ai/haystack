@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``LinkContentFetcher`` no longer adds a ``text/plain`` entry to its ``handlers`` dictionary when it fetches
+    content whose type matches no registered pattern (for example ``font/woff`` or ``multipart/form-data``).
+    Such content is still handled as text, as before.
