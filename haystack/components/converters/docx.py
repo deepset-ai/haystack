@@ -318,7 +318,6 @@ class DOCXToDocument:
 
         A cell spanning several paragraphs arrives with newlines in it, which would end
         the row in the middle, and a pipe in a cell would be read as a column separator.
-        The CSV format quotes both away; Markdown has to escape them.
 
         :param text: The cell text.
         :returns: The text with line breaks collapsed and pipes escaped.

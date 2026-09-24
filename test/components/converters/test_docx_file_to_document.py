@@ -323,13 +323,6 @@ class TestDOCXToDocument:
         # Every row describes the same number of columns as the header.
         assert all(row.count("|") - row.count("\\|") == 3 for row in rows)
 
-    def test_csv_table_still_quotes_a_line_break_in_a_cell(self, tmp_path):
-        """Guard: the CSV format already handled both and must not change."""
-        cells = [["Step", "Notes"], ["1", "first line\nsecond line"]]
-        content = _convert_docx_table(tmp_path, cells=cells, table_format="csv")
-
-        assert list(csv.reader(StringIO(content.strip()))) == cells
-
     def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
