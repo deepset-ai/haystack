@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``FileSystemSkillStore.load_skill`` including symlinks that resolve outside the skill directory in its
+    bundled-file manifest. Escaping symlinks are now excluded, matching ``read_skill_file`` traversal protection.

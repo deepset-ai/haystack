@@ -58,10 +58,11 @@ class TestConvertPdfToImages:
         assert image.height <= 100
 
     def test_convert_pdf_to_images_invalid_page(self, caplog: LogCaptureFixture) -> None:
-        bytestream = get_bytestream_from_source(Path("test/test_files/pdf/sample_pdf_1.pdf"))
+        pdf_path = Path("test/test_files/pdf/sample_pdf_1.pdf")
+        bytestream = get_bytestream_from_source(pdf_path)
         out = _convert_pdf_to_images(bytestream=bytestream, page_range=[5])
         assert out == []
-        assert "Page 5 is out of range for the PDF file. Skipping it." in caplog.text
+        assert f"Page 5 is out of range for the PDF file {pdf_path}. Skipping it." in caplog.text
 
     def test_convert_pdf_to_images_error_reading_file(self, caplog: LogCaptureFixture) -> None:
         bytestream = ByteStream(data=b"", mime_type="application/pdf")
@@ -192,7 +193,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=False)
 
-        pdf_bytestream = ByteStream.from_file_path(pdf_path)
+        pdf_bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=False
@@ -214,7 +215,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=True)
 
-        pdf_bytestream = ByteStream.from_file_path(pdf_path)
+        pdf_bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=True

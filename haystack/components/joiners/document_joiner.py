@@ -107,6 +107,7 @@ class DocumentJoiner:
             This parameter is ignored for
             `concatenate` or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
+            Each weight must be a non-negative number.
         :param top_k:
             The maximum number of documents to return. Must be `None` or greater than 0.
         :param sort_by_score:
@@ -114,7 +115,8 @@ class DocumentJoiner:
             If a document has no score, it is handled as if its score is -infinity.
 
         :raises ValueError:
-            If `top_k` is not `None` and is less than or equal to 0.
+            If `top_k` is not `None` and is less than or equal to 0,
+            or if any value in `weights` is negative.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be greater than 0.")
@@ -129,6 +131,8 @@ class DocumentJoiner:
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         if weights:
+            if any(weight < 0 for weight in weights):
+                raise ValueError("The provided `weights` must not be negative.")
             weight_sum = sum(weights)
             if weight_sum == 0:
                 raise ValueError("The provided `weights` must not sum to zero.")

@@ -124,6 +124,51 @@ class TestSplittingByFunctionOrCharacterRegex:
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
+    def test_split_by_word_exact_fit_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3"]
+
+    def test_split_by_word_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 ")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 "]
+
+    def test_split_by_word_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t3 t4"]
+
+    def test_split_by_word_high_overlap_partial_final_chunk_is_kept(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="t1 t2 t3 t4")])
+        assert [doc.content for doc in result["documents"]] == ["t1 t2 t3 ", "t2 t3 t4"]
+
+    def test_split_by_line_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="line", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="l1\nl2\nl3\n")])
+        assert [doc.content for doc in result["documents"]] == ["l1\nl2\nl3\n"]
+
+    def test_split_by_passage_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="passage", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="p1\n\np2\n\np3\n\n")])
+        assert [doc.content for doc in result["documents"]] == ["p1\n\np2\n\np3\n\n"]
+
+    def test_split_by_period_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3."]
+
+    def test_split_by_period_high_overlap_skips_overlap_only_chunk(self):
+        splitter = DocumentSplitter(split_by="period", split_length=3, split_overlap=2)
+        result = splitter.run(documents=[Document(content="s1.s2.s3.s4.")])
+        assert [doc.content for doc in result["documents"]] == ["s1.s2.s3.", "s2.s3.s4."]
+
+    def test_split_by_page_trailing_delimiter_creates_one_chunk(self):
+        splitter = DocumentSplitter(split_by="page", split_length=3, split_overlap=1)
+        result = splitter.run(documents=[Document(content="a\fb\fc\f")])
+        assert [doc.content for doc in result["documents"]] == ["a\fb\fc\f"]
+
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
@@ -453,7 +498,10 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 2, 1, 1, 3]
+        # No overlap-only trailing chunks: " End." is fully contained in doc1's previous chunk and
+        # " More text." in doc2's previous chunk, so both are skipped instead of creating redundant
+        # chunks (the latter even carried a wrong page number).
+        expected_pages = [1, 1, 1, 1, 1]
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
@@ -950,7 +998,9 @@ def mock_tiktoken_tokenizer():
         return full_text, offsets
 
     mock_tokenizer = Mock()
-    mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+    mock_tokenizer.encode_ordinary.side_effect = lambda text: [
+        f" {w}" if i > 0 else w for i, w in enumerate(text.split())
+    ]
     mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
     return mock_tokenizer
 
@@ -1043,7 +1093,7 @@ class TestSplittingByToken:
     @pytest.mark.parametrize("skip_empty_documents,expected_count", [(True, 0), (False, 1)])
     def test_split_by_token_skip_empty_documents_mock(self, skip_empty_documents, expected_count):
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.return_value = []
+        mock_tokenizer.encode_ordinary.return_value = []
 
         splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=skip_empty_documents)
         splitter._tiktoken_tokenizer = mock_tokenizer
@@ -1061,6 +1111,32 @@ class TestSplittingByToken:
 @pytest.mark.integration
 class TestSplittingByTokenIntegration:
     """Integration tests for split_by="token" mode requiring real tiktoken."""
+
+    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+    @pytest.mark.parametrize("split_overlap", [0, 2])
+    def test_special_token_strings_are_split_as_literal_text(self, encoding, split_overlap):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=5, split_overlap=split_overlap, tokenizer_encoding=encoding
+        )
+        text = (
+            "The manual documents <|endoftext|> as a literal marker.\f"
+            "A second example includes <|fim_suffix|> in the source."
+        )
+        source = Document(content=text)
+
+        chunks = splitter.run(documents=[source])["documents"]
+
+        assert len(chunks) > 1
+        assert merge_documents(chunks) == text
+        assert splitter._tiktoken_tokenizer is not None
+        for split_id, chunk in enumerate(chunks):
+            assert chunk.content is not None
+            assert len(splitter._tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 5
+            assert chunk.meta["source_id"] == source.id
+            assert chunk.meta["split_id"] == split_id
+            start = chunk.meta["split_idx_start"]
+            assert text[start : start + len(chunk.content)] == chunk.content
+            assert chunk.meta["page_number"] == 1 + text[:start].count("\f")
 
     def test_basic_chunking(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
