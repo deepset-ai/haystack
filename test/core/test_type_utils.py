@@ -833,6 +833,7 @@ def test_always_incompatible_callable_types(sender_type, receiver_type):
             Callable[[Callable[[int], int]], str],
             id="nested-ellipsis-callable-to-nested-typed-callable",
         ),
+        pytest.param(Callable, Callable[..., Any], id="bare-callable-to-ellipsis-callable"),
     ],
 )
 def test_callable_with_ellipsis_parameters_is_compatible(sender_type, receiver_type):

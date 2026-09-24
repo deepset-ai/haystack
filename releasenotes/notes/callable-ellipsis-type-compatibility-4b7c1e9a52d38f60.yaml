@@ -2,7 +2,5 @@
 fixes:
   - |
     Fix ``Pipeline.connect()`` raising ``TypeError: object of type 'ellipsis' has no len()`` when one of
-    the sockets is annotated with ``Callable[..., T]``. Callable compatibility compared the ``Ellipsis``
-    that stands for an unknown parameter list as if it were that list, so any connection involving
-    ``Callable[..., T]`` crashed instead of being accepted or rejected. An ``Ellipsis`` parameter list now
-    matches parameters of any signature, in both directions, while return types are still compared.
+    the sockets is annotated with ``Callable[..., T]``. A ``Callable[..., T]`` now matches callables with
+    any parameters, in both directions, as long as the return types are compatible.
