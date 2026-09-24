@@ -85,9 +85,9 @@ class TextCleaner:
         :returns: A dictionary with the following key:
             - `texts`:  the cleaned list of strings.
         :raises TypeError:
-            If any element of ``texts`` is not a ``str``.
+            If `texts` is not a list or any element is not a string.
         """
-        if not all(isinstance(text, str) for text in texts):
+        if not isinstance(texts, list) or not all(isinstance(text, str) for text in texts):
             raise TypeError("`texts` must be a list of strings.")
 
         if self._regex:

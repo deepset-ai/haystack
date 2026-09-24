@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from haystack import Pipeline
 from haystack.components.preprocessors import TextCleaner
 
@@ -31,13 +33,14 @@ def test_run_with_empty_inputs():
     assert result["texts"] == []
 
 
-def test_run_rejects_non_string_inputs():
-    cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=True)
-    try:
+def test_run_rejects_invalid_inputs():
+    cleaner = TextCleaner()
+
+    with pytest.raises(TypeError):
         cleaner.run(texts=["Hello, World!", None, 42, ""])  # type: ignore[list-item]
-        assert False, "expected TypeError"
-    except TypeError as e:
-        assert "list of strings" in str(e)
+
+    with pytest.raises(TypeError):
+        cleaner.run(texts=15)  # type: ignore[arg-type]
 
 
 def test_run_with_regex():
