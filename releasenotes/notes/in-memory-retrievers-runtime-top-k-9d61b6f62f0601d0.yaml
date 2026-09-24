@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``InMemoryBM25Retriever`` and ``InMemoryEmbeddingRetriever`` now raise a ``ValueError`` when the resolved
+    ``top_k`` is not greater than 0 in ``run`` and ``run_async``. Previously a negative ``top_k`` passed at run time
+    was forwarded to the document store, where it was used as a negative slice and silently returned fewer documents
+    instead of raising an error. This makes the in-memory retrievers consistent with ``DocumentJoiner``,
+    ``AnswerJoiner``, ``LostInTheMiddleRanker``, ``MetaFieldRanker`` and ``LLMRanker``, which already validate
+    ``top_k`` at run time.
