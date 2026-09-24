@@ -147,6 +147,8 @@ class TestConfirmationHook:
         state = _state_with([*earlier, tool_call_message], tools)
         _confirm_hook(ui_result).run(state)
         assert state.get("messages")[: len(earlier)] == earlier
+        if ui_result.action == "confirm":
+            assert state.get("messages") == [*earlier, tool_call_message]
 
     def test_hook_context_is_not_deepcopied(self, tools):
         # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy

@@ -634,13 +634,10 @@ def _update_chat_history(
     tool_call_and_explanation_messages: list[ChatMessage],
 ) -> list[ChatMessage]:
     """
-    Update the chat history to include rejection messages and tool call messages at the appropriate positions.
+    Replace the last message of the chat history, which holds the pending tool calls, with the new messages.
 
-    The pending tool calls are on the last message of the chat history, so only that message is replaced, by:
-       - Any rejection messages (pairs of tool call and tool call result messages).
-       - Any tool call messages for confirmed or modified tool calls, including user messages explaining modifications.
-
-    Every earlier message is kept, including messages added after the last user or tool message by other hooks.
+    These are the rejection messages followed by the confirmed or modified tool call messages. All earlier messages
+    are kept unchanged.
 
     :param chat_history: The current chat history.
     :param rejection_messages: Chat messages to add for rejected tool calls (pairs of tool call and tool call result
