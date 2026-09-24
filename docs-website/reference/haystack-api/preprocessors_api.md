@@ -1077,3 +1077,7 @@ Cleans up the given list of strings.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following key:
 - `texts`: the cleaned list of strings.
+
+**Raises:**
+
+- <code>TypeError</code> – If `texts` is not a list or any element is not a string.
