@@ -185,10 +185,10 @@ list items and pages by ID (`site_id`, `list_id`, `list_item_id`, `list_item_uni
 download or convert the underlying files. Compose a downstream fetcher/converter (such as
 `MSSharePointFetcher`) when full content is needed.
 
-The retriever takes a per-user `access_token` as a run input, typically wired
-from an upstream `OAuthResolver`. The token must carry delegated Microsoft Graph permissions
-(for example `Files.Read.All` and, for site/list scoping, `Sites.Read.All`). The Search API supports
-delegated permissions only.
+The retriever takes an `access_token` as a run input. For delegated (on-behalf-of) auth, pass a
+per-user token wired from an upstream `OAuthResolver`; the token must carry delegated Microsoft Graph
+permissions (for example `Files.Read.All` and, for site/list scoping, `Sites.Read.All`). For app-only
+(client-credentials) auth, pass an application token and set the `region` parameter at init time.
 
 ### Usage example
 
@@ -219,6 +219,7 @@ __init__(
     top_k: int = 10,
     fields: list[str] | None = None,
     query_template: str | None = None,
+    region: str | None = None,
     graph_url: str = DEFAULT_GRAPH_URL,
     timeout: float = 30.0,
     max_retries: int = 3
@@ -242,6 +243,10 @@ Initialize the retriever.
   `'{searchTerms} path:"https://contoso.sharepoint.com/sites/Team"'`. The literal `{searchTerms}`
   placeholder is replaced by the run-time query. The template uses
   [Keyword Query Language (KQL)](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference).
+- **region** (<code>str | None</code>) – The region code for the Microsoft Search index, for example `"NAM"`, `"EUR"`, or `"APC"`.
+  Required when using application permissions (app-only / client-credentials auth); omit for delegated
+  (on-behalf-of) tokens. See the `region` property of the
+  [searchRequest resource](https://learn.microsoft.com/en-us/graph/api/resources/searchrequest).
 - **graph_url** (<code>str</code>) – The Microsoft Graph base URL. Defaults to `https://graph.microsoft.com/v1.0`.
   Override for sovereign clouds.
 - **timeout** (<code>float</code>) – The HTTP timeout in seconds for each request to Microsoft Graph.
@@ -268,9 +273,9 @@ Search SharePoint and OneDrive and return the matching documents.
   operators directly in the query, for example `filetype:docx`, `author:"Jane Doe"`, or
   `path:"https://contoso.sharepoint.com/sites/Team"`. See the
   [KQL syntax reference](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference).
-- **access_token** (<code>str | Secret</code>) – A delegated Microsoft Graph bearer token for the user whose content is searched,
-  typically wired from an upstream `OAuthResolver` (which emits a plain `str`). A `Secret` is also
-  accepted and resolved internally.
+- **access_token** (<code>str | Secret</code>) – A Microsoft Graph bearer token. For delegated auth, pass a per-user token wired from
+  an upstream `OAuthResolver`. For app-only (client-credentials) auth, pass an application token and set
+  `region` at init time. A `Secret` is also accepted and resolved internally.
 - **top_k** (<code>int | None</code>) – Overrides the `top_k` configured at initialization for this run.
 
 **Returns:**
@@ -298,9 +303,9 @@ Asynchronously search SharePoint and OneDrive and return the matching documents.
   operators directly in the query, for example `filetype:docx`, `author:"Jane Doe"`, or
   `path:"https://contoso.sharepoint.com/sites/Team"`. See the
   [KQL syntax reference](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference).
-- **access_token** (<code>str | Secret</code>) – A delegated Microsoft Graph bearer token for the user whose content is searched,
-  typically wired from an upstream `OAuthResolver` (which emits a plain `str`). A `Secret` is also
-  accepted and resolved internally.
+- **access_token** (<code>str | Secret</code>) – A Microsoft Graph bearer token. For delegated auth, pass a per-user token wired from
+  an upstream `OAuthResolver`. For app-only (client-credentials) auth, pass an application token and set
+  `region` at init time. A `Secret` is also accepted and resolved internally.
 - **top_k** (<code>int | None</code>) – Overrides the `top_k` configured at initialization for this run.
 
 **Returns:**
