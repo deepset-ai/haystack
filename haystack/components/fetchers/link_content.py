@@ -143,7 +143,7 @@ class LinkContentFetcher:
         self.retry_attempts = retry_attempts
         self.timeout = timeout
         self.http2 = http2
-        self.client_kwargs = dict(client_kwargs) if client_kwargs is not None else {}
+        self.client_kwargs = dict(client_kwargs or {})
         self.request_headers = request_headers or {}
 
         # Configure default client settings
