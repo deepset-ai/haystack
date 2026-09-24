@@ -1021,3 +1021,21 @@ class TestRouter:
         router = ConditionalRouter(routes)
         result = router.run(**{"{{unclosed": "value"})
         assert result == {"out": "value"}
+
+
+class TestConditionalRouterDeserialization:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        routes = [
+            {"condition": "{{ x > 1 }}", "output": "{{ x }}", "output_name": "big", "output_type": int},
+            {"condition": "{{ x <= 1 }}", "output": "{{ x }}", "output_name": "small", "output_type": int},
+        ]
+        router = ConditionalRouter(routes)
+        data = router.to_dict()
+        serialized_types = [route["output_type"] for route in data["init_parameters"]["routes"]]
+        assert all(isinstance(t, str) for t in serialized_types)
+
+        ConditionalRouter.from_dict(data)
+
+        assert [route["output_type"] for route in data["init_parameters"]["routes"]] == serialized_types
+        # a second deserialization of the same dict must behave like the first
+        ConditionalRouter.from_dict(data)
