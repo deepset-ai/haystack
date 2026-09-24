@@ -53,49 +53,38 @@ class TestDocumentToImageContent:
         results = converter.run(documents=[])
         assert results == {"image_contents": []}
 
-    def test_run_with_missing_file_path_metadata(self) -> None:
+    @pytest.mark.parametrize(
+        "meta, reason",
+        [
+            ({}, "is missing the 'file_path' key"),
+            ({"file_path": "test/test_files/docx/sample_docx.docx"}, "has an unsupported MIME type"),
+            ({"file_path": "wrong_name.jpg"}, "has an invalid file path 'wrong_name.jpg'"),
+            ({"file_path": "test/test_files/pdf/sample_pdf_1.pdf"}, "is missing the 'page_number' key"),
+        ],
+    )
+    def test_run_with_invalid_document(self, meta: dict, reason: str, caplog: pytest.LogCaptureFixture) -> None:
         converter = DocumentToImageContent()
-        # Document without file_path in metadata
-        doc_no_path = Document(content="test", meta={})
-        # Document with file_path but file doesn't exist
-        doc_no_file = Document(content="test", meta={"file_path": "nonexistent.jpg"})
-        with pytest.raises(ValueError, match="is missing the 'file_path' key"):
-            _ = converter.run(documents=[doc_no_path, doc_no_file])
-
-    def test_run_with_non_image_documents(self) -> None:
-        converter = DocumentToImageContent()
-        docx_doc = Document(content="test", meta={"file_path": "test/test_files/docx/sample_docx.docx"})
-        with pytest.raises(ValueError, match="has an unsupported MIME type"):
-            _ = converter.run(documents=[docx_doc])
-
-    def test_run_with_invalid_file_path(self, caplog) -> None:
-        converter = DocumentToImageContent()
-        pdf_doc = Document(content="test", meta={"file_path": "wrong_name.jpg"})
-        with pytest.raises(ValueError, match="has an invalid file path 'wrong_name.jpg'"):
-            _ = converter.run(documents=[pdf_doc])
-
-    def test_run_with_pdf_missing_page_number(self, caplog) -> None:
-        converter = DocumentToImageContent()
-        pdf_doc = Document(content="test", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf"})
-        with pytest.raises(ValueError, match="is missing the 'page_number' key"):
-            _ = converter.run(documents=[pdf_doc])
+        results = converter.run(documents=[Document(content="test", meta=meta)])
+        assert results == {"image_contents": [None]}
+        assert reason in caplog.text
 
     def test_run_with_image_documents(self) -> None:
         converter = DocumentToImageContent(root_path="test/test_files/images")
         image_doc = Document(content="test", meta={"file_path": "apple.jpg"})
         results = converter.run(documents=[image_doc])
         assert len(results["image_contents"]) == 1
-        assert results["image_contents"][0].meta == {"file_path": "apple.jpg"}
+        image_content = results["image_contents"][0]
+        assert image_content is not None
+        assert image_content.meta == {"file_path": "apple.jpg"}
 
     def test_run_with_pdf_documents(self) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 1})
         results = converter.run(documents=[pdf_doc])
         assert len(results["image_contents"]) == 1
-        assert results["image_contents"][0].meta == {
-            "file_path": "test/test_files/pdf/sample_pdf_1.pdf",
-            "page_number": 1,
-        }
+        image_content = results["image_contents"][0]
+        assert image_content is not None
+        assert image_content.meta == {"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 1}
 
     def test_run_with_mixed_document_types(self) -> None:
         converter = DocumentToImageContent(root_path="test/test_files")
@@ -104,8 +93,10 @@ class TestDocumentToImageContent:
             Document(content="", meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}),
             Document(content="text", meta={"file_path": "docx/sample_docx.docx"}),
         ]
-        with pytest.raises(ValueError, match="has an unsupported MIME type"):
-            _ = converter.run(documents=documents)
+        image_contents = converter.run(documents=documents)["image_contents"]
+        assert image_contents[0] is not None
+        assert image_contents[1] is not None
+        assert image_contents[2] is None
 
     @patch("haystack.components.converters.image.document_to_image._extract_image_sources_info")
     @patch("haystack.components.converters.image.document_to_image._batch_convert_pdf_pages_to_images")
@@ -121,9 +112,9 @@ class TestDocumentToImageContent:
     ):
         converter = DocumentToImageContent()
 
-        mocked_extract_image_sources_info.return_value = [
-            {"path": "doc1.pdf", "mime_type": "application/pdf", "page_number": 999},  # Page 999 doesn't exist
-            {"path": "image1.jpg", "mime_type": "image/jpeg"},
+        mocked_extract_image_sources_info.side_effect = [
+            [{"path": "doc1.pdf", "mime_type": "application/pdf", "page_number": 999}],  # Page 999 doesn't exist
+            [{"path": "image1.jpg", "mime_type": "image/jpeg"}],
         ]
         mocked_batch_convert_pdf_pages_to_images.return_value = {}  # Empty dict because page was skipped
         mocked_pil_open.return_value = Image.new("RGB", (100, 100))

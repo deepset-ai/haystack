@@ -906,12 +906,53 @@ def test_run_custom_split_by_dot_and_overlap_3_char_unit():
     assert chunks[0] == "\x0c\x0c Sentence on page 5."
 
 
+def test_serialization_keeps_split_unit():
+    splitter = RecursiveDocumentSplitter(split_length=8, split_overlap=0, split_unit="char", separators=[" "])
+    pipeline = Pipeline()
+    pipeline.add_component("chunker", splitter)
+    assert pipeline.to_dict()["components"]["chunker"]["init_parameters"]["split_unit"] == "char"
+
+    restored = Pipeline.loads(pipeline.dumps()).get_component("chunker")
+    assert isinstance(restored, RecursiveDocumentSplitter)
+    assert restored.split_units == "char"
+
+    doc = Document(content="alpha beta gamma delta epsilon zeta eta theta")
+    original_chunks = [chunk.content for chunk in splitter.run([doc])["documents"]]
+    assert [chunk.content for chunk in restored.run([doc])["documents"]] == original_chunks
+
+
 def test_run_serialization_in_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("chunker", RecursiveDocumentSplitter(split_length=20, split_overlap=5, separators=["."]))
     pipeline_dict = pipeline.dumps()
     new_pipeline = Pipeline.loads(pipeline_dict)
     assert pipeline_dict == new_pipeline.dumps()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("split_overlap", [0, 2])
+def test_special_token_strings_are_split_as_literal_text(split_overlap):
+    splitter = RecursiveDocumentSplitter(
+        split_length=5, split_overlap=split_overlap, separators=["."], split_unit="token"
+    )
+    text = "First <|endoftext|> example. Second <|endoftext|> example. Third <|endoftext|> example."
+    source = Document(content=text)
+
+    chunks = splitter.run(documents=[source])["documents"]
+
+    assert len(chunks) > 1
+    assert splitter.tiktoken_tokenizer is not None
+    reconstructed = ""
+    for split_id, chunk in enumerate(chunks):
+        assert chunk.content is not None
+        assert len(splitter.tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 5
+        assert chunk.meta["source_id"] == source.id
+        assert chunk.meta["split_id"] == split_id
+        start = chunk.meta["split_idx_start"]
+        assert text[start : start + len(chunk.content)] == chunk.content
+        assert chunk.meta["page_number"] == 1
+        reconstructed += chunk.content[len(reconstructed) - start :]
+    assert reconstructed == text
 
 
 @pytest.mark.integration

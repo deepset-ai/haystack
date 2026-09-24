@@ -187,7 +187,7 @@ class JSONConverter:
             to a different document.
         """
         try:
-            file_content = source.data.decode("utf-8")
+            file_content = source.data.decode("utf-8-sig")
         except UnicodeError as exc:
             logger.warning(
                 "Failed to extract text from {source}. Skipping it. Error: {error}",

@@ -130,6 +130,22 @@ Creates a MistralOCRDocumentConverter component.
   Only affects files uploaded from local sources (str, Path, ByteStream).
   Files provided as FileChunk are not deleted. Default is True.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Mistral client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Mistral client.
+
 #### to_dict
 
 ```python
@@ -592,8 +608,9 @@ Invokes chat completion on the Mistral API.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
   For details on Mistral API parameters, see
   [Mistral docs](https://docs.mistral.ai/api/).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -626,7 +643,9 @@ Asynchronously invokes chat completion on the Mistral API.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset.
 - **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls.
 

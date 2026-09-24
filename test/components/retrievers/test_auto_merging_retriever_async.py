@@ -98,51 +98,51 @@ class TestAutoMergingRetrieverAsync:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         # assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
         # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
-        docs = await retriever.run_async(leaf_docs[4:6])
-        assert len(docs["documents"]) == 1
-        assert docs["documents"][0].content == "warm glow over the trees. Birds began to sing."
-        assert len(docs["documents"][0].meta["__children_ids"]) == 3
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
+        merged = await retriever.run_async(leaf_docs[4:6])
+        assert len(merged["documents"]) == 1
+        assert merged["documents"][0].content == "warm glow over the trees. Birds began to sing."
+        assert len(merged["documents"][0].meta["__children_ids"]) == 3
 
     @pytest.mark.asyncio
     async def test_run_return_leafs_document(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__level"] == 1:
                 in_memory_doc_store.write_documents([doc])
 
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = await retriever.run_async([leaf_docs[4]])
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "eastern side of "
-        assert result["documents"][0].meta["__parent_id"] == docs["documents"][2].id
+        assert result["documents"][0].meta["__parent_id"] == split_docs["documents"][2].id
 
     @pytest.mark.asyncio
     async def test_run_return_leafs_document_different_parents(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__level"] == 1:
                 in_memory_doc_store.write_documents([doc])
 
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = await retriever.run_async([leaf_docs[4], leaf_docs[3]])
 
@@ -162,16 +162,16 @@ class TestAutoMergingRetrieverAsync:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={6, 4, 2, 1}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.4)
 
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
-        retrieved_leaf_docs = [d for d in docs["documents"] if d.content in {"The ", "sun ", "rose ", "early "}]
+        retrieved_leaf_docs = [d for d in split_docs["documents"] if d.content in {"The ", "sun ", "rose ", "early "}]
 
         result = await retriever.run_async(retrieved_leaf_docs)
 
@@ -189,10 +189,10 @@ class TestAutoMergingRetrieverAsync:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={6, 4}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.1)  # set a low threshold to hit root document
@@ -200,7 +200,7 @@ class TestAutoMergingRetrieverAsync:
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
         retrieved_leaf_docs = [
             d
-            for d in docs["documents"]
+            for d in split_docs["documents"]
             if d.content in {"The sun rose early ", "in the ", "morning. It cast a ", "over the trees. Birds "}
         ]
 

@@ -332,7 +332,7 @@ Creates an instance of MetaFieldRanker.
   Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
 - **sort_order** (<code>Literal['ascending', 'descending']</code>) – Whether to sort the meta field by ascending or descending order.
   Possible values are `descending` (default) and `ascending`.
-- **missing_meta** (<code>Literal['drop', 'top', 'bottom']</code>) – What to do with documents that are missing the sorting metadata field.
+- **missing_meta** (<code>Literal['drop', 'top', 'bottom']</code>) – What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
   Possible values are:
   - 'drop' will drop the documents entirely.
   - 'top' will place the documents at the top of the metadata-sorted list
@@ -392,7 +392,7 @@ if a score is present.
 - **sort_order** (<code>Literal['ascending', 'descending'] | None</code>) – Whether to sort the meta field by ascending or descending order.
   Possible values are `descending` (default) and `ascending`.
   If not provided, the sort_order provided at initialization time is used.
-- **missing_meta** (<code>Literal['drop', 'top', 'bottom'] | None</code>) – What to do with documents that are missing the sorting metadata field.
+- **missing_meta** (<code>Literal['drop', 'top', 'bottom'] | None</code>) – What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
   Possible values are:
 - 'drop' will drop the documents entirely.
 - 'top' will place the documents at the top of the metadata-sorted list

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pipeline snapshot resumption now rejects snapshots whose component set differs from the current pipeline.
+    This prevents newly added components from being silently skipped during a resumed run, while preserving the
+    existing validation for components removed since the snapshot was created.

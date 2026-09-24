@@ -5,6 +5,7 @@
 import mimetypes
 import re
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,7 @@ class FileTypeRouter:
         :param mime_types:
             A list of MIME types or regex patterns to classify the input files or byte streams.
             (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+            `"unclassified"` and `"failed"` are reserved output names and cannot be used here.
 
         :param additional_mimetypes:
             A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
@@ -77,9 +79,22 @@ class FileTypeRouter:
         :param raise_on_failure:
             If True, raises FileNotFoundError when a file path doesn't exist.
             If False (default), only emits a warning when a file path doesn't exist.
+        :raises ValueError:
+            If `mime_types` is empty, contains an invalid regex, or uses the reserved names
+            `"unclassified"` or `"failed"`.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
+
+        reserved = {"unclassified", "failed"}
+        collisions = reserved.intersection(mime_types)
+        if collisions:
+            names = ", ".join(repr(name) for name in sorted(collisions))
+            raise ValueError(
+                f"MIME type(s) {names} are reserved output names in FileTypeRouter "
+                "('unclassified' for unmatched sources, 'failed' for unreadable files). "
+                "Rename the MIME type to something else."
+            )
 
         if additional_mimetypes:
             for mime, ext in additional_mimetypes.items():
@@ -186,7 +201,9 @@ class FileTypeRouter:
                     mime_types["failed"].append(source)
                     continue
 
-                source.meta.update(meta_dict)
+                # `get_bytestream_from_source` hands back a ByteStream source unchanged, so writing the
+                # metadata onto it would modify the object the caller still holds. Build a copy instead.
+                source = replace(source, meta={**source.meta, **meta_dict})
 
             matched = False
             if mime_type:

@@ -17,7 +17,7 @@ from haystack.components.agents.utils import (
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
-from haystack.tools import Tool
+from haystack.tools import Tool, ToolsType
 from haystack.tools.toolset import Toolset
 
 
@@ -88,31 +88,31 @@ class TestAccumulateUsage:
 
 
 class TestSelectToolsByName:
-    def test_selects_standalone_tools_by_name(self, first_tool: Tool, second_tool: Tool):
+    def test_selects_standalone_tools_by_name(self, first_tool: Tool, second_tool: Tool) -> None:
         assert _select_tools_by_name([first_tool, second_tool], [first_tool.name]) == [first_tool]
 
-    def test_raises_for_invalid_name(self, first_tool: Tool):
+    def test_raises_for_invalid_name(self, first_tool: Tool) -> None:
         with pytest.raises(ValueError, match="The following tool names are not valid"):
             _select_tools_by_name([first_tool], ["unknown"])
 
     @pytest.mark.parametrize("configured_tools", [[], Toolset([])], ids=["empty_list", "empty_toolset"])
-    def test_raises_when_no_tools_configured(self, configured_tools, first_tool: Tool):
+    def test_raises_when_no_tools_configured(self, configured_tools: ToolsType, first_tool: Tool) -> None:
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
             _select_tools_by_name(configured_tools, [first_tool.name])
 
-    def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool):
+    def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool) -> None:
         toolset = Toolset([first_tool, second_tool])
         selected = _select_tools_by_name([toolset], [first_tool.name])
         assert selected == [first_tool]
         # The configured toolset is untouched.
         assert list(toolset) == [first_tool, second_tool]
 
-    def test_selects_standalone_tools_and_toolsets(self, first_tool: Tool, second_tool: Tool):
+    def test_selects_standalone_tools_and_toolsets(self, first_tool: Tool, second_tool: Tool) -> None:
         toolset = Toolset([first_tool])
         selected = _select_tools_by_name([second_tool, toolset], [first_tool.name, second_tool.name])
         assert selected == [second_tool, first_tool]
 
-    def test_warms_up_lazy_toolsets_to_resolve_names(self, first_tool: Tool, second_tool: Tool):
+    def test_warms_up_lazy_toolsets_to_resolve_names(self, first_tool: Tool, second_tool: Tool) -> None:
         class LazyToolset(Toolset):
             """A Toolset that loads its tools on warm_up(), like toolsets backed by external services."""
 
@@ -131,7 +131,7 @@ class TestSelectToolsByName:
         selected = _select_tools_by_name([toolset], [first_tool.name])
         assert selected == [first_tool]
 
-    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool):
+    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool) -> None:
         class RunScopedToolset(Toolset):
             """A Toolset overriding spawn(), signaling run-scoped state."""
 
@@ -154,7 +154,7 @@ class TestSelectToolsByName:
         # The configured toolset is untouched.
         assert toolset.selected is None
 
-    def test_selects_tools_not_surfaced_by_iteration(self, first_tool: Tool, second_tool: Tool):
+    def test_selects_tools_not_surfaced_by_iteration(self, first_tool: Tool, second_tool: Tool) -> None:
         class DiscoveryToolset(Toolset):
             """A dynamic Toolset without a spawn() override: iteration yields less than get_selectable_tools()."""
 
