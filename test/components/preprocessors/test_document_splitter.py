@@ -845,10 +845,13 @@ class TestSplittingNLTKSentenceSplitter:
         text = 'One. He said "Two." Three.'
         documents = document_splitter.run(documents=[Document(content=text)])["documents"]
 
-        assert "".join(document.content for document in documents) == text
+        rebuilt = ""
         for document in documents:
+            assert document.content is not None
             start = document.meta["split_idx_start"]
             assert text[start : start + len(document.content)] == document.content
+            rebuilt += document.content
+        assert rebuilt == text
 
     def test_run_split_by_word_respect_sentence_boundary(self) -> None:
         document_splitter = DocumentSplitter(
