@@ -72,7 +72,7 @@ class MetaFieldRanker:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field.
+            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
             Possible values are:
                 - 'drop' will drop the documents entirely.
                 - 'top' will place the documents at the top of the metadata-sorted list
@@ -202,7 +202,7 @@ class MetaFieldRanker:
             Possible values are `descending` (default) and `ascending`.
             If not provided, the sort_order provided at initialization time is used.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field.
+            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
             Possible values are:
             - 'drop' will drop the documents entirely.
             - 'top' will place the documents at the top of the metadata-sorted list
@@ -254,8 +254,9 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": deduplicated_documents[:top_k]}
 
-        docs_with_meta_field = [doc for doc in deduplicated_documents if self.meta_field in doc.meta]
-        docs_missing_meta_field = [doc for doc in deduplicated_documents if self.meta_field not in doc.meta]
+        # A None value can't be sorted against real values, so it is handled like a missing field
+        docs_with_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
+        docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is None]
 
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
