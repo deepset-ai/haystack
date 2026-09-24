@@ -1,6 +1,11 @@
 ---
 fixes:
   - |
-    ``MultiRetriever`` now validates ``top_k`` and ``top_k_per_retriever``, raising a ``ValueError`` when they are
-    not greater than 0. Previously a negative value was applied as a negative slice on the merged results, which
-    silently dropped the last documents instead of raising an error.
+    Retrievers now handle ``top_k`` consistently. A negative ``top_k`` passed at runtime to ``InMemoryBM25Retriever``,
+    ``InMemoryEmbeddingRetriever`` or ``MultiRetriever`` (``top_k`` and ``top_k_per_retriever``) now raises a
+    ``ValueError``. Previously it was applied as a negative slice, silently dropping the last documents.
+    A runtime ``top_k=0`` returns no documents.
+
+    ``MultiRetriever`` now also validates ``top_k`` and ``top_k_per_retriever`` at initialization, raising a
+    ``ValueError`` when they are set and not greater than 0, matching the in-memory retrievers.
+    ``None`` still means no limit.
