@@ -37,12 +37,6 @@ Filters are applied inside the vector search, before the nearest neighbors are r
 
 The returned documents have their similarity `score` set. The Retriever also has a `run_async` method, which uses the Document Store's async client.
 
-:::note[Query-time search options]
-
-The Retriever doesn't set the query-time options of the vector index, so Azure DocumentDB uses their defaults. With a DiskANN index, `top_k` can't be larger than `lSearch`, which defaults to 40. With an IVF index, only the closest list is searched, because `nProbes` defaults to 1.
-
-:::
-
 ## Usage
 
 ### Installation

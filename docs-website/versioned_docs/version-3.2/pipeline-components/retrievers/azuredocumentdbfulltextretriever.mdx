@@ -29,12 +29,6 @@ A keyword-based Retriever that fetches documents matching a query from the Azure
 
 Keyword retrieval is good at finding exact matches for names of people or products, IDs, or error messages. If you want a semantic match between a query and documents, use the [`AzureDocumentDBEmbeddingRetriever`](azuredocumentdbembeddingretriever.mdx), or combine both Retrievers in a hybrid pipeline as shown below.
 
-:::note[Gated preview]
-
-Full-text search in Azure DocumentDB is in gated preview and must be enabled on your cluster. For how to request access, see [full-text search in Azure DocumentDB](https://learn.microsoft.com/azure/documentdb/full-text-search-overview).
-
-:::
-
 ### Full-text search index
 
 The Retriever searches the full-text search index named in the Document Store's `full_text_search_index` parameter. If this parameter isn't set, the Retriever raises a `ValueError`. Create the index on the content field with the `createSearchIndexes` command, for example in the MongoDB shell:

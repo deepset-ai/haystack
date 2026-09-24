@@ -38,11 +38,11 @@ export AZURE_DOCUMENTDB_CLUSTER_NAME="my-cluster"
 
 To use a different credential, pass any `TokenCredential` as `azure_token_credential`. A credential object can't be serialized, so pass it again after loading a serialized pipeline.
 
-For local development and testing, the Document Store can also connect with a connection string read from the `AZURE_DOCUMENTDB_CONNECTION_STRING` environment variable. When a connection string is set, the Document Store uses it instead of Microsoft Entra ID and logs a warning, because connection strings contain credentials and aren't recommended in production.
+For local development and testing, the Document Store can also connect with a connection string read from the `AZURE_DOCUMENTDB_CONNECTION_STRING` environment variable. When a connection string is set, the Document Store uses it instead of Microsoft Entra ID and logs a warning.
 
 ## Initialization
 
-To get started, [create an Azure DocumentDB cluster](https://learn.microsoft.com/azure/documentdb/quickstart-portal). The database and collection must exist before you use the Document Store: it doesn't create them. On first use, the Document Store creates a unique index on the Haystack document `id`.
+To get started, [create an Azure DocumentDB cluster](https://learn.microsoft.com/azure/documentdb/quickstart-portal). The database and collection must exist before you use the Document Store. On first use, the Document Store creates a unique index on the Haystack document `id`.
 
 ```python
 from haystack import Document
