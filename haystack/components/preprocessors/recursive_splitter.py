@@ -465,16 +465,16 @@ class RecursiveDocumentSplitter:
                 self._add_overlap_info(current_position, new_doc, new_docs)
 
             # count page breaks in the chunk
-            current_page += chunk.count("\f")
+            chunk_page = current_page + chunk.count("\f")
 
             # if there are consecutive page breaks at the end with no more text, adjust the page number
             # e.g: "text\f\f\f" -> 3 page breaks, but current_page should be 1
             consecutive_page_breaks = len(chunk) - len(chunk.rstrip("\f"))
 
             if consecutive_page_breaks > 0:
-                new_doc.meta["page_number"] = current_page - consecutive_page_breaks
+                new_doc.meta["page_number"] = chunk_page - consecutive_page_breaks
             else:
-                new_doc.meta["page_number"] = current_page
+                new_doc.meta["page_number"] = chunk_page
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
@@ -486,6 +486,10 @@ class RecursiveDocumentSplitter:
                 overlap_char_len = len(overlap_str)
             else:
                 overlap_char_len = 0
+            # Advance the page counter only over the characters the next chunk does not repeat: the
+            # overlapping tail reappears at the start of the next chunk, so a page break inside it would
+            # otherwise be counted once per chunk and shift every following page number upwards.
+            current_page += chunk.count("\f", 0, len(chunk) - overlap_char_len)
             current_position += len(chunk) - overlap_char_len
 
         return new_docs

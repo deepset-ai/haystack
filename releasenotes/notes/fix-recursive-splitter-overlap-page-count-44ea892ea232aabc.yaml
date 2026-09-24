@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` counting a page break character (``\f``) once per chunk it appears in when
+    ``split_overlap`` is used. A page break inside an overlapping region is repeated in consecutive chunks, so the
+    ``page_number`` metadata of every following chunk was shifted upwards and could exceed the number of pages in the
+    document. The page counter now advances only over the part of a chunk that the next chunk does not repeat.
