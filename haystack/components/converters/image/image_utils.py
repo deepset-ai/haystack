@@ -312,7 +312,8 @@ def _batch_convert_pdf_pages_to_images(
     :param size: Optional tuple of width and height to resize the images to.
     :param return_base64: If True, return base64 encoded images instead of PIL images.
 
-    :returns: Dictionary mapping document indices to images (PIL.Image or base64 string).
+    :returns: Dictionary mapping document indices to images (PIL.Image or base64 string). Documents whose page could
+        not be converted are not included.
     """
     if not pdf_page_infos:
         return {}
@@ -331,10 +332,12 @@ def _batch_convert_pdf_pages_to_images(
             bytestream=bytestream, return_base64=return_base64, page_range=page_numbers_to_convert, size=size
         )
 
-        # Map results back to document indices
+        # Map results back to document indices. Pages that could not be converted (out of range, or the PDF
+        # could not be read) are missing from the results, so their documents are left out.
         page_number_to_image = dict(converted_pages)
         for page_info in page_infos_for_pdf:
-            converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
+            if page_info["page_number"] in page_number_to_image:
+                converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
 
     # mypy is not able to infer that we match the declared return type
     return converted_images_by_doc_index  # type: ignore[return-value]
