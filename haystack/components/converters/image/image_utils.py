@@ -162,54 +162,55 @@ def _convert_pdf_to_images(
 
     resolved_page_range = page_range or range(1, num_pages + 1)
 
-    for page_number in resolved_page_range:
-        if page_number < 1 or page_number > num_pages:
-            logger.warning(
-                "Page {page_number} is out of range for the PDF file {file_path}. Skipping it.",
-                page_number=page_number,
-                file_path=bytestream.meta.get("file_path"),
-            )
-            continue
+    try:
+        for page_number in resolved_page_range:
+            if page_number < 1 or page_number > num_pages:
+                logger.warning(
+                    "Page {page_number} is out of range for the PDF file {file_path}. Skipping it.",
+                    page_number=page_number,
+                    file_path=bytestream.meta.get("file_path"),
+                )
+                continue
 
-        # Get dimensions of the page
-        page = pdf[max(page_number - 1, 0)]  # Adjust for 0-based indexing
-        _, _, width, height = page.get_mediabox()
+            # Get dimensions of the page
+            page = pdf[max(page_number - 1, 0)]  # Adjust for 0-based indexing
+            _, _, width, height = page.get_mediabox()
 
-        target_resolution_dpi = 300.0
+            target_resolution_dpi = 300.0
 
-        # From pypdfium2 docs: scale (float) – A factor scaling the number of pixels per PDF canvas unit. This defines
-        # the resolution of the image. To convert a DPI value to a scale factor, multiply it by the size of 1 canvas
-        # unit in inches (usually 1/72in).
-        # https://pypdfium2.readthedocs.io/en/stable/python_api.html#pypdfium2._helpers.page.PdfPage.render
-        target_scale = target_resolution_dpi / 72.0
+            # From pypdfium2 docs: scale (float) – A factor scaling the number of pixels per PDF canvas unit. This defines
+            # the resolution of the image. To convert a DPI value to a scale factor, multiply it by the size of 1 canvas
+            # unit in inches (usually 1/72in).
+            # https://pypdfium2.readthedocs.io/en/stable/python_api.html#pypdfium2._helpers.page.PdfPage.render
+            target_scale = target_resolution_dpi / 72.0
 
-        # Calculate potential pixels for target_dpi
-        pixels_for_target_scale = width * height * target_scale**2
+            # Calculate potential pixels for target_dpi
+            pixels_for_target_scale = width * height * target_scale**2
 
-        pil_max_pixels = PILImage.MAX_IMAGE_PIXELS or int(1024 * 1024 * 1024 // 4 // 3)
-        # 90% of PIL's default limit to prevent borderline cases
-        pixel_limit = pil_max_pixels * 0.9
+            pil_max_pixels = PILImage.MAX_IMAGE_PIXELS or int(1024 * 1024 * 1024 // 4 // 3)
+            # 90% of PIL's default limit to prevent borderline cases
+            pixel_limit = pil_max_pixels * 0.9
 
-        scale = target_scale
-        if pixels_for_target_scale > pixel_limit:
-            logger.info(
-                "Large PDF detected ({pixels:.2f} pixels). Resizing the image to fit the pixel limit.",
-                pixels=pixels_for_target_scale,
-            )
-            scale = (pixel_limit / (width * height)) ** 0.5
+            scale = target_scale
+            if pixels_for_target_scale > pixel_limit:
+                logger.info(
+                    "Large PDF detected ({pixels:.2f} pixels). Resizing the image to fit the pixel limit.",
+                    pixels=pixels_for_target_scale,
+                )
+                scale = (pixel_limit / (width * height)) ** 0.5
 
-        pdf_bitmap = page.render(scale=scale)
+            pdf_bitmap = page.render(scale=scale)
 
-        image: "Image" = pdf_bitmap.to_pil()
-        pdf_bitmap.close()
-        if size is not None:
-            # Set reducing_gap=None to disable multi-step shrink; better quality.
-            # https://pillow.readthedocs.io/en/latest/reference/Image.html#PIL.Image.Image.thumbnail
-            image.thumbnail(size=size, reducing_gap=None)
+            image: "Image" = pdf_bitmap.to_pil()
+            pdf_bitmap.close()
+            if size is not None:
+                # Set reducing_gap=None to disable multi-step shrink; better quality.
+                # https://pillow.readthedocs.io/en/latest/reference/Image.html#PIL.Image.Image.thumbnail
+                image.thumbnail(size=size, reducing_gap=None)
 
-        all_pdf_images.append((page_number, image))
-
-    pdf.close()
+            all_pdf_images.append((page_number, image))
+    finally:
+        pdf.close()
 
     if return_base64:
         return [
