@@ -31,12 +31,12 @@ For more details, see: https://docs.mistral.ai/capabilities/document_ai/annotati
 
 ```python
 from haystack.utils import Secret
-from haystack_integrations.mistral import MistralOCRDocumentConverter
-from mistralai.models import DocumentURLChunk, ImageURLChunk, FileChunk
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from mistralai.client.models import DocumentURLChunk, ImageURLChunk, FileChunk
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505"
+    model="mistral-ocr-latest"
 )
 
 # Process multiple sources
@@ -54,8 +54,9 @@ raw_responses = result["raw_mistral_response"]  # List of 3 raw responses
 **Structured Output Example:**
 
 ```python
+from mistralai.client.models import DocumentURLChunk
 from pydantic import BaseModel, Field
-from haystack_integrations.mistral import MistralOCRDocumentConverter
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
 
 # Define schema for structured image annotations
 class ImageAnnotation(BaseModel):
@@ -66,11 +67,11 @@ class ImageAnnotation(BaseModel):
 # Define schema for structured document annotations
 class DocumentAnnotation(BaseModel):
     language: str = Field(..., description="Primary language of the document")
-    chapter_titles: List[str] = Field(..., description="Detected chapter or section titles")
-    urls: List[str] = Field(..., description="URLs found in the text")
+    chapter_titles: list[str] = Field(..., description="Detected chapter or section titles")
+    urls: list[str] = Field(..., description="URLs found in the text")
 
 converter = MistralOCRDocumentConverter(
-    model="mistral-ocr-2505",
+    model="mistral-ocr-latest",
 )
 
 sources = [DocumentURLChunk(document_url="https://example.com/report.pdf")]
@@ -88,10 +89,10 @@ raw_responses = result["raw_mistral_response"]
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "mistral-ocr-2512",
+    "mistral-ocr-3-0",
+    "mistral-ocr-4-0",
+    "mistral-ocr-4-1",
     "mistral-ocr-latest",
-    "mistral-ocr-2503",
-    "mistral-ocr-2505",
 ]
 
 ```
@@ -105,7 +106,7 @@ and send a GET HTTP request to "https://api.mistral.ai/v1/models" for a full lis
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
-    model: str = "mistral-ocr-2505",
+    model: str = "mistral-ocr-4-1",
     include_image_base64: bool = False,
     pages: list[int] | None = None,
     image_limit: int | None = None,
@@ -119,8 +120,7 @@ Creates a MistralOCRDocumentConverter component.
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – The Mistral API key. Defaults to the MISTRAL_API_KEY environment variable.
-- **model** (<code>str</code>) – The OCR model to use. Default is "mistral-ocr-2505".
-  See more: https://docs.mistral.ai/getting-started/models/models_overview/
+- **model** (<code>str</code>) – The OCR model to use. See more: https://docs.mistral.ai/getting-started/models/models_overview/
 - **include_image_base64** (<code>bool</code>) – If True, includes base64 encoded images in the response.
   This may significantly increase response size and processing time.
 - **pages** (<code>list\[int\] | None</code>) – Specific page numbers to process (0-indexed). If None, processes all pages.

@@ -5,6 +5,7 @@
 import csv
 import io
 import os
+import re
 from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
@@ -25,6 +26,11 @@ _TEXT_BOX_CONTENT_TAG = f"{{{_WORD_NS}}}txbxContent"
 # Word writes a text box twice inside `mc:AlternateContent`: a `wps:txbx` under
 # `mc:Choice` and the same text as a VML text box under `mc:Fallback`.
 _FALLBACK_TAG = f"{{{_MARKUP_COMPATIBILITY_NS}}}Fallback"
+
+# A Markdown table row ends at a line break and its columns are separated by pipes, so
+# neither can survive inside a cell.
+_MARKDOWN_CELL_BREAK_PATTERN = re.compile(r"\s*(?:\r\n|\r|\n)\s*")
+_MARKDOWN_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
 
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
@@ -342,6 +348,22 @@ class DOCXToDocument:
 
         return text
 
+    @staticmethod
+    def _escape_markdown_cell(text: str) -> str:
+        """
+        Makes a cell's text safe to put between the pipes of a Markdown table row.
+
+        A cell spanning several paragraphs arrives with newlines in it, which would end
+        the row in the middle, and a pipe in a cell would be read as a column separator.
+
+        :param text: The cell text.
+        :returns: The text with line breaks collapsed and pipes escaped.
+        """
+        text = _MARKDOWN_CELL_BREAK_PATTERN.sub(" ", text)
+        # The backslash run in front of the pipe is doubled first, so a backslash the
+        # cell already contains cannot consume the escape.
+        return _MARKDOWN_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", text)
+
     def _table_to_markdown(self, table: "Table") -> str:
         """
         Converts a DOCX table to a Markdown string.
@@ -352,10 +374,10 @@ class DOCXToDocument:
         markdown: list[str] = []
         max_col_widths: list[int] = []
 
-        # Calculate max width for each column
+        # Calculate max width for each column, on the escaped text that is written out
         for row in table.rows:
             for i, cell in enumerate(row.cells):
-                cell_text = cell.text.strip()
+                cell_text = self._escape_markdown_cell(cell.text.strip())
                 if i >= len(max_col_widths):
                     max_col_widths.append(len(cell_text))
                 else:
@@ -363,7 +385,10 @@ class DOCXToDocument:
 
         # Process rows
         for i, row in enumerate(table.rows):
-            md_row = [cell.text.strip().ljust(max_col_widths[j]) for j, cell in enumerate(row.cells)]
+            md_row = [
+                self._escape_markdown_cell(cell.text.strip()).ljust(max_col_widths[j])
+                for j, cell in enumerate(row.cells)
+            ]
             markdown.append("| " + " | ".join(md_row) + " |")
 
             # Add separator after header row

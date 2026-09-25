@@ -81,12 +81,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.2-unstable',
+              label: '3.3-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.1',
+          lastVersion: '3.2',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -134,12 +134,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.2-unstable',
+            label: '3.3-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.1',
+        lastVersion: '3.2',
       },
     ],
     [
@@ -207,6 +207,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/generators-vs-chat-generators',
             to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
           },
+          {
+            from: '/docs/sentencewindowretrieval',
+            to: '/docs/sentencewindowretriever',
+          },
           // Components removed or renamed in Haystack 3.0
           {
             from: '/docs/openaigenerator',
@@ -257,6 +261,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             to: '/docs/tool',
           },
         ],
+        // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
+        // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
+        createRedirects(existingPath) {
+          const match = existingPath.match(
+            /^(\/docs\/(?:[\w.-]+\/)?)(amazonbedrock|anthropic|cohere|llamacpp|nvidia|ollama|togetherai|watsonx)chatgenerator$/,
+          );
+          if (match) {
+            return [`${match[1]}${match[2]}generator`];
+          }
+          return undefined;
+        },
+      },
+    ],
+    [
+      '@docusaurus/plugin-vercel-analytics',
+      {
+        mode: 'auto',
       },
     ],
   ],

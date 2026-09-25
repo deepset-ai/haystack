@@ -474,12 +474,9 @@ into ImageContent objects.
 
 - <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
 - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-  data and metadata. The order corresponds to order of input documents.
-
-**Raises:**
-
-- <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-  MIME type. The error message will specify which document and what information is missing or incorrect.
+  data and metadata. The order corresponds to the order of the input documents. A document that is
+  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
+  to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
 
 ## image/file_to_document
 
@@ -1055,7 +1052,7 @@ The MultiFileConverter handles the following file types:
 Usage example:
 
 ```
-from haystack.super_components.converters import MultiFileConverter
+from haystack.components.converters import MultiFileConverter
 
 converter = MultiFileConverter()
 converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sample_pdf_1.pdf"], meta={})

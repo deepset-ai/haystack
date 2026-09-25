@@ -143,7 +143,7 @@ class LinkContentFetcher:
         self.retry_attempts = retry_attempts
         self.timeout = timeout
         self.http2 = http2
-        self.client_kwargs = client_kwargs or {}
+        self.client_kwargs = dict(client_kwargs or {})
         self.request_headers = request_headers or {}
 
         # Configure default client settings
@@ -191,7 +191,9 @@ class LinkContentFetcher:
         )
         def get_response(url: str) -> httpx.Response:
             assert self._client is not None  # mypy: client is built by warm_up before run
-            response = self._client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
+            response = self._client.get(
+                url, headers=self._get_headers(client=self._client, user_agent=self.user_agents[user_agent_idx])
+            )
             response.raise_for_status()
             return response
 
@@ -249,15 +251,16 @@ class LinkContentFetcher:
             await self._async_client.aclose()
             self._async_client = None
 
-    def _get_headers(self, user_agent: str) -> dict[str, str]:
+    def _get_headers(self, client: httpx.Client | httpx.AsyncClient, user_agent: str) -> dict[str, str]:
         """
         Build headers with precedence
 
         client defaults -> component defaults -> user-provided -> rotating UA
 
+        :param client: The HTTP client used for the request.
         :param user_agent: The user agent for this attempt, taken from the caller's own rotation.
         """
-        base = dict(self._client.headers) if self._client is not None else {}
+        base = dict(client.headers)
         return _merge_headers(base, REQUEST_HEADERS, self.request_headers, {"User-Agent": user_agent})
 
     @component.output_types(streams=list[ByteStream])
@@ -444,7 +447,9 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                response = await client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
+                response = await client.get(
+                    url, headers=self._get_headers(client=client, user_agent=self.user_agents[user_agent_idx])
+                )
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:

@@ -1,0 +1,308 @@
+---
+title: "Multi-Agent Systems"
+id: multi-agent-systems
+slug: "/multi-agent-systems"
+description: "Learn how to build multi-agent systems in Haystack by spawning agents as tools. Use AgentTool to connect specialist agents to a coordinator."
+---
+
+# Multi-Agent Systems
+
+Multi-agent systems let you compose multiple `Agent` instances into larger architectures where a **coordinator** agent delegates to **specialist** agents.
+Each specialist focuses on a specific task with its own tools and system prompt - the coordinator plans and routes work without needing to know how each task gets done.
+
+Spawning agents as tools is useful when:
+
+- A task is too broad for a single agent to handle reliably,
+- You want to isolate different capabilities into focused, reusable agents,
+- You need to keep the coordinator's context lean for better decisions and lower token usage.
+
+In Haystack, you spawn a specialist agent as a tool with [`AgentTool`](../../tools/agenttool.mdx).
+
+## Converting an Agent to a Tool
+
+`AgentTool` wraps a specialist agent so a coordinator can call it.
+The coordinator's model sends the task to delegate as a single user message and receives the specialist's final reply as text, so you never describe the agent's interface or unpack its result dict.
+
+The examples on this page use SerperDev web search component that have moved to the `serperdev-haystack` package. Install it to run the examples:
+
+```shell
+pip install serperdev-haystack
+```
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import AgentTool, ComponentTool
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
+from haystack.utils import Secret
+
+
+research_agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[
+        ComponentTool(
+            component=SerperDevWebSearch(
+                api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+                top_k=3,
+            ),
+            name="web_search",
+            description="Search the web for current information on any topic",
+        ),
+    ],
+    system_prompt="You are a research specialist. Search the web to find information.",
+)
+
+
+research_specialist = AgentTool(
+    agent=research_agent,
+    name="research_specialist",
+    description="A specialist that researches topics on the web",
+)
+
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_specialist],
+    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
+    streaming_callback=print_streaming_chunk,
+)
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
+```
+
+The full specialist configuration is captured inline when serialized.
+Wrap the coordinator in a `Pipeline` and call `pipeline.dumps()` to get the YAML, which can be loaded back with `Pipeline.loads()`.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+components:
+  coordinator:
+    init_parameters:
+      chat_generator:
+        init_parameters:
+          api_base_url: null
+          api_key:
+            env_vars:
+            - OPENAI_API_KEY
+            strict: true
+            type: env_var
+          generation_kwargs: {}
+          http_client_kwargs: null
+          max_retries: null
+          model: gpt-5.4-nano
+          organization: null
+          streaming_callback: null
+          timeout: null
+          tools: null
+          tools_strict: false
+        type: haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator
+      exit_conditions:
+      - text
+      hooks: null
+      max_agent_steps: 100
+      raise_on_tool_invocation_failure: false
+      required_variables: '*'
+      state_schema: {}
+      streaming_callback: haystack.components.generators.utils.print_streaming_chunk
+      system_prompt: You are a coordinator. Delegate research tasks to the research
+        specialist.
+      tool_concurrency_limit: 4
+      tool_streaming_callback_passthrough: false
+      tools:
+      - data:
+          agent:
+            init_parameters:
+              chat_generator:
+                init_parameters:
+                  api_base_url: null
+                  api_key:
+                    env_vars:
+                    - OPENAI_API_KEY
+                    strict: true
+                    type: env_var
+                  generation_kwargs: {}
+                  http_client_kwargs: null
+                  max_retries: null
+                  model: gpt-5.4-nano
+                  organization: null
+                  streaming_callback: null
+                  timeout: null
+                  tools: null
+                  tools_strict: false
+                type: haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator
+              exit_conditions:
+              - text
+              hooks: null
+              max_agent_steps: 100
+              raise_on_tool_invocation_failure: false
+              required_variables: '*'
+              state_schema: {}
+              streaming_callback: null
+              system_prompt: You are a research specialist. Search the web to find
+                information.
+              tool_concurrency_limit: 4
+              tool_streaming_callback_passthrough: false
+              tools:
+              - data:
+                  component:
+                    init_parameters:
+                      allowed_domains: null
+                      api_key:
+                        env_vars:
+                        - SERPERDEV_API_KEY
+                        strict: true
+                        type: env_var
+                      exclude_subdomains: false
+                      search_params: {}
+                      top_k: 3
+                    type: haystack_integrations.components.websearch.serperdev.websearch.SerperDevWebSearch
+                  description: Search the web for current information on any topic
+                  inputs_from_state: null
+                  name: web_search
+                  outputs_to_state: null
+                  outputs_to_string: null
+                  parameters: null
+                type: haystack.tools.component_tool.ComponentTool
+              user_prompt: null
+            type: haystack.components.agents.agent.Agent
+          description: A specialist that researches topics on the web
+          inputs_from_state: null
+          name: research_specialist
+          outputs_to_state: null
+          outputs_to_string:
+            handler: haystack.tools.agent_tool.agent_result_to_string
+          parameters: null
+        type: haystack.tools.agent_tool.AgentTool
+      user_prompt: null
+    type: haystack.components.agents.agent.Agent
+connection_type_validation: true
+connections: []
+max_runs_per_component: 100
+metadata: {}
+```
+
+</details>
+
+### Alternatives to `AgentTool`
+
+Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. By default, `AgentTool` exposes a single input, `messages`, carrying the task to delegate, plus one parameter for each mandatory prompt variable of the specialist. It returns only the text of the specialist's final reply.
+
+You can also create a similarly narrow interface with the [`@tool`](../../tools/tool.mdx#tool-decorator) decorator. This is useful when you need custom input arguments, want to transform the delegated task, or need to post-process the specialist's response. The trade-off is serialization: a decorated tool serializes as an import path to the function, so the specialist's configuration lives in your Python module rather than in the YAML above.
+
+## Coordinator / Specialist Pattern
+
+The coordinator/specialist pattern cleanly splits responsibilities: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
+
+This is also a form of **context engineering**: deliberately controlling what each agent sees.
+A specialist accumulates its own tool call trace, but the coordinator only needs the final answer.
+`AgentTool` surfaces only the specialist's final reply, keeping the coordinator's context lean.
+
+When covering multiple topics, the coordinator can call the same specialist tool several times in a single response.
+All tool calls from one LLM response are executed concurrently using a thread pool.
+Control the level of parallelism with the `tool_concurrency_limit` init parameter (default: `4`).
+
+The example below asks the coordinator about two topics: it calls `research_specialist` twice, and both specialists run in parallel.
+
+`HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
+Install it before running:
+
+```shell
+pip install trafilatura
+```
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.converters import HTMLToDocument
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import AgentTool, ComponentTool, tool
+from haystack.utils import Secret
+
+
+search_tool = ComponentTool(
+    component=SerperDevWebSearch(
+        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+        top_k=3,
+    ),
+    name="web_search",
+    description="Search the web for current information on any topic",
+)
+
+
+@tool
+def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
+    """Fetch the content of a web page given its URL."""
+    try:
+        streams = LinkContentFetcher().run(urls=[url])["streams"]
+        if not streams:
+            return "No content found."
+        documents = HTMLToDocument().run(sources=streams)["documents"]
+        return documents[0].content if documents else "No content extracted."
+    except Exception as e:
+        return f"Failed to fetch page: {e}"
+
+
+research_agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_tool, fetch_page],
+    system_prompt=(
+        "You are a research specialist. Search the web to find relevant pages, "
+        "then fetch their full content for detailed information. "
+        "Return a concise summary of your findings in 3-5 sentences."
+    ),
+)
+
+
+research_specialist = AgentTool(
+    agent=research_agent,
+    name="research_specialist",
+    description="Research a topic on the web and report a summary of the findings",
+)
+
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_specialist],
+    system_prompt=(
+        "You are a coordinator. Delegate research tasks to the research specialist. "
+        "For questions covering multiple topics, research each one independently. "
+        "Keep your final answer concise."
+    ),
+    streaming_callback=print_streaming_chunk,
+    tool_concurrency_limit=4,  # run up to 4 specialist calls in parallel
+)
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user(
+            "What are the latest developments in the Haystack framework, "
+            "and what is the current state of the Model Context Protocol?",
+        ),
+    ],
+)
+```
+
+## Additional References
+
+📖 Related docs:
+
+- [Agent](../../pipeline-components/agents-1/agent.mdx)
+- [AgentTool](../../tools/agenttool.mdx)
+- [State](../../pipeline-components/agents-1/state.mdx)
+- [ComponentTool](../../tools/componenttool.mdx)
+
+📚 Tutorials:
+
+- [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
