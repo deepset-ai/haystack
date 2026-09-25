@@ -5,7 +5,7 @@
     <title>Coverage for haystack/core/pipeline/pipeline.py: 94%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
-    <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
+    <script src="coverage_html_cb_15cffcd0.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">331 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">312<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">19<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">310<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">21<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_b322145112e574f7_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-24 16:55 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
+            created at 2026-09-25 08:19 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -1041,11 +1041,11 @@
     <p class="pln"><span class="n"><a id="t959" href="#t959">959</a></span><span class="t">                    <span class="com"># If we can&#x27;t make progress with the queue but tasks are running, we wait for one to finish and</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t960" href="#t960">960</a></span><span class="t">                    <span class="com"># retry to potentially unblock the priority queue.</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t961" href="#t961">961</a></span><span class="t">                    <span class="key">if</span> <span class="op">(</span><span class="nam">candidate</span> <span class="key">is</span> <span class="key">None</span> <span class="key">or</span> <span class="nam">candidate</span><span class="op">[</span><span class="num">0</span><span class="op">]</span> <span class="op">==</span> <span class="nam">ComponentPriority</span><span class="op">.</span><span class="nam">BLOCKED</span><span class="op">)</span> <span class="key">and</span> <span class="nam">running_tasks</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t962" href="#t962">962</a></span><span class="t">                        <span class="key">async</span> <span class="key">for</span> <span class="nam">partial_outputs</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_wait_for_tasks</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t963" href="#t963">963</a></span><span class="t">                            <span class="nam">running_tasks</span><span class="op">,</span> <span class="nam">scheduled_components</span><span class="op">,</span> <span class="nam">return_when</span><span class="op">=</span><span class="nam">asyncio</span><span class="op">.</span><span class="nam">FIRST_COMPLETED</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t964" href="#t964">964</a></span><span class="t">                        <span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t962" href="#t962">962</a></span><span class="t">                        <span class="key">async</span> <span class="key">for</span> <span class="nam">partial_outputs</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_wait_for_tasks</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis mis2 show_mis"><span class="n"><a id="t963" href="#t963">963</a></span><span class="t">                            <span class="nam">running_tasks</span><span class="op">,</span> <span class="nam">scheduled_components</span><span class="op">,</span> <span class="nam">return_when</span><span class="op">=</span><span class="nam">asyncio</span><span class="op">.</span><span class="nam">FIRST_COMPLETED</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis mis2 show_mis"><span class="n"><a id="t964" href="#t964">964</a></span><span class="t">                        <span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t965" href="#t965">965</a></span><span class="t">                            <span class="key">yield</span> <span class="nam">partial_outputs</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t966" href="#t966">966</a></span><span class="t">                        <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t966" href="#t966">966</a></span><span class="t">                        <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t967" href="#t967">967</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t968" href="#t968">968</a></span><span class="t">                    <span class="com"># If there are no runnable components left and nothing is running, we can exit the loop.</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t969" href="#t969">969</a></span><span class="t">                    <span class="key">if</span> <span class="nam">candidate</span> <span class="key">is</span> <span class="key">None</span> <span class="key">and</span> <span class="key">not</span> <span class="nam">running_tasks</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -1438,8 +1438,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_b322145112e574f7_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-09-24 16:55 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
+            created at 2026-09-25 08:19 +0000
         </p>
     </div>
 </footer>

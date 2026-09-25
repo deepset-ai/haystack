@@ -503,20 +503,23 @@ coverage.to_prev_chunk = function () {
         chunk_indicator = c.chunk_indicator(probe_line);
     }
 
+    // There is no previous highlighted chunk.
+    if (!chunk_indicator) {
+        return;
+    }
+
     // There's a prev chunk, `probe` points to its last line.
     var end = probe+1;
 
     // Find the beginning of this chunk.
-    var prev_indicator = chunk_indicator;
-    while (prev_indicator === chunk_indicator) {
-        probe--;
-        if (probe <= 0) {
-            return;
+    while (probe > 1) {
+        probe_line = c.line_elt(probe-1);
+        if (c.chunk_indicator(probe_line) !== chunk_indicator) {
+            break;
         }
-        probe_line = c.line_elt(probe);
-        prev_indicator = c.chunk_indicator(probe_line);
+        probe--;
     }
-    c.set_sel(probe+1, end);
+    c.set_sel(probe, end);
     c.show_selection();
 };
 
