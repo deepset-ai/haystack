@@ -108,6 +108,50 @@ class TestXLSXToDocument:
             == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | N/A   |"
         )
 
+    @staticmethod
+    def _literal_na_workbook() -> bytes:
+        """Cells holding the literal text "NA"/"N/A" next to a genuinely empty cell."""
+        book = Workbook()
+        sheet = book.active
+        sheet.append(["Code", "Status"])
+        sheet.append(["NA", "OK"])
+        sheet.append(["N/A", "pending"])
+        sheet.append([None, "blank"])
+        buffer = io.BytesIO()
+        book.save(buffer)
+        return buffer.getvalue()
+
+    def test_run_preserves_literal_na_text(self) -> None:
+        """ "NA"/"N/A" are real values, so they must not be parsed as missing data."""
+        converter = XLSXToDocument()
+        content = converter.run([ByteStream(self._literal_na_workbook())])["documents"][0].content
+        assert content == ",A,B\n1,Code,Status\n2,NA,OK\n3,N/A,pending\n4,,blank\n"
+
+    def test_run_preserves_literal_na_text_in_markdown(self) -> None:
+        converter = XLSXToDocument(table_format="markdown")
+        content = converter.run([ByteStream(self._literal_na_workbook())])["documents"][0].content
+        assert content == (
+            "|    | A    | B       |\n|---:|:-----|:--------|\n|  1 | Code | Status  |\n"
+            "|  2 | NA   | OK      |\n|  3 | N/A  | pending |\n|  4 |      | blank   |"
+        )
+
+    def test_run_keeps_genuinely_empty_cells_missing(self) -> None:
+        """Only empty cells are missing, so `missingval` still reaches the blank cell."""
+        converter = XLSXToDocument(table_format="markdown", table_format_kwargs={"missingval": "MISSING"})
+        content = converter.run([ByteStream(self._literal_na_workbook())])["documents"][0].content
+        # The empty cell in row 4 renders as the configured missing value, while the
+        # literal "NA" and "N/A" cells keep their text.
+        assert (
+            content == "|    | A       | B       |\n|---:|:--------|:--------|\n|  1 | Code    | Status  |\n"
+            "|  2 | NA      | OK      |\n|  3 | N/A     | pending |\n|  4 | MISSING | blank   |"
+        )
+
+    def test_read_excel_kwargs_can_restore_default_na_parsing(self) -> None:
+        """`read_excel_kwargs` still wins, so callers can opt back into pandas' defaults."""
+        converter = XLSXToDocument(read_excel_kwargs={"keep_default_na": True})
+        content = converter.run([ByteStream(self._literal_na_workbook())])["documents"][0].content
+        assert content == ",A,B\n1,Code,Status\n2,,OK\n3,,pending\n4,,blank\n"
+
     @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
         [
