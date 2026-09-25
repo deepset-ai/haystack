@@ -331,7 +331,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: 'left',
           },
           {
-            href: 'https://www.deepset.ai/products-and-services/haystack-enterprise-platform',
+            href: 'https://www.deepset.ai/haystack-platform',
             label: 'Haystack Enterprise Platform',
             position: 'right',
           },
@@ -354,7 +354,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             title: 'Community',
             items: [
               {
-                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/company/deepset-ai/" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
+                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/xYvH6drSmA" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/showcase/haystack-ai-framework" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
               },
             ],
           },
@@ -363,14 +363,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             items: [
               { label: 'Tutorials',   href: 'https://haystack.deepset.ai/tutorials' },
               { label: 'Cookbooks', href: 'https://haystack.deepset.ai/cookbook' },
+              { label: 'Articles', href: 'https://haystack.deepset.ai/blog' },
             ],
           },
           {
             title: 'More',
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
-              { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
-              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Haystack Enterprise Platform', href: 'https://www.deepset.ai/haystack-platform' },
+              { label: 'Enterprise Support', href: 'https://www.deepset.ai/products-and-services/haystack-enterprise-starter' },
             ],
           },
           {
