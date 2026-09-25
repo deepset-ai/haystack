@@ -778,13 +778,29 @@ count_documents() -> int
 
 Returns the number of documents present in the Document Store.
 
+**Returns:**
+
+- <code>int</code> – The number of documents in the collection.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents fails.
+
 #### count_documents_async
 
 ```python
 count_documents_async() -> int
 ```
 
-Asynchronously returns the number of documents present in the document dtore.
+Asynchronously returns the number of documents present in the document store.
+
+**Returns:**
+
+- <code>int</code> – The number of documents in the collection.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents fails.
 
 #### filter_documents
 
@@ -983,6 +999,10 @@ Deletes all documents from the document store.
 
 - **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Deleting documents or recreating the collection fails.
+
 #### delete_all_documents_async
 
 ```python
@@ -994,6 +1014,10 @@ Asynchronously deletes all documents from the document store.
 **Parameters:**
 
 - **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Deleting documents or recreating the collection fails.
 
 #### count_documents_by_filter
 
@@ -1012,6 +1036,10 @@ Returns the number of documents that match the provided filters.
 
 - <code>int</code> – The number of documents that match the filters.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents matching the filters fails.
+
 #### count_documents_by_filter_async
 
 ```python
@@ -1028,6 +1056,10 @@ Asynchronously returns the number of documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents that match the filters.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents matching the filters fails.
 
 #### get_metadata_fields_info
 
@@ -1049,6 +1081,10 @@ payload["meta"].
 {"category": {"type": "keyword"}, "priority": {"type": "long"}}
 ```
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing metadata field information fails.
+
 #### get_metadata_fields_info_async
 
 ```python
@@ -1069,6 +1105,10 @@ payload["meta"].
 {"category": {"type": "keyword"}, "priority": {"type": "long"}}
 ```
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing metadata field information fails.
+
 #### get_metadata_field_min_max
 
 ```python
@@ -1087,6 +1127,10 @@ Returns the minimum and maximum values for the given metadata field.
   metadata field across all documents. Returns `{"min": None, "max": None}` if no documents have
   the field.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or computing the metadata bounds fails.
+
 #### get_metadata_field_min_max_async
 
 ```python
@@ -1104,6 +1148,10 @@ Asynchronously returns the minimum and maximum values for the given metadata fie
 - <code>dict\[str, Any\]</code> – A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
   metadata field across all documents. Returns `{"min": None, "max": None}` if no documents have
   the field.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or computing the metadata bounds fails.
 
 #### count_unique_metadata_by_filter
 
@@ -1125,6 +1173,10 @@ Returns the number of unique values for each specified metadata field among docu
 
 - <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of its unique values among the filtered
   documents.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or counting unique metadata values fails.
 
 #### count_unique_metadata_by_filter_async
 
@@ -1148,6 +1200,10 @@ Only documents that match the filters are considered.
 
 - <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of its unique values among the filtered
   documents.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or counting unique metadata values fails.
 
 #### get_metadata_field_unique_values
 
@@ -1181,6 +1237,10 @@ matching documents must be scrolled through to compute the total count.
 
 - <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing unique metadata values fails.
+
 #### get_metadata_field_unique_values_async
 
 ```python
@@ -1212,6 +1272,10 @@ matching documents must be scrolled through to compute the total count.
 **Returns:**
 
 - <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing unique metadata values fails.
 
 #### from_dict
 
