@@ -39,7 +39,7 @@ for _pattern in (
     "*.test_*",  # `<subdir>.test_<name>` modules (pytest treats sub-packages this way)
     "test.*",  # modules inside the proper `test` package (with __init__.py)
     "pydantic",  # pydantic models used in base-serialization tests
-    "httpx",  # used in callable-serialization tests
+    "httpx2",  # used in callable-serialization tests
 ):
     allow_deserialization_module(_pattern)
 
