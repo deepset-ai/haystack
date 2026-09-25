@@ -178,21 +178,23 @@ class XLSXToDocument:
         if self.link_format != "none":
             file_bytes.seek(0)
             wb = openpyxl.load_workbook(file_bytes, data_only=True)
-            for sheet_key in sheet_to_dataframe:
-                if isinstance(sheet_key, int):
-                    ws = wb.worksheets[sheet_key]
-                elif sheet_key is None:
-                    ws = wb.active
-                else:
-                    ws = wb[sheet_key]
-                cell_links: dict[tuple[int, int], str] = {}
-                for row in ws.iter_rows():
-                    for cell in row:
-                        if cell.hyperlink and cell.hyperlink.target:
-                            # Convert to 0-based indices to match DataFrame positions
-                            cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
-                hyperlinks_by_sheet[sheet_key] = cell_links
-            wb.close()
+            try:
+                for sheet_key in sheet_to_dataframe:
+                    if isinstance(sheet_key, int):
+                        ws = wb.worksheets[sheet_key]
+                    elif sheet_key is None:
+                        ws = wb.active
+                    else:
+                        ws = wb[sheet_key]
+                    cell_links: dict[tuple[int, int], str] = {}
+                    for row in ws.iter_rows():
+                        for cell in row:
+                            if cell.hyperlink and cell.hyperlink.target:
+                                # Convert to 0-based indices to match DataFrame positions
+                                cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
+                    hyperlinks_by_sheet[sheet_key] = cell_links
+            finally:
+                wb.close()
 
         updated_sheet_to_dataframe = {}
         for key in sheet_to_dataframe:
