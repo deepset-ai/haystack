@@ -234,4 +234,4 @@ class SentenceSplitter:
             logger.warning("No abbreviations file found for {language}. Using default abbreviations.", language=lang)
             return []
 
-        return abbreviations_file.read_text().split("\n")
+        return abbreviations_file.read_text(encoding="utf-8").split("\n")

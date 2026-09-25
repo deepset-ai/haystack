@@ -115,3 +115,36 @@ def test_split_sentences_performance() -> None:
     end = time.time()
 
     assert end - start < 2, f"Execution time exceeded 2 seconds: {end - start:.2f} seconds"
+
+
+def test_read_abbreviations_non_ascii_uses_utf8(tmp_path, monkeypatch):
+    """Abbreviations files are UTF-8 and must be read with an explicit encoding.
+
+    Some abbreviations (for example the German ones) contain non-ASCII characters, so
+    relying on the platform's default text encoding raises UnicodeDecodeError on systems
+    whose default is not UTF-8, such as Windows with a cp1252 locale.
+    """
+    thin_space = chr(0x2009)
+    sharp_s = chr(0xDF)
+    newline = chr(10)
+
+    abbrev_dir = tmp_path / "data" / "abbreviations"
+    abbrev_dir.mkdir(parents=True)
+    content = f"z.{thin_space}B." + newline + "Jh." + newline + f"Stra{sharp_s}e."
+    (abbrev_dir / "de.txt").write_text(content, encoding="utf-8")
+
+    read_text_calls = []
+    real_read_text = Path.read_text
+
+    def recording_read_text(self, *args, **kwargs):
+        read_text_calls.append(kwargs)
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", recording_read_text)
+
+    with patch("haystack.components.preprocessors.sentence_tokenizer.Path") as mock_path:
+        mock_path.return_value.parent.parent.parent = tmp_path
+        result = SentenceSplitter._read_abbreviations("de")
+
+    assert read_text_calls == [{"encoding": "utf-8"}]
+    assert result == [f"z.{thin_space}B.", "Jh.", f"Stra{sharp_s}e."]
