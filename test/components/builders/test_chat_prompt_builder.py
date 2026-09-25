@@ -15,7 +15,7 @@ from haystack import component
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent
+from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent, TextContent
 from haystack.dataclasses.document import Document
 
 
@@ -167,6 +167,35 @@ class TestChatPromptBuilder:
             builder.run(foo="foo")
         with pytest.raises(ValueError, match="bar, foo"):
             builder.run()
+
+    def test_run_with_multiple_text_parts(self):
+        template = [
+            ChatMessage.from_user(
+                content_parts=[TextContent(text="Hello, {{ name }}!"), TextContent(text="Goodbye, {{ other }}!")]
+            )
+        ]
+        builder = ChatPromptBuilder(template=template)
+
+        # every text part is a template, not only the first one
+        assert set(builder.variables) == {"name", "other"}
+        assert builder.run(name="John", other="Jane")["prompt"][0].texts == ["Hello, John!", "Goodbye, Jane!"]
+
+    def test_run_preserves_non_text_content_parts(self):
+        image = ImageContent(base64_image="cHJldGVuZC1wbmctYnl0ZXM=", mime_type="image/png")
+        template = [
+            ChatMessage.from_user(content_parts=[TextContent(text="Describe {{ thing }}"), image]),
+            ChatMessage.from_system("You are a helpful assistant."),
+        ]
+        builder = ChatPromptBuilder(template=template)
+
+        prompt = builder.run(thing="this")["prompt"]
+        assert prompt[0].texts == ["Describe this"]
+        assert any(isinstance(part, ImageContent) for part in prompt[0]._content)
+
+        # the template message itself is not modified in place
+        assert template[0].texts == ["Describe {{ thing }}"]
+        assert len(template[0]._content) == 2
+        assert template[1].texts == ["You are a helpful assistant."]
 
     def test_run_with_variables(self):
         variables = ["var1", "var2", "var3"]
