@@ -195,8 +195,8 @@ class TestPipelineTool:
                 "top_k": {
                     "anyOf": [{"type": "integer"}, {"type": "null"}],
                     "description": "Provided to the 'bm25_retriever' component as: 'The maximum number of documents "
-                    "to return.', and Provided to the 'ranker' component as: 'The maximum number "
-                    "of documents to return.'.",
+                    "to return. If 0, no documents are returned.', and Provided to the 'ranker' component as: "
+                    "'The maximum number of documents to return.'.",
                 },
                 "scale_score": {
                     "description": "Provided to the 'bm25_retriever' component as: 'When `True`, scales the score "

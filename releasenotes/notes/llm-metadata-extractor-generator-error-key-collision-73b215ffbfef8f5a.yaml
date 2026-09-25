@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``LLMMetadataExtractor`` incorrectly treating a chat generator output that carries its own
+    ``error`` field as a failed LLM call, which sent every document to ``failed_documents``
+    with ``metadata_extraction_error`` set to ``None``. Such documents are now processed normally.

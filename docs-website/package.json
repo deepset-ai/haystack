@@ -27,7 +27,7 @@
     "@docusaurus/preset-classic": "3.10.2",
     "@mdx-js/react": "^3.0.0",
     "@types/turndown": "^5.0.6",
-    "@vercel/node": "^13.0.1",
+    "@vercel/node": "^14.0.0",
     "clsx": "^2.0.0",
     "docusaurus-plugin-generate-llms-txt": "^0.0.1",
     "prism-react-renderer": "^2.3.0",

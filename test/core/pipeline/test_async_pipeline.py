@@ -43,6 +43,20 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
+def test_run_async_accepts_dict_valued_flat_input():
+    @component
+    class DictEcho:
+        @component.output_types(result=dict)
+        def run(self, payload: dict) -> dict:
+            return {"result": payload}
+
+    pipeline = Pipeline()
+    pipeline.add_component("echo", DictEcho())
+    expected = {"echo": {"result": {"x": 1}}}
+
+    assert asyncio.run(pipeline.run_async({"payload": {"x": 1}})) == expected
+
+
 def test_run_async_with_invalid_concurrency_limit():
     pp = Pipeline()
     with pytest.raises(ValueError, match="concurrency_limit must be greater than or equal to 1"):
