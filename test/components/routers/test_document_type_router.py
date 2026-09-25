@@ -191,6 +191,21 @@ class TestDocumentTypeRouter:
         assert len(result["unclassified"]) == 3
         assert "text/plain" not in result
 
+    def test_run_with_non_string_mime_type_metadata(self):
+        docs = [
+            Document(content="List mime", meta={"mime_type": ["text/plain"]}),
+            Document(content="Int mime", meta={"mime_type": 123}),
+            Document(content="None mime", meta={"mime_type": None}),
+            Document(content="Valid mime", meta={"mime_type": "text/plain"}),
+        ]
+
+        router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=["text/plain"])
+        result = router.run(documents=docs)
+
+        assert len(result["text/plain"]) == 1
+        assert result["text/plain"][0].content == "Valid mime"
+        assert len(result["unclassified"]) == 3
+
     def test_run_with_regex_patterns(self):
         docs = [
             Document(content="Plain text", meta={"mime_type": "text/plain"}),
