@@ -31,6 +31,11 @@ class _FakeEncoder:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
+    def encode_ordinary(self, text: str) -> list[int]:
+        # Mirrors `tiktoken.Encoding.encode_ordinary`: counts special-token strings as ordinary text.
+        self.encoded.append(text)
+        return list(range(len(text.split())))
+
 
 @pytest.fixture
 def fake_encoder(monkeypatch: pytest.MonkeyPatch) -> _FakeEncoder:
@@ -97,6 +102,13 @@ class TestTiktokenCounter:
         assert "<image>" in rendered
         assert "<file: report.pdf>" in rendered
 
+    def test_special_token_strings_are_counted_as_ordinary_text(self, fake_encoder):
+        # Literal markers such as `<|endoftext|>` must not raise; they are counted as ordinary text.
+        messages = [ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]
+
+        assert TiktokenCounter().count(messages) > 0
+        assert "<|endoftext|>" in fake_encoder.encoded[0]
+
     def test_serde_round_trip(self):
         data = TiktokenCounter(encoding="cl100k_base", tokens_per_image=200, tokens_per_file=3000).to_dict()
 
@@ -160,3 +172,24 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+    def test_special_token_string_in_message_is_counted(self):
+        # Regression test for https://github.com/deepset-ai/haystack/issues/12869
+        counter = TiktokenCounter()
+
+        count = counter.count([ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")])
+
+        assert count > 0
+
+    def test_special_token_string_in_tool_description_is_counted(self):
+        # The tools path concatenates schemas into the same encode call, so it must not raise either.
+        @tool
+        def marked_search(query: Annotated[str, "the search query"]) -> str:
+            """Search the web. Documents <|endoftext|> as a literal marker."""
+            return "result"
+
+        counter = TiktokenCounter()
+
+        count = counter.count([ChatMessage.from_user("hi")], tools=[marked_search])
+
+        assert count > 0
