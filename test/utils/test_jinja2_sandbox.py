@@ -54,15 +54,17 @@ class TestHaystackSandboxedEnvironment:
 
     def test_blocks_document_from_dict_gadget(self, tmp_path):
         # Document.from_dict()/ByteStream.to_file() let a template write an arbitrary file.
+        # The target path is passed as a template variable, not interpolated into the template
+        # text, since a Windows path contains backslashes that Jinja's string-literal lexer would
+        # otherwise try to parse as escape sequences (e.g. "\Users..." looks like a "\U" escape).
         env = HaystackSandboxedEnvironment()
         doc = Document(content="hello")
         target = tmp_path / "pwned"
         template = (
-            '{{ doc.from_dict({"content": "x", "blob": {"data": [104, 105], "meta": {}}})'
-            f'.blob.to_file("{target}") }}}}'
+            '{{ doc.from_dict({"content": "x", "blob": {"data": [104, 105], "meta": {}}}).blob.to_file(target) }}'
         )
         with pytest.raises(jinja2.exceptions.SecurityError):
-            env.from_string(template).render(doc=doc)
+            env.from_string(template).render(doc=doc, target=str(target))
         assert not target.exists()
 
     def test_blocks_bytestream_from_file_path_gadget(self):
