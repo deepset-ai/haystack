@@ -103,6 +103,8 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
 
 @pytest.fixture()
 def spying_tracer() -> Generator[SpyingTracer, None, None]:
+    # `SpyingSpan.set_content_tag` records unconditionally, so content tags are always captured here,
+    # regardless of the global `tracer.is_content_tracing_enabled` flag.
     tracer = SpyingTracer()
     tracing.enable_tracing(tracer)
 
