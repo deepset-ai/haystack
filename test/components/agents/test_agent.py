@@ -1111,7 +1111,8 @@ class TestAgentExitConditions:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
-        # The exit reason is the tool that triggered the exit, and `last_message` is that tool's result.
+        # Only one tool was called, so here the exit tool's result is also `last_message`. That coincidence does
+        # not hold for parallel tool calls -- see `test_tool_exit_reports_the_first_matching_tool`.
         assert result["exit_reason"] == "weather_tool"
 
     def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
@@ -1254,6 +1255,14 @@ class TestAgentExitConditions:
         )
         result = agent.run([ChatMessage.from_user("Go")])
         assert result["exit_reason"] == "parrot"
+        # `last_message` is the final message of the step, not the exit tool's result: the model asked for `parrot`
+        # first and `weather_tool` second, so the weather result is what lands last. Locate the exit tool's result by
+        # matching `tool_call_result.origin.tool_name` against `exit_reason` instead of reading `last_message`.
+        assert result["last_message"].tool_call_result.origin.tool_name == "weather_tool"
+        exit_result = next(
+            m for m in result["messages"] if m.tool_call_result and m.tool_call_result.origin.tool_name == "parrot"
+        )
+        assert exit_result is not result["last_message"]
 
     def test_max_steps_exit(self, weather_tool, caplog):
         """Exhausting `max_agent_steps` before meeting an exit condition reports `"max_agent_steps"`."""

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Correct the documented relationship between ``Agent``'s ``exit_reason`` and ``last_message``.
+    Both ``Agent.run()`` and ``Agent.run_async()`` stated that when ``exit_reason`` names a tool,
+    ``last_message`` is that tool's result. ``last_message`` is the final message of the step, while
+    exit conditions are checked without regard to call order, so the two only agree when the exit
+    tool happens to be the last one the model requested. With parallel tool calls the promise fails
+    silently, and a downstream consumer routing on ``exit_reason`` reads a different tool's output.
+    The documentation now says to locate the exit tool's result by matching
+    ``tool_call_result.origin.tool_name`` against ``exit_reason``. Behaviour is unchanged.

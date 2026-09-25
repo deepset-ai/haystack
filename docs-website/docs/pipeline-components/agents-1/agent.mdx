@@ -66,7 +66,7 @@ The `exit_reason` output tells you why the agent stopped, which makes it easy to
 - `"text"`: the model returned a complete reply with no tool calls.
 - `"length"`: the model reached its output-token limit. `last_message` may contain a partial response.
 - `"content_filter"`: a content filter stopped the model response. `last_message` may contain a partial response.
-- the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
+- the name of the tool that satisfied a tool exit condition. Its result is the tool-result `ChatMessage` in `messages` whose `tool_call_result.origin.tool_name` matches `exit_reason` (read `tool_call_result.result`; `text` is `None` on such a message). When the model requests several tools in one reply, that message is not necessarily `last_message`, which is always the final message of the step.
 - `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
 - a custom reason set by a hook through the `stop_run` state key, such as `"token_budget_exceeded"` from the [`TokenBudgetHook`](./token-budget.mdx).
 
