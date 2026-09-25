@@ -207,6 +207,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/generators-vs-chat-generators',
             to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
           },
+          {
+            from: '/docs/sentencewindowretrieval',
+            to: '/docs/sentencewindowretriever',
+          },
           // Components removed or renamed in Haystack 3.0
           {
             from: '/docs/openaigenerator',
