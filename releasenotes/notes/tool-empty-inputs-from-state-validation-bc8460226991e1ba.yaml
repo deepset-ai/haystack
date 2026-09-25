@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``Tool`` now validates ``inputs_from_state`` against the tool's actual input parameters even when the tool takes no input
+    at all. Previously, mapping a state key to a non-existent parameter was accepted at construction time for tools with
+    an empty set of valid parameters (e.g. a function with no arguments, or a ``ComponentTool`` wrapping a component without
+    input sockets), and the typo only surfaced later as a ``ToolInvocationError`` when the agent invoked the tool.
