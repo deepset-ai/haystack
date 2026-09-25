@@ -35,7 +35,7 @@ The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#
 
 By default, the component uses the `MISTRAL_API_KEY` environment variable for authentication. You can also pass an `api_key` at initialization. Local files are automatically uploaded to Mistral's storage for processing and deleted afterward (configurable with `cleanup_uploaded_files`).
 
-When you initialize the component, you can optionally specify which pages to process, set limits on image extraction, configure minimum image sizes, or include base64-encoded images in the response. The default model is `"mistral-ocr-2505"`. See the [Mistral models documentation](https://docs.mistral.ai/getting-started/models/models_overview/) for available models.
+When you initialize the component, you can optionally specify which pages to process, set limits on image extraction, configure minimum image sizes, or include base64-encoded images in the response. The default model is `"mistral-ocr-4-1"`. See the [Mistral models documentation](https://docs.mistral.ai/getting-started/models/models_overview/) for available models.
 
 ### Structured Annotations
 
@@ -71,7 +71,6 @@ from haystack_integrations.components.converters.mistral import (
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505",
 )
 
 result = converter.run(sources=[Path("my_document.pdf")])
@@ -86,11 +85,10 @@ from haystack.utils import Secret
 from haystack_integrations.components.converters.mistral import (
     MistralOCRDocumentConverter,
 )
-from mistralai.models import DocumentURLChunk, ImageURLChunk
+from mistralai.client.models import DocumentURLChunk, ImageURLChunk
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505",
 )
 
 sources = [
@@ -114,7 +112,7 @@ from haystack.utils import Secret
 from haystack_integrations.components.converters.mistral import (
     MistralOCRDocumentConverter,
 )
-from mistralai.models import DocumentURLChunk
+from mistralai.client.models import DocumentURLChunk
 
 
 # Define schema for image region annotations
@@ -139,7 +137,6 @@ class DocumentAnnotation(BaseModel):
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505",
 )
 
 sources = [DocumentURLChunk(document_url="https://example.com/report.pdf")]
@@ -178,7 +175,6 @@ pipeline.add_component(
     "converter",
     MistralOCRDocumentConverter(
         api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-        model="mistral-ocr-2505",
     ),
 )
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
