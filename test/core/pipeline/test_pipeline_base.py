@@ -842,6 +842,45 @@ class TestPipelineBase:
         assert res == {"first_mock": {"x": ["some data"], "y": "some other data"}, "second_mock": {"x": ["some data"]}}
         assert id(res["first_mock"]["x"]) != id(res["second_mock"]["x"])
 
+    def test_run_with_dict_valued_flat_input(self):
+        @component
+        class DictEcho:
+            @component.output_types(result=dict)
+            def run(self, payload: dict) -> dict:
+                return {"result": payload}
+
+        pipe = Pipeline()
+        pipe.add_component("echo", DictEcho())
+
+        assert pipe.run({"payload": {"x": 1}}) == {"echo": {"result": {"x": 1}}}
+
+    def test__prepare_component_input_data_with_component_qualified_dict_input(self):
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("echo", DictEcho())
+
+        assert pipe._prepare_component_input_data({"echo": {"payload": {"x": 1}}}) == {"echo": {"payload": {"x": 1}}}
+
+    def test__prepare_component_input_data_preserves_unknown_component_error(self):
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("echo", DictEcho())
+
+        data = pipe._prepare_component_input_data({"ecoh": {"payload": {"y": 2}}, "payload": {"x": 1}})
+        with pytest.raises(ValueError, match="Component named 'ecoh' not found in the pipeline"):
+            pipe.validate_input(data)
+
+    def test__prepare_component_input_data_with_connected_dict_valued_socket(self, caplog):
+        Producer = component_class("Producer", output_types={"payload": dict})
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("producer", Producer())
+        pipe.add_component("echo", DictEcho())
+        pipe.connect("producer.payload", "echo.payload")
+
+        assert pipe._prepare_component_input_data({"payload": {"x": 1}}) == {}
+        assert "Inputs ['payload'] were not matched to any component inputs" in caplog.text
+
     def test__prepare_component_input_data_with_non_existing_input(self, caplog):
         pipe = PipelineBase()
         res = pipe._prepare_component_input_data({"input_name": 1})
