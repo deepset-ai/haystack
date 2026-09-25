@@ -511,6 +511,33 @@ def test_run_with_content_key(tmpdir):
     assert result["documents"][2].meta == {}
 
 
+@pytest.mark.parametrize("jq_schema", [None, "."])
+@pytest.mark.parametrize(
+    ("value", "expected_content"),
+    [
+        (42, "42"),
+        (0, "0"),
+        (-7, "-7"),
+        (3.14, "3.14"),
+        (True, "True"),
+        (False, "False"),
+        ("text", "text"),
+        (None, None),
+    ],
+)
+def test_run_with_scalar_content_key(
+    jq_schema: str | None, value: str | int | float | bool | None, expected_content: str | None
+) -> None:
+    source = ByteStream.from_string(json.dumps({"value": value, "category": "measurement"}))
+    converter = JSONConverter(jq_schema=jq_schema, content_key="value", extra_meta_fields={"category"})
+
+    documents = converter.run(sources=[source])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == expected_content
+    assert documents[0].meta == {"category": "measurement"}
+
+
 def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     first_test_file = Path(tmpdir / "first_test_file.json")
     second_test_file = Path(tmpdir / "second_test_file.json")
