@@ -1082,6 +1082,29 @@ class TestFromOpenaiDictFormat:
         assert message.tool_call is not None
         assert message.tool_call.arguments == {}
 
+    def test_from_openai_dict_format_tool_call_with_dict_arguments(self):
+        # Some OpenAI-compatible servers already parse arguments into a dict.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"id": "call_123", "function": {"name": "get_weather", "arguments": {"location": "Berlin"}}}
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
+        assert message.tool_call.arguments == {"location": "Berlin"}
+
+    def test_from_openai_dict_format_tool_call_with_invalid_json_arguments(self):
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": "{not-json"}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
+        assert message.tool_call.arguments == {}
+
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
