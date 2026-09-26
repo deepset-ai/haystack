@@ -53,6 +53,7 @@ _CJK_CHAR_CLASS = (
     r"\u4e00-\u9fff"  # CJK Unified Ideographs
     r"\uf900-\ufaff"  # CJK Compatibility Ideographs
     r"\uff66-\uff9f"  # Halfwidth Katakana
+    r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
 _DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
 
@@ -116,11 +117,9 @@ class InMemoryDocumentStore:
         Initializes the DocumentStore.
 
         :param bm25_tokenization_regex:
-            The regular expression used to tokenize the text for BM25 retrieval. The default groups the
-            word-like characters of space-delimited scripts into word tokens while splitting Chinese, Japanese
-            and Korean text one character per token, so bare-term queries for single CJK characters or short
-            words still match; see ``_DEFAULT_BM25_TOKENIZATION_REGEX`` for the exact pattern. Text is Unicode
-            NFC-normalized before tokenization (see ``_tokenize_bm25``), so equivalent spellings share tokens.
+            The regular expression used to tokenize the text for BM25 retrieval. The default groups word
+            characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
+            Text is lowercased and NFC-normalized before tokenization.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`

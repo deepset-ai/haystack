@@ -826,15 +826,11 @@ class TestMemoryDocumentStore(
         # character (Hangul syllables, CJK unified ideographs, kana) should be
         # tokenized on its own so BM25 can match the bare form.
         tokens = in_memory_doc_store._tokenize_bm25("서울은 대한민국의 수도")
-        assert "서울은" not in tokens
-        assert "서" in tokens and "울" in tokens and "은" in tokens
-        assert "대한민국의" not in tokens
-        assert "한" in tokens and "국" in tokens and "의" in tokens
+        assert tokens == ["서", "울", "은", "대", "한", "민", "국", "의", "수", "도"]
 
         # Mixed script: Latin words and digits keep their previous behaviour.
-        tokens2 = in_memory_doc_store._tokenize_bm25("Seoul 2026 시티")
-        assert tokens2[:2] == ["seoul", "2026"]
-        assert "시" in tokens2 and "티" in tokens2
+        tokens = in_memory_doc_store._tokenize_bm25("Seoul 2026 시티")
+        assert tokens == ["seoul", "2026", "시", "티"]
 
     def test_bm25_tokenization_handles_cjk_details(self, in_memory_doc_store):
         tokenize = in_memory_doc_store._tokenize_bm25
@@ -851,6 +847,8 @@ class TestMemoryDocumentStore(
         # CJK Compatibility Ideographs and the two Hangul Jamo Extended blocks split per character too.
         assert tokenize("\ufa0e\ufa0f\ufa11") == ["\ufa0e", "\ufa0f", "\ufa11"]
         assert tokenize("\ua960\ud7b0") == ["\ua960", "\ud7b0"]
+        # Halfwidth Hangul Jamo (U+FFA0-U+FFDC), the Korean counterpart of halfwidth katakana, too.
+        assert tokenize("\uffb1\uffb2\uffb3") == ["\uffb1", "\uffb2", "\uffb3"]
 
         # NFC-normalized Hangul and its decomposed NFD spelling tokenize identically, so a query in one
         # form matches a document written in the other.
@@ -870,6 +868,20 @@ class TestMemoryDocumentStore(
         results = in_memory_doc_store.bm25_retrieval(query="C", top_k=1)
         assert len(results) == 1
         assert results[0].content == "C programming language"
+
+    def test_bm25_retrieval_with_cjk_bare_term_query(self, in_memory_doc_store):
+        # The bug this PR fixes: a document holds the noun with its attached
+        # particle ("서울은"), so the default tokenizer had zero overlap with the
+        # bare query "서울" and retrieval silently returned nothing.
+        docs = [
+            Document(content="서울은 대한민국의 수도이며 인구가 가장 많다."),
+            Document(content="부산은 대한민국 제2의 도시이자 최대 항구이다."),
+        ]
+        in_memory_doc_store.write_documents(docs)
+
+        results = in_memory_doc_store.bm25_retrieval(query="서울", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "서울은 대한민국의 수도이며 인구가 가장 많다."
 
     def test_bm25_retrieval_single_char_content_token(self, in_memory_doc_store):
         docs = [Document(content="I like R"), Document(content="I like Python")]
