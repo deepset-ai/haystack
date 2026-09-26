@@ -64,6 +64,7 @@ class RecursiveDocumentSplitter:
         split_unit: Literal["word", "char", "token"] = "word",
         separators: list[str] | None = None,
         sentence_splitter_params: dict[str, Any] | None = None,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initializes a RecursiveDocumentSplitter.
@@ -73,7 +74,7 @@ class RecursiveDocumentSplitter:
         :param split_overlap: The number of overlapping units (words, characters, or tokens, per
             `split_unit`) between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
-            If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+            If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
             Special-token strings in document content are encoded as ordinary text.
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -82,6 +83,8 @@ class RecursiveDocumentSplitter:
             If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
         :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
+            (current OpenAI models). Only used when `split_unit="token"`.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -95,6 +98,7 @@ class RecursiveDocumentSplitter:
         self.sentence_splitter_params = (
             {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
         )
+        self.tokenizer_encoding = tokenizer_encoding
         self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
         self._is_warmed_up = False
 
@@ -108,7 +112,7 @@ class RecursiveDocumentSplitter:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
         if self.split_units == "token":
             tiktoken_imports.check()
-            self.tiktoken_tokenizer = tiktoken.get_encoding("o200k_base")
+            self.tiktoken_tokenizer = tiktoken.get_encoding(self.tokenizer_encoding)
         self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -125,6 +129,7 @@ class RecursiveDocumentSplitter:
             split_unit=self.split_units,
             separators=self.separators,
             sentence_splitter_params=self.sentence_splitter_params,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
     def _check_params(self) -> None:
