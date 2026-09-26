@@ -7,7 +7,7 @@ import sys
 import typing
 from collections import deque
 from types import UnionType
-from typing import Any, Callable, Deque, Dict, FrozenSet, List, Literal, Optional, Set, Tuple, Union
+from typing import Annotated, Any, Callable, Deque, Dict, FrozenSet, List, Literal, Optional, Set, Tuple, Union
 
 import pytest
 
@@ -509,3 +509,128 @@ if sys.version_info < (3, 14):
         assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
         assert serialize_type(Optional[float]) == "typing.Optional[float]"
         assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
+
+
+# `Annotated[T, m1, m2, ...]` holds a type T followed by metadata values. The metadata values are not
+# types and must be rendered with repr() (so strings keep their quotes) and parsed with ast.literal_eval
+# on the deserialize side. The split is quote-aware so a comma inside a string metadata value does not
+# break the parse. Type-like metadata (classes, typing forms) is rendered through serialize_type and
+# resolved through deserialize_type on the read side. This mirrors the Literal fix from PR #12286
+# (commit 1f460e620) and the Callable-with-parameter-list fix from PR #12122.
+def test_output_type_serialization_annotated():
+    # String metadata — the failing case before the fix (silently serialized as `typing.Annotated[int, doc]`
+    # and rejected on deserialize).
+    assert serialize_type(Annotated[int, "doc"]) == "typing.Annotated[int, 'doc']"
+    assert serialize_type(Annotated[str, "x", "y"]) == "typing.Annotated[str, 'x', 'y']"
+    # Non-string literal metadata (int, bool, None, bytes) — the repr() of these is a valid Python
+    # literal, so it round-trips through ast.literal_eval on the deserialize side.
+    assert serialize_type(Annotated[int, 42]) == "typing.Annotated[int, 42]"
+    assert serialize_type(Annotated[int, True]) == "typing.Annotated[int, True]"
+    assert serialize_type(Annotated[int, None]) == "typing.Annotated[int, None]"
+    assert serialize_type(Annotated[int, b"bytes"]) == "typing.Annotated[int, b'bytes']"
+    # A comma inside a string metadata value must be preserved verbatim, not split.
+    assert serialize_type(Annotated[int, "a, b"]) == "typing.Annotated[int, 'a, b']"
+    # Ellipsis metadata — `...` is serialized as the literal `...` (same as the top-level Ellipsis
+    # handling in serialize_type), so it round-trips through the existing Ellipsis handling on deserialize.
+    assert serialize_type(Annotated[int, ...]) == "typing.Annotated[int, ...]"
+    # Type metadata — a class is rendered with its module path (or bare name for builtins), not via repr.
+    # `repr(str)` would be `<class 'str'>` which is not a valid Python literal and would not round-trip.
+    assert serialize_type(Annotated[int, str]) == "typing.Annotated[int, str]"
+    # A typing form as metadata is rendered as a type so nested generics and module paths are preserved.
+    assert serialize_type(Annotated[int, List[str]]) == "typing.Annotated[int, typing.List[str]]"
+    # A Literal as metadata is rendered as a type.
+    assert serialize_type(Annotated[int, Literal["a", "b"]]) == "typing.Annotated[int, typing.Literal['a', 'b']]"
+    # Nested in a generic — the inner Annotated is itself serialized through the Annotated branch.
+    assert serialize_type(List[Annotated[int, "tag"]]) == "typing.List[typing.Annotated[int, 'tag']]"
+    # Nested in an Optional — Python normalizes `Optional[X]` to `Union[X, None]`, so the wire form is
+    # `typing.Optional[typing.Annotated[...]]` (the trailing None is dropped, same as for any other generic).
+    assert serialize_type(Optional[Annotated[int, "doc"]]) == "typing.Optional[typing.Annotated[int, 'doc']]"
+    # The wrapped type can itself be a generic with a top-level comma (Callable's parameter list).
+    # The quote-aware split keeps the comma inside `Callable[[int, str], bool]` from being treated as
+    # the Annotated separator.
+    assert (
+        serialize_type(Annotated[Callable[[int, str], bool], "doc"])
+        == "typing.Annotated[typing.Callable[[int, str], bool], 'doc']"
+    )
+
+
+def test_output_type_deserialization_annotated():
+    # String metadata round-trips.
+    assert deserialize_type("typing.Annotated[int, 'doc']") == Annotated[int, "doc"]
+    assert deserialize_type("typing.Annotated[str, 'x', 'y']") == Annotated[str, "x", "y"]
+    # Non-string literal metadata.
+    assert deserialize_type("typing.Annotated[int, 42]") == Annotated[int, 42]
+    assert deserialize_type("typing.Annotated[int, True]") == Annotated[int, True]
+    assert deserialize_type("typing.Annotated[int, None]") == Annotated[int, None]
+    assert deserialize_type("typing.Annotated[int, b'bytes']") == Annotated[int, b"bytes"]
+    # A comma inside a string metadata value must not split the args (quote-aware split).
+    assert deserialize_type("typing.Annotated[int, 'a, b']") == Annotated[int, "a, b"]
+    # Ellipsis metadata round-trips through the existing Ellipsis handling.
+    assert deserialize_type("typing.Annotated[int, ...]") == Annotated[int, ...]
+    # Type metadata — a class is resolved through the type-import path.
+    assert deserialize_type("typing.Annotated[int, str]") == Annotated[int, str]
+    # A typing form as metadata is resolved through deserialize_type.
+    assert deserialize_type("typing.Annotated[int, typing.List[str]]") == Annotated[int, List[str]]
+    # A Literal as metadata.
+    assert deserialize_type("typing.Annotated[int, typing.Literal['a', 'b']]") == Annotated[int, Literal["a", "b"]]
+    # Nested in a generic.
+    assert deserialize_type("typing.List[typing.Annotated[int, 'tag']]") == List[Annotated[int, "tag"]]
+    # Nested in an Optional.
+    assert deserialize_type("typing.Optional[typing.Annotated[int, 'doc']]") == Optional[Annotated[int, "doc"]]
+    # The wrapped type is a generic with a top-level comma (Callable's parameter list).
+    assert (
+        deserialize_type("typing.Annotated[typing.Callable[[int, str], bool], 'doc']")
+        == Annotated[Callable[[int, str], bool], "doc"]
+    )
+
+
+def test_output_type_round_trip_annotated():
+    # Round-trip all the kinds of metadata Python's Annotated accepts and that survive a text round-trip.
+    # Mirrors the existing Literal trio (serialization, deserialization, round_trip).
+    cases = [
+        Annotated[int, "doc"],
+        Annotated[str, "x", "y"],
+        Annotated[int, 42],
+        Annotated[int, True],
+        Annotated[int, None],
+        Annotated[int, b"bytes"],
+        Annotated[int, "a, b"],  # comma in string metadata — quote-aware split
+        Annotated[int, ...],  # Ellipsis metadata
+        Annotated[int, str],  # class metadata
+        Annotated[int, int],  # class metadata (built-in)
+        Annotated[int, List[str]],  # typing form metadata
+        Annotated[int, Literal["a", "b"]],  # Literal as metadata
+        List[Annotated[int, "tag"]],  # nested in a generic
+        Optional[Annotated[int, "doc"]],  # nested in Optional
+        Annotated[Callable[[int, str], bool], "doc"],  # wrapped type has a top-level comma
+    ]
+    for type_ in cases:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_split_annotated_args():
+    # The split is on the first top-level comma (outside brackets and outside string literals), so a
+    # comma inside a string metadata value is not treated as the separator.
+    from haystack.utils.type_serialization import _split_annotated_args
+
+    assert _split_annotated_args("int, 'doc'") == ("int", "'doc'")
+    assert _split_annotated_args("int, 'a, b'") == ("int", "'a, b'")
+    # The wrapped type can contain brackets and commas inside them (e.g. Callable's parameter list):
+    # the comma inside the brackets is at depth > 0 and is not the separator.
+    assert _split_annotated_args("typing.Callable[[int, str], bool], 'doc'") == (
+        "typing.Callable[[int, str], bool]",
+        "'doc'",
+    )
+    # Double-quoted metadata works the same way.
+    assert _split_annotated_args('int, "doc"') == ("int", '"doc"')
+    # No top-level comma: the whole string is the type and there is no metadata (defensive: Annotated
+    # always has metadata in practice, since Python normalizes the bare Annotated[T] form back to T).
+    assert _split_annotated_args("int") == ("int", "")
+
+
+def test_output_type_deserialization_annotated_no_metadata_errors():
+    # The wire form `typing.Annotated[int]` is not a valid Annotated (Python normalizes the bare form
+    # back to `int`), so an empty metadata chunk on the deserialize side is a hard error rather than a
+    # silent misshape.
+    with pytest.raises(DeserializationError, match="Annotated requires at least one metadata value"):
+        deserialize_type("typing.Annotated[int]")
