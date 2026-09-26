@@ -4,6 +4,7 @@
 
 import io
 import os
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -13,6 +14,9 @@ from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
+
+_MARKDOWN_CELL_BREAK_PATTERN = re.compile(r"\s*(?:\r\n|\r|\n)\s*")
+_MARKDOWN_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
 
 with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
     import openpyxl
@@ -147,6 +151,25 @@ class XLSXToDocument:
         return {"documents": documents}
 
     @staticmethod
+    def _escape_markdown_cell(value: Any) -> Any:
+        """
+        Makes a cell's value safe to put between the pipes of a Markdown table row.
+
+        A cell holding an in-cell line break (Alt+Enter in Excel) would end the row in the middle,
+        and a pipe typed in a cell would be read as a column separator. A non-string value is
+        returned unchanged so `tabulate` keeps formatting numbers and `missingval` keeps working.
+
+        :param value: The cell value.
+        :returns: The value with line breaks collapsed and pipes escaped, if it is a string.
+        """
+        if not isinstance(value, str):
+            return value
+        value = _MARKDOWN_CELL_BREAK_PATTERN.sub(" ", value)
+        # The backslash run in front of the pipe is doubled first, so a backslash the
+        # cell already contains cannot consume the escape.
+        return _MARKDOWN_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", value)
+
+    @staticmethod
     def _generate_excel_column_names(n_cols: int) -> list[str]:
         result = []
         for i in range(n_cols):
@@ -238,7 +261,11 @@ class XLSXToDocument:
                 # reaches the formatter as a number and is written out as "nan". Replace
                 # the empty cells with None so an empty cell reads as empty, the way
                 # to_csv already writes it, and so missingval keeps working.
-                filled = value.astype(object).where(value.notna(), None)
+                # `.map()` re-infers the column dtype, so restore `object` before the NaN
+                # substitution below can store `None` in it.
+                escaped = value.astype(object).map(self._escape_markdown_cell).astype(object)
+                filled = escaped.where(value.notna(), None)
+                resolved_kwargs["headers"] = [self._escape_markdown_cell(h) for h in resolved_kwargs["headers"]]
                 tables.append(filled.to_markdown(**resolved_kwargs))
             # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
