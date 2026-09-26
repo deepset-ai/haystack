@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``CSVDocumentCleaner`` now preserves nonempty strings such as ``NA``, ``NULL``,
+    and ``NaN`` instead of converting them to missing values. Rows and columns
+    containing only empty fields are still removed when cleaning is enabled.
+upgrade:
+  - |
+    If your CSV input uses textual missing-value markers such as ``NA`` or
+    ``NULL`` and you want them removed, normalize those cells to empty fields
+    before passing the documents to ``CSVDocumentCleaner``.
