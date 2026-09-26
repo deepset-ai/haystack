@@ -19,6 +19,7 @@ from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
+from haystack.utils.async_utils import _gather_tasks_with_cancel
 
 logger = logging.getLogger(__name__)
 
@@ -651,7 +652,7 @@ async def _run_tool_async(
 
     for batch in batches:
         # Prepare args at the start of each batch so readers observe writes merged by earlier batches.
-        tasks = {}
+        invocations = {}
         for idx in batch:
             args = _prepare_tool_args(
                 tool=resolved_tools[idx],
@@ -660,17 +661,18 @@ async def _run_tool_async(
                 streaming_callback=streaming_callback,
                 enable_streaming_passthrough=enable_streaming_callback_passthrough,
             )
-            tasks[idx] = _make_bounded_invoke_async(
+            invocations[idx] = _make_bounded_invoke_async(
                 tool=resolved_tools[idx],
                 args=args,
                 semaphore=semaphore,
                 tool_call=tool_calls[idx],
                 parent_span=parent_span,
-            )()
-        batch_results = await asyncio.gather(*tasks.values())
+            )
+        tasks = [asyncio.create_task(invoke()) for invoke in invocations.values()]
+        batch_results = await _gather_tasks_with_cancel(tasks)
 
         # Merge results in call order within the batch so write-write merges stay deterministic.
-        for idx, result in zip(tasks.keys(), batch_results, strict=True):
+        for idx, result in zip(invocations.keys(), batch_results, strict=True):
             message = _finalize_tool_result(
                 result, tool_calls[idx], resolved_tools[idx], state, raise_on_failure=raise_on_failure
             )

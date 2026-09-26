@@ -14,7 +14,7 @@ T = TypeVar("T")
 
 async def _gather_tasks_with_cancel(tasks: list[asyncio.Task[T]]) -> list[T]:
     """
-    Wait for all tasks, cancelling and draining unfinished siblings if one fails.
+    Wait for all tasks, cancelling and draining unfinished siblings if one fails or is cancelled.
 
     :param tasks: Tasks to wait for.
     :returns:
@@ -22,7 +22,7 @@ async def _gather_tasks_with_cancel(tasks: list[asyncio.Task[T]]) -> list[T]:
     """
     try:
         return await asyncio.gather(*tasks)
-    except Exception:
+    except (Exception, asyncio.CancelledError):
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
