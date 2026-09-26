@@ -27,7 +27,7 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
@@ -160,3 +160,13 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+
+@pytest.mark.integration
+def test_special_token_strings_are_counted_as_literal_text():
+    # `tiktoken.Encoding.encode` rejects these by default, so a conversation that merely mentions one
+    # must not make counting fail.
+    counter = TiktokenCounter()
+    messages = [ChatMessage.from_user("What does <|endoftext|> mean?")]
+
+    assert counter.count(messages) > 0

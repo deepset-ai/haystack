@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `TiktokenCounter` no longer raises a `ValueError` when the messages or tool schemas being counted contain
+    literal special-token strings such as `<|endoftext|>`. They are now counted as ordinary text.
