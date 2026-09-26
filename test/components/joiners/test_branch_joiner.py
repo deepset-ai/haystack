@@ -7,6 +7,20 @@ import pytest
 from haystack.components.joiners import BranchJoiner
 
 
+class TestBranchJoinerDeserialization:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        joiner = BranchJoiner(list[str])
+        data = joiner.to_dict()
+        serialized_type = data["init_parameters"]["type_"]
+        assert isinstance(serialized_type, str)
+
+        BranchJoiner.from_dict(data)
+
+        assert data["init_parameters"]["type_"] == serialized_type
+        # a second deserialization of the same dict must behave like the first
+        BranchJoiner.from_dict(data)
+
+
 class TestBranchJoiner:
     def test_one_value(self):
         joiner = BranchJoiner(int)
