@@ -271,3 +271,27 @@ class TestCSVToDocument:
 
         assert len(docs) == 1
         assert docs[0].content == "Name,City\r\nJosé,München\r\n"
+
+    @pytest.mark.parametrize("meta", [{}, {"csv_row_number": "existing", "csv_row_number_1": "also existing"}])
+    def test_row_mode_preserves_row_number_column(self, meta: dict[str, str]) -> None:
+        source = ByteStream(data=b"text,row_number\nfirst,record-42\nsecond,record-43\n")
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text", meta=meta)["documents"]
+
+        assert [document.content for document in documents] == ["first", "second"]
+        column_key = "csv_row_number_2" if meta else "csv_row_number"
+        assert [document.meta for document in documents] == [
+            {**meta, "row_number": 0, column_key: "record-42"},
+            {**meta, "row_number": 1, column_key: "record-43"},
+        ]
+
+    def test_row_mode_row_number_as_content_column(self) -> None:
+        source = ByteStream(data=b"row_number,author\nrecord-42,Ada\n")
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="row_number")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "record-42"
+        assert documents[0].meta == {"author": "Ada", "row_number": 0}
