@@ -13,7 +13,7 @@ import pytest
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import _DENIED_BUILTIN_NAMES
-from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
+from haystack.dataclasses import Answer, ByteStream, ChatMessage, ChatRole, Document
 from haystack.utils.type_serialization import (
     _build_pep604_union_type,
     _is_union_type,
@@ -323,6 +323,48 @@ def test_output_type_round_trip_literal():
         Literal[b"bytes"],
         Optional[Literal["a", "b"]],
         Union[Literal["a"], int],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_serialization_literal_enum_member():
+    # Enum members are valid Literal parameters (PEP 586). repr() renders them as "<ChatRole.USER: 'user'>",
+    # which is not readable back, so they are serialized by import path instead.
+    assert serialize_type(Literal[ChatRole.USER]) == "typing.Literal[haystack.dataclasses.chat_message.ChatRole.USER]"
+    assert serialize_type(Literal[ChatRole.USER, ChatRole.ASSISTANT]) == (
+        "typing.Literal[haystack.dataclasses.chat_message.ChatRole.USER, "
+        "haystack.dataclasses.chat_message.ChatRole.ASSISTANT]"
+    )
+    # A Literal may mix enum members with plain values.
+    assert serialize_type(Literal[ChatRole.USER, "none"]) == (
+        "typing.Literal[haystack.dataclasses.chat_message.ChatRole.USER, 'none']"
+    )
+
+
+def test_output_type_deserialization_literal_enum_member():
+    assert deserialize_type("typing.Literal[haystack.dataclasses.chat_message.ChatRole.USER]") == Literal[ChatRole.USER]
+    assert (
+        deserialize_type("typing.Literal[haystack.dataclasses.chat_message.ChatRole.USER, 'none']")
+        == Literal[ChatRole.USER, "none"]
+    )
+
+
+def test_output_type_deserialization_literal_enum_member_errors():
+    # A dotted Literal value that does not resolve to an Enum member must be refused, not resolved.
+    with pytest.raises(DeserializationError):
+        deserialize_type("typing.Literal[haystack.dataclasses.chat_message.ChatRole.NOT_A_MEMBER]")
+    with pytest.raises(DeserializationError):
+        deserialize_type("typing.Literal[haystack.dataclasses.document.Document]")
+
+
+def test_output_type_round_trip_literal_enum_member():
+    for type_ in [
+        Literal[ChatRole.USER],
+        Literal[ChatRole.USER, ChatRole.ASSISTANT],
+        Literal[ChatRole.USER, "none"],
+        Optional[Literal[ChatRole.USER]],
+        List[Literal[ChatRole.USER, ChatRole.SYSTEM]],
+        Union[Literal[ChatRole.USER], int],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
 
