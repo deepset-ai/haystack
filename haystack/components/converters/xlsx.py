@@ -164,6 +164,16 @@ class XLSXToDocument:
         """
         file_bytes = io.BytesIO(bytestream.data)
         resolved_read_excel_kwargs = {
+            # Text values that pandas treats as NA by default ("NA", "N/A", "nan",
+            # "null", ...) are real cell contents, such as a region code or an explicit
+            # status. Parsing them as NA destroys them: the cell reads as blank in the
+            # document and the original text cannot be recovered.
+            "keep_default_na": False,
+            # Only genuinely empty cells count as missing, so `missingval` and the rest of
+            # the missing-value handling still apply to blank cells.
+            "na_values": [""],
+            # Callers can restore pandas' default NA-string parsing with
+            # `read_excel_kwargs={"keep_default_na": True, "na_values": [...]}`.
             **self.read_excel_kwargs,
             "sheet_name": self.sheet_name,
             "header": None,  # Don't assign any pandas column labels

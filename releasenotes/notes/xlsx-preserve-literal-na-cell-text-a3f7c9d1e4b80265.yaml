@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``XLSXToDocument`` discarding cells whose text pandas parses as a
+    missing value by default. A cell containing ``NA``, ``N/A``, ``nan``,
+    ``null`` or one of the other default NA strings was silently turned into an
+    empty cell, so text such as a region code or an explicit status could not be
+    recovered from the resulting Document. Only genuinely empty cells are treated
+    as missing now, which means ``table_format_kwargs={"missingval": ...}`` still
+    applies to blank cells. Pass ``read_excel_kwargs={"keep_default_na": True}``
+    to restore the previous behaviour.
