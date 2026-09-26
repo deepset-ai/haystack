@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``InMemoryDocumentStore`` with ``BM25L`` (the default) or ``BM25Plus`` no longer gives a positive score
+    to documents that contain none of the query terms. The ``delta`` lower bound now applies only to terms
+    that occur in the document, as in the original BM25L/BM25+ definitions. Before this fix,
+    ``bm25_retrieval`` filled ``top_k`` with non-matching documents, and every missing query term shifted the
+    scores of matching documents.

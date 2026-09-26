@@ -287,12 +287,12 @@ class TestMemoryDocumentStore(
         ]
         document_store.write_documents(docs)
 
-        # top_k = 2
-        results = document_store.bm25_retrieval(query="language", top_k=2)
+        # top_k = 2 (three documents match the query)
+        results = document_store.bm25_retrieval(query="world languages Python", top_k=2)
         assert len(results) == 2
 
         # top_k = 3
-        results = document_store.bm25_retrieval(query="languages", top_k=3)
+        results = document_store.bm25_retrieval(query="world languages Python", top_k=3)
         assert len(results) == 3
 
     def test_bm25_plus_retrieval(self):
@@ -307,6 +307,41 @@ class TestMemoryDocumentStore(
         results = doc_store.bm25_retrieval(query="language", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25L", "BM25Plus"])
+    def test_bm25_retrieval_skips_documents_without_query_terms(
+        self, bm25_algorithm: Literal["BM25L", "BM25Plus"]
+    ) -> None:
+        doc_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
+        doc_store.write_documents(
+            [
+                Document(id="apple", content="apple pie recipe"),
+                Document(id="banana", content="banana bread recipe"),
+                Document(id="cherry", content="cherry tart"),
+            ]
+        )
+
+        results = doc_store.bm25_retrieval(query="apple", top_k=3)
+
+        assert [doc.id for doc in results] == ["apple"]
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25L", "BM25Plus"])
+    def test_bm25_missing_query_term_adds_no_score(self, bm25_algorithm: Literal["BM25L", "BM25Plus"]) -> None:
+        doc_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
+        doc_store.write_documents(
+            [
+                Document(id="apple", content="apple pie recipe"),
+                Document(id="banana", content="banana bread recipe"),
+                Document(id="cherry", content="cherry tart"),
+            ]
+        )
+
+        single_term = {doc.id: doc.score for doc in doc_store.bm25_retrieval(query="apple", top_k=3)}
+        # "cherry" does not occur in the "apple" document, so it must not change that document's score
+        two_terms = {doc.id: doc.score for doc in doc_store.bm25_retrieval(query="apple cherry", top_k=3)}
+
+        assert two_terms["apple"] == pytest.approx(single_term["apple"])
+        assert "banana" not in two_terms
 
     def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns different documents for different queries.
