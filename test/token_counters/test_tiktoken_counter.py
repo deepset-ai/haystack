@@ -31,6 +31,10 @@ class _FakeEncoder:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
+    def encode_ordinary(self, text: str) -> list[int]:
+        self.encoded.append(text)
+        return list(range(len(text.split())))
+
 
 @pytest.fixture
 def fake_encoder(monkeypatch: pytest.MonkeyPatch) -> _FakeEncoder:
@@ -153,6 +157,23 @@ class TestTiktokenCounterIntegration:
         ]
 
         assert counter.count(messages) > max(counter.count([message]) for message in messages)
+
+    def test_literal_special_token_strings_in_messages_do_not_raise(self):
+        # Compaction may count tool results or retrieved docs that quote tiktoken markers.
+        counter = TiktokenCounter()
+        count = counter.count(
+            [ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]
+        )
+        assert count > 0
+
+    def test_literal_special_token_strings_in_tool_descriptions_do_not_raise(self):
+        @tool
+        def lookup(query: Annotated[str, "the query"]) -> str:
+            """Looks up documentation mentioning <|endoftext|> as a literal marker."""
+            return "ok"
+
+        count = TiktokenCounter().count([], tools=[lookup])
+        assert count > 0
 
     def test_an_image_is_charged_at_the_flat_rate(self):
         # A tokenizer cannot price an image, so it gets a flat estimate rather than the handful of tokens its
