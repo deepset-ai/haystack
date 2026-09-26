@@ -141,7 +141,7 @@ components:
         init_parameters:
           bm25_algorithm: BM25L
           bm25_parameters: {}
-          bm25_tokenization_regex: (?u)\\b\\w+\\b
+          bm25_tokenization_regex: '[^\W\u1100-\u11ff\ua960-\ua97f\ud7b0-\ud7ff\u3130-\u318f\uac00-\ud7af\u3041-\u3096\u30a1-\u30fa\u30fc\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]+|[\u1100-\u11ff\ua960-\ua97f\ud7b0-\ud7ff\u3130-\u318f\uac00-\ud7af\u3041-\u3096\u30a1-\u30fa\u30fc\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]'
           embedding_similarity_function: dot_product
           index: 64e4f9ab-87fb-47fd-b390-dabcfda61447
           return_embedding: true
