@@ -148,6 +148,12 @@ class CSVDocumentSplitter:
             # Sort split_dfs first by row index, then by column index
             split_dfs.sort(key=lambda dataframe: (dataframe.index[0], dataframe.columns[0]))
 
+            # Columns are only positional when ``header=None``. A caller passing
+            # ``read_csv_kwargs={"header": 0}`` gets the first row as string labels,
+            # and ``int(label)`` then failed for every sub-table. Map labels back to
+            # their position in the original frame instead.
+            column_positions = {label: position for position, label in enumerate(df.columns)}
+
             for split_id, split_df in enumerate(split_dfs):
                 split_documents.append(
                     Document(
@@ -156,7 +162,7 @@ class CSVDocumentSplitter:
                             **deepcopy(document.meta),
                             "source_id": document.id,
                             "row_idx_start": int(split_df.index[0]),
-                            "col_idx_start": int(split_df.columns[0]),
+                            "col_idx_start": column_positions[split_df.columns[0]],
                             "split_id": split_id,
                         },
                     )
