@@ -190,6 +190,22 @@ class TestCSVToDocument:
         with pytest.raises(ValueError):
             CSVToDocument(quotechar='""')
 
+    def test_init_rejects_an_unknown_conversion_mode(self):
+        # A typo must not silently switch the component into row mode: run() dispatches on the value
+        # and anything that is not "file" falls through to the row branch.
+        with pytest.raises(ValueError, match="unsupported conversion_mode 'Rows'"):
+            CSVToDocument(conversion_mode="Rows")
+
+    def test_init_rejects_a_conversion_mode_that_only_differs_in_whitespace_or_case(self):
+        with pytest.raises(ValueError, match="unsupported conversion_mode 'file '"):
+            CSVToDocument(conversion_mode="file ")
+        with pytest.raises(ValueError, match="unsupported conversion_mode ''"):
+            CSVToDocument(conversion_mode="")
+
+    def test_init_accepts_both_documented_conversion_modes(self):
+        assert CSVToDocument(conversion_mode="file").conversion_mode == "file"
+        assert CSVToDocument(conversion_mode="row").conversion_mode == "row"
+
     def test_row_mode_large_file_warns(self, caplog, monkeypatch):
         # Make the threshold tiny so the warning always triggers.
         import haystack.components.converters.csv as csv_mod
