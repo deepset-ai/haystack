@@ -313,7 +313,16 @@ class RecursiveDocumentSplitter:
             if curr_separator == "sentence":
                 # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
-                splits = [sentence["sentence"] for sentence in sentence_with_spans]
+                if self.sentence_splitter_params.get("keep_white_spaces", False):
+                    # Slice the original text between sentence starts instead of using the tokenizer's sentence
+                    # strings: even with keep_white_spaces=True the tokenizer drops whitespace at the end of the text
+                    # (e.g. a trailing "\f" or "\n\n"), which silently removes page breaks and shifts
+                    # page_number and split_idx_start for every following chunk.
+                    starts = [0] + [sentence["start"] for sentence in sentence_with_spans[1:]]
+                    ends = starts[1:] + [len(text)]
+                    splits = [text[start:end] for start, end in zip(starts, ends, strict=True)]
+                else:
+                    splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
                 # add escape "\" to the separator and wrapped it in a group so that it's included in the splits as well
                 escaped_separator = re.escape(curr_separator)

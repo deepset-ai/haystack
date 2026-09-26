@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` no longer drops whitespace at the end of a text piece when it splits by
+    ``"sentence"`` with ``keep_white_spaces=True`` (the default). Before, a trailing page break or newline
+    (for example ``"...sentence.\f\n\n"``) was removed from the chunk, so the chunks no longer added up to the
+    original text, ``page_number`` stayed on the first page and ``split_idx_start`` drifted for every
+    following chunk.
