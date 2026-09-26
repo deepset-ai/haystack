@@ -27,9 +27,12 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
         self.encoded.append(text)
         return list(range(len(text.split())))
+
+    def encode(self, text: str, **kwargs) -> list[int]:  # pragma: no cover
+        raise AssertionError("encode() with default disallowed_special='all' would raise on special-token text")
 
 
 @pytest.fixture
@@ -97,6 +100,16 @@ class TestTiktokenCounter:
         assert "<image>" in rendered
         assert "<file: report.pdf>" in rendered
 
+    def test_counts_literal_special_token_text_as_ordinary(self, fake_encoder):
+        # Regression for #12869: count() must route text through encode_ordinary so a literal
+        # special-token marker cannot raise the way encode()'s disallowed_special="all" default would.
+        marker = "<" + "|endoftext" + "|>"
+        counter = TiktokenCounter()
+
+        counter.count([ChatMessage.from_user(f"text with {marker} inside")])
+
+        assert any(marker in text for text in fake_encoder.encoded)
+
     def test_serde_round_trip(self):
         data = TiktokenCounter(encoding="cl100k_base", tokens_per_image=200, tokens_per_file=3000).to_dict()
 
@@ -160,3 +173,15 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+    def test_literal_special_token_text_is_counted_as_ordinary(self, encoding):
+        # Regression for #12869: with the real encoder, count() must not raise on text that merely
+        # contains a special-token marker; the marker contributes ordinary tokens.
+        marker = "<" + "|endoftext" + "|>"
+        counter = TiktokenCounter(encoding=encoding)
+
+        with_marker = counter.count([ChatMessage.from_user(f"The manual documents {marker} as a literal.")])
+        without = counter.count([ChatMessage.from_user("The manual documents x as a literal.")])
+
+        assert without < with_marker

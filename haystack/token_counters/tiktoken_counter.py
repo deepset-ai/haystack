@@ -44,7 +44,8 @@ class TiktokenCounter(TokenCounter):
         Initialize the counter.
 
         :param encoding: The `tiktoken` encoding to count with. The default, `o200k_base`, is what current OpenAI
-            models use.
+            models use. Special-token strings in message or tool text, such as `<|endoftext|>`, are counted as
+            ordinary text rather than raising.
         :param tokens_per_image: Tokens to charge per image, which the tokenizer cannot measure. The default is what
             OpenAI charges for a small image; raise it if you send large ones.
         :param tokens_per_file: Tokens to charge per file. A rough stand-in for a short document, since the real
@@ -74,7 +75,7 @@ class TiktokenCounter(TokenCounter):
         if not messages and not tools:
             return 0
         self.warm_up()
-        text_tokens = len(self._encoder.encode(_rendered_conversation(messages) + _rendered_tools(tools)))
+        text_tokens = len(self._encoder.encode_ordinary(_rendered_conversation(messages) + _rendered_tools(tools)))
         return text_tokens + _non_text_tokens(
             messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
         )
