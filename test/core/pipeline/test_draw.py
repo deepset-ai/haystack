@@ -4,7 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import httpx
+import httpx2
 import pytest
 
 from haystack.core.errors import PipelineDrawingError
@@ -26,7 +26,7 @@ def test_to_mermaid_image():
     assert image_data
 
 
-@patch("haystack.core.pipeline.draw.httpx")
+@patch("haystack.core.pipeline.draw.httpx2")
 def test_to_mermaid_image_does_not_edit_graph(mock_httpx):
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=3))
@@ -42,7 +42,7 @@ def test_to_mermaid_image_does_not_edit_graph(mock_httpx):
     assert expected_pipe == pipe.to_dict()
 
 
-@patch("haystack.core.pipeline.draw.httpx")
+@patch("haystack.core.pipeline.draw.httpx2")
 def test_to_mermaid_image_applies_timeout(mock_httpx):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -64,10 +64,10 @@ def test_to_mermaid_image_failing_request(tmp_path):
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    with patch("haystack.core.pipeline.draw.httpx.get") as mock_get:
+    with patch("haystack.core.pipeline.draw.httpx2.get") as mock_get:
 
         def raise_for_status(self):
-            raise httpx.HTTPError("error")
+            raise httpx2.HTTPError("error")
 
         mock_response = MagicMock()
         mock_response.status_code = 429
@@ -171,7 +171,7 @@ def test_to_mermaid_image_scale_without_dimensions():
         _to_mermaid_image(pipe.graph, params={"format": "img", "scale": 2})
 
 
-@patch("haystack.core.pipeline.draw.httpx.get")
+@patch("haystack.core.pipeline.draw.httpx2.get")
 def test_to_mermaid_image_server_error(mock_get):
     # Test server failure
     pipe = Pipeline()
@@ -180,7 +180,7 @@ def test_to_mermaid_image_server_error(mock_get):
     pipe.connect("comp1", "comp2")
 
     def raise_for_status(self):
-        raise httpx.HTTPError("error")
+        raise httpx2.HTTPError("error")
 
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -244,7 +244,7 @@ def test_validate_image_response_warns_on_spoofed_content_type_but_relies_on_bod
     assert "unexpected Content-Type" in caplog.text
 
 
-@patch("haystack.core.pipeline.draw.httpx.get")
+@patch("haystack.core.pipeline.draw.httpx2.get")
 def test_to_mermaid_image_rejects_non_image_response(mock_get):
     # End-to-end: a 200 response with non-image content must not be returned for writing to disk.
     pipe = Pipeline()

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
-import httpx
+import httpx2
 import pytest
 from openai import OpenAIError
 from openai.types.chat import (
@@ -1879,7 +1879,7 @@ class TestComponentLifecycle:
 
     def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        requests: list[httpx.Request] = []
+        requests: list[httpx2.Request] = []
         # trimmed capture of a real /chat/completions response
         completion = {
             "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
@@ -1890,13 +1890,13 @@ class TestComponentLifecycle:
             "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
         }
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             requests.append(request)
-            return httpx.Response(200, json=completion)
+            return httpx2.Response(200, json=completion)
 
         generator = OpenAIChatGenerator(
             http_client_kwargs={
-                "transport": httpx.MockTransport(handler),
+                "transport": httpx2.MockTransport(handler),
                 "cookies": {"session": "abc"},
                 "follow_redirects": False,
             }

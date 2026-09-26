@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import httpx
+import httpx2
 import pytest
 
 from haystack.dataclasses.file_content import FileContent
@@ -118,7 +118,7 @@ def test_file_content_from_file_path_default_filename(test_files_path):
 
 
 def test_file_content_from_url(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
             pdf_bytes = f.read()
         mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
@@ -135,7 +135,7 @@ def test_file_content_from_url(test_files_path):
 
 
 def test_file_content_from_url_default_filename(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
         with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
             pdf_bytes = f.read()
         mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
@@ -147,10 +147,10 @@ def test_file_content_from_url_default_filename(test_files_path):
 
 
 def test_file_content_from_url_bad_request():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_get.side_effect = httpx.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
+    with patch("haystack.components.fetchers.link_content.httpx2.Client.get") as mock_get:
+        mock_get.side_effect = httpx2.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(httpx2.HTTPStatusError):
             FileContent.from_url(url="https://non_existent_website_dot.com/file.pdf", retry_attempts=0, timeout=1)
 
 
