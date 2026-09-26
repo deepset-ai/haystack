@@ -389,12 +389,12 @@ class ConditionalRouter:
         routes = init_params.get("routes")
         if routes is not None:
             init_params["routes"] = routes = [dict(route) for route in routes]
-        for route in routes:
-            # output_type needs to be deserialized from a string to a type
-            if isinstance(route["output_type"], list):
-                route["output_type"] = [deserialize_type(t) for t in route["output_type"]]
-            else:
-                route["output_type"] = deserialize_type(route["output_type"])
+            for route in routes:
+                # output_type needs to be deserialized from a string to a type
+                if isinstance(route["output_type"], list):
+                    route["output_type"] = [deserialize_type(t) for t in route["output_type"]]
+                else:
+                    route["output_type"] = deserialize_type(route["output_type"])
 
         # Since the custom_filters are typed as optional in the init signature, we catch the
         # case where they are not present in the serialized data and set them to an empty dict.

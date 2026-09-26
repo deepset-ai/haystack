@@ -1025,7 +1025,7 @@ class TestRouter:
 
 class TestConditionalRouterDeserialization:
     def test_from_dict_does_not_mutate_caller_data(self):
-        routes = [
+        routes: list[Route] = [
             {"condition": "{{ x > 1 }}", "output": "{{ x }}", "output_name": "big", "output_type": int},
             {"condition": "{{ x <= 1 }}", "output": "{{ x }}", "output_name": "small", "output_type": int},
         ]
