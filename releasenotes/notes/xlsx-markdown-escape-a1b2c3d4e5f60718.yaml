@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `XLSXToDocument` now escapes pipe characters and line breaks in cell values when
+    `table_format="markdown"`. A cell containing `|` previously gained a table column and lost
+    its tail to any Markdown reader, and a cell containing an Alt+Enter line break was split
+    across two table rows. This matches the escaping `DOCXToDocument` already applies.
