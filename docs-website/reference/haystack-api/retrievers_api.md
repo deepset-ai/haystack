@@ -324,7 +324,7 @@ Create the InMemoryBM25Retriever component.
 
 - **document_store** (<code>InMemoryDocumentStore</code>) – An instance of InMemoryDocumentStore where the retriever should search for relevant documents.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the retriever's search space in the document store.
-- **top_k** (<code>int</code>) – The maximum number of documents to retrieve.
+- **top_k** (<code>int</code>) – The maximum number of documents to retrieve. Must be greater than 0.
 - **scale_score** (<code>bool</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 - **filter_policy** (<code>FilterPolicy</code>) – The filter policy to apply during retrieval.
@@ -336,7 +336,7 @@ Create the InMemoryBM25Retriever component.
 **Raises:**
 
 - <code>TypeError</code> – If the document_store is not an instance of InMemoryDocumentStore.
-- <code>ValueError</code> – If the specified `top_k` is not > 0.
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 #### to_dict
 
@@ -383,7 +383,7 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - **query** (<code>str</code>) – The query string for the Retriever.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the search space when retrieving documents.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. If 0, no documents are returned.
 - **scale_score** (<code>bool | None</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 
@@ -393,7 +393,8 @@ Run the InMemoryBM25Retriever on the given input data.
 
 **Raises:**
 
-- <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+- <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance,
+  or if `top_k` is negative.
 
 #### run_async
 
@@ -412,7 +413,7 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - **query** (<code>str</code>) – The query string for the Retriever.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the search space when retrieving documents.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. If 0, no documents are returned.
 - **scale_score** (<code>bool | None</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 
@@ -422,7 +423,8 @@ Run the InMemoryBM25Retriever on the given input data.
 
 **Raises:**
 
-- <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+- <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance,
+  or if `top_k` is negative.
 
 ## in_memory/embedding_retriever
 
@@ -483,7 +485,7 @@ Create the InMemoryEmbeddingRetriever component.
 
 - **document_store** (<code>InMemoryDocumentStore</code>) – An instance of InMemoryDocumentStore where the retriever should search for relevant documents.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the retriever's search space in the document store.
-- **top_k** (<code>int</code>) – The maximum number of documents to retrieve.
+- **top_k** (<code>int</code>) – The maximum number of documents to retrieve. Must be greater than 0.
 - **scale_score** (<code>bool</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 - **return_embedding** (<code>bool</code>) – When `True`, returns the embedding of the retrieved documents.
@@ -497,7 +499,7 @@ Create the InMemoryEmbeddingRetriever component.
 **Raises:**
 
 - <code>TypeError</code> – If the document_store is not an instance of InMemoryDocumentStore.
-- <code>ValueError</code> – If the specified top_k is not > 0.
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 #### to_dict
 
@@ -545,7 +547,7 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the search space when retrieving documents.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. If 0, no documents are returned.
 - **scale_score** (<code>bool | None</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 - **return_embedding** (<code>bool | None</code>) – When `True`, returns the embedding of the retrieved documents.
@@ -557,7 +559,8 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 **Raises:**
 
-- <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
+- <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance,
+  or if `top_k` is negative.
 
 #### run_async
 
@@ -577,7 +580,7 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the search space when retrieving documents.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. If 0, no documents are returned.
 - **scale_score** (<code>bool | None</code>) – When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
   When `False`, uses raw similarity scores.
 - **return_embedding** (<code>bool | None</code>) – When `True`, returns the embedding of the retrieved documents.
@@ -589,7 +592,8 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 **Raises:**
 
-- <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
+- <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance,
+  or if `top_k` is negative.
 
 ## multi_query_embedding_retriever
 
@@ -668,7 +672,8 @@ Initialize MultiQueryEmbeddingRetriever.
 
 - **retriever** (<code>EmbeddingRetriever</code>) – The embedding-based retriever to use for document retrieval.
 - **query_embedder** (<code>TextEmbedder</code>) – The query embedder to convert text queries to embeddings.
-- **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
+  `run_async`.
 
 #### warm_up
 
@@ -830,7 +835,8 @@ Initialize MultiQueryTextRetriever.
 **Parameters:**
 
 - **retriever** (<code>TextRetriever</code>) – The text-based retriever to use for document retrieval.
-- **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing. Default is 3.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
+  `run_async`. Default is 3.
 
 #### warm_up
 
@@ -1024,10 +1030,14 @@ Create the MultiRetriever component.
   retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
   `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
   `top_k`. If None, all results are returned.
-- **max_workers** (<code>int</code>) – The maximum number of threads to use for parallel retrieval.
+- **max_workers** (<code>int</code>) – The maximum number of threads in `run` and of concurrent retriever calls in `run_async`.
 - **join_mode** (<code>Literal['concatenate', 'reciprocal_rank_fusion']</code>) – How to merge results from multiple retrievers. Available modes:
 - `concatenate`: Combines all results into a single list and deduplicates.
 - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0.
 
 #### warm_up
 
@@ -1082,11 +1092,12 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
 - **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
   parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
-  Defaults to the value set at initialization.
+  If 0, no documents are returned. Defaults to the value set at initialization.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
   retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
   `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
-  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
+  `top_k`. If None, all results are returned. If 0, no documents are returned.
+  Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -1096,7 +1107,8 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 
 **Raises:**
 
-- <code>ValueError</code> – If any name in `active_retrievers` does not match a retriever name.
+- <code>ValueError</code> – If any name in `active_retrievers` does not match a retriever name,
+  or if the resolved `top_k` or `top_k_per_retriever` is negative.
 
 #### run_async
 
@@ -1121,11 +1133,12 @@ Uses each retriever's `run_async` method if available, otherwise runs `run` in a
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
 - **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
   parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
-  Defaults to the value set at initialization.
+  If 0, no documents are returned. Defaults to the value set at initialization.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
   retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
   `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
-  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
+  `top_k`. If None, all results are returned. If 0, no documents are returned.
+  Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -1135,7 +1148,8 @@ Uses each retriever's `run_async` method if available, otherwise runs `run` in a
 
 **Raises:**
 
-- <code>ValueError</code> – If any name in `active_retrievers` does not match a retriever name.
+- <code>ValueError</code> – If any name in `active_retrievers` does not match a retriever name,
+  or if the resolved `top_k` or `top_k_per_retriever` is negative.
 
 #### to_dict
 

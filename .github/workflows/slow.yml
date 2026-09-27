@@ -59,10 +59,10 @@ jobs:
           filters: |
             changes:
               - "haystack/components/evaluators/sas_evaluator.py"
-              - "haystack/components/generators/openai_dalle.py"
+              - "haystack/components/generators/openai_image_generator.py"
 
               - "test/components/evaluators/test_sas_evaluator.py"
-              - "test/components/generators/test_openai_dalle.py"
+              - "test/components/generators/test_openai_image_generator.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}

@@ -202,6 +202,21 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][0].content == "int value"
         assert result["documents"][1].content == "str value"
 
+    def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order(self) -> None:
+        """
+        When sort_docs_by values are mutually non-comparable, the group keeps its original
+        insertion order.
+        """
+        docs = [
+            Document(content=f"doc-{i}", meta={"group": "g", "split_id": value})
+            for i, value in enumerate([3, 1, 2, "10"])
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs)
+        assert "documents" in result
+        # Original insertion order is preserved: [3, 1, 2, "10"]
+        assert [doc.meta["split_id"] for doc in result["documents"]] == [3, 1, 2, "10"]
+
     def test_run_deduplicates_documents(self) -> None:
         """
         Test that duplicate documents are removed before grouping.

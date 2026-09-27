@@ -325,3 +325,16 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert len(docs_after) == 2
         assert "2" not in [doc.id for doc in docs_after]
+
+    @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"), [("bottom", ["3", "1", "2"]), ("top", ["2", "3", "1"]), ("drop", ["3", "1"])]
+    )
+    def test_none_meta_value_is_handled_as_missing_meta(self, missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}),
+            Document(id="2", content="abc", meta={"rating": None}),
+            Document(id="3", content="abc", meta={"rating": 2.1}),
+        ]
+        output = ranker.run(documents=docs_before)
+        assert [doc.id for doc in output["documents"]] == expected_ids

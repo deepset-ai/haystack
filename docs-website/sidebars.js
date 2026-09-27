@@ -112,6 +112,7 @@ export default {
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
         'document-stores/chromadocumentstore',
+        'document-stores/dynamodbdocumentstore',
         {
           type: 'link',
           label: 'CouchbaseDocumentStore',
@@ -608,6 +609,7 @@ export default {
             'pipeline-components/retrievers/azureaisearchhybridretriever',
             'pipeline-components/retrievers/chromaembeddingretriever',
             'pipeline-components/retrievers/chromaqueryretriever',
+            'pipeline-components/retrievers/dynamodbembeddingretriever',
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
             'pipeline-components/retrievers/elasticsearchhybridretriever',
@@ -779,6 +781,7 @@ export default {
         'token-counters/openaitokencounter',
         'token-counters/anthropictokencounter',
         'token-counters/googlegenaitokencounter',
+        'token-counters/amazonbedrocktokencounter',
       ],
     },
     {

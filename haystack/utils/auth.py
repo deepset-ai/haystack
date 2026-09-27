@@ -232,7 +232,7 @@ def deserialize_secrets_inplace(data: dict[str, Any], keys: Iterable[str], *, re
         Whether to recursively deserialize nested dictionaries.
     """
     for k, v in data.items():
-        if isinstance(v, dict) and recursive:
-            deserialize_secrets_inplace(v, keys)
-        elif k in keys and v is not None:
+        if k in keys and v is not None:
             data[k] = Secret.from_dict(v)
+        elif isinstance(v, dict) and recursive:
+            deserialize_secrets_inplace(v, keys, recursive=True)
