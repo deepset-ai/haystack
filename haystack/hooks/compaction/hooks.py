@@ -50,6 +50,32 @@ def _estimated_context_tokens(
     return context_tokens + token_counter.count(messages=tool_result_messages)
 
 
+async def _warm_up_async(resource: Any) -> None:
+    """
+    Warm up one lifecycle-bearing resource, awaiting `warm_up_async` when defined.
+
+    :param resource: The token counter or compactor to warm up.
+    """
+    warm_up_async = getattr(resource, "warm_up_async", None)
+    if warm_up_async is not None:
+        await warm_up_async()
+    elif hasattr(resource, "warm_up"):
+        resource.warm_up()
+
+
+async def _close_async(resource: Any) -> None:
+    """
+    Release one lifecycle-bearing resource, awaiting `close_async` when defined.
+
+    :param resource: The token counter or compactor to close.
+    """
+    close_async = getattr(resource, "close_async", None)
+    if close_async is not None:
+        await close_async()
+    elif hasattr(resource, "close"):
+        resource.close()
+
+
 @_experimental
 class CompactionHook:
     """
@@ -288,26 +314,19 @@ class CompactionHook:
 
     async def warm_up_async(self) -> None:
         """Warm up the token counter and the compactor on the serving event loop."""
-        if hasattr(self.token_counter, "warm_up"):
-            self.token_counter.warm_up()
-        warm_up_async = getattr(self.compactor, "warm_up_async", None)
-        if warm_up_async is not None:
-            await warm_up_async()
-        elif hasattr(self.compactor, "warm_up"):
-            self.compactor.warm_up()
+        await _warm_up_async(resource=self.token_counter)
+        await _warm_up_async(resource=self.compactor)
 
     def close(self) -> None:
-        """Release the compactor's resources."""
-        if hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's resources."""
+        for resource in (self.token_counter, self.compactor):
+            if hasattr(resource, "close"):
+                resource.close()
 
     async def close_async(self) -> None:
-        """Release the compactor's async resources."""
-        close_async = getattr(self.compactor, "close_async", None)
-        if close_async is not None:
-            await close_async()
-        elif hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's async resources."""
+        for resource in (self.token_counter, self.compactor):
+            await _close_async(resource=resource)
 
     def to_dict(self) -> dict[str, Any]:
         """

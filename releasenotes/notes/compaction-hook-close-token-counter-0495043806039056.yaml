@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``CompactionHook`` never releasing its ``token_counter``. ``warm_up()`` and
+    ``warm_up_async()`` have always warmed up both the token counter and the compactor, but
+    ``close()`` and ``close_async()`` released only the compactor, so a counter that holds a
+    resource stayed open after the ``Agent`` was closed. ``OpenAITokenCounter`` is the counter
+    where this is visible: it builds an ``OpenAI`` client, and with it an HTTP connection pool,
+    in ``warm_up()`` and drops it again in its own ``close()``, which nothing ever called. Both
+    lifecycle methods now handle the token counter exactly as they already handle the compactor.
