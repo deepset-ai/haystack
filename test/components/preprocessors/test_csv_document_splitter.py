@@ -398,3 +398,19 @@ E,F,,,G,H
     def test_incorrect_split_mode(self) -> None:
         with pytest.raises(ValueError, match="not recognized"):
             CSVDocumentSplitter(split_mode="incorrect_mode")  # type: ignore[arg-type]
+
+    def test_read_csv_kwargs_header_zero(self) -> None:
+        splitter = CSVDocumentSplitter(
+            row_split_threshold=1,
+            column_split_threshold=None,
+            read_csv_kwargs={"header": 0},
+        )
+        doc = Document(content="name,score\nAda,9\n\nBob,8")
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 2
+        for split_doc in result:
+            assert split_doc.meta["col_idx_start"] == 0
+        assert result[0].meta["row_idx_start"] == 0
+        assert result[1].meta["row_idx_start"] == 2
+        assert "Ada,9" in result[0].content
+        assert "Bob,8" in result[1].content

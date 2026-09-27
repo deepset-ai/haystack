@@ -145,8 +145,10 @@ class CSVDocumentSplitter:
                 )
                 continue
 
-            # Sort split_dfs first by row index, then by column index
-            split_dfs.sort(key=lambda dataframe: (dataframe.index[0], dataframe.columns[0]))
+            # Sort split_dfs first by row index, then by column index. Column
+            # labels can be non-integer strings when read_csv_kwargs sets
+            # header, so sort by positional index instead of the label.
+            split_dfs.sort(key=lambda dataframe: (dataframe.index[0], df.columns.get_loc(dataframe.columns[0])))
 
             for split_id, split_df in enumerate(split_dfs):
                 split_documents.append(
@@ -156,7 +158,7 @@ class CSVDocumentSplitter:
                             **deepcopy(document.meta),
                             "source_id": document.id,
                             "row_idx_start": int(split_df.index[0]),
-                            "col_idx_start": int(split_df.columns[0]),
+                            "col_idx_start": int(df.columns.get_loc(split_df.columns[0])),
                             "split_id": split_id,
                         },
                     )
