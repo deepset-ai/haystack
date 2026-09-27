@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DOCXToDocument`` dropping hyperlink addresses inside tables. With
+    ``link_format`` set to ``markdown`` or ``plain``, links in table cells were
+    written as their display text only, while links in body paragraphs kept their
+    address. Links in table cells are now formatted the same way, in both the
+    ``markdown`` and ``csv`` table formats. The default ``link_format="none"``
+    output is unchanged.
