@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix ``TiktokenCounter`` raising ``ValueError`` when user messages or tool schemas contain a literal tiktoken
+    special-token marker such as ``<|endoftext|>``. These markers are now counted as ordinary text, matching the
+    behavior of the document splitters.

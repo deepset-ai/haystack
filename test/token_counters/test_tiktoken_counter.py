@@ -26,9 +26,14 @@ class _FakeEncoder:
 
     def __init__(self) -> None:
         self.encoded: list[str] = []
+        self.ordinary_encoded: list[str] = []
 
     def encode(self, text: str) -> list[int]:
         self.encoded.append(text)
+        return list(range(len(text.split())))
+
+    def encode_ordinary(self, text: str) -> list[int]:
+        self.ordinary_encoded.append(text)
         return list(range(len(text.split())))
 
 
@@ -90,7 +95,7 @@ class TestTiktokenCounter:
 
         TiktokenCounter().count(messages)
 
-        rendered = fake_encoder.encoded[0]
+        rendered = fake_encoder.ordinary_encoded[0]
         assert "[assistant] looking" in rendered
         assert '[assistant -> tool_call] search({"q": "x"})' in rendered
         assert "[tool:search] found it" in rendered
@@ -116,6 +121,12 @@ def search(query: Annotated[str, "the search query"]) -> str:
     return "result"
 
 
+@tool
+def search_with_literal_marker(query: Annotated[str, "the search query"]) -> str:
+    """Search documentation that may contain the literal marker <|endoftext|>."""
+    return "result"
+
+
 class TestTiktokenCounterTools:
     def test_tool_schemas_add_to_the_count(self, fake_encoder):
         # A provider is sent the schemas alongside the messages, so they consume tokens too.
@@ -126,6 +137,14 @@ class TestTiktokenCounterTools:
 
     def test_tools_can_be_counted_without_messages(self, fake_encoder):
         assert TiktokenCounter().count([], tools=[search]) > 0
+
+    def test_literal_special_token_in_message_is_counted_as_text(self, fake_encoder):
+        assert TiktokenCounter().count([ChatMessage.from_user("literal <|endoftext|> marker")]) > 0
+        assert "<|endoftext|>" in fake_encoder.ordinary_encoded[0]
+
+    def test_literal_special_token_in_tool_schema_is_counted_as_text(self, fake_encoder):
+        assert TiktokenCounter().count([], tools=[search_with_literal_marker]) > 0
+        assert "<|endoftext|>" in fake_encoder.ordinary_encoded[0]
 
     def test_nothing_to_measure_is_zero(self):
         assert TiktokenCounter().count([]) == 0
