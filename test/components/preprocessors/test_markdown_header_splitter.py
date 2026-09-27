@@ -641,6 +641,40 @@ class TestCodeBlockExclusion:
         assert docs[0].content == text
         assert "header" not in docs[0].meta
 
+    def test_closing_fence_longer_than_opening(self):
+        """CommonMark allows the closing fence to be longer than the opening fence (same character, ≥ length).
+
+        Regression for #12954: a header-like line inside such a block was being treated as a real header,
+        splitting the code block in half.
+        """
+        splitter = MarkdownHeaderSplitter()
+
+        backtick_text = "# Intro\nBody\n````python\n# fake\n`````\n## Real\nEnd\n"
+        docs = splitter.run(documents=[Document(content=backtick_text)])["documents"]
+        assert [doc.meta["header"] for doc in docs] == ["Intro", "Real"]
+        assert "fake" not in [doc.meta["header"] for doc in docs]
+        # the chunk slice still preserves the code block byte-exactly under the real header
+        assert docs[0].content == "# Intro\nBody\n````python\n# fake\n`````\n"
+        assert docs[1].content == "## Real\nEnd\n"
+
+        tilde_text = "# Intro\nBody\n~~~~python\n# fake\n~~~~~\n## Real\nEnd\n"
+        docs = splitter.run(documents=[Document(content=tilde_text)])["documents"]
+        assert [doc.meta["header"] for doc in docs] == ["Intro", "Real"]
+        assert "fake" not in [doc.meta["header"] for doc in docs]
+        assert docs[0].content == "# Intro\nBody\n~~~~python\n# fake\n~~~~~\n"
+        assert docs[1].content == "## Real\nEnd\n"
+
+    def test_closing_fence_longer_when_header_precedes_fence(self):
+        """A header that immediately precedes a code fence still splits; the fence scan starts on the opener line."""
+        text = "# Header\n```python\n# not a header\n`````\n## Real\nEnd\n"
+        splitter = MarkdownHeaderSplitter()
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["header"] for doc in docs] == ["Header", "Real"]
+        assert "not a header" not in [doc.meta["header"] for doc in docs]
+        assert docs[0].content == "# Header\n```python\n# not a header\n`````\n"
+        assert docs[1].content == "## Real\nEnd\n"
+
 
 def test_invalid_secondary_split_at_init():
     """Test that an invalid secondary split type raises an error at initialization time."""

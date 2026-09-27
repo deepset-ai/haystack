@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` now treats fenced code blocks whose closing fence is
+    longer than the opening fence as code blocks (the CommonMark rule, where the
+    closing fence must be of the same character with at least as many repetitions
+    as the opener). Previously the closing fence had to match the opener exactly,
+    so a four-backtick opener with a five-backtick closer was not recognised as
+    a code block and any ``#`` lines inside it were incorrectly treated as
+    Markdown headers, splitting the code block apart.

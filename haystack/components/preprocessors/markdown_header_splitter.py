@@ -78,25 +78,13 @@ class MarkdownHeaderSplitter:
         self.header_split_levels = header_split_levels
         self._header_split_levels_set = set(header_split_levels)
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
-
-        # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
-        # Broken down:
-        #   ^                 - fence must start at the beginning of a line (MULTILINE)
-        #   (?P<fence>`{3,}|~{3,})
-        #                     - named capture group "fence": three or more backticks OR three or
-        #                       more tildes. Capturing it allows the closing fence to be matched
-        #                       with a backreference, so ```-opened blocks must close with ```
-        #                       and ~~~-opened blocks must close with ~~~.
-        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
-        #                       on the opening fence line, up to the newline
-        #   \n                - newline ending the opening fence line
-        #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
-        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
-        #                       and must start at the beginning of a line
-        #   \s*$              - optional trailing whitespace after the closing fence
-        self._code_block_pattern = re.compile(
-            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
-        )
+        # Per-line patterns used by `_code_block_spans` to recognise fenced code blocks. The
+        # closing-fence length rule (≥ opening-fence length, same character) is enforced in
+        # `_code_block_spans` rather than via a regex backreference, since CommonMark allows
+        # the closing fence to be longer than the opening one and a single regex cannot express
+        # that constraint: https://spec.commonmark.org/0.31.2/#fenced-code-blocks .
+        self._opening_fence_pattern = re.compile(r"(`{3,}|~{3,}).*")
+        self._closing_fence_pattern = re.compile(r"(`{3,}|~{3,})\s*$")
 
         self._is_warmed_up = False
 
@@ -118,8 +106,54 @@ class MarkdownHeaderSplitter:
             self._is_warmed_up = True
 
     def _code_block_spans(self, text: str) -> list[tuple[int, int]]:
-        """Return the (start, end) character spans of all fenced code blocks in text."""
-        return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
+        """
+        Return the (start, end) character spans of all fenced code blocks in text.
+
+        A fenced code block begins with a line of three or more backticks or tildes (optionally
+        followed by an info string) and ends with a line that consists entirely of the same
+        character with at least as many repetitions as the opening fence, followed only by
+        whitespace. The spans cover the opening fence line through the end of the closing
+        fence line (exclusive of its trailing newline) so that header matches inside the body
+        fall within ``[start, end)``.
+        """
+        spans: list[tuple[int, int]] = []
+        # Absolute offset of each line's first character; the last entry sits past the final
+        # newline so we can compute end offsets without special-casing the tail.
+        line_starts = [0]
+        for idx, ch in enumerate(text):
+            if ch == "\n":
+                line_starts.append(idx + 1)
+
+        i = 0
+        while i < len(line_starts):
+            line_start = line_starts[i]
+            line_end = line_starts[i + 1] - 1 if i + 1 < len(line_starts) else len(text)
+            opening = self._opening_fence_pattern.fullmatch(text[line_start:line_end])
+            if opening is None:
+                i += 1
+                continue
+            fence_char = text[line_start]
+            fence_len = 0
+            while line_start + fence_len < line_end and text[line_start + fence_len] == fence_char:
+                fence_len += 1
+            j = i + 1
+            while j < len(line_starts):
+                close_start = line_starts[j]
+                close_end = line_starts[j + 1] - 1 if j + 1 < len(line_starts) else len(text)
+                closing = self._closing_fence_pattern.fullmatch(text[close_start:close_end])
+                if closing is not None and text[close_start] == fence_char:
+                    close_len = 0
+                    while close_start + close_len < close_end and text[close_start + close_len] == fence_char:
+                        close_len += 1
+                    if close_len >= fence_len:
+                        spans.append((line_start, close_end))
+                        i = j + 1
+                        break
+                j += 1
+            else:
+                i += 1
+
+        return spans
 
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """
