@@ -511,6 +511,16 @@ def test_run_with_content_key(tmpdir):
     assert result["documents"][2].meta == {}
 
 
+@pytest.mark.parametrize("value, expected", [(123, "123"), (True, "True")])
+def test_run_with_content_key_with_scalar_values(value, expected):
+    source = ByteStream.from_string(json.dumps({"body": value}))
+
+    converter = JSONConverter(content_key="body")
+    result = converter.run(sources=[source])
+
+    assert result["documents"][0].content == expected
+
+
 def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     first_test_file = Path(tmpdir / "first_test_file.json")
     second_test_file = Path(tmpdir / "second_test_file.json")
