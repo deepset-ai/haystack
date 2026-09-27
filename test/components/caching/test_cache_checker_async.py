@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
@@ -73,3 +74,29 @@ class TestCacheCheckerAsync:
         checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
         await checker.close_async()
         assert nonclosable_document_store.mock_calls == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_fresh_document(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now()})
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [document], "misses": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_expired_document(self, in_memory_doc_store):
+        document = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now() - timedelta(hours=2)}
+        )
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_missing_time_field(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"url": "https://example.com/1"})
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}

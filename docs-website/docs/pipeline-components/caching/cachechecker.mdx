@@ -63,6 +63,35 @@ print(
 )  # Values that were not found in the cache, like: ["ABCDE"]
 ```
 
+### Cache expiration
+
+By default, `CacheChecker` considers a matching document to be a cache hit regardless of when it was cached.
+To enable cache expiration, provide a `ttl` and optionally specify the metadata field containing the cache timestamp. The default timestamp field is `cached_at`.
+
+```python
+from datetime import timedelta
+
+cache_checker = CacheChecker(
+    document_store=my_doc_store,
+    cache_field="url",
+    ttl=timedelta(hours=24),
+)
+```
+
+When `ttl` is configured, a matching document is considered a cache hit only if the timestamp in `cached_at` is within the specified TTL. Documents with an expired or missing `cached_at` timestamp are treated as cache misses.
+
+To use a different metadata field for the cache timestamp, specify `time_field`:
+
+```python
+cache_checker = CacheChecker(
+    document_store=my_doc_store,
+    cache_field="url",
+    ttl=timedelta(hours=24),
+    time_field="created_at",
+)
+```
+When `ttl` is `None` (the default), `CacheChecker` retains its existing behavior and does not check the timestamp.
+
 ### In a pipeline
 
 ```python

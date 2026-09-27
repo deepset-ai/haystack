@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added optional TTL support to the ``CacheChecker`` component, allowing cached documents to expire after a configurable duration. The cache timestamp can be read from a custom metadata field using ``time_field``.

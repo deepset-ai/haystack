@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -73,6 +74,30 @@ class TestCacheChecker:
         ):
             CacheChecker.from_dict(data)
 
+    def test_to_dict_with_ttl(self):
+        ttl = timedelta(hours=1)
+        checker = CacheChecker(
+            document_store=InMemoryDocumentStore(), cache_field="url", ttl=ttl, time_field="created_at"
+        )
+
+        result = checker.to_dict()
+
+        assert result["init_parameters"]["ttl"] == ttl
+        assert result["init_parameters"]["time_field"] == "created_at"
+
+    def test_from_dict_with_ttl(self):
+        ttl = timedelta(hours=1)
+        checker = CacheChecker(
+            document_store=InMemoryDocumentStore(), cache_field="url", ttl=ttl, time_field="created_at"
+        )
+
+        data = checker.to_dict()
+        reconstructed = CacheChecker.from_dict(data)
+
+        assert reconstructed.cache_field == "url"
+        assert reconstructed.ttl == ttl
+        assert reconstructed.time_field == "created_at"
+
     def test_run(self, in_memory_doc_store):
         documents = [
             Document(content="doc1", meta={"url": "https://example.com/1"}),
@@ -103,3 +128,53 @@ class TestCacheChecker:
         checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
         checker.close()
         assert nonclosable_document_store.mock_calls == []
+
+    def test_run_with_missing_time_field(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"url": "https://example.com/1"})
+
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+
+        results = checker.run(items=["https://example.com/1"])
+
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_run_with_fresh_document(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now()})
+
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+
+        assert results == {"hits": [document], "misses": []}
+
+    def test_run_with_expired_document(self, in_memory_doc_store):
+        document = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now() - timedelta(hours=2)}
+        )
+
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_run_with_custom_time_field(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"url": "https://example.com/1", "created_at": datetime.now()})
+
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1), time_field="created_at")
+        results = checker.run(items=["https://example.com/1", "https://example.com/5"])
+
+        assert results == {"hits": [document], "misses": ["https://example.com/5"]}
+
+    def test_run_with_custom_time_field_and_expired_document(self, in_memory_doc_store):
+        document = Document(
+            content="doc1", meta={"url": "https://example.com/1", "created_at": datetime.now() - timedelta(hours=2)}
+        )
+
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1), time_field="created_at")
+        results = checker.run(items=["https://example.com/1"])
+
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}

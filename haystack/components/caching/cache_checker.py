@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -15,6 +16,11 @@ class CacheChecker:
 
     If matching documents are found, they are returned as "hits". If not found in the cache, the items
     are returned as "misses".
+
+    If `ttl` is provided, matching documents are considered cache hits only if their
+    timestamp is within the specified TTL. The timestamp is read from the `time_field`
+    metadata field, which defaults to `"cached_at"`. If `ttl` is `None`, documents are
+    considered cache hits based only on the presence of a matching `cache_field`.
 
     ### Usage example
 
@@ -37,7 +43,13 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        cache_field: str,
+        ttl: timedelta | None = None,
+        time_field: str = "cached_at",
+    ) -> None:
         """
         Creates a CacheChecker component.
 
@@ -46,9 +58,17 @@ class CacheChecker:
         :param cache_field:
             Name of the document's metadata field
             to check for cache hits.
+        :param ttl:
+            Maximum age of a cached document before it is considered expired. If `None`,
+            matching documents are considered cache hits regardless of their age.
+        :param time_field:
+            Name of the document's metadata field containing the cache timestamp.
+            Defaults to `"cached_at"`.
         """
         self.document_store = document_store
         self.cache_field = cache_field
+        self.ttl = ttl
+        self.time_field = time_field
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -57,7 +77,15 @@ class CacheChecker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store, cache_field=self.cache_field)
+        init_parameters = {"document_store": self.document_store, "cache_field": self.cache_field}
+
+        if self.ttl is not None:
+            init_parameters["ttl"] = self.ttl
+
+        if self.time_field != "cached_at":
+            init_parameters["time_field"] = self.time_field
+
+        return default_to_dict(self, **init_parameters)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
@@ -70,6 +98,18 @@ class CacheChecker:
             Deserialized component.
         """
         return default_from_dict(cls, data)
+
+    def _filter_valid_documents(self, documents: list[Document]) -> list[Document]:
+        if self.ttl is None:
+            return documents
+
+        now = datetime.now()
+
+        return [
+            document
+            for document in documents
+            if self.time_field in document.meta and now - document.meta[self.time_field] < self.ttl
+        ]
 
     @component.output_types(hits=list[Document], misses=list)
     def run(self, items: list[Any]) -> dict[str, Any]:
@@ -89,8 +129,9 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = self.document_store.filter_documents(filters=filters)
-            if found:
-                found_documents.extend(found)
+            valid_documents = self._filter_valid_documents(found)
+            if valid_documents:
+                found_documents.extend(valid_documents)
             else:
                 misses.append(item)
         return {"hits": found_documents, "misses": misses}
@@ -116,8 +157,9 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = await self.document_store.filter_documents_async(filters=filters)
-            if found:
-                found_documents.extend(found)
+            valid_documents = self._filter_valid_documents(found)
+            if valid_documents:
+                found_documents.extend(valid_documents)
             else:
                 misses.append(item)
         return {"hits": found_documents, "misses": misses}
