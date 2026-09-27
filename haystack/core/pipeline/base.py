@@ -1787,16 +1787,16 @@ class PipelineBase:  # noqa: PLW1641
         """
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
-        This creates a new networkx.MultiDiGraph containing all the components from both the main pipeline
-        and all the internal SuperComponents' pipelines. The SuperComponents are removed and their internal
-        components are connected to corresponding input and output sockets of the main pipeline.
+        Builds a new graph containing all components from the main pipeline together with the components of
+        every SuperComponent's internal pipeline. Each SuperComponent node is removed from the graph and its
+        internal components are connected to the corresponding input and output sockets of the main pipeline.
 
         :returns:
             A tuple containing:
-            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
-            - A dictionary mapping component names to boolean indicating that this component was part of a
-              SuperComponent
-            - A dictionary mapping component names to their SuperComponent name
+            - A `networkx.MultiDiGraph` with the expanded structure of the main pipeline and all its
+              SuperComponents.
+            - A `dict[str, str]` mapping each component name that was part of a SuperComponent to the name
+              of that SuperComponent.
         """
         merged_graph = self.graph.copy()
         super_component_mapping: dict[str, str] = {}
