@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``ChatMessage.from_openai_dict_format`` silently collapsing OpenAI's ``developer`` role into ``system``,
+    which caused the role distinction to be lost on round-trip. Added a ``DEVELOPER`` entry to ``ChatRole`` and a
+    ``ChatMessage.from_developer`` classmethod; ``from_openai_dict_format`` and ``to_openai_dict_format`` now
+    preserve the ``developer`` role end to end.
