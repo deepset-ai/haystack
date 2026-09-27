@@ -2324,8 +2324,8 @@ class TestAgentStructuredOutput:
 
         # Output types
         agent = Agent(chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema=CityInfo)
-        output_sockets = agent.__haystack_output__._sockets_dict
-        input_sockets = agent.__haystack_input__._sockets_dict
+        output_sockets = agent.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
+        input_sockets = agent.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert "structured_output" in output_sockets
         assert output_sockets["structured_output"].type == (CityInfo | None)
         assert "structured_output" not in input_sockets
@@ -2333,7 +2333,7 @@ class TestAgentStructuredOutput:
         # Dict schema output type
         dict_schema = {"type": "object", "properties": {"city": {"type": "string"}}}
         agent_dict = Agent(chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema=dict_schema)
-        output_sockets_dict = agent_dict.__haystack_output__._sockets_dict
+        output_sockets_dict = agent_dict.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert "structured_output" in output_sockets_dict
         assert output_sockets_dict["structured_output"].type == (dict[str, Any] | None)
 
