@@ -511,15 +511,7 @@ def test_run_with_content_key(tmpdir):
     assert result["documents"][2].meta == {}
 
 
-@pytest.mark.parametrize(
-    "value, expected",
-    [
-        (123, "123"),
-        (1.5, "1.5"),
-        (True, "True"),
-        (None, None),
-    ],
-)
+@pytest.mark.parametrize("value, expected", [(123, "123"), (1.5, "1.5"), (True, "True"), (None, None)])
 def test_run_with_content_key_with_scalar_values(value, expected):
     source = ByteStream.from_string(json.dumps({"body": value}))
 
