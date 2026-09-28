@@ -258,7 +258,6 @@ class MetaFieldRanker:
         docs_with_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
         docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is None]
 
-        # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided "
@@ -268,7 +267,7 @@ class MetaFieldRanker:
                 meta_field=self.meta_field,
                 document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
-            if self.missing_meta == "drop":
+            if missing_meta == "drop":
                 return {"documents": []}
             return {"documents": deduplicated_documents[:top_k]}
 
