@@ -201,14 +201,11 @@ class SentenceWindowRetriever:
         self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
-        context_text = []
-        context_documents = []
-        for doc in retrieved_documents:
-            text, docs = self._retrieve_context_for_document(doc, window_size)
-            context_text.append(text)
-            context_documents.extend(docs)
+        windows = self._get_windows(retrieved_documents)
+        filters = self._build_filters(windows, window_size)
+        fetched_documents = self.document_store.filter_documents(filters) if filters else []
 
-        return {"context_windows": context_text, "context_documents": context_documents}
+        return self._assemble_context(retrieved_documents, windows, window_size, fetched_documents)
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
     async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
@@ -235,14 +232,16 @@ class SentenceWindowRetriever:
         self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
-        context_text = []
-        context_documents = []
-        for doc in retrieved_documents:
-            text, docs = await self._retrieve_context_for_document_async(doc, window_size)
-            context_text.append(text)
-            context_documents.extend(docs)
+        windows = self._get_windows(retrieved_documents)
+        filters = self._build_filters(windows, window_size)
+        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
+        fetched_documents = (
+            await self.document_store.filter_documents_async(filters)  # type: ignore[attr-defined]
+            if filters
+            else []
+        )
 
-        return {"context_windows": context_text, "context_documents": context_documents}
+        return self._assemble_context(retrieved_documents, windows, window_size, fetched_documents)
 
     @staticmethod
     def _validate_window_size(window_size: int) -> None:
@@ -262,50 +261,82 @@ class SentenceWindowRetriever:
         ):
             raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
-    def _retrieve_context_for_document(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
-        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+    def _get_windows(self, retrieved_documents: list[Document]) -> list[tuple[list[Any], int] | None]:
+        """
+        Extract the source IDs and split ID of each retrieved document, or `None` if the metadata is missing.
+        """
+        windows: list[tuple[list[Any], int] | None] = []
+        for doc in retrieved_documents:
+            source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+            split_id = doc.meta.get(self.split_id_meta_field)
+            if any(source_id is None for source_id in source_ids) or split_id is None:
+                logger.warning(
+                    "Document {doc_id} is missing required metadata fields to be used with "
+                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                    doc_id=doc.id,
+                    source_id=self._source_id_meta_fields,
+                    split_id=self.split_id_meta_field,
+                )
+                windows.append(None)
+            else:
+                windows.append((source_ids, split_id))
+        return windows
+
+    def _build_filters(self, windows: list[tuple[list[Any], int] | None], window_size: int) -> dict[str, Any] | None:
+        """
+        Combine the windows of all retrieved documents into one filter, so the Document Store is queried only once.
+        """
+        conditions: list[dict[str, Any]] = []
+        for window in windows:
+            if window is None:
+                continue
+            source_ids, split_id = window
+            condition = self._build_filter_conditions(split_id, window_size, source_ids)
+            if condition not in conditions:
+                conditions.append(condition)
+        if not conditions:
+            return None
+        return {"operator": "OR", "conditions": conditions}
+
+    def _assemble_context(
+        self,
+        retrieved_documents: list[Document],
+        windows: list[tuple[list[Any], int] | None],
+        window_size: int,
+        fetched_documents: list[Document],
+    ) -> dict[str, Any]:
+        """
+        Split the documents fetched with the combined filter back into the context window of each retrieved document.
+        """
+        context_text = []
+        context_documents = []
+        for doc, window in zip(retrieved_documents, windows, strict=True):
+            if window is None:
+                context_text.append(doc.content or "")
+                context_documents.append(doc)
+                continue
+
+            source_ids, split_id = window
+            context_docs = [
+                fetched
+                for fetched in fetched_documents
+                if self._is_in_window(fetched, source_ids, split_id - window_size, split_id + window_size)
+            ]
+            context_text.append(self.merge_documents_text(context_docs))
+            context_documents.extend(sorted(context_docs, key=lambda d: d.meta[self.split_id_meta_field]))
+
+        return {"context_windows": context_text, "context_documents": context_documents}
+
+    def _is_in_window(self, doc: Document, source_ids: list[Any], min_split_id: int, max_split_id: int) -> bool:
         split_id = doc.meta.get(self.split_id_meta_field)
-
-        if any(source_id is None for source_id in source_ids) or split_id is None:
-            logger.warning(
-                "Document {doc_id} is missing required metadata fields to be used with "
-                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
-                doc_id=doc.id,
-                source_id=self._source_id_meta_fields,
-                split_id=self.split_id_meta_field,
+        return (
+            split_id is not None
+            and min_split_id <= split_id <= max_split_id
+            and all(
+                doc.meta.get(field) == source_id
+                for field, source_id in zip(self._source_id_meta_fields, source_ids, strict=True)
             )
-            return doc.content or "", [doc]
-
-        assert split_id is not None
-        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
-        context_docs = self.document_store.filter_documents(filter_conditions)
-        context_text = self.merge_documents_text(context_docs)
-        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
-
-        return context_text, context_docs_sorted
-
-    async def _retrieve_context_for_document_async(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
-        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
-        split_id = doc.meta.get(self.split_id_meta_field)
-
-        if any(source_id is None for source_id in source_ids) or split_id is None:
-            logger.warning(
-                "Document {doc_id} is missing required metadata fields to be used with "
-                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
-                doc_id=doc.id,
-                source_id=self._source_id_meta_fields,
-                split_id=self.split_id_meta_field,
-            )
-            return doc.content or "", [doc]
-
-        assert split_id is not None
-        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
-        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
-        context_docs = await self.document_store.filter_documents_async(filter_conditions)  # type: ignore[attr-defined]
-        context_text = self.merge_documents_text(context_docs)
-        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
-
-        return context_text, context_docs_sorted
+        )
 
     def _build_filter_conditions(self, split_id: int, window_size: int, source_ids: list[Any]) -> dict[str, Any]:
         min_before = split_id - window_size
