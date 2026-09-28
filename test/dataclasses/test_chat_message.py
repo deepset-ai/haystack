@@ -1101,9 +1101,8 @@ class TestFromOpenaiDictFormat:
             "content": None,
             "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": "{not-json"}}],
         }
-        message = ChatMessage.from_openai_dict_format(openai_msg)
-        assert message.tool_call is not None
-        assert message.tool_call.arguments == {}
+        with pytest.raises(json.JSONDecodeError):
+            ChatMessage.from_openai_dict_format(openai_msg)
 
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}

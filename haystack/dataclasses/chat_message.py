@@ -17,22 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
-    """Parse OpenAI-style tool call arguments into a dictionary.
+    """
+    Parse OpenAI-style tool call arguments into a dictionary.
 
-    OpenAI sends a JSON string. Some OpenAI-compatible servers already send a dict, omit the field, or send
-    null or an empty string for a zero-argument call.
+    A dict is returned as is, a missing, null, or empty value becomes `{}`, and anything else is parsed as a
+    JSON string.
+
+    :raises json.JSONDecodeError: If the arguments are not valid JSON.
     """
     if isinstance(raw_arguments, dict):
         return raw_arguments
-    if not raw_arguments:
-        return {}
-    if not isinstance(raw_arguments, str):
-        return {}
-    try:
-        parsed = json.loads(raw_arguments)
-    except json.JSONDecodeError:
-        return {}
-    return parsed if isinstance(parsed, dict) else {}
+    return json.loads(raw_arguments) if raw_arguments else {}
 
 
 class ChatRole(str, Enum):
