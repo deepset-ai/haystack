@@ -377,8 +377,8 @@ Creates an instance of MockDocumentEmbedder.
 
 **Raises:**
 
-- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-  if `embedding` is an empty list.
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+  or if neither is provided and `dimension` is not positive.
 - <code>TypeError</code> – If `embedding` is not a sequence of numbers.
 
 #### to_dict
@@ -511,8 +511,8 @@ Creates an instance of MockTextEmbedder.
 
 **Raises:**
 
-- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-  if `embedding` is an empty list.
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+  or if neither is provided and `dimension` is not positive.
 - <code>TypeError</code> – If `embedding` is not a sequence of numbers.
 
 #### to_dict

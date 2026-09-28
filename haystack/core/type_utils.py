@@ -203,13 +203,18 @@ def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: t
     if not receiver_args:
         return True
     if not sender_args:
-        sender_args = ([Any] * len(receiver_args[0]), Any)
+        receiver_params = receiver_args[0]
+        # `Callable[..., T]` spells its parameters as Ellipsis, which has no length to expand to
+        sender_args = ([Any] if receiver_params is Ellipsis else [Any] * len(receiver_params), Any)
     # Standard Callable has two elements in args: argument list and return type
     if len(sender_args) != 2 or len(receiver_args) != 2:
         return False
     # Return types must be compatible
     if not _strict_types_are_compatible(sender_args[1], receiver_args[1]):
         return False
+    # An Ellipsis parameter list stands for parameters of any signature, so there are no positions to compare
+    if sender_args[0] is Ellipsis or receiver_args[0] is Ellipsis:
+        return True
     # Input Arguments must be of same length
     if len(sender_args[0]) != len(receiver_args[0]):
         return False

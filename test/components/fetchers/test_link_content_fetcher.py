@@ -80,6 +80,18 @@ class TestLinkContentFetcher:
         assert "verify" in fetcher.client_kwargs
         assert fetcher.client_kwargs["verify"] is False
 
+    def test_init_does_not_mutate_client_kwargs(self):
+        client_kwargs = {"headers": {"X-Request-ID": "example"}}
+
+        fetcher = LinkContentFetcher(timeout=10, client_kwargs=client_kwargs)
+
+        assert client_kwargs == {"headers": {"X-Request-ID": "example"}}
+        assert fetcher.client_kwargs == {
+            "headers": {"X-Request-ID": "example"},
+            "timeout": 10,
+            "follow_redirects": True,
+        }
+
     def test_run_text(self):
         """Test fetching text content"""
         correct_response = b"Example test response"
