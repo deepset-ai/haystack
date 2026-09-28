@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue in ``CSVToDocument`` (row mode) where a ragged row with surplus
+    fields overwrote an actual CSV column named ``extra_columns``. A private sentinel
+    is now used for ``DictReader.restkey``, preserving both the original column data
+    and storing surplus fields under collision-safe metadata keys.

@@ -15,6 +15,7 @@ from haystack.dataclasses import ByteStream
 logger = logging.getLogger(__name__)
 
 _ROW_MODE_SIZE_WARN_BYTES = 5 * 1024 * 1024  # ~5MB; warn when parsing rows might be memory-heavy
+_RAGGED_ROW_RESTKEY = object()  # Unique sentinel for DictReader restkey to avoid colliding with CSV headers
 
 
 @component
@@ -167,8 +168,9 @@ class CSVToDocument:
                 # ``restkey`` ensures surplus fields on ragged rows (rows with more values than the
                 # header, e.g. an unquoted comma inside a value) land under an explicit string key
                 # instead of the default ``None`` key, which would break ``Document`` id generation.
+                # A private sentinel is used so an actual CSV column named "extra_columns" is not overwritten.
                 reader = csv.DictReader(
-                    io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar, restkey="extra_columns"
+                    io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar, restkey=_RAGGED_ROW_RESTKEY
                 )
             except Exception as e:
                 raise RuntimeError(f"CSVToDocument(row): could not parse CSV rows for {source}: {e}") from e
@@ -224,7 +226,7 @@ class CSVToDocument:
         for k, v in row.items():
             if k == content_column:
                 continue
-            key_to_use = k
+            key_to_use = "extra_columns" if k is _RAGGED_ROW_RESTKEY else k
             if key_to_use in row_meta:
                 # Avoid clobbering existing meta like file_path/encoding; prefix and de-dupe
                 base_key = f"csv_{key_to_use}"

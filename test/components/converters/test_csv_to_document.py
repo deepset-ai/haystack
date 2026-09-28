@@ -243,6 +243,30 @@ class TestCSVToDocument:
         assert None not in ragged_doc.meta
         assert "state" in ragged_doc.meta["extra_columns"]
 
+    def test_row_mode_ragged_row_with_real_extra_columns_column(self):
+        # When a CSV header contains an 'extra_columns' column, ragged rows with
+        # surplus fields must preserve the real column value and place surplus fields
+        # under a collision-prefixed key.
+        source = ByteStream(
+            data=b"text,extra_columns\r\nhello,real value,overflow\r\nregular,normal value\r\n",
+            meta={"file_path": "ragged_extra.csv"},
+        )
+        conv = CSVToDocument(conversion_mode="row")
+        docs = conv.run(sources=[source], content_column="text")["documents"]
+
+        assert len(docs) == 2
+        # Ragged row preserves both the original extra_columns value and the surplus fields under a collision-safe key
+        ragged_doc = docs[0]
+        assert ragged_doc.content == "hello"
+        assert ragged_doc.meta["extra_columns"] == "real value"
+        assert "overflow" in ragged_doc.meta["csv_extra_columns"]
+
+        # Regular row preserves the extra_columns value without adding surplus keys
+        regular_doc = docs[1]
+        assert regular_doc.content == "regular"
+        assert regular_doc.meta["extra_columns"] == "normal value"
+        assert "csv_extra_columns" not in regular_doc.meta
+
     def test_run_utf8_with_bom(self, tmp_path):
         """
         A CSV saved as UTF-8 with a byte order mark must not leak the BOM into the content.
