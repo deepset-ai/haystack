@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``JSONConverter`` failing with ``ValueError`` when ``content_key`` contains numeric or boolean scalar values.
+    These values are now converted to strings before creating the ``Document``, while ``null`` values remain unchanged.
