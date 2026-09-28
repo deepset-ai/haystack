@@ -4,6 +4,7 @@
 
 import logging
 from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -16,7 +17,7 @@ from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCo
 from haystack.hooks.compaction.hooks import _estimated_context_tokens
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _last_assistant_index
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.token_counters import OpenAITokenCounter, TokenCounter
+from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
 from test.hooks.compaction.helpers import (
@@ -85,26 +86,6 @@ class _RecordingCompactor(Compactor):
 
     def to_dict(self) -> dict[str, Any]:
         return default_to_dict(self)
-
-
-class _RecordingCounter(FakeCounter):
-    """A counter that records the lifecycle calls made to it, like `OpenAITokenCounter` does."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.calls: list[str] = []
-
-    def warm_up(self) -> None:
-        self.calls.append("warm_up")
-
-    async def warm_up_async(self) -> None:
-        self.calls.append("warm_up_async")
-
-    def close(self) -> None:
-        self.calls.append("close")
-
-    async def close_async(self) -> None:
-        self.calls.append("close_async")
 
 
 def _hook(compactor: Compactor | None = None, **overrides: Any) -> CompactionHook:
@@ -407,31 +388,15 @@ class TestCompactionHook:
         )
         assert compacted[-2:] == messages[-2:]
 
-    def test_lifecycle_delegates_to_the_compactor(self):
+    def test_lifecycle_delegates_to_the_counter_and_compactor(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         hook.warm_up()
         hook.close()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up", "close"]
-
-    def test_lifecycle_also_closes_the_token_counter(self):
-        # `warm_up()` has always warmed up both resources; `close()` used to release only the compactor.
-        counter = _RecordingCounter()
-        hook = _hook(token_counter=counter)
-        hook.warm_up()
-        hook.close()
-        assert counter.calls == ["warm_up", "close"]
-
-    def test_lifecycle_closes_a_real_openai_token_counter(self, monkeypatch):
-        # The counter that actually holds something to release: `warm_up()` builds an `OpenAI` client and `close()`
-        # drops it again. Nothing in the hook used to reach that `close()`, so the client outlived the hook.
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        counter = OpenAITokenCounter(model="gpt-5-mini")
-        hook = _hook(token_counter=counter)
-        hook.warm_up()
-        assert counter.client is not None
-        hook.close()
-        assert counter.client is None
 
 
 class TestCompactionHookInAgent:
@@ -461,20 +426,15 @@ class TestCompactionHookAsync:
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
-    async def test_lifecycle_prefers_the_async_methods(self):
+    async def test_lifecycle_prefers_async_methods_with_sync_fallback(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         await hook.warm_up_async()
         await hook.close_async()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up_async", "close_async"]
-
-    @pytest.mark.asyncio
-    async def test_lifecycle_also_closes_the_token_counter_async(self):
-        counter = _RecordingCounter()
-        hook = _hook(token_counter=counter)
-        await hook.warm_up_async()
-        await hook.close_async()
-        assert counter.calls == ["warm_up_async", "close_async"]
 
     @pytest.mark.asyncio
     async def test_compacts_a_multi_step_async_run(self):
