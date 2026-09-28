@@ -234,9 +234,8 @@ class XLSXToDocument:
                     "missingval": "",
                     **self.table_format_kwargs,
                 }
-                formatted = value
                 if resolved_kwargs["tablefmt"] == "pipe":
-                    formatted = formatted.replace(
+                    value = value.replace(
                         {
                             r"\r\n|\r|\n": " ",  # keep in-cell line breaks from creating extra Markdown rows
                             r"(\\*)\|": r"\1\1\\|",  # escape pipes but preserve any preceding literal backslashes
@@ -248,7 +247,7 @@ class XLSXToDocument:
                 # reaches the formatter as a number and is written out as "nan". Replace
                 # the empty cells with None so an empty cell reads as empty, the way
                 # to_csv already writes it, and so missingval keeps working.
-                filled = formatted.astype(object).where(value.notna(), None)
+                filled = value.astype(object).where(value.notna(), None)
                 tables.append(filled.to_markdown(**resolved_kwargs))
             # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
