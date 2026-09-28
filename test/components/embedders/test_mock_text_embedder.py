@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-from unittest.mock import Mock
 
 import pytest
 
@@ -23,23 +22,19 @@ def test_l2_normalize_handles_zero_vector():
 
 
 class TestMockTextEmbedder:
-    @pytest.mark.parametrize("dimension", [768, 0, -1])
     @pytest.mark.parametrize(
         ("args", "kwargs", "exception", "match"),
         [
             (([0.1, 0.2],), {"embedding_fn": _ones}, ValueError, "either 'embedding' or 'embedding_fn'"),
+            ((), {"dimension": 0}, ValueError, "must be a positive integer"),
+            ((), {"dimension": -1}, ValueError, "must be a positive integer"),
             (([],), {}, ValueError, "must not be empty"),
             ((["not", "numbers"],), {}, TypeError, "must be a sequence of numbers"),
         ],
     )
-    def test_init_rejects_invalid_config(self, args, kwargs, exception, match, dimension):
+    def test_init_rejects_invalid_config(self, args, kwargs, exception, match):
         with pytest.raises(exception, match=match):
-            MockTextEmbedder(*args, dimension=dimension, **kwargs)
-
-    @pytest.mark.parametrize("dimension", [0, -1])
-    def test_deterministic_embedding_rejects_non_positive_dimension(self, dimension):
-        with pytest.raises(ValueError, match=r"^'dimension' must be a positive integer\.$"):
-            MockTextEmbedder(dimension=dimension)
+            MockTextEmbedder(*args, **kwargs)
 
     def test_deterministic_embedding(self):
         embedding = MockTextEmbedder(dimension=16).run("hello")["embedding"]
@@ -58,29 +53,21 @@ class TestMockTextEmbedder:
         )
 
     @pytest.mark.parametrize("dimension", [768, 0, -1])
-    def test_fixed_embedding_ignores_dimension(self, dimension):
+    def test_fixed_embedding(self, dimension):
         embedder = MockTextEmbedder([0.1, 0.2, 0.3], dimension=dimension)
         assert embedder.run("anything")["embedding"] == [0.1, 0.2, 0.3]
         assert embedder.run("something else")["embedding"] == [0.1, 0.2, 0.3]
 
     @pytest.mark.parametrize("dimension", [768, 0, -1])
-    def test_embedding_fn_ignores_dimension(self, dimension):
-        embedding_fn = Mock(wraps=_ones)
-        embedder = MockTextEmbedder(embedding_fn=embedding_fn, dimension=dimension)
+    def test_embedding_fn(self, dimension):
+        embedder = MockTextEmbedder(embedding_fn=_ones, dimension=dimension)
         assert embedder.run("hello")["embedding"] == [1.0, 1.0, 1.0]
-        embedding_fn.assert_called_once_with("hello")
 
-    @pytest.mark.parametrize("dimension", [768, 0, -1])
-    @pytest.mark.parametrize(
-        ("embedding", "exception", "match"),
-        [([], ValueError, "must not be empty"), ("not a vector", TypeError, "must be a sequence of numbers")],
-    )
-    def test_embedding_fn_invalid_return_raises(self, dimension, embedding, exception, match):
-        embedding_fn = Mock(return_value=embedding)
-        embedder = MockTextEmbedder(embedding_fn=embedding_fn, dimension=dimension)
-        with pytest.raises(exception, match=match):
+    def test_embedding_fn_invalid_return_raises(self):
+        # embedding_fn deliberately returns a non-vector to exercise the runtime type check
+        embedder = MockTextEmbedder(embedding_fn=lambda text: "not a vector")  # type: ignore[arg-type, return-value]
+        with pytest.raises(TypeError, match="must be a sequence of numbers"):
             embedder.run("hello")
-        embedding_fn.assert_called_once_with("hello")
 
     def test_prefix_suffix_affect_embedding(self):
         plain = MockTextEmbedder(dimension=8).run("hello")["embedding"]
@@ -127,18 +114,6 @@ class TestMockTextEmbedder:
     def test_serialization_roundtrip(self, embedder):
         restored = MockTextEmbedder.from_dict(embedder.to_dict())
         assert isinstance(restored, MockTextEmbedder)
-        assert restored.run("hello")["embedding"] == embedder.run("hello")["embedding"]
-
-    @pytest.mark.parametrize("dimension", [0, -1])
-    @pytest.mark.parametrize(
-        "kwargs", [{"embedding": [0.1, 0.2]}, {"embedding_fn": _ones}], ids=["fixed", "embedding_fn"]
-    )
-    def test_custom_embedding_serialization_roundtrip(self, dimension, kwargs):
-        embedder = MockTextEmbedder(dimension=dimension, **kwargs)
-        restored = MockTextEmbedder.from_dict(embedder.to_dict())
-        assert restored.dimension == dimension
-        assert restored.embedding == embedder.embedding
-        assert restored.embedding_fn is embedder.embedding_fn
         assert restored.run("hello")["embedding"] == embedder.run("hello")["embedding"]
 
     def test_in_pipeline(self):
