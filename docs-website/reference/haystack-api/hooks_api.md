@@ -218,7 +218,7 @@ Warm up the token counter and the compactor on the serving event loop.
 close() -> None
 ```
 
-Release the compactor's resources.
+Release the token counter's and the compactor's resources.
 
 #### close_async
 
@@ -226,7 +226,7 @@ Release the compactor's resources.
 close_async() -> None
 ```
 
-Release the compactor's async resources.
+Release the token counter's and the compactor's async resources.
 
 #### to_dict
 
