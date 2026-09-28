@@ -339,21 +339,21 @@ class TestMetaFieldRanker:
         output = ranker.run(documents=docs_before)
         assert [doc.id for doc in output["documents"]] == expected_ids
 
-
-def test_missing_meta_drop_when_no_document_has_the_field():
-    """The missing_meta policy applies even when no document has the field.
-
-    The ranker returned every input document in that case, so
-    missing_meta="drop" silently stopped filtering: a batch with no rated
-    document kept the unrated ones.
-    """
-    docs = [Document(id="a", content="a"), Document(id="b", content="b")]
-
-    assert (
-        MetaFieldRanker(meta_field="rating", missing_meta="drop").run(docs)["documents"]
-        == []
+    @pytest.mark.parametrize(
+        ("meta", "init_missing_meta", "run_missing_meta", "expected_ids"),
+        [
+            ({}, "drop", None, []),
+            ({}, "top", None, ["a", "b"]),
+            ({}, "bottom", None, ["a", "b"]),
+            ({}, "bottom", "drop", []),
+            ({}, "drop", "top", ["a", "b"]),
+            ({"rating": None}, "drop", None, []),
+        ],
     )
+    def test_missing_meta_when_all_values_are_missing(self, meta, init_missing_meta, run_missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=init_missing_meta)
+        docs = [Document(id="a", content="a", meta=meta), Document(id="b", content="b", meta=meta)]
 
-    for policy in ("bottom", "top"):
-        ranker = MetaFieldRanker(meta_field="rating", missing_meta=policy)
-        assert [d.id for d in ranker.run(docs)["documents"]] == ["a", "b"]
+        output = ranker.run(documents=docs, missing_meta=run_missing_meta)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids
