@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``TiktokenCounter`` crashing with ``ValueError`` when messages or
+    tool schemas contain literal special-token strings such as
+    ``<|endoftext|>``. Counting now uses ``encode_ordinary``, matching the
+    earlier fix for the document splitters in `#12853
+    <https://github.com/deepset-ai/haystack/issues/12853>`_.

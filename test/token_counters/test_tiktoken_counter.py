@@ -27,7 +27,10 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
+        # Mirrors `tiktoken.Encoding.encode_ordinary`: literal special-token
+        # markers (e.g. `<|endoftext|>`) are counted as ordinary text and
+        # must never raise. See https://github.com/deepset-ai/haystack/issues/12869
         self.encoded.append(text)
         return list(range(len(text.split())))
 
@@ -130,6 +133,13 @@ class TestTiktokenCounterTools:
     def test_nothing_to_measure_is_zero(self):
         assert TiktokenCounter().count([]) == 0
         assert TiktokenCounter().count([], tools=None) == 0
+
+    def test_special_token_markers_are_counted_as_ordinary_text(self, fake_encoder):
+        # https://github.com/deepset-ai/haystack/issues/12869 — `encode()`
+        # raises on literal `<|endoftext|>`; `encode_ordinary()` must not.
+        messages = [ChatMessage.from_user("score <|endoftext|> now")]
+        assert TiktokenCounter().count(messages) > 0
+        assert "<|endoftext|>" in fake_encoder.encoded[0]
 
 
 @pytest.mark.integration
