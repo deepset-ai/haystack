@@ -17,7 +17,7 @@ from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component
-from haystack.components.agents.agent import Agent, _get_model_exit_reason
+from haystack.components.agents.agent import Agent, _get_model_exit_reason, _messages_with_owned_tool_calls
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -29,7 +29,7 @@ from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import OutputSocket
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -197,6 +197,25 @@ class ToolAssertingChatGenerator:
         message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
         self.tool_invoked = True
         return {"replies": [message]}
+
+
+@component
+class CaptureToolsGenerator:
+    """Records the tools/generation_kwargs the Agent forwarded to the chat generator."""
+
+    def __init__(self) -> None:
+        self.captured_tools = None
+        self.generation_kwargs = None
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools=None, **kwargs) -> dict[str, Any]:
+        self.captured_tools = tools
+        self.generation_kwargs = kwargs.get("generation_kwargs")
+        return {"replies": [ChatMessage.from_assistant("done")]}
+
+    @component.output_types(replies=list[ChatMessage])
+    async def run_async(self, messages: list[ChatMessage], tools=None, **kwargs) -> dict[str, Any]:
+        return self.run(messages=messages, tools=tools, **kwargs)
 
 
 def _parallel_tool_calling_generator() -> MockChatGenerator:
@@ -733,6 +752,162 @@ class TestAgentRun:
         ]
         # No tools were configured, so the Agent does not pass a `tools` argument to the chat generator.
         run_async_mock.assert_called_once_with(messages=expected_messages, generation_kwargs={"temperature": 0.0})
+
+    def test_generation_kwargs_tools_are_offered_alongside_agent_tools(self, weather_tool):
+        chat_generator = CaptureToolsGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files", "description": "Client search."}}]
+        agent.run([ChatMessage.from_user("Hello")], generation_kwargs={"tools": extra, "temperature": 0.2})
+
+        offered_names = [tool.name for tool in chat_generator.captured_tools]
+        assert offered_names == ["weather_tool", "search_knowledge_files"]
+        assert chat_generator.generation_kwargs == {"temperature": 0.2}
+
+    def test_client_side_tool_call_is_not_invoked(self, weather_tool):
+        chat_generator = MockChatGenerator(
+            [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="search_knowledge_files", arguments={"query": "Alzheimer"})]
+                ),
+                "should not be reached",
+            ]
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            result = agent.run([ChatMessage.from_user("What is Alzheimer's?")], generation_kwargs={"tools": extra})
+
+        run_tool_mock.assert_not_called()
+        assert result["exit_reason"] == "client_tools"
+        last = result["last_message"]
+        assert last.tool_calls
+        assert last.tool_calls[0].tool_name == "search_knowledge_files"
+
+    def test_agent_tool_is_still_invoked_when_client_tools_are_present(self, weather_tool):
+        chat_generator = MockChatGenerator(
+            [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                ),
+                "It's mostly sunny.",
+            ]
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            result = agent.run([ChatMessage.from_user("Weather in Berlin?")], generation_kwargs={"tools": extra})
+
+        run_tool_mock.assert_called_once()
+        assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
+        assert result["last_message"].text == "It's mostly sunny."
+
+    def test_owned_and_client_tool_calls_in_one_step(self, weather_tool):
+        chat_generator = MockChatGenerator(
+            [
+                ChatMessage.from_assistant(
+                    tool_calls=[
+                        ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                        ToolCall(tool_name="search_knowledge_files", arguments={"query": "Berlin weather"}),
+                    ]
+                ),
+                "should not be reached",
+            ]
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            result = agent.run([ChatMessage.from_user("Weather in Berlin?")], generation_kwargs={"tools": extra})
+
+        run_tool_mock.assert_called_once()
+        invoked_names = [
+            tool_call.tool_name
+            for message in run_tool_mock.call_args.kwargs["messages"]
+            for tool_call in (message.tool_calls or [])
+        ]
+        assert invoked_names == ["weather_tool"]
+        assert result["exit_reason"] == "client_tools"
+
+    def test_owned_and_client_tool_calls_invoke_payload_keeps_text_and_reasoning(self, weather_tool):
+        assistant_turn = ChatMessage.from_assistant(
+            text="I'll check weather and files.",
+            reasoning=ReasoningContent(reasoning_text="Use both tools in parallel."),
+            tool_calls=[
+                ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                ToolCall(tool_name="search_knowledge_files", arguments={"query": "Berlin weather"}),
+            ],
+            meta={"finish_reason": "tool_calls"},
+        )
+        chat_generator = MockChatGenerator([assistant_turn, "should not be reached"])
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            agent.run([ChatMessage.from_user("Weather in Berlin?")], generation_kwargs={"tools": extra})
+
+        invoke_messages = run_tool_mock.call_args.kwargs["messages"]
+        assert len(invoke_messages) == 1
+        invoke_message = invoke_messages[0]
+        assert invoke_message.text == "I'll check weather and files."
+        assert invoke_message.reasoning is not None
+        assert invoke_message.reasoning.reasoning_text == "Use both tools in parallel."
+        assert [tool_call.tool_name for tool_call in invoke_message.tool_calls] == ["weather_tool"]
+        assert len(assistant_turn.tool_calls) == 2
+
+    def test_messages_with_owned_tool_calls_strips_client_calls_and_keeps_content(self, weather_tool):
+        assistant = ChatMessage.from_assistant(
+            text="Checking both sources.",
+            reasoning="Need weather and file search.",
+            tool_calls=[
+                ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                ToolCall(tool_name="search_knowledge_files", arguments={"query": "x"}),
+            ],
+            meta={"finish_reason": "tool_calls"},
+        )
+        filtered = _messages_with_owned_tool_calls([assistant], {weather_tool.name})
+
+        assert len(filtered) == 1
+        message = filtered[0]
+        assert message.text == "Checking both sources."
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == "Need weather and file search."
+        assert [tool_call.tool_name for tool_call in message.tool_calls] == ["weather_tool"]
+        assert message.meta.get("finish_reason") == "tool_calls"
+        assert len(assistant.tool_calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_run_async_generation_kwargs_tools_are_offered_alongside_agent_tools(self, weather_tool):
+        chat_generator = CaptureToolsGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files", "description": "Client search."}}]
+        await agent.run_async([ChatMessage.from_user("Hello")], generation_kwargs={"tools": extra, "temperature": 0.2})
+
+        offered_names = [tool.name for tool in chat_generator.captured_tools]
+        assert offered_names == ["weather_tool", "search_knowledge_files"]
+        assert chat_generator.generation_kwargs == {"temperature": 0.2}
+
+    @pytest.mark.asyncio
+    async def test_run_async_client_side_tool_call_is_not_invoked(self, weather_tool):
+        chat_generator = MockChatGenerator(
+            [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="search_knowledge_files", arguments={"query": "Alzheimer"})]
+                ),
+                "should not be reached",
+            ]
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        extra = [{"type": "function", "function": {"name": "search_knowledge_files"}}]
+
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            result = await agent.run_async(
+                [ChatMessage.from_user("What is Alzheimer's?")], generation_kwargs={"tools": extra}
+            )
+
+        run_tool_mock.assert_not_called()
+        assert result["exit_reason"] == "client_tools"
 
     @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool, monkeypatch):

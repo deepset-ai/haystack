@@ -523,6 +523,25 @@ class TestOpenAIChatGenerator:
         assert kwargs["temperature"] == 0.9
         assert kwargs["max_completion_tokens"] == 10
 
+    def test_run_merges_tools_from_generation_kwargs(
+        self, tools: list[Tool], openai_mock_chat_completion: MagicMock
+    ) -> None:
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        extra = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_knowledge_files",
+                    "description": "Client catalog search.",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+        component.run([ChatMessage.from_user("Hello")], tools=tools[:1], generation_kwargs={"tools": extra})
+
+        sent_names = [entry["function"]["name"] for entry in openai_mock_chat_completion.call_args.kwargs["tools"]]
+        assert sent_names == ["weather", "search_knowledge_files"]
+
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
     ) -> None:

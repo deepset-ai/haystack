@@ -24,7 +24,9 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import (
+    _check_duplicate_openai_tool_definition_keys,
     _convert_streaming_chunks_to_chat_message,
+    _merge_openai_tool_definitions,
     _normalize_messages,
     _serialize_object,
 )
@@ -358,7 +360,9 @@ class OpenAIChatGenerator:
         :param generation_kwargs:
             Additional keyword arguments for text generation. These are merged per key with the
             `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
-            only at initialization are kept.
+            only at initialization are kept. A ``tools`` list is merged with the ``tools`` run argument;
+            entries from the run argument take precedence over ``generation_kwargs["tools"]`` when they
+            share the same function name.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -441,7 +445,9 @@ class OpenAIChatGenerator:
         :param generation_kwargs:
             Additional keyword arguments for text generation. These are merged per key with the
             `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
-            only at initialization are kept.
+            only at initialization are kept. A ``tools`` list is merged with the ``tools`` run argument;
+            entries from the run argument take precedence over ``generation_kwargs["tools"]`` when they
+            share the same function name.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             If set, it will override the `tools` parameter provided during initialization.
@@ -527,16 +533,17 @@ class OpenAIChatGenerator:
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(flattened_tools)
 
-        openai_tools = {}
+        tool_definitions: list[dict[str, Any]] = []
         if flattened_tools:
-            tool_definitions = []
             for t in flattened_tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
                     function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
-            openai_tools = {"tools": tool_definitions}
+        tool_definitions = _merge_openai_tool_definitions(tool_definitions, generation_kwargs.pop("tools", None))
+        _check_duplicate_openai_tool_definition_keys(tool_definitions)
+        openai_tools = {"tools": tool_definitions} if tool_definitions else {}
 
         base_args = {
             "model": self.model,
