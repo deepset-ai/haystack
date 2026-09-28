@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import re
+import unicodedata
 import uuid
 from collections import Counter
 from collections.abc import Callable, Iterable
@@ -34,6 +35,27 @@ logger = logging.getLogger(__name__)
 # mapped to scores ~1.
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
+
+# Unicode ranges for scripts that are written without spaces between words (Chinese, Japanese, Korean). These
+# characters are tokenized one per token so that bare-term queries for individual characters or short words can
+# match, while every other script keeps the usual word-based behaviour. The kana ranges intentionally exclude
+# punctuation such as the katakana middle dot (・) so it does not become a token on its own.
+_CJK_CHAR_CLASS = (
+    r"\u1100-\u11ff"  # Hangul Jamo
+    r"\ua960-\ua97f"  # Hangul Jamo Extended-A
+    r"\ud7b0-\ud7ff"  # Hangul Jamo Extended-B
+    r"\u3130-\u318f"  # Hangul Compatibility Jamo
+    r"\uac00-\ud7af"  # Hangul Syllables
+    r"\u3041-\u3096"  # Hiragana letters (excludes combining marks and kana iteration marks)
+    r"\u30a1-\u30fa\u30fc"  # Katakana letters + prolonged sound mark, excludes ・ middle dot
+    r"\u31f0-\u31ff"  # Katakana Phonetic Extensions
+    r"\u3400-\u4dbf"  # CJK Unified Ideographs Extension A
+    r"\u4e00-\u9fff"  # CJK Unified Ideographs
+    r"\uf900-\ufaff"  # CJK Compatibility Ideographs
+    r"\uff66-\uff9f"  # Halfwidth Katakana
+    r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
+)
+_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
 
 
 def _make_metadata_value_hashable(value: Any) -> Any:
@@ -80,7 +102,7 @@ class InMemoryDocumentStore:
 
     def __init__(
         self,
-        bm25_tokenization_regex: str = r"(?u)\b\w+\b",
+        bm25_tokenization_regex: str = _DEFAULT_BM25_TOKENIZATION_REGEX,
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
@@ -94,7 +116,10 @@ class InMemoryDocumentStore:
         """
         Initializes the DocumentStore.
 
-        :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
+        :param bm25_tokenization_regex:
+            The regular expression used to tokenize the text for BM25 retrieval. The default groups word
+            characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
+            Text is lowercased and NFC-normalized before tokenization.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -212,15 +237,15 @@ class InMemoryDocumentStore:
 
         Here we explicitly create a tokenization method to encapsulate
         all pre-processing logic used to create BM25 tokens, such as
-        lowercasing. This helps track the exact tokenization process
-        used for BM25 scoring at any given time.
+        lowercasing and Unicode NFC normalization. This helps track the exact tokenization process used for
+        BM25 scoring at any given time.
 
         :param text:
             The text to tokenize.
         :returns:
             A list of tokens.
         """
-        text = text.lower()
+        text = unicodedata.normalize("NFC", text.lower())
         return self.tokenizer(text)
 
     def _score_bm25l(self, query: str, documents: list[Document]) -> list[tuple[Document, float]]:
