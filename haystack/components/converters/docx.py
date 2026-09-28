@@ -27,7 +27,7 @@ _MARKDOWN_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
-    from docx.table import Table
+    from docx.table import Table, _Cell
     from docx.text.hyperlink import Hyperlink
     from docx.text.paragraph import Paragraph
     from docx.text.run import Run
@@ -327,6 +327,15 @@ class DOCXToDocument:
         # cell already contains cannot consume the escape.
         return _MARKDOWN_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", text)
 
+    def _cell_text(self, cell: "_Cell") -> str:
+        """
+        Returns a table cell's text with links formatted like links in body paragraphs.
+
+        :param cell: The DOCX table cell.
+        :returns: The cell's paragraphs joined by newlines, as `cell.text` joins them.
+        """
+        return "\n".join(self._process_links_in_paragraph(paragraph) for paragraph in cell.paragraphs)
+
     def _table_to_markdown(self, table: "Table") -> str:
         """
         Converts a DOCX table to a Markdown string.
@@ -340,7 +349,7 @@ class DOCXToDocument:
         # Calculate max width for each column, on the escaped text that is written out
         for row in table.rows:
             for i, cell in enumerate(row.cells):
-                cell_text = self._escape_markdown_cell(cell.text.strip())
+                cell_text = self._escape_markdown_cell(self._cell_text(cell).strip())
                 if i >= len(max_col_widths):
                     max_col_widths.append(len(cell_text))
                 else:
@@ -349,7 +358,7 @@ class DOCXToDocument:
         # Process rows
         for i, row in enumerate(table.rows):
             md_row = [
-                self._escape_markdown_cell(cell.text.strip()).ljust(max_col_widths[j])
+                self._escape_markdown_cell(self._cell_text(cell).strip()).ljust(max_col_widths[j])
                 for j, cell in enumerate(row.cells)
             ]
             markdown.append("| " + " | ".join(md_row) + " |")
@@ -373,7 +382,7 @@ class DOCXToDocument:
 
         # Process rows
         for row in table.rows:
-            csv_row = [cell.text.strip() for cell in row.cells]
+            csv_row = [self._cell_text(cell).strip() for cell in row.cells]
             csv_writer.writerow(csv_row)
 
         # Get the CSV as a string and strip any trailing newlines
