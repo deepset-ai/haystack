@@ -1193,7 +1193,9 @@ class TestSplittingByTokenIntegration:
             assert chunk.meta["split_id"] == split_id
             start = chunk.meta["split_idx_start"]
             assert text[start : start + len(chunk.content)] == chunk.content
-            assert chunk.meta["page_number"] == 1 + text[:start].count("\f")
+            # page_number is the page the chunk's text starts on, so breaks it opens with count toward it
+            leading_breaks = len(chunk.content) - len(chunk.content.lstrip("\f"))
+            assert chunk.meta["page_number"] == 1 + text[: start + leading_breaks].count("\f")
 
     def test_basic_chunking(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
@@ -1259,7 +1261,9 @@ class TestSplittingByTokenIntegration:
         assert len(docs) > 1
         assert docs[0].meta["page_number"] == 1
         for d in docs:
-            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.content is not None
+            leading_breaks = len(d.content) - len(d.content.lstrip("\f"))
+            expected_page = 1 + text[: d.meta["split_idx_start"] + leading_breaks].count("\f")
             assert d.meta["page_number"] == expected_page
         assert docs[-1].meta["page_number"] == 3
 
@@ -1270,6 +1274,8 @@ class TestSplittingByTokenIntegration:
         docs = splitter.run(documents=[doc])["documents"]
         assert len(docs) > 1
         for d in docs:
-            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.content is not None
+            leading_breaks = len(d.content) - len(d.content.lstrip("\f"))
+            expected_page = 1 + text[: d.meta["split_idx_start"] + leading_breaks].count("\f")
             assert d.meta["page_number"] == expected_page
         assert docs[-1].meta["page_number"] == 3
