@@ -1,0 +1,23 @@
+---
+upgrade:
+  - |
+    The ``page_number`` metadata field now means the same thing in every splitter: the page the chunk's
+    text starts on. Two cases change:
+
+    - ``RecursiveDocumentSplitter`` reported the page a chunk *ended* on. A chunk spanning a page break
+      now reports the page it starts on, matching ``DocumentSplitter`` and ``MarkdownHeaderSplitter``.
+    - ``DocumentSplitter``, ``MarkdownHeaderSplitter`` and ``EmbeddingBasedDocumentSplitter`` reported the
+      previous page for a chunk that *began* with one or more form feeds (``\f``), even though all of the
+      chunk's text was on the following page. Such chunks now report the page their text is on. A chunk
+      made up entirely of page breaks is an empty page and keeps the page it starts on, so blank pages
+      emitted by ``split_by="page"`` still get their own number.
+
+    If you display ``page_number`` to users or store it alongside embeddings, re-index documents that
+    contain form feeds to pick up the corrected values.
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` assigning ``page_number`` values that drifted upwards, and could
+    exceed the number of pages in the document, when ``split_overlap`` was greater than 0. A page break
+    repeated in an overlapping tail was counted once per chunk it appeared in. ``page_number`` is now
+    derived from the chunk's offset in the source document instead of a running counter, so a repeated
+    page break cannot be counted twice.

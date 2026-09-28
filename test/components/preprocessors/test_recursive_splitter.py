@@ -9,6 +9,7 @@ import pytest
 from pytest import LogCaptureFixture
 
 from haystack import Document, Pipeline
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.recursive_splitter import RecursiveDocumentSplitter
 from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
@@ -213,7 +214,7 @@ def test_run_split_by_word_count_page_breaks_split_unit_char():
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
     assert doc_chunks[2].content == "another page. \f "
-    assert doc_chunks[2].meta["page_number"] == 3
+    assert doc_chunks[2].meta["page_number"] == 2
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 
@@ -363,6 +364,49 @@ def test_run_split_by_sentence_count_page_breaks_split_unit_char() -> None:
     assert chunks_docs[6].meta["page_number"] == 5
     assert chunks_docs[6].meta["split_id"] == 6
     assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
+
+
+def test_run_page_number_is_the_page_the_chunk_starts_on():
+    text = "aa bb\fcc dd ee ff\fgg hh"
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=[" "], split_unit="word")
+
+    chunks = splitter.run(documents=[Document(content=text)])["documents"]
+
+    contents: list[str] = []
+    for chunk in chunks:
+        assert chunk.content is not None
+        contents.append(chunk.content)
+
+    assert contents == ["aa bb\fcc dd ee ", "ff\fgg hh"]
+    assert "".join(contents) == text
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 15]
+    # Both chunks straddle a page break and are reported on the page their text starts on.
+    assert [chunk.meta["page_number"] for chunk in chunks] == [1, 2]
+
+    # DocumentSplitter defines the convention; the two must not drift apart.
+    reference = DocumentSplitter(split_by="word", split_length=4, split_overlap=0).run(
+        documents=[Document(content=text)]
+    )["documents"]
+    assert [chunk.content for chunk in chunks] == [doc.content for doc in reference]
+    assert [chunk.meta["page_number"] for chunk in chunks] == [doc.meta["page_number"] for doc in reference]
+
+
+def test_run_page_number_does_not_drift_with_overlap():
+    # The page break sits inside the overlapping tail, so it appears in two consecutive chunks. Counting
+    # it once per appearance used to push page_number past the number of pages in the document.
+    text = "This is page one.\fThis is page two, it is longer."
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=5, separators=["\n"], split_unit="char")
+
+    chunks = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [chunk.content for chunk in chunks] == [
+        "This is page one.\fTh",
+        "e.\fThis is page two,",
+        " two, it is longer.",
+    ]
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 15, 30]
+    # the text contains one page break, so it spans two pages
+    assert [chunk.meta["page_number"] for chunk in chunks] == [1, 1, 2]
 
 
 def test_run_split_document_with_overlap_character_unit():
@@ -563,7 +607,7 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
     assert doc_chunks[2].content == "on another page. \f "
-    assert doc_chunks[2].meta["page_number"] == 3
+    assert doc_chunks[2].meta["page_number"] == 2
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 

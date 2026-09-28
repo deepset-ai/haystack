@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any, Literal
 
 from haystack import Document, component, default_to_dict, logging
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
@@ -438,7 +439,8 @@ class RecursiveDocumentSplitter:
             )
 
     def _run_one(self, doc: Document) -> list[Document]:
-        chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
+        content = doc.content or ""  # run() skips documents without content, so this is a non-empty string
+        chunks = self._chunk_text(content)
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
 
         # apply the overlap once, on the fully chunked list, so that chunks produced
@@ -447,7 +449,6 @@ class RecursiveDocumentSplitter:
             chunks = self._apply_overlap(chunks)
 
         current_position = 0
-        current_page = 1
 
         new_docs: list[Document] = []
 
@@ -464,17 +465,10 @@ class RecursiveDocumentSplitter:
             if split_nr > 0 and self.split_overlap > 0:
                 self._add_overlap_info(current_position, new_doc, new_docs)
 
-            # count page breaks in the chunk
-            current_page += chunk.count("\f")
-
-            # if there are consecutive page breaks at the end with no more text, adjust the page number
-            # e.g: "text\f\f\f" -> 3 page breaks, but current_page should be 1
-            consecutive_page_breaks = len(chunk) - len(chunk.rstrip("\f"))
-
-            if consecutive_page_breaks > 0:
-                new_doc.meta["page_number"] = current_page - consecutive_page_breaks
-            else:
-                new_doc.meta["page_number"] = current_page
+            # The page the chunk's first non-page-break character is on: breaks before the chunk, plus the
+            # ones it opens with. Derived from the chunk's absolute offset rather than a running counter, so
+            # a break repeated in an overlapping tail cannot be counted twice.
+            new_doc.meta["page_number"] = 1 + content.count("\f", 0, current_position) + _leading_page_breaks(chunk)
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
@@ -498,7 +492,8 @@ class RecursiveDocumentSplitter:
         :param documents: List of Documents to split.
         :returns:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
-            to the input documents.
+            to the input documents. Each chunk carries a metadata field `page_number` with the page the chunk
+            starts on, counting form feed ("\f") characters in the original document.
         """
         if not self._is_warmed_up and ("sentence" in self.separators or self.split_units == "token"):
             self.warm_up()

@@ -444,9 +444,17 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The 2nd and 4th chunks open with the page break(s) that end the preceding page, so their text
+        # starts on the following page.
+        expected = [
+            ("This is some text.", 1),
+            ("\f This text is on another page.", 2),
+            ("This content has two.", 1),
+            ("\f\f page brakes.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
@@ -456,9 +464,16 @@ class TestSplittingByFunctionOrCharacterRegex:
         )
         result = splitter.run(documents=[doc1])
 
-        expected_pages = [1, 2, 2, 2]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The last chunk opens with the page break, so its text starts on page 3.
+        expected = [
+            ("This is a text with some words.\f There is a second sentence.\n\n", 1),
+            ("And there is a third sentence.\n\n", 2),
+            ("And more passages.\n\n", 2),
+            ("\f And another passage.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
@@ -482,6 +497,18 @@ class TestSplittingByFunctionOrCharacterRegex:
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
+    def test_add_page_number_to_metadata_for_blank_pages(self):
+        splitter = DocumentSplitter(split_by="page", split_length=1)
+
+        result = splitter.run(documents=[Document(content="Hello\f\fWorld")])
+        # The middle chunk is a blank page: it is page 2 itself, not a chunk pushed onto page 3.
+        assert [doc.content for doc in result["documents"]] == ["Hello\f", "\f", "World"]
+        assert [doc.meta["page_number"] for doc in result["documents"]] == [1, 2, 3]
+
+        result = splitter.run(documents=[Document(content="\fHello")])
+        assert [doc.content for doc in result["documents"]] == ["\f", "Hello"]
+        assert [doc.meta["page_number"] for doc in result["documents"]] == [1, 2]
+
     def test_add_page_number_to_metadata_with_overlap_word_split(self):
         splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
         doc1 = Document(content="This is some text. And\f this text is on another page.")
@@ -501,9 +528,18 @@ class TestSplittingByFunctionOrCharacterRegex:
         # No overlap-only trailing chunks: " End." is fully contained in doc1's previous chunk and
         # " More text." in doc2's previous chunk, so both are skipped instead of creating redundant
         # chunks (the latter even carried a wrong page number).
-        expected_pages = [1, 1, 1, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The 3rd and 5th chunks open with the page break(s) that end the preceding page, so their text
+        # starts on the following page.
+        expected = [
+            ("This is some text. And this is more text.", 1),
+            (" And this is more text.\f This text is on another page.", 1),
+            ("\f This text is on another page. End.", 2),
+            ("This content has two.\f\f page brakes.", 1),
+            ("\f\f page brakes. More text.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=2, split_overlap=1)
