@@ -7,6 +7,7 @@ import gc
 import logging
 import math
 import tempfile
+import unicodedata
 from typing import Literal, cast
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.in_memory import document_store as in_memory_module
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -83,6 +85,29 @@ class TestMemoryDocumentStore(
         yield store
         store.shutdown()
 
+    @pytest.fixture
+    def documents_with_composite_metadata(self) -> list[Document]:
+        return [
+            Document(
+                id="1",
+                content="Document 1",
+                meta={"tags": ["news", "ai"], "source": {"section": {"id": 1}, "type": "docs"}},
+            ),
+            Document(
+                id="2",
+                content="Document 2",
+                meta={"tags": ["news", "ai"], "source": {"type": "docs", "section": {"id": 1}}},
+            ),
+            Document(
+                id="3",
+                content="Document 3",
+                meta={"tags": ["ai", "news"], "source": {"section": {"id": 1}, "type": "docs"}},
+            ),
+            Document(
+                id="4", content="Document 4", meta={"tags": ["news"], "source": {"section": {"id": 2}, "type": "docs"}}
+            ),
+        ]
+
     def test_filter_documents_date_equality_with_equivalent_iso_formats(
         self, document_store: InMemoryDocumentStore
     ) -> None:
@@ -117,7 +142,7 @@ class TestMemoryDocumentStore(
         assert data == {
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
-                "bm25_tokenization_regex": r"(?u)\b\w+\b",
+                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
@@ -604,6 +629,52 @@ class TestMemoryDocumentStore(
             result, [d for d in filterable_docs if d.meta.get("number") == 100]
         )
 
+    def test_count_unique_metadata_by_filter_with_unhashable_values(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        document_store.write_documents(documents_with_composite_metadata)
+
+        counts = document_store.count_unique_metadata_by_filter(filters={}, metadata_fields=["tags", "source"])
+
+        assert counts == {"tags": 3, "source": 2}
+
+    def test_get_metadata_field_unique_values_with_composite_metadata(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        document_store.write_documents(documents_with_composite_metadata)
+
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="source", size=10)
+        counts = document_store.count_unique_metadata_by_filter(filters={}, metadata_fields=["source"])
+
+        assert total_count == counts["source"] == 2
+        assert {value["section"]["id"] for value in values} == {1, 2}
+
+    @pytest.mark.asyncio
+    async def test_count_unique_metadata_by_filter_async_with_unhashable_values(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        await document_store.write_documents_async(documents_with_composite_metadata)
+
+        counts = await document_store.count_unique_metadata_by_filter_async(
+            filters={}, metadata_fields=["tags", "source"]
+        )
+
+        assert counts == {"tags": 3, "source": 2}
+
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_async_with_composite_metadata(
+        self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]
+    ) -> None:
+        await document_store.write_documents_async(documents_with_composite_metadata)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(
+            metadata_field="source", size=10
+        )
+        counts = await document_store.count_unique_metadata_by_filter_async(filters={}, metadata_fields=["source"])
+
+        assert total_count == counts["source"] == 2
+        assert {value["section"]["id"] for value in values} == {1, 2}
+
     @pytest.mark.asyncio
     async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
@@ -748,6 +819,44 @@ class TestMemoryDocumentStore(
         tokens = in_memory_doc_store._tokenize_bm25("Luna is a dog")
         assert tokens == ["luna", "is", "a", "dog"]
 
+    def test_bm25_tokenization_splits_cjk_characters(self, in_memory_doc_store):
+        # A Hangul noun keeps its attached particle in the default tokenizer,
+        # which makes a bare-noun query have zero overlap with the document
+        # (e.g. query "서울" vs document containing only "서울은"). Each CJK
+        # character (Hangul syllables, CJK unified ideographs, kana) should be
+        # tokenized on its own so BM25 can match the bare form.
+        tokens = in_memory_doc_store._tokenize_bm25("서울은 대한민국의 수도")
+        assert tokens == ["서", "울", "은", "대", "한", "민", "국", "의", "수", "도"]
+
+        # Mixed script: Latin words and digits keep their previous behaviour.
+        tokens = in_memory_doc_store._tokenize_bm25("Seoul 2026 시티")
+        assert tokens == ["seoul", "2026", "시", "티"]
+
+    def test_bm25_tokenization_handles_cjk_details(self, in_memory_doc_store):
+        tokenize = in_memory_doc_store._tokenize_bm25
+
+        # Kana punctuation such as the katakana middle dot (\u30fb) must not become a token of its own,
+        # so a name like john (katakana) splits only on the letters.
+        tokens = tokenize("\u30b8\u30e7\u30f3\u30fb\u30b9\u30df\u30b9")
+        assert "\u30fb" not in tokens
+        assert tokens == ["\u30b8", "\u30e7", "\u30f3", "\u30b9", "\u30df", "\u30b9"]
+
+        # Halfwidth katakana (U+FF66-U+FF9F) and CJK Extension A ideographs split per character too.
+        assert tokenize("\uff71\uff72\uff73") == ["\uff71", "\uff72", "\uff73"]
+        assert tokenize("\u3400\u3401\u3402") == ["\u3400", "\u3401", "\u3402"]
+        # CJK Compatibility Ideographs and the two Hangul Jamo Extended blocks split per character too.
+        assert tokenize("\ufa0e\ufa0f\ufa11") == ["\ufa0e", "\ufa0f", "\ufa11"]
+        assert tokenize("\ua960\ud7b0") == ["\ua960", "\ud7b0"]
+        # Halfwidth Hangul Jamo (U+FFA0-U+FFDC), the Korean counterpart of halfwidth katakana, too.
+        assert tokenize("\uffb1\uffb2\uffb3") == ["\uffb1", "\uffb2", "\uffb3"]
+
+        # NFC-normalized Hangul and its decomposed NFD spelling tokenize identically, so a query in one
+        # form matches a document written in the other.
+        nfc = "\uc11c\uc6b8\uc740"
+        nfd = unicodedata.normalize("NFD", nfc)
+        assert nfd != nfc
+        assert tokenize(nfd) == tokenize(nfc) == ["\uc11c", "\uc6b8", "\uc740"]
+
     def test_bm25_retrieval_with_single_char_query(self, in_memory_doc_store):
         docs = [
             Document(content="C programming language"),
@@ -759,6 +868,20 @@ class TestMemoryDocumentStore(
         results = in_memory_doc_store.bm25_retrieval(query="C", top_k=1)
         assert len(results) == 1
         assert results[0].content == "C programming language"
+
+    def test_bm25_retrieval_with_cjk_bare_term_query(self, in_memory_doc_store):
+        # The bug this PR fixes: a document holds the noun with its attached
+        # particle ("서울은"), so the default tokenizer had zero overlap with the
+        # bare query "서울" and retrieval silently returned nothing.
+        docs = [
+            Document(content="서울은 대한민국의 수도이며 인구가 가장 많다."),
+            Document(content="부산은 대한민국 제2의 도시이자 최대 항구이다."),
+        ]
+        in_memory_doc_store.write_documents(docs)
+
+        results = in_memory_doc_store.bm25_retrieval(query="서울", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "서울은 대한민국의 수도이며 인구가 가장 많다."
 
     def test_bm25_retrieval_single_char_content_token(self, in_memory_doc_store):
         docs = [Document(content="I like R"), Document(content="I like Python")]

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix shared ``parent_headers`` metadata in ``MarkdownHeaderSplitter`` when
+    ``keep_headers=False`` and secondary splitting is enabled. Editing one
+    chunk's parent headers no longer changes its siblings' metadata.

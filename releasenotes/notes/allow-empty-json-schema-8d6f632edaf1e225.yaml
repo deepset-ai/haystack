@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``JsonSchemaValidator`` now accepts an empty JSON Schema (``{}``) and honors it when passed to ``run()``. Empty
+    schemas are valid JSON Schema and match every JSON value.

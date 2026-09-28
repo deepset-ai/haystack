@@ -19,6 +19,27 @@ from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 
 
 class TestLLMDocumentContentExtractor:
+    def test_generator_output_with_error_key_is_not_treated_as_failure(self):
+        """A generator whose output dict includes an "error" field must not fail the document."""
+
+        class ErrorKeyChatGenerator:
+            def run(self, messages, **kwargs):
+                return {"replies": [ChatMessage.from_assistant("extracted text")], "error": None}
+
+        extractor = LLMDocumentContentExtractor(chat_generator=ErrorKeyChatGenerator())
+
+        with patch.object(DocumentToImageContent, "run") as mock_convert:
+            mock_convert.return_value = {
+                "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+            }
+            doc = Document(content="", meta={"file_path": "/path/to/image.pdf"})
+            result = extractor.run(documents=[doc])
+
+        assert result["failed_documents"] == []
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "extracted text"
+        assert "extraction_error" not in result["documents"][0].meta
+
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
@@ -342,6 +363,20 @@ class TestLLMDocumentContentExtractor:
         assert failed_doc.id == doc2.id
         assert "extraction_error" in failed_doc.meta
 
+    def test_run_with_unconvertible_document_in_batch(self):
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}'), root_path="test/test_files"
+        )
+        valid_doc = Document(content="", meta={"file_path": "images/apple.jpg"})
+        invalid_doc = Document(content="", meta={"file_path": "docx/sample_docx.docx"})
+
+        result = extractor.run(documents=[valid_doc, invalid_doc])
+
+        assert [doc.id for doc in result["documents"]] == [valid_doc.id]
+        assert result["documents"][0].content == "Extracted content"
+        assert [doc.id for doc in result["failed_documents"]] == [invalid_doc.id]
+        assert "extraction_error" in result["failed_documents"][0].meta
+
     @patch.object(DocumentToImageContent, "run")
     def test_run_json_multiple_keys_metadata_merged(self, mock_doc_to_image_run):
         """When LLM returns JSON with multiple keys and no document_content, all keys are merged into metadata."""
@@ -365,9 +400,9 @@ class TestLLMDocumentContentExtractor:
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator())
-        result = extractor._run_on_thread(None)
-        assert "error" in result
-        assert result["error"] == "Document has no content, skipping LLM call."
+        doc, success = extractor._run_on_thread(Document(content="", meta={"file_path": "missing.pdf"}), None)
+        assert success is False
+        assert doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -658,6 +693,21 @@ class TestLLMDocumentContentExtractorAsync:
         extracted_content = result["documents"][0].content
         assert extracted_content is not None
         assert len(extracted_content) > 0
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_unconvertible_document_in_batch(self):
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}'), root_path="test/test_files"
+        )
+        valid_doc = Document(content="", meta={"file_path": "images/apple.jpg"})
+        invalid_doc = Document(content="", meta={"file_path": "docx/sample_docx.docx"})
+
+        result = await extractor.run_async(documents=[valid_doc, invalid_doc])
+
+        assert [doc.id for doc in result["documents"]] == [valid_doc.id]
+        assert result["documents"][0].content == "Extracted content"
+        assert [doc.id for doc in result["failed_documents"]] == [invalid_doc.id]
+        assert "extraction_error" in result["failed_documents"][0].meta
 
 
 class TestComponentLifecycle:

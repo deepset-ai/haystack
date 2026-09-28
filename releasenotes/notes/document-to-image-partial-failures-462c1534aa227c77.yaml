@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``DocumentToImageContent`` no longer raises a ``ValueError`` for the whole batch when one document is missing
+    the file path or ``page_number`` metadata, has an invalid file path, or has an unsupported MIME type.
+    That document now gets ``None`` in ``image_contents`` and a warning with the reason is logged, while the other
+    documents are still converted. This lets ``LLMDocumentContentExtractor`` return such documents in
+    ``failed_documents`` instead of failing the entire run.

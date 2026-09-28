@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``LinkContentFetcher.run_async()`` omitting default headers configured through
+    ``client_kwargs``. Asynchronous and synchronous fetches now apply the same client-default headers.

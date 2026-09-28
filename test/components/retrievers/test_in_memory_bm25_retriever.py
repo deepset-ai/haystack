@@ -38,9 +38,10 @@ class TestMemoryBM25Retriever:
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store):
-        with pytest.raises(ValueError):
-            InMemoryBM25Retriever(in_memory_doc_store, top_k=-2)
+    @pytest.mark.parametrize("top_k", [0, -2])
+    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            InMemoryBM25Retriever(in_memory_doc_store, top_k=top_k)
 
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
@@ -138,6 +139,31 @@ class TestMemoryBM25Retriever:
         assert "documents" in result
         assert len(result["documents"]) == 5
         assert result["documents"][0].content == "PHP is a popular programming language"
+
+    def test_run_with_zero_top_k_returns_empty(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        assert retriever.run(query="PHP", top_k=0) == {"documents": []}
+
+    def test_run_with_negative_top_k_raises(self, in_memory_doc_store, mock_docs):
+        # Regression: a negative top_k was used as a negative slice, silently dropping the last documents
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            retriever.run(query="PHP", top_k=-1)
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_zero_top_k_returns_empty(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        assert await retriever.run_async(query="PHP", top_k=0) == {"documents": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_negative_top_k_raises(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await retriever.run_async(query="PHP", top_k=-1)
 
     def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
         in_memory_doc_store.write_documents(
