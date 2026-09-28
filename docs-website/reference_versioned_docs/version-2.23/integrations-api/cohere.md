@@ -73,7 +73,7 @@ Initialize the CohereDocumentEmbedder.
   Read [Cohere documentation](https://docs.cohere.com/docs/models#embed) for a list of all supported models.
 - **input_type** (<code>str</code>) – specifies the type of input you're giving to the model. Supported values are
   "search_document", "search_query", "classification" and "clustering".
-- **api_base_url** (<code>str</code>) – the Cohere API Base url.
+- **api_base_url** (<code>str</code>) – the Cohere API Base url. The Cohere client appends the endpoint path to it.
 - **truncate** (<code>str</code>) – truncate embeddings that are too long from start or end, ("NONE"|"START"|"END").
   Passing "START" will discard the start of the input. "END" will discard the end of the input. In both
   cases, input is discarded until the remaining input is exactly the maximum input token length for the model.
@@ -86,6 +86,10 @@ Initialize the CohereDocumentEmbedder.
 - **embedding_separator** (<code>str</code>) – separator used to concatenate the meta fields to the Document text.
 - **embedding_type** (<code>EmbeddingTypes | None</code>) – the type of embeddings to return. Defaults to float embeddings.
   Note that int8, uint8, binary, and ubinary are only valid for v3 models.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is a full endpoint URL rather than a base URL.
 
 #### warm_up
 
@@ -257,7 +261,7 @@ Creates a CohereDocumentImageEmbedder component.
 - **api_key** (<code>Secret</code>) – The Cohere API key.
 - **model** (<code>str</code>) – The Cohere model to use for calculating embeddings.
   Read [Cohere documentation](https://docs.cohere.com/docs/models#embed) for a list of all supported models.
-- **api_base_url** (<code>str</code>) – The Cohere API base URL.
+- **api_base_url** (<code>str</code>) – The Cohere API base URL. The Cohere client appends the endpoint path to it.
 - **timeout** (<code>float</code>) – Request timeout in seconds.
 - **embedding_dimension** (<code>int | None</code>) – The dimension of the embeddings to return. Only valid for v4 and newer models.
   Read [Cohere API reference](https://docs.cohere.com/reference/embed) for a list possible values and
@@ -266,6 +270,10 @@ Creates a CohereDocumentImageEmbedder component.
   Specifying a type different from float is only supported for Embed v3.0 and newer models.
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar or not. Can be helpful to disable in production deployments
   to keep the logs clean.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is a full endpoint URL rather than a base URL.
 
 #### warm_up
 
@@ -405,7 +413,7 @@ Initialize the CohereTextEmbedder.
   Read [Cohere documentation](https://docs.cohere.com/docs/models#embed) for a list of all supported models.
 - **input_type** (<code>str</code>) – specifies the type of input you're giving to the model. Supported values are
   "search_document", "search_query", "classification" and "clustering".
-- **api_base_url** (<code>str</code>) – the Cohere API Base url.
+- **api_base_url** (<code>str</code>) – the Cohere API Base url. The Cohere client appends the endpoint path to it.
 - **truncate** (<code>str</code>) – truncate embeddings that are too long from start or end, ("NONE"|"START"|"END").
   Passing "START" will discard the start of the input. "END" will discard the end of the input. In both
   cases, input is discarded until the remaining input is exactly the maximum input token length for the model.
@@ -413,6 +421,10 @@ Initialize the CohereTextEmbedder.
 - **timeout** (<code>float</code>) – request timeout in seconds.
 - **embedding_type** (<code>EmbeddingTypes | None</code>) – the type of embeddings to return. Defaults to float embeddings.
   Note that int8, uint8, binary, and ubinary are only valid for v3 models.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is a full endpoint URL rather than a base URL.
 
 #### warm_up
 
@@ -732,7 +744,7 @@ Initialize the CohereChatGenerator instance.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   The callback function accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk)
   as an argument.
-- **api_base_url** (<code>str | None</code>) – The base URL of the Cohere API.
+- **api_base_url** (<code>str | None</code>) – The base URL of the Cohere API. The Cohere client appends the endpoint path to it.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model during generation. For a list of parameters,
   see [Cohere Chat endpoint](https://docs.cohere.com/reference/chat).
   Some of the parameters are:
@@ -749,6 +761,10 @@ Initialize the CohereChatGenerator instance.
 - **timeout** (<code>float | None</code>) – Timeout for Cohere client calls. If not set, it defaults to the default set by the Cohere client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Cohere client.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is a full endpoint URL rather than a base URL.
 
 #### warm_up
 
@@ -900,7 +916,7 @@ Creates an instance of the 'CohereRanker'.
 - **model** (<code>str</code>) – Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
 - **top_k** (<code>int</code>) – The maximum number of documents to return.
 - **api_key** (<code>Secret</code>) – Cohere API key.
-- **api_base_url** (<code>str</code>) – the base URL of the Cohere API.
+- **api_base_url** (<code>str</code>) – the base URL of the Cohere API. The Cohere client appends the endpoint path to it.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be concatenated
   with the document content for reranking.
 - **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
@@ -909,7 +925,8 @@ Creates an instance of the 'CohereRanker'.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` is not > 0.
+- <code>ValueError</code> – If `top_k` is not > 0, or if `api_base_url` is a full endpoint URL rather than a
+  base URL.
 
 #### warm_up
 
