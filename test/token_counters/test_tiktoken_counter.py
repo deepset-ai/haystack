@@ -136,6 +136,11 @@ class TestTiktokenCounterTools:
 class TestTiktokenCounterIntegration:
     """Exercises the real encoder, which downloads its vocabulary on first use."""
 
+    def test_counts_literal_special_tokens(self):
+        counter = TiktokenCounter()
+        count = counter.count([ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")])
+        assert count > 0
+
     def test_counts_grow_with_content(self):
         counter = TiktokenCounter()
 
