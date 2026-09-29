@@ -238,6 +238,9 @@ class JSONConverter:
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
 
+                if text is not None and not isinstance(text, str):
+                    text = str(text)
+
                 meta = {}
                 if meta_fields == "*":
                     meta = {k: v for k, v in obj.items() if k != self._content_key}

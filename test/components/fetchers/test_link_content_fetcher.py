@@ -411,7 +411,7 @@ class TestLinkContentFetcherIntegration:
         for stream in streams:
             assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.meta["content_type"] == "text/html":
-                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+                assert b"Haystack" in stream.data or b"Google" in stream.data  # noqa: PLR2004
                 assert stream.mime_type == "text/html"
             elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0

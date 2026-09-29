@@ -1111,7 +1111,6 @@ class TestAgentExitConditions:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
-        # The exit reason is the tool that triggered the exit, and `last_message` is that tool's result.
         assert result["exit_reason"] == "weather_tool"
 
     def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
@@ -1254,6 +1253,7 @@ class TestAgentExitConditions:
         )
         result = agent.run([ChatMessage.from_user("Go")])
         assert result["exit_reason"] == "parrot"
+        assert result["last_message"].tool_call_result.origin.tool_name == "weather_tool"
 
     def test_max_steps_exit(self, weather_tool, caplog):
         """Exhausting `max_agent_steps` before meeting an exit condition reports `"max_agent_steps"`."""

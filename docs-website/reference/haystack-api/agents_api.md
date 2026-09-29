@@ -371,9 +371,10 @@ Process messages and execute tools until an exit condition is met.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
   `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
   `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-  condition), or a custom reason a hook supplied through the `stop_run` state key.
+  text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+  `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+  the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+  meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 #### run_async
@@ -426,9 +427,10 @@ if available.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
   `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
   `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-  condition), or a custom reason a hook supplied through the `stop_run` state key.
+  text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+  `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+  the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+  meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 ## state/state
