@@ -27,7 +27,7 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
@@ -97,6 +97,14 @@ class TestTiktokenCounter:
         assert "<image>" in rendered
         assert "<file: report.pdf>" in rendered
 
+    def test_counts_literal_special_token_in_message(self, fake_encoder):
+        counter = TiktokenCounter()
+
+        count = counter.count([ChatMessage.from_user("Literal <|endoftext|> marker")])
+
+        assert count > 0
+        assert "<|endoftext|>" in fake_encoder.encoded[0]
+
     def test_serde_round_trip(self):
         data = TiktokenCounter(encoding="cl100k_base", tokens_per_image=200, tokens_per_file=3000).to_dict()
 
@@ -131,10 +139,33 @@ class TestTiktokenCounterTools:
         assert TiktokenCounter().count([]) == 0
         assert TiktokenCounter().count([], tools=None) == 0
 
+    def test_counts_literal_special_token_in_tool_description(self, fake_encoder):
+        @tool
+        def describe_marker() -> str:
+            """Describe the literal <|endoftext|> marker."""
+            return "marker"
+
+        count = TiktokenCounter().count([], tools=[describe_marker])
+
+        assert count > 0
+        assert "<|endoftext|>" in fake_encoder.encoded[0]
+
 
 @pytest.mark.integration
 class TestTiktokenCounterIntegration:
     """Exercises the real encoder, which downloads its vocabulary on first use."""
+
+    def test_literal_special_token_in_messages_and_tools(self):
+        @tool
+        def describe_marker() -> str:
+            """Explain the literal <|endoftext|> marker."""
+            return "marker"
+
+        counter = TiktokenCounter()
+        messages = [ChatMessage.from_user("Literal <|endoftext|> marker")]
+
+        assert counter.count(messages) > 0
+        assert counter.count(messages, tools=[describe_marker]) > counter.count(messages)
 
     def test_counts_grow_with_content(self):
         counter = TiktokenCounter()

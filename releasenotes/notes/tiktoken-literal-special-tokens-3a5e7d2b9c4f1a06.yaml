@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``TiktokenCounter`` now counts literal strings such as ``<|endoftext|>`` in messages and tool descriptions
+    as ordinary text instead of raising a ``ValueError``.
