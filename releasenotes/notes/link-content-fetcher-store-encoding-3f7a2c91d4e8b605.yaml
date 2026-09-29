@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LinkContentFetcher`` now stores the charset declared in the ``Content-Type`` response header under the
+    ``encoding`` key of the ``ByteStream`` metadata for content it keeps as raw bytes, such as HTML.
+    Previously the charset was dropped, so ``HTMLToDocument`` decoded pages served in a non-UTF-8 encoding
+    (for example ``ISO-8859-1``) as UTF-8, failed, and skipped them.

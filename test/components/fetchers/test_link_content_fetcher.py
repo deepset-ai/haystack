@@ -120,6 +120,22 @@ class TestLinkContentFetcher:
             assert first_stream.meta["content_type"] == "text/html"
             assert first_stream.mime_type == "text/html"
 
+    def test_run_html_stores_charset_as_encoding(self):
+        html = "<p>Configuración de España</p>".encode("iso-8859-1")
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_get.return_value = httpx.Response(
+                status_code=200,
+                content=html,
+                headers={"Content-Type": "text/html; charset=ISO-8859-1"},
+                request=httpx.Request(method="GET", url="https://www.example.com"),
+            )
+            fetcher = LinkContentFetcher()
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+
+        assert streams[0].data == html
+        assert streams[0].meta["encoding"] == "iso-8859-1"
+        assert streams[0].to_string(encoding=streams[0].meta["encoding"]) == "<p>Configuración de España</p>"
+
     def test_run_binary(self, test_files_path):
         """Test fetching binary content"""
         with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
@@ -447,6 +463,21 @@ class TestLinkContentFetcherAsync:
             assert first_stream.data == expected_content
             assert first_stream.meta["content_type"] == "text/plain"
             assert first_stream.mime_type == "text/plain"
+
+    async def test_run_async_html_stores_charset_as_encoding(self):
+        html = "<p>Configuración de España</p>".encode("iso-8859-1")
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_get.return_value = httpx.Response(
+                status_code=200,
+                content=html,
+                headers={"Content-Type": "text/html; charset=ISO-8859-1"},
+                request=httpx.Request(method="GET", url="https://www.example.com"),
+            )
+            fetcher = LinkContentFetcher()
+            streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
+
+        assert streams[0].data == html
+        assert streams[0].meta["encoding"] == "iso-8859-1"
 
     async def test_run_async_multiple(self):
         """Test async fetching of multiple URLs with mocked responses"""

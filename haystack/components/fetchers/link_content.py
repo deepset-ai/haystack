@@ -70,7 +70,8 @@ def _binary_content_handler(response: httpx.Response) -> ByteStream:
     :param response: Response object from the request.
     :returns: The extracted binary file-like object.
     """
-    return ByteStream(data=response.content)
+    meta = {"encoding": response.charset_encoding} if response.charset_encoding else {}
+    return ByteStream(data=response.content, meta=meta)
 
 
 @component
@@ -272,6 +273,8 @@ class LinkContentFetcher:
         Each ByteStream object in the returned list corresponds to the contents of a single URL.
         The content type of each stream is stored in the metadata of the ByteStream object under
         the key "content_type". The URL of the fetched content is stored under the key "url".
+        If content is kept as raw bytes and the response declares a charset, the charset is stored under the key
+        "encoding".
 
         :param urls: A list of URLs to fetch content from.
         :returns: `ByteStream` objects representing the extracted content.
