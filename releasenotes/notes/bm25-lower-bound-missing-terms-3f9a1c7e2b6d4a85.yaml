@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    ``InMemoryDocumentStore.bm25_retrieval`` and ``InMemoryBM25Retriever`` with ``BM25L`` (the default) or
+    ``BM25Plus`` now return only documents that contain at least one query term, with or without
+    ``scale_score``. Previously, documents without any query term were returned with a positive score and
+    filled up ``top_k``. As a result, retrieval can now return fewer than ``top_k`` documents, or none at all.
+
+    The ``delta`` lower bound now applies only to query terms that occur in the document, as in the original
+    BM25L/BM25+ definitions. So scores of matching documents are lower than before whenever the query has
+    terms that a document does not contain. If you filter results with a fixed score threshold, re-check the
+    threshold. ``BM25Okapi`` is not affected.
