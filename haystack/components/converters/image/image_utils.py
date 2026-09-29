@@ -178,9 +178,9 @@ def _convert_pdf_to_images(
 
             target_resolution_dpi = 300.0
 
-            # From pypdfium2 docs: scale (float) – A factor scaling the number of pixels per PDF canvas unit. This defines
-            # the resolution of the image. To convert a DPI value to a scale factor, multiply it by the size of 1 canvas
-            # unit in inches (usually 1/72in).
+            # From pypdfium2 docs: scale (float) – A factor scaling the number of pixels per PDF canvas unit. This
+            # defines the resolution of the image. To convert a DPI value to a scale factor, multiply it by the size of
+            # 1 canvas unit in inches (usually 1/72in).
             # https://pypdfium2.readthedocs.io/en/stable/python_api.html#pypdfium2._helpers.page.PdfPage.render
             target_scale = target_resolution_dpi / 72.0
 

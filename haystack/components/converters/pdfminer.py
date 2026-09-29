@@ -168,13 +168,10 @@ class PDFMinerToDocument:
         """
         rsrcmgr = PDFResourceManager(caching=True)
         device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
-        try:
-            interpreter = PDFPageInterpreter(rsrcmgr, device)
-            for pdf_page in PDFPage.get_pages(fp, caching=True):
-                interpreter.process_page(pdf_page)
-                yield device.get_result(), pdf_page
-        finally:
-            device.close()
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        for pdf_page in PDFPage.get_pages(fp, caching=True):
+            interpreter.process_page(pdf_page)
+            yield device.get_result(), pdf_page
 
     def _convert_page(self, lt_page: Any, pdf_page: Any) -> str:
         """
