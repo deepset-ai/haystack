@@ -309,8 +309,9 @@ class TestMemoryDocumentStore(
         assert results[0].content == "Python is a popular programming language"
 
     @pytest.mark.parametrize("bm25_algorithm", ["BM25L", "BM25Plus"])
+    @pytest.mark.parametrize("scale_score", [False, True])
     def test_bm25_retrieval_skips_documents_without_query_terms(
-        self, bm25_algorithm: Literal["BM25L", "BM25Plus"]
+        self, bm25_algorithm: Literal["BM25L", "BM25Plus"], scale_score: bool
     ) -> None:
         doc_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
         doc_store.write_documents(
@@ -321,7 +322,7 @@ class TestMemoryDocumentStore(
             ]
         )
 
-        results = doc_store.bm25_retrieval(query="apple", top_k=3)
+        results = doc_store.bm25_retrieval(query="apple", top_k=3, scale_score=scale_score)
 
         assert [doc.id for doc in results] == ["apple"]
 
