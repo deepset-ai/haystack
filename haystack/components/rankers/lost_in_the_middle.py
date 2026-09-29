@@ -100,7 +100,7 @@ class LostInTheMiddleRanker:
             return {"documents": documents_to_reorder}
 
         # Raise an error if any document is not textual
-        if any(doc.content is None for doc in documents_to_reorder):
+        if any(not isinstance(doc.content, str) for doc in documents_to_reorder):
             raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
         # Initialize word count and indices for the "lost in the middle" order
@@ -108,9 +108,10 @@ class LostInTheMiddleRanker:
         document_index = list(range(len(documents_to_reorder)))
         lost_in_the_middle_indices = [0]
 
-        # If word count threshold is set and the first document has content, calculate word count for the first document
-        if word_count_threshold and documents_to_reorder[0].content:
-            word_count = len(documents_to_reorder[0].content.split())
+        # If word count threshold is set and the first document has text content, calculate word count for the first document
+        first_content = documents_to_reorder[0].content
+        if word_count_threshold and isinstance(first_content, str):
+            word_count = len(first_content.split())
 
             # If the first document already meets the word count threshold, return it
             if word_count >= word_count_threshold:
@@ -124,9 +125,10 @@ class LostInTheMiddleRanker:
             # Insert the document index at the calculated position
             lost_in_the_middle_indices.insert(insertion_index, doc_idx)
 
-            # If word count threshold is set and the document has content, calculate the total word count
-            if word_count_threshold and documents_to_reorder[doc_idx].content:
-                word_count += len(documents_to_reorder[doc_idx].content.split())  # type: ignore[union-attr]
+            content = documents_to_reorder[doc_idx].content
+            # If word count threshold is set and the document has text content, calculate the total word count
+            if word_count_threshold and isinstance(content, str):
+                word_count += len(content.split())
 
                 # If the total word count meets the threshold, stop processing further documents
                 if word_count >= word_count_threshold:
