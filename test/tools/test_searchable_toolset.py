@@ -831,6 +831,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         # An isolated spawn is returned with the selection; the configured toolset is not mutated.
@@ -879,6 +880,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # 8 < 20 -> passthrough
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         assert selected == [toolset]

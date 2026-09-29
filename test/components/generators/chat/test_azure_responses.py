@@ -417,7 +417,7 @@ class TestSerDe:
 
 
 class TestComponentLifecycle:
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_warm_up_delegates_to_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         warm_up_calls = []
@@ -437,21 +437,12 @@ class TestComponentLifecycle:
         component = AzureOpenAIResponsesChatGenerator(
             azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
         )
-        assert not component._tools_warmed_up
-
-        component.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert component._tools_warmed_up
 
         component.warm_up()
         assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
         component.warm_up()
-        assert component._tools_warmed_up
+        assert sorted(warm_up_calls) == ["tool1", "tool1", "tool2", "tool2"]
 
     def test_sync_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
 

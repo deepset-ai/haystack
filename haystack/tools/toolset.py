@@ -15,6 +15,9 @@ class Toolset:
     """
     A collection of related Tools that can be used and managed as a cohesive unit.
 
+    Lifecycle hooks are optional. The lifecycle helpers call a custom hook when present; otherwise they
+    prepare or close the tools in the collection. Custom hooks must be idempotent and manage their own children.
+
     Toolset serves two main purposes:
 
     1. Group related tools together:
@@ -117,12 +120,12 @@ class Toolset:
         """
         Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
 
-        Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
-        not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
+        Prepare lazy toolsets with `warm_up_tools` or `warm_up_tools_async` before selection.
+        Subclasses whose iteration does not surface every selectable tool (e.g. SearchableToolset)
+        override this to return the full set.
 
         :returns: The list of tools available for name-based selection.
         """
-        self.warm_up()
         return list(self.tools)
 
     def spawn(self, selected_tool_names: set[str] | None = None) -> "Toolset":  # noqa: ARG002
@@ -155,38 +158,6 @@ class Toolset:
         if isinstance(item, Tool):
             return any(tool is item or tool == item for tool in self)
         return False
-
-    def warm_up(self) -> None:
-        """
-        Prepare the Toolset for use.
-
-        By default, this method iterates through and warms up all tools in the Toolset.
-        Subclasses can override this method to customize initialization behavior, such as:
-
-        - Setting up shared resources (database connections, HTTP sessions) instead of
-          warming individual tools
-        - Loading tools dynamically from an external source and assigning them to `self.tools`
-        - Controlling when and how tools are initialized
-
-        For example, a Toolset that manages tools from an external service (like MCPToolset)
-        might override this to initialize a shared connection and load the tools through it:
-
-        ```python
-        class MCPToolset(Toolset):
-            def warm_up(self) -> None:
-                if self.mcp_connection is not None:
-                    return
-                self.mcp_connection = establish_connection(self.server_url)
-                self.tools = self.mcp_connection.fetch_tools()
-        ```
-
-        This method may be called multiple times (e.g. before every run): implementations are responsible for
-        their own idempotence, guarding on their own state as in the example above. The default implementation delegates
-        to the tools' own idempotent `warm_up()`.
-        """
-        for tool in self.tools:
-            if hasattr(tool, "warm_up"):
-                tool.warm_up()
 
     def add(self, tool: Tool) -> None:
         """

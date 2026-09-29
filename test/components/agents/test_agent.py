@@ -34,7 +34,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool, Tool, warm_up_tools
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -1922,7 +1922,6 @@ class _TrackingTool(Tool):
     was_warmed_up: bool = False
 
     def warm_up(self) -> None:
-        super().warm_up()
         self.was_warmed_up = True
 
 
@@ -1930,7 +1929,7 @@ class _TrackingToolset(Toolset):
     was_warmed_up: bool = False
 
     def warm_up(self) -> None:
-        super().warm_up()
+        warm_up_tools(tools=self.tools)
         self.was_warmed_up = True
 
 
@@ -1996,13 +1995,11 @@ class TestAgentWarmUp:
             parameters={"type": "object", "properties": {}},
             function=lambda: "test",
         )
-        original = tool.warm_up
 
         def counting_warm_up():
-            original()
             call_count["n"] += 1
 
-        monkeypatch.setattr(tool, "warm_up", counting_warm_up)
+        monkeypatch.setattr(tool, "warm_up", counting_warm_up, raising=False)
 
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool])
         agent.warm_up()

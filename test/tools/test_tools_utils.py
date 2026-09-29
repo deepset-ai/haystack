@@ -193,8 +193,7 @@ class WarmupTrackingToolset(Toolset):
 
     def warm_up(self):
         self.was_warmed_up = True
-        # Call parent to warm up individual tools
-        super().warm_up()
+        warm_up_tools(tools=self.tools)
 
 
 class TestWarmUpTools:
@@ -220,8 +219,7 @@ class TestWarmUpTools:
 
     def test_warm_up_tools_with_single_toolset(self):
         """
-        Test that when passing a single Toolset, both the Toolset.warm_up()
-        and each individual tool's warm_up() are called.
+        Test that preparation delegates to the custom Toolset, which warms up its tools.
         """
         tool1 = WarmupTrackingTool(
             name="tool1",
@@ -344,7 +342,8 @@ class TestWarmUpTools:
         assert not toolset_tool1.was_warmed_up
         assert not toolset_tool2.was_warmed_up
 
-        warm_up_tools([standalone_tool, toolset])
+        mixed_tools: list[Tool | Toolset] = [standalone_tool, toolset]
+        warm_up_tools(mixed_tools)
 
         # All tools and the toolset should be warmed up
         assert standalone_tool.was_warmed_up
@@ -352,8 +351,8 @@ class TestWarmUpTools:
         assert toolset_tool1.was_warmed_up
         assert toolset_tool2.was_warmed_up
 
-    def test_warm_up_tools_idempotency(self):
-        """Test that calling warm_up_tools() multiple times is safe."""
+    def test_warm_up_tools_with_idempotent_toolset(self):
+        """Test that the custom Toolset controls repeated preparation of its tools."""
 
         class WarmupCountingTool(Tool):
             """A tool that counts how many times warm_up was called."""
@@ -378,7 +377,7 @@ class TestWarmUpTools:
                     return
                 self.warm_up_count += 1
                 self._loaded = True
-                super().warm_up()  # Also warm up individual tools
+                warm_up_tools(tools=self.tools)  # Also warm up individual tools
 
         tool = WarmupCountingTool(
             name="counting_tool",
@@ -393,6 +392,6 @@ class TestWarmUpTools:
         warm_up_tools(toolset)
         warm_up_tools(toolset)
 
-        # warm_up is idempotent, so the toolset and its tools are only warmed up once
+        # The custom toolset guards preparation, so its tools are warmed up only once.
         assert toolset.warm_up_count == 1
         assert tool.warm_up_count == 1

@@ -1790,7 +1790,7 @@ class TestComponentLifecycle:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_warm_up_delegates_to_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         warm_up_calls = []
@@ -1808,21 +1808,12 @@ class TestComponentLifecycle:
                 warm_up_calls.append(self.name)
 
         generator = OpenAIChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
 
         generator.warm_up()
         assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIChatGenerator()
         generator.warm_up()
-        assert generator._tools_warmed_up
+        assert sorted(warm_up_calls) == ["tool1", "tool1", "tool2", "tool2"]
 
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 

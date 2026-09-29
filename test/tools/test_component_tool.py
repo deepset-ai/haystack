@@ -471,22 +471,13 @@ class TestComponentTool:
         assert result["output_a"] == "A processed: test input"
         assert result["output_b"] == "B processed: test input"
 
-    def test_warm_up_is_idempotent(self):
-        """Test that calling warm_up multiple times only warms up the component once."""
-        from unittest.mock import MagicMock, patch
-
+    def test_warm_up_delegates_to_component(self):
         component = SimpleComponent()
-
         tool = ComponentTool(component=component)
-
-        with patch.object(component, "warm_up", MagicMock()) as mock_warm_up:
-            # Call warm_up multiple times
+        with patch.object(component, "warm_up") as warm_up:
             tool.warm_up()
             tool.warm_up()
-            tool.warm_up()
-
-            # Component's warm_up should only be called once
-            mock_warm_up.assert_called_once()
+            assert warm_up.call_count == 2
 
     def test_from_component_with_callable_params_skipped(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

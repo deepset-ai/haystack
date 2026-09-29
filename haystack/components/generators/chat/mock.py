@@ -134,7 +134,6 @@ class MockChatGenerator:
         self.meta = meta or {}
         self.streaming_callback = streaming_callback
         self._call_count = 0
-        self._is_warmed_up = False
 
     @staticmethod
     def _normalize_responses(
@@ -200,7 +199,6 @@ class MockChatGenerator:
 
     def warm_up(self) -> None:
         """No-op warm up, provided for interface compatibility with real Chat Generators."""
-        self._is_warmed_up = True
 
     @staticmethod
     def _echo_text(messages: list[ChatMessage]) -> str | None:
@@ -392,8 +390,7 @@ class MockChatGenerator:
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
         streaming_callback = select_streaming_callback(
