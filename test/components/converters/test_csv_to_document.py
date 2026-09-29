@@ -138,6 +138,19 @@ class TestCSVToDocument:
         assert docs[0].meta["row_number"] == 0
         assert os.path.basename(f) == docs[0].meta["file_path"]
 
+    @pytest.mark.parametrize("line_ending", ["\n", "\r\n", "\r"], ids=["lf", "crlf", "cr"])
+    def test_row_mode_handles_line_endings_and_preserves_quoted_newlines(self, line_ending):
+        csv_text = f'text,author{line_ending}"first{line_ending}line",Ada{line_ending}second,Bob{line_ending}'
+        source = ByteStream(data=csv_text.encode("utf-8"))
+
+        documents = CSVToDocument(conversion_mode="row").run(sources=[source], content_column="text")["documents"]
+
+        assert [doc.content for doc in documents] == [f"first{line_ending}line", "second"]
+        assert [doc.meta for doc in documents] == [
+            {"author": "Ada", "row_number": 0},
+            {"author": "Bob", "row_number": 1},
+        ]
+
     def test_row_mode_meta_collision_prefixed(self, tmp_path):
         # ByteStream meta has file_path and encoding; CSV also has those columns.
         csv_text = "file_path,encoding,comment\r\nrowpath.csv,latin1,ok\r\n"
