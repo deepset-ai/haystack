@@ -243,6 +243,30 @@ class TestCSVToDocument:
         assert None not in ragged_doc.meta
         assert "state" in ragged_doc.meta["extra_columns"]
 
+    @pytest.mark.parametrize("separator", ["\n", "\r\n", "\r"], ids=["lf", "crlf", "cr"])
+    def test_row_mode_handles_any_line_separator(self, separator):
+        # CR-separated records raised _csv.Error before the fix; LF and CRLF worked.
+        csv_text = separator.join(["text,author", "first,Ada", "second,Bob", ""])
+        source = ByteStream(data=csv_text.encode("utf-8"), meta={"file_path": "sep.csv"})
+
+        out = CSVToDocument(conversion_mode="row").run(sources=[source], content_column="text")
+        docs = out["documents"]
+
+        assert [d.content for d in docs] == ["first", "second"]
+        assert [d.meta["author"] for d in docs] == ["Ada", "Bob"]
+        assert [d.meta["row_number"] for d in docs] == [0, 1]
+
+    def test_row_mode_keeps_newlines_inside_a_quoted_field(self):
+        # A quoted field's own newline must survive, not be split into a new record.
+        source = ByteStream(data=b'text,author\r\n"line one\nline two",Ada\r\n', meta={"file_path": "quoted.csv"})
+
+        out = CSVToDocument(conversion_mode="row").run(sources=[source], content_column="text")
+        docs = out["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "line one\nline two"
+        assert docs[0].meta["author"] == "Ada"
+
     def test_run_utf8_with_bom(self, tmp_path):
         """
         A CSV saved as UTF-8 with a byte order mark must not leak the BOM into the content.
