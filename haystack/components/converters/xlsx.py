@@ -234,6 +234,15 @@ class XLSXToDocument:
                     "missingval": "",
                     **self.table_format_kwargs,
                 }
+                if resolved_kwargs["tablefmt"] == "pipe":
+                    value = value.replace(
+                        {
+                            r"\r\n|\r|\n": " ",  # keep in-cell line breaks from creating extra Markdown rows
+                            r"(\\*)\|": r"\1\1\\|",  # escape pipes but preserve any preceding literal backslashes
+                        },
+                        regex=True,
+                    )
+
                 # to_markdown uses tabulate, whose missingval only covers None: a NaN
                 # reaches the formatter as a number and is written out as "nan". Replace
                 # the empty cells with None so an empty cell reads as empty, the way

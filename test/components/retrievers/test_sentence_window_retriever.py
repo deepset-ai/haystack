@@ -4,7 +4,7 @@
 
 import random
 import re
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -310,6 +310,68 @@ class TestSentenceWindowRetriever:
         assert len(result["context_windows"]) == 1
         assert len(result["context_documents"]) == 3
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
+
+    def test_run_queries_document_store_once_for_all_retrieved_documents(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{source}{split_id}.", meta={"source_id": source, "split_id": split_id})
+            for source in ("a", "b")
+            for split_id in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents", wraps=in_memory_doc_store.filter_documents
+        ) as filter_documents:
+            # docs[2] is a2 and docs[15] is b5; the duplicate a2 must not add a second condition to the filter
+            result = retriever.run(retrieved_documents=[docs[2], docs[15], docs[2]])
+
+        filter_documents.assert_called_once()
+        assert len(filter_documents.call_args.args[0]["conditions"]) == 2
+        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert [doc.content for doc in result["context_documents"]] == [
+            "a1.",
+            "a2.",
+            "a3.",
+            "b4.",
+            "b5.",
+            "b6.",
+            "a1.",
+            "a2.",
+            "a3.",
+        ]
+
+    def test_run_with_documents_missing_metadata_queries_document_store_once(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{split_id}.", meta={"source_id": "a", "split_id": split_id}) for split_id in range(5)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(
+            document_store=in_memory_doc_store, window_size=1, raise_on_missing_meta_fields=False
+        )
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents", wraps=in_memory_doc_store.filter_documents
+        ) as filter_documents:
+            result = retriever.run(retrieved_documents=[doc_without_meta, docs[2]])
+
+        filter_documents.assert_called_once()
+        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
+
+    def test_run_does_not_query_document_store_without_documents_to_expand(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, raise_on_missing_meta_fields=False)
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(in_memory_doc_store, "filter_documents") as filter_documents:
+            assert retriever.run(retrieved_documents=[]) == {"context_windows": [], "context_documents": []}
+            assert retriever.run(retrieved_documents=[doc_without_meta]) == {
+                "context_windows": ["No metadata."],
+                "context_documents": [doc_without_meta],
+            }
+
+        filter_documents.assert_not_called()
 
     @pytest.mark.integration
     def test_run_with_pipeline(self, in_memory_doc_store):

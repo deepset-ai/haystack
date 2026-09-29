@@ -11,6 +11,9 @@ from pathlib import Path
 
 import docx
 import pytest
+from docx.opc.constants import RELATIONSHIP_TYPE
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from haystack import Document, Pipeline
 from haystack.components.converters.docx import DOCXLinkFormat, DOCXMetadata, DOCXTableFormat, DOCXToDocument
@@ -491,3 +494,31 @@ class TestDOCXToDocument:
 
         assert "[PDF](https://en.wikipedia.org/wiki/PDF)" not in content
         assert "PDF (https://en.wikipedia.org/wiki/PDF)" not in content
+
+    @pytest.mark.parametrize("table_format", ["markdown", "csv"])
+    @pytest.mark.parametrize(
+        ("link_format", "expected_link"),
+        [("markdown", "[docs](https://example.com/reference)"), ("plain", "docs (https://example.com/reference)")],
+    )
+    def test_link_extraction_in_table(self, tmp_path, table_format, link_format, expected_link):
+        """A link in a table cell keeps its address, the same as a link in a body paragraph."""
+        doc = docx.Document()
+        paragraph = doc.add_table(rows=1, cols=1).cell(0, 0).paragraphs[0]
+        relationship_id = paragraph.part.relate_to(
+            "https://example.com/reference", RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+        )
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), relationship_id)
+        run = OxmlElement("w:r")
+        text = OxmlElement("w:t")
+        text.text = "docs"
+        run.append(text)
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
+        path = tmp_path / "table_with_link.docx"
+        doc.save(str(path))
+
+        converter = DOCXToDocument(table_format=table_format, link_format=link_format)
+        content = converter.run(sources=[path])["documents"][0].content
+
+        assert expected_link in content
