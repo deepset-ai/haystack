@@ -83,7 +83,7 @@
 | haystack/components/generators/utils.py                                   |       95 |        9 |     91% |69, 83, 129, 162-163, 198, 214, 216, 218 |
 | haystack/components/joiners/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/joiners/answer\_joiner.py                             |       57 |        1 |     98% |       164 |
-| haystack/components/joiners/branch.py                                     |       20 |        3 |     85% |105, 116-117 |
+| haystack/components/joiners/branch.py                                     |       21 |        0 |    100% |           |
 | haystack/components/joiners/document\_joiner.py                           |      104 |        0 |    100% |           |
 | haystack/components/joiners/list\_joiner.py                               |       23 |        0 |    100% |           |
 | haystack/components/joiners/string\_joiner.py                             |        8 |        0 |    100% |           |
@@ -121,7 +121,7 @@
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                          |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/routers/conditional\_router.py                        |      178 |        8 |     96% |481-482, 518, 536, 578, 596, 606, 618 |
+| haystack/components/routers/conditional\_router.py                        |      179 |        8 |     96% |484-485, 521, 539, 581, 599, 609, 621 |
 | haystack/components/routers/document\_length\_router.py                   |       15 |        0 |    100% |           |
 | haystack/components/routers/document\_type\_router.py                     |       48 |        0 |    100% |           |
 | haystack/components/routers/file\_type\_router.py                         |       78 |        6 |     92% |   197-202 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17368** |  **734** | **96%** |           |
+| **TOTAL**                                                                 | **17370** |  **731** | **96%** |           |
 
 
 ## Setup coverage badge
