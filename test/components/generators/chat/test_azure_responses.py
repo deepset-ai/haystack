@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
@@ -420,29 +421,18 @@ class TestComponentLifecycle:
     def test_warm_up_delegates_to_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        component = AzureOpenAIResponsesChatGenerator(
-            azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
-        )
+        tools = [MagicMock(spec=Tool, warm_up=MagicMock()) for _ in range(2)]
+        for index, tool in enumerate(tools):
+            tool.name = f"tool{index}"
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=tools)
 
         component.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+        for tool in tools:
+            tool.warm_up.assert_called_once_with()
 
         component.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool1", "tool2", "tool2"]
+        for tool in tools:
+            assert tool.warm_up.call_count == 2
 
     def test_sync_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
 

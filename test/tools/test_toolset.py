@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -371,6 +372,9 @@ class TestToolsetSpawn:
 class TestToolsetToolSelection:
     """Tests for get_selectable_tools()."""
 
-    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool, monkeypatch):
         toolset = Toolset([add_tool, multiply_tool])
+        warm_up = Mock()
+        monkeypatch.setattr(toolset, "warm_up", warm_up, raising=False)
         assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
+        warm_up.assert_not_called()

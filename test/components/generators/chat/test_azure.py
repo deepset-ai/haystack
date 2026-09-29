@@ -708,37 +708,13 @@ class TestComponentLifecycle:
         with pytest.raises(OpenAIError):
             generator.warm_up()
 
-    def test_warm_up_delegates_to_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = AzureOpenAIChatGenerator(
-            azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
-        )
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool1", "tool2", "tool2"]
-
     def test_sync_lifecycle(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_azure_clients
-        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        tools = [MagicMock(spec=Tool, warm_up=MagicMock(), close=MagicMock()) for _ in range(2)]
+        for index, tool in enumerate(tools):
+            tool.name = f"tool{index}"
+        generator = AzureOpenAIChatGenerator(tools=tools, azure_endpoint="some-non-existing-endpoint")
         assert generator.client is None
         assert generator.async_client is None
 
@@ -746,15 +722,25 @@ class TestComponentLifecycle:
         assert generator.client is sync_cls.return_value
         assert generator.async_client is None
 
+        for tool in tools:
+            tool.warm_up.assert_called_once_with()
+        generator.warm_up()
+        for tool in tools:
+            assert tool.warm_up.call_count == 2
+
         generator.close()
 
         sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
+        for tool in tools:
+            tool.close.assert_called_once_with()
 
     async def test_async_lifecycle(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         _, async_cls = mock_azure_clients
-        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        tool = MagicMock(spec=Tool, warm_up_async=AsyncMock(), close_async=AsyncMock())
+        tool.name = "lookup"
+        generator = AzureOpenAIChatGenerator(tools=[tool], azure_endpoint="some-non-existing-endpoint")
 
         await generator.warm_up_async()
         assert generator.async_client is async_cls.return_value
@@ -764,6 +750,8 @@ class TestComponentLifecycle:
 
         async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
+        tool.close_async.assert_awaited_once_with()
+        tool.warm_up_async.assert_awaited_once_with()
 
     async def test_close_is_safe_without_warm_up(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
