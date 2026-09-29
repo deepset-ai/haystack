@@ -364,9 +364,7 @@ class ConditionalRouter:
         :returns:
             The deserialized component.
         """
-        # Copy so that replacing serialized sub-objects below does not mutate the caller's
-        # ``data`` dict in place. Without this, a second deserialization of the same dict
-        # would receive already-parsed objects instead of their serialized form.
+        # Copy so the caller's data stays serialized; nested routes and filters are copied below too
         init_params = dict(data.get("init_parameters", {}))
 
         # `unsafe=True` swaps the Jinja sandbox for a NativeEnvironment that executes arbitrary code.
@@ -378,7 +376,7 @@ class ConditionalRouter:
                 "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
             )
 
-        custom_filters = init_params.get("custom_filters", {})
+        custom_filters = init_params.get("custom_filters")
         if custom_filters and not _is_unsafe_deserialization():
             raise DeserializationError(
                 "Refusing to deserialize a ConditionalRouter with custom filters while loading in safe mode. "
@@ -396,12 +394,11 @@ class ConditionalRouter:
                 else:
                     route["output_type"] = deserialize_type(route["output_type"])
 
-        # Since the custom_filters are typed as optional in the init signature, we catch the
-        # case where they are not present in the serialized data and set them to an empty dict.
-        if custom_filters is not None:
-            init_params["custom_filters"] = dict(custom_filters)
-            for name, filter_func in custom_filters.items():
-                init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
+        if custom_filters:
+            init_params["custom_filters"] = {
+                name: deserialize_callable(filter_func) if filter_func else None
+                for name, filter_func in custom_filters.items()
+            }
         return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     def run(self, **kwargs: Any) -> dict[str, Any]:
