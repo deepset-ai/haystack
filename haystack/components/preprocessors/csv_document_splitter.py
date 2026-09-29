@@ -153,12 +153,7 @@ class CSVDocumentSplitter:
             column_positions = {label: position for position, label in enumerate(df.columns)}
 
             # Sort split_dfs first by row index, then by column position
-            split_dfs.sort(
-                key=lambda dataframe: (
-                    dataframe.index[0],
-                    column_positions[dataframe.columns[0]],
-                )
-            )
+            split_dfs.sort(key=lambda dataframe: (dataframe.index[0], column_positions[dataframe.columns[0]]))
 
             for split_id, split_df in enumerate(split_dfs):
                 split_documents.append(

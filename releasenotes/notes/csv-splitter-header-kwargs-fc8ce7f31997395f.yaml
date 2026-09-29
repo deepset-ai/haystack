@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``CSVDocumentSplitter`` now reports the column position of each sub-table and orders
+    sub-tables by column position instead of by column label. Passing
+    ``read_csv_kwargs={"header": 0}`` used to raise ``ValueError: invalid literal for int()
+    with base 10`` for every sub-table, because ``header=None`` was the only case in which
+    the labels were positional; with a caller-supplied header the labels are strings, and
+    sorting on them reordered the sub-tables alphabetically.
