@@ -95,13 +95,13 @@ class LostInTheMiddleRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         documents_to_reorder = deduplicated_documents[:top_k] if top_k else deduplicated_documents
 
-        # If there's only one document, return it as is
-        if len(documents_to_reorder) == 1:
-            return {"documents": documents_to_reorder}
-
         # Raise an error if any document is not textual
         if any(doc.content is None for doc in documents_to_reorder):
             raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
+
+        # If there's only one document, return it as is
+        if len(documents_to_reorder) == 1:
+            return {"documents": documents_to_reorder}
 
         # Initialize word count and indices for the "lost in the middle" order
         word_count = 0
