@@ -1,0 +1,129 @@
+---
+title: "AmazonBedrockKnowledgeBaseRetriever"
+id: amazonbedrockknowledgebaseretriever
+slug: "/amazonbedrockknowledgebaseretriever"
+description: "Retrieves documents from an Amazon Bedrock Managed Knowledge Base."
+---
+
+# AmazonBedrockKnowledgeBaseRetriever
+
+Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx)  in a RAG pipeline  2. The last component in the semantic search pipeline |
+| **Mandatory init variables** | `knowledge_base_id`: The ID of the Amazon Bedrock Knowledge Base. Falls back to the `AWS_KNOWLEDGE_BASE_ID` env var. |
+| **Optional init variables** | `aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_session_token`: AWS session token. Can be set with `AWS_SESSION_TOKEN` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var.  <br /> <br />`aws_profile_name`: AWS profile name. Can be set with `AWS_PROFILE` env var.  <br /> <br />`number_of_results`: Maximum number of results to return. Defaults to `5`.  <br /> <br />`use_agentic_retrieval`: If `True`, tries the Agentic Retrieve API before falling back to the standard Retrieve API. Defaults to the `USE_AGENTIC_RETRIEVAL` env var, or `True`. |
+| **Mandatory run variables** | `query`: A string |
+| **Optional run variables** | `top_k`: Maximum number of results to return. Overrides `number_of_results` if provided. |
+| **Output variables** | `documents`: A list of Documents |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock/ |
+| **Package name** | `amazon-bedrock-haystack` |
+
+</div>
+
+## Overview
+
+`AmazonBedrockKnowledgeBaseRetriever` retrieves Documents from an Amazon Bedrock Managed Knowledge Base. Unlike most other Retrievers, it doesn't need a Haystack Document Store or an Embedder: indexing and embedding are handled entirely by AWS, and the component only needs a text `query` to search the Knowledge Base.
+
+By default, the Retriever tries the Agentic Retrieve API first and falls back to the standard Retrieve API if agentic retrieval isn't available for the configured Knowledge Base. You can control this behavior with the `use_agentic_retrieval` init parameter, or the `USE_AGENTIC_RETRIEVAL` environment variable.
+
+Each returned Document includes a `score` and metadata about where it came from: `source` (the S3, web, Confluence, Salesforce, SharePoint, or custom document location of the underlying content), `knowledge_base_id`, and `knowledge_base_type`.
+
+This component uses AWS for authentication. You can use the AWS CLI to authenticate through your IAM. For more information on setting up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+If the AWS environment is configured correctly, the AWS credentials are not required, as they're loaded automatically from the environment or the AWS configuration file. If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name` as environment variables or pass them as [Secret](../../concepts/secret-management.mdx) arguments.
+
+## Installation
+
+Install the Amazon Bedrock integration:
+
+```bash
+pip install amazon-bedrock-haystack
+```
+
+You also need an existing [Amazon Bedrock Knowledge Base](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html) with documents already ingested. Set its ID as the `AWS_KNOWLEDGE_BASE_ID` environment variable, or pass it directly as the `knowledge_base_id` init parameter.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.utils import Secret
+
+from haystack_integrations.components.retrievers.amazon_bedrock import (
+    AmazonBedrockKnowledgeBaseRetriever,
+)
+
+retriever = AmazonBedrockKnowledgeBaseRetriever(
+    knowledge_base_id="ABCDEFGHIJ",
+    aws_region_name=Secret.from_token("eu-central-1"),
+)
+
+result = retriever.run(query="What are the benefits of managed knowledge bases?")
+for doc in result["documents"]:
+    print(doc.content)
+    print(doc.meta["source"])
+    print(doc.score)
+```
+
+### In a RAG pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
+from haystack_integrations.components.retrievers.amazon_bedrock import (
+    AmazonBedrockKnowledgeBaseRetriever,
+)
+
+template = [
+    ChatMessage.from_user(
+        """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """,
+    ),
+]
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(
+    "retriever",
+    AmazonBedrockKnowledgeBaseRetriever(
+        knowledge_base_id="ABCDEFGHIJ",
+        aws_region_name=Secret.from_token("eu-central-1"),
+    ),
+)
+rag_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(template=template, required_variables="*"),
+)
+rag_pipeline.add_component(
+    "llm", AmazonBedrockChatGenerator(model="global.anthropic.claude-sonnet-4-6")
+)
+
+rag_pipeline.connect("retriever.documents", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+question = "What are the benefits of managed knowledge bases?"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    },
+)
+print(result["llm"]["replies"][0].text)
+```
