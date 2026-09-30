@@ -15,9 +15,6 @@ class Toolset:
     """
     A collection of related Tools that can be used and managed as a cohesive unit.
 
-    Lifecycle hooks are optional. The lifecycle helpers call a custom hook when present; otherwise they
-    prepare or close the tools in the collection. Custom hooks must be idempotent and manage their own children.
-
     Toolset serves two main purposes:
 
     1. Group related tools together:
