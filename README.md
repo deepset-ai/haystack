@@ -15,7 +15,7 @@
 | haystack/components/agents/utils.py                                       |      120 |        3 |     98% |80, 126, 297 |
 | haystack/components/builders/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/builders/answer\_builder.py                           |       98 |        3 |     97% |270, 291, 303 |
-| haystack/components/builders/chat\_prompt\_builder.py                     |      110 |        2 |     98% |  178, 265 |
+| haystack/components/builders/chat\_prompt\_builder.py                     |      114 |        2 |     98% |  178, 266 |
 | haystack/components/builders/prompt\_builder.py                           |       50 |        0 |    100% |           |
 | haystack/components/caching/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/caching/cache\_checker.py                             |       43 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17370** |  **731** | **96%** |           |
+| **TOTAL**                                                                 | **17374** |  **731** | **96%** |           |
 
 
 ## Setup coverage badge
