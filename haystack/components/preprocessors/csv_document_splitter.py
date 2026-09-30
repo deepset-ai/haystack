@@ -6,8 +6,9 @@ from copy import deepcopy
 from io import StringIO
 from typing import Any, Literal, get_args
 
-from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
+
+from haystack import Document, component, logging
 
 with LazyImport("Run 'pip install pandas'") as pandas_import:
     import pandas as pd
