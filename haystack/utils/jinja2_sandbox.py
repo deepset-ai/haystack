@@ -33,15 +33,15 @@ _UNSAFE_MODULE_ROOTS: frozenset[str] = frozenset(
     }
 )
 
-# Full module prefixes whose callables must never be invocable from a template
-
-# Haystack's own data classes, which are in the template context (e.g. `documents`, `messages`) and expose public
-# methods that perform file I/O or resolve secrets (`ByteStream.to_file`, `ByteStream.from_file_path`,
-# `Document.from_dict`, `Secret.resolve_value`, ...).
+# Module prefixes whose callables must never be invocable from a template.
 #
-# Templates only ever need plain attribute access on these objects (`doc.content`, `doc.meta`), never their methods,
-# so calls into these modules are denied outright rather than allowlisted method by method.
+# Haystack's own data classes end up in the template context (e.g. `documents`, `messages`) and expose public
+# methods that perform file I/O, make network requests or resolve secrets (`ByteStream.to_file`,
+# `ByteStream.from_file_path`, `ImageContent.from_url`, `Secret.resolve_value`, ...).
 _UNSAFE_CALLABLE_MODULE_PREFIXES: tuple[str, ...] = ("haystack.dataclasses", "haystack.utils.auth")
+
+# Side-effect-free methods of those data classes that templates may still call.
+_SAFE_DATACLASS_METHOD_NAMES: frozenset[str] = frozenset({"to_dict", "is_from", "to_openai_dict_format"})
 
 
 class HaystackSandboxedEnvironment(SandboxedEnvironment):
@@ -53,9 +53,9 @@ class HaystackSandboxedEnvironment(SandboxedEnvironment):
     - refuses attribute access on module objects, so a module that leaks into the template context
       (e.g. via a custom filter that imports one) cannot be walked into (`os.system`, ...);
     - refuses to call module objects, refuses to call any callable whose defining module is rooted in
-      a dangerous standard-library module (see :data:`_UNSAFE_MODULE_ROOTS`), and refuses to call any
-      callable defined in one of Haystack's own data-class modules (see
-      :data:`_UNSAFE_CALLABLE_MODULE_PREFIXES`).
+      a dangerous standard-library module (see `_UNSAFE_MODULE_ROOTS`), and refuses to call any
+      callable defined in one of Haystack's own data-class modules (see `_UNSAFE_CALLABLE_MODULE_PREFIXES`)
+      except the side-effect-free methods in `_SAFE_DATACLASS_METHOD_NAMES`.
 
     Note that Jinja invokes *filters* directly, bypassing `is_safe_callable`, so this does not
     constrain what a registered `custom_filters` function itself does; it only governs attribute
@@ -77,6 +77,9 @@ class HaystackSandboxedEnvironment(SandboxedEnvironment):
         root = module.split(".", 1)[0]
         if root in _UNSAFE_MODULE_ROOTS:
             return False
-        if module.startswith(_UNSAFE_CALLABLE_MODULE_PREFIXES):
+        if (
+            module.startswith(_UNSAFE_CALLABLE_MODULE_PREFIXES)
+            and getattr(obj, "__name__", None) not in _SAFE_DATACLASS_METHOD_NAMES
+        ):
             return False
         return super().is_safe_callable(obj)

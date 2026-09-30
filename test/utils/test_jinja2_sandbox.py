@@ -7,7 +7,7 @@ import os
 import jinja2
 import pytest
 
-from haystack.dataclasses import ByteStream, Document
+from haystack.dataclasses import ByteStream, ChatMessage, Document
 from haystack.utils.auth import Secret
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 
@@ -51,6 +51,15 @@ class TestHaystackSandboxedEnvironment:
         env = HaystackSandboxedEnvironment()
         doc = Document(content="hello", meta={"source": "handbook"})
         assert env.from_string("{{ doc.content }} {{ doc.meta.source }}").render(doc=doc) == "hello handbook"
+
+    def test_allows_side_effect_free_dataclass_methods(self):
+        env = HaystackSandboxedEnvironment()
+        doc = Document(content="hello")
+        message = ChatMessage.from_user("hi")
+        template = (
+            "{{ doc.to_dict()['content'] }} {{ message.is_from('user') }} {{ message.to_openai_dict_format()['role'] }}"
+        )
+        assert env.from_string(template).render(doc=doc, message=message) == "hello True user"
 
     def test_blocks_document_from_dict_gadget(self, tmp_path):
         # Document.from_dict()/ByteStream.to_file() let a template write an arbitrary file.

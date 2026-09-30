@@ -9,6 +9,12 @@ security:
     ``Document.from_dict()``, ``ByteStream.to_file()``, ``ByteStream.from_file_path()``, and
     ``Secret.resolve_value()``, was not restricted. A template like
     ``{{ documents[0].from_dict({"blob": {...}}).blob.to_file("/some/path") }}`` could therefore write
-    or read files, or resolve secrets, as the process user. Calls into ``haystack.dataclasses`` and
-    ``haystack.utils.auth`` are now denied from templates; plain attribute access (``doc.content``,
-    ``doc.meta``) is unaffected.
+    or read files, or resolve secrets, as the process user. This is only exploitable when untrusted input
+    can control the template text itself, for example through the ``template`` run input of
+    ``PromptBuilder`` or ``ChatPromptBuilder``; values passed as template variables are never rendered as
+    templates.
+
+    Templates rendered in the default (safe) mode can no longer call methods of objects defined in
+    ``haystack.dataclasses`` and ``haystack.utils.auth``, except ``to_dict()``, ``is_from()``, and
+    ``to_openai_dict_format()``. Attribute and property access (``doc.content``, ``doc.meta``,
+    ``message.text``) is unaffected. Templates rendered with ``unsafe=True`` are unaffected.
