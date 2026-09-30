@@ -956,6 +956,26 @@ def test_special_token_strings_are_split_as_literal_text(split_overlap):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+def test_run_split_by_token_count_with_tokenizer_encoding(encoding):
+    splitter = RecursiveDocumentSplitter(
+        split_length=10, separators=["."], split_unit="token", tokenizer_encoding=encoding
+    )
+    text = (
+        "Haystack pipelines connect retrievers, rankers and generators into search systems. "
+        "Embedding models count tokens with their own encoding. Chunks must fit that limit."
+    )
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert splitter.tiktoken_tokenizer is not None
+    assert splitter.tiktoken_tokenizer.name == encoding
+    assert len(chunks) > 1
+    for chunk in chunks:
+        assert chunk.content is not None
+        assert len(splitter.tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 10
+
+
+@pytest.mark.integration
 def test_run_split_by_token_count():
     splitter = RecursiveDocumentSplitter(split_length=5, separators=["."], split_unit="token")
 
@@ -1232,6 +1252,35 @@ def test_warm_up_is_idempotent_token(monkeypatch):
 
     assert get_encoding.call_count == 1
     assert splitter.tiktoken_tokenizer is sentinel
+
+
+def test_warm_up_uses_tokenizer_encoding(monkeypatch):
+    import haystack.components.preprocessors.recursive_splitter as mod
+
+    get_encoding = Mock()
+    monkeypatch.setattr(mod.tiktoken, "get_encoding", get_encoding)
+
+    splitter = RecursiveDocumentSplitter(split_unit="token", split_length=10, tokenizer_encoding="cl100k_base")
+    splitter.warm_up()
+
+    get_encoding.assert_called_once_with("cl100k_base")
+
+
+def test_serialization_keeps_tokenizer_encoding():
+    splitter = RecursiveDocumentSplitter(split_length=10, split_unit="token", tokenizer_encoding="cl100k_base")
+    pipeline = Pipeline()
+    pipeline.add_component("chunker", splitter)
+
+    restored = Pipeline.loads(pipeline.dumps()).get_component("chunker")
+    assert isinstance(restored, RecursiveDocumentSplitter)
+    assert restored.tokenizer_encoding == "cl100k_base"
+
+    # pipelines serialized before tokenizer_encoding existed get the default
+    data = pipeline.to_dict()
+    del data["components"]["chunker"]["init_parameters"]["tokenizer_encoding"]
+    restored = Pipeline.from_dict(data).get_component("chunker")
+    assert isinstance(restored, RecursiveDocumentSplitter)
+    assert restored.tokenizer_encoding == "o200k_base"
 
 
 def test_fallback_overlap_char_unit():
