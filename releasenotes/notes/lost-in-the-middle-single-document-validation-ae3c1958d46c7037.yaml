@@ -1,0 +1,5 @@
+fixes:
+  - |
+    ``LostInTheMiddleRanker`` now raises ``ValueError`` for a non-textual document
+    even when only one document remains after deduplication and ``top_k`` selection.
+    Previously, the single-document shortcut returned it without validating its content.
