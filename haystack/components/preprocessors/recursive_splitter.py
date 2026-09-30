@@ -466,8 +466,7 @@ class RecursiveDocumentSplitter:
                 self._add_overlap_info(current_position, new_doc, new_docs)
 
             # The page the chunk's first non-page-break character is on: breaks before the chunk, plus the
-            # ones it opens with. Derived from the chunk's absolute offset rather than a running counter, so
-            # a break repeated in an overlapping tail cannot be counted twice.
+            # ones it opens with.
             new_doc.meta["page_number"] = 1 + content.count("\f", 0, current_position) + _leading_page_breaks(chunk)
 
             # keep the new chunk doc and update the current position

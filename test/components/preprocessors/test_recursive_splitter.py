@@ -392,8 +392,7 @@ def test_run_page_number_is_the_page_the_chunk_starts_on():
 
 
 def test_run_page_number_does_not_drift_with_overlap():
-    # The page break sits inside the overlapping tail, so it appears in two consecutive chunks. Counting
-    # it once per appearance used to push page_number past the number of pages in the document.
+    # The page break sits inside the overlapping tail, so it appears in two consecutive chunks.
     text = "This is page one.\fThis is page two, it is longer."
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=5, separators=["\n"], split_unit="char")
 
