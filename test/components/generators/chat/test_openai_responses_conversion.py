@@ -1296,6 +1296,20 @@ class TestResponseToChatMessage:
 
         assert message.meta["finish_reason"] == finish_reason
 
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_zero_argument_function_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        function_call = ResponseFunctionToolCall.model_construct(
+            arguments=arguments, call_id="call_1", name="get_time", type="function_call", id="fc_1", status="completed"
+        )
+        response = Response.model_construct(output=[function_call], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.tool_calls == [
+            ToolCall(id="fc_1", tool_name="get_time", arguments={}, extra={"call_id": "call_1"})
+        ]
+
     def test_convert_system_message(self) -> None:
 
         message = ChatMessage.from_system("You are good assistant")
