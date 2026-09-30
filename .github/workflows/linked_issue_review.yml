@@ -51,8 +51,9 @@ jobs:
                   pullRequest(number: $number) {
                     closingIssuesReferences(first: 10) {
                       nodes {
-                        id number repository { nameWithOwner }
+                        id number body repository { nameWithOwner }
                         assignees(first: 1) { totalCount }
+                        labels(first: 100) { nodes { name } }
                       }
                     }
                   }
@@ -60,12 +61,41 @@ jobs:
               }`,
               { owner, repo, number: pr.number },
             );
-            const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+            let issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
               (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
             );
             if (!issues.length) {
               core.info("PR has no linked issues.");
               return;
+            }
+
+            // handled_internally_pr_guard.yml closes community PRs for issues the
+            // team handles internally, so don't claim those issues for such a PR.
+            // author_association is unreliable for team membership (private org
+            // members appear as CONTRIBUTOR/NONE), hence the permission fallback.
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
+            const isInternal = (issue) =>
+              issue.labels.nodes.some((l) => l.name === "handled internally") ||
+              (issue.body ?? "").includes("isn't open for external contributions");
+            if (
+              issues.some(isInternal) &&
+              !["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association) &&
+              !(await isTeamMember(pr.user.login))
+            ) {
+              issues = issues.filter((issue) => !isInternal(issue));
+              if (!issues.length) {
+                core.info("PR only links issues handled internally, nothing to do.");
+                return;
+              }
             }
 
             for (const issue of issues) {
