@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -222,6 +223,74 @@ class TestAutoMergingRetrieverAsync:
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
+
+    @pytest.mark.asyncio
+    async def test_run_merges_siblings_and_preserves_parentless_document(self, in_memory_doc_store):
+        """Both siblings merge into their parent while an unrelated parentless root is kept as-is."""
+        parent = Document(
+            content="parent content",
+            id="parent1",
+            meta={"__level": 1, "__block_size": 10, "__children_ids": ["leaf1", "leaf2"]},
+        )
+        leaf1 = Document(content="leaf 1", id="leaf1", meta={"__parent_id": "parent1", "__level": 2, "__block_size": 5})
+        leaf2 = Document(content="leaf 2", id="leaf2", meta={"__parent_id": "parent1", "__level": 2, "__block_size": 5})
+        root = Document(
+            content="root content", id="root1", meta={"__level": 0, "__block_size": 20, "__children_ids": []}
+        )
+        in_memory_doc_store.write_documents([parent, leaf2])
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
+        result = await retriever.run_async([leaf1, leaf2, root])
+
+        assert len(result["documents"]) == 2
+        assert parent in result["documents"]
+        assert root in result["documents"]
+        assert leaf1 not in result["documents"]
+        assert leaf2 not in result["documents"]
+
+    @pytest.mark.asyncio
+    async def test_run_hierarchical_splitter_root_parent_id_variants(self, in_memory_doc_store):
+        """Roots from HierarchicalDocumentSplitter may have absent, None, or empty-string __parent_id."""
+        text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
+        docs = [Document(content=text)]
+        builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
+        split_docs = builder.run(docs)["documents"]
+
+        for doc in split_docs:
+            if doc.meta["__children_ids"]:
+                in_memory_doc_store.write_documents([doc])
+
+        leaves = [d for d in split_docs if not d.meta["__children_ids"]]
+        root = [d for d in split_docs if d.meta["__level"] == 0][0]
+        root_none = Document(
+            content=root.content, id=root.id + "-none", meta={**copy.deepcopy(root.meta), "__parent_id": None}
+        )
+        root_empty = Document(
+            content=root.content, id=root.id + "-empty", meta={**copy.deepcopy(root.meta), "__parent_id": ""}
+        )
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+
+        for root_doc in [root, root_none, root_empty]:
+            result = await retriever.run_async([root_doc])
+            assert result["documents"] == [root_doc]
+
+            result = await retriever.run_async([root_doc, leaves[0]])
+            assert root_doc in result["documents"]
+            assert leaves[0] in result["documents"]
+
+    @pytest.mark.asyncio
+    async def test_run_mixed_valid_and_missing_level_documents(self, in_memory_doc_store):
+        """A valid leaf together with a doc lacking __level must still raise the validation error."""
+        docs = [
+            Document(content="valid", meta={"__parent_id": "parent1", "__level": 1, "__block_size": 10}),
+            Document(content="invalid", meta={"__parent_id": "parent2", "__block_size": 10}),
+        ]
+        retriever = AutoMergingRetriever(in_memory_doc_store)
+        with pytest.raises(
+            ValueError, match="The matched leaf documents do not have the required meta field '__level'"
+        ):
+            await retriever.run_async(documents=docs)
 
     @pytest.mark.asyncio
     async def test_close_async(self):
