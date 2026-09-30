@@ -13,13 +13,17 @@ from haystack.components.retrievers.auto_merging_retriever import AutoMergingRet
 
 class TestAutoMergingRetrieverAsync:
     @pytest.mark.asyncio
-    async def test_run_missing_parent_id(self, in_memory_doc_store):
-        docs = [Document(content="test", meta={"__level": 1, "__block_size": 10})]
-        retriever = AutoMergingRetriever(in_memory_doc_store)
-        with pytest.raises(
-            ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
-        ):
-            await retriever.run_async(documents=docs)
+    async def test_run_parentless_document_passthrough(self, in_memory_doc_store):
+        """A matched document with no __parent_id (e.g. the root) must be returned unchanged."""
+        root = Document(
+            content="root content", id="root1", meta={"__level": 0, "__block_size": 10, "__children_ids": ["leaf1"]}
+        )
+        in_memory_doc_store.write_documents([root])
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        result = await retriever.run_async([root])
+
+        assert result["documents"] == [root]
 
     @pytest.mark.asyncio
     async def test_run_missing_level(self, in_memory_doc_store):
@@ -42,16 +46,26 @@ class TestAutoMergingRetrieverAsync:
             await retriever.run_async(documents=docs)
 
     @pytest.mark.asyncio
-    async def test_run_mixed_valid_and_invalid_documents(self, in_memory_doc_store):
-        docs = [
-            Document(content="valid", meta={"__parent_id": "parent1", "__level": 1, "__block_size": 10}),
-            Document(content="invalid", meta={"__level": 1, "__block_size": 10}),
-        ]
-        retriever = AutoMergingRetriever(in_memory_doc_store)
-        with pytest.raises(
-            ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
-        ):
-            await retriever.run_async(documents=docs)
+    async def test_run_mixed_parentless_and_leaf_documents(self, in_memory_doc_store):
+        """Parentless documents pass through while leaves with parents are still merged correctly."""
+        parent = Document(
+            content="parent content",
+            id="parent1",
+            meta={"__level": 1, "__block_size": 10, "__children_ids": ["leaf1", "leaf2"]},
+        )
+        leaf1 = Document(content="leaf 1", id="leaf1", meta={"__parent_id": "parent1", "__level": 2, "__block_size": 5})
+        leaf2 = Document(content="leaf 2", id="leaf2", meta={"__parent_id": "parent1", "__level": 2, "__block_size": 5})
+        root = Document(
+            content="root content", id="root1", meta={"__level": 0, "__block_size": 20, "__children_ids": []}
+        )
+        in_memory_doc_store.write_documents([parent, leaf2])
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
+        result = await retriever.run_async([leaf1, root])
+
+        assert len(result["documents"]) == 2
+        assert root in result["documents"]
+        assert leaf1 in result["documents"]
 
     @pytest.mark.asyncio
     async def test_run_parent_not_found(self, in_memory_doc_store):
