@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``CSVToDocument`` row mode failing on CSV input with CR line endings.
+    LF, CRLF, and CR record separators are now handled while preserving
+    newline characters inside quoted fields.
