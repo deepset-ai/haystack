@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``AutoMergingRetriever`` no longer raises ``ValueError`` when a matched
+    document has no ``__parent_id`` (for example, the root document of a
+    hierarchy). Parentless matched documents are now returned unchanged, which
+    matches the existing pass-through behavior in the merge logic.
