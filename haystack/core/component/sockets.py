@@ -125,7 +125,7 @@ class Sockets:  # noqa: PLW1641
 
     def __getattribute__(self, name: Any) -> Any:
         try:
-            sockets = object.__getattribute__(self, "_sockets")
+            sockets = object.__getattribute__(self, "_sockets_dict")
             if name in sockets:
                 return sockets[name]
         except AttributeError:
