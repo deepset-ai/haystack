@@ -7,7 +7,7 @@ from dataclasses import replace
 from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatMessageContentT, ChatRole, TextContent
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension
@@ -26,32 +26,6 @@ FILTER_NOT_ALLOWED_ERROR_MESSAGE = (
     "ChatMessage objects. Use a string template or remove the templatize_part filter "
     "from the template."
 )
-
-
-def _text_parts(message: ChatMessage) -> list[str]:
-    """
-    The text of every text part of a message.
-
-    `ChatMessage.text` only covers the first text part, while a template message can carry several.
-    """
-    return [part.text for part in message._content if isinstance(part, TextContent)]
-
-
-def _render_content_parts(
-    message: ChatMessage, env: HaystackSandboxedEnvironment, variables: dict[str, Any]
-) -> list[ChatMessageContentT]:
-    """
-    Render all the text parts of a message, leaving the other content parts untouched.
-    """
-    rendered: list[ChatMessageContentT] = []
-    for part in message._content:
-        if not isinstance(part, TextContent):
-            rendered.append(part)
-            continue
-        if "templatize_part" in part.text:
-            raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-        rendered.append(TextContent(text=env.from_string(part.text).render(variables)))
-    return rendered
 
 
 @component
@@ -202,7 +176,7 @@ class ChatPromptBuilder:
                         # infer variables from template
                         if message.text is None:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                        for text in _text_parts(message):
+                        for text in message.texts:
                             if "templatize_part" in text:
                                 raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
                             assigned_variables, template_variables = _extract_template_variables_and_assignments(
@@ -290,7 +264,13 @@ class ChatPromptBuilder:
                     self._validate_variables(set(template_variables_combined.keys()))
                     if message.text is None:
                         raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                    rendered_content = _render_content_parts(message, self._env, template_variables_combined)
+                    rendered_content = list(message._content)
+                    for index, part in enumerate(rendered_content):
+                        if isinstance(part, TextContent):
+                            if "templatize_part" in part.text:
+                                raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                            rendered_text = self._env.from_string(part.text).render(template_variables_combined)
+                            rendered_content[index] = TextContent(text=rendered_text)
                     # use dataclasses.replace to avoid in-place mutation of the original message
                     rendered_message: ChatMessage = replace(message, _content=rendered_content)
                     processed_messages.append(rendered_message)
