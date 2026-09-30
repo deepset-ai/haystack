@@ -372,7 +372,6 @@ class OpenAIChatGenerator:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
         self.warm_up()
-        warm_up_tools(tools=tools)
 
         messages = _normalize_messages(messages)
 
@@ -455,7 +454,6 @@ class OpenAIChatGenerator:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
         await self.warm_up_async()
-        await warm_up_tools_async(tools=tools)
 
         messages = _normalize_messages(messages)
 

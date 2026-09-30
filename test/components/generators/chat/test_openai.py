@@ -1890,32 +1890,6 @@ class TestComponentLifecycle:
         assert generator.client is not None
         assert generator.client._client.follow_redirects is False
 
-    def test_run_warms_up_but_does_not_close_runtime_tools(self, tools, monkeypatch, openai_mock_chat_completion):
-        # Warm-up must happen before the request to the model.
-        tool_warm_up = MagicMock(side_effect=openai_mock_chat_completion.assert_not_called)
-        tool_close = MagicMock()
-        monkeypatch.setattr(tools[0], "warm_up", tool_warm_up, raising=False)
-        monkeypatch.setattr(tools[0], "close", tool_close, raising=False)
-        generator = OpenAIChatGenerator(api_key=Secret.from_token("fake"))
-        generator.run(messages=[ChatMessage.from_user("Hi")], tools=tools[:1])
-        generator.close()
-        tool_warm_up.assert_called_once_with()
-        tool_close.assert_not_called()
-
-    async def test_run_async_warms_up_but_does_not_close_runtime_tools(
-        self, tools, monkeypatch, openai_mock_async_chat_completion
-    ):
-        # Warm-up must happen before the request to the model.
-        tool_warm_up_async = AsyncMock(side_effect=openai_mock_async_chat_completion.assert_not_called)
-        tool_close_async = AsyncMock()
-        monkeypatch.setattr(tools[0], "warm_up_async", tool_warm_up_async, raising=False)
-        monkeypatch.setattr(tools[0], "close_async", tool_close_async, raising=False)
-        generator = OpenAIChatGenerator(api_key=Secret.from_token("fake"))
-        await generator.run_async(messages=[ChatMessage.from_user("Hi")], tools=tools[:1])
-        await generator.close_async()
-        tool_warm_up_async.assert_awaited_once_with()
-        tool_close_async.assert_not_called()
-
 
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(
