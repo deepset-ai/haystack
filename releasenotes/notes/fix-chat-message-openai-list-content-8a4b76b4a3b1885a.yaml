@@ -2,8 +2,9 @@
 upgrade:
   - |
     ``ChatMessage.from_openai_dict_format`` now raises a ``ValueError`` for content parts it can't convert:
-    image URLs that are not base64 data URLs (for example, ``https://`` URLs), files referenced by ``file_id``,
-    refusal parts in assistant messages, and other part types such as ``input_audio``.
+    images referenced by a URL such as ``https://example.com/image.png`` (only images embedded as base64 data URLs,
+    like ``data:image/png;base64,...``, are supported), files referenced by ``file_id``, refusal parts in assistant
+    messages, and other part types such as ``input_audio``.
     Previously, such messages were accepted because the whole list was stored as a single text, and
     ``ChatMessage.to_openai_dict_format`` sent that list back unchanged, so forwarding them to OpenAI worked by
     accident. You're affected if the OpenAI messages you convert contain any of these parts.
