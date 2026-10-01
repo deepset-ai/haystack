@@ -851,10 +851,38 @@ class ChatMessage:
                 )
         return parts
 
+    @staticmethod
+    def _join_openai_text_parts(content: list[Any], role: str) -> str:
+        """
+        Join the text content parts of a system, developer, or assistant message in OpenAI format.
+
+        The parts are joined into a single text because `to_openai_dict_format` only sends the first text of these
+        messages. OpenAI also allows refusal parts in assistant messages, but `ChatMessage` can't represent them.
+
+        :param content: A list of content parts in OpenAI format.
+        :param role: The role of the message, used in the error message.
+        :returns: The texts of the parts, joined with a newline.
+        :raises ValueError: If a content part is not a text part with a `text` string.
+        """
+        texts = []
+        for part in content:
+            if not isinstance(part, dict) or part.get("type") != "text" or not isinstance(part.get("text"), str):
+                raise ValueError(
+                    f"Unsupported content part in {role} message: {part}. Only text parts with a `text` string are "
+                    "supported."
+                )
+            texts.append(part["text"])
+        return "\n".join(texts)
+
     @classmethod
     def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
         """
         Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+
+        `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
+        `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
+        `FileContent`. System, developer, and assistant messages accept only `text` parts, which are joined with a
+        newline into a single text.
 
         NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
         accepts messages without it to support shallow OpenAI-compatible APIs.
@@ -867,7 +895,8 @@ class ChatMessage:
             The created ChatMessage object.
 
         :raises ValueError:
-            If the message dictionary is missing required fields or contains unsupported content parts.
+            If the message dictionary is missing required fields or contains content parts that can't be converted,
+            such as image URLs that are not base64 data URLs or files referenced by `file_id`.
         """
         cls._validate_openai_message(message)
 
@@ -892,6 +921,8 @@ class ChatMessage:
                         arguments=_parse_openai_tool_call_arguments(raw_arguments),
                     )
                     haystack_tool_calls.append(haystack_tc)
+            if isinstance(content, list):
+                content = cls._join_openai_text_parts(content=content, role=role)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)
 
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
@@ -901,18 +932,9 @@ class ChatMessage:
                 return cls.from_user(text=content, name=name)
             return cls.from_user(content_parts=cls._from_openai_content_parts(content), name=name)
         if role in ["system", "developer"]:
-            if isinstance(content, str):
-                return cls.from_system(text=content, name=name)
-            # OpenAI only supports text content parts for system and developer messages
-            texts = []
-            for part in content:
-                if not isinstance(part, dict) or part.get("type") != "text" or not isinstance(part.get("text"), str):
-                    raise ValueError(
-                        f"Unsupported content part in {role} message: {part}. Only text parts with a `text` string are "
-                        "supported."
-                    )
-                texts.append(part["text"])
-            return cls.from_system(text="\n".join(texts), name=name)
+            if isinstance(content, list):
+                content = cls._join_openai_text_parts(content=content, role=role)
+            return cls.from_system(text=content, name=name)
 
         if isinstance(content, list):
             if not all("text" in el for el in content):

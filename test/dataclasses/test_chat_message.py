@@ -1081,48 +1081,42 @@ class TestFromOpenaiDictFormat:
             FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
         ]
 
-    def test_from_openai_dict_format_user_message_with_unsupported_parts(self, base64_image_string):
-        # non-data image URLs cannot be converted to ImageContent
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format(
-                {
-                    "role": "user",
-                    "content": [{"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}],
-                }
-            )
-        # files referenced by file_id cannot be converted to FileContent
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format(
-                {"role": "user", "content": [{"type": "file", "file": {"file_id": "file-abc123"}}]}
-            )
-        # unknown content part types are rejected
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format(
-                {"role": "user", "content": [{"type": "input_audio", "input_audio": {"data": base64_image_string}}]}
-            )
-        # text parts without text are rejected
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"role": "user", "content": [{"type": "text"}]})
+    @pytest.mark.parametrize(
+        "part, match",
+        [
+            ({"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}, "Only base64 data URLs"),
+            ({"type": "file", "file": {"file_id": "file-abc123"}}, "files referenced by `file_id`"),
+            ({"type": "input_audio", "input_audio": {"data": "UklGRg==", "format": "wav"}}, "Supported part types"),
+            ({"type": "text"}, "Text parts must contain a `text` string"),
+        ],
+    )
+    def test_from_openai_dict_format_user_message_with_unsupported_parts(self, part, match):
+        with pytest.raises(ValueError, match=match):
+            ChatMessage.from_openai_dict_format({"role": "user", "content": [part]})
 
-    def test_from_openai_dict_format_system_message_with_text_parts(self):
+    @pytest.mark.parametrize(
+        "role, expected_role", [("system", "system"), ("developer", "system"), ("assistant", "assistant")]
+    )
+    def test_from_openai_dict_format_system_and_assistant_messages_with_text_parts(self, role, expected_role):
         openai_msg = {
-            "role": "system",
-            "content": [{"type": "text", "text": "You are a helpful assistant"}, {"type": "text", "text": "Be brief"}],
+            "role": role,
+            "content": [{"type": "text", "text": "part one"}, {"type": "text", "text": "part two"}],
         }
         message = ChatMessage.from_openai_dict_format(openai_msg)
-        assert message.role.value == "system"
-        assert message.text == "You are a helpful assistant\nBe brief"
+        assert message.role.value == expected_role
+        assert message.text == "part one\npart two"
 
-    def test_from_openai_dict_format_system_message_with_non_text_parts(self, base64_image_string):
-        openai_msg = {
-            "role": "system",
-            "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image_string}"}}],
-        }
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format(openai_msg)
-        # text parts without text are rejected
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"role": "system", "content": [{"type": "text"}]})
+    @pytest.mark.parametrize(
+        "role, part",
+        [
+            ("system", {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgo="}}),
+            ("developer", {"type": "text"}),
+            ("assistant", {"type": "refusal", "refusal": "I can't help with that."}),
+        ],
+    )
+    def test_from_openai_dict_format_system_and_assistant_messages_with_unsupported_parts(self, role, part):
+        with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
+            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
 
     def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
         message = ChatMessage.from_user(
