@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` no longer drops reasoning text that providers such as OpenRouter send
+    while streaming as ``reasoning_text`` entries in the ``content`` of the completed reasoning item.
+    The text is now set on ``ReasoningContent.reasoning_text`` of the streaming chunk and of the final
+    ``ChatMessage``. Reasoning already streamed through summary deltas is not duplicated.

@@ -24,6 +24,7 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
+    ResponseReasoningSummaryTextDeltaEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
     ResponseTextDoneEvent,
@@ -1698,3 +1699,90 @@ class TestResponseToChatMessage:
             "encrypted_content was dropped — the response.output_item.done event for reasoning items "
             "must be handled in _convert_response_chunk_to_streaming_chunk"
         )
+
+    def test_reasoning_text_from_content_through_full_streaming_pipeline(self) -> None:
+        reasoning_id = "rs_tmp_bbnbudxv61v"
+        content = [
+            {"text": "The user asks why the sky is blue.", "type": "reasoning_text"},
+            {"text": "Rayleigh scattering explains it.", "type": "reasoning_text"},
+        ]
+        openai_events = [
+            ResponseOutputItemAddedEvent(
+                item=ResponseReasoningItem(id=reasoning_id, summary=[], type="reasoning", status="in_progress"),
+                output_index=0,
+                sequence_number=0,
+                type="response.output_item.added",
+            ),
+            ResponseOutputItemDoneEvent(
+                item=ResponseReasoningItem(
+                    id=reasoning_id, summary=[], content=content, type="reasoning", status="completed"
+                ),
+                output_index=0,
+                sequence_number=1,
+                type="response.output_item.done",
+            ),
+        ]
+
+        streaming_chunks: list[StreamingChunk] = []
+        for event in openai_events:
+            chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
+            streaming_chunks.append(chunk)
+
+        expected_text = "The user asks why the sky is blue.\nRayleigh scattering explains it."
+        done_chunk = streaming_chunks[1]
+        assert done_chunk.reasoning is not None
+        assert done_chunk.reasoning.reasoning_text == expected_text
+        assert done_chunk.reasoning.extra["content"] == content
+
+        message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
+
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == expected_text
+        assert message.reasoning.extra.get("id") == reasoning_id
+
+    @pytest.mark.parametrize("done_content", [None, [{"text": "Checking the capital.", "type": "reasoning_text"}]])
+    def test_streamed_reasoning_summary_is_not_duplicated_by_done_event(self, done_content) -> None:
+        reasoning_id = "rs_summary"
+        openai_events = [
+            ResponseOutputItemAddedEvent(
+                item=ResponseReasoningItem(id=reasoning_id, summary=[], type="reasoning", status="in_progress"),
+                output_index=0,
+                sequence_number=0,
+                type="response.output_item.added",
+            ),
+            ResponseReasoningSummaryTextDeltaEvent(
+                delta="Checking the capital.",
+                item_id=reasoning_id,
+                output_index=0,
+                sequence_number=1,
+                summary_index=0,
+                type="response.reasoning_summary_text.delta",
+            ),
+            ResponseOutputItemDoneEvent(
+                item=ResponseReasoningItem(
+                    id=reasoning_id,
+                    summary=[{"text": "Checking the capital.", "type": "summary_text"}],
+                    content=done_content,
+                    type="reasoning",
+                    status="completed",
+                ),
+                output_index=0,
+                sequence_number=2,
+                type="response.output_item.done",
+            ),
+        ]
+
+        streaming_chunks: list[StreamingChunk] = []
+        for event in openai_events:
+            chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
+            streaming_chunks.append(chunk)
+
+        assert streaming_chunks[1].reasoning is not None
+        assert streaming_chunks[1].reasoning.reasoning_text == "Checking the capital."
+        assert streaming_chunks[2].reasoning is not None
+        assert streaming_chunks[2].reasoning.reasoning_text == ""
+
+        message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
+
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == "Checking the capital."
