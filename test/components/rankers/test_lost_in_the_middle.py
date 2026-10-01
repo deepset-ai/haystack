@@ -36,27 +36,21 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][0].content == "1"
         assert result["documents"][1].content == "2"
 
-    def test_lost_in_the_middle_with_non_textual_documents(self):
+    @pytest.mark.parametrize(
+        ("documents", "top_k"),
+        [
+            ([Document(blob=ByteStream(b"some bytes"))], None),
+            ([Document(content="text"), Document(blob=ByteStream(b"some bytes"))], None),
+            ([Document(content="text"), Document(blob=ByteStream(b"some bytes"))], 1),
+        ],
+    )
+    def test_lost_in_the_middle_with_non_textual_documents(self, documents, top_k):
         ranker = LostInTheMiddleRanker()
-        docs = [Document(content="1"), Document(blob=ByteStream(b"some bytes"))]
-        with pytest.raises(ValueError, match="Some provided documents are not textual"):
-            ranker.run(documents=docs)
-
-    @pytest.mark.parametrize("selection", ["single", "init_top_k", "run_top_k", "duplicates"])
-    def test_rejects_non_textual_document_when_selection_has_one_document(self, selection: str) -> None:
-        non_textual = Document(blob=ByteStream(b"some bytes"))
-        ranker = LostInTheMiddleRanker(top_k=1 if selection == "init_top_k" else None)
-        docs = [non_textual]
-        if selection in {"init_top_k", "run_top_k"}:
-            docs.append(Document(content="text"))
-        elif selection == "duplicates":
-            docs.append(non_textual)
-
         with pytest.raises(
             ValueError,
             match=r"^Some provided documents are not textual; LostInTheMiddleRanker can process only text\.$",
         ):
-            ranker.run(documents=docs, top_k=1 if selection == "run_top_k" else None)
+            ranker.run(documents=documents, top_k=top_k)
 
     def test_lost_in_the_middle_init(self):
         # tests that LostInTheMiddleRanker initializes with default values
@@ -122,13 +116,6 @@ class TestLostInTheMiddleRanker:
         ranker = LostInTheMiddleRanker()
         doc = Document(content="test")
         assert ranker.run(documents=[doc]) == {"documents": [doc]}
-
-    def test_top_k_excludes_non_textual_documents_before_validation(self) -> None:
-        ranker = LostInTheMiddleRanker(top_k=1)
-        text = Document(content="text")
-        non_textual = Document(blob=ByteStream(b"some bytes"))
-
-        assert ranker.run(documents=[text, non_textual]) == {"documents": [text]}
 
     def test_run_deduplicates_documents(self):
         ranker = LostInTheMiddleRanker()
