@@ -306,6 +306,14 @@ class TestApplyToolExecutionDecisions:
         assert rejection_messages == []
         assert new_tool_call_messages == [assistant_message]
 
+    def test_confirm_without_final_tool_params(self, tools, assistant_message):
+        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[assistant_message],
+            tool_execution_decisions=[ToolExecutionDecision(tool_name=tools[0].name, execute=True, tool_call_id="1")],
+        )
+        assert rejection_messages == []
+        assert new_tool_call_messages == [assistant_message]
+
     def test_modify(self, tools, assistant_message):
         rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
@@ -327,6 +335,19 @@ class TestApplyToolExecutionDecisions:
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name=tools[0].name, arguments={"a": 5, "b": 6}, id="1")]
             ),
+        ]
+
+    def test_modify_to_empty_params(self, tools, assistant_message):
+        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[assistant_message],
+            tool_execution_decisions=[
+                ToolExecutionDecision(tool_name=tools[0].name, execute=True, tool_call_id="1", final_tool_params={})
+            ],
+        )
+        assert rejection_messages == []
+        assert new_tool_call_messages == [
+            ChatMessage.from_user("The parameters for tool 'addition_tool' were updated by the user to:\n{}"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=tools[0].name, arguments={}, id="1")]),
         ]
 
     def test_two_teds_same_name_no_ids_and_one_with_an_id(self):

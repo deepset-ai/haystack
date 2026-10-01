@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Preserve the original tool arguments when a custom confirmation strategy returns
+    ``ToolExecutionDecision(execute=True)`` without specifying ``final_tool_params``.
+    Passing an explicit empty dictionary continues to replace the arguments.

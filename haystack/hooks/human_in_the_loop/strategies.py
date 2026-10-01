@@ -249,7 +249,9 @@ def _classify_decision(tool_call: ToolCall, decision: ToolExecutionDecision) -> 
     """Classify a strategy decision against the tool call that was presented for confirmation."""
     if not decision.execute:
         return "reject"
-    if tool_call.arguments != (decision.final_tool_params or {}):
+    if decision.final_tool_params is None:
+        return "confirm"
+    if tool_call.arguments != decision.final_tool_params:
         return "modify"
     return "confirm"
 
@@ -594,7 +596,7 @@ def _apply_tool_execution_decisions(
                 )
 
             classified_decision = _classify_decision(tool_call=tc, decision=ted)
-            final_args = ted.final_tool_params or {}
+            final_args = tc.arguments if ted.final_tool_params is None else ted.final_tool_params
 
             if classified_decision == "reject":
                 # rejected tool call
