@@ -89,15 +89,15 @@ class LostInTheMiddleRanker:
         if not documents:
             return {"documents": []}
 
+        # Raise an error if any document is not textual
+        if any(doc.content is None for doc in documents):
+            raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
+
         top_k = top_k or self.top_k
         word_count_threshold = word_count_threshold or self.word_count_threshold
 
         deduplicated_documents = _deduplicate_documents(documents)
         documents_to_reorder = deduplicated_documents[:top_k] if top_k else deduplicated_documents
-
-        # Raise an error if any document is not textual
-        if any(doc.content is None for doc in documents_to_reorder):
-            raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
         # If there's only one document, return it as is
         if len(documents_to_reorder) == 1:
