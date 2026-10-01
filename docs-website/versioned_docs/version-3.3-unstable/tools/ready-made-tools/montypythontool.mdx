@@ -44,7 +44,7 @@ Variables, functions, and imports don't persist between calls, so each snippet m
 
 - `name` is _optional_ and defaults to `"run_python"`. Sets the tool name exposed to the LLM.
 - `description` is _optional_. A custom tool description; when not set, a description of the sandbox and the supported Python subset is used.
-- `resource_limits` is _optional_. Monty resource limits for each call, merged over the defaults of 30 seconds of execution time (`max_feed_duration_secs`) and 256 MiB of heap memory (`max_memory`). Set a key to `None` to disable that limit. See `pydantic_monty.ResourceLimits` for all available keys.
+- `resource_limits` is _optional_. Monty resource limits for each call, merged over the defaults of 30 seconds of execution time (`max_feed_duration_secs`) and 256 MiB of heap memory (`max_memory`). Set a key to `None` to disable that limit. See [`pydantic_monty.ResourceLimits`](https://pydantic.dev/docs/monty/concepts/resource-limits/) for all available keys.
 - `type_check` is _optional_ and defaults to `False`. If `True`, the code is type-checked with Monty's bundled type checker before it runs, and type errors are returned to the LLM instead of executing the code.
 - `max_output_chars` is _optional_ and defaults to `20000`. The printed output, the result, and the error are each truncated to this many characters before they are returned to the LLM. The error keeps its end, where the exception is.
 
@@ -130,41 +130,6 @@ print(tool.invoke(code="while True:\n    pass"))
 # >> TimeoutError: feed time limit exceeded: 5.000084167s > 5s
 
 tool.close()
-```
-
-### In a Pipeline
-
-`MontyPythonTool` is serializable, so you can wrap an Agent that uses it in a Pipeline and save the Pipeline to YAML:
-
-```python
-from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.core.pipeline import Pipeline
-from haystack.dataclasses import ChatMessage
-
-from haystack_integrations.tools.monty import MontyPythonTool
-
-# Requires the OPENAI_API_KEY environment variable
-pipeline = Pipeline()
-pipeline.add_component(
-    "agent",
-    Agent(chat_generator=OpenAIChatGenerator(), tools=[MontyPythonTool()]),
-)
-
-restored = Pipeline.loads(pipeline.dumps())
-
-result = restored.run(
-    data={
-        "agent": {
-            "messages": [
-                ChatMessage.from_user(
-                    "How many days are there between 1 January 2000 and 30 September 2026?"
-                )
-            ],
-        },
-    },
-)
-print(result["agent"]["last_message"].text)
 ```
 
 ## Security model
