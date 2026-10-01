@@ -14,6 +14,22 @@ upgrade:
 
     If you display ``page_number`` to users or store it alongside embeddings, re-index documents that
     contain form feeds to pick up the corrected values.
+  - |
+    ``RecursiveDocumentSplitter`` with ``split_unit="word"`` and ``split_overlap`` greater than 0 now returns
+    chunks copied from the document as they are. Previously it rebuilt them from their words joined by single
+    spaces, which added spaces the document does not have, collapsed line breaks and repeated spaces, and could
+    drop form feeds (``\f``). The overlap also counts words the way ``split_length`` does, as text separated by
+    spaces, so where words are separated only by line or page breaks, chunks can end at different words than
+    before. Re-index documents split this way if you need their chunks to match the source text.
+  - |
+    ``RecursiveDocumentSplitter`` now keeps the whitespace between sentences when ``sentence_splitter_params``
+    sets ``keep_white_spaces`` to ``False``. That is the sentence tokenizer's default, so this applies whenever
+    ``sentence_splitter_params`` is passed without ``"keep_white_spaces": True``. The tokenizer leaves that
+    whitespace out, and the chunks used to glue their sentences together, as in ``"One two.Three four."``: the
+    glued words counted as one toward ``split_length``, page breaks (``\f``) between sentences were lost, and
+    ``split_idx_start`` and ``page_number`` fell behind the chunk's real start. Chunks are now copied from the
+    document whatever ``keep_white_spaces`` is set to; it only changes the rules the tokenizer uses to decide where
+    a sentence ends. Re-index documents split with this setting to pick up the corrected chunks.
 fixes:
   - |
     Fixed ``RecursiveDocumentSplitter`` assigning ``page_number`` values that drifted upwards, and could
@@ -21,3 +37,15 @@ fixes:
     repeated in an overlapping tail was counted once per chunk it appeared in. ``page_number`` is now
     derived from the chunk's offset in the source document instead of a running counter, so a repeated
     page break cannot be counted twice.
+  - |
+    Fixed ``RecursiveDocumentSplitter`` reporting ``split_idx_start`` values past the chunk's real start when
+    ``split_unit="word"`` and ``split_overlap`` was greater than 0, which also pushed ``page_number`` onto pages
+    the chunk had not reached yet. ``split_idx_start`` now points at the chunk's start in the source document,
+    and the ``_split_overlap`` ranges cover exactly the text the two chunks share.
+  - |
+    Fixed ``RecursiveDocumentSplitter`` dropping the whitespace after the last sentence of each piece of text it
+    split into sentences, such as the ``"\n\n"`` ending a paragraph longer than ``split_length``. This lost text,
+    and moved the ``split_idx_start`` of every later chunk before its real start, which could put a chunk on
+    the page before the one it starts on. The whitespace is now kept at the end of the chunk it follows, so
+    with no overlap the chunks add up to the document again. Such a chunk can exceed ``split_length`` by that
+    trailing whitespace.
