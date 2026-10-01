@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix deserialization of types containing ``Literal`` string values with brackets,
+    including nested generics and unions. Components such as ``OutputAdapter`` can
+    now round-trip these output types without deserialization errors.

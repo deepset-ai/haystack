@@ -327,6 +327,44 @@ def test_output_type_round_trip_literal():
         assert deserialize_type(serialize_type(type_)) == type_
 
 
+@pytest.mark.parametrize(
+    "type_",
+    [
+        Literal["]|"],
+        tuple[Literal["["], int],
+        tuple[Literal["]"], int],
+        tuple[Literal["],", "[|"], int],
+        tuple[Literal["'", '"'], int],
+        tuple[Literal["'\"["], int],
+        tuple[Literal["\\", "["], int],
+        tuple[Literal["\\'\"],|"], int],
+        tuple[Literal[b"["], int],
+        Callable[[Literal["["], str], Literal["]|"]],
+        Optional[tuple[Literal["["], int]],
+        Union[Literal["],"], int],
+        list[Literal["["]] | int,
+        list[Literal["]"]] | None,
+    ],
+)
+def test_output_type_round_trip_literal_with_delimiters(type_):
+    assert deserialize_type(serialize_type(type_)) == type_
+
+
+@pytest.mark.parametrize(
+    "type_str, expected",
+    [
+        ("tuple[typing.Literal['''a'b'''], int]", tuple[Literal["a'b"], int]),
+        ('tuple[typing.Literal["""a"b"""], int]', tuple[Literal['a"b'], int]),
+        ("typing.Literal['''a'b'''] | int", Union[Literal["a'b"], int]),
+        ('typing.Literal["""a"b"""] | int', Union[Literal['a"b'], int]),
+        ("tuple[typing.Literal['''a\\'b[|'''], int]", tuple[Literal["a'b[|"], int]),
+        ('typing.Literal["""a\\"b]|"""] | int', Union[Literal['a"b]|'], int]),
+    ],
+)
+def test_output_type_deserialization_literal_with_triple_quotes(type_str, expected):
+    assert deserialize_type(type_str) == expected
+
+
 def test_output_type_serialization_haystack_dataclasses():
     # typing
     # Answer

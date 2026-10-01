@@ -137,14 +137,30 @@ def _parse_generic_args(args_str: str) -> list[str]:
     args = []
     bracket_count = 0
     current_arg = ""
+    quote: str | None = None
+    escaped = False
+    quote_chars_remaining = 0
 
-    for char in args_str:
-        if char == "[":
+    for index, char in enumerate(args_str):
+        if quote_chars_remaining:
+            quote_chars_remaining -= 1
+        elif quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif args_str.startswith(quote, index):
+                quote_chars_remaining = len(quote) - 1
+                quote = None
+        elif char in ("'", '"'):
+            quote = char * 3 if args_str.startswith(char * 3, index) else char
+            quote_chars_remaining = len(quote) - 1
+        elif char == "[":
             bracket_count += 1
         elif char == "]":
             bracket_count -= 1
 
-        if char == "," and bracket_count == 0:
+        if char == "," and bracket_count == 0 and quote is None:
             args.append(current_arg.strip())
             current_arg = ""
         else:
@@ -160,7 +176,7 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     """
     Parse a PEP 604 union string (e.g., "str | int | None") into individual type strings.
 
-    Handles nested generics properly, e.g., "list[str] | dict[str, int] | None".
+    Handles nested generics and quoted Literal values, e.g., "list[Literal[']|']] | None".
 
     :param union_str: The union string to parse
     :returns: A list of individual type strings
@@ -168,14 +184,30 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     args = []
     bracket_count = 0
     current_arg = ""
+    quote: str | None = None
+    escaped = False
+    quote_chars_remaining = 0
 
-    for char in union_str:
-        if char == "[":
+    for index, char in enumerate(union_str):
+        if quote_chars_remaining:
+            quote_chars_remaining -= 1
+        elif quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif union_str.startswith(quote, index):
+                quote_chars_remaining = len(quote) - 1
+                quote = None
+        elif char in ("'", '"'):
+            quote = char * 3 if union_str.startswith(char * 3, index) else char
+            quote_chars_remaining = len(quote) - 1
+        elif char == "[":
             bracket_count += 1
         elif char == "]":
             bracket_count -= 1
 
-        if char == "|" and bracket_count == 0:
+        if char == "|" and bracket_count == 0 and quote is None:
             args.append(current_arg.strip())
             current_arg = ""
         else:
