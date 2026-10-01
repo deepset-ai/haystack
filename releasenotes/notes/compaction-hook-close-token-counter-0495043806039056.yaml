@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``CompactionHook.close()`` and ``close_async()`` to release the token counter's
+    resources as well as the compactor's. Previously, resources such as
+    ``OpenAITokenCounter``'s HTTP client remained open after the hook or Agent was closed.

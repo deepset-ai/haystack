@@ -63,7 +63,7 @@ class MetadataRouter:
         Initializes the MetadataRouter component.
 
         :param rules: A dictionary defining how to route documents or byte streams to output connections based on their
-            metadata. Keys are output connection names, and values are dictionaries of
+            metadata. Keys are output connection names (`"unmatched"` is reserved), and values are dictionaries of
             [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
             For example:
             ```python
@@ -102,7 +102,12 @@ class MetadataRouter:
         :param strict_datetime_comparison:
             If `True`, timezone-naive and timezone-aware datetimes never match each other.
             If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
+        :raises ValueError:
+            If `rules` contains the reserved output name `"unmatched"` or an invalid filter.
         """
+        if "unmatched" in rules:
+            raise ValueError("The rule name 'unmatched' is reserved for documents that do not match any rule.")
+
         self.rules = rules
         self.output_type = output_type
         self.strict_datetime_comparison = strict_datetime_comparison

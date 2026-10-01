@@ -183,6 +183,18 @@ class TestMetaFieldRanker:
                 "provided Documents with IDs 1,2,3 are strings." in caplog.text
             )
 
+    @pytest.mark.parametrize("meta_value", [[1, 2, 3], {"score": 5}])
+    def test_warning_meta_value_type_with_unhashable_value(self, meta_value, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": meta_value}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+        assert output["documents"] == docs_before
+        assert "not all of meta values in the provided Documents with IDs 1,2 are strings" in caplog.text
+
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")  # type: ignore[arg-type]
@@ -313,3 +325,35 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert len(docs_after) == 2
         assert "2" not in [doc.id for doc in docs_after]
+
+    @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"), [("bottom", ["3", "1", "2"]), ("top", ["2", "3", "1"]), ("drop", ["3", "1"])]
+    )
+    def test_none_meta_value_is_handled_as_missing_meta(self, missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}),
+            Document(id="2", content="abc", meta={"rating": None}),
+            Document(id="3", content="abc", meta={"rating": 2.1}),
+        ]
+        output = ranker.run(documents=docs_before)
+        assert [doc.id for doc in output["documents"]] == expected_ids
+
+    @pytest.mark.parametrize(
+        ("meta", "init_missing_meta", "run_missing_meta", "expected_ids"),
+        [
+            ({}, "drop", None, []),
+            ({}, "top", None, ["a", "b"]),
+            ({}, "bottom", None, ["a", "b"]),
+            ({}, "bottom", "drop", []),
+            ({}, "drop", "top", ["a", "b"]),
+            ({"rating": None}, "drop", None, []),
+        ],
+    )
+    def test_missing_meta_when_all_values_are_missing(self, meta, init_missing_meta, run_missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=init_missing_meta)
+        docs = [Document(id="a", content="a", meta=meta), Document(id="b", content="b", meta=meta)]
+
+        output = ranker.run(documents=docs, missing_meta=run_missing_meta)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids

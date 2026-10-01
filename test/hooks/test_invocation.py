@@ -4,11 +4,13 @@
 
 import functools
 import threading
+from typing import Any
 
 import pytest
 
 from haystack.components.agents.state import State
-from haystack.hooks import FunctionHook, hook
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.hooks import FunctionHook, Hook, HookPoint, hook
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 
 
@@ -36,6 +38,13 @@ class RecordingHook:
     def run(self, state: State) -> None:
         self.log.append(("run", self.label))
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RecordingHook":
+        return default_from_dict(cls, data)
+
 
 class ThreadRecordingHook:
     def __init__(self) -> None:
@@ -43,6 +52,13 @@ class ThreadRecordingHook:
 
     def run(self, state: State) -> None:
         self.thread_id = threading.get_ident()
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ThreadRecordingHook":
+        return default_from_dict(cls, data)
 
 
 class AsyncRecordingHook:
@@ -56,17 +72,27 @@ class AsyncRecordingHook:
     async def run_async(self, state: State) -> None:
         self.log.append(("run_async", self.label))
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AsyncRecordingHook":
+        return default_from_dict(cls, data)
+
 
 class TestRunHooks:
     def test_runs_all_hooks_for_hook_point_in_order(self):
         log: list = []
-        hooks = {"before_llm": [RecordingHook("a", log), RecordingHook("b", log)]}
+        hooks: dict[HookPoint, list[Hook]] = {"before_llm": [RecordingHook("a", log), RecordingHook("b", log)]}
         _run_hooks(hooks=hooks, hook_point="before_llm", state=State(schema={}))
         assert log == [("run", "a"), ("run", "b")]
 
     def test_only_runs_the_given_hook_point(self):
         log: list = []
-        hooks = {"before_llm": [RecordingHook("a", log)], "on_exit": [RecordingHook("b", log)]}
+        hooks: dict[HookPoint, list[Hook]] = {
+            "before_llm": [RecordingHook("a", log)],
+            "on_exit": [RecordingHook("b", log)],
+        }
         _run_hooks(hooks=hooks, hook_point="on_exit", state=State(schema={}))
         assert log == [("run", "b")]
 
@@ -75,7 +101,9 @@ class TestRunHooks:
 
     def test_traces_each_hook_invocation_as_a_sibling(self, spying_tracer):
         log: list = []
-        hooks = {"before_llm": [RecordingHook(label="a", log=log), RecordingHook(label="b", log=log)]}
+        hooks: dict[HookPoint, list[Hook]] = {
+            "before_llm": [RecordingHook(label="a", log=log), RecordingHook(label="b", log=log)]
+        }
         with spying_tracer.trace(operation_name="parent") as parent_span:
             _run_hooks(hooks=hooks, hook_point="before_llm", state=State(schema={}))
         hook_spans = [span for span in spying_tracer.spans if span.operation_name == "haystack.agent.hook"]
@@ -144,7 +172,7 @@ class TestRunHooksAsync:
     @pytest.mark.asyncio
     async def test_runs_in_order_mixing_sync_and_async(self):
         log: list = []
-        hooks = {"before_llm": [AsyncRecordingHook("a", log), RecordingHook("b", log)]}
+        hooks: dict[HookPoint, list[Hook]] = {"before_llm": [AsyncRecordingHook("a", log), RecordingHook("b", log)]}
         await _run_hooks_async(hooks=hooks, hook_point="before_llm", state=State(schema={}))
         assert log == [("run_async", "a"), ("run", "b")]
 

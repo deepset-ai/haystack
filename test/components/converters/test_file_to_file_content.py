@@ -77,12 +77,13 @@ class TestFileToFileContent:
         results = converter.run(sources=[])
         assert results == {"file_contents": []}
 
-    def test_run_with_invalid_source_type(self, caplog) -> None:
+    def test_run_with_invalid_source_type(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = FileToFileContent()
-        converter.run(sources=[123])
+        # The invalid source type is what this test exercises.
+        converter.run(sources=[123])  # type: ignore[list-item]
         assert "Could not read" in caplog.text
 
-    def test_run_with_non_existent_file(self, caplog) -> None:
+    def test_run_with_non_existent_file(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = FileToFileContent()
         converter.run(sources=["./non_existent_file.pdf"])
         assert "Could not read" in caplog.text
@@ -105,7 +106,7 @@ class TestFileToFileContent:
 
     def test_run_with_extra_list(self) -> None:
         converter = FileToFileContent()
-        sources = ["./test/test_files/txt/doc_1.txt", "./test/test_files/txt/doc_2.txt"]
+        sources: list[str | Path | ByteStream] = ["./test/test_files/txt/doc_1.txt", "./test/test_files/txt/doc_2.txt"]
         extra = [{"key": "value1"}, {"key": "value2"}]
         results = converter.run(sources=sources, extra=extra)
 
@@ -117,7 +118,7 @@ class TestFileToFileContent:
         # A single ``extra`` dict is applied to every source; each FileContent must get its own copy
         # so that mutating one file's ``extra`` downstream does not leak into the others.
         converter = FileToFileContent()
-        sources = ["./test/test_files/txt/doc_1.txt", "./test/test_files/txt/doc_2.txt"]
+        sources: list[str | Path | ByteStream] = ["./test/test_files/txt/doc_1.txt", "./test/test_files/txt/doc_2.txt"]
         results = converter.run(sources=sources, extra={"tenant": "acme"})
 
         file_contents = results["file_contents"]
@@ -127,7 +128,7 @@ class TestFileToFileContent:
         file_contents[0].extra["page"] = 1
         assert "page" not in file_contents[1].extra
 
-    def test_run_skips_empty_files_among_valid(self, caplog) -> None:
+    def test_run_skips_empty_files_among_valid(self, caplog: pytest.LogCaptureFixture) -> None:
         byte_stream_empty = ByteStream(data=b"")
         valid_source = "./test/test_files/txt/doc_1.txt"
 

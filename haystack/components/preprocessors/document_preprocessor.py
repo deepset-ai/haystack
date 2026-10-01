@@ -35,7 +35,7 @@ class DocumentPreprocessor:
         self,
         *,
         # --- DocumentSplitter arguments ---
-        split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
+        split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence", "token"] = "word",
         split_length: int = 250,
         split_overlap: int = 0,
         split_threshold: int = 0,
@@ -44,6 +44,7 @@ class DocumentPreprocessor:
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
+        tokenizer_encoding: str = "o200k_base",
         # --- DocumentCleaner arguments ---
         remove_empty_lines: bool = True,
         remove_extra_whitespaces: bool = True,
@@ -58,7 +59,8 @@ class DocumentPreprocessor:
         Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
         **Splitter Parameters**:
-        :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
+        :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line",
+            "sentence", or "token".
         :param split_length: The maximum number of units (words, lines, pages, and so on) in each split.
         :param split_overlap: The number of overlapping units between consecutive splits.
         :param split_threshold: The minimum number of units per split. If a split is smaller than this, it's merged
@@ -70,6 +72,8 @@ class DocumentPreprocessor:
         :param use_split_rules: Whether to apply additional splitting heuristics for the sentence splitter.
         :param extend_abbreviations: Whether to extend the sentence splitter with curated abbreviations for certain
             languages.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to
+            `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
 
         **Cleaner Parameters**:
         :param remove_empty_lines: If `True`, removes empty lines.
@@ -100,6 +104,7 @@ class DocumentPreprocessor:
         self.language = language
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
+        self.tokenizer_encoding = tokenizer_encoding
 
         # Instantiate sub-components
         splitter = DocumentSplitter(
@@ -112,6 +117,7 @@ class DocumentPreprocessor:
             language=self.language,
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
         cleaner = DocumentCleaner(
@@ -180,6 +186,7 @@ class DocumentPreprocessor:
             language=self.language,
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
     @classmethod

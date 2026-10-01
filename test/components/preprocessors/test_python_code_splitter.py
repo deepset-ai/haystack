@@ -296,6 +296,26 @@ class TestFileNamePropagation:
         for chunk in result["documents"]:
             assert chunk.meta["project"] == "haystack"
 
+    def test_nested_metadata_is_not_shared_between_chunks(self, class_source):
+        """Each chunk gets its own copy of nested metadata, so editing one does not reach its siblings."""
+        doc = Document(content=class_source, meta={"tags": ["code"]})
+
+        chunks = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5).run(documents=[doc])["documents"]
+        chunks[0].meta["tags"].append("shape")
+
+        assert chunks[1].meta["tags"] == ["code"]
+        assert doc.meta["tags"] == ["code"]
+
+    def test_nested_metadata_is_not_shared_between_secondary_split_pieces(self, oversized_function_source):
+        """The secondary line-based split copies nested metadata too."""
+        doc = Document(content=oversized_function_source, meta={"tags": ["code"]})
+
+        chunks = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5).run(documents=[doc])["documents"]
+        chunks[0].meta["tags"].append("giant")
+
+        assert chunks[1].meta["tags"] == ["code"]
+        assert doc.meta["tags"] == ["code"]
+
 
 class TestDecorators:
     def test_decorators_metadata_present(self):
@@ -313,7 +333,7 @@ class TestDecorators:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
-        all_decorators = []
+        all_decorators: list[str] = []
         for chunk in result["documents"]:
             all_decorators.extend(chunk.meta.get("decorators") or [])
         assert any("staticmethod" in d for d in all_decorators)

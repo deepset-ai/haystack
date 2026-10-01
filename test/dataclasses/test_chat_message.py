@@ -955,8 +955,21 @@ class TestToOpenaiDictFormat:
             "name": "Assistant1",
         }
 
+    def test_to_openai_dict_format_contentless_assistant_message(self):
+        # A Chat Generator that discards a malformed tool call returns a reply with no content parts. The API rejects
+        # an assistant message with no `content` key, so it is sent with empty content, and it round-trips.
+        message = ChatMessage.from_assistant(text=None)
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+        assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
+
+    def test_to_openai_dict_format_reasoning_only_assistant_message(self):
+        # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the
+        # same as a reply carrying reasoning alongside text.
+        message = ChatMessage.from_assistant(reasoning="only reasoning")
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+
     def test_to_openai_dict_format_invalid(self):
-        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+        message = ChatMessage(_role=ChatRole.USER, _content=[])
         with pytest.raises(ValueError):
             message.to_openai_dict_format()
 
@@ -1166,6 +1179,28 @@ class TestFromOpenaiDictFormat:
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.tool_call is not None
         assert message.tool_call.arguments == {}
+
+    def test_from_openai_dict_format_tool_call_with_dict_arguments(self):
+        # Some OpenAI-compatible servers already parse arguments into a dict.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"id": "call_123", "function": {"name": "get_weather", "arguments": {"location": "Berlin"}}}
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
+        assert message.tool_call.arguments == {"location": "Berlin"}
+
+    def test_from_openai_dict_format_tool_call_with_invalid_json_arguments(self):
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": "{not-json"}}],
+        }
+        with pytest.raises(json.JSONDecodeError):
+            ChatMessage.from_openai_dict_format(openai_msg)
 
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}

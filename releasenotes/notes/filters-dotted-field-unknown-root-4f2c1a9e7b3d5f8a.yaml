@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fixed ``document_matches_filter`` raising ``AttributeError`` for dotted filter fields whose root is not a
+    ``Document`` attribute (for example ``{"field": "typo.x", ...}``). Such fields are now treated as missing,
+    consistent with non-dotted unknown fields and the documented behavior. This affected
+    ``InMemoryDocumentStore.filter_documents`` and ``MetadataRouter``.

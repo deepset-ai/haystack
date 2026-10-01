@@ -305,7 +305,9 @@ def _comparison_condition(
         # Handles fields formatted like so:
         # 'meta.person.name'
         parts = field.split(".")
-        document_value = getattr(document, parts[0])
+        # Use a default so that a dotted field whose root is not a Document attribute is treated
+        # as missing, consistent with the loop below and with non-dotted unknown fields.
+        document_value = getattr(document, parts[0], None)
         for part in parts[1:]:
             if not isinstance(document_value, dict) or part not in document_value:
                 # If a field is not found (or an intermediate value is not a dict,

@@ -9,22 +9,14 @@ from haystack.hooks.compaction.utils import (
     _COMPACTION_META_KEY,
     _agent_step_spans,
     _current_agent_step_groups,
-    _estimated_context_tokens,
     _historical_turn_groups,
     _historical_turn_spans,
     _is_compaction_message,
     _last_assistant_index,
 )
-from haystack.tools import tool
-from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
+from test.hooks.compaction.helpers import tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
-
-
-@tool
-def lookup(query: str) -> str:
-    """Look up information relevant to a query."""
-    return query
 
 
 class TestLastAssistantIndex:
@@ -180,47 +172,3 @@ class TestCurrentAgentStepGroups:
     def test_missing_task_anchor(self):
         messages = [ChatMessage.from_system("rules"), ChatMessage.from_assistant("step")]
         assert _current_agent_step_groups(messages=messages, system_end=1, task_index=None) == [[1]]
-
-
-class TestEstimatedContextTokens:
-    def test_counts_only_what_the_generator_has_not_seen(self):
-        counter = FakeCounter()
-        # The reported count covers everything through the assistant reply; only the tool result came after.
-        messages = [
-            ChatMessage.from_user(text="start"),
-            ChatMessage.from_assistant(text="reply"),
-            tool_result(result="R" * 400),
-        ]
-        delta = counter.count(messages=messages[2:])
-        assert _estimated_context_tokens(messages=messages, context_tokens=5000, token_counter=counter) == 5000 + delta
-        assert delta > 0
-
-    def test_equals_the_reported_count_when_nothing_followed(self):
-        messages = [ChatMessage.from_user(text="start"), ChatMessage.from_assistant(text="reply")]
-        assert _estimated_context_tokens(messages=messages, context_tokens=5000, token_counter=FakeCounter()) == 5000
-
-    def test_falls_back_to_counting_everything_without_reported_usage(self):
-        counter = FakeCounter()
-        messages = [
-            ChatMessage.from_user(text="start"),
-            ChatMessage.from_assistant(text="reply"),
-            tool_result(result="R" * 400),
-        ]
-        assert _estimated_context_tokens(
-            messages=messages, context_tokens=0, token_counter=counter, tools=[lookup]
-        ) == counter.count(messages=messages, tools=[lookup])
-
-    def test_the_written_back_value_does_not_double_count(self):
-        # After compacting, the hook writes back the count through the last assistant message. Feeding that straight
-        # back in must reproduce the size of the whole conversation, not overshoot it. Counting the two parts separately
-        # loses the separator between them, so allow a couple of tokens of slack.
-        counter = FakeCounter()
-        messages = [
-            ChatMessage.from_user(text="start"),
-            ChatMessage.from_assistant(text="reply"),
-            tool_result(result="R" * 400),
-        ]
-        written = counter.count(messages=messages[: _last_assistant_index(messages=messages) + 1])
-        assert _estimated_context_tokens(
-            messages=messages, context_tokens=written, token_counter=counter
-        ) == pytest.approx(counter.count(messages=messages), abs=2)

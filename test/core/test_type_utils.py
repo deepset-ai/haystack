@@ -7,7 +7,21 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import pytest
 
@@ -488,6 +502,38 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(List[int], Iterable[int], id="typing-list-to-iterable"),
+        pytest.param(list[int], Iterable[int], id="list-to-iterable"),
+        pytest.param(
+            list[str | Path | ByteStream],
+            Iterable[str | Path | ByteStream],
+            id="list-of-file-sources-to-iterable-of-file-sources",
+        ),
+        pytest.param(list[Class3], Iterable[Class1], id="list-of-subclass-to-iterable-of-superclass"),
+        pytest.param(list[int], Iterable[Any], id="list-to-iterable-of-any"),
+        pytest.param(list[int], Iterable, id="list-to-bare-iterable"),
+    ],
+)
+def test_list_is_compatible_with_iterable_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (True, None)
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(list[str], Iterable[int], id="list-to-iterable-with-incompatible-item-types"),
+        pytest.param(list[Any], Iterable[int], id="list-of-any-to-typed-iterable"),
+        pytest.param(list, Iterable[int], id="bare-list-to-typed-iterable"),
+        pytest.param(Iterable[int], list[int], id="iterable-to-list"),
+    ],
+)
+def test_list_and_iterable_are_not_compatible_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (False, None)
+
+
 incompatible_type_cases = [
     pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(tuple[int, str], tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
@@ -773,6 +819,37 @@ def test_nested_callable_compatibility(sender_type, receiver_type):
     ],
 )
 def test_always_incompatible_callable_types(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(Callable[..., int], Callable[[int], int], id="ellipsis-callable-to-typed-callable"),
+        pytest.param(Callable[[int, str], bool], Callable[..., bool], id="typed-callable-to-ellipsis-callable"),
+        pytest.param(
+            Callable[[Callable[..., int]], str],
+            Callable[[Callable[[int], int]], str],
+            id="nested-ellipsis-callable-to-nested-typed-callable",
+        ),
+        pytest.param(Callable, Callable[..., Any], id="bare-callable-to-ellipsis-callable"),
+    ],
+)
+def test_callable_with_ellipsis_parameters_is_compatible(sender_type, receiver_type):
+    # An Ellipsis parameter list matches parameters of any signature, in both directions
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert _types_are_compatible(receiver_type, sender_type)[0]
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(Callable[..., str], Callable[[int], int], id="ellipsis-callable-to-callable-wrong-return-type"),
+        pytest.param(Callable[[int], int], Callable[..., str], id="typed-callable-to-ellipsis-wrong-return-type"),
+    ],
+)
+def test_callable_with_ellipsis_parameters_incompatible_return_type(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type)[0]
     assert not _types_are_compatible(receiver_type, sender_type)[0]
 
@@ -1212,6 +1289,12 @@ def unresolvable_annotation(document: "Unimportable") -> None: ...  # type: igno
 class TestResolveParameterTypes:
     def test_resolves_postponed_annotations(self):
         assert _resolve_parameter_types(retrieve) == {"query": str, "documents": list[Document], "top_k": Optional[int]}
+
+    def test_keeps_annotated_metadata_with_include_extras(self):
+        def function(city: "Annotated[str, 'the city']") -> None: ...
+
+        assert _resolve_parameter_types(function) == {"city": str}
+        assert _resolve_parameter_types(function, include_extras=True) == {"city": Annotated[str, "the city"]}
 
     def test_keeps_eagerly_evaluated_annotations(self):
         # `top_k` keeps the annotation it was written with, it is not widened to `int | None` because of its default.

@@ -259,7 +259,7 @@ def _to_mermaid_image(
     :param server_url:
         Base URL of the Mermaid server (default: 'https://mermaid.ink').
     :param params:
-        Dictionary of customization parameters. See `validate_mermaid_params` for valid keys.
+        Dictionary of customization parameters. See `_validate_mermaid_params` for valid keys.
     :param timeout:
         Timeout in seconds for the request to the Mermaid server.
     :param super_component_mapping:

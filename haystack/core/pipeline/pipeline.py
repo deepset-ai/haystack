@@ -582,6 +582,18 @@ class Pipeline(PipelineBase):
                 # For sync-only components, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving e.g. the active tracing span.
                 outputs = await _execute_component_async(instance, **component_inputs_copy)
+            except BreakpointException as error:
+                # Re-raise BreakpointException to preserve the original exception context, matching
+                # the sync _run_component: a breakpoint triggered by a nested component (e.g. an Agent)
+                # must bubble up to the main pipeline instead of being wrapped.
+                raise error
+
+            # A component that internally uses Pipeline._run_component_async could raise a PipelineRuntimeError
+            # carrying additional context (e.g. an agent snapshot); re-raise it instead of wrapping it in
+            # another PipelineRuntimeError, matching the sync _run_component.
+            except PipelineRuntimeError as runtime_error:
+                raise runtime_error
+
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 

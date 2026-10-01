@@ -238,6 +238,8 @@ class OpenAIImageGenerator:
             api_key=self.api_key,
             api_base_url=self.api_base_url,
             organization=self.organization,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
         )
 

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``XLSXToDocument`` skipping workbooks with hyperlinks in numeric or boolean
+    columns when using pandas 3. Hyperlink text is now inserted without a dtype error,
+    while columns without hyperlinks retain their original types and formatting.

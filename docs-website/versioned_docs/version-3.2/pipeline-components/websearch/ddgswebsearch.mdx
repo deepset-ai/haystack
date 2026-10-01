@@ -1,0 +1,132 @@
+---
+title: "DDGSWebSearch"
+id: ddgswebsearch
+slug: "/ddgswebsearch"
+description: "Multi-engine web search using ddgs (Dux Distributed Global Search), with no API key required."
+---
+
+# DDGSWebSearch
+
+Search the web with ddgs (Dux Distributed Global Search), a metasearch library that aggregates results from multiple search engines without an API key.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | None. `ddgs` requires no API key. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result snippets, with the result title and URL in the metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [ddgs API](/reference/integrations-ddgs) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/ddgs/src/haystack_integrations/components/websearch/ddgs/ddgs_websearch.py |
+| **Package name** | `ddgs-haystack` |
+
+</div>
+
+## Overview
+
+When you give `DDGSWebSearch` a query, it uses [ddgs](https://github.com/deedy5/ddgs) to search the web and return the result snippets as Haystack `Document` objects. It also returns a list of the source URLs.
+
+Unlike the other websearch components, `DDGSWebSearch` needs **no API key and no account**. `ddgs` is a free metasearch library that queries public search engines directly, aggregating results from backends such as DuckDuckGo, Google, Bing, Brave, Yahoo, Yandex, and Mullvad.
+
+You can configure the search with:
+
+- `backend`: A comma-separated list of ddgs backends to query, for example `"duckduckgo, google, brave"`, or `"auto"` to let ddgs choose. See the [ddgs documentation](https://github.com/deedy5/ddgs) for the full list of backends.
+- `region`: The region and locale of the search, for example `"us-en"`, `"de-de"`, or `"wt-wt"` for no region.
+- `safesearch`: The safe-search level, one of `"on"`, `"moderate"`, or `"off"`.
+- `top_k`: The maximum number of results to return.
+- `search_params`: Additional keyword arguments forwarded to the underlying `DDGS().text()` call, such as `page` or `timelimit`. Values you set here take precedence over `backend`, `region`, `safesearch`, and `top_k`.
+
+All of these can be overridden for a single search by passing them to `run()`. Note that a `search_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
+
+`DDGSWebSearch` also supports asynchronous execution through `run_async()`. Because `ddgs` has no native async API, the blocking search runs in a worker thread. The underlying client is created lazily on the first search. To avoid the cold-start latency of the first call, you can call `warm_up()` explicitly.
+
+:::note[Best-effort results]
+
+`ddgs` queries public search engines without an API contract, so results are best-effort: they can differ between runs, and heavy use may be throttled or temporarily blocked. For production workloads that need predictable rate limits, consider a component backed by a commercial search API, such as [`TavilyWebSearch`](tavilywebsearch.mdx) or [`SerperDevWebSearch`](serperdevwebsearch.mdx).
+:::
+
+## Usage
+
+Install the `ddgs-haystack` package to use the `DDGSWebSearch` component:
+
+```shell
+pip install ddgs-haystack
+```
+
+### On its own
+
+Here is a quick example of how `DDGSWebSearch` searches the web based on a query and returns a list of Documents. No API key is needed.
+
+```python
+from haystack_integrations.components.websearch.ddgs import DDGSWebSearch
+
+web_search = DDGSWebSearch(top_k=5)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.meta["url"])
+    print(doc.content)
+```
+
+To search with specific backends and in a specific region:
+
+```python
+web_search = DDGSWebSearch(
+    top_k=5,
+    backend="duckduckgo, brave",
+    region="de-de",
+    safesearch="off",
+)
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline that uses `DDGSWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.websearch.ddgs import DDGSWebSearch
+from haystack.dataclasses import ChatMessage
+
+web_search = DDGSWebSearch(top_k=3)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```
+
+Because `ddgs` returns only short snippets rather than full page content, you can add a [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx) and a converter after the search to fetch and read the actual web pages when you need more context.

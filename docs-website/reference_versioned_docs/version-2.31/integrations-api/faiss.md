@@ -16,7 +16,9 @@ Example usage:
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.document_stores.types import DuplicatePolicy
 
 from haystack_integrations.document_stores.faiss import FAISSDocumentStore
@@ -31,7 +33,6 @@ documents = [
 ]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)["documents"]
 
 document_store.write_documents(documents_with_embeddings, policy=DuplicatePolicy.OVERWRITE)
@@ -383,18 +384,30 @@ Returns the minimum and maximum values for a specific metadata field.
 #### get_metadata_field_unique_values
 
 ```python
-get_metadata_field_unique_values(field_name: str) -> list[Any]
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Returns all unique values for a specific metadata field.
+Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
 **Parameters:**
 
-- **field_name** (<code>str</code>) – The name of the metadata field.
+- **metadata_field** (<code>str</code>) – The metadata field to get unique values for. Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a case-insensitive substring
+  against the metadata field's value.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the specified field.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing list of unique values (in their original type) and total count of
+  unique values.
 
 #### count_unique_metadata_by_filter
 

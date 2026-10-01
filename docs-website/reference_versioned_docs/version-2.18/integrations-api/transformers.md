@@ -376,10 +376,7 @@ print(generator.run(messages))
 ```python
 __init__(
     model: str = "Qwen/Qwen3-0.6B",
-    task: (
-        Literal["text-generation", "text2text-generation", "image-text-to-text"]
-        | None
-    ) = None,
+    task: Literal["text-generation", "image-text-to-text"] | None = None,
     device: ComponentDevice | None = None,
     token: Secret | None = Secret.from_env_var(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
@@ -406,10 +403,8 @@ Initializes the TransformersChatGenerator component.
   The model must be a chat model supporting the ChatML messaging
   format.
   If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-- **task** (<code>Literal['text-generation', 'text2text-generation', 'image-text-to-text'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
+- **task** (<code>Literal['text-generation', 'image-text-to-text'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
-- `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
-  Previously supported by encoder-decoder models such as T5.
 - `image-text-to-text`: Supported by vision-language models.
   If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
   If not specified, the component calls the Hugging Face API to infer the task from the model name.
@@ -445,14 +440,6 @@ Initializes the TransformersChatGenerator component.
 - **enable_thinking** (<code>bool</code>) – Whether to enable thinking mode in the chat template for thinking-capable models.
   When enabled, the model generates intermediate reasoning before the final response. Defaults to False.
 
-#### shutdown
-
-```python
-shutdown() -> None
-```
-
-Explicitly shutdown the executor if we own it.
-
 #### warm_up
 
 ```python
@@ -460,6 +447,14 @@ warm_up() -> None
 ```
 
 Initializes the component and warms up tools if provided.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the executor owned by the component.
 
 #### to_dict
 
@@ -506,7 +501,9 @@ Invoke text generation inference based on the provided messages and generation p
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided,
   it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with
+  the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.
@@ -563,7 +560,9 @@ and return values but can be used with `await` in an async code.
 **Parameters:**
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with
+  the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.

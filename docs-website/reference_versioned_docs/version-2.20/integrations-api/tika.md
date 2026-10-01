@@ -65,6 +65,7 @@ Converts files of different types to Documents using Apache Tika.
 
 This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
 requires a running Tika server.
+Use a Tika 3.x server; the `tika` Python client does not yet support Tika Server 4.x.
 For more options on running Tika,
 see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 

@@ -127,6 +127,29 @@ class TestConfirmationHook:
             ),
         ]
 
+    @pytest.mark.parametrize(
+        "ui_result",
+        [
+            ConfirmationUIResult(action="confirm"),
+            ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}),
+            ConfirmationUIResult(action="reject"),
+        ],
+    )
+    def test_keeps_messages_after_the_last_user_message(self, tools, ui_result):
+        # Other hooks can add messages between the last user message and the pending tool calls, e.g. a system
+        # reminder from an on_exit hook that continues the run after a text answer.
+        earlier = [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant("Draft answer: 3"),
+            ChatMessage.from_system("Call the tool before finishing."),
+        ]
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2})])
+        state = _state_with([*earlier, tool_call_message], tools)
+        _confirm_hook(ui_result).run(state)
+        assert state.get("messages")[: len(earlier)] == earlier
+        if ui_result.action == "confirm":
+            assert state.get("messages") == [*earlier, tool_call_message]
+
     def test_hook_context_is_not_deepcopied(self, tools):
         # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy
         # unchanged. Reading via state.get would deepcopy and raise; the hook reads via state.data instead.
@@ -259,6 +282,14 @@ class TestConfirmationHookWildcard:
 
 
 class TestConfirmationHookAsync:
+    @pytest.mark.asyncio
+    async def test_keeps_messages_after_the_last_user_message(self, tools):
+        earlier = [ChatMessage.from_user("add"), ChatMessage.from_system("User memory: prefers short answers.")]
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2})])
+        state = _state_with([*earlier, tool_call_message], tools)
+        await _confirm_hook(ConfirmationUIResult(action="confirm")).run_async(state)
+        assert state.get("messages") == [*earlier, tool_call_message]
+
     @pytest.mark.asyncio
     async def test_reject_drops_tool_call_and_appends_result(self, tools):
         messages = [

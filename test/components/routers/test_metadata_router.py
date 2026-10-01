@@ -11,6 +11,21 @@ from haystack.dataclasses import ByteStream, Document
 
 
 class TestMetadataRouter:
+    @pytest.mark.parametrize("output_type", [list[Document], list[ByteStream]])
+    def test_init_rejects_reserved_output_name(self, output_type: type) -> None:
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter(
+                rules={"unmatched": {"field": "meta.language", "operator": "==", "value": "en"}},
+                output_type=output_type,
+            )
+
+    def test_from_dict_rejects_reserved_output_name(self) -> None:
+        data = MetadataRouter(rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}}).to_dict()
+        rules = data["init_parameters"]["rules"]
+        rules["unmatched"] = rules.pop("english")
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter.from_dict(data)
+
     def test_run(self):
         rules = {
             "edge_1": {

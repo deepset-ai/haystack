@@ -103,17 +103,10 @@ class SkillToolset(Toolset):
         self._load_skill_tool.description = self._load_skill_description()
         self._is_warmed_up = True
 
-    def add(self, tool: Tool | Toolset) -> None:
+    def add(self, tool: Tool) -> None:
         """Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store."""
         raise NotImplementedError(
             "SkillToolset does not support adding tools. To combine it with other tools, pass it to the Agent "
-            "alongside them, e.g. tools=[skill_toolset, other_tool]."
-        )
-
-    def __add__(self, other: Tool | Toolset | list[Tool]) -> "Toolset":
-        """Concatenation is not supported for SkillToolset."""
-        raise NotImplementedError(
-            "SkillToolset does not support concatenation. To combine it with other tools, pass it to the Agent "
             "alongside them, e.g. tools=[skill_toolset, other_tool]."
         )
 

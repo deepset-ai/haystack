@@ -865,13 +865,14 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Return unique values for a metadata field with optional search and pagination.
 
-Values are stringified. For tag fields the distinct values are returned; for numeric fields
-the string representation of each distinct value is returned.
+Values are returned in their original type (e.g. int, bool). The `search_term` filter, when
+provided, matches against the string representation of each value.
 
 **Parameters:**
 
@@ -879,14 +880,14 @@ the string representation of each distinct value is returned.
 - **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter on the value.
 - **from\_** (<code>int</code>) – Start index for pagination (default 0).
 - **size** (<code>int</code>) – Number of values to return (default 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values for the requested page, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values for the requested page, total count of unique values).
 
 **Raises:**
 
-- <code>ValueError</code> – If the field is not configured for filtering.
 - <code>ValkeyDocumentStoreError</code> – If the operation fails.
 
 #### get_metadata_field_unique_values_async
@@ -897,10 +898,14 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously return unique values for a metadata field with optional search and pagination.
+
+Values are returned in their original type (e.g. int, bool). The `search_term` filter, when
+provided, matches against the string representation of each value.
 
 **Parameters:**
 
@@ -908,14 +913,14 @@ Asynchronously return unique values for a metadata field with optional search an
 - **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter on the value.
 - **from\_** (<code>int</code>) – Start index for pagination (default 0).
 - **size** (<code>int</code>) – Number of values to return (default 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values for the requested page, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values for the requested page, total count of unique values).
 
 **Raises:**
 
-- <code>ValueError</code> – If the field is not configured for filtering.
 - <code>ValkeyDocumentStoreError</code> – If the operation fails.
 
 #### delete_all_documents

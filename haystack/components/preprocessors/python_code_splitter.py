@@ -4,6 +4,7 @@
 
 import ast
 import math
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -472,7 +473,7 @@ class PythonCodeSplitter:
         """Construct the output meta dict for a chunk of merged units."""
         meta: dict[str, Any] = {}
         if parent_doc.meta:
-            meta.update({k: v for k, v in parent_doc.meta.items() if k not in {"split_id"}})
+            meta.update(deepcopy({k: v for k, v in parent_doc.meta.items() if k not in {"split_id"}}))
         meta["source_id"] = parent_doc.id
 
         # Units are emitted in source order, so chunk[0]/chunk[-1] give the extremes.
@@ -552,7 +553,7 @@ class PythonCodeSplitter:
         base_meta = self._build_chunk_meta([unit], parent_doc)
         results: list[Document] = []
         for idx, piece in enumerate(intermediate):
-            meta = dict(base_meta)
+            meta = deepcopy(base_meta)
             meta["secondary_split"] = True
             meta["secondary_split_index"] = idx
             meta["secondary_split_total"] = len(intermediate)

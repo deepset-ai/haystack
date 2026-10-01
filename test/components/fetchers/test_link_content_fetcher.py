@@ -80,6 +80,18 @@ class TestLinkContentFetcher:
         assert "verify" in fetcher.client_kwargs
         assert fetcher.client_kwargs["verify"] is False
 
+    def test_init_does_not_mutate_client_kwargs(self):
+        client_kwargs = {"headers": {"X-Request-ID": "example"}}
+
+        fetcher = LinkContentFetcher(timeout=10, client_kwargs=client_kwargs)
+
+        assert client_kwargs == {"headers": {"X-Request-ID": "example"}}
+        assert fetcher.client_kwargs == {
+            "headers": {"X-Request-ID": "example"},
+            "timeout": 10,
+            "follow_redirects": True,
+        }
+
     def test_run_text(self):
         """Test fetching text content"""
         correct_response = b"Example test response"
@@ -248,8 +260,10 @@ class TestComponentLifecycle:
         assert fetcher._async_client is None
 
     def test_sync_lifecycle(self):
-        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
-            client_instance = ClientMock.return_value
+        client_instance = Mock()
+        with patch(
+            "haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance
+        ) as ClientMock:
             fetcher = LinkContentFetcher()
 
             fetcher.warm_up()
@@ -270,9 +284,11 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_async_lifecycle(self):
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
-            async_client_instance = AsyncClientMock.return_value
-            async_client_instance.aclose = AsyncMock()
+        async_client_instance = Mock()
+        async_client_instance.aclose = AsyncMock()
+        with patch(
+            "haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance
+        ) as AsyncClientMock:
             fetcher = LinkContentFetcher()
 
             await fetcher.warm_up_async()
@@ -302,14 +318,13 @@ class TestComponentLifecycle:
 
     @pytest.mark.asyncio
     async def test_close_and_close_async_are_independent(self):
+        client_instance = Mock()
+        async_client_instance = Mock()
+        async_client_instance.aclose = AsyncMock()
         with (
-            patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock,
-            patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock,
+            patch("haystack.components.fetchers.link_content.httpx.Client", return_value=client_instance),
+            patch("haystack.components.fetchers.link_content.httpx.AsyncClient", return_value=async_client_instance),
         ):
-            client_instance = ClientMock.return_value
-            async_client_instance = AsyncClientMock.return_value
-            async_client_instance.aclose = AsyncMock()
-
             fetcher = LinkContentFetcher()
             fetcher.warm_up()
             await fetcher.warm_up_async()
@@ -396,7 +411,7 @@ class TestLinkContentFetcherIntegration:
         for stream in streams:
             assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.meta["content_type"] == "text/html":
-                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+                assert b"Haystack" in stream.data or b"Google" in stream.data  # noqa: PLR2004
                 assert stream.mime_type == "text/html"
             elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0
@@ -512,20 +527,25 @@ class TestLinkContentFetcherAsync:
         # Patch the AsyncClient class to control the instance created by LinkContentFetcher
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
             aclient = AsyncClientMock.return_value
-            aclient.headers = {}  # base headers used in the merge
+            aclient.headers = {"X-Client-Default": "client-value"}
 
             mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
             aclient.get = AsyncMock(return_value=mock_response)
 
             fetcher = LinkContentFetcher(
                 user_agents=["ua-async-1", "ua-async-2"],
+                client_kwargs={"headers": {"X-Client-Default": "client-value"}},
                 request_headers={"Accept-Language": "de-DE", "X-Async": "true", "User-Agent": "ignored-here-too"},
             )
 
             _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
 
+            AsyncClientMock.assert_called_once_with(
+                headers={"X-Client-Default": "client-value"}, timeout=3, follow_redirects=True
+            )
             assert aclient.get.await_count == 1
             sent_headers = aclient.get.call_args.kwargs["headers"]
+            assert sent_headers["X-Client-Default"] == "client-value"
             assert sent_headers["X-Async"] == "true"
             assert sent_headers["Accept-Language"] == "de-DE"
             assert sent_headers["User-Agent"] == "ua-async-1"  # rotating UA wins

@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import collections.abc
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from enum import Enum
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
@@ -42,7 +41,7 @@ _STRATEGY_PRIORITY = (
 )
 
 
-def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
+def _resolve_parameter_types(target: Callable, *, include_extras: bool = False) -> dict[str, Any]:
     """
     Map the parameter names of a callable to their type annotations, resolving postponed annotations.
 
@@ -51,13 +50,14 @@ def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
     others the annotation from the signature is kept.
 
     :param target: The callable to inspect.
+    :param include_extras: If `True`, resolved `Annotated` types keep their metadata instead of being unwrapped.
     :returns: A dict mapping parameter names to their type annotations. Annotations that cannot be resolved, and
         parameters without an annotation, are returned as they appear in the signature.
     """
     parameters = inspect.signature(target).parameters
     if any(isinstance(param.annotation, str) for param in parameters.values()):
         try:
-            hints = get_type_hints(target)
+            hints = get_type_hints(target, include_extras=include_extras)
         except Exception:
             # TypeError is raised for objects that cannot carry annotations, NameError for names that are not
             # importable at runtime. Either way we fall back to the unresolved annotations.
@@ -159,24 +159,32 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
 
     sender_origin = _safe_get_origin(sender)
     receiver_origin = _safe_get_origin(receiver)
+    sender_args = get_args(sender)
+    receiver_args = get_args(receiver)
 
     # Special case to reject bare-Union types
-    if (sender_origin is Union and not get_args(sender)) or (receiver_origin is Union and not get_args(receiver)):
+    if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
 
     if sender_origin is not Union and receiver_origin is Union:
-        return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
+        return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)
+
+    # Special case to allow list[T] -> Iterable[T] and list[T] -> Iterable[Any]
+    if sender_origin is list and receiver_origin is Iterable:
+        # If the receiver is a bare Iterable, we accept any list.
+        if not receiver_args:
+            return True
+        # If the receiver is Iterable[T], we require the sender to be list[T] for the same T.
+        if len(sender_args) != 1 or len(receiver_args) != 1:
+            return False
+        return _strict_types_are_compatible(sender_args[0], receiver_args[0])
 
     # Both must have origins and they must be equal
     if not (sender_origin and receiver_origin and sender_origin == receiver_origin):
         return False
 
-    # Compare generic type arguments
-    sender_args = get_args(sender)
-    receiver_args = get_args(receiver)
-
     # Handle Callable types
-    if sender_origin == receiver_origin == collections.abc.Callable:
+    if sender_origin == receiver_origin == Callable:
         return _check_callable_compatibility(sender_args, receiver_args)
 
     # Handle bare types
@@ -195,13 +203,18 @@ def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: t
     if not receiver_args:
         return True
     if not sender_args:
-        sender_args = ([Any] * len(receiver_args[0]), Any)
+        receiver_params = receiver_args[0]
+        # `Callable[..., T]` spells its parameters as Ellipsis, which has no length to expand to
+        sender_args = ([Any] if receiver_params is Ellipsis else [Any] * len(receiver_params), Any)
     # Standard Callable has two elements in args: argument list and return type
     if len(sender_args) != 2 or len(receiver_args) != 2:
         return False
     # Return types must be compatible
     if not _strict_types_are_compatible(sender_args[1], receiver_args[1]):
         return False
+    # An Ellipsis parameter list stands for parameters of any signature, so there are no positions to compare
+    if sender_args[0] is Ellipsis or receiver_args[0] is Ellipsis:
+        return True
     # Input Arguments must be of same length
     if len(sender_args[0]) != len(receiver_args[0]):
         return False

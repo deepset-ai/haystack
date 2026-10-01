@@ -38,15 +38,16 @@ class TestMemoryBM25Retriever:
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store):
-        with pytest.raises(ValueError):
-            InMemoryBM25Retriever(in_memory_doc_store, top_k=-2)
+    @pytest.mark.parametrize("top_k", [0, -2])
+    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            InMemoryBM25Retriever(in_memory_doc_store, top_k=top_k)
 
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
-        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
-        component = InMemoryBM25Retriever(document_store=document_store)
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}  # type: ignore[method-assign]
+        component = InMemoryBM25Retriever(document_store=document_store)  # type: ignore[arg-type]
 
         data = component.to_dict()
         assert data == {
@@ -133,11 +134,36 @@ class TestMemoryBM25Retriever:
         in_memory_doc_store.write_documents(mock_docs)
 
         retriever = InMemoryBM25Retriever(in_memory_doc_store, top_k=5)
-        result = retriever.run(query="PHP")
+        result = retriever.run(query="PHP popular")
 
         assert "documents" in result
         assert len(result["documents"]) == 5
         assert result["documents"][0].content == "PHP is a popular programming language"
+
+    def test_run_with_zero_top_k_returns_empty(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        assert retriever.run(query="PHP", top_k=0) == {"documents": []}
+
+    def test_run_with_negative_top_k_raises(self, in_memory_doc_store, mock_docs):
+        # Regression: a negative top_k was used as a negative slice, silently dropping the last documents
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            retriever.run(query="PHP", top_k=-1)
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_zero_top_k_returns_empty(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        assert await retriever.run_async(query="PHP", top_k=0) == {"documents": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_negative_top_k_raises(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await retriever.run_async(query="PHP", top_k=-1)
 
     def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
         in_memory_doc_store.write_documents(
@@ -180,10 +206,33 @@ class TestMemoryBM25Retriever:
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
 
+    def test_run_with_filter_policy_merge_does_not_leak_filters_between_runs(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article", meta={"tenant": "a", "kind": "article", "year": 2019}),
+                Document(content="python blog", meta={"tenant": "a", "kind": "blog", "year": 2019}),
+                Document(content="python article other tenant", meta={"tenant": "b", "kind": "article", "year": 2020}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"operator": "AND", "conditions": [{"field": "meta.tenant", "operator": "==", "value": "a"}]},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        first_result = retriever.run(
+            query="python", filters={"field": "meta.kind", "operator": "==", "value": "article"}
+        )
+        second_result = retriever.run(query="python", filters={"field": "meta.year", "operator": "==", "value": 2019})
+
+        assert [doc.content for doc in first_result["documents"]] == ["python article"]
+        assert {doc.content for doc in second_result["documents"]} == {"python article", "python blog"}
+
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
-            InMemoryBM25Retriever(SomeOtherDocumentStore())
+            InMemoryBM25Retriever(SomeOtherDocumentStore())  # type: ignore[arg-type]
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -193,7 +242,9 @@ class TestMemoryBM25Retriever:
             ("Java", "Java is a popular programming language"),
         ],
     )
-    def test_run_with_pipeline(self, in_memory_doc_store, mock_docs, query: str, query_result: str):
+    def test_run_with_pipeline(
+        self, in_memory_doc_store: InMemoryDocumentStore, mock_docs: list[Document], query: str, query_result: str
+    ) -> None:
         in_memory_doc_store.write_documents(mock_docs)
         retriever = InMemoryBM25Retriever(in_memory_doc_store)
 
@@ -211,14 +262,19 @@ class TestMemoryBM25Retriever:
     @pytest.mark.parametrize(
         "query, query_result, top_k",
         [
-            ("Javascript", "Javascript is a popular programming language", 1),
-            ("Java", "Java is a popular programming language", 2),
-            ("Ruby", "Ruby is a popular programming language", 3),
+            ("Javascript popular", "Javascript is a popular programming language", 1),
+            ("Java popular", "Java is a popular programming language", 2),
+            ("Ruby popular", "Ruby is a popular programming language", 3),
         ],
     )
     def test_run_with_pipeline_and_top_k(
-        self, in_memory_doc_store, mock_docs, query: str, query_result: str, top_k: int
-    ):
+        self,
+        in_memory_doc_store: InMemoryDocumentStore,
+        mock_docs: list[Document],
+        query: str,
+        query_result: str,
+        top_k: int,
+    ) -> None:
         in_memory_doc_store.write_documents(mock_docs)
         retriever = InMemoryBM25Retriever(in_memory_doc_store)
 

@@ -23,4 +23,4 @@
 - I've used one of the [conventional commit types](https://www.conventionalcommits.org/en/v1.0.0/) for my PR title: `fix:`, `feat:`, `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:` and added `!` in case the PR includes breaking changes.
 - I have documented my code.
 - I have added a release note file, following the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#release-notes).
-- I have run [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#installation) and fixed any issue.
+- I have run [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#setting-up-your-development-environment) and fixed any issue.

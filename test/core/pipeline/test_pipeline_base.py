@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from collections.abc import Iterable
 from typing import Any
 from unittest.mock import patch
 
@@ -840,6 +841,45 @@ class TestPipelineBase:
         res = pipe._prepare_component_input_data({"x": ["some data"], "y": "some other data"})
         assert res == {"first_mock": {"x": ["some data"], "y": "some other data"}, "second_mock": {"x": ["some data"]}}
         assert id(res["first_mock"]["x"]) != id(res["second_mock"]["x"])
+
+    def test_run_with_dict_valued_flat_input(self):
+        @component
+        class DictEcho:
+            @component.output_types(result=dict)
+            def run(self, payload: dict) -> dict:
+                return {"result": payload}
+
+        pipe = Pipeline()
+        pipe.add_component("echo", DictEcho())
+
+        assert pipe.run({"payload": {"x": 1}}) == {"echo": {"result": {"x": 1}}}
+
+    def test__prepare_component_input_data_with_component_qualified_dict_input(self):
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("echo", DictEcho())
+
+        assert pipe._prepare_component_input_data({"echo": {"payload": {"x": 1}}}) == {"echo": {"payload": {"x": 1}}}
+
+    def test__prepare_component_input_data_preserves_unknown_component_error(self):
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("echo", DictEcho())
+
+        data = pipe._prepare_component_input_data({"ecoh": {"payload": {"y": 2}}, "payload": {"x": 1}})
+        with pytest.raises(ValueError, match="Component named 'ecoh' not found in the pipeline"):
+            pipe.validate_input(data)
+
+    def test__prepare_component_input_data_with_connected_dict_valued_socket(self, caplog):
+        Producer = component_class("Producer", output_types={"payload": dict})
+        DictEcho = component_class("DictEcho", input_types={"payload": dict})
+        pipe = PipelineBase()
+        pipe.add_component("producer", Producer())
+        pipe.add_component("echo", DictEcho())
+        pipe.connect("producer.payload", "echo.payload")
+
+        assert pipe._prepare_component_input_data({"payload": {"x": 1}}) == {}
+        assert "Inputs ['payload'] were not matched to any component inputs" in caplog.text
 
     def test__prepare_component_input_data_with_non_existing_input(self, caplog):
         pipe = PipelineBase()
@@ -2224,6 +2264,25 @@ class TestPipelineConnect:
         pipe.add_component("comp2", comp2)
         with pytest.raises(PipelineConnectError):
             pipe.connect("comp1", "comp2")
+
+    def test_connect_list_output_to_iterable_input(self):
+        producer = component_class("Producer", output_types={"items": list[str]})()
+        consumer = component_class("Consumer", input_types={"sources": Iterable[str]})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        pipe.connect("producer.items", "consumer.sources")
+        assert list(pipe.graph.edges) == [("producer", "consumer", "items/sources")]
+        assert pipe.graph["producer"]["consumer"]["items/sources"]["conversion_strategy"] is None
+
+    def test_connect_list_output_to_list_or_iterable_input_is_ambiguous(self):
+        producer = component_class("Producer", output_types={"value": list[str]})()
+        consumer = component_class("Consumer", input_types={"list_items": list[str], "iterable_items": Iterable[str]})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        with pytest.raises(PipelineConnectError, match="more than one connection is possible"):
+            pipe.connect("producer", "consumer")
 
     def test_connect_with_multiple_sender_connections_with_same_type_and_same_name(self):
         comp1 = component_class("Comp1", output_types={"value": int, "other": int})()

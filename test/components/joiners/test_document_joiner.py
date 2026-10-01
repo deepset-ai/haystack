@@ -31,6 +31,17 @@ class TestDocumentJoiner:
         with pytest.raises(ValueError, match="must not sum to zero"):
             DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
 
+    @pytest.mark.parametrize("weights", [[1.0, -2.0], [-1.0, -1.0], [0.5, -0.1]])
+    def test_init_with_negative_weights_raises(self, weights):
+        # Regression: negative weights were normalized by their (possibly negative) sum, which flipped their sign
+        # and produced negative document scores in merge mode.
+        with pytest.raises(ValueError, match="must not be negative"):
+            DocumentJoiner(join_mode="merge", weights=weights)
+
+    def test_init_with_zero_weight_is_allowed(self):
+        joiner = DocumentJoiner(join_mode="merge", weights=[0.0, 1.0])
+        assert joiner.weights == [0.0, 1.0]
+
     def test_init_with_top_k_none_is_valid(self):
         joiner = DocumentJoiner(top_k=None)
         assert joiner.top_k is None
@@ -276,19 +287,36 @@ class TestDocumentJoiner:
         ]
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 7
-        expected_document_ids = [
-            doc.id
-            for doc in [
-                Document(content="a", score=0),
-                Document(content="b", score=0),
-                Document(content="c", score=0),
-                Document(content="d", score=0.44),
-                Document(content="e", score=0.60),
-                Document(content="f", score=0.76, meta={"key": "value"}),
-                Document(content="g", score=0.33),
-            ]
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert scores_by_content["a"] == pytest.approx(0.3386256939)
+        assert scores_by_content["b"] == pytest.approx(0.2)
+        assert scores_by_content["c"] == pytest.approx(0.2)
+
+    @pytest.mark.parametrize("score", [0.95, 0.0, -0.5, None])
+    def test_distribution_based_rank_fusion_preserves_single_document_score(self, score):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+
+        output = joiner.run([[Document(content="a", score=score)]])
+
+        assert output["documents"][0].score == (score if score is not None else 0.0)
+
+    def test_distribution_based_rank_fusion_preserves_constant_score_when_joining_varied_list(self):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        shared = Document(content="shared", score=0.8)
+        constant_documents = [shared, Document(content="constant", score=0.8)]
+        varied_documents = [
+            Document(id=shared.id, content="shared", score=0.5),
+            Document(content="low", score=0.0),
+            Document(content="high", score=1.0),
         ]
-        assert all(doc.id in expected_document_ids for doc in output["documents"])
+
+        output = joiner.run([constant_documents, varied_documents])
+
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert scores_by_content["shared"] == pytest.approx(0.8)
+        assert scores_by_content["constant"] == pytest.approx(0.8)
+        assert scores_by_content["low"] == pytest.approx(0.2958758548)
+        assert scores_by_content["high"] == pytest.approx(0.7041241452)
 
     def test_run_with_distribution_based_rank_fusion_join_mode_with_none_score(self):
         # Documents with score=None (e.g. from a non-scoring source) must not crash DBSF;

@@ -1129,30 +1129,42 @@ Asynchronously returns the minimum and maximum values for the given metadata fie
 get_metadata_field_unique_values(
     metadata_field: str,
     search_term: str | None = None,
-    size: int | None = 10000,
-    after: dict[str, Any] | None = None,
-) -> tuple[list[str], dict[str, Any] | None]
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in the content.
+Returns unique values for a metadata field, optionally filtered by a search term.
 
-Uses composite aggregations for proper pagination beyond 10k results.
+Internally still backed by composite aggregations, which only support cursor-based iteration.
+Reaching offset `from_` therefore requires walking and discarding the first `from_` buckets -
+cost scales with `from_`, not `size`.
 
-See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
+**Note**: To keep this signature uniform across document stores, offset-based pagination is
+emulated on top of the cursor by re-fetching and discarding every bucket before `from_` on each
+call, requiring additional search round-trips proportional to `from_`.
+
+**Note**: `total_count` is computed via an approximate cardinality aggregation; for fields with
+very high cardinality it may not be exact.
 
 **Parameters:**
 
-- **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching in the content field.
-- **size** (<code>int | None</code>) – The number of unique values to return per page. Defaults to 10000.
-- **after** (<code>dict\[str, Any\] | None</code>) – Optional pagination key from the previous response. Use None for the first page.
-  For subsequent pages, pass the `after_key` from the previous response.
+- **metadata_field** (<code>str</code>) – The metadata field to get unique values for. Can include or omit the
+  "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring to filter the returned values by, matched
+  against the metadata field's own value (not the document content).
+  NOTE: The matching is done with a server-side script to accomplish the substring matching on the value
+  of the field and this operation is quite expensive for a large corpus
+- **from\_** (<code>int</code>) – Offset to start returning values from. Defaults to 0.
+- **size** (<code>int</code>) – The number of unique values to return per page. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], dict\[str, Any\] | None\]</code> – A tuple containing (list of unique values, after_key for pagination).
-  The after_key is None when there are no more results. Use it in the `after` parameter
-  for the next page.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (list of unique values in their original type, total count of distinct values
+  for the field matching `search_term`). Note that filters also narrows down the number of documents
+  against which the search term is matched.
 
 #### get_metadata_field_unique_values_async
 
@@ -1160,29 +1172,30 @@ See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-buck
 get_metadata_field_unique_values_async(
     metadata_field: str,
     search_term: str | None = None,
-    size: int | None = 10000,
-    after: dict[str, Any] | None = None,
-) -> tuple[list[str], dict[str, Any] | None]
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
-
-Uses composite aggregations for proper pagination beyond 10k results.
-
-See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
+Asynchronous counterpart of `get_metadata_field_unique_values`.
 
 **Parameters:**
 
-- **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching in the content field.
-- **size** (<code>int | None</code>) – The number of unique values to return per page. Defaults to 10000.
-- **after** (<code>dict\[str, Any\] | None</code>) – Optional pagination key from the previous response. Use None for the first page.
-  For subsequent pages, pass the `after_key` from the previous response.
+- **metadata_field** (<code>str</code>) – The metadata field to get unique values for. Can include or omit the
+  "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring to filter the returned values by, matched
+  against the metadata field's own value (not the document content).
+  NOTE: The matching is done with a server-side script to accomplish the substring matching on the value
+  of the field and this operation is quite expensive for a large corpus
+- **from\_** (<code>int</code>) – Offset to start returning values from. Defaults to 0.
+- **size** (<code>int</code>) – The number of unique values to return per page. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], dict\[str, Any\] | None\]</code> – A tuple containing (list of unique values, after_key for pagination).
-  The after_key is None when there are no more results. Use it in the `after` parameter
-  for the next page.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (list of unique values in their original type, total count of distinct values
+  for the field matching `search_term`). Note that filters also narrows down the number of documents
+  against which the search term is matched.
 
 ## haystack_integrations.document_stores.elasticsearch.filters
