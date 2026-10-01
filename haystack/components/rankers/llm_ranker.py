@@ -156,7 +156,7 @@ class LLMRanker:
             The maximum number of documents to return.
         :param raise_on_failure:
             If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
-            input documents in fallback order.
+            input documents in fallback order, limited to ``top_k``.
         """
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -255,7 +255,7 @@ class LLMRanker:
 
         if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         self.warm_up()
 
@@ -272,7 +272,7 @@ class LLMRanker:
             logger.warning(
                 "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
             )
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         try:
             reply_text = self._get_reply_text(result)
@@ -284,7 +284,7 @@ class LLMRanker:
                 "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
                 error=exc,
             )
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         return {"documents": ranked_documents[:top_k]}
 
@@ -322,7 +322,7 @@ class LLMRanker:
 
         if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         await self.warm_up_async()
 
@@ -339,7 +339,7 @@ class LLMRanker:
             logger.warning(
                 "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
             )
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         try:
             reply_text = self._get_reply_text(result)
@@ -351,7 +351,7 @@ class LLMRanker:
                 "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
                 error=exc,
             )
-            return {"documents": fallback_documents}
+            return {"documents": fallback_documents[:top_k]}
 
         return {"documents": ranked_documents[:top_k]}
 

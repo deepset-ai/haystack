@@ -118,7 +118,7 @@ def test_run_whitespace_query_returns_fallback(mock_chat_generator):
 
     result = ranker.run(query="   ", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
     mock_chat_generator.run.assert_not_called()
 
 
@@ -196,7 +196,7 @@ def test_run_invalid_json_falls_back():
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
 
 
 def test_run_invalid_json_raises():
@@ -215,7 +215,7 @@ def test_run_generator_exception_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
 
 
 def test_run_generator_exception_raises(mock_chat_generator):
@@ -234,7 +234,7 @@ def test_run_no_replies_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
 
 
 def test_run_reply_without_text_falls_back():
@@ -244,7 +244,7 @@ def test_run_reply_without_text_falls_back():
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
 
 
 def test_run_no_valid_document_indices_falls_back():
@@ -254,7 +254,7 @@ def test_run_no_valid_document_indices_falls_back():
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": documents}
+    assert result == {"documents": documents[:1]}
 
 
 def test_run_deduplicates_documents_before_ranking():
@@ -414,7 +414,7 @@ class TestLLMRankerAsync:
 
         result = await ranker.run_async(query="test query", documents=documents)
 
-        assert result == {"documents": documents}
+        assert result == {"documents": documents[:1]}
 
     @pytest.mark.asyncio
     async def test_run_async_generator_exception_raises(self):
@@ -522,3 +522,38 @@ class TestLLMRankerTracingAsync:
         assert len(gen_spans) == 1
         output = gen_spans[0].tags["haystack.component.output"]
         assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+@pytest.mark.parametrize(
+    ("failure", "query"), [("generation", "query"), ("parsing", "query"), ("empty_query", ""), ("invalid_query", None)]
+)
+@pytest.mark.parametrize("runtime_top_k", [None, 2, 10])
+def test_fallback_respects_top_k(mock_chat_generator, failure, query, runtime_top_k):
+    documents = [Document(content=f"doc {index}") for index in range(4)]
+    mock_chat_generator.run.side_effect = RuntimeError("generation failed") if failure == "generation" else None
+    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("not JSON")]}
+    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
+
+    result = ranker.run(query=query, documents=[*documents, documents[0]], top_k=runtime_top_k)
+
+    expected_top_k = 1 if runtime_top_k is None else runtime_top_k
+    assert result == {"documents": documents[:expected_top_k]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "query"), [("generation", "query"), ("parsing", "query"), ("empty_query", ""), ("invalid_query", None)]
+)
+@pytest.mark.parametrize("runtime_top_k", [None, 2, 10])
+async def test_async_fallback_respects_top_k(mock_chat_generator, failure, query, runtime_top_k):
+    documents = [Document(content=f"doc {index}") for index in range(4)]
+    mock_chat_generator.run_async = AsyncMock(
+        side_effect=RuntimeError("generation failed") if failure == "generation" else None,
+        return_value={"replies": [ChatMessage.from_assistant("not JSON")]},
+    )
+    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
+
+    result = await ranker.run_async(query=query, documents=[*documents, documents[0]], top_k=runtime_top_k)
+
+    expected_top_k = 1 if runtime_top_k is None else runtime_top_k
+    assert result == {"documents": documents[:expected_top_k]}
