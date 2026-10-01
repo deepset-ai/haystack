@@ -6,10 +6,11 @@ import csv
 import io
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 from openpyxl import Workbook
+from openpyxl.styles import Font
 
 from haystack.components.converters.xlsx import XLSXToDocument
 from haystack.dataclasses import ByteStream
@@ -356,6 +357,28 @@ class TestXLSXToDocument:
             ",A,B\n1,a1,b1\n2,[a3](https://example.com/a3),b3\n3,[a4](https://example.com/a4),b4\n"
         )
 
+    @pytest.mark.parametrize("comment", ["0", "1", "_"])
+    def test_link_extraction_with_numeric_or_separator_comment_marker(self, tmp_path: Path, comment: str) -> None:
+        path = tmp_path / "links_with_comment_marker_collision.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A1"].hyperlink = "https://example.com/alice"
+        sheet["B1"].hyperlink = "https://example.com/bob"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": comment}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
+        )
+
     def test_link_extraction_with_comment_and_usecols(self, tmp_path: Path) -> None:
         path = tmp_path / "links_with_comment_and_usecols.xlsx"
         workbook = Workbook()
@@ -381,6 +404,69 @@ class TestXLSXToDocument:
             "2,[alice@example.com](https://example.com/alice),A\n"
             "3,,\n"
             "4,bob@example.com,[B](#Data!A1:C2)\n"
+        )
+
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_content"),
+        [
+            pytest.param(
+                {},
+                ",A,B\n"
+                "1,Team,\n"
+                "2,Alice,[Profile](https://example.com/alice)\n"
+                "3,Bob,[Profile](https://example.com/bob)\n",
+                id="no-selection",
+            ),
+            pytest.param(
+                {"skiprows": 1},
+                ",A,B\n1,Alice,[Profile](https://example.com/alice)\n2,Bob,[Profile](https://example.com/bob)\n",
+                id="skiprows",
+            ),
+        ],
+    )
+    def test_link_extraction_with_merged_cells(
+        self, tmp_path: Path, read_excel_kwargs: dict[str, Any], expected_content: str
+    ) -> None:
+        path = tmp_path / "links_with_merged_cells.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Team", None])
+        sheet.append(["Alice", "Profile"])
+        sheet.append(["Bob", "Profile"])
+        sheet.merge_cells("A1:B1")
+        sheet["B2"].hyperlink = "https://example.com/alice"
+        sheet["B3"].hyperlink = "https://example.com/bob"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs=read_excel_kwargs).run(sources=[path])[
+            "documents"
+        ]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected_content
+
+    def test_link_extraction_with_names_and_formatted_empty_cell(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_names_and_formatted_empty_cell.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A1"].hyperlink = "https://example.com/alice"
+        sheet["B1"].hyperlink = "https://example.com/bob"
+        # A formatted cell without a value is stored in the file, but pandas does not count it as a column.
+        sheet["C1"].font = Font(bold=True)
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": ["first", "second"]}).run(
+            sources=[path]
+        )["documents"]
+
+        assert documents[0].content == (
+            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
         )
 
     def test_no_link_extraction(self, test_files_path: Path) -> None:

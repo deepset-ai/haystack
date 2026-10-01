@@ -21,6 +21,9 @@ with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
 
+# The `pandas.read_excel` options that decide which cells end up where in the DataFrame.
+_POSITION_KWARGS = ("skiprows", "nrows", "skipfooter", "usecols", "names", "comment", "index_col")
+
 
 def _get_position_token_parts(comment: Any) -> tuple[str, str]:
     """Return token parts that pandas will not treat as comment markers."""
@@ -33,11 +36,45 @@ def _get_position_token_parts(comment: Any) -> tuple[str, str]:
     return prefix, "~"
 
 
+def _encode_position(value: int, use_letters: bool) -> str:
+    """Encode a zero-based coordinate without introducing the pandas comment marker into the token."""
+    if not use_letters:
+        return str(value)
+
+    encoded = ""
+    while True:
+        value, remainder = divmod(value, 26)
+        encoded = chr(ord("A") + remainder) + encoded
+        if value == 0:
+            return encoded
+        value -= 1
+
+
+def _decode_position(value: str, use_letters: bool) -> int | None:
+    if not use_letters:
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    if not value or not value.isalpha():
+        return None
+
+    decoded = 0
+    for character in value:
+        if not "A" <= character <= "Z":
+            return None
+        decoded = decoded * 26 + ord(character) - ord("A") + 1
+    return decoded - 1
+
+
 def _make_position_token(
-    row_idx: int, col_idx: int, value: Any, comment: Any, token_prefix: str, token_separator: str
+    row_idx: int, col_idx: int, value: Any, comment: Any, token_prefix: str, token_separator: str, use_letters: bool
 ) -> str:
     """Create a cell value that preserves pandas comment semantics while identifying its source coordinate."""
-    token = f"{token_prefix}{row_idx}{token_separator}{col_idx}"
+    token = (
+        f"{token_prefix}{_encode_position(row_idx, use_letters)}"
+        f"{token_separator}{_encode_position(col_idx, use_letters)}"
+    )
     if isinstance(comment, str) and comment and isinstance(value, str) and comment in value:
         comment_idx = value.find(comment)
         if comment_idx == 0:
@@ -46,7 +83,9 @@ def _make_position_token(
     return token
 
 
-def _parse_position_token(value: Any, token_prefix: str, token_separator: str) -> tuple[int, int] | None:
+def _parse_position_token(
+    value: Any, token_prefix: str, token_separator: str, use_letters: bool
+) -> tuple[int, int] | None:
     if not isinstance(value, str):
         return None
     token_idx = value.rfind(token_prefix)
@@ -56,10 +95,11 @@ def _parse_position_token(value: Any, token_prefix: str, token_separator: str) -
     row, separator, column = value[token_idx + len(token_prefix) :].partition(token_separator)
     if not separator:
         return None
-    try:
-        return int(row), int(column)
-    except ValueError:
+    decoded_row = _decode_position(row, use_letters)
+    decoded_column = _decode_position(column, use_letters)
+    if decoded_row is None or decoded_column is None:
         return None
+    return decoded_row, decoded_column
 
 
 @component
@@ -235,12 +275,18 @@ class XLSXToDocument:
         """Map original zero-based cell coordinates to positions in the filtered DataFrame."""
         comment = self.read_excel_kwargs.get("comment")
         token_prefix, token_separator = _get_position_token_parts(comment)
+        # Decimal coordinates collide with numeric comment markers such as "0" or "1"; use letters in that case.
+        use_letters = isinstance(comment, str) and any(character.isdigit() for character in comment)
         for sheet_key in sheet_keys:
             worksheet = self._get_worksheet(workbook, sheet_key)
             for row in worksheet.iter_rows():
                 for cell in row:
+                    # pandas sizes the sheet by its non-empty cells, so empty cells must stay empty here. This also
+                    # leaves the read-only cells of merged ranges untouched.
+                    if cell.value is None or cell.value == "":
+                        continue
                     cell.value = _make_position_token(
-                        cell.row - 1, cell.column - 1, cell.value, comment, token_prefix, token_separator
+                        cell.row - 1, cell.column - 1, cell.value, comment, token_prefix, token_separator, use_letters
                     )
 
         # Use pandas itself to resolve skiprows, names, usecols, and comment. The token values identify which
@@ -249,9 +295,7 @@ class XLSXToDocument:
         workbook.save(cell_map_bytes)
         cell_map_bytes.seek(0)
         mapping_kwargs: dict[str, Any] = {
-            key: self.read_excel_kwargs[key]
-            for key in ("skiprows", "nrows", "skipfooter", "usecols", "names", "comment", "index_col")
-            if key in self.read_excel_kwargs
+            key: self.read_excel_kwargs[key] for key in _POSITION_KWARGS if key in self.read_excel_kwargs
         }
         mapping_kwargs.update({"sheet_name": self.sheet_name, "header": None, "engine": "openpyxl"})
         cells_by_sheet = pd.read_excel(io=cell_map_bytes, **mapping_kwargs)
@@ -263,7 +307,7 @@ class XLSXToDocument:
             cell_positions = {}
             for row_idx, row in enumerate(dataframe.itertuples(index=False, name=None)):
                 for col_idx, value in enumerate(row):
-                    position = _parse_position_token(value, token_prefix, token_separator)
+                    position = _parse_position_token(value, token_prefix, token_separator, use_letters)
                     if position is not None:
                         cell_positions[position] = (row_idx, col_idx)
             cell_positions_by_sheet[sheet_key] = cell_positions
@@ -299,7 +343,14 @@ class XLSXToDocument:
                             # Store zero-based Excel coordinates; they are translated to filtered positions below.
                             cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
                 hyperlinks_by_sheet[sheet_key] = cell_links
-            cell_positions_by_sheet = self._get_cell_positions(wb, list(sheet_to_dataframe))
+            if any(hyperlinks_by_sheet.values()) and any(key in self.read_excel_kwargs for key in _POSITION_KWARGS):
+                cell_positions_by_sheet = self._get_cell_positions(wb, list(sheet_to_dataframe))
+            else:
+                # No option moves cells, or there is nothing to place: Excel coordinates are DataFrame positions.
+                cell_positions_by_sheet = {
+                    sheet_key: {cell: cell for cell in cell_links}
+                    for sheet_key, cell_links in hyperlinks_by_sheet.items()
+                }
             wb.close()
 
         updated_sheet_to_dataframe = {}
