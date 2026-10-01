@@ -1793,10 +1793,7 @@ class TestComponentLifecycle:
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_openai_clients
-        tools = [MagicMock(spec=Tool, warm_up=MagicMock(), close=MagicMock()) for _ in range(2)]
-        for index, tool in enumerate(tools):
-            tool.name = f"tool{index}"
-        generator = OpenAIChatGenerator(tools=tools)
+        generator = OpenAIChatGenerator()
         assert generator.client is None
         assert generator.async_client is None
 
@@ -1804,25 +1801,15 @@ class TestComponentLifecycle:
         assert generator.client is sync_cls.return_value
         assert generator.async_client is None
 
-        for tool in tools:
-            tool.warm_up.assert_called_once_with()
-        generator.warm_up()
-        for tool in tools:
-            assert tool.warm_up.call_count == 2
-
         generator.close()
 
         sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
-        for tool in tools:
-            tool.close.assert_called_once_with()
 
     async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         _, async_cls = mock_openai_clients
-        tool = MagicMock(spec=Tool, warm_up_async=AsyncMock(), close_async=AsyncMock())
-        tool.name = "lookup"
-        generator = OpenAIChatGenerator(tools=[tool])
+        generator = OpenAIChatGenerator()
 
         await generator.warm_up_async()
         assert generator.async_client is async_cls.return_value
@@ -1832,8 +1819,6 @@ class TestComponentLifecycle:
 
         async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
-        tool.close_async.assert_awaited_once_with()
-        tool.warm_up_async.assert_awaited_once_with()
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 

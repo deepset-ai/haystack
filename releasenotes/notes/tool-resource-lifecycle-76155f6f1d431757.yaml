@@ -1,16 +1,18 @@
 ---
 enhancements:
   - |
-    Agent and OpenAI/Azure Chat Generators now use their ``close()``/``close_async()``
-    methods to release their configured tools. They also support asynchronous tool
-    preparation using ``warm_up_async()``. Invoking a tool directly through
-    ``tool.invoke()`` or ``tool.invoke_async()`` automatically calls its warm-up
-    methods when available.
+    Agent now uses its ``close()``/``close_async()`` methods to release its configured tools and supports asynchronous
+    tool preparation using ``warm_up_async()``.
+    Invoking a tool directly through ``tool.invoke()`` or ``tool.invoke_async()``
+    automatically calls its warm-up methods when available.
 
     This enables tools to manage synchronous and asynchronous resources separately.
-    We'll update tools and components in Haystack Core Integrations to take advantage of this support.
+    We'll update tools in Haystack Core Integrations to take advantage of this support.
 upgrade:
   - |
     The base ``Tool.warm_up()`` and ``Toolset.warm_up()`` methods were removed.
-    If you use your tools through an Agent or configure them on a ChatGenerator, no changes are needed: tool
-    preparation remains automatic. For other use cases, use ``warm_up_tools`` or ``warm_up_tools_async``.
+    OpenAI/Azure Chat Generators no longer warm up tools.
+
+    If you use tools through an Agent, no changes are needed. For manual  preparation, use ``warm_up_tools`` or
+    ``warm_up_tools_async``. Lazy toolsets such as ``MCPToolset`` must be warmed up before passing them to a Chat
+    Generator.

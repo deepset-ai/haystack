@@ -2152,6 +2152,7 @@ class TestComponentLifecycle:
         await agent.run_async(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
 
         assert per_run_toolset.was_warmed_up_async
+        assert per_run_tool.was_warmed_up
         assert not per_run_toolset.was_warmed_up
         await agent.close_async()
         toolset_close_async.assert_not_called()

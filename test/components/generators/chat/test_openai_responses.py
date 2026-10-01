@@ -436,39 +436,10 @@ class TestComponentLifecycle:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
-        # must not index ``tools[0]`` unguarded.
-        generator = OpenAIResponsesChatGenerator(tools=[])
-        generator.warm_up()
-
-    def test_lifecycle_with_openai_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIResponsesChatGenerator(
-            tools=[
-                {"type": "web_search_preview"},
-                {
-                    "type": "mcp",
-                    "server_label": "dmcp",
-                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
-                    "server_url": "https://dmcp-server.deno.dev/sse",
-                    "require_approval": "never",
-                },
-            ]
-        )
-        generator.warm_up()
-        generator.close()
-
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_openai_clients
-        tools = [MagicMock(spec=Tool, warm_up=MagicMock(), close=MagicMock()) for _ in range(2)]
-        for index, tool in enumerate(tools):
-            tool.name = f"tool{index}"
-        generator = OpenAIResponsesChatGenerator(tools=tools)
+        generator = OpenAIResponsesChatGenerator()
         assert generator.client is None
         assert generator.async_client is None
 
@@ -476,25 +447,15 @@ class TestComponentLifecycle:
         assert generator.client is sync_cls.return_value
         assert generator.async_client is None
 
-        for tool in tools:
-            tool.warm_up.assert_called_once_with()
-        generator.warm_up()
-        for tool in tools:
-            assert tool.warm_up.call_count == 2
-
         generator.close()
 
         sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
-        for tool in tools:
-            tool.close.assert_called_once_with()
 
     async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         _, async_cls = mock_openai_clients
-        tool = MagicMock(spec=Tool, warm_up_async=AsyncMock(), close_async=AsyncMock())
-        tool.name = "lookup"
-        generator = OpenAIResponsesChatGenerator(tools=[tool])
+        generator = OpenAIResponsesChatGenerator()
 
         await generator.warm_up_async()
         assert generator.async_client is async_cls.return_value
@@ -504,8 +465,6 @@ class TestComponentLifecycle:
 
         async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
-        tool.close_async.assert_awaited_once_with()
-        tool.warm_up_async.assert_awaited_once_with()
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 

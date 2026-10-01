@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
@@ -418,22 +417,6 @@ class TestSerDe:
 
 
 class TestComponentLifecycle:
-    def test_warm_up_delegates_to_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        tools = [MagicMock(spec=Tool, warm_up=MagicMock()) for _ in range(2)]
-        for index, tool in enumerate(tools):
-            tool.name = f"tool{index}"
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=tools)
-
-        component.warm_up()
-        for tool in tools:
-            tool.warm_up.assert_called_once_with()
-
-        component.warm_up()
-        for tool in tools:
-            assert tool.warm_up.call_count == 2
-
     def test_sync_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")

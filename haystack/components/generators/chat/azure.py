@@ -15,13 +15,9 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
-    close_tools,
-    close_tools_async,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
-    warm_up_tools_async,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -264,9 +260,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous Azure OpenAI client.
+        Initialize the synchronous Azure OpenAI client.
         """
-        warm_up_tools(tools=self.tools)
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -276,11 +271,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 **self._client_kwargs(),
             )
 
-    async def warm_up_async(self) -> None:
+    async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+        Initialize the asynchronous Azure OpenAI client on the serving event loop.
         """
-        await warm_up_tools_async(tools=self.tools)
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -292,18 +286,16 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     def close(self) -> None:
         """
-        Release configured tools and the synchronous Azure OpenAI client.
+        Releases the synchronous Azure OpenAI client.
         """
-        close_tools(tools=self.tools)
         if self.client is not None:
             self.client.close()
             self.client = None
 
     async def close_async(self) -> None:
         """
-        Release configured tools and the asynchronous Azure OpenAI client.
+        Releases the asynchronous Azure OpenAI client.
         """
-        await close_tools_async(tools=self.tools)
         if self.async_client is not None:
             await self.async_client.close()
             self.async_client = None

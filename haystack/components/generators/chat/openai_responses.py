@@ -31,32 +31,14 @@ from haystack.dataclasses import (
 )
 from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.tools import (
-    Tool,
-    Toolset,
     ToolsType,
     _check_duplicate_tool_names,
-    close_tools,
-    close_tools_async,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
-    warm_up_tools_async,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
-
-
-def _get_haystack_tools(tools: ToolsType | list[dict] | None) -> ToolsType | None:
-    """
-    Select only native Haystack tools (Tool or Toolset) from the given tools.
-
-    OpenAIResponsesChatGenerator also supports native OpenAI tool dictionaries.
-    """
-    if tools is None or isinstance(tools, Toolset):
-        return tools
-    return [tool for tool in tools if isinstance(tool, (Tool, Toolset))]
-
 
 logger = logging.getLogger(__name__)
 
@@ -265,9 +247,8 @@ class OpenAIResponsesChatGenerator:
 
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous OpenAI client.
+        Initialize the synchronous OpenAI client.
         """
-        warm_up_tools(tools=_get_haystack_tools(self.tools))
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -277,11 +258,10 @@ class OpenAIResponsesChatGenerator:
                 **self._client_kwargs(),
             )
 
-    async def warm_up_async(self) -> None:
+    async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        Initialize the asynchronous OpenAI client on the serving event loop.
         """
-        await warm_up_tools_async(tools=_get_haystack_tools(self.tools))
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -293,18 +273,16 @@ class OpenAIResponsesChatGenerator:
 
     def close(self) -> None:
         """
-        Release configured tools and the synchronous OpenAI client.
+        Releases the synchronous OpenAI client.
         """
-        close_tools(tools=_get_haystack_tools(self.tools))
         if self.client is not None:
             self.client.close()
             self.client = None
 
     async def close_async(self) -> None:
         """
-        Release configured tools and the asynchronous OpenAI client.
+        Releases the asynchronous OpenAI client.
         """
-        await close_tools_async(tools=_get_haystack_tools(self.tools))
         if self.async_client is not None:
             await self.async_client.close()
             self.async_client = None
