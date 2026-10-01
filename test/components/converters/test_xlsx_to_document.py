@@ -254,6 +254,135 @@ class TestXLSXToDocument:
             ",A,B\n1,Email,Reference\n2,[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n3,bob@example.com,B\n"
         )
 
+    def test_link_extraction_with_names(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_names.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A1"].hyperlink = "https://example.com/alice"
+        sheet["B1"].hyperlink = "https://example.com/bob"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": [1, 0]}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
+        )
+
+    def test_link_extraction_with_names_and_usecols(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_names_and_usecols.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A1"].hyperlink = "https://example.com/alice"
+        sheet["B1"].hyperlink = "https://example.com/bob"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": ["second"], "usecols": "B"}).run(
+            sources=[path]
+        )["documents"]
+
+        assert documents[0].content == ",A\n1,[Bob](https://example.com/bob)\n2,Dave\n"
+
+    def test_link_extraction_with_usecols_named_columns(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_named_usecols.xlsx"
+        _write_linked_workbook(path)
+
+        documents = XLSXToDocument(
+            link_format="markdown",
+            read_excel_kwargs={"names": ["Name", "Email", "Reference"], "usecols": ["Name", "Reference"]},
+        ).run(sources=[path])["documents"]
+
+        assert documents[0].content == (
+            ",A,B\n1,Name,Reference\n2,[Alice](https://example.com/alice),[A](#Data!A1:C2)\n3,Bob,B\n"
+        )
+
+    def test_link_extraction_with_usecols_multiple_ranges(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_multiple_usecols_ranges.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["Name", "Email", "Reference", "Notes"])
+        sheet.append(["Alice", "alice@example.com", "A", "first"])
+        sheet.append(["Bob", "bob@example.com", "B", "second"])
+        sheet["A2"].hyperlink = "https://example.com/alice"
+        sheet["C2"].hyperlink = "#Data!A1:C2"
+        sheet["D2"].hyperlink = "https://example.com/notes"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "A,C:D"}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B,C\n"
+            "1,Name,Reference,Notes\n"
+            "2,[Alice](https://example.com/alice),[A](#Data!A1:C2),[first](https://example.com/notes)\n"
+            "3,Bob,B,second\n"
+        )
+
+    def test_link_extraction_with_comment(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_comment.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["a1", "b1"])
+        sheet.append(["# note", "b2"])
+        sheet.append(["a3", "b3"])
+        sheet.append(["a4", "b4"])
+        sheet["A3"].hyperlink = "https://example.com/a3"
+        sheet["A4"].hyperlink = "https://example.com/a4"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": "#"}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B\n1,a1,b1\n2,[a3](https://example.com/a3),b3\n3,[a4](https://example.com/a4),b4\n"
+        )
+
+    def test_link_extraction_with_comment_and_usecols(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_comment_and_usecols.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.title = "Data"
+        sheet.append(["Name", "Email", "Reference"])
+        sheet.append(["Alice", "alice@example.com", "A"])
+        sheet.append(["# note", "skipped@example.com", "skipped"])
+        sheet.append(["Bob", "bob@example.com", "B"])
+        sheet["B2"].hyperlink = "https://example.com/alice"
+        sheet["C4"].hyperlink = "#Data!A1:C2"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": "#", "usecols": "B:C"}).run(
+            sources=[path]
+        )["documents"]
+
+        assert documents[0].content == (
+            ",A,B\n"
+            "1,Email,Reference\n"
+            "2,[alice@example.com](https://example.com/alice),A\n"
+            "3,,\n"
+            "4,bob@example.com,[B](#Data!A1:C2)\n"
+        )
+
     def test_no_link_extraction(self, test_files_path: Path) -> None:
         converter = XLSXToDocument()
         paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]

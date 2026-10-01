@@ -2,6 +2,6 @@
 fixes:
   - |
     Fixed ``XLSXToDocument`` assigning hyperlinks to the wrong cells when
-    ``read_excel_kwargs`` includes ``skiprows`` or ``usecols``. Hyperlinks now
-    remain attached to the selected cells, including external, internal, and
-    range links.
+    ``read_excel_kwargs`` includes ``skiprows``, ``names``, ``usecols``, or
+    ``comment``. Hyperlinks now remain attached to the selected cells,
+    including external, internal, and range links.
