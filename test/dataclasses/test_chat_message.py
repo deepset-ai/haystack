@@ -1087,6 +1087,9 @@ class TestFromOpenaiDictFormat:
             ChatMessage.from_openai_dict_format(
                 {"role": "user", "content": [{"type": "input_audio", "input_audio": {"data": base64_image_string}}]}
             )
+        # text parts without text are rejected
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"role": "user", "content": [{"type": "text"}]})
 
     def test_from_openai_dict_format_system_message_with_text_parts(self):
         openai_msg = {
@@ -1104,6 +1107,9 @@ class TestFromOpenaiDictFormat:
         }
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format(openai_msg)
+        # text parts without text are rejected
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"role": "system", "content": [{"type": "text"}]})
 
     def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
         message = ChatMessage.from_user(

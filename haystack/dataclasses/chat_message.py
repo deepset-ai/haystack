@@ -805,6 +805,8 @@ class ChatMessage:
         for part in content:
             part_type = part.get("type") if isinstance(part, dict) else None
             if part_type == "text":
+                if not isinstance(part.get("text"), str):
+                    raise ValueError(f"Unsupported text content part: {part}. Text parts must contain a `text` string.")
                 parts.append(TextContent(text=part["text"]))
             elif part_type == "image_url":
                 image_url = part.get("image_url") or {}
@@ -882,9 +884,10 @@ class ChatMessage:
             # OpenAI only supports text content parts for system and developer messages
             texts = []
             for part in content:
-                if not isinstance(part, dict) or part.get("type") != "text":
+                if not isinstance(part, dict) or part.get("type") != "text" or not isinstance(part.get("text"), str):
                     raise ValueError(
-                        f"Unsupported content part in {role} message: {part}. Only text parts are supported."
+                        f"Unsupported content part in {role} message: {part}. Only text parts with a `text` string are "
+                        "supported."
                     )
                 texts.append(part["text"])
             return cls.from_system(text="\n".join(texts), name=name)
