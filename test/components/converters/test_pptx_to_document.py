@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import io
 import logging
 import os
 from pathlib import Path
 
 import pytest
+from pptx import Presentation
+from pptx.util import Inches
 
 from haystack.components.converters.pptx import PPTXToDocument
 from haystack.dataclasses import ByteStream
@@ -123,3 +126,17 @@ class TestPPTXToDocument:
 
         assert "https://example.com" not in content
         assert "Example" in content
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_soft_line_break_preserved(self, link_format):
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        text_frame = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(7), Inches(2)).text_frame
+        text_frame.text = "Account: Alice\vBalance: 100"
+        buffer = io.BytesIO()
+        presentation.save(buffer)
+
+        converter = PPTXToDocument(link_format=link_format)
+        output = converter.run(sources=[ByteStream(data=buffer.getvalue())])
+
+        assert output["documents"][0].content == "Account: Alice\vBalance: 100"

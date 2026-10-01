@@ -101,7 +101,13 @@ class PPTXToDocument:
         if self.link_format == "none":
             return paragraph.text
         parts = []
-        for run in paragraph.runs:
+        runs = {run._r: run for run in paragraph.runs}
+        for content in paragraph._element.content_children:
+            run = runs.get(content)
+            if run is None:
+                if content.text == "\v":
+                    parts.append("\v")
+                continue
             if run.hyperlink and run.hyperlink.address:
                 if self.link_format == "markdown":
                     parts.append(f"[{run.text}]({run.hyperlink.address})")

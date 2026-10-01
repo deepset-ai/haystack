@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``PPTXToDocument`` dropping soft line breaks from paragraphs when ``link_format`` is
+    ``"markdown"`` or ``"plain"``. Soft line breaks are now preserved as vertical tabs
+    (``"\v"``), matching the behavior of the default ``"none"`` format.
