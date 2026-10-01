@@ -1128,6 +1128,32 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
             ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
 
+    @pytest.mark.parametrize(
+        "role, part, match",
+        [
+            (
+                "system",
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 1000}},
+                "Unsupported content part in system message",
+            ),
+            (
+                "user",
+                {"type": "file", "file": {"file_data": "data:application/pdf," + "A" * 1000}},
+                "Only base64 data URLs",
+            ),
+            (
+                "user",
+                {"type": "input_audio", "input_audio": {"data": "A" * 1000, "format": "wav"}},
+                "Supported part types",
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_error_messages_truncate_payloads(self, role, part, match):
+        with pytest.raises(ValueError, match=match) as exc_info:
+            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
+        assert "A" * 1000 not in str(exc_info.value)
+        assert len(str(exc_info.value)) < 1000
+
     def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
         message = ChatMessage.from_user(
             content_parts=[

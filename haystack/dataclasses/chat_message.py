@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import reprlib
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -14,6 +15,11 @@ from haystack.dataclasses.image_content import ImageContent
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
+
+# Shows OpenAI content parts in error messages without their base64 payloads. The string limit matches the reprs of
+# ImageContent and FileContent.
+_CONTENT_PART_REPR = reprlib.Repr()
+_CONTENT_PART_REPR.maxstring = 100
 
 
 def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
@@ -807,7 +813,7 @@ class ChatMessage:
         """
         if not isinstance(data_url, str) or not data_url.startswith("data:") or ";base64," not in data_url:
             raise ValueError(
-                f"Unsupported URL: {data_url!r}. Only base64 data URLs in the format "
+                f"Unsupported URL: {_CONTENT_PART_REPR.repr(data_url)}. Only base64 data URLs in the format "
                 "`data:<mime_type>;base64,<base64_data>` are supported."
             )
         header, base64_data = data_url.split(";base64,", 1)
@@ -827,13 +833,17 @@ class ChatMessage:
             part_type = part.get("type") if isinstance(part, dict) else None
             if part_type == "text":
                 if not isinstance(part.get("text"), str):
-                    raise ValueError(f"Unsupported text content part: {part}. Text parts must contain a `text` string.")
+                    raise ValueError(
+                        f"Unsupported text content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "Text parts must contain a `text` string."
+                    )
                 parts.append(TextContent(text=part["text"]))
             elif part_type == "image_url":
                 image_url = part.get("image_url")
                 if not isinstance(image_url, dict):
                     raise ValueError(
-                        f"Unsupported image content part: {part}. Image parts must contain an `image_url` object."
+                        f"Unsupported image content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "Image parts must contain an `image_url` object."
                     )
                 mime_type, base64_image = cls._parse_openai_data_url(image_url.get("url"))
                 parts.append(
@@ -842,18 +852,22 @@ class ChatMessage:
             elif part_type == "file":
                 file = part.get("file")
                 if not isinstance(file, dict):
-                    raise ValueError(f"Unsupported file content part: {part}. File parts must contain a `file` object.")
+                    raise ValueError(
+                        f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "File parts must contain a `file` object."
+                    )
                 file_data = file.get("file_data")
                 if not file_data:
                     raise ValueError(
-                        f"Unsupported file content part: {part}. Only files with inline base64 `file_data` are "
-                        "supported: files referenced by `file_id` cannot be converted."
+                        f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. Only files with inline "
+                        "base64 `file_data` are supported: files referenced by `file_id` cannot be converted."
                     )
                 mime_type, base64_data = cls._parse_openai_data_url(file_data)
                 parts.append(FileContent(base64_data=base64_data, mime_type=mime_type, filename=file.get("filename")))
             else:
                 raise ValueError(
-                    f"Unsupported content part: {part}. Supported part types are `text`, `image_url`, and `file`."
+                    f"Unsupported content part: {_CONTENT_PART_REPR.repr(part)}. "
+                    "Supported part types are `text`, `image_url`, and `file`."
                 )
         return parts
 
@@ -874,8 +888,8 @@ class ChatMessage:
         for part in content:
             if not isinstance(part, dict) or part.get("type") != "text" or not isinstance(part.get("text"), str):
                 raise ValueError(
-                    f"Unsupported content part in {role} message: {part}. Only text parts with a `text` string are "
-                    "supported."
+                    f"Unsupported content part in {role} message: {_CONTENT_PART_REPR.repr(part)}. "
+                    "Only text parts with a `text` string are supported."
                 )
             texts.append(part["text"])
         return "\n".join(texts)
