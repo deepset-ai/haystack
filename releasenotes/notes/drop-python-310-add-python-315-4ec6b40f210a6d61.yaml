@@ -7,8 +7,3 @@ upgrade:
 enhancements:
   - |
     Haystack now officially supports Python 3.15.
-issues:
-  - |
-    Some optional dependencies may not yet publish wheels for Python 3.15.
-    Notably, PyTorch, needed by ``SASEvaluator``, ``TopPSampler``, and the PyTorch features of ``ComponentDevice``,
-    and ``jq``, needed by ``JSONConverter``.

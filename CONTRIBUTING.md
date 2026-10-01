@@ -189,7 +189,6 @@ This helps maintainers and keeps the project ready for both human and AI contrib
 ### Setting up your development environment
 
 *To run Haystack tests locally, ensure your development environment uses Python >=3.11 and <3.15.*
-Some test dependencies, such as PyTorch and numba, do not support Python 3.15 yet.
 
 Haystack makes heavy use of [Hatch](https://hatch.pypa.io/latest/), a Python project manager that we use to set up the
 virtual environments, build the project, and publish packages. As you can imagine, the first step towards becoming a
