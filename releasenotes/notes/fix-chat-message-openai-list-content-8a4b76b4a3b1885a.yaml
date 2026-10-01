@@ -18,3 +18,4 @@ fixes:
     of a string. In user messages, ``text`` parts now become ``TextContent``, ``image_url`` parts with base64 data
     URLs become ``ImageContent``, and ``file`` parts with inline ``file_data`` become ``FileContent``.
     In system, developer, and assistant messages, ``text`` parts are joined with a newline into a single text.
+    ``content`` that is neither a string nor a list now raises a ``ValueError`` instead of being stored as text.

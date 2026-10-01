@@ -790,6 +790,11 @@ class ChatMessage:
         if role not in ["assistant", "user", "system", "developer", "tool"]:
             raise ValueError(f"Unsupported role: {role}")
 
+        if content is not None and not isinstance(content, (str, list)):
+            raise ValueError(
+                f"The `content` field must be a string or a list of content parts, got {type(content).__name__}."
+            )
+
         if role == "assistant":
             # An empty string is valid content for an assistant message: that is how a reply with nothing to send
             # is serialized. Other falsy content requires tool calls.
@@ -915,8 +920,9 @@ class ChatMessage:
             The created ChatMessage object.
 
         :raises ValueError:
-            If the message dictionary is missing required fields or contains content parts that can't be converted,
-            such as image URLs that are not base64 data URLs or files referenced by `file_id`.
+            If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
+            it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
+            files referenced by `file_id`.
         """
         cls._validate_openai_message(message)
 

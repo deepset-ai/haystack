@@ -1281,6 +1281,12 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
 
+    @pytest.mark.parametrize("role", ["user", "system", "developer", "assistant", "tool"])
+    def test_from_openai_dict_format_content_that_is_neither_string_nor_list(self, role):
+        openai_msg = {"role": role, "content": {"type": "text", "text": "a single part not wrapped in a list"}}
+        with pytest.raises(ValueError, match="must be a string or a list of content parts, got dict"):
+            ChatMessage.from_openai_dict_format(openai_msg)
+
     def test_from_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
         openai_msg = {
             "role": "tool",
