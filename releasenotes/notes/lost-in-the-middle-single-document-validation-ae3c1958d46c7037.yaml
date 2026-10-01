@@ -1,5 +1,6 @@
 fixes:
   - |
-    ``LostInTheMiddleRanker`` now raises ``ValueError`` for a non-textual document
-    even when only one document remains after deduplication and ``top_k`` selection.
-    Previously, the single-document shortcut returned it without validating its content.
+    ``LostInTheMiddleRanker`` now validates all input documents before deduplication
+    and ``top_k`` selection, raising ``ValueError`` if any document is non-textual.
+    Previously, single-document selections and documents excluded by ``top_k``
+    could bypass the text-only validation.
