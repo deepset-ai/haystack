@@ -38,6 +38,8 @@ Each source is routed to a Gotenberg conversion endpoint on its own, so one batc
 
 Like [`LibreOfficeFileConverter`](./libreofficefileconverter.mdx), this component outputs `ByteStream` objects rather than Haystack Documents. Chain it with a PDF converter such as [`PyPDFToDocument`](./pypdftodocument.mdx) to get Documents.
 
+Formats that Haystack can already read, such as `.docx`, `.pptx`, `.xlsx`, `.md`, and `.html`, are usually best converted directly with their own converters, for example [`DOCXToDocument`](./docxtodocument.mdx) or [`MarkdownToDocument`](./markdowntodocument.mdx). Gotenberg only outputs PDF, so use this component for formats without a native Haystack converter, such as legacy Office files (`.doc`, `.ppt`, `.xls`), OpenDocument files (`.odt`, `.ods`, `.odp`), RTF, and Apple iWork files. It is also useful when you want a PDF rendering of a document or web page.
+
 The output metadata keeps the local source path under `file_path` and any metadata of a source `ByteStream`. Metadata you pass through the `meta` run parameter takes precedence. HTML and Markdown sources can reference local assets such as images and stylesheets: pass them through the `resources` run parameter.
 
 Use `run_async` to convert sources concurrently. `concurrency_limit` sets how many requests are sent to Gotenberg at once.
@@ -97,7 +99,13 @@ result = converter.run(
 
 ### In a pipeline
 
-The pipeline below converts a Word document and a Markdown file to PDF, extracts their text, splits it, and writes the Documents to a Document Store:
+The pipeline below converts a legacy Word document and an OpenDocument text file to PDF, extracts their text, splits it, and writes the Documents to a Document Store.
+
+`PyPDFToDocument` and sentence splitting in `DocumentSplitter` need extra dependencies:
+
+```shell
+pip install gotenberg-haystack pypdf nltk
+```
 
 ```python
 from pathlib import Path
@@ -125,5 +133,5 @@ pipeline.connect("gotenberg.output", "pdf_converter.sources")
 pipeline.connect("pdf_converter", "splitter")
 pipeline.connect("splitter", "writer")
 
-pipeline.run({"gotenberg": {"sources": [Path("report.docx"), Path("notes.md")]}})
+pipeline.run({"gotenberg": {"sources": [Path("report.doc"), Path("notes.odt")]}})
 ```
