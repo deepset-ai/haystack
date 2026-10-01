@@ -22,7 +22,7 @@ from haystack.components.routers import FileTypeRouter
 from haystack.dataclasses import ByteStream
 
 
-class ConverterMimeType(str, Enum):
+class ConverterMimeType(str, Enum):  # noqa: UP042 # StrEnum would change str(), which run() parses
     CSV = "text/csv"
     DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     HTML = "text/html"

@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from collections.abc import Callable, Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import ANY
 
@@ -208,7 +208,7 @@ class TestStructuredLoggingConsoleRendering:
         output = capfd.readouterr().err
 
         # Only check for the minute to be a bit more robust
-        today = datetime.now(tz=timezone.utc).isoformat(timespec="minutes").replace("+00:00", "")
+        today = datetime.now(tz=UTC).isoformat(timespec="minutes").replace("+00:00", "")
         assert today in output
 
         log_level = "warning"

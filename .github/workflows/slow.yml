@@ -11,7 +11,7 @@ name: Slow Integration Tests
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
   HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
