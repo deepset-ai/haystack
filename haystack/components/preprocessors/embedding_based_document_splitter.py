@@ -12,6 +12,7 @@ import numpy as np
 
 from haystack import Document, component, logging
 from haystack.components.embedders.types import DocumentEmbedder
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.utils.async_utils import _execute_component_async
@@ -179,7 +180,8 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
                 - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
@@ -220,7 +222,8 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
                 - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
@@ -549,12 +552,11 @@ class EmbeddingBasedDocumentSplitter:
             split_meta["split_id"] = i
             split_meta["split_idx_start"] = current_char_pos
 
-            # Calculate page number for this split
-            # Count page breaks in the split itself
             page_breaks_in_split = split_text.count("\f")
 
-            # Calculate the page number for this split
-            split_meta["page_number"] = current_page
+            # current_page is the page this split's first character is on; a split that opens with page
+            # breaks starts its text on a later page.
+            split_meta["page_number"] = current_page + _leading_page_breaks(split_text)
 
             doc = Document(content=split_text, meta=split_meta)
             documents.append(doc)
