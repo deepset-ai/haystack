@@ -263,6 +263,30 @@ class TestUnknownToolEndToEnd:
 
 
 class TestApplyToolExecutionDecisions:
+    @pytest.mark.parametrize("final_params", [None, {}, {"a": 5, "b": 6}])
+    def test_omitted_final_tool_params_preserve_arguments(self, assistant_message, final_params):
+        rejection_messages, messages = _apply_tool_execution_decisions(
+            tool_call_messages=[assistant_message],
+            tool_execution_decisions=[
+                ToolExecutionDecision(
+                    tool_name="addition_tool", execute=True, tool_call_id="1", final_tool_params=final_params
+                )
+            ],
+        )
+        assert rejection_messages == []
+        if final_params is None:
+            assert messages == [assistant_message]
+        else:
+            assert messages == [
+                ChatMessage.from_user(
+                    f"The parameters for tool 'addition_tool' were updated by the user to:\n{final_params}"
+                ),
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="addition_tool", arguments=final_params, id="1")]
+                ),
+            ]
+        assert assistant_message.tool_call.arguments == {"a": 1, "b": 2}
+
     @pytest.fixture
     def assistant_message(self, tools):
         tool_call = ToolCall(tool_name=tools[0].name, arguments={"a": 1, "b": 2}, id="1")

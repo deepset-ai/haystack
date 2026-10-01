@@ -45,6 +45,8 @@ class ToolExecutionDecision:
         modified, this can contain the modification details.
     :param final_tool_params:
         Optional final parameters for the tool if execution is confirmed or modified.
+        If ``None``, confirmation preserves the original tool arguments. An explicit dictionary replaces them,
+        including an empty dictionary.
     """
 
     tool_name: str

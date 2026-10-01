@@ -19,6 +19,7 @@ from haystack.hooks.human_in_the_loop import (
     ConfirmationUIResult,
     NeverAskPolicy,
     SimpleConsoleUI,
+    ToolExecutionDecision,
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool, create_tool_from_function
@@ -61,6 +62,30 @@ def confirmation_hook(confirmation_strategies: dict[str | tuple[str, ...], Confi
 
 
 class TestAgent:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("async_mode", [False, True])
+    async def test_omitted_final_tool_params_preserve_arguments(self, tools, async_mode):
+        call = ToolCall(tool_name="addition_tool", arguments={"a": 2, "b": 3}, id="approved-call")
+        decision = ToolExecutionDecision(tool_name="addition_tool", execute=True, tool_call_id=call.id)
+        strategy = MagicMock(spec=ConfirmationStrategy)
+        strategy.run.return_value = decision
+        strategy.run_async.return_value = decision
+        agent = Agent(
+            chat_generator=MockChatGenerator(responses=[ChatMessage.from_assistant(tool_calls=[call]), "done"]),
+            tools=tools,
+            hooks={"before_tool": [ConfirmationHook(confirmation_strategies={"addition_tool": strategy})]},
+            raise_on_tool_invocation_failure=True,
+        )
+        messages = [ChatMessage.from_user("Add 2 and 3")]
+        result = await agent.run_async(messages=messages) if async_mode else agent.run(messages=messages)
+        transcript = result["messages"]
+        assert len(transcript) == 4
+        assert transcript[0] == messages[0]
+        assert transcript[1].tool_calls == [call]
+        assert transcript[2] == ChatMessage.from_tool(tool_result="5", origin=call, error=False)
+        assert transcript[3].text == "done"
+        assert result["tool_call_counts"] == {"addition_tool": 1}
+
     def test_confirmation_hook_accepted_on_before_tool(self, tools, confirmation_hook):
         agent = Agent(chat_generator=MockChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})
         assert agent.hooks["before_tool"] == [confirmation_hook]

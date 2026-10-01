@@ -282,7 +282,7 @@ Returned by the strategy to the agent.
 | `execute` | `bool` | Whether to execute the tool |
 | `tool_call_id` | `str \| None` | ID of the tool call |
 | `feedback` | `str \| None` | Feedback message passed back to the LLM on rejection or modification |
-| `final_tool_params` | `dict \| None` | Final parameters to use for execution |
+| `final_tool_params` | `dict \| None` | Final parameters to use for execution. `None` preserves the original arguments; an explicit dictionary replaces them, including an empty dictionary. |
 
 ## Example: HITL with Hayhooks and Open WebUI
 

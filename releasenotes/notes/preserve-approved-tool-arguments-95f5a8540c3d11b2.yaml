@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Custom human-in-the-loop confirmation strategies can now approve a tool call
+    with ``ToolExecutionDecision(execute=True)`` without providing
+    ``final_tool_params``. The original arguments are preserved and the chat
+    history no longer reports a user modification. An explicitly supplied
+    dictionary, including ``{}``, still replaces the original arguments.
