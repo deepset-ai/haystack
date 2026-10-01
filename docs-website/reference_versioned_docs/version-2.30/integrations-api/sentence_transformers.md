@@ -97,8 +97,10 @@ Creates a SentenceTransformersDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
   All non-float32 precisions are quantized embeddings.
@@ -248,8 +250,10 @@ Creates a SentenceTransformersDocumentEmbedder component.
   truncating embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
   All non-float32 precisions are quantized embeddings.
@@ -397,8 +401,10 @@ Creates a SentenceTransformersSparseDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
@@ -518,8 +524,10 @@ Create a SentenceTransformersSparseTextEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
@@ -657,8 +665,10 @@ Create a SentenceTransformersTextEmbedder component.
   truncation of embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
   All non-float32 precisions are quantized embeddings.
@@ -859,8 +869,10 @@ Initialize a SentenceTransformersDiversityRanker.
   "maximum_margin_relevance".
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
@@ -1007,8 +1019,10 @@ Creates an instance of SentenceTransformersSimilarityRanker.
   If `True`, allows custom models and scripts.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
+  for available kwargs.
 - **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
