@@ -797,15 +797,15 @@ class ChatMessage:
             raise ValueError(f"The `content` field is required for {role} messages.")
 
     @staticmethod
-    def _parse_openai_data_url(data_url: str) -> tuple[str | None, str]:
+    def _parse_openai_data_url(data_url: Any) -> tuple[str | None, str]:
         """
         Split a base64 data URL in OpenAI format into its MIME type and base64 payload.
 
         :param data_url: A data URL in the format `data:<mime_type>;base64,<base64_data>`.
         :returns: A tuple containing the MIME type (or None if absent) and the base64 data.
-        :raises ValueError: If the URL is not a base64 data URL.
+        :raises ValueError: If the URL is not a string or not a base64 data URL.
         """
-        if not data_url.startswith("data:") or ";base64," not in data_url:
+        if not isinstance(data_url, str) or not data_url.startswith("data:") or ";base64," not in data_url:
             raise ValueError(
                 f"Unsupported URL: {data_url!r}. Only base64 data URLs in the format "
                 "`data:<mime_type>;base64,<base64_data>` are supported."
@@ -830,13 +830,19 @@ class ChatMessage:
                     raise ValueError(f"Unsupported text content part: {part}. Text parts must contain a `text` string.")
                 parts.append(TextContent(text=part["text"]))
             elif part_type == "image_url":
-                image_url = part.get("image_url") or {}
-                mime_type, base64_image = cls._parse_openai_data_url(image_url.get("url", ""))
+                image_url = part.get("image_url")
+                if not isinstance(image_url, dict):
+                    raise ValueError(
+                        f"Unsupported image content part: {part}. Image parts must contain an `image_url` object."
+                    )
+                mime_type, base64_image = cls._parse_openai_data_url(image_url.get("url"))
                 parts.append(
                     ImageContent(base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail"))
                 )
             elif part_type == "file":
-                file = part.get("file") or {}
+                file = part.get("file")
+                if not isinstance(file, dict):
+                    raise ValueError(f"Unsupported file content part: {part}. File parts must contain a `file` object.")
                 file_data = file.get("file_data")
                 if not file_data:
                     raise ValueError(

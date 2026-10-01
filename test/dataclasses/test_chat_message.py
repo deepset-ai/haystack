@@ -1085,7 +1085,17 @@ class TestFromOpenaiDictFormat:
         "part, match",
         [
             ({"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}, "Only base64 data URLs"),
+            ({"type": "image_url", "image_url": {"url": None}}, "Only base64 data URLs"),
+            (
+                {"type": "image_url", "image_url": "data:image/png;base64,iVBORw0KGgo="},
+                "Image parts must contain an `image_url` object",
+            ),
             ({"type": "file", "file": {"file_id": "file-abc123"}}, "files referenced by `file_id`"),
+            ({"type": "file", "file": {"file_data": {"url": "https://example.com/doc.pdf"}}}, "Only base64 data URLs"),
+            (
+                {"type": "file", "file": "data:application/pdf;base64,JVBERi0="},
+                "File parts must contain a `file` object",
+            ),
             ({"type": "input_audio", "input_audio": {"data": "UklGRg==", "format": "wav"}}, "Supported part types"),
             ({"type": "text"}, "Text parts must contain a `text` string"),
         ],
