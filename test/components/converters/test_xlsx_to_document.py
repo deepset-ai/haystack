@@ -15,6 +15,21 @@ from haystack.components.converters.xlsx import XLSXToDocument
 from haystack.dataclasses import ByteStream
 
 
+def _write_linked_workbook(path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    sheet.title = "Data"
+    sheet.append(["Name", "Email", "Reference"])
+    sheet.append(["Alice", "alice@example.com", "A"])
+    sheet.append(["Bob", "bob@example.com", "B"])
+    sheet["A2"].hyperlink = "https://example.com/alice"
+    sheet["B2"].hyperlink = "#Data!A2"
+    sheet["C2"].hyperlink = "#Data!A1:C2"
+    workbook.save(path)
+    workbook.close()
+
+
 class TestXLSXToDocument:
     def test_init(self) -> None:
         converter = XLSXToDocument()
@@ -202,6 +217,42 @@ class TestXLSXToDocument:
         else:
             assert "Click here (https://example.com)" in content
             assert "Docs (https://python.org)" in content
+
+    def test_link_extraction_with_skiprows(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_skiprows.xlsx"
+        _write_linked_workbook(path)
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"skiprows": 1}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B,C\n"
+            "1,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
+            "2,Bob,bob@example.com,B\n"
+        )
+
+    def test_link_extraction_with_usecols(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_usecols.xlsx"
+        _write_linked_workbook(path)
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "B"}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (",A\n1,Email\n2,[alice@example.com](#Data!A2)\n3,bob@example.com\n")
+
+    def test_link_extraction_with_usecols_range(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_usecols_range.xlsx"
+        _write_linked_workbook(path)
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "B:C"}).run(sources=[path])[
+            "documents"
+        ]
+
+        assert documents[0].content == (
+            ",A,B\n1,Email,Reference\n2,[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n3,bob@example.com,B\n"
+        )
 
     def test_no_link_extraction(self, test_files_path: Path) -> None:
         converter = XLSXToDocument()

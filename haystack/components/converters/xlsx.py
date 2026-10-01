@@ -4,6 +4,7 @@
 
 import io
 import os
+from numbers import Integral
 from pathlib import Path
 from typing import Any, Literal
 
@@ -20,6 +21,20 @@ with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
 
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
+
+
+def _get_row_positions(num_rows: int, skiprows: Any) -> dict[int, int]:
+    """Map original zero-based row indices to positions in the filtered DataFrame."""
+    if skiprows is None:
+        return {row: row for row in range(num_rows)}
+    if isinstance(skiprows, Integral):
+        skiprows = int(skiprows)
+        return {row: row - skiprows for row in range(skiprows, num_rows)}
+    if callable(skiprows):
+        skipped_rows = {row for row in range(num_rows) if skiprows(row)}
+    else:
+        skipped_rows = set(skiprows)
+    return {row: position for position, row in enumerate(row for row in range(num_rows) if row not in skipped_rows)}
 
 
 @component
@@ -158,6 +173,35 @@ class XLSXToDocument:
             result.append(col_name)
         return result
 
+    def _apply_hyperlinks(
+        self, dataframe: pd.DataFrame, hyperlinks: dict[tuple[int, int], str], row_positions: dict[int, int]
+    ) -> None:
+        if all(isinstance(column, Integral) for column in dataframe.columns):
+            column_positions = {int(column): position for position, column in enumerate(dataframe.columns)}
+        else:
+            # `names` replaces the integer column labels; retain the previous positional behavior.
+            column_positions = {position: position for position in range(len(dataframe.columns))}
+
+        for (original_row_idx, original_col_idx), url in hyperlinks.items():
+            row_idx = row_positions.get(original_row_idx)
+            col_idx = column_positions.get(original_col_idx)
+            if (
+                row_idx is not None
+                and col_idx is not None
+                and row_idx < len(dataframe)
+                and col_idx < len(dataframe.columns)
+            ):
+                cell_value = dataframe.iat[row_idx, col_idx]
+                text = str(cell_value) if pd.notna(cell_value) else ""
+                # Hyperlink text must be assignable to numeric and other typed columns.
+                column = dataframe.columns[col_idx]
+                if dataframe[column].dtype != object:
+                    dataframe[column] = dataframe[column].astype(object)
+                if self.link_format == "markdown":
+                    dataframe.iat[row_idx, col_idx] = f"[{text}]({url})"
+                else:
+                    dataframe.iat[row_idx, col_idx] = f"{text} ({url})"
+
     def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
         Extract tables from an Excel file.
@@ -175,6 +219,7 @@ class XLSXToDocument:
 
         # If link extraction is enabled, load the workbook with openpyxl to read hyperlinks
         hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]] = {}
+        row_positions_by_sheet: dict[str | int | None, dict[int, int]] = {}
         if self.link_format != "none":
             file_bytes.seek(0)
             wb = openpyxl.load_workbook(file_bytes, data_only=True)
@@ -189,9 +234,12 @@ class XLSXToDocument:
                 for row in ws.iter_rows():
                     for cell in row:
                         if cell.hyperlink and cell.hyperlink.target:
-                            # Convert to 0-based indices to match DataFrame positions
+                            # Store zero-based Excel coordinates; they are translated to filtered positions below.
                             cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
                 hyperlinks_by_sheet[sheet_key] = cell_links
+                row_positions_by_sheet[sheet_key] = _get_row_positions(
+                    ws.max_row, self.read_excel_kwargs.get("skiprows")
+                )
             wb.close()
 
         updated_sheet_to_dataframe = {}
@@ -199,24 +247,12 @@ class XLSXToDocument:
             df = sheet_to_dataframe[key]
             # Row starts at 1 in Excel
             df.index = df.index + 1
+            # Apply hyperlinks to cell values before replacing the original column indices with Excel column names.
+            if key in hyperlinks_by_sheet:
+                self._apply_hyperlinks(df, hyperlinks_by_sheet[key], row_positions_by_sheet[key])
             # Excel column names are Alphabet Characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
-
-            # Apply hyperlinks to cell values
-            if key in hyperlinks_by_sheet:
-                for (row_idx, col_idx), url in hyperlinks_by_sheet[key].items():
-                    if row_idx < len(df) and col_idx < len(df.columns):
-                        cell_value = df.iat[row_idx, col_idx]
-                        text = str(cell_value) if pd.notna(cell_value) else ""
-                        # Hyperlink text must be assignable to numeric and other typed columns.
-                        column = df.columns[col_idx]
-                        if df[column].dtype != object:
-                            df[column] = df[column].astype(object)
-                        if self.link_format == "markdown":
-                            df.iat[row_idx, col_idx] = f"[{text}]({url})"
-                        else:
-                            df.iat[row_idx, col_idx] = f"{text} ({url})"
 
             updated_sheet_to_dataframe[key] = df
 
