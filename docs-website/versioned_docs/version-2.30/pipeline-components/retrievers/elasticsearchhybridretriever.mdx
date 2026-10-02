@@ -1,0 +1,214 @@
+---
+title: "ElasticsearchHybridRetriever"
+id: elasticsearchhybridretriever
+slug: "/elasticsearchhybridretriever"
+description: "This is a SuperComponent that implements a Hybrid Retriever in a single component, relying on Elasticsearch as the backend Document Store."
+---
+
+# ElasticsearchHybridRetriever
+
+This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on Elasticsearch as the backend Document Store.
+
+A Hybrid Retriever uses both traditional keyword-based search (BM25) and embedding-based search to retrieve documents, combining the strengths of both approaches. The Retriever then merges and re-ranks the results from both methods.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a TextEmbedder and before a PromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an ExtractiveReader in an extractive QA pipeline |
+| **Mandatory init variables** | `document_store`: An instance of [`ElasticsearchDocumentStore`](../../document-stores/elasticsearch-document-store.mdx)  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
+| **Mandatory run variables** | `query`: A query string |
+| **Output variables** | `documents`: A list of documents matching the query |
+| **API reference** | [Elasticsearch](/reference/integrations-elasticsearch) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch |
+| **Package name** | `elasticsearch-haystack` |
+
+</div>
+
+## Overview
+
+The `ElasticsearchHybridRetriever` combines two retrieval methods:
+
+1. **BM25 Retrieval**: A keyword-based search that uses the BM25 algorithm to find documents based on term frequency and inverse document frequency. It's based on the [`ElasticsearchBM25Retriever`](elasticsearchbm25retriever.mdx) component and is suitable for finding exact matches to names, IDs, or well-defined terms.
+2. **Embedding-based Retrieval**: A semantic search that uses vector similarity to find documents that are semantically similar to the query. It's based on the [`ElasticsearchEmbeddingRetriever`](elasticsearchembeddingretriever.mdx) component and is suitable for semantic search.
+
+The component automatically handles:
+
+- Converting the query into an embedding using the provided embedder,
+- Running both retrieval methods in parallel,
+- Merging and re-ranking the results using the specified join mode (default: Reciprocal Rank Fusion).
+
+### Installation
+
+[Install](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) Elasticsearch and then [start](https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html) an instance. Haystack supports Elasticsearch 8.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```shell
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+```
+
+As an alternative, you can go to the [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:
+
+```shell
+docker compose up
+```
+
+Once you have a running Elasticsearch instance, install the `elasticsearch-haystack` integration:
+
+```shell
+pip install elasticsearch-haystack
+```
+
+### Optional Parameters
+
+This Retriever accepts various optional parameters. You can verify the most up-to-date list of parameters in our [API Reference](/reference/integrations-elasticsearch).
+
+You can pass additional parameters to the underlying BM25 and embedding retriever components using the `top_k_bm25`, `fuzziness`, `filters_bm25`, `scale_score`, `filter_policy_bm25`, `top_k_embedding`, `filters_embedding`, `num_candidates`, and `filter_policy_embedding` parameters.
+
+The `DocumentJoiner` parameters (`join_mode`, `weights`, `top_k`, and `sort_by_score`) are all exposed directly on the `ElasticsearchHybridRetriever` class.
+
+## Usage
+
+### On its own
+
+This Retriever needs the `ElasticsearchDocumentStore` populated with documents (including embeddings) to run.
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+from haystack_integrations.components.retrievers.elasticsearch import (
+    ElasticsearchHybridRetriever,
+)
+from haystack_integrations.document_stores.elasticsearch import (
+    ElasticsearchDocumentStore,
+)
+
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
+
+model = "sentence-transformers/all-MiniLM-L6-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+doc_embedder = SentenceTransformersDocumentEmbedder(model=model)
+docs_with_embeddings = doc_embedder.run(documents)
+document_store.write_documents(docs_with_embeddings["documents"])
+
+embedder = SentenceTransformersTextEmbedder(model=model)
+
+retriever = ElasticsearchHybridRetriever(
+    document_store=document_store,
+    embedder=embedder,
+)
+
+results = retriever.run(query="How many languages are spoken around the world today?")
+print(results["documents"])
+```
+
+### In a pipeline
+
+Here's a full example that uses an indexing pipeline to store documents with embeddings, and a query pipeline that uses `ElasticsearchHybridRetriever` for hybrid retrieval.
+
+Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.writers import DocumentWriter
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.retrievers.elasticsearch import (
+    ElasticsearchHybridRetriever,
+)
+from haystack_integrations.document_stores.elasticsearch import (
+    ElasticsearchDocumentStore,
+)
+
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
+
+model = "sentence-transformers/all-MiniLM-L6-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+# Indexing Pipeline
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(
+    "doc_embedder",
+    SentenceTransformersDocumentEmbedder(model=model),
+)
+indexing_pipeline.add_component(
+    "doc_writer",
+    DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP),
+)
+indexing_pipeline.connect("doc_embedder", "doc_writer")
+indexing_pipeline.run({"doc_embedder": {"documents": documents}})
+
+# Query Pipeline
+prompt_template = [
+    ChatMessage.from_user(
+        """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """,
+    ),
+]
+
+embedder = SentenceTransformersTextEmbedder(model=model)
+retriever = ElasticsearchHybridRetriever(
+    document_store=document_store,
+    embedder=embedder,
+    top_k_bm25=3,
+    top_k_embedding=3,
+    join_mode="reciprocal_rank_fusion",
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("retriever", retriever)
+query_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(template=prompt_template, required_variables="*"),
+)
+query_pipeline.add_component("llm", OpenAIChatGenerator())
+query_pipeline.connect("retriever.documents", "prompt_builder.documents")
+query_pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+question = "How many languages are spoken around the world today?"
+result = query_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    },
+)
+
+print(result["llm"]["replies"][0].text)
+```

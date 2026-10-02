@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
 from haystack.components.retrievers import InMemoryBM25Retriever, MultiQueryTextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -115,6 +116,71 @@ class TestMultiQueryTextRetrieverAsync:
         assert result["documents"][0].content == "Renewable energy"
 
     @pytest.mark.asyncio
+    async def test_run_async_cancels_sibling_queries_when_one_fails(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, **kwargs: Any
+            ) -> dict[str, list[Document]]:
+                nonlocal slow_cancelled
+                if query == "slow":
+                    slow_started.set()
+                    try:
+                        await asyncio.sleep(5)
+                    except asyncio.CancelledError:
+                        slow_cancelled = True
+                        raise
+                    return {"documents": []}
+
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())
+
+        with pytest.raises(RuntimeError):
+            await multi_retriever.run_async(queries=["slow", "failing"])
+
+        assert slow_cancelled is True
+
+    @pytest.mark.asyncio
+    async def test_run_async_bounds_concurrency_to_max_workers(self):
+        state = {"current": 0, "peak": 0}
+
+        @component
+        class TrackingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                state["current"] += 1
+                state["peak"] = max(state["peak"], state["current"])
+                await asyncio.sleep(0.02)
+                state["current"] -= 1
+                return {"documents": []}
+
+        multi_retriever = MultiQueryTextRetriever(retriever=TrackingRetriever(), max_workers=2)
+        await multi_retriever.run_async(queries=[f"q{i}" for i in range(8)])
+
+        assert state["peak"] <= 2
+        assert state["peak"] > 1  # the queries do overlap; they are not serialized
+
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_run_async_with_filters(self, document_store_with_docs):
         in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
@@ -133,7 +199,7 @@ class TestMultiQueryTextRetrieverAsync:
         multi_retriever = MultiQueryTextRetriever(
             retriever=InMemoryBM25Retriever(document_store=document_store_with_docs)
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", multi_retriever)
         result = await pipeline.run_async(data={"retriever": {"queries": ["renewable energy", "solar power"]}})
 

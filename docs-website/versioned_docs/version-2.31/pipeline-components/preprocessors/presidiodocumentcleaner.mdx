@@ -1,0 +1,147 @@
+---
+title: "PresidioDocumentCleaner"
+id: presidiodocumentcleaner
+slug: "/presidiodocumentcleaner"
+description: "Use `PresidioDocumentCleaner` to replace PII in Document text with entity type placeholders, powered by Microsoft Presidio."
+---
+
+# PresidioDocumentCleaner
+
+`PresidioDocumentCleaner` replaces personally identifiable information (PII) in the text content of Documents with entity type placeholders such as `<PERSON>` or `<EMAIL_ADDRESS>`. Original Documents are not mutated. Documents without text content pass through unchanged.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In an indexing pipeline, before writing Documents to a Document Store |
+| **Mandatory run variables**            | `documents`: A list of Document objects |
+| **Output variables**                   | `documents`: A list of Document objects with PII replaced |
+| **API reference**                      | [Presidio](/reference/integrations-presidio) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+| **Package name** | `presidio-haystack` |
+
+</div>
+
+## Overview
+
+[Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioDocumentCleaner` uses Presidio's Analyzer and Anonymizer engines to scan document text and replace detected entities with type placeholders such as `<PERSON>` or `<EMAIL_ADDRESS>`.
+
+This is useful when you want to store sanitized versions of your documents in a Document Store — for example, to prevent sensitive information from being indexed or returned in search results.
+
+If you want to annotate PII without modifying the text, see [`PresidioEntityExtractor`](../extractors/presidioentityextractor.mdx). For sanitizing plain strings such as user queries, see [`PresidioTextCleaner`](./presidiotextcleaner.mdx).
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect and anonymize (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://microsoft.github.io/presidio/supported_entities/). |
+| `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be anonymized. |
+| `models` | `None` | Advanced override: explicit list of spaCy model configs, e.g. `[{"lang_code": "fr", "model_name": "fr_core_news_md"}]`. Use this only when you need a specific model variant or a language not in the built-in mapping. If `None`, the model is selected automatically based on `language`. |
+
+## Usage
+
+Install the `presidio-haystack` package to use the `PresidioDocumentCleaner`.
+
+```bash
+pip install presidio-haystack
+```
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
+
+cleaner = PresidioDocumentCleaner()
+result = cleaner.run(
+    documents=[
+        Document(content="Contact Alice Smith at alice@example.com or 212-555-1234."),
+    ],
+)
+print(result["documents"][0].content)
+# Contact <PERSON> at <EMAIL_ADDRESS> or <PHONE_NUMBER>.
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
+
+document_store = InMemoryDocumentStore()
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("cleaner", PresidioDocumentCleaner())
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("cleaner", "writer")
+
+indexing_pipeline.run(
+    {
+        "cleaner": {
+            "documents": [
+                Document(content="Alice Smith's email is alice@example.com"),
+                Document(content="Call Bob at 212-555-9876"),
+            ],
+        },
+    },
+)
+```
+
+### Using Custom Parameters
+
+Use `entities` to limit anonymization to the PII types you actually care about. This reduces false positives and improves performance by skipping recognizers you don't need.
+
+Use `score_threshold` to tune the precision-recall tradeoff. The default `0.35` casts a wide net and may anonymize some false positives. Raise it (e.g. `0.7`) when you need high confidence before replacing text; lower it when missing any PII is the bigger risk.
+
+```python
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
+
+cleaner = PresidioDocumentCleaner(
+    language="de",
+    entities=["PERSON", "EMAIL_ADDRESS"],  # only anonymize names and emails
+    score_threshold=0.7,  # higher precision, fewer false positives
+)
+```
+
+### Non-English languages
+
+For any language in the built-in mapping, just set `language` — the right spaCy model is selected and loaded automatically at warm-up time.
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
+
+# No `models` parameter needed — de_core_news_lg is selected automatically
+cleaner = PresidioDocumentCleaner(language="de")
+result = cleaner.run(
+    documents=[
+        Document(
+            content="Mein Name ist Hans Müller und meine E-Mail ist hans@example.com",
+        ),
+    ],
+)
+print(result["documents"][0].content)
+# Mein Name ist <PERSON> und meine E-Mail ist <EMAIL_ADDRESS>
+```
+
+Supported languages and their default models are listed in `PresidioDocumentCleaner.SPACY_DEFAULT_MODELS`. Using a language not in that mapping without providing `models` raises a `ValueError` at warm-up time with a list of the supported language codes.
+
+To use a non-default model variant, or a language outside the built-in mapping, pass `models` explicitly:
+
+```python
+cleaner = PresidioDocumentCleaner(
+    language="fr",
+    models=[{"lang_code": "fr", "model_name": "fr_core_news_md"}],
+)
+```

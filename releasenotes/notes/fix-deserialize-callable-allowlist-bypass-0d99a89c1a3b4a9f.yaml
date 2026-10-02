@@ -1,0 +1,14 @@
+---
+security:
+  - |
+    Fixed a deserialization-allowlist bypass that could allow arbitrary code execution when
+    loading an untrusted pipeline (``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict``).
+    The module allowlist was enforced against a string prefix of the serialized handle, while the
+    callable/class resolvers walked attributes from the deepest importable module. Because an
+    allowlisted package can expose another module as an attribute (e.g. a module-scope ``import os``
+    makes ``haystack.utils.auth.os`` the standard-library ``os`` module), a handle such as
+    ``haystack.utils.auth.os.system`` passed the allowlist and resolved to ``os.system``. The
+    allowlist is now enforced against the module each object is *actually* resolved from — every
+    module hop during attribute resolution is re-checked, and the resolved callable's/class's real
+    module must be on the allowlist. Legitimate handles (including harmless builtins such as
+    ``builtins.print``) continue to resolve.

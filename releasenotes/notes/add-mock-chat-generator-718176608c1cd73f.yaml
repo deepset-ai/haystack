@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added ``MockChatGenerator``, a Chat Generator that returns predefined responses without calling any API.
+    It is a deterministic, zero-cost drop-in replacement for real Chat Generators in tests, smoke tests, and
+    quick prototypes. It supports a fixed response, a list of responses cycled across calls (useful to drive
+    Agent-like loops), a ``response_fn`` callable for input-dependent replies, and an echo mode (the default) that
+    returns the last user message. It implements the full Chat Generator interface, including ``run``, ``run_async``,
+    streaming callbacks, and serialization.

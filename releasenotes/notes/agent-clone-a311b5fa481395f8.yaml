@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Add an ``Agent.clone()`` method that returns a new Agent with the same configuration, optionally
+    replacing some init parameters: ``variant = agent.clone(system_prompt="Answer in German.")``.
+upgrade:
+  - |
+    ``Agent.state_schema`` now contains the user-provided state schema, exactly as passed to
+    ``__init__``. Previously it contained the resolved schema, which also included ``messages``
+    and the keys the Agent manages internally (``step_count``, ``token_usage``, ``exit_reason``, ...).
+    If you were reading ``agent.state_schema`` to inspect the effective runtime schema, use the
+    new public attribute ``agent.resolved_state_schema`` instead.

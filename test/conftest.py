@@ -12,15 +12,36 @@ from unittest.mock import Mock
 import pytest
 
 from haystack import component, tracing
+from haystack.core.serialization import allow_deserialization_module
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.telemetry import (  # noqa: F401  # autouse fixtures for the whole suite
+    block_telemetry_network_calls,
+    tag_pipeline_telemetry_as_test,
+    telemetry_instance,
+)
 from haystack.testing.test_utils import set_all_seeds
-from test.tracing.utils import SpyingTracer
+from test.tracing.utils import EagerSpyingTracer, SpyingTracer
 
 set_all_seeds(0)
 
 
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
+
+
+# Tests legitimately deserialize callables/components/types from a handful of modules that aren't
+# part of the default Haystack allowlist. We extend the allowlist explicitly.
+#
+# Tests that exercise the rejection path themselves install a clean context (and clear the
+# process-wide patterns); see `test/core/test_serialization_security.py`.
+for _pattern in (
+    "test_*",  # top-level `test_<name>` modules (pytest rootdir-level files)
+    "*.test_*",  # `<subdir>.test_<name>` modules (pytest treats sub-packages this way)
+    "test.*",  # modules inside the proper `test` package (with __init__.py)
+    "pydantic",  # pydantic models used in base-serialization tests
+    "httpx",  # used in callable-serialization tests
+):
+    allow_deserialization_module(_pattern)
 
 
 @pytest.fixture()
@@ -64,7 +85,7 @@ def test_files_path():
 
 
 @pytest.fixture(autouse=True)
-def request_blocker(request: pytest.FixtureRequest, monkeypatch):
+def request_blocker(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """
     This fixture is applied automatically to all tests.
     Those that are not marked as integration will have the requests module
@@ -82,9 +103,22 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
 
 @pytest.fixture()
 def spying_tracer() -> Generator[SpyingTracer, None, None]:
+    # `SpyingSpan.set_content_tag` records unconditionally, so content tags are always captured here,
+    # regardless of the global `tracer.is_content_tracing_enabled` flag.
     tracer = SpyingTracer()
     tracing.enable_tracing(tracer)
-    tracer.is_content_tracing_enabled = True
+
+    yield tracer
+
+    # Make sure to disable tracing after the test to avoid affecting other tests
+    tracing.disable_tracing()
+
+
+@pytest.fixture()
+def eager_spying_tracer() -> Generator[EagerSpyingTracer, None, None]:
+    # Coerces tags when set, mirroring real backends. Content tracing is left to the test to toggle.
+    tracer = EagerSpyingTracer()
+    tracing.enable_tracing(tracer)
 
     yield tracer
 

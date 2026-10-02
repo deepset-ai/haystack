@@ -1,0 +1,65 @@
+---
+title: "Tracing"
+id: tracing
+slug: "/tracing"
+description: "This page explains how to use tracing in Haystack. It lists the tracing backends Haystack supports out of the box and explains how to enable, configure, and disable tracing."
+---
+
+# Tracing
+
+Traces document the flow of requests through your application and are vital for monitoring applications in production. This helps you understand the execution order of your pipeline components and analyze where your pipeline spends the most time.
+
+Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack provides out-of-the-box support for several backends, and you can also quickly implement support for additional providers of your choosing.
+
+## Supported Tracers
+
+| Tracer | Description |
+| --- | --- |
+| [OpenTelemetry](tracing/opentelemetry.mdx) | Send traces to any [OpenTelemetry](https://opentelemetry.io/)-compatible backend using the `OpenTelemetryTracer` or the `OpenTelemetryConnector` component. Includes a Jaeger setup for local development. |
+| [MLflow](tracing/mlflow.mdx) | Capture traces with [MLflow](https://mlflow.org/)'s native Haystack tracing support. |
+| [Datadog](tracing/datadog.mdx) | Trace your pipelines with [Datadog](https://www.datadoghq.com/) using the `DatadogTracer` or the `DatadogConnector` component. |
+| [Langfuse](tracing/langfuse.mdx) | Trace your pipelines with the [Langfuse](https://langfuse.com/) UI using the `LangfuseTracer` or the `LangfuseConnector` component. |
+| [Weights & Biases Weave](tracing/weave.mdx) | Trace and visualize pipeline execution in [Weights & Biases](https://wandb.ai/site/) using the `WeaveTracer` or the `WeaveConnector` component. |
+| [LoggingTracer](tracing/logging-tracer.mdx) | Inspect the data flowing through your pipeline in real time through logs, with no backend setup. |
+| [Custom Tracer](tracing/custom-tracer.mdx) | Connect any tracing backend by implementing the `Tracer` interface. |
+
+## Disabling Auto Tracing
+
+Haystack automatically detects and enables tracing under the following circumstances:
+
+- If `opentelemetry-sdk` is installed and configured for OpenTelemetry. Note that this auto-enabling is deprecated and will be removed in Haystack 3.0 – use the [`OpenTelemetryConnector`](tracing/opentelemetry.mdx) to enable OpenTelemetry tracing instead.
+- If `ddtrace` is installed for Datadog. Note that this auto-enabling is deprecated and will be removed in Haystack 3.0 – use the [`DatadogConnector`](tracing/datadog.mdx) to enable Datadog tracing instead.
+
+To disable this behavior, there are two options:
+
+- Set the environment variable `HAYSTACK_AUTO_TRACE_ENABLED` to `false` when running your Haystack application
+
+— or —
+
+- Disable tracing in Python:
+
+  ```python
+  from haystack.tracing import disable_tracing
+
+  disable_tracing()
+  ```
+
+## Content Tracing
+
+Haystack also allows you to trace your pipeline components' input and output values. This is useful for investigating your pipeline execution step by step.
+
+By default, this behavior is disabled to prevent sensitive user information from being sent to your tracing backend.
+
+To enable content tracing, there are two options:
+
+- Set the environment variable `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` when running your Haystack application
+
+— or —
+
+- Explicitly enable content tracing in Python:
+
+  ```python
+  from haystack import tracing
+
+  tracing.tracer.is_content_tracing_enabled = True
+  ```

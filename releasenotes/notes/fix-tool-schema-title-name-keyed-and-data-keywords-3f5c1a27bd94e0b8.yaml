@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``create_tool_from_function``, the ``@tool`` decorator, and ``ComponentTool`` corrupting a tool's
+    JSON schema when the string ``title`` appears as a *name* rather than as a schema keyword. Stripping the
+    auto-generated ``title`` keywords no longer deletes entries of ``$defs``, ``definitions``,
+    ``patternProperties``, ``dependentSchemas`` or ``dependentRequired`` (which would leave a ``$ref``
+    dangling or silently drop a validation rule), and no longer edits ``title`` keys inside ``default``,
+    ``const``, ``enum`` or ``examples`` values, which are instance data and part of the tool's contract.

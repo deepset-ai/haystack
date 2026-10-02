@@ -51,15 +51,18 @@ class TestConvertPdfToImages:
         pages_images = _convert_pdf_to_images(bytestream=bytestream, page_range=[1], size=(100, 100))
 
         assert len(pages_images) == 1
-        assert pages_images[0][0] == 1
-        assert pages_images[0][1].width <= 100
-        assert pages_images[0][1].height <= 100
+        page_number, image = pages_images[0]
+        assert page_number == 1
+        assert isinstance(image, Image.Image)
+        assert image.width <= 100
+        assert image.height <= 100
 
     def test_convert_pdf_to_images_invalid_page(self, caplog: LogCaptureFixture) -> None:
-        bytestream = get_bytestream_from_source(Path("test/test_files/pdf/sample_pdf_1.pdf"))
+        pdf_path = Path("test/test_files/pdf/sample_pdf_1.pdf")
+        bytestream = get_bytestream_from_source(pdf_path)
         out = _convert_pdf_to_images(bytestream=bytestream, page_range=[5])
         assert out == []
-        assert "Page 5 is out of range for the PDF file. Skipping it." in caplog.text
+        assert f"Page 5 is out of range for the PDF file {pdf_path}. Skipping it." in caplog.text
 
     def test_convert_pdf_to_images_error_reading_file(self, caplog: LogCaptureFixture) -> None:
         bytestream = ByteStream(data=b"", mime_type="application/pdf")
@@ -149,6 +152,31 @@ class TestExtractImageSourcesInfo:
         with pytest.raises(ValueError, match="missing the 'page_number' key"):
             _extract_image_sources_info(documents=[document], file_path_meta_field="file_path", root_path="")
 
+    def test_extract_image_source_info_rejects_path_traversal(self, test_files_path):
+        # Attacker-controlled document metadata attempts to escape the configured root.
+        document = Document(content="test", meta={"file_path": "../../../../../../etc/passwd"})
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _extract_image_sources_info(
+                documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
+            )
+
+    def test_extract_image_source_info_rejects_absolute_outside_root(self, test_files_path):
+        # Absolute path that lies outside the configured root must be rejected before any IO.
+        document = Document(content="test", meta={"file_path": "/etc/passwd"})
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _extract_image_sources_info(
+                documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
+            )
+
+    def test_extract_image_source_info_accepts_path_inside_root(self, test_files_path):
+        # When the resolved path is inside the configured root, processing must succeed.
+        document = Document(content="test", meta={"file_path": "haystack-logo.png"})
+        images_source_info = _extract_image_sources_info(
+            documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
+        )
+        assert len(images_source_info) == 1
+        assert images_source_info[0]["mime_type"] == "image/png"
+
 
 class TestBatchConvertPdfPagesToImages:
     @patch("haystack.components.converters.image.image_utils._convert_pdf_to_images")
@@ -165,7 +193,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=False)
 
-        pdf_bytestream = ByteStream.from_file_path(pdf_path)
+        pdf_bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=False
@@ -187,7 +215,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=True)
 
-        pdf_bytestream = ByteStream.from_file_path(pdf_path)
+        pdf_bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=True

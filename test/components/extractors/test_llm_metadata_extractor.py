@@ -4,16 +4,30 @@
 
 import asyncio
 import os
-from unittest.mock import Mock
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline
+from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+
+class ErrorKeyChatGenerator:
+    """Wrapper-style generator whose output dict always includes an "error" field."""
+
+    def __init__(self, response: str) -> None:
+        self._response = response
+
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant(self._response)], "error": None}
+
+    async def run_async(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return self.run(messages, **kwargs)
 
 
 @pytest.fixture
@@ -97,7 +111,9 @@ class TestLLMMetadataExtractor:
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         with pytest.raises(TypeError):
-            _ = LLMMetadataExtractor(prompt="prompt {{document.content}}", expected_keys=["key1", "key2"])
+            _ = LLMMetadataExtractor(  # type: ignore[call-arg]
+                prompt="prompt {{document.content}}", expected_keys=["key1", "key2"]
+            )
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -139,36 +155,8 @@ class TestLLMMetadataExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
-
-    def test_warm_up_with_chat_generator(self, monkeypatch):
-        mock_chat_generator = Mock()
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
-        mock_chat_generator.warm_up.assert_not_called()
-        extractor.warm_up()
-        mock_chat_generator.warm_up.assert_called_once()
-
-    def test_extract_metadata(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator())
-        result = extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert result == {"output": "valid json"}
-
-    def test_extract_metadata_invalid_json(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), raise_on_failure=True
-        )
-        with pytest.raises(ValueError):
-            extractor._extract_metadata(llm_answer='{"output: "valid json"}')
-
-    def test_extract_metadata_missing_key(self, monkeypatch, caplog):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(
-            prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
-        )
-        extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -286,6 +274,121 @@ class TestLLMMetadataExtractor:
         result = await extractor.run_async(documents=[])
         assert result["documents"] == []
         assert result["failed_documents"] == []
+
+    def test_run_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = extractor.run(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = extractor.run(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
+
+    def test_run_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = extractor.run(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    def test_run_generator_output_with_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["topic"],
+            chat_generator=ErrorKeyChatGenerator(response='{"topic": "physics"}'),
+        )
+
+        result = extractor.run(documents=[Document(content="content"), Document(content="")])
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta == {"topic": "physics"}
+        assert len(result["failed_documents"]) == 1
+        assert result["failed_documents"][0].meta == {
+            "metadata_extraction_error": "Document has no content, skipping LLM call.",
+            "metadata_extraction_response": None,
+        }
+
+    def test_run_raises_parse_error_when_raise_on_failure_is_true(self, caplog: pytest.LogCaptureFixture) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            extractor.run(documents=[Document(content="content")])
+        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_run_async_extracted_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="Extract the error type and severity from this log: {{document.content}}",
+            expected_keys=["error", "severity"],
+            chat_generator=MockChatGenerator(responses=['{"error": "timeout", "severity": "high"}']),
+        )
+
+        result = await extractor.run_async(documents=[Document(content="2026-09-10 ERROR timeout after 30s")])
+
+        assert result["failed_documents"] == []
+        assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_output_with_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["topic"],
+            chat_generator=ErrorKeyChatGenerator(response='{"topic": "physics"}'),
+        )
+
+        result = await extractor.run_async(documents=[Document(content="content"), Document(content="")])
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta == {"topic": "physics"}
+        assert len(result["failed_documents"]) == 1
+        assert result["failed_documents"][0].meta == {
+            "metadata_extraction_error": "Document has no content, skipping LLM call.",
+            "metadata_extraction_response": None,
+        }
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_parse_error_when_raise_on_failure_is_true(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1"],
+            chat_generator=MockChatGenerator(responses=['{"output": "valid json"}']),
+            raise_on_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            await extractor.run_async(documents=[Document(content="content")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_clears_failure_metadata_after_successful_empty_json_retry(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first_result = await extractor.run_async(documents=[Document(content="content", meta={"source": "retry"})])
+        failed_document = first_result["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_document.meta
+        assert "metadata_extraction_response" in failed_document.meta
+
+        retry_result = await extractor.run_async(documents=first_result["failed_documents"])
+
+        assert retry_result["failed_documents"] == []
+        assert retry_result["documents"][0].meta == {"source": "retry"}
 
     def test_run_with_document_content_none(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -503,7 +606,7 @@ class TestLLMMetadataExtractor:
             ),
         )
         writer = DocumentWriter(document_store=in_memory_doc_store)
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")
@@ -513,3 +616,107 @@ class TestLLMMetadataExtractor:
         assert len(doc_store_docs) == 2
         assert "entities" in doc_store_docs[0].meta
         assert "entities" in doc_store_docs[1].meta
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up"])
+        extractor.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+        extractor.splitter.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up", "warm_up_async"])
+        mock_chat_generator.warm_up_async = AsyncMock()
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up_async"])
+        extractor.splitter.warm_up_async = AsyncMock()
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+        extractor.splitter.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up"])
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up.assert_called_once()
+        extractor.splitter.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "close"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close"])
+        extractor.close()
+        mock_chat_generator.close.assert_called_once()
+        extractor.splitter.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "close_async"])
+        mock_chat_generator.close_async = AsyncMock()
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close_async"])
+        extractor.splitter.close_async = AsyncMock()
+        await extractor.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+        extractor.splitter.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        mock_chat_generator = Mock(spec=["run", "close"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close"])
+        await extractor.close_async()
+        mock_chat_generator.close.assert_called_once()
+        extractor.splitter.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_inner_lacks_methods(self):
+        mock_chat_generator = Mock(spec=["run"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run"])
+        extractor.warm_up()
+        await extractor.warm_up_async()
+        extractor.close()
+        await extractor.close_async()
+
+
+class TestLLMMetadataExtractorTracing:
+    def test_run_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed on worker threads. Each generator span must expose the reply's token usage and
+        # nest under the span active when run() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
+
+
+class TestLLMMetadataExtractorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed concurrently. Each generator span must expose the reply's token usage and nest
+        # under the span active when run_async() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )

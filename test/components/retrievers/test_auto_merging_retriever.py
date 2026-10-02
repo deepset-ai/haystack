@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import Mock
+
 import pytest
 
 from haystack import Document, Pipeline
@@ -39,6 +41,25 @@ class TestAutoMergingRetriever:
             ValueError, match="The matched leaf documents do not have the required meta field '__level'"
         ):
             retriever.run(documents=docs)
+
+    def test_run_accepts_zero_level_and_block_size(self, in_memory_doc_store):
+        """Hierarchical roots use __level=0 and __block_size=0; presence must not be confused with falsiness."""
+        parent = Document(
+            content="parent content with enough text",
+            id="parent1",
+            meta={"__level": 0, "__block_size": 0, "__children_ids": ["leaf1", "leaf2"]},
+        )
+        in_memory_doc_store.write_documents([parent])
+        leaf = Document(
+            content="leaf content",
+            id="leaf1",
+            meta={"__parent_id": "parent1", "__level": 0, "__block_size": 0, "__children_ids": []},
+        )
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        # One of two children matched -> score 0.5 is not > threshold, so the leaf is returned as-is.
+        result = retriever.run([leaf])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == "leaf1"
 
     def test_run_missing_block_size(self, in_memory_doc_store):
         docs = [Document(content="test", meta={"__parent_id": "parent1", "__level": 1})]
@@ -82,6 +103,7 @@ class TestAutoMergingRetriever:
                         "bm25_parameters": {},
                         "embedding_similarity_function": "dot_product",
                         "index": "6b122bb4-211b-465e-804d-77c5857bf4c5",
+                        "shared": True,
                     },
                 },
                 "threshold": 0.7,
@@ -145,49 +167,49 @@ class TestAutoMergingRetriever:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         # assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
         # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
-        docs = retriever.run(leaf_docs[4:6])
-        assert len(docs["documents"]) == 1
-        assert docs["documents"][0].content == "warm glow over the trees. Birds began to sing."
-        assert len(docs["documents"][0].meta["__children_ids"]) == 3
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
+        merged = retriever.run(leaf_docs[4:6])
+        assert len(merged["documents"]) == 1
+        assert merged["documents"][0].content == "warm glow over the trees. Birds began to sing."
+        assert len(merged["documents"][0].meta["__children_ids"]) == 3
 
     def test_run_return_leafs_document(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__level"] == 1:
                 in_memory_doc_store.write_documents([doc])
 
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = retriever.run([leaf_docs[4]])
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "eastern side of "
-        assert result["documents"][0].meta["__parent_id"] == docs["documents"][2].id
+        assert result["documents"][0].meta["__parent_id"] == split_docs["documents"][2].id
 
     def test_run_return_leafs_document_different_parents(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__level"] == 1:
                 in_memory_doc_store.write_documents([doc])
 
-        leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
+        leaf_docs = [doc for doc in split_docs["documents"] if not doc.meta["__children_ids"]]
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = retriever.run([leaf_docs[4], leaf_docs[3]])
 
@@ -206,16 +228,16 @@ class TestAutoMergingRetriever:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={6, 4, 2, 1}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.4)
 
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
-        retrieved_leaf_docs = [d for d in docs["documents"] if d.content in {"The ", "sun ", "rose ", "early "}]
+        retrieved_leaf_docs = [d for d in split_docs["documents"] if d.content in {"The ", "sun ", "rose ", "early "}]
 
         result = retriever.run(retrieved_leaf_docs)
 
@@ -232,10 +254,10 @@ class TestAutoMergingRetriever:
 
         docs = [Document(content=text)]
         builder = HierarchicalDocumentSplitter(block_sizes={6, 4}, split_overlap=0, split_by="word")
-        docs = builder.run(docs)
+        split_docs = builder.run(docs)
 
         # store all non-leaf documents
-        for doc in docs["documents"]:
+        for doc in split_docs["documents"]:
             if doc.meta["__children_ids"]:
                 in_memory_doc_store.write_documents([doc])
         retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.1)  # set a low threshold to hit root document
@@ -243,7 +265,7 @@ class TestAutoMergingRetriever:
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
         retrieved_leaf_docs = [
             d
-            for d in docs["documents"]
+            for d in split_docs["documents"]
             if d.content in {"The sun rose early ", "in the ", "morning. It cast a ", "over the trees. Birds "}
         ]
 
@@ -251,3 +273,14 @@ class TestAutoMergingRetriever:
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = AutoMergingRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = AutoMergingRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

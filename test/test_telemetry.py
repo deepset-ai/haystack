@@ -6,17 +6,14 @@ import datetime
 import logging
 from unittest.mock import Mock, patch
 
-import pytest
-
-from haystack import AsyncPipeline, Pipeline, component
+from haystack import Pipeline, component
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._telemetry import pipeline_running, tutorial_running
 from haystack.utils.auth import Secret, TokenSecret
 
 
-@pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
 @patch("haystack.telemetry._telemetry.telemetry")
-def test_pipeline_running(telemetry, pipeline_class):
+def test_pipeline_running(telemetry):
     telemetry.send_event = Mock()
 
     @component
@@ -28,14 +25,14 @@ def test_pipeline_running(telemetry, pipeline_class):
         def run(self):
             pass
 
-    pipe = pipeline_class()
+    pipe = Pipeline()
     pipe.add_component("component", Component())
     pipeline_running(pipe)
 
     expected_type = generate_qualified_class_name(type(pipe))
     # First run is always sent
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -50,12 +47,13 @@ def test_pipeline_running(telemetry, pipeline_class):
     telemetry.send_event.assert_not_called()
 
     # Set the last telemetry sent time to pretend one minute has passed
+    assert pipe._last_telemetry_sent is not None
     pipe._last_telemetry_sent = pipe._last_telemetry_sent - datetime.timedelta(minutes=1)
 
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -71,7 +69,7 @@ def test_pipeline_running(telemetry, pipeline_class):
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -101,7 +99,7 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
     pipe.add_component("component", Component())
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": "haystack.core.pipeline.pipeline.Pipeline",
@@ -153,4 +151,5 @@ def test_send_telemetry_preserves_function_metadata():
     assert "tutorial_id" in tutorial_running.__annotations__
 
     # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
+    assert hasattr(pipeline_running, "__wrapped__")
     assert pipeline_running.__wrapped__.__name__ == "pipeline_running"

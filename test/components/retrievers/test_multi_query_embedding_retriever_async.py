@@ -2,25 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 import numpy as np
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-@component
-class MockQueryEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
-
-    @component.output_types(embedding=list[float])
-    async def run_async(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestMultiQueryEmbeddingRetrieverAsync:
@@ -28,7 +19,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
     async def test_run_async_with_empty_queries(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            query_embedder=MockTextEmbedder(),
         )
         result = await multi_retriever.run_async(queries=[])
         assert "documents" in result
@@ -62,10 +53,14 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc_low, doc_high, doc_mid]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
-        scores = [doc.score for doc in result["documents"]]
+        docs = result["documents"]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
@@ -96,7 +91,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc3, doc2]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
         assert "documents" in result
@@ -131,13 +126,96 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [Document(content="Solar energy", id="doc1", score=0.9)]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=SyncOnlyRetriever(), query_embedder=MockQueryEmbedder()
-        )
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=SyncOnlyRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
         assert "documents" in result
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "Solar energy"
+
+    @pytest.mark.asyncio
+    async def test_run_async_cancels_sibling_queries_when_one_fails(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class MockEmbedder:
+            @component.output_types(embedding=list[float])
+            def run(self, text: str) -> dict[str, list[float]]:
+                return {"embedding": [1.0]}
+
+            @component.output_types(embedding=list[float])
+            async def run_async(self, text: str) -> dict[str, list[float]]:
+                nonlocal slow_cancelled
+                if text == "slow":
+                    slow_started.set()
+                    try:
+                        await asyncio.sleep(5)
+                    except asyncio.CancelledError:
+                        slow_cancelled = True
+                        raise
+                    return {"embedding": [1.0]}
+
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())
+
+        with pytest.raises(RuntimeError):
+            await multi_retriever.run_async(queries=["slow", "failing"])
+
+        assert slow_cancelled is True
+
+    @pytest.mark.asyncio
+    async def test_run_async_bounds_concurrency_to_max_workers(self):
+        state = {"current": 0, "peak": 0}
+
+        @component
+        class TrackingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                state["current"] += 1
+                state["peak"] = max(state["peak"], state["current"])
+                await asyncio.sleep(0.02)
+                state["current"] -= 1
+                return {"documents": []}
+
+        multi_retriever = MultiQueryEmbeddingRetriever(
+            retriever=TrackingRetriever(), query_embedder=MockTextEmbedder(), max_workers=2
+        )
+        await multi_retriever.run_async(queries=[f"q{i}" for i in range(8)])
+
+        assert state["peak"] <= 2
+        assert state["peak"] > 1  # the queries do overlap; they are not serialized
 
     @pytest.fixture
     def document_store_with_categorized_docs(self):
@@ -188,7 +266,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs)
         filters = {"field": "category", "operator": "==", "value": "solar"}
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=in_memory_retriever, query_embedder=MockQueryEmbedder()
+            retriever=in_memory_retriever, query_embedder=MockTextEmbedder(dimension=384)
         )
         result = await multi_retriever.run_async(
             queries=["energy", "sunlight", "photovoltaic"], retriever_kwargs={"filters": filters}
@@ -202,9 +280,9 @@ class TestMultiQueryEmbeddingRetrieverAsync:
     async def test_run_async_with_pipeline(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            query_embedder=MockTextEmbedder(),
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", multi_retriever)
         result = await pipeline.run_async(data={"retriever": {"queries": ["green energy", "solar power"]}})
 

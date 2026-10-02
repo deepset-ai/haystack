@@ -28,7 +28,7 @@ This component splits documents based on embedding similarity using cosine dista
 
 It first splits text into sentences, optionally groups them, calculates embeddings for each group, and then uses cosine
 distance between sequential embeddings to determine split points. Any distance above the specified percentile is treated
-as a break point. The component also tracks page numbers based on form feed characters (`\f`) in the original document.
+as a break point. The component also tracks page numbers based on form feed characters (`\f`) in the original document, reporting the page each chunk starts on.
 
 This component is inspired by [5 Levels of Text Splitting](https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb) by Greg Kamradt.
 
@@ -36,10 +36,17 @@ This component is inspired by [5 Levels of Text Splitting](https://github.com/Fu
 
 ### On its own
 
-```python
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
+```shell
+pip install sentence-transformers-haystack
+```
+
+```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
 # Create a document with content that has a clear topic shift
@@ -80,19 +87,33 @@ from haystack.components.converters.txt import TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 
 document_store = InMemoryDocumentStore()
 
-Pipeline = Pipeline()
-Pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
-Pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-Pipeline.add_component(instance=EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=2, percentile=0.95, min_length=50,max_length=1000)
-Pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-Pipeline.connect("text_file_converter.documents", "cleaner.documents")
-Pipeline.connect("cleaner.documents", "splitter.documents")
-Pipeline.connect("splitter.documents", "writer.documents")
+pipeline = Pipeline()
+pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
+pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
+pipeline.add_component(
+    instance=EmbeddingBasedDocumentSplitter(
+        document_embedder=SentenceTransformersDocumentEmbedder(),
+        sentences_per_group=2,
+        percentile=0.95,
+        min_length=50,
+        max_length=1000,
+    ),
+    name="splitter",
+)
+pipeline.add_component(
+    instance=DocumentWriter(document_store=document_store), name="writer"
+)
+pipeline.connect("text_file_converter.documents", "cleaner.documents")
+pipeline.connect("cleaner.documents", "splitter.documents")
+pipeline.connect("splitter.documents", "writer.documents")
 
 path = "path/to/your/files"
 files = list(Path(path).glob("*.md"))
-Pipeline.run({"text_file_converter": {"sources": files}})
+pipeline.run({"text_file_converter": {"sources": files}})
 ```

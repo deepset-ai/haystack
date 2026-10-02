@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +17,7 @@ class TestMarkdownToDocument:
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
+        assert converter.encoding == "utf-8-sig"
         assert converter.extract_frontmatter is False
 
     def test_init_params_custom(self):
@@ -175,7 +177,7 @@ class TestMarkdownToDocument:
         """
         Test if the component correctly handles errors.
         """
-        sources = ["non_existing_file.md"]
+        sources: list[str | Path | ByteStream] = ["non_existing_file.md"]
         converter = MarkdownToDocument()
         with caplog.at_level(logging.WARNING):
             result = converter.run(sources=sources)
@@ -201,3 +203,65 @@ class TestMarkdownToDocument:
         for doc in docs:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+
+    def test_bytestream_encoding_from_meta(self):
+        """
+        Test that a non-UTF-8 ByteStream is decoded using the encoding specified in its meta.
+        """
+        # "caf\xe9" is "café" in latin-1; decoding as utf-8 would raise UnicodeDecodeError.
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md, meta={"encoding": "latin-1"})
+
+        converter = MarkdownToDocument(progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_bytestream_encoding_from_init(self):
+        """
+        Test that the encoding passed to __init__ is used as a fallback when not set in ByteStream meta.
+        """
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md)
+
+        converter = MarkdownToDocument(encoding="latin-1", progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_run_utf8_with_bom(self, tmp_path):
+        """
+        A Markdown file saved as UTF-8 with a byte order mark must not leak the BOM.
+
+        The BOM lands immediately before the leading "#", which is exactly where a
+        heading parser expects the start of the line. The BOM is in the bytes, so this
+        is not platform specific.
+        """
+        path = tmp_path / "bom.md"
+        path.write_text("# Heading\n\ncafé body\n", encoding="utf-8-sig")
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = MarkdownToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert not docs[0].content.startswith("﻿")
+        # the BOM sits immediately before the leading "#", so with it present the
+        # heading is not recognised and the marker is emitted as literal body text
+        assert docs[0].content.startswith("Heading")
+        assert "#" not in docs[0].content
+        assert "café body" in docs[0].content
+
+    def test_run_utf8_without_bom_is_unchanged(self, tmp_path):
+        """Reading a plain UTF-8 Markdown file must keep working."""
+        path = tmp_path / "plain.md"
+        path.write_text("# Heading\n\ncafé body\n", encoding="utf-8")
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = MarkdownToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert "café body" in docs[0].content

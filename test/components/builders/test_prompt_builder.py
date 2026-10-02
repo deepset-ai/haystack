@@ -20,20 +20,20 @@ class TestPromptBuilder:
     def test_init(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
         assert builder.template is not None
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._template_string == "This is a {{ variable }}"
         assert builder._variables is None
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -46,14 +46,14 @@ class TestPromptBuilder:
         assert builder._required_variables == ["variable"]
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -62,13 +62,13 @@ class TestPromptBuilder:
         template = "Hello, {{ var1 }}, {{ var2 }}!"
         builder = PromptBuilder(template=template, variables=variables)
         assert builder.template is not None
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._variables == variables
         assert builder._template_string == "Hello, {{ var1 }}, {{ var2 }}!"
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -77,7 +77,7 @@ class TestPromptBuilder:
         assert inputs["var3"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -100,7 +100,7 @@ class TestPromptBuilder:
         res = builder.to_dict()
         assert res == {
             "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-            "init_parameters": {"template": "This is a {{ variable }}", "variables": None, "required_variables": None},
+            "init_parameters": {"template": "This is a {{ variable }}", "variables": None, "required_variables": "*"},
         }
 
     def test_run(self):
@@ -123,10 +123,15 @@ class TestPromptBuilder:
         res = builder.run()
         assert res == {"prompt": "This is a template without input"}
 
-    def test_run_with_missing_input(self):
-        builder = PromptBuilder(template="This is a {{ variable }}")
+    def test_run_with_missing_optional_input(self):
+        builder = PromptBuilder(template="This is a {{ variable }}", required_variables=None)
         res = builder.run()
         assert res == {"prompt": "This is a "}
+
+    def test_run_with_missing_required_input_default(self):
+        builder = PromptBuilder(template="This is a {{ variable }}")
+        with pytest.raises(ValueError, match="variable"):
+            builder.run()
 
     def test_run_with_missing_required_input(self):
         builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}", required_variables=["foo", "bar"])
@@ -149,45 +154,23 @@ class TestPromptBuilder:
     def test_run_with_variables(self):
         variables = ["var1", "var2", "var3"]
         template = "Hello, {{ name }}! {{ var1 }}"
-
-        builder = PromptBuilder(template=template, variables=variables)
-
-        template_variables = {"name": "John"}
-        expected_result = {"prompt": "Hello, John! How are you?"}
-
-        assert builder.run(template_variables=template_variables, var1="How are you?") == expected_result
+        builder = PromptBuilder(template=template, variables=variables, required_variables=["name", "var1"])
+        assert builder.run(name="John", var1="How are you?") == {"prompt": "Hello, John! How are you?"}
 
     def test_run_overwriting_default_template(self):
-        default_template = "Hello, {{ name }}!"
-
-        builder = PromptBuilder(template=default_template)
-
-        template = "Hello, {{ var1 }}{{ name }}!"
-        expected_result = {"prompt": "Hello, John!"}
-
-        assert builder.run(template, name="John") == expected_result
+        builder = PromptBuilder(template="Hello, {{ name }}!")
+        assert builder.run("Hello, {{ var1 }}{{ name }}!!", name="John") == {"prompt": "Hello, John!!"}
 
     def test_run_overwriting_default_template_with_template_variables(self):
-        default_template = "Hello, {{ name }}!"
-
-        builder = PromptBuilder(template=default_template)
-
+        builder = PromptBuilder(template="Hello, {{ name }}!")
         template = "Hello, {{ var1 }} {{ name }}!"
-        template_variables = {"var1": "Big"}
-        expected_result = {"prompt": "Hello, Big John!"}
-
-        assert builder.run(template, template_variables, name="John") == expected_result
+        assert builder.run(template, var1="Big", name="John") == {"prompt": "Hello, Big John!"}
 
     def test_run_overwriting_default_template_with_variables(self):
         variables = ["var1", "var2", "name"]
-        default_template = "Hello, {{ name }}!"
-
-        builder = PromptBuilder(template=default_template, variables=variables)
-
+        builder = PromptBuilder(template="Hello, {{ name }}!", variables=variables, required_variables=["name"])
         template = "Hello, {{ var1 }} {{ name }}!"
-        expected_result = {"prompt": "Hello, Big John!"}
-
-        assert builder.run(template, name="John", var1="Big") == expected_result
+        assert builder.run(template, name="John", var1="Big") == {"prompt": "Hello, Big John!"}
 
     def test_run_with_invalid_template(self):
         builder = PromptBuilder(template="Hello, {{ name }}!")
@@ -221,7 +204,7 @@ class TestPromptBuilder:
         @component
         class DocumentProducer:
             @component.output_types(documents=list[Document])
-            def run(self, doc_input: str):
+            def run(self, doc_input: str) -> dict[str, list[Document]]:
                 return {"documents": [Document(content=doc_input)]}
 
         pipe = Pipeline()
@@ -269,10 +252,15 @@ class TestPromptBuilder:
         }
         assert result == expected_dynamic
 
-    def test_warning_no_required_variables(self, caplog):
+    def test_warning_when_required_variables_explicitly_none(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = PromptBuilder(template="This is a {{ variable }}", required_variables=None)
+            assert "explicitly set to `None`" in caplog.text
+
+    def test_no_warning_with_default_required_variables(self, caplog):
         with caplog.at_level(logging.WARNING):
             _ = PromptBuilder(template="This is a {{ variable }}")
-            assert "but `required_variables` is not set." in caplog.text
+            assert "required_variables" not in caplog.text
 
     def test_variables_correct_with_assignment(self) -> None:
         template = """{% if existing_documents is not none %}

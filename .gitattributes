@@ -1,0 +1,5 @@
+# Exclude the Docusaurus documentation site from GitHub's language statistics
+# (github-linguist). Otherwise the ~5,700 .mdx files there dominate the count
+# and the repo is misclassified as MDX instead of Python.
+# See: https://github.com/github-linguist/linguist/blob/main/docs/troubleshooting.md
+docs-website/** linguist-documentation

@@ -16,6 +16,20 @@ from haystack.utils.dataclasses import _warn_on_inplace_mutation
 logger = logging.getLogger(__name__)
 
 
+def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
+    """
+    Parse OpenAI-style tool call arguments into a dictionary.
+
+    A dict is returned as is, a missing, null, or empty value becomes `{}`, and anything else is parsed as a
+    JSON string.
+
+    :raises json.JSONDecodeError: If the arguments are not valid JSON.
+    """
+    if isinstance(raw_arguments, dict):
+        return raw_arguments
+    return json.loads(raw_arguments) if raw_arguments else {}
+
+
 class ChatRole(str, Enum):
     """
     Enumeration representing the roles within a chat.
@@ -110,7 +124,7 @@ class ToolCall:
         return ToolCall(**data)
 
 
-ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
+ToolCallResultContentT = str | Sequence[TextContent | ImageContent | FileContent]
 
 
 @_warn_on_inplace_mutation
@@ -136,8 +150,10 @@ class ToolCallResult:
         """
         serialized = asdict(self)
         if isinstance(self.result, list):
-            if not all(isinstance(part, (TextContent, ImageContent)) for part in self.result):
-                raise ValueError("ToolCallResult result must be a string or a list of TextContent or ImageContent")
+            if not all(isinstance(part, (TextContent, ImageContent, FileContent)) for part in self.result):
+                raise ValueError(
+                    "ToolCallResult result must be a string or a list of TextContent, ImageContent, or FileContent"
+                )
             serialized["result"] = [_serialize_content_part(part) for part in self.result]
         return serialized
 
@@ -229,6 +245,18 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     for cls, serialization_key in _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.items():
         if serialization_key in part:
             return cls.from_dict(part[serialization_key])
+
+    # Support for Pydantic's model_dump() output, which produces a flat dictionary without wrapping keys.
+    if "tool_name" in part and "arguments" in part:
+        return ToolCall.from_dict(part)
+    if "result" in part and "origin" in part:
+        return ToolCallResult.from_dict(part)
+    if "reasoning_text" in part:
+        return ReasoningContent.from_dict(part)
+    if "base64_image" in part:
+        return ImageContent.from_dict(part)
+    if "base64_data" in part:
+        return FileContent.from_dict(part)
 
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
@@ -620,6 +648,8 @@ class ChatMessage:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
+        The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
             Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
@@ -630,10 +660,12 @@ class ChatMessage:
             If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
             `id` attribute.
         """
-        if not self.texts and not self.tool_calls and not self.tool_call_results and not self.images and not self.files:
+        has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
+        # We convert an assistant message with no content part into a message with empty content, which the API accepts
+        if not has_content and not self.is_from(ChatRole.ASSISTANT):
             raise ValueError(
-                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
-                "`ToolCallResult`, `ImageContent`, or `FileContent`."
+                f"A `ChatMessage` from `{self._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+                "`ToolCallResult`, `ImageContent`, or `FileContent`. Only assistant messages can be empty."
             )
         if len(self.tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
@@ -729,6 +761,9 @@ class ChatMessage:
                     raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
                 openai_tool_calls.append(openai_tool_call)
             openai_msg["tool_calls"] = openai_tool_calls
+        # The API rejects a message carrying neither content nor tool calls, so send empty content for it.
+        if "content" not in openai_msg and "tool_calls" not in openai_msg:
+            openai_msg["content"] = ""
         return openai_msg
 
     @staticmethod
@@ -750,7 +785,9 @@ class ChatMessage:
             raise ValueError(f"Unsupported role: {role}")
 
         if role == "assistant":
-            if not content and not tool_calls:
+            # An empty string is valid content for an assistant message: that is how a reply with nothing to send
+            # is serialized. Other falsy content requires tool calls.
+            if not content and content != "" and not tool_calls:
                 raise ValueError("For assistant messages, either `content` or `tool_calls` must be present.")
             if tool_calls:
                 for tc in tool_calls:
@@ -790,10 +827,14 @@ class ChatMessage:
             if tool_calls:
                 haystack_tool_calls = []
                 for tc in tool_calls:
+                    # Zero-argument tool calls from OpenAI-compatible servers may send an
+                    # empty string, null, or omit `arguments` entirely; treat all as {}.
+                    # Some servers also send a parsed dict instead of a JSON string.
+                    raw_arguments = tc["function"].get("arguments")
                     haystack_tc = ToolCall(
                         id=tc.get("id"),
                         tool_name=tc["function"]["name"],
-                        arguments=json.loads(tc["function"]["arguments"]),
+                        arguments=_parse_openai_tool_call_arguments(raw_arguments),
                     )
                     haystack_tool_calls.append(haystack_tc)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)

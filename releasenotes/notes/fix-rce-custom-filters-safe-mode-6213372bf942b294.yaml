@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    Loading a serialized ``OutputAdapter`` or ``ConditionalRouter`` whose ``unsafe`` init parameter
+    is set to ``true`` now raises ``DeserializationError`` unless the pipeline is loaded in unsafe
+    mode. Pipelines that legitimately rely on an unsafe ``OutputAdapter``/``ConditionalRouter``
+    embedded in serialized data must now load with ``Pipeline.load(..., unsafe=True)`` (or
+    ``Pipeline.loads`` / ``Pipeline.from_dict`` with ``unsafe=True``).
+security:
+  - |
+    Fixed a remote code execution vulnerability that could be triggered by loading an untrusted
+    pipeline in default safe mode (``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict``,
+    without ``unsafe=True``). A malicious pipeline could either (a) set ``unsafe: true`` on an
+    ``OutputAdapter`` or ``ConditionalRouter`` to disable the Jinja sandbox entirely, or (b) register
+    the ``thread_safe_import`` import primitive as a Jinja ``custom_filters`` entry to import ``os``
+    and execute arbitrary commands — bypassing the deserialization allowlist and Jinja sandbox.
+    The fix denies import primitives during callable deserialization, refuses to
+    honor a component's ``unsafe`` flag while loading in safe mode, and hardens the Jinja sandbox
+    (``OutputAdapter``, ``ConditionalRouter``, ``PromptBuilder``, ``ChatPromptBuilder``) to block
+    attribute access on module objects and calls into dangerous modules.

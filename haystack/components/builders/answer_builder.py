@@ -222,14 +222,15 @@ class AnswerBuilder:
                     else set(range(len(documents)))
                 )
 
-                for idx in doc_idxs:
-                    try:
-                        doc = documents[idx]
-                    except IndexError:
+                for idx in sorted(doc_idxs):
+                    # An explicit bounds check is needed because references are 1-based: a reference like [0]
+                    # yields idx = -1, which Python would otherwise silently resolve to the last document.
+                    if not 0 <= idx < len(documents):
                         logger.warning(
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
                         continue
+                    doc = documents[idx]
 
                     doc_meta: dict[str, Any] = dict(doc.meta or {})
                     doc_meta["source_index"] = idx + 1

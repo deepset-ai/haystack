@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Added ``before_run`` and ``after_run`` hook points to the ``Agent``. Hooks registered under ``before_run`` run
+    exactly once per run, after the state is initialized and before the first LLM call — use them to rewrite the
+    initial messages or seed state without re-running on every step like ``before_llm`` does. Hooks registered under 
+    ``after_run`` run exactly once per run, after the step loop has ended and before the Agent builds its return 
+    value, regardless of whether the run stopped on an exit condition or because ``max_agent_steps`` was reached 
+    (unlike ``on_exit``); mutations to the state are reflected in the returned ``messages``, ``last_message``, and 
+    ``state_schema`` outputs. Register them like any other hook: 
+    ``hooks={"before_run": [my_hook], "after_run": [my_other_hook]}``.

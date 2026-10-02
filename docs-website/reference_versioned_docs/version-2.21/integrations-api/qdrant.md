@@ -100,6 +100,22 @@ Deserializes the component from a dictionary.
 
 - <code>QdrantEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -269,6 +285,22 @@ Deserializes the component from a dictionary.
 
 - <code>QdrantSparseEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -357,8 +389,9 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
 
 ### QdrantHybridRetriever
 
-A component for retrieving documents from an QdrantDocumentStore using both dense and sparse vectors
-and fusing the results using Reciprocal Rank Fusion.
+A component for retrieving documents from a QdrantDocumentStore using both dense and sparse vectors.
+
+Fuses the results using Reciprocal Rank Fusion.
 
 Usage example:
 
@@ -399,6 +432,8 @@ __init__(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> None
 ```
 
@@ -413,12 +448,19 @@ Create a QdrantHybridRetriever component.
 - **return_embedding** (<code>bool</code>) – Whether to return the embeddings of the retrieved Documents.
 - **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – The `k` constant for Reciprocal Rank Fusion. Controls ranking formula smoothing.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Per-prefetch weights for RRF fusion — `[sparse_weight, dense_weight]`.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Raises:**
 
@@ -452,6 +494,22 @@ Deserializes the component from a dictionary.
 
 - <code>QdrantHybridRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -464,10 +522,12 @@ run(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> dict[str, list[Document]]
 ```
 
-Run the Sparse Embedding Retriever on the given input data.
+Run the Hybrid Retriever on the given input data.
 
 **Parameters:**
 
@@ -480,12 +540,19 @@ Run the Sparse Embedding Retriever on the given input data.
   groups to return.
 - **return_embedding** (<code>bool | None</code>) – Whether to return the embedding of the retrieved Documents.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – Override the init-time `rrf_k` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Returns:**
 
@@ -507,10 +574,12 @@ run_async(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> dict[str, list[Document]]
 ```
 
-Asynchronously run the Sparse Embedding Retriever on the given input data.
+Asynchronously run the Hybrid Retriever on the given input data.
 
 **Parameters:**
 
@@ -523,12 +592,19 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
   groups to return.
 - **return_embedding** (<code>bool | None</code>) – Whether to return the embedding of the retrieved Documents.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – Override the init-time `rrf_k` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Returns:**
 
@@ -550,8 +626,9 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 
 ### QdrantDocumentStore
 
-A QdrantDocumentStore implementation that you can use with any Qdrant instance: in-memory, disk-persisted,
-Docker-based, and Qdrant Cloud Cluster deployments.
+A QdrantDocumentStore implementation that you can use with any Qdrant instance.
+
+Supports in-memory, disk-persisted, Docker-based, and Qdrant Cloud Cluster deployments.
 
 Usage example by creating an in-memory instance:
 
@@ -680,6 +757,22 @@ Initializes a QdrantDocumentStore.
 - **scroll_size** (<code>int</code>) – The scroll size for reading documents.
 - **payload_fields_to_index** (<code>list\[dict\] | None</code>) – List of payload fields to index.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
+
 #### count_documents
 
 ```python
@@ -688,13 +781,29 @@ count_documents() -> int
 
 Returns the number of documents present in the Document Store.
 
+**Returns:**
+
+- <code>int</code> – The number of documents in the collection.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents fails.
+
 #### count_documents_async
 
 ```python
 count_documents_async() -> int
 ```
 
-Asynchronously returns the number of documents present in the document dtore.
+Asynchronously returns the number of documents present in the document store.
+
+**Returns:**
+
+- <code>int</code> – The number of documents in the collection.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents fails.
 
 #### filter_documents
 
@@ -736,6 +845,7 @@ write_documents(
 ```
 
 Writes documents to Qdrant using the specified policy.
+
 The QdrantDocumentStore can handle duplicate documents based on the given policy.
 The available policies are:
 
@@ -761,6 +871,7 @@ write_documents_async(
 ```
 
 Asynchronously writes documents to Qdrant using the specified policy.
+
 The QdrantDocumentStore can handle duplicate documents based on the given policy.
 The available policies are:
 
@@ -891,6 +1002,10 @@ Deletes all documents from the document store.
 
 - **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Deleting documents or recreating the collection fails.
+
 #### delete_all_documents_async
 
 ```python
@@ -902,6 +1017,10 @@ Asynchronously deletes all documents from the document store.
 **Parameters:**
 
 - **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Deleting documents or recreating the collection fails.
 
 #### count_documents_by_filter
 
@@ -920,6 +1039,10 @@ Returns the number of documents that match the provided filters.
 
 - <code>int</code> – The number of documents that match the filters.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents matching the filters fails.
+
 #### count_documents_by_filter_async
 
 ```python
@@ -936,6 +1059,10 @@ Asynchronously returns the number of documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents that match the filters.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Counting documents matching the filters fails.
 
 #### get_metadata_fields_info
 
@@ -957,6 +1084,10 @@ payload["meta"].
 {"category": {"type": "keyword"}, "priority": {"type": "long"}}
 ```
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing metadata field information fails.
+
 #### get_metadata_fields_info_async
 
 ```python
@@ -977,6 +1108,10 @@ payload["meta"].
 {"category": {"type": "keyword"}, "priority": {"type": "long"}}
 ```
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing metadata field information fails.
+
 #### get_metadata_field_min_max
 
 ```python
@@ -995,6 +1130,10 @@ Returns the minimum and maximum values for the given metadata field.
   metadata field across all documents. Returns `{"min": None, "max": None}` if no documents have
   the field.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or computing the metadata bounds fails.
+
 #### get_metadata_field_min_max_async
 
 ```python
@@ -1012,6 +1151,10 @@ Asynchronously returns the minimum and maximum values for the given metadata fie
 - <code>dict\[str, Any\]</code> – A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
   metadata field across all documents. Returns `{"min": None, "max": None}` if no documents have
   the field.
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or computing the metadata bounds fails.
 
 #### count_unique_metadata_by_filter
 
@@ -1034,6 +1177,10 @@ Returns the number of unique values for each specified metadata field among docu
 - <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of its unique values among the filtered
   documents.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or counting unique metadata values fails.
+
 #### count_unique_metadata_by_filter_async
 
 ```python
@@ -1042,8 +1189,9 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field among documents that
-match the filters.
+Asynchronously returns the number of unique values for each specified metadata field among documents.
+
+Only documents that match the filters are considered.
 
 **Parameters:**
 
@@ -1056,59 +1204,81 @@ match the filters.
 - <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of its unique values among the filtered
   documents.
 
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or counting unique metadata values fails.
+
 #### get_metadata_field_unique_values
 
 ```python
 get_metadata_field_unique_values(
     metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
     filters: dict[str, Any] | None = None,
-    limit: int = 100,
-    offset: int = 0,
-) -> list[Any]
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, with optional filters and offset/limit pagination.
+Returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+Unique values are sorted by string representation, then by type name, before pagination is applied.
+
+**Note**: This operation can be expensive for metadata fields with many unique values, since all
+matching documents must be scrolled through to compute the total count.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field key (inside `meta`) to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based). Defaults to 0.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **limit** (<code>int</code>) – Maximum number of unique values to return per page. Defaults to 100.
-- **offset** (<code>int</code>) – Number of unique values to skip (for pagination). Defaults to 0.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the field (at most `limit` items, starting at `offset`).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing unique metadata values fails.
 
 #### get_metadata_field_unique_values_async
 
 ```python
 get_metadata_field_unique_values_async(
     metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
     filters: dict[str, Any] | None = None,
-    limit: int = 100,
-    offset: int = 0,
-) -> list[Any]
+) -> tuple[list[Any], int]
 ```
 
-Asynchronously returns unique values for a metadata field, with optional filters and offset/limit pagination.
+Asynchronously returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+Unique values are sorted by string representation, then by type name, before pagination is applied.
+
+**Note**: This operation can be expensive for metadata fields with many unique values, since all
+matching documents must be scrolled through to compute the total count.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field key (inside `meta`) to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based). Defaults to 0.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **limit** (<code>int</code>) – Maximum number of unique values to return per page. Defaults to 100.
-- **offset** (<code>int</code>) – Number of unique values to skip (for pagination). Defaults to 0.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the field (at most `limit` items, starting at `offset`).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
+
+**Raises:**
+
+- <code>QdrantStoreError</code> – Retrieving or processing unique metadata values fails.
 
 #### from_dict
 

@@ -4,7 +4,7 @@
 
 import random
 import re
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -13,6 +13,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 
 
 class TestSentenceWindowRetriever:
@@ -74,10 +75,12 @@ class TestSentenceWindowRetriever:
                     "init_parameters": {
                         "bm25_algorithm": "BM25L",
                         "bm25_parameters": {},
-                        "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                        "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                         "embedding_similarity_function": "dot_product",
                         "index": ANY,
+                        "shared": True,
                         "return_embedding": True,
+                        "strict_datetime_comparison": False,
                     },
                 },
                 "window_size": 3,
@@ -173,11 +176,35 @@ class TestSentenceWindowRetriever:
             )
             retriever.run(retrieved_documents=docs)
 
-    def test_run_invalid_window_size(self, in_memory_doc_store):
-        docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
+    def test_init_rejects_zero_window_size(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
-            retriever.run(retrieved_documents=docs)
+            SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
+
+    def test_run_rejects_invalid_runtime_window_size(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=3)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=0)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=-1)
+
+    def test_run_without_runtime_window_size_uses_constructor_value(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"Sentence {sent}.", meta={"id": f"doc_{sent}", "source_id": "source1", "split_id": sent})
+            for sent in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
+        retrieved_documents = [doc for doc in docs if doc.content == "Sentence 4."]
+
+        # window_size omitted: the constructor value is used, so 2 documents on each side
+        result = retriever.run(retrieved_documents=retrieved_documents)
+        assert len(result["context_documents"]) == 5
+
+        # window_size passed explicitly: it overrides the constructor value
+        result = retriever.run(retrieved_documents=retrieved_documents, window_size=1)
+        assert len(result["context_documents"]) == 3
 
     def test_constructor_parameter_does_not_change(self, in_memory_doc_store):
         retriever = SentenceWindowRetriever(in_memory_doc_store, window_size=5)
@@ -284,6 +311,68 @@ class TestSentenceWindowRetriever:
         assert len(result["context_documents"]) == 3
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
 
+    def test_run_queries_document_store_once_for_all_retrieved_documents(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{source}{split_id}.", meta={"source_id": source, "split_id": split_id})
+            for source in ("a", "b")
+            for split_id in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents", wraps=in_memory_doc_store.filter_documents
+        ) as filter_documents:
+            # docs[2] is a2 and docs[15] is b5; the duplicate a2 must not add a second condition to the filter
+            result = retriever.run(retrieved_documents=[docs[2], docs[15], docs[2]])
+
+        filter_documents.assert_called_once()
+        assert len(filter_documents.call_args.args[0]["conditions"]) == 2
+        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert [doc.content for doc in result["context_documents"]] == [
+            "a1.",
+            "a2.",
+            "a3.",
+            "b4.",
+            "b5.",
+            "b6.",
+            "a1.",
+            "a2.",
+            "a3.",
+        ]
+
+    def test_run_with_documents_missing_metadata_queries_document_store_once(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{split_id}.", meta={"source_id": "a", "split_id": split_id}) for split_id in range(5)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(
+            document_store=in_memory_doc_store, window_size=1, raise_on_missing_meta_fields=False
+        )
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents", wraps=in_memory_doc_store.filter_documents
+        ) as filter_documents:
+            result = retriever.run(retrieved_documents=[doc_without_meta, docs[2]])
+
+        filter_documents.assert_called_once()
+        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
+
+    def test_run_does_not_query_document_store_without_documents_to_expand(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, raise_on_missing_meta_fields=False)
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(in_memory_doc_store, "filter_documents") as filter_documents:
+            assert retriever.run(retrieved_documents=[]) == {"context_windows": [], "context_documents": []}
+            assert retriever.run(retrieved_documents=[doc_without_meta]) == {
+                "context_windows": ["No metadata."],
+                "context_documents": [doc_without_meta],
+            }
+
+        filter_documents.assert_not_called()
+
     @pytest.mark.integration
     def test_run_with_pipeline(self, in_memory_doc_store):
         splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="period")
@@ -328,3 +417,14 @@ class TestSentenceWindowRetriever:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = SentenceWindowRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = SentenceWindowRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

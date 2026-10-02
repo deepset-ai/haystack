@@ -8,18 +8,12 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from haystack.components.agents import Agent
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.errors import PipelineConnectError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
-from haystack.dataclasses import ChatMessage, Document
-
-
-@component
-class MockChatGenerator:
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant("Hello, world!")]}
+from haystack.dataclasses import ChatMessage, ChatRole, Document
 
 
 @component
@@ -400,16 +394,16 @@ class TestPipeline:
         p = Pipeline()
         p.add_component("message_producer", MessageProducer())
         p.add_component("message_producer2", MessageProducer())
-        p.add_component("agent", Agent(chat_generator=MockChatGenerator()))
+        p.add_component("agent", Agent(chat_generator=MockChatGenerator("Hello, world!")))
         p.connect("message_producer", "agent.messages")
         p.connect("message_producer2", "agent.messages")
 
         result = p.run({})
-        assert result["agent"]["messages"] == [
-            ChatMessage.from_user("Hello, world!"),
-            ChatMessage.from_user("Hello, world!"),
-            ChatMessage.from_assistant("Hello, world!"),
-        ]
+        messages = result["agent"]["messages"]
+
+        assert messages[:2] == [ChatMessage.from_user("Hello, world!"), ChatMessage.from_user("Hello, world!")]
+        assert messages[2].role == ChatRole.ASSISTANT
+        assert messages[2].text == "Hello, world!"
 
     def test_run_auto_variadic_str_to_list_str(self):
         """Two str producers connected to a list[str] input are auto-joined and flattened at runtime."""

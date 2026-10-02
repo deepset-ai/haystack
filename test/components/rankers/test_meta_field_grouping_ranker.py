@@ -132,6 +132,68 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][1].meta["group"] == "42"
         assert result["documents"][2].content == "Document without group"
 
+    def test_run_sort_docs_by_non_numeric_field_with_missing_values(self) -> None:
+        """
+        Test that sorting by a non-numeric metadata field does not raise an error when some documents are missing
+        that field. Documents missing the sort field are placed at the end of their group.
+        """
+        docs = [
+            Document(content="newest", meta={"group": "42", "date": "2023-03-01"}),
+            Document(content="missing date", meta={"group": "42"}),
+            Document(content="oldest", meta={"group": "42", "date": "2023-01-01"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="date")
+        result = ranker.run(documents=docs)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "oldest"
+        assert result["documents"][1].content == "newest"
+        assert result["documents"][2].content == "missing date"
+
+    def test_run_sort_docs_by_field_present_but_none(self) -> None:
+        """
+        Test that sorting by a metadata field works when the field is present but set to None for some documents.
+        Documents with a None value are treated like missing values and placed at the end of their group.
+        """
+        docs = [
+            Document(content="present", meta={"group": "42", "date": "2023-01-01"}),
+            Document(content="none value", meta={"group": "42", "date": None}),
+            Document(content="missing", meta={"group": "42"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="date")
+        result = ranker.run(documents=docs)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "present"
+        assert result["documents"][1].content == "none value"
+        assert result["documents"][2].content == "missing"
+
+    def test_run_none_group_value_is_treated_as_missing(self) -> None:
+        docs = [
+            Document(content="group None", meta={"group": None}),
+            Document(content="group 42", meta={"group": "42"}),
+            Document(content="no group key", meta={}),
+            Document(content="group 'None'", meta={"group": "None"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group")
+        result = ranker.run(documents=docs)
+        assert [doc.content for doc in result["documents"]] == [
+            "group 42",
+            "group 'None'",
+            "group None",
+            "no group key",
+        ]
+
+    def test_run_none_subgroup_value_is_treated_as_missing(self) -> None:
+        docs = [
+            Document(content="subgroup None", meta={"group": "g", "subgroup": None}),
+            Document(content="subgroup 'None'", meta={"group": "g", "subgroup": "None"}),
+            Document(content="no subgroup key", meta={"group": "g"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup")
+        result = ranker.run(documents=docs)
+        assert [doc.content for doc in result["documents"]] == ["subgroup None", "no subgroup key", "subgroup 'None'"]
+
     def test_run_metadata_with_different_data_types(self) -> None:
         """
         Test the behavior of the MetaFieldGroupingRanker component when the metadata values have different data types.
@@ -148,6 +210,38 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][0].meta["group"] == "42"
         assert result["documents"][1].meta["group"] == 42
         assert result["documents"][2].meta["group"] is True
+
+    def test_run_sort_docs_by_mixed_uncomparable_types(self) -> None:
+        """
+        Test that the ranker does not crash when a group's sort_docs_by values have mutually
+        non-comparable present types (e.g. int and str), keeping the group's insertion order instead.
+        """
+        docs_with_mixed_sort_values = [
+            Document(content="int value", meta={"group": "g1", "split_id": 3}),
+            Document(content="str value", meta={"group": "g1", "split_id": "10"}),
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs_with_mixed_sort_values)
+        assert "documents" in result
+        assert len(result["documents"]) == 2
+        # Insertion order is preserved because the values cannot be compared.
+        assert result["documents"][0].content == "int value"
+        assert result["documents"][1].content == "str value"
+
+    def test_run_sort_docs_by_mixed_uncomparable_types_preserves_order(self) -> None:
+        """
+        When sort_docs_by values are mutually non-comparable, the group keeps its original
+        insertion order.
+        """
+        docs = [
+            Document(content=f"doc-{i}", meta={"group": "g", "split_id": value})
+            for i, value in enumerate([3, 1, 2, "10"])
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs)
+        assert "documents" in result
+        # Original insertion order is preserved: [3, 1, 2, "10"]
+        assert [doc.meta["split_id"] for doc in result["documents"]] == [3, 1, 2, "10"]
 
     def test_run_deduplicates_documents(self) -> None:
         """

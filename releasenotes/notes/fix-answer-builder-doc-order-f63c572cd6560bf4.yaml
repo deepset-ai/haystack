@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``AnswerBuilder`` returning referenced documents in a scrambled order
+    instead of ascending source-index order. The referenced document indices
+    were collected in a ``set`` and iterated directly, so documents were emitted
+    in the set's internal hash-table order (e.g. citations [3] [10] [50]
+    yielded documents ordered 10, 3, 50). This order was deterministic but did
+    not match the intuitive source order. The referenced documents are now
+    returned sorted by their source index.

@@ -125,3 +125,17 @@ class DocumentWriter:
 
         documents_written = await self.document_store.write_documents_async(documents=documents, policy=policy)
         return {"documents_written": documents_written}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

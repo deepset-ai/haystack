@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``Pipeline.run`` now accepts ``break_point`` and ``pipeline_snapshot`` at the same time. This enables a
+    stepped debugging experience: run until a breakpoint, then resume from the resulting snapshot with a new
+    breakpoint on the next component, pausing again for inspection at each step. The only rejected combination
+    is a ``break_point`` targeting the same component and visit count as the snapshot's break point, since it
+    would trigger again before the resumed component runs and the pipeline could not make any progress.

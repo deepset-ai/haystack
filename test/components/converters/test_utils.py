@@ -18,6 +18,21 @@ def test_normalize_metadata_single_dict():
     assert normalize_metadata({"a": 1}, sources_count=3) == [{"a": 1}, {"a": 1}, {"a": 1}]
 
 
+def test_normalize_metadata_none_returns_independent_dicts():
+    result = normalize_metadata(None, sources_count=3)
+    result[0]["file_path"] = "a.txt"
+    assert result == [{"file_path": "a.txt"}, {}, {}]
+
+
+def test_normalize_metadata_single_dict_returns_independent_copies():
+    meta = {"a": 1}
+    result = normalize_metadata(meta, sources_count=3)
+    result[0]["b"] = 2
+    # Mutating one source's metadata must not leak into the others or the original input.
+    assert result == [{"a": 1, "b": 2}, {"a": 1}, {"a": 1}]
+    assert meta == {"a": 1}
+
+
 def test_normalize_metadata_list_of_right_size():
     assert normalize_metadata([{"a": 1}], sources_count=1) == [{"a": 1}]
     assert normalize_metadata([{"a": 1}, {"b": 2}, {"c": 3}], sources_count=3) == [{"a": 1}, {"b": 2}, {"c": 3}]
@@ -32,7 +47,7 @@ def test_normalize_metadata_list_of_wrong_size():
 
 def test_normalize_metadata_other_type():
     with pytest.raises(ValueError, match="meta must be either None, a dictionary or a list of dictionaries."):
-        normalize_metadata(({"a": 1},), sources_count=1)
+        normalize_metadata(({"a": 1},), sources_count=1)  # type: ignore[arg-type]
 
 
 def test_get_bytestream_from_path_object(tmp_path):
@@ -63,7 +78,7 @@ def test_get_bytestream_from_string_path(tmp_path):
 
 def test_get_bytestream_from_source_invalid_type():
     with pytest.raises(ValueError, match="Unsupported source type"):
-        get_bytestream_from_source(123)
+        get_bytestream_from_source(123)  # type: ignore[arg-type]
 
 
 def test_get_bytestream_from_source_bytestream_passthrough():

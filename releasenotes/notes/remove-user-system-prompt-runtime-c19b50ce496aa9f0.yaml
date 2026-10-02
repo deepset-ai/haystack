@@ -1,0 +1,33 @@
+---
+upgrade:
+  - |
+    The ``user_prompt`` and ``system_prompt`` parameters have been removed from ``Agent.run`` / ``Agent.run_async``
+    and ``LLM.run`` / ``LLM.run_async``. Both prompts must now be set at initialization time on the component; they
+    can no longer be overridden per-run, including when the component is used inside a pipeline
+    (``Pipeline.run(data={"agent": {"user_prompt": ...}})`` or ``Pipeline.run(data={"llm": {"user_prompt": ...}})``
+    is no longer supported).
+
+    ``system_prompt`` and ``user_prompt`` both accept either a plain string template or an explicit Jinja2
+    message template. Plain string templates are rendered as a single message with the expected role
+    (``system`` for ``system_prompt``, ``user`` for ``user_prompt``). Explicit Jinja2 message templates must
+    contain a single message block and render to exactly one message with the matching role.
+
+    Before:
+
+    .. code:: python
+
+      agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
+      agent.run(messages=[...], system_prompt="Per-run override.")
+
+    After:
+
+    .. code:: python
+
+      # Construct a new Agent or LLM with the desired prompt.
+      agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
+      agent.run(messages=[...])
+
+      # If you need to build prompts at runtime, construct an Agent without
+      # init prompts and pass the prompt messages through the messages input.
+      agent = Agent(chat_generator=..., tools=[...])
+      agent.run(messages=[ChatMessage.from_system("Runtime system prompt."), ChatMessage.from_user("...")])

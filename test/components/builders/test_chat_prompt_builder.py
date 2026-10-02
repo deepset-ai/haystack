@@ -15,7 +15,7 @@ from haystack import component
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent
+from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent, TextContent
 from haystack.dataclasses.document import Document
 
 
@@ -27,14 +27,15 @@ class TestChatPromptBuilder:
                 ChatMessage.from_system("This is a {{ variable2 }}"),
             ]
         )
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "This is a {{ variable }}"
         assert builder.template[1].text == "This is a {{ variable2 }}"
         assert builder._variables is None
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable", "variable2"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -42,7 +43,7 @@ class TestChatPromptBuilder:
         assert inputs["variable2"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -50,12 +51,12 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2"]
         builder = ChatPromptBuilder(variables=variables)
         assert builder.template is None
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._variables == variables
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -63,7 +64,7 @@ class TestChatPromptBuilder:
         assert inputs["var2"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -72,19 +73,20 @@ class TestChatPromptBuilder:
             template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=["variable"]
         )
         assert builder.required_variables == ["variable"]
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -92,13 +94,14 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "var3"]
         template = [ChatMessage.from_user("Hello, {{ var1 }}, {{ var2 }}!")]
         builder = ChatPromptBuilder(template=template, variables=variables)
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._variables == variables
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "Hello, {{ var1 }}, {{ var2 }}!"
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -107,7 +110,7 @@ class TestChatPromptBuilder:
         assert inputs["var3"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -115,6 +118,36 @@ class TestChatPromptBuilder:
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
         res = builder.run(variable="test")
         assert res == {"prompt": [ChatMessage.from_user("This is a test")]}
+
+    def test_run_with_multiple_text_parts(self):
+        template = [
+            ChatMessage.from_user(
+                content_parts=[TextContent(text="Hello, {{ name }}!"), TextContent(text="Goodbye, {{ other }}!")]
+            )
+        ]
+        builder = ChatPromptBuilder(template=template)
+
+        assert set(builder.variables) == {"name", "other"}
+        assert builder.run(name="John", other="Jane")["prompt"][0].texts == ["Hello, John!", "Goodbye, Jane!"]
+
+    @pytest.mark.parametrize(
+        "content_part",
+        [
+            ImageContent(base64_image="cHJldGVuZC1wbmctYnl0ZXM=", mime_type="image/png"),
+            FileContent(base64_data="dGVzdA==", mime_type="application/pdf", filename="document.pdf"),
+        ],
+        ids=["image", "file"],
+    )
+    def test_run_preserves_non_text_content_parts(self, content_part):
+        template = [ChatMessage.from_user(content_parts=["Describe {{ thing }}", content_part, "Also {{ other }}"])]
+        builder = ChatPromptBuilder(template=template)
+
+        assert builder.run(thing="this", other="that") == {
+            "prompt": [ChatMessage.from_user(content_parts=["Describe this", content_part, "Also that"])]
+        }
+        assert template == [
+            ChatMessage.from_user(content_parts=["Describe {{ thing }}", content_part, "Also {{ other }}"])
+        ]
 
     def test_run_template_variable(self):
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
@@ -131,10 +164,17 @@ class TestChatPromptBuilder:
         res = builder.run()
         assert res == {"prompt": [ChatMessage.from_user("This is a template without input")]}
 
-    def test_run_with_missing_input(self):
-        builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
+    def test_run_with_missing_optional_input(self):
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=None
+        )
         res = builder.run()
         assert res == {"prompt": [ChatMessage.from_user("This is a ")]}
+
+    def test_run_with_missing_required_input_default(self):
+        builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
+        with pytest.raises(ValueError, match="variable"):
+            builder.run()
 
     def test_run_with_missing_required_input(self):
         builder = ChatPromptBuilder(
@@ -162,7 +202,7 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "var3"]
         template = [ChatMessage.from_user("Hello, {{ name }}! {{ var1 }}")]
 
-        builder = ChatPromptBuilder(template=template, variables=variables)
+        builder = ChatPromptBuilder(template=template, variables=variables, required_variables=None)
 
         template_variables = {"name": "John"}
         expected_result = {"prompt": [ChatMessage.from_user("Hello, John! How are you?")]}
@@ -172,7 +212,7 @@ class TestChatPromptBuilder:
     def test_run_with_variables_and_runtime_template(self):
         variables = ["var1", "var2", "var3"]
 
-        builder = ChatPromptBuilder(variables=variables)
+        builder = ChatPromptBuilder(variables=variables, required_variables=None)
 
         template = [ChatMessage.from_user("Hello, {{ name }}! {{ var1 }}")]
         template_variables = {"name": "John"}
@@ -208,7 +248,7 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "name"]
         default_template = [ChatMessage.from_user("Hello, {{ name }}!")]
 
-        builder = ChatPromptBuilder(template=default_template, variables=variables)
+        builder = ChatPromptBuilder(template=default_template, variables=variables, required_variables=None)
 
         template = [ChatMessage.from_user("Hello, {{ var1 }} {{ name }}!")]
         expected_result = {"prompt": [ChatMessage.from_user("Hello, Big John!")]}
@@ -258,7 +298,8 @@ class TestChatPromptBuilder:
 
     def test_chat_message_list_with_mixed_object_list(self):
         prompt_builder = ChatPromptBuilder(
-            template=[ChatMessage.from_user("Hello"), "there world"], variables=["documents"]
+            template=[ChatMessage.from_user("Hello"), "there world"],  # type: ignore[list-item]
+            variables=["documents"],
         )
         with pytest.raises(
             ValueError, match="The ChatPromptBuilder expects a list containing only ChatMessage instances"
@@ -286,7 +327,7 @@ class TestChatPromptBuilder:
         @component
         class DocumentProducer:
             @component.output_types(documents=list[Document])
-            def run(self, doc_input: str):
+            def run(self, doc_input: str) -> dict[str, list[Document]]:
                 return {"documents": [Document(content=doc_input)]}
 
         pipe = Pipeline()
@@ -345,7 +386,18 @@ class TestChatPromptBuilder:
         }
         assert result == expected_dynamic
 
-    def test_warning_no_required_variables(self, caplog):
+    def test_warning_when_required_variables_explicitly_none(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = ChatPromptBuilder(
+                template=[
+                    ChatMessage.from_system("Write your response in this language:{{language}}"),
+                    ChatMessage.from_user("Tell me about {{location}}"),
+                ],
+                required_variables=None,
+            )
+            assert "explicitly set to `None`" in caplog.text
+
+    def test_no_warning_with_default_required_variables(self, caplog):
         with caplog.at_level(logging.WARNING):
             _ = ChatPromptBuilder(
                 template=[
@@ -353,7 +405,7 @@ class TestChatPromptBuilder:
                     ChatMessage.from_user("Tell me about {{location}}"),
                 ]
             )
-            assert "ChatPromptBuilder has 2 prompt variables, but `required_variables` is not set. " in caplog.text
+            assert "required_variables" not in caplog.text
 
 
 class TestChatPromptBuilderWithJinja2TimeExtension:
@@ -696,16 +748,26 @@ class TestChatPromptBuilderDynamic:
 
         assert comp.template is None
         assert comp._variables is None
-        assert comp._required_variables is None
+        assert comp._required_variables == "*"
 
-    def test_chat_message_list_with_templatize_part_init_raises_error(self):
-        template = [ChatMessage.from_user("This is a {{ variable | templatize_part }}")]
+    @pytest.mark.parametrize(
+        "content_parts",
+        [["This is a {{ variable | templatize_part }}"], ["First text", "This is a {{ variable | templatize_part }}"]],
+        ids=["first_text", "second_text"],
+    )
+    def test_chat_message_list_with_templatize_part_init_raises_error(self, content_parts):
+        template = [ChatMessage.from_user(content_parts=content_parts)]
         with pytest.raises(ValueError, match="templatize_part filter cannot be used"):
             ChatPromptBuilder(template=template)
 
-    def test_chat_message_list_with_templatize_part_run_raises_error(self):
+    @pytest.mark.parametrize(
+        "content_parts",
+        [["This is a {{ variable | templatize_part }}"], ["First text", "This is a {{ variable | templatize_part }}"]],
+        ids=["first_text", "second_text"],
+    )
+    def test_chat_message_list_with_templatize_part_run_raises_error(self, content_parts):
         builder = ChatPromptBuilder()
-        template = [ChatMessage.from_user("This is a {{ variable | templatize_part }}")]
+        template = [ChatMessage.from_user(content_parts=content_parts)]
         with pytest.raises(ValueError, match="templatize_part filter cannot be used"):
             builder.run(template=template, variable="test")
 
@@ -721,7 +783,7 @@ class TestChatPromptBuilderWithStrTemplate:
 
         assert builder.template == template
         assert builder._variables is None
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
         assert builder.variables == ["name"]
 
     def test_init_with_invalid_template(self):
@@ -773,13 +835,13 @@ class TestChatPromptBuilderWithStrTemplate:
         result = builder.run()
         assert result["prompt"] == [ChatMessage.from_user("Hello, my name is Lukas!")]
 
-    def test_run_with_missing_input(self):
+    def test_run_with_missing_optional_input(self):
         template = """
         {% message role="user" %}
         Hello, my name is {{name}}!
         {% endmessage %}
         """
-        builder = ChatPromptBuilder(template=template)
+        builder = ChatPromptBuilder(template=template, required_variables=None)
         result = builder.run()
         assert result["prompt"] == [ChatMessage.from_user("Hello, my name is !")]
 
@@ -825,7 +887,7 @@ class TestChatPromptBuilderWithStrTemplate:
         Hello, my name is {{name}}!
         {% endmessage %}
         """
-        builder = ChatPromptBuilder(template=initial_template)
+        builder = ChatPromptBuilder(template=initial_template, required_variables=None)
 
         runtime_template = """
         {% message role="user" %}
@@ -1064,3 +1126,47 @@ Hello, my name is {{name}}!
 
         images = [p for p in msg._content if isinstance(p, ImageContent)]
         assert len(images) == 0
+
+    def test_insert_placeholder(self):
+        builder = ChatPromptBuilder(template="{% insert messages %}")
+        assert builder.variables == ["messages"]
+        runtime = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi")]
+        result = builder.run(messages=runtime)
+        assert result["prompt"] == runtime
+
+    def test_insert_placeholder_with_subscript(self):
+        builder = ChatPromptBuilder(template="{% insert messages[-1:] %}")
+        assert builder.variables == ["messages"]
+        runtime = [ChatMessage.from_user("first"), ChatMessage.from_assistant("last")]
+        result = builder.run(messages=runtime)
+        assert result["prompt"] == [ChatMessage.from_assistant("last")]
+
+    def test_insert_placeholder_custom_variable_name(self):
+        builder = ChatPromptBuilder(template="{% insert chat_history %}")
+        assert builder.variables == ["chat_history"]
+        runtime = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi")]
+        result = builder.run(chat_history=runtime)
+        assert result["prompt"] == runtime
+
+    def test_insert_placeholder_combines_variables(self):
+        builder = ChatPromptBuilder(template="{% insert previous + current %}")
+        assert set(builder.variables) == {"previous", "current"}
+        previous = [ChatMessage.from_user("p1"), ChatMessage.from_assistant("p2")]
+        current = [ChatMessage.from_user("c1")]
+        result = builder.run(previous=previous, current=current)
+        assert result["prompt"] == previous + current
+
+    def test_insert_placeholder_interleaved_with_blocks(self):
+        template = (
+            '{% message role="system" %}You are helpful.{% endmessage %}'
+            "{% insert messages %}"
+            '{% message role="user" %}{{ query }}{% endmessage %}'
+        )
+        builder = ChatPromptBuilder(template=template)
+        assert set(builder.variables) == {"messages", "query"}
+        result = builder.run(messages=[ChatMessage.from_user("earlier")], query="now")
+        assert result["prompt"] == [
+            ChatMessage.from_system("You are helpful."),
+            ChatMessage.from_user("earlier"),
+            ChatMessage.from_user("now"),
+        ]

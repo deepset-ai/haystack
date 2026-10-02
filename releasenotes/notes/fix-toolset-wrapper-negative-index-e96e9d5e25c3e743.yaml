@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``_ToolsetWrapper.__getitem__`` (used when combining ``Toolset``\ s with ``+``) raising ``IndexError`` for
+    negative indices, unlike a plain ``Toolset``. Indexing a combined toolset now behaves consistently with a list of
+    ``Tool``\ s, as documented.

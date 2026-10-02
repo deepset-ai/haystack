@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type`` and ``deserialize_type`` to correctly round-trip
+    ``Callable`` types that declare an explicit parameter list, such as
+    ``Callable[[int, str], bool]``. Previously the parameter list was dropped
+    during serialization (producing a malformed string like
+    ``typing.Callable[, bool]``) and could no longer be deserialized. This
+    affected components that serialize type annotations, for example
+    ``ConditionalRouter`` and ``OutputAdapter`` using a ``Callable`` output type.

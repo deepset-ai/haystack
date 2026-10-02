@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    ``SearchApiWebSearch`` has been moved out of Haystack into the ``searchapi-haystack`` integration
+    package. Install the new package with ``pip install searchapi-haystack`` and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.websearch import SearchApiWebSearch
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch

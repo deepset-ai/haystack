@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -60,3 +60,16 @@ class TestCacheCheckerAsync:
         await checker.run_async(items=["https://example.com/1"])
         expected_filters = {"field": "url", "operator": "==", "value": "https://example.com/1"}
         mock_store.filter_documents_async.assert_awaited_once_with(filters=expected_filters)
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        checker = CacheChecker(document_store=closable_document_store, cache_field="url")
+        await checker.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
+        await checker.close_async()
+        assert nonclosable_document_store.mock_calls == []

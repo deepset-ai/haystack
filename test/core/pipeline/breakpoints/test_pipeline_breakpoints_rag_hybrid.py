@@ -10,18 +10,12 @@ import pytest
 from haystack import Document, Pipeline, component
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.core.errors import BreakpointException
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-@component
-class FakeEmbedder:
-    @component.output_types(documents=list[Document], embedding=list[float])
-    def run(self, text: str) -> dict[str, list[Document] | list[float]]:
-        return {"embedding": [random() for _ in range(100)]}
 
 
 @component
@@ -67,7 +61,7 @@ class TestPipelineBreakpoints:
 
         pipeline = Pipeline()
         pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store))
-        pipeline.add_component("query_embedder", FakeEmbedder())
+        pipeline.add_component("query_embedder", MockTextEmbedder(dimension=100))
         pipeline.add_component("embedding_retriever", InMemoryEmbeddingRetriever(document_store=document_store))
         pipeline.add_component("doc_joiner", DocumentJoiner())
         pipeline.add_component("ranker", FakeRanker())

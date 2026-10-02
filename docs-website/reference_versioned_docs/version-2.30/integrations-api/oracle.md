@@ -54,6 +54,14 @@ run_async(
 
 Async variant of :meth:`run`.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 #### to_dict
 
 ```python
@@ -190,6 +198,14 @@ Initialise the document store and optionally create the backing table and indexe
 
 - <code>ValueError</code> – If `table_name` is not a valid Oracle identifier or `embedding_dim` is not
   a positive integer.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
 
 #### create_keyword_index
 
@@ -635,25 +651,34 @@ get_metadata_field_unique_values(
     metadata_field: str,
     search_term: str | None = None,
     from_: int = 0,
-    size: int | None = None,
-) -> tuple[list[str], int]
+    size: int | None = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Return a paginated list of distinct values for a metadata field, plus the total distinct count.
+
+**Note**: values of different JSON type categories are kept distinct - a string, a number and a
+boolean never collapse into each other, even when they share a textual form (e.g. the string
+`"1"` and the number `1`). One exception: the `metadata` column is Oracle's native `JSON`
+type, which canonicalizes numeric storage, so a whole-number float (`1.0`) and a numerically
+equal int (`1`) collapse into the same value. Floats with a fractional part (e.g. `1.5`) are
+unaffected.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – Metadata field name. May be prefixed with `"meta."`
   (e.g. `"meta.lang"` or `"lang"`).
-- **search_term** (<code>str | None</code>) – Optional substring filter applied to both the document text and the field value.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
 - **from\_** (<code>int</code>) – Zero-based offset for pagination. Defaults to `0`.
-- **size** (<code>int | None</code>) – Maximum number of values to return. When `None` all values from `from_` onward
-  are returned.
+- **size** (<code>int | None</code>) – Maximum number of values to return. Defaults to `10`. When `None` all values
+  from `from_` onward are returned.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple `(values, total)` where `values` is the paginated list of distinct field
-  values as strings and `total` is the overall distinct count (before pagination).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple `(values, total)` where `values` is the paginated list of distinct field
+  values in their original type and `total` is the overall distinct count (before pagination).
 
 **Raises:**
 
@@ -707,8 +732,9 @@ get_metadata_field_unique_values_async(
     metadata_field: str,
     search_term: str | None = None,
     from_: int = 0,
-    size: int | None = None,
-) -> tuple[list[str], int]
+    size: int | None = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously returns a paginated list of distinct values for a metadata field, plus the total count.
@@ -717,15 +743,16 @@ Asynchronously returns a paginated list of distinct values for a metadata field,
 
 - **metadata_field** (<code>str</code>) – Metadata field name. May be prefixed with `"meta."`
   (e.g. `"meta.lang"` or `"lang"`).
-- **search_term** (<code>str | None</code>) – Optional substring filter applied to both the document text and the field value.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
 - **from\_** (<code>int</code>) – Zero-based offset for pagination. Defaults to `0`.
-- **size** (<code>int | None</code>) – Maximum number of values to return. When `None` all values from `from_` onward
-  are returned.
+- **size** (<code>int | None</code>) – Maximum number of values to return. Defaults to `10`. When `None` all values
+  from `from_` onward are returned.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple `(values, total)` where `values` is the paginated list of distinct field
-  values as strings and `total` is the overall distinct count (before pagination).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple `(values, total)` where `values` is the paginated list of distinct field
+  values in their original type and `total` is the overall distinct count (before pagination).
 
 **Raises:**
 

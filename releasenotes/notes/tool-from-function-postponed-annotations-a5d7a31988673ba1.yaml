@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and the ``@tool`` decorator now work with functions defined in a module that uses
+    ``from __future__ import annotations``. Before, the parameter annotations were plain strings, and creating the
+    tool raised a ``SchemaGenerationError`` for any parameter typed with something other than a builtin, such as
+    ``Annotated``, ``Literal``, ``Optional``, ``Document`` or ``State``. The annotations are now resolved first, and
+    ``Annotated`` descriptions are kept.

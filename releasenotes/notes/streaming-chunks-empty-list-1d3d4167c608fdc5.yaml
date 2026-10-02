@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix an ``IndexError: list index out of range`` when a chat generator's stream completes
+    without emitting any chunks. ``_convert_streaming_chunks_to_chat_message`` now returns an
+    assistant message with empty content and ``None`` metadata instead.

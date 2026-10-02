@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -10,13 +11,15 @@ from typing import Any, Literal
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -149,7 +152,11 @@ class LLMDocumentContentExtractor:
         :param prompt: Prompt for extraction. Must not contain Jinja variables.
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
-            document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+            document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+            file paths are treated as absolute paths with no containment check.
+            Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+            document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+            that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
         :param size: If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
         :param raise_on_failure: If True, exceptions from the LLM are raised. If False, failed documents are returned.
@@ -167,16 +174,38 @@ class LLMDocumentContentExtractor:
         self._document_to_image_content = DocumentToImageContent(
             file_path_meta_field=file_path_meta_field, root_path=root_path, detail=detail, size=size
         )
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the ChatGenerator if it has a warm_up method.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -243,22 +272,35 @@ class LLMDocumentContentExtractor:
         meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
         return content, meta_updates, None
 
-    def _run_on_thread(self, image_content: ImageContent | None) -> dict[str, Any]:
+    @staticmethod
+    def _fail(document: Document, error: str) -> tuple[Document, bool]:
+        """Return a copy of ``document`` with ``extraction_error`` set, flagged as failed."""
+        return replace(document, meta={**document.meta, "extraction_error": error}), False
+
+    def _run_on_thread(
+        self, document: Document, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
         """
         Execute the LLM inference in a separate thread for each document.
 
-        :param image_content: The image content for one document, or None if conversion failed.
+        :param document: The document to extract content for.
+        :param image_content: The image content for the document, or None if conversion failed.
+        :param parent_span: Span to nest the generator span under, captured on the calling thread.
         :returns:
-            The LLM response if successful, or a dictionary with an "error" key on failure.
+            The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            return {"error": "Document has no content, skipping LLM call."}
+            return self._fail(document, "Document has no content, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document/thread
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
 
         try:
-            result = self._chat_generator.run(messages=[message])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [message]}, parent_span=parent_span
+            ) as span:
+                result = self._chat_generator.run(messages=[message])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -267,28 +309,59 @@ class LLMDocumentContentExtractor:
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
-            result = {"error": "LLM failed with exception: " + str(e)}
+            return self._fail(document, "LLM failed with exception: " + str(e))
 
-        return result
+        return self._process_llm_results(document, result["replies"][0])
+
+    async def _run_async(
+        self, document: Document, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> tuple[Document, bool]:
+        """
+        Execute the LLM inference asynchronously for each document.
+
+        :param document: The document to extract content for.
+        :param image_content: The image content for the document, or None if conversion failed.
+        :param parent_span: Span to nest the generator span under, captured on the calling task.
+        :returns:
+            The updated document and True on success, or the document with failure metadata and False.
+        """
+        if image_content is None:
+            return self._fail(document, "Document has no content, skipping LLM call.")
+
+        # the prompt is the same for all documents, so we can set it up once here for each document
+        message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
+
+        try:
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [message]}, parent_span=parent_span
+            ) as span:
+                result = await _execute_component_async(self._chat_generator, messages=[message])
+                span.set_content_tag("haystack.component.output", result)
+        except Exception as e:
+            if self.raise_on_failure:
+                raise e
+            logger.exception(
+                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
+                class_name=self._chat_generator.__class__.__name__,
+                error=e,
+            )
+            return self._fail(document, "LLM failed with exception: " + str(e))
+
+        return self._process_llm_results(document, result["replies"][0])
 
     @staticmethod
-    def _process_llm_results(document: Document, result: dict[str, Any]) -> tuple[Document, bool]:
+    def _process_llm_results(document: Document, reply: ChatMessage) -> tuple[Document, bool]:
         """
-        Process one document's LLM result using the unified response logic.
+        Process one document's LLM reply using the unified response logic.
 
         Returns (updated_document, True if success else False).
         """
-        if "error" in result:
-            new_meta = {**document.meta, "extraction_error": result["error"]}
-            return replace(document, meta=new_meta), False
-
         # remove potentially existing error metadata from previous runs
         new_meta = {**document.meta}
         new_meta.pop("extraction_error", None)
 
         # process the LLM response considering the possible response formats
-        response_text = result["replies"][0].text
-        content, meta_updates, error = LLMDocumentContentExtractor._process_response(response_text)
+        content, meta_updates, error = LLMDocumentContentExtractor._process_response(reply.text or "")
 
         if error:
             new_meta["extraction_error"] = error
@@ -310,18 +383,74 @@ class LLMDocumentContentExtractor:
         if not documents:
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 
+        # Capture the current span here so worker threads nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(self._run_on_thread, image_contents)
+            results = executor.map(
+                lambda document, image_content: self._run_on_thread(document, image_content, parent_span=parent_span),
+                documents,
+                image_contents,
+            )
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results, strict=True):
-            doc, success = self._process_llm_results(document, result)
+        for doc, success in results:
+            if success:
+                successful_documents.append(doc)
+            else:
+                failed_documents.append(doc)
+
+        return {"documents": successful_documents, "failed_documents": failed_documents}
+
+    @component.output_types(documents=list[Document], failed_documents=list[Document])
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+        """
+        Asynchronously run extraction on image-based documents. One LLM call per document.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code. LLM calls are made concurrently, bounded by `max_workers`.
+        If the chat generator only implements a synchronous `run` method, it is executed in a thread to avoid
+        blocking the event loop.
+
+        :param documents: A list of image-based documents to process. Each must have a valid file path in its metadata.
+        :returns:
+            A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
+        """
+        if not documents:
+            return {"documents": [], "failed_documents": []}
+
+        await self.warm_up_async()
+
+        # Reading the files and rendering PDF pages is blocking work and `DocumentToImageContent` has no
+        # `run_async`, so it runs in a thread instead of on the event loop.
+        conversion_result = await _execute_component_async(self._document_to_image_content, documents=documents)
+        image_contents = conversion_result["image_contents"]
+
+        # Capture the current span here so concurrent tasks nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
+        # Run the LLM on each image content, bounding concurrency per task so max_workers is enforced.
+        sem = asyncio.Semaphore(max(1, self.max_workers))
+
+        async def _bounded_run(document: Document, image_content: ImageContent | None) -> tuple[Document, bool]:
+            async with sem:
+                return await self._run_async(document, image_content, parent_span=parent_span)
+
+        results = await asyncio.gather(
+            *[
+                _bounded_run(document, image_content)
+                for document, image_content in zip(documents, image_contents, strict=True)
+            ]
+        )
+
+        successful_documents = []
+        failed_documents = []
+        for doc, success in results:
             if success:
                 successful_documents.append(doc)
             else:

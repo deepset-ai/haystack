@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    ``ChatMessage.from_dict`` now also accepts the format Pydantic produces when it auto-serializes
+    ``ChatMessage`` as a plain dataclass (e.g. via ``model_dump`` on a Pydantic model with ``ChatMessage``
+    fields). In this format, content parts appear without their wrapping key (for example
+    ``{"tool_name": "search", "arguments": {}}`` instead of ``{"tool_call": {"tool_name": "search",
+    "arguments": {}}}``) and are identified by their required field names. This makes it possible to
+    round-trip ``ChatMessage`` objects that were implicitly serialized as part of larger Pydantic models.

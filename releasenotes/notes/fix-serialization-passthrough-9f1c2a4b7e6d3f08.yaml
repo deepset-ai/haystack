@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed the schema-aware serialization helper used for pipeline snapshots and ``Agent`` ``State``
+    (``_serialize_value_with_schema``) so it no longer silently passes unsupported objects through as
+    if they were serialized. Values such as ``datetime``, ``bytes``, ``complex`` and arbitrary objects
+    without a ``to_dict`` method were previously stored unchanged and mislabeled as strings, which broke
+    JSON storage and round-tripping of snapshots. Unsupported values now raise a ``SerializationError``,
+    and the callers that build snapshots (pipeline breakpoints and ``State.to_dict``) catch it to omit
+    only the offending field while keeping the rest of the payload resumable.
+  - |
+    Added support for serializing and deserializing ``frozenset`` values in ``_serialize_value_with_schema``.
+    A ``frozenset`` now round-trips back to a ``frozenset`` instead of being dropped.

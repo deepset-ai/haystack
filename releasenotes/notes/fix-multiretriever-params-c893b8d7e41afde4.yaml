@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Update parameters in MultiRetriever to allow for more flexible retrieval of documents. Changes include:
+    - ``top_k_per_retriever``: Allows specifying the maximum number of documents to return per retriever
+    - ``top_k``: Allows specifying the maximum number of documents to be retrieved from combined results of all retrievers

@@ -1,0 +1,94 @@
+---
+title: "MockDocumentEmbedder"
+id: mockdocumentembedder
+slug: "/mockdocumentembedder"
+description: "A Document Embedder that returns deterministic embeddings without calling any API, for tests and quick prototypes."
+---
+
+# MockDocumentEmbedder
+
+A Document Embedder that returns deterministic embeddings without calling any API, for tests and quick prototypes.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In place of a real Document Embedder, in tests and prototypes |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents enriched with embeddings  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Embedders](/reference/embedders-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/mock_document_embedder.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`MockDocumentEmbedder` is a deterministic, zero-cost drop-in replacement for real Document Embedders such as `OpenAIDocumentEmbedder`. It implements `run`, `run_async`, and serialization like any other embedder but never contacts an external service, which makes it ideal for unit tests, smoke tests, and quick prototypes.
+
+The embedding is selected based on how the component is configured:
+
+- **Deterministic (default)**: With no configuration, each document's embedding is derived from a stable hash of its prepared text. The same text always yields the same unit-length embedding, and different texts yield different embeddings, so the mock works in retrieval pipelines and is reproducible across runs and processes.
+- **Fixed embedding**: Pass an `embedding` vector. The same vector is assigned to every document.
+- **Dynamic embedding**: Pass an `embedding_fn` callable that receives the prepared text of a document and returns the embedding. To support serialization, pass a named function.
+
+`embedding` and `embedding_fn` are mutually exclusive.
+
+Further optional parameters:
+
+- `dimension`: The number of dimensions of the deterministic embedding. Defaults to `768`. Ignored when `embedding` or `embedding_fn` is provided, since their length is determined by the value or callable.
+- `model`: The model name reported in the metadata. Defaults to `"mock-model"`.
+- `meta`: Additional metadata merged into the output `meta`.
+- `prefix` / `suffix`: Strings added to the beginning and end of each text before embedding, mirroring real embedders.
+- `meta_fields_to_embed` / `embedding_separator`: Like real Document Embedders, the metadata fields listed in `meta_fields_to_embed` are concatenated with the document content before embedding, so the deterministic embedding reflects the embedded metadata.
+- `progress_bar`: Accepted for interface compatibility with real Document Embedders and ignored.
+
+:::info
+The deterministic embeddings are derived from a hash: identical texts get identical vectors and the similarity between different texts is stable but arbitrary. For exact-match retrieval in tests this is exactly what you want. Do not expect semantically similar texts to end up close together.
+:::
+
+Use `MockDocumentEmbedder` for documents and its counterpart [`MockTextEmbedder`](mocktextembedder.mdx) for queries. With the default deterministic mode, a query whose text matches a document's content produces the same vector, so the document is retrieved as the top hit.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.embedders import MockDocumentEmbedder
+
+embedder = MockDocumentEmbedder(dimension=8)
+result = embedder.run([Document(content="I love pizza!")])
+print(result["documents"][0].embedding)  # a deterministic list of 8 floats
+```
+
+### In a pipeline
+
+Use it in an indexing pipeline exactly like a real Document Embedder — no API key needed:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import MockDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("embedder", MockDocumentEmbedder(dimension=8))
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder.documents", "writer.documents")
+
+indexing_pipeline.run(
+    {
+        "embedder": {
+            "documents": [
+                Document(content="My name is Wolfgang and I live in Berlin"),
+                Document(content="I saw a black horse running"),
+            ],
+        },
+    },
+)
+print(document_store.count_documents())  # 2
+```

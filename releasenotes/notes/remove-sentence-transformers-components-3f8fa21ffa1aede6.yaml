@@ -1,0 +1,39 @@
+---
+upgrade:
+  - |
+    The Sentence Transformers components have been moved out of Haystack into the
+    ``sentence-transformers-haystack`` integration package. This includes
+    ``SentenceTransformersTextEmbedder``, ``SentenceTransformersDocumentEmbedder``,
+    ``SentenceTransformersSparseTextEmbedder``, ``SentenceTransformersSparseDocumentEmbedder``,
+    ``SentenceTransformersDocumentImageEmbedder``, ``SentenceTransformersSimilarityRanker``, and
+    ``SentenceTransformersDiversityRanker``. Install the new package with
+    ``pip install sentence-transformers-haystack`` and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.embedders import (
+          SentenceTransformersTextEmbedder,
+          SentenceTransformersDocumentEmbedder,
+          SentenceTransformersSparseTextEmbedder,
+          SentenceTransformersSparseDocumentEmbedder,
+      )
+      from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+      from haystack.components.rankers import SentenceTransformersSimilarityRanker, SentenceTransformersDiversityRanker
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.embedders.sentence_transformers import (
+          SentenceTransformersTextEmbedder,
+          SentenceTransformersDocumentEmbedder,
+          SentenceTransformersSparseTextEmbedder,
+          SentenceTransformersSparseDocumentEmbedder,
+          SentenceTransformersDocumentImageEmbedder,
+      )
+      from haystack_integrations.components.rankers.sentence_transformers import (
+          SentenceTransformersSimilarityRanker,
+          SentenceTransformersDiversityRanker,
+      )

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentSplitter`` producing chunks that were not present in the source document when
+    ``split_threshold`` was set together with ``split_overlap``. Merging a below-threshold trailing
+    segment into the previous split re-appended the overlapping units, duplicating text. The
+    overlap is now added only once.

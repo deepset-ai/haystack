@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed serialization of ``FallbackChatGenerator`` to use the standard ``component_to_dict`` serialization path. This ensures custom chat generator components without an explicit ``to_dict`` method are no longer silently omitted from the serialized ``chat_generators`` list.
+

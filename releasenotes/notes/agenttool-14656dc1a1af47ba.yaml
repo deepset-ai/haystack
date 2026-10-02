@@ -1,0 +1,47 @@
+---
+features:
+  - |
+    Added ``AgentTool``, a Tool that wraps a Haystack ``Agent``, allowing it to be used as a tool by another
+    ``Agent``. It is a building block for multi-agent systems: an ``Agent`` specialized in one task becomes a tool
+    that another ``Agent`` can delegate to. The calling ``Agent`` only sees the final reply, so all the steps the
+    wrapped ``Agent`` takes stay out of its context. Sensible defaults make this work out of the box: the task is
+    delegated as a single user message and comes back as text.
+
+    Example:
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.dataclasses import ChatMessage
+        from haystack.tools import AgentTool, ComponentTool
+        from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
+
+        researcher = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+            system_prompt="You are a research specialist. Investigate the task and report your findings.",
+            tools=[
+                ComponentTool(
+                    component=SerperDevWebSearch(
+                        top_k=3,
+                    ),
+                    name="web_search",
+                    description="Search the web for current information on any topic",
+                ),
+            ],
+        )
+
+        research = AgentTool(
+            agent=researcher,
+            name="research",
+            description="Research a question on the web and report the findings",
+        )
+
+        coordinator = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4"),
+            tools=[research],
+            system_prompt="You coordinate specialists. Delegate research questions, then answer the user.",
+        )
+
+        result = coordinator.run([ChatMessage.from_user("What are the latest developments in the Haystack framework?")])
+        print(result["last_message"].text)

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``SuperComponent.run`` and ``SuperComponent.run_async`` raising
+    ``ValueError: The truth value of ... is ambiguous`` whenever a non-scalar
+    input (numpy arrays, pandas DataFrames/Series, torch tensors, or any
+    object whose ``__ne__`` returns a non-scalar) was passed. The internal
+    sentinel filter is now an identity check (``is not _delegate_default``)
+    instead of value equality (``!= _delegate_default``), so it no longer
+    invokes ``__ne__`` on user-provided values.

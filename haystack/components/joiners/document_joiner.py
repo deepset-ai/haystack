@@ -57,7 +57,7 @@ class DocumentJoiner:
 
     ```python
     from haystack import Pipeline, Document
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.joiners import DocumentJoiner
     from haystack.components.retrievers import InMemoryBM25Retriever
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -65,21 +65,21 @@ class DocumentJoiner:
 
     document_store = InMemoryDocumentStore()
     docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
-    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedder = OpenAIDocumentEmbedder()
     docs_embeddings = embedder.run(docs)
     document_store.write_documents(docs_embeddings['documents'])
 
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
     p.add_component(
-            instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            instance=OpenAITextEmbedder(),
             name="text_embedder",
         )
     p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")
     p.add_component(instance=DocumentJoiner(), name="joiner")
     p.connect("bm25_retriever", "joiner")
     p.connect("embedding_retriever", "joiner")
-    p.connect("text_embedder", "embedding_retriever")
+    p.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
     query = "What is the capital of France?"
     p.run(data={"query": query, "text": query, "top_k": 1})
     ```
@@ -107,12 +107,19 @@ class DocumentJoiner:
             This parameter is ignored for
             `concatenate` or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
+            Each weight must be a non-negative number.
         :param top_k:
-            The maximum number of documents to return.
+            The maximum number of documents to return. Must be `None` or greater than 0.
         :param sort_by_score:
             If `True`, sorts the documents by score in descending order.
             If a document has no score, it is handled as if its score is -infinity.
+
+        :raises ValueError:
+            If `top_k` is not `None` and is less than or equal to 0,
+            or if any value in `weights` is negative.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k must be greater than 0.")
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions = {
@@ -124,6 +131,8 @@ class DocumentJoiner:
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         if weights:
+            if any(weight < 0 for weight in weights):
+                raise ValueError("The provided `weights` must not be negative.")
             weight_sum = sum(weights)
             if weight_sum == 0:
                 raise ValueError("The provided `weights` must not sum to zero.")
@@ -142,10 +151,14 @@ class DocumentJoiner:
             List of list of documents to be merged.
         :param top_k:
             The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+            A value of 0 returns no documents. Must not be negative.
 
         :returns:
             A dictionary with the following keys:
             - `documents`: Merged list of Documents
+
+        :raises ValueError:
+            If `top_k` is negative.
         """
         documents = list(documents)
         output_documents = self.join_mode_function(documents)
@@ -160,9 +173,11 @@ class DocumentJoiner:
                     "score, so those with score=None were sorted as if they had a score of -infinity."
                 )
 
-        if top_k:
+        if top_k is not None:
+            if top_k < 0:
+                raise ValueError("top_k must not be negative.")
             output_documents = output_documents[:top_k]
-        elif self.top_k:
+        elif self.top_k is not None:
             output_documents = output_documents[: self.top_k]
 
         return {"documents": output_documents}
@@ -227,15 +242,16 @@ class DocumentJoiner:
             min_score = mean_score - 3 * std_dev
             max_score = mean_score + 3 * std_dev
             delta_score = max_score - min_score
+            scores_vary = min(scores_list) != max(scores_list)
 
-            # if all docs have the same score delta_score is 0, the docs are uninformative for the query
+            # If all docs have the same score, rescaling cannot add information; preserve their original scores.
             rescaled_lists.append(
                 [
                     replace(
                         doc,
                         score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
-                        if delta_score != 0.0
-                        else 0.0,
+                        if scores_vary and delta_score != 0.0
+                        else (doc.score if doc.score is not None else 0.0),
                     )
                     for doc in documents
                 ]

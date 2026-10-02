@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from dataclasses import replace
 from typing import Any, Literal
 
@@ -106,7 +107,8 @@ class HierarchicalDocumentSplitter:
             List of HierarchicalDocument
         """
 
-        root = self._add_meta_data(document)
+        # the root is the only node built from the caller's Document, so it is the only one that needs detaching
+        root = self._add_meta_data(replace(document, meta=deepcopy(document.meta)))
         current_level_nodes = [root]
         all_docs = []
 
