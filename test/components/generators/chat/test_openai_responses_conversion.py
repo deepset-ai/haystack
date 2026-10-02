@@ -30,6 +30,7 @@ from openai.types.responses import (
     ResponseUsage,
 )
 from openai.types.responses.response import IncompleteDetails
+from openai.types.responses.response_reasoning_item import Content
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from haystack.components.generators.chat.openai_responses import (
@@ -50,6 +51,50 @@ from haystack.dataclasses import (
     ToolCallDelta,
     ToolCallResult,
 )
+
+
+@pytest.mark.parametrize(
+    "content_texts,previous_text,previous_index,expected_text",
+    [
+        (["First step.", "Second step."], None, None, "First step.\nSecond step."),
+        (["First step.", "Second step."], "First step.\nSecond step.", 0, ""),
+        (["First step.", "Second step."], "Summary.", 0, "\nFirst step.\nSecond step."),
+        (["First step.", "Second step."], "First step.\nSecond step.", 1, "First step.\nSecond step."),
+        ([], None, None, ""),
+        (None, None, None, ""),
+    ],
+)
+def test_streaming_reasoning_content_fallback(
+    content_texts: list[str] | None, previous_text: str | None, previous_index: int | None, expected_text: str
+) -> None:
+    previous_chunks = []
+    if previous_index is not None:
+        previous_chunks.append(
+            StreamingChunk(
+                content="",
+                index=previous_index,
+                reasoning=ReasoningContent(reasoning_text=previous_text or "", extra={"item_id": "rs_summary"}),
+            )
+        )
+    item = ResponseReasoningItem(
+        id="rs_content",
+        type="reasoning",
+        summary=[],
+        content=[Content(text=text, type="reasoning_text") for text in content_texts]
+        if content_texts is not None
+        else None,
+        encrypted_content="encrypted",
+        status="completed",
+    )
+    event = ResponseOutputItemDoneEvent(item=item, output_index=0, sequence_number=1, type="response.output_item.done")
+    chunk = _convert_response_chunk_to_streaming_chunk(chunk=event, previous_chunks=previous_chunks)
+    assert chunk.reasoning == ReasoningContent(reasoning_text=expected_text, extra=item.to_dict())
+
+    message = _convert_streaming_chunks_to_chat_message(chunks=[*previous_chunks, chunk])
+    assert message.reasoning == ReasoningContent(
+        reasoning_text=(previous_text or "") + expected_text,
+        extra={**({"item_id": "rs_summary"} if previous_index is not None else {}), **item.to_dict()},
+    )
 
 
 @pytest.fixture
