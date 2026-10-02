@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``JsonSchemaValidator`` rejecting valid top-level JSON arrays when the provided schema describes an array.
+    Regular schemas now validate the complete payload once, while OpenAI function-calling payloads continue to
+    validate each tool call individually. Array constraints such as ``minItems`` are now also enforced for empty
+    arrays.

@@ -141,6 +141,24 @@ class TestJsonSchemaValidator:
         assert "validation_error" in result
         assert len(result["validation_error"]) == 1
 
+    def test_validates_top_level_json_array(self):
+        validator = JsonSchemaValidator(json_schema={"type": "array", "items": {"type": "integer"}})
+        message = ChatMessage.from_assistant("[1, 2]")
+
+        result = validator.run([message])
+
+        assert result == {"validated": [message]}
+
+    def test_rejects_empty_top_level_json_array(self):
+        validator = JsonSchemaValidator(json_schema={"type": "array", "items": {"type": "integer"}, "minItems": 1})
+        message = ChatMessage.from_assistant("[]")
+
+        result = validator.run([message])
+
+        assert "validation_error" in result
+        assert len(result["validation_error"]) == 1
+        assert "should be non-empty" in result["validation_error"][0].text
+
     #  Validates multiple messages against a provided JSON schema successfully.
     def test_validates_multiple_messages_against_json_schema(self, json_schema_github_compare, genuine_fc_message):
         validator = JsonSchemaValidator()

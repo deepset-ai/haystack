@@ -161,12 +161,18 @@ class JsonSchemaValidator:
         else:
             validation_schema = json_schema
         try:
-            last_message_json = [last_message_json] if not isinstance(last_message_json, list) else last_message_json
-            for content in last_message_json:
-                if using_openai_schema:
-                    validate(instance=content["function"]["arguments"], schema=validation_schema)
-                else:
-                    validate(instance=content, schema=validation_schema)
+            is_function_calling_payload = using_openai_schema or self._is_function_calling_message_list(
+                last_message_json
+            )
+            if is_function_calling_payload:
+                last_message_json = last_message_json if isinstance(last_message_json, list) else [last_message_json]
+                for content in last_message_json:
+                    if using_openai_schema:
+                        validate(instance=content["function"]["arguments"], schema=validation_schema)
+                    else:
+                        validate(instance=content, schema=validation_schema)
+            else:
+                validate(instance=last_message_json, schema=validation_schema)
 
             return {"validated": [last_message]}
         except ValidationError as e:
@@ -217,6 +223,24 @@ class JsonSchemaValidator:
         :return: `True` if the schema is a valid OpenAI function calling schema; otherwise, `False`.
         """
         return all(key in json_schema for key in ["name", "description", "parameters"])
+
+    def _is_function_calling_message_list(self, data: Any) -> bool:
+        """
+        Checks if the provided data is a non-empty list of OpenAI function calling messages.
+
+        :param data: The data to check.
+        :return: `True` if the data is a function calling message list; otherwise, `False`.
+        """
+        if not isinstance(data, list) or not data:
+            return False
+
+        for message in data:
+            if not isinstance(message, dict):
+                return False
+            function = message.get("function")
+            if not isinstance(function, dict) or "arguments" not in function:
+                return False
+        return True
 
     def _recursive_json_to_object(self, data: Any) -> Any:
         """
