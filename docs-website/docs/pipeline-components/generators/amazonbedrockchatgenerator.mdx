@@ -41,7 +41,7 @@ To use this component for text generation, initialize an AmazonBedrockChatGenera
 
 ### Running on Amazon EKS
 
-On Amazon EKS, the component can authenticate with the pod's IAM role through [IAM roles for service accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), so you don't need access keys. When no access keys are set, the component falls back to the boto3 credential chain, which picks up the role that EKS assigns to the pod.
+On Amazon EKS, the component can authenticate with the pod's IAM role through [IAM roles for service accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), so you don't need access keys. When no access keys are set, the component falls back to the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html), which picks up the role that EKS assigns to the pod.
 
 1. Associate an IAM role with the pod's Kubernetes service account and allow the role to call `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream`.
 2. Don't pass `aws_access_key_id` and `aws_secret_access_key` to the component, and don't set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables in the pod. Access keys take precedence over the pod's role.
