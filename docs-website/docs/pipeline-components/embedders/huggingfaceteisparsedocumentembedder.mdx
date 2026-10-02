@@ -36,21 +36,6 @@ The vectors calculated by this component are necessary for performing sparse emb
 pip install huggingface-api-haystack
 ```
 
-### TEI server setup
-
-Run a TEI server with a sparse embedding model and SPLADE pooling. For example, start an HTTP server with [opensearch-project/opensearch-neural-sparse-encoding-v2-distill](https://huggingface.co/opensearch-project/opensearch-neural-sparse-encoding-v2-distill):
-
-```shell
-model=opensearch-project/opensearch-neural-sparse-encoding-v2-distill
-volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
-
-docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3 --model-id "$model" --pooling splade
-```
-
-The HTTP server must expose the `/embed_sparse` endpoint. See the [TEI SPLADE setup](https://github.com/huggingface/text-embeddings-inference#using-splade-pooling) for more details.
-
-Set `api_base_url` to your server's HTTP URL. If authentication is required, set `HF_API_TOKEN` or `HF_TOKEN`, or pass a `token` using [Secret management](../../concepts/secret-management.mdx). A local server without authentication does not require a token.
-
 ### Parameters
 
 Use `prefix` and `suffix` to add model-specific instructions to the input. `timeout` and `headers` configure HTTP requests only.
@@ -86,6 +71,19 @@ print(result["documents"][0].sparse_embedding)
 ## Usage
 
 ### On its own
+
+Run a TEI server with a sparse embedding model and SPLADE pooling. For example, start an HTTP server with [opensearch-project/opensearch-neural-sparse-encoding-v2-distill](https://huggingface.co/opensearch-project/opensearch-neural-sparse-encoding-v2-distill):
+
+```shell
+model=opensearch-project/opensearch-neural-sparse-encoding-v2-distill
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3 --model-id "$model" --pooling splade
+```
+
+The HTTP server must expose the `/embed_sparse` endpoint. See the [TEI SPLADE setup](https://github.com/huggingface/text-embeddings-inference#using-splade-pooling) for more details.
+
+Set `api_base_url` to your server's HTTP URL. If authentication is required, set `HF_API_TOKEN` or `HF_TOKEN`, or pass a `token` using [Secret management](../../concepts/secret-management.mdx). A local server without authentication does not require a token.
 
 ```python
 from haystack import Document
