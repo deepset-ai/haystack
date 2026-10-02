@@ -12,6 +12,146 @@
       "permanent": true
     },
     {
+      "source": "/docs/api/:path*",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/v:ver/docs/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/v:ver/reference/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/v:ver/edit/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/edit/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/:ver-unstable/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/:ver-unstable/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/next/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/next/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/latest/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/agent-api",
+      "destination": "/reference/agents-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/document-store-api",
+      "destination": "/reference/document-stores-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/pipelines-api",
+      "destination": "/reference/pipeline-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/tool-components-api",
+      "destination": "/reference/agents-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/human-in-the-loop-api",
+      "destination": "/reference/hooks-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/primitives-api",
+      "destination": "/reference/data-classes-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/shaper-api",
+      "destination": "/reference/converters-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/classifiers-api",
+      "destination": "/reference/routers-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/connectors-api",
+      "destination": "/reference/tools-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/websearch-api",
+      "destination": "/reference/integrations-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/integrations",
+      "destination": "/reference/integrations-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/audio-api",
+      "destination": "/docs/audio",
+      "permanent": true
+    },
+    {
+      "source": "/reference/readers-api",
+      "destination": "/docs/readers",
+      "permanent": true
+    },
+    {
+      "source": "/reference/reader-api",
+      "destination": "/docs/readers",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-supercomponents-api",
+      "destination": "/docs/supercomponents",
+      "permanent": true
+    },
+    {
+      "source": "/reference/component-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/components",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/docs/retrieval-augmented-generation",
+      "destination": "/docs/advanced-rag-techniques",
+      "permanent": true
+    },
+    {
       "source": "/reference/category/experiments-api",
       "destination": "/reference/",
       "permanent": true
@@ -33,17 +173,17 @@
     },
     {
       "source": "/reference/experimental-generators-api",
-      "destination": "/reference/",
+      "destination": "/reference/generators-api",
       "permanent": true
     },
     {
       "source": "/reference/experimental-preprocessors-api",
-      "destination": "/reference/",
+      "destination": "/reference/preprocessors-api",
       "permanent": true
     },
     {
       "source": "/reference/experimental-retrievers-api",
-      "destination": "/reference/",
+      "destination": "/reference/retrievers-api",
       "permanent": true
     },
     {
@@ -53,7 +193,7 @@
     },
     {
       "source": "/reference/experimental-writers-api",
-      "destination": "/reference/",
+      "destination": "/reference/document-writers-api",
       "permanent": true
     },
     {
