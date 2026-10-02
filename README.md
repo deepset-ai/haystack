@@ -262,12 +262,12 @@
 | haystack/utils/jinja2\_extensions.py                                      |       47 |        0 |    100% |           |
 | haystack/utils/jinja2\_sandbox.py                                         |       16 |        0 |    100% |           |
 | haystack/utils/jupyter.py                                                 |        9 |        3 |     67% |     15-17 |
-| haystack/utils/misc.py                                                    |       96 |        5 |     95% |52-53, 129-132 |
+| haystack/utils/misc.py                                                    |       99 |        5 |     95% |52-53, 132-135 |
 | haystack/utils/requests\_utils.py                                         |       33 |        0 |    100% |           |
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17411** |  **733** | **96%** |           |
+| **TOTAL**                                                                 | **17414** |  **733** | **96%** |           |
 
 
 ## Setup coverage badge
