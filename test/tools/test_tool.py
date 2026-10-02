@@ -296,6 +296,22 @@ class TestTool:
                 inputs_from_state={"state_key": "nonexistent"},
             )
 
+    def test_inputs_from_state_validation_with_no_valid_parameters(self):
+        """A tool that takes no input has a known-empty set of valid parameters, so any mapping is a typo."""
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "inputs_from_state maps 'city' to unknown parameter 'nonexistent'. Valid parameters are: set()."
+            ),
+        ):
+            Tool(
+                name="clock",
+                description="What time is it?",
+                parameters={"type": "object", "properties": {}},
+                function=lambda: {"time": "12:00"},
+                inputs_from_state={"city": "nonexistent"},
+            )
+
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""
         with pytest.raises(TypeError, match=re.escape("inputs_from_state values must be str, not dict")):

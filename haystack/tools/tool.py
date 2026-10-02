@@ -205,7 +205,7 @@ class Tool:
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )
-                if valid_inputs and param_name not in valid_inputs:
+                if param_name not in valid_inputs:
                     raise ValueError(
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
