@@ -14,7 +14,7 @@ Use this component to embed strings using various Hugging Face APIs.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`. |
+| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint, or a gRPC target when `use_grpc=True`. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`. |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers |
 | **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
@@ -75,7 +75,7 @@ text_embedder = HuggingFaceAPITextEmbedder(
 
 print(text_embedder.run("I love pizza!"))
 
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...]}
+# {'embedding': [-0.04244069382548332, 0.021790694445371628, ...]}
 ```
 
 #### Using Paid Inference Endpoints
@@ -113,11 +113,10 @@ While it powers the most recent versions of Serverless Inference API and Inferen
 For example, you can run a TEI container as follows:
 
 ```shell
-model=BAAI/bge-large-en-v1.5
-revision=refs/pr/5
+model=BAAI/bge-small-en-v1.5
 volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
 
-docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:1.2 --model-id $model --revision $revision
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3 --model-id "$model"
 ```
 
 For more information, refer to the [official TEI repository](https://github.com/huggingface/text-embeddings-inference).
@@ -137,7 +136,42 @@ text_embedder = HuggingFaceAPITextEmbedder(
 
 print(text_embedder.run("I love pizza!"))
 
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...]}
+# {'embedding': [-0.3894800543785095, 0.20042885839939117, ...]}
+```
+
+#### Using TEI with gRPC
+
+gRPC uses binary messages instead of JSON, which can reduce serialization overhead for frequent requests. Consider it for high-throughput deployments. It requires a TEI server running a gRPC-enabled image.
+
+Install the optional dependency:
+
+```shell
+pip install "huggingface-api-haystack[grpc]"
+```
+
+Start a TEI server with a gRPC-enabled image. This example uses a CPU server:
+
+```shell
+model=BAAI/bge-small-en-v1.5
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3-grpc --model-id "$model"
+```
+
+```python
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPITextEmbedder,
+)
+
+text_embedder = HuggingFaceAPITextEmbedder(
+    api_type="text_embeddings_inference",
+    api_params={"url": "localhost:8080"},
+    use_grpc=True,
+)
+
+print(text_embedder.run("I love pizza!"))
+
+# {'embedding': [-0.3903105, 0.20040007, ...]}
 ```
 
 ### In a pipeline

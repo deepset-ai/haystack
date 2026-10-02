@@ -1,0 +1,154 @@
+---
+title: "HuggingFaceTEISparseTextEmbedder"
+id: huggingfaceteisparsetextembedder
+slug: "/huggingfaceteisparsetextembedder"
+description: "Use this component to embed a query into a sparse vector using a Hugging Face Text Embeddings Inference (TEI) server."
+---
+
+# HuggingFaceTEISparseTextEmbedder
+
+Use this component to embed a query into a sparse vector using a Hugging Face Text Embeddings Inference (TEI) server.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query pipeline |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `sparse_embedding`: A [`SparseEmbedding`](/reference/data-classes-api#sparseembedding) object |
+| **API reference** | [Hugging Face API](/reference/integrations-huggingface-api#huggingfaceteisparsetextembedder) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/huggingface_api |
+| **Package name** | `huggingface-api-haystack` |
+
+</div>
+
+For embedding lists of documents, use the [`HuggingFaceTEISparseDocumentEmbedder`](huggingfaceteisparsedocumentembedder.mdx), which enriches the documents with their computed sparse embeddings.
+
+## Overview
+
+`HuggingFaceTEISparseTextEmbedder` transforms a string into a sparse vector using a sparse embedding model served by Hugging Face Text Embeddings Inference (TEI).
+
+When you perform sparse embedding retrieval, use this component first to transform your query into a sparse vector. Then, the sparse embedding Retriever will use the vector to search for similar or relevant documents.
+
+### Installation
+
+```shell
+pip install huggingface-api-haystack
+```
+
+### TEI server setup
+
+Run a TEI server with a sparse embedding model and SPLADE pooling. For example, start an HTTP server with [opensearch-project/opensearch-neural-sparse-encoding-v2-distill](https://huggingface.co/opensearch-project/opensearch-neural-sparse-encoding-v2-distill):
+
+```shell
+model=opensearch-project/opensearch-neural-sparse-encoding-v2-distill
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3 --model-id "$model" --pooling splade
+```
+
+The HTTP server must expose the `/embed_sparse` endpoint. See the [TEI SPLADE setup](https://github.com/huggingface/text-embeddings-inference#using-splade-pooling) for more details.
+
+Set `api_base_url` to your server's HTTP URL. If authentication is required, set `HF_API_TOKEN` or `HF_TOKEN`, or pass a `token` using [Secret management](../../concepts/secret-management.mdx). A local server without authentication does not require a token.
+
+### Parameters
+
+Use `prefix` and `suffix` to add model-specific instructions to the input. `timeout` and `headers` configure HTTP requests only.
+
+See the [API reference](/reference/integrations-huggingface-api#huggingfaceteisparsetextembedder) for all parameters.
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceTEISparseTextEmbedder,
+)
+
+embedder = HuggingFaceTEISparseTextEmbedder(api_base_url="http://localhost:8080")
+result = embedder.run(text="Who lives in Berlin?")
+print(result["sparse_embedding"])
+# >> SparseEmbedding(indices=[1755, 2141, 2160, ...], values=[0.062120, 0.214147, 0.183626, ...])
+```
+
+#### Using gRPC
+
+gRPC uses binary messages instead of JSON, which can reduce serialization overhead for frequent requests. Consider it for high-throughput deployments. It requires a TEI server running a gRPC-enabled image.
+
+Install the optional gRPC dependency:
+
+```shell
+pip install "huggingface-api-haystack[grpc]"
+```
+
+For gRPC, start a TEI server with the same model and SPLADE pooling:
+
+```shell
+model=opensearch-project/opensearch-neural-sparse-encoding-v2-distill
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3-grpc --model-id "$model" --pooling splade
+```
+
+```python
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceTEISparseTextEmbedder,
+)
+
+embedder = HuggingFaceTEISparseTextEmbedder(
+    api_base_url="localhost:8080", use_grpc=True
+)
+result = embedder.run(text="Who lives in Berlin?")
+print(result["sparse_embedding"])
+# >> SparseEmbedding(indices=[1755, 2141, 2160, ...], values=[0.062120, 0.214147, 0.183626, ...])
+```
+
+### In a pipeline
+
+This example indexes documents and retrieves them with [`QdrantSparseEmbeddingRetriever`](../retrievers/qdrantsparseembeddingretriever.mdx). Install the additional integration:
+
+```shell
+pip install qdrant-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceTEISparseDocumentEmbedder,
+    HuggingFaceTEISparseTextEmbedder,
+)
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(location=":memory:", use_sparse_embeddings=True)
+document_embedder = HuggingFaceTEISparseDocumentEmbedder(
+    api_base_url="http://localhost:8080"
+)
+documents = document_embedder.run(
+    documents=[
+        Document(content="My name is Wolfgang and I live in Berlin"),
+        Document(content="I saw a black horse running"),
+    ]
+)["documents"]
+document_store.write_documents(documents=documents)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="embedder",
+    instance=HuggingFaceTEISparseTextEmbedder(api_base_url="http://localhost:8080"),
+)
+query_pipeline.add_component(
+    name="retriever",
+    instance=QdrantSparseEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect(
+    sender="embedder.sparse_embedding", receiver="retriever.query_sparse_embedding"
+)
+
+result = query_pipeline.run(data={"embedder": {"text": "Who lives in Berlin?"}})
+print(result["retriever"]["documents"][0].content)
+# >> My name is Wolfgang and I live in Berlin
+```
