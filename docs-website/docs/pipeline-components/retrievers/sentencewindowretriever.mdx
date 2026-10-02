@@ -25,13 +25,24 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 
 ## Overview
 
-The "sentence window" is a retrieval technique that allows for the retrieval of the context around relevant sentences.
+Small chunks work well for retrieval because they match a query precisely, but they're often too short for an LLM to answer from. `SentenceWindowRetriever` solves this by fetching the chunks around each retrieved document from the same source document, so the LLM gets the surrounding context. Despite its name, it works with chunks of any size, not only sentences.
 
-During indexing, documents are broken into smaller chunks or sentences and indexed. During retrieval, the sentences most relevant to a given query, based on a certain similarity metric, are retrieved.
+Use it after another Retriever, such as `InMemoryEmbeddingRetriever` or `InMemoryBM25Retriever`. For each retrieved document, it fetches up to `window_size` chunks before and after it (3 by default). You can override `window_size` for a single call by passing it to `run()`.
 
-Once we have the relevant sentences, we can retrieve neighboring sentences to provide full context. The number of neighboring sentences to retrieve is defined by a fixed number of sentences before and after the relevant sentence.
+### Required metadata
 
-This component is meant to be used with other Retrievers, such as the `InMemoryEmbeddingRetriever`. These Retrievers find relevant sentences by comparing a query against indexed sentences using a similarity metric. Then, the `SentenceWindowRetriever` component retrieves neighboring sentences around the relevant ones by leveraging metadata stored in the `Document` object.
+The component uses these `meta` fields to find neighboring chunks:
+
+- `source_id`: identifies the original document a chunk comes from. To match on several fields, pass a list to `source_id_meta_field`.
+- `split_id`: the chunk's position within its source document. To use a different field, set `split_id_meta_field`.
+- `split_idx_start` (optional): the chunk's start position in the source text. If every chunk in a window has it, text that overlaps between chunks is removed when they're merged. Otherwise, the chunks are joined in `split_id` order without removing any overlap.
+
+[`DocumentSplitter`](../preprocessors/documentsplitter.mdx) and [`RecursiveDocumentSplitter`](../preprocessors/recursivesplitter.mdx) add all three fields. If a retrieved document is missing `source_id` or `split_id`, the component raises a `ValueError`. To pass such documents through unchanged instead, set `raise_on_missing_meta_fields=False`.
+
+### Outputs
+
+- `context_windows`: one string per retrieved document, in the same order, containing the merged text of its window.
+- `context_documents`: the documents in each window, grouped by retrieved document and ordered by `split_id` within each window. If two retrieved documents are close together, their windows overlap and the shared chunks appear in both.
 
 ## Usage
 
