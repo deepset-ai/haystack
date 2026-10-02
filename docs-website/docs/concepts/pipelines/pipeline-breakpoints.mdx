@@ -148,6 +148,8 @@ Resume from memory:
 result = pipeline.run(data={}, pipeline_snapshot=snapshot)
 ```
 
+The saved component visit counts stay unchanged after a resumed run, including when a downstream component fails. Resuming the same snapshot again therefore uses the original visit counts for `max_runs_per_component`.
+
 Resume from disk:
 
 ```python
