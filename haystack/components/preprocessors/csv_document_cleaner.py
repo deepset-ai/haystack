@@ -43,10 +43,17 @@ class CSVDocumentCleaner:
         :param remove_empty_rows: Whether to remove rows that are entirely empty.
         :param remove_empty_columns: Whether to remove columns that are entirely empty.
         :param keep_id: Whether to retain the original document ID in the output document.
+        :raises ValueError: If `ignore_rows` or `ignore_columns` is less than 0.
 
         Rows and columns ignored using these parameters are preserved in the final output, meaning
         they are not considered when removing empty rows and columns.
         """
+        if ignore_rows < 0:
+            raise ValueError("ignore_rows must be greater than or equal to 0.")
+
+        if ignore_columns < 0:
+            raise ValueError("ignore_columns must be greater than or equal to 0.")
+
         self.ignore_rows = ignore_rows
         self.ignore_columns = ignore_columns
         self.remove_empty_rows = remove_empty_rows

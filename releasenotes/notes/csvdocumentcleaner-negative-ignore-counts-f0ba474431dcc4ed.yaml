@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    ``CSVDocumentCleaner`` now raises a ``ValueError`` during initialization if ``ignore_rows`` or ``ignore_columns`` is less than 0. This validation is also enforced when loading serialized pipelines containing negative ignore counts. To migrate, update any configuration using negative counts to use ``0`` or omit the parameter.
+fixes:
+  - |
+    Fixed an issue in ``CSVDocumentCleaner`` where negative ``ignore_rows`` or ``ignore_columns`` values silently discarded data.

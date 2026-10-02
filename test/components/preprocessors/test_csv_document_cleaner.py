@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack import Document
+import pytest
+
+from haystack import Document, default_from_dict
 from haystack.components.preprocessors.csv_document_cleaner import CSVDocumentCleaner
 
 
@@ -218,3 +220,25 @@ def test_remove_empty_rows_and_columns_false() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",B,C\n,,4\n,,\n"
+
+
+@pytest.mark.parametrize("value", [-1, -5])
+def test_negative_ignore_rows_raises(value: int) -> None:
+    with pytest.raises(ValueError, match="ignore_rows must be greater than or equal to 0"):
+        CSVDocumentCleaner(ignore_rows=value)
+
+
+@pytest.mark.parametrize("value", [-1, -5])
+def test_negative_ignore_columns_raises(value: int) -> None:
+    with pytest.raises(ValueError, match="ignore_columns must be greater than or equal to 0"):
+        CSVDocumentCleaner(ignore_columns=value)
+
+
+@pytest.mark.parametrize("param", ["ignore_rows", "ignore_columns"])
+def test_negative_ignore_values_raise_from_dict(param: str) -> None:
+    data = {
+        "type": "haystack.components.preprocessors.csv_document_cleaner.CSVDocumentCleaner",
+        "init_parameters": {param: -1},
+    }
+    with pytest.raises(ValueError, match=f"{param} must be greater than or equal to 0"):
+        default_from_dict(CSVDocumentCleaner, data)
