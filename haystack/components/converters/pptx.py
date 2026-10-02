@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
 import io
 import os
+from io import StringIO
 from pathlib import Path
 from typing import Any, Literal
 
@@ -14,6 +16,8 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+    from pptx.table import Table
     from pptx.text.text import _Paragraph
 
 
@@ -81,15 +85,56 @@ class PPTXToDocument:
         for slide in pptx_presentation.slides:
             text_on_slide = []
             for shape in slide.shapes:
-                if shape.has_text_frame:
-                    paragraphs = []
-                    for paragraph in shape.text_frame.paragraphs:
-                        paragraphs.append(self._process_paragraph(paragraph))
-                    text_on_slide.append("\n".join(paragraphs))
-                elif hasattr(shape, "text"):
-                    text_on_slide.append(shape.text)
+                text_on_slide.extend(self._shape_text(shape))
             text_all_slides.append("\n".join(text_on_slide))
         return "\f".join(text_all_slides)
+
+    def _shape_text(self, shape: Any) -> list[str]:
+        """
+        Returns the text a shape carries, one entry per block of text.
+
+        A group is not a text frame and carries no text of its own, and neither does the
+        graphic frame that holds a table, so both have to be read through rather than
+        skipped.
+
+        :param shape: The PPTX shape to read.
+        :returns: The blocks of text found on this shape, in reading order.
+        """
+        if getattr(shape, "shape_type", None) == MSO_SHAPE_TYPE.GROUP:
+            grouped_text = []
+            for grouped_shape in shape.shapes:
+                grouped_text.extend(self._shape_text(grouped_shape))
+            return grouped_text
+        if shape.has_table:
+            return [self._table_to_csv(shape.table)]
+        if shape.has_text_frame:
+            return ["\n".join(self._process_paragraph(p) for p in shape.text_frame.paragraphs)]
+        if hasattr(shape, "text"):
+            return [shape.text]
+        return []
+
+    def _table_to_csv(self, table: "Table") -> str:
+        """
+        Converts a PPTX table to a CSV string.
+
+        CSV is the format `DOCXToDocument` writes tables in by default, so a table reads
+        the same whichever of the two produced the Document.
+
+        :param table: The PPTX table to convert.
+        :returns: A CSV string representation of the table.
+        """
+        csv_output = StringIO()
+        csv_writer = csv.writer(csv_output, quoting=csv.QUOTE_MINIMAL)
+        for row in table.rows:
+            csv_writer.writerow(
+                [
+                    "\n".join(self._process_paragraph(p) for p in cell.text_frame.paragraphs).strip()
+                    for cell in row.cells
+                ]
+            )
+        csv_string = csv_output.getvalue().strip()
+        csv_output.close()
+        return csv_string
 
     def _process_paragraph(self, paragraph: "_Paragraph") -> str:
         """
