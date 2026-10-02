@@ -25,9 +25,9 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 
 ## Overview
 
-Small chunks work well for retrieval because they match a query precisely, but they're often too short for an LLM to answer from. `SentenceWindowRetriever` solves this by fetching the chunks around each retrieved document from the same source document, so the LLM gets the surrounding context. Despite its name, it works with chunks of any size, not only sentences.
+Sentence-window retrieval is a technique for retrieving the context around relevant text. During indexing, documents are split into small chunks, such as sentences, and written to a Document Store. During retrieval, a Retriever such as `InMemoryEmbeddingRetriever` or `InMemoryBM25Retriever` finds the chunks most relevant to the query. `SentenceWindowRetriever` then fetches up to `window_size` chunks before and after each of them (3 by default) from the same source document.
 
-Use it after another Retriever, such as `InMemoryEmbeddingRetriever` or `InMemoryBM25Retriever`. For each retrieved document, it fetches up to `window_size` chunks before and after it (3 by default). You can override `window_size` for a single call by passing it to `run()`.
+This combines the strengths of both chunk sizes: small chunks match a query precisely, and the surrounding window gives the LLM enough context to answer. Despite its name, the component works with chunks of any size, not only sentences. You can override `window_size` for a single call by passing it to `run()`.
 
 ### Required metadata
 
