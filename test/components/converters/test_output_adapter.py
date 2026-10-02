@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Literal
 
 import pytest
 from jinja2.nativetypes import NativeEnvironment
@@ -113,6 +113,15 @@ class TestOutputAdapter:
         deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
         assert adapter.template == deserialized_adapter.template
         assert adapter.output_type == deserialized_adapter.output_type
+
+    @pytest.mark.parametrize("output_type", [tuple[Literal["["], int], Literal["]|"]])
+    def test_sede_with_literal_delimiters_in_output_type(self, output_type):
+        adapter = OutputAdapter(template="{{ value }}", output_type=output_type)
+
+        deserialized_adapter = OutputAdapter.from_dict(adapter.to_dict())
+
+        assert deserialized_adapter.template == adapter.template
+        assert deserialized_adapter.output_type == output_type
 
     # OutputAdapter can be serialized to a dictionary and deserialized along with custom filters
     def test_sede_with_custom_filters(self):
