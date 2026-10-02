@@ -3,8 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import json
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
+
+import jsonschema
+from pydantic import BaseModel, ValidationError
 
 from haystack import component, logging, tracing
 from haystack.components.agents.state.state import (
@@ -62,6 +67,7 @@ from haystack.tools import (
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +189,68 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     return None
 
 
+def _extract_json_text(text: str) -> str:
+    """Extract JSON string from text, stripping markdown code blocks if present."""
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if match:
+        return match.group(1).strip()
+    return text.strip()
+
+
+def _validate_against_schema(
+    raw_text: str, response_schema: type[BaseModel] | dict[str, Any]
+) -> tuple[Any, str | None]:
+    """
+    Validate raw text against a response schema (Pydantic model or JSON Schema dict).
+
+    :returns: A tuple of (parsed_output, error_message). On success, error_message is None.
+    """
+    cleaned_text = _extract_json_text(raw_text)
+    try:
+        data = json.loads(cleaned_text)
+    except (json.JSONDecodeError, TypeError) as e:
+        return None, f"Invalid JSON format: {e}"
+
+    if isinstance(response_schema, type) and issubclass(response_schema, BaseModel):
+        try:
+            if hasattr(response_schema, "model_validate"):
+                parsed = response_schema.model_validate(data)
+            else:
+                parsed = response_schema.parse_obj(data)
+            return parsed, None
+        except ValidationError as e:
+            return None, f"JSON does not conform to schema: {e}"
+    elif isinstance(response_schema, dict):
+        try:
+            jsonschema.validate(instance=data, schema=response_schema)
+            return data, None
+        except jsonschema.ValidationError as e:
+            return None, f"JSON does not conform to schema: {e.message}"
+        except jsonschema.exceptions.SchemaError as e:
+            return None, f"Invalid JSON schema: {e.message}"
+    return None, f"Unsupported response_schema type: {type(response_schema)}"
+
+
+def _schema_correction_prompt(error_msg: str, response_schema: type[BaseModel] | dict[str, Any]) -> str:
+    """Construct a user prompt instructing the model to fix its invalid output."""
+    if isinstance(response_schema, type) and issubclass(response_schema, BaseModel):
+        if hasattr(response_schema, "model_json_schema"):
+            schema_str = json.dumps(response_schema.model_json_schema(), indent=2)
+        else:
+            schema_str = json.dumps(response_schema.schema(), indent=2)
+    elif isinstance(response_schema, dict):
+        schema_str = json.dumps(response_schema, indent=2)
+    else:
+        schema_str = str(response_schema)
+
+    return (
+        f"Your previous response did not match the expected schema:\n"
+        f"{error_msg}\n\n"
+        f"Please provide only a valid JSON response adhering to the following schema:\n"
+        f"{schema_str}"
+    )
+
+
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     """
     Return the pending tool-call message after `before_tool` hooks have run.
@@ -219,6 +287,7 @@ class _ExecutionContext:
     chat_generator_inputs: dict
     tool_execution_inputs: dict
     counter: int = 0
+    schema_retry_count: int = 0
 
 
 @component
@@ -377,7 +446,7 @@ class Agent:
 
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0915
         self,
         *,
         chat_generator: ChatGenerator,
@@ -393,6 +462,8 @@ class Agent:
         tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
         hooks: dict[HookPoint, list[Hook]] | None = None,
+        response_schema: type[BaseModel] | dict[str, Any] | None = None,
+        max_schema_retries: int = 3,
     ) -> None:
         """
         Initialize the agent component.
@@ -451,6 +522,11 @@ class Agent:
               reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
               the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has
               no effect.
+        :param response_schema: Optional Pydantic BaseModel subclass or JSON schema dictionary to validate
+            and parse the Agent's final text response against. When set, the validated output is made available
+            under the `"structured_output"` key in the run output and state.
+        :param max_schema_retries: Maximum number of correction attempts to make if the model's text output
+            fails schema validation. Defaults to 3.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
@@ -469,11 +545,29 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
+        if response_schema is not None:
+            is_pydantic = isinstance(response_schema, type) and issubclass(response_schema, BaseModel)
+            is_json_schema = isinstance(response_schema, dict)
+            if not (is_pydantic or is_json_schema):
+                raise TypeError(
+                    f"response_schema must be a Pydantic BaseModel subclass or a JSON schema dict, "
+                    f"got {type(response_schema)}."
+                )
+            if is_json_schema:
+                try:
+                    jsonschema.Draft202012Validator.check_schema(response_schema)
+                except jsonschema.exceptions.SchemaError as e:
+                    raise ValueError(f"Invalid JSON schema provided in response_schema: {e.message}") from e
+        if max_schema_retries < 0:
+            raise ValueError("max_schema_retries must be greater than or equal to 0.")
+
         if exit_conditions is None:
             exit_conditions = ["text"]
 
         if state_schema is not None:
             reserved_keys = _RUN_METADATA_STATE_KEYS.keys() | _INTERNAL_STATE_KEYS.keys()
+            if response_schema is not None:
+                reserved_keys = reserved_keys | {"structured_output"}
             reserved_used = sorted(set(state_schema) & reserved_keys)
             if reserved_used:
                 raise ValueError(
@@ -503,6 +597,8 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
+        self.response_schema = response_schema
+        self.max_schema_retries = max_schema_retries
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -512,6 +608,13 @@ class Agent:
             self.resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         for key, config in {**_RUN_METADATA_STATE_KEYS, **_INTERNAL_STATE_KEYS}.items():
             self.resolved_state_schema[key] = dict(config)
+        if self.response_schema is not None:
+            out_type = (
+                self.response_schema | None
+                if isinstance(self.response_schema, type) and issubclass(self.response_schema, BaseModel)
+                else dict[str, Any] | None
+            )
+            self.resolved_state_schema["structured_output"] = {"type": out_type, "handler": replace_values}
 
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
@@ -522,7 +625,11 @@ class Agent:
                 continue
             output_types[param] = config["type"]
             # Run-metadata keys are populated by the Agent itself and exposed as outputs only, not inputs.
-            if param not in self._run_method_params and param not in _RUN_METADATA_STATE_KEYS:
+            if (
+                param not in self._run_method_params
+                and param not in _RUN_METADATA_STATE_KEYS
+                and param != "structured_output"
+            ):
                 component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
@@ -639,6 +746,13 @@ class Agent:
 
         :returns: Dictionary with serialized data.
         """
+        serialized_response_schema: str | dict[str, Any] | None = None
+        if self.response_schema is not None:
+            if isinstance(self.response_schema, type) and issubclass(self.response_schema, BaseModel):
+                serialized_response_schema = serialize_type(self.response_schema)
+            elif isinstance(self.response_schema, dict):
+                serialized_response_schema = self.response_schema
+
         return default_to_dict(
             self,
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
@@ -654,6 +768,8 @@ class Agent:
             tool_concurrency_limit=self.tool_concurrency_limit,
             tool_streaming_callback_passthrough=self.tool_streaming_callback_passthrough,
             hooks=_serialize_hooks_dictionary(self.hooks) if self.hooks else None,
+            response_schema=serialized_response_schema,
+            max_schema_retries=self.max_schema_retries,
         )
 
     @classmethod
@@ -678,6 +794,9 @@ class Agent:
 
         if init_params.get("hooks") is not None:
             init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
+
+        if (resp_schema := init_params.get("response_schema")) is not None and isinstance(resp_schema, str):
+            init_params["response_schema"] = deserialize_type(resp_schema)
 
         return default_from_dict(cls, data)
 
@@ -772,6 +891,8 @@ class Agent:
         state.set("continue_run", False)
         state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
+        if self.response_schema is not None:
+            state.set("structured_output", None)
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
@@ -871,6 +992,9 @@ class Agent:
               the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
               meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
+            - "structured_output": The parsed and validated structured object (Pydantic model instance
+              or dict) if `response_schema` was configured and validation succeeded, or None if validation
+              failed or retries were exhausted.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         self.warm_up()
@@ -958,6 +1082,9 @@ class Agent:
               the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
               meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
+            - "structured_output": The parsed and validated structured object (Pydantic model instance
+              or dict) if `response_schema` was configured and validation succeeded, or None if validation
+              failed or retries were exhausted.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         await self.warm_up_async()
@@ -1034,7 +1161,14 @@ class Agent:
             if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
+                exit_reason = model_exit_reason or _EXIT_REASON_TEXT
+                if (
+                    self.response_schema is not None
+                    and model_exit_reason == _EXIT_REASON_TEXT
+                    and self._handle_response_schema(exe_context=exe_context, llm_messages=llm_messages)
+                ):
+                    return True
+                exe_context.state.set("exit_reason", exit_reason)
                 return self._continue_after_exit_hooks(exe_context=exe_context)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
@@ -1104,7 +1238,14 @@ class Agent:
             if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
+                exit_reason = model_exit_reason or _EXIT_REASON_TEXT
+                if (
+                    self.response_schema is not None
+                    and model_exit_reason == _EXIT_REASON_TEXT
+                    and self._handle_response_schema(exe_context=exe_context, llm_messages=llm_messages)
+                ):
+                    return True
+                exe_context.state.set("exit_reason", exit_reason)
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
@@ -1134,6 +1275,46 @@ class Agent:
                 exe_context.state.set("exit_reason", exit_condition_tool)
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
             return True
+
+    def _handle_response_schema(self, exe_context: _ExecutionContext, llm_messages: list[ChatMessage]) -> bool:
+        """
+        Validate the assistant reply against response_schema.
+
+        If validation succeeds, writes structured_output to state and returns False (no retry).
+        If validation fails and retries are available, appends a correction message to state,
+        increments retry count, and returns True (retry).
+        If validation fails and retries are exhausted, sets structured_output to None, logs a
+        warning, and returns False (no retry).
+        """
+        if self.response_schema is None or not llm_messages:
+            return False
+
+        last_msg = llm_messages[-1]
+        raw_text = last_msg.text or ""
+        parsed, error = _validate_against_schema(raw_text, self.response_schema)
+        if error is None:
+            exe_context.state.set("structured_output", parsed)
+            return False
+
+        if exe_context.schema_retry_count < self.max_schema_retries and exe_context.counter < self.max_agent_steps:
+            exe_context.schema_retry_count += 1
+            logger.info(
+                "Model output failed response_schema validation ({count}/{max_retries}). "
+                "Prompting for correction. Error: {error}",
+                count=exe_context.schema_retry_count,
+                max_retries=self.max_schema_retries,
+                error=error,
+            )
+            correction_text = _schema_correction_prompt(error, self.response_schema)
+            correction_msg = ChatMessage.from_user(correction_text)
+            exe_context.state.set("messages", [correction_msg], handler_override=merge_lists)
+            return True
+
+        logger.warning(
+            "Model output failed response_schema validation and retry limit was reached: {error}", error=error
+        )
+        exe_context.state.set("structured_output", None)
+        return False
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
         """

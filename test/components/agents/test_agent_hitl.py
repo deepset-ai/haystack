@@ -153,6 +153,8 @@ class TestAgent:
                         }
                     ]
                 },
+                "response_schema": None,
+                "max_schema_retries": 3,
             },
         }
 
