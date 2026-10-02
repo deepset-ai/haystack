@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `CSVToDocument` in `row` conversion mode raising `_csv.Error` on CSV input whose
+    records are separated by carriage returns (`\r`). The reader now handles CR, LF and CRLF
+    line endings and keeps a quoted field's own newlines intact.
