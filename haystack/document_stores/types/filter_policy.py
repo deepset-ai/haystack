@@ -66,9 +66,12 @@ def combine_two_logical_filters(
     """
     Combine two logical filters, they must have the same operator.
 
-    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are the same, the conditions
-    of both filters are combined. Otherwise, the `init_logical_filter` is ignored and `
-    runtime_logical_filter` is returned.
+    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are the same, both filters
+    are combined so that each one still restricts the result. For `"AND"` that is a single `"AND"` holding the
+    conditions of both. For any other operator the two filters are nested under an `"AND"` instead, because
+    concatenating their conditions would not preserve them: `"OR"` would union the two filters and `"NOT"`
+    would negate their conjunction, either way potentially producing a broader result than applying both filters.
+    Otherwise, the `init_logical_filter` is ignored and `runtime_logical_filter` is returned.
 
         __Example__:
 
@@ -87,9 +90,7 @@ def combine_two_logical_filters(
                 {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
             ]
         }
-        new_filters = combine_two_logical_filters(
-            init_logical_filter, runtime_logical_filter, "AND"
-        )
+        new_filters = combine_two_logical_filters(init_logical_filter, runtime_logical_filter)
         # Output:
         {
             "operator": "AND",
@@ -101,12 +102,34 @@ def combine_two_logical_filters(
             ]
         }
         ```
+
+        With `"OR"` on both sides the filters are nested instead of concatenated:
+
+        ```python
+        init_logical_filter = {
+            "operator": "OR",
+            "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}],
+        }
+        runtime_logical_filter = {
+            "operator": "OR",
+            "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
+        }
+        new_filters = combine_two_logical_filters(init_logical_filter, runtime_logical_filter)
+        # Output:
+        {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
+        ```
     """
     if init_logical_filter["operator"] == runtime_logical_filter["operator"]:
-        return {
-            "operator": str(init_logical_filter["operator"]),
-            "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
-        }
+        if init_logical_filter["operator"] == "AND":
+            return {
+                "operator": "AND",
+                "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
+            }
+        # For OR and NOT, concatenating conditions is not the same as applying both
+        # filters: OR would union them and NOT would negate their conjunction, either
+        # way potentially producing a broader result than applying both filters. Nest
+        # them under AND so both restrictions still hold.
+        return {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
 
     logger.warning(
         "The provided logical operators, {parsed_operator} and {operator}, do not match so the parsed logical "
