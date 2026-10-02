@@ -246,6 +246,7 @@ export default {
           items: [
             'pipeline-components/classifiers/documentlanguageclassifier',
             'pipeline-components/classifiers/transformerszeroshotdocumentclassifier',
+            'pipeline-components/classifiers/typesafedocumentclassifier',
           ],
         },
         {
@@ -685,6 +686,7 @@ export default {
             'pipeline-components/routers/textlanguagerouter',
             'pipeline-components/routers/transformerstextrouter',
             'pipeline-components/routers/transformerszeroshottextrouter',
+            'pipeline-components/routers/typesafetextrouter',
           ],
         },
         {
