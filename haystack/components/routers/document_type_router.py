@@ -134,9 +134,15 @@ class DocumentTypeRouter:
             mime_type = doc.meta.get(self.mime_type_meta_field) if self.mime_type_meta_field else None
             file_path = doc.meta.get(self.file_path_meta_field) if self.file_path_meta_field else None
 
+            if not isinstance(mime_type, str):
+                mime_type = None
+
             if mime_type is None and file_path:
                 # if mime_type is not provided, try to guess it from the file path
-                mime_type = _guess_mime_type(Path(file_path))
+                try:
+                    mime_type = _guess_mime_type(Path(file_path))
+                except (TypeError, ValueError):
+                    mime_type = None
 
             matched = False
             if mime_type:
