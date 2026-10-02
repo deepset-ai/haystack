@@ -40,8 +40,9 @@ This descending order of sizes builds the hierarchy.
 
 These additional parameters can be set when the component is initialized:
 
-- `split_by` can be `"word"` (default), `"sentence"`, `"passage"`, `"page"`.
-- `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks, 0 being the default.
+- `split_by` can be `"word"` (default), `"sentence"`, `"passage"`, `"page"`, or `"token"`. With `"token"`, block sizes are counted in LLM tokens using tiktoken, so every block fits a known context budget. This requires `pip install tiktoken`.
+- `split_overlap` is an integer indicating the number of overlapping words, sentences, passages, or tokens between chunks, 0 being the default.
+- `tokenizer_encoding` is the tiktoken encoding used when `split_by="token"`. It defaults to `"o200k_base"`, used by current OpenAI models. Set it to match your model, for example `"cl100k_base"` for OpenAI's `text-embedding-3` embedding models.
 
 ## Usage
 
