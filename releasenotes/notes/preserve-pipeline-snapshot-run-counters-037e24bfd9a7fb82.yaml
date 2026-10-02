@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``Pipeline.run()`` no longer changes the visit counts stored in a
+    ``PipelineSnapshot`` when resuming it. Replaying the same snapshot or
+    retrying after a downstream failure now preserves the saved state and
+    does not incorrectly exhaust ``max_runs_per_component``.
