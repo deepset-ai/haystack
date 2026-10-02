@@ -165,6 +165,54 @@ class TestContentParts:
         assert result.result[2].base64_data == base64_pdf_string
         assert result.result[2].filename == "guide.pdf"
 
+    def test_tool_call_result_to_trace_dict(self, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
+        image = ImageContent(base64_image=base64_image_string)
+        file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        text_part = TextContent(text="Summary")
+        tcr = ToolCallResult(result=[text_part, image, file_part], origin=tc, error=False)
+
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["origin"] == tc.to_dict()
+        assert trace_dict["error"] is False
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert trace_dict["result"][0] == {"text": "Summary"}
+        assert trace_dict["result"][1]["image"]["base64_image"] == expected_img
+        assert trace_dict["result"][2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
+
+    def test_tool_call_result_to_trace_dict_tuple_result(self, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
+        image = ImageContent(base64_image=base64_image_string)
+        file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        text_part = TextContent(text="Summary")
+        tcr = ToolCallResult(result=(text_part, image, file_part), origin=tc, error=False)
+
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["origin"] == tc.to_dict()
+        assert trace_dict["error"] is False
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert trace_dict["result"][0] == {"text": "Summary"}
+        assert trace_dict["result"][1]["image"]["base64_image"] == expected_img
+        assert trace_dict["result"][2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
+
+    def test_tool_call_result_to_trace_dict_string_result(self):
+        tc = ToolCall(id="call_1", tool_name="calc", arguments={})
+        tcr = ToolCallResult(result="42", origin=tc, error=False)
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["result"] == "42"
+
     def test_text_content_init(self):
         tc = TextContent(text="Hello")
         assert tc.text == "Hello"
@@ -756,6 +804,28 @@ class TestChatMessageSerde:
             "name": None,
             "meta": {},
         }
+
+    def test_to_trace_dict_with_tool_call_result(self, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={"item": "report"})
+        image = ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})
+        file_part = FileContent(
+            base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf", extra={"foo": "bar"}
+        )
+        text_part = TextContent(text="Report generated successfully.")
+        message = ChatMessage.from_tool(tool_result=[text_part, image, file_part], origin=tc)
+        trace_dict = message._to_trace_dict()
+
+        tool_results = trace_dict["content"][0]["tool_call_result"]["result"]
+        assert tool_results[0] == {"text": "Report generated successfully."}
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert tool_results[1]["image"]["base64_image"] == expected_img
+        assert tool_results[2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
 
 
 class MessageEnvelope(BaseModel):
