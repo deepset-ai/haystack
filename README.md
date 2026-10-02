@@ -141,7 +141,7 @@
 | haystack/core/component/types.py                                          |       42 |        3 |     93% |     88-90 |
 | haystack/core/errors.py                                                   |       72 |       10 |     86% |60-67, 127, 142-144, 151-153, 166 |
 | haystack/core/pipeline/\_\_init\_\_.py                                    |        2 |        0 |    100% |           |
-| haystack/core/pipeline/base.py                                            |      639 |       51 |     92% |270-271, 275, 490, 710, 747-757, 946, 1014, 1597, 1764, 1768, 1778-1784, 1801-1863 |
+| haystack/core/pipeline/base.py                                            |      639 |       51 |     92% |270-271, 275, 490, 710, 747-757, 946, 1014, 1597, 1764, 1768, 1778-1784, 1799-1861 |
 | haystack/core/pipeline/breakpoint.py                                      |      109 |       11 |     90% |52, 71, 90, 98, 125-130, 197 |
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
