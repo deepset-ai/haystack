@@ -58,6 +58,8 @@ The counter loads its encoding on the first call to `count()`. To load it during
 counter.warm_up()
 ```
 
+Literal special-token strings such as `<|endoftext|>` in message or tool content are tokenized as ordinary text. They are counted instead of raising an error.
+
 To include the context consumed by tool schemas, pass the tools to `count()`:
 
 ```python
