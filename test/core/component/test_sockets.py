@@ -51,6 +51,38 @@ class TestSockets:
         with pytest.raises(AttributeError):
             io.input_3
 
+    def test_getattribute_resolves_from_sockets_dict(self):
+        """`__getattribute__` must resolve sockets itself, not rely on the `__dict__` copy.
+
+        It looked up `_sockets`, which no instance has, so the lookup always raised
+        AttributeError and fell through. Attribute access only worked because
+        `__init__` copies the sockets into `__dict__`. Removing that copy proves
+        which path is doing the work.
+        """
+        comp = component_class("SomeComponent", input_types={"input_1": int})()
+        io = Sockets(
+            component=comp,
+            sockets_dict=comp.__haystack_input__._sockets_dict,  # type: ignore[attr-defined]
+            sockets_io_type=InputSocket,
+        )
+        del io.__dict__["input_1"]
+
+        assert io.input_1 == comp.__haystack_input__._sockets_dict["input_1"]  # type: ignore[attr-defined]
+
+    def test_getattribute_does_not_shadow_methods_or_private_attributes(self):
+        """Resolving from `_sockets_dict` must not capture names the class itself defines."""
+        comp = component_class("SomeComponent", input_types={"input_1": int})()
+        io = Sockets(
+            component=comp,
+            sockets_dict=comp.__haystack_input__._sockets_dict,  # type: ignore[attr-defined]
+            sockets_io_type=InputSocket,
+        )
+
+        assert callable(io.get)
+        assert io._sockets_io_type is InputSocket
+        assert io._component is comp
+        assert isinstance(io._sockets_dict, dict)
+
     def test_repr(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
         io = Sockets(

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `Sockets.__getattribute__` looking up a `_sockets` attribute that no
+    instance has. The lookup raised `AttributeError` on every attribute access
+    and fell through to the default, so the intended fast path never ran and
+    socket access only worked through the copy `__init__` places in `__dict__`.
+    It now reads `_sockets_dict`, which removes an exception from every socket
+    attribute access.
