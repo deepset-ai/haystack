@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_1fc24f5e5cfb4253_mock_document_embedder_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-02 10:49 +0000
+            created at 2026-10-02 10:59 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -111,7 +111,7 @@
     <p class="pln"><span class="n"><a id="t29" href="#t29">29</a></span><span class="t"><span class="str">    print(text_embedder.run(text_to_embed))</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t"><span class="str">    # {&#x27;embedding&#x27;: [0.017020374536514282, -0.023255806416273117, ...],</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t"><span class="str">    # &#x27;meta&#x27;: {&#x27;model&#x27;: &#x27;text-embedding-ada-002-v2&#x27;,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t"><span class="str">    # &#x27;meta&#x27;: {&#x27;model&#x27;: &#x27;text-embedding-3-small&#x27;,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="str">    #          &#x27;usage&#x27;: {&#x27;prompt_tokens&#x27;: 4, &#x27;total_tokens&#x27;: 4}}}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t"><span class="str">    ```</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t"><span class="str">    &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
@@ -120,7 +120,7 @@
     <p class="run run2"><span class="n"><a id="t38" href="#t38">38</a></span><span class="t">        <span class="nam">self</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t39" href="#t39">39</a></span><span class="t">        <span class="nam">azure_endpoint</span><span class="op">:</span> <span class="nam">str</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="key">None</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t40" href="#t40">40</a></span><span class="t">        <span class="nam">api_version</span><span class="op">:</span> <span class="nam">str</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="str">&quot;2023-05-15&quot;</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t41" href="#t41">41</a></span><span class="t">        <span class="nam">azure_deployment</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">&quot;text-embedding-ada-002&quot;</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t41" href="#t41">41</a></span><span class="t">        <span class="nam">azure_deployment</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">&quot;text-embedding-3-small&quot;</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t42" href="#t42">42</a></span><span class="t">        <span class="nam">dimensions</span><span class="op">:</span> <span class="nam">int</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="key">None</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t43" href="#t43">43</a></span><span class="t">        <span class="nam">api_key</span><span class="op">:</span> <span class="nam">Secret</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="nam">Secret</span><span class="op">.</span><span class="nam">from_env_var</span><span class="op">(</span><span class="str">&quot;AZURE_OPENAI_API_KEY&quot;</span><span class="op">,</span> <span class="nam">strict</span><span class="op">=</span><span class="key">False</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t44" href="#t44">44</a></span><span class="t">        <span class="nam">azure_ad_token</span><span class="op">:</span> <span class="nam">Secret</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="nam">Secret</span><span class="op">.</span><span class="nam">from_env_var</span><span class="op">(</span><span class="str">&quot;AZURE_OPENAI_AD_TOKEN&quot;</span><span class="op">,</span> <span class="nam">strict</span><span class="op">=</span><span class="key">False</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
@@ -142,7 +142,7 @@
     <p class="pln"><span class="n"><a id="t60" href="#t60">60</a></span><span class="t"><span class="str">        :param api_version:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t61" href="#t61">61</a></span><span class="t"><span class="str">            The version of the API to use.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t62" href="#t62">62</a></span><span class="t"><span class="str">        :param azure_deployment:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t63" href="#t63">63</a></span><span class="t"><span class="str">            The name of the model deployed on Azure. The default model is text-embedding-ada-002.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t63" href="#t63">63</a></span><span class="t"><span class="str">            The name of the model deployed on Azure. The default is `text-embedding-3-small`.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t64" href="#t64">64</a></span><span class="t"><span class="str">        :param dimensions:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t65" href="#t65">65</a></span><span class="t"><span class="str">            The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t66" href="#t66">66</a></span><span class="t"><span class="str">            and later models.</span>&nbsp;</span><span class="r"></span></p>
@@ -323,7 +323,7 @@
             <a class="nav" href="z_1fc24f5e5cfb4253_mock_document_embedder_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-02 10:49 +0000
+            created at 2026-10-02 10:59 +0000
         </p>
     </div>
 </footer>
