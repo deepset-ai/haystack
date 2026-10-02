@@ -8,18 +8,12 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from haystack.components.agents import Agent
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import PipelineConnectError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
-from haystack.dataclasses import ChatMessage, Document
-
-
-@component
-class MockChatGenerator:
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant("Hello, world!")]}
+from haystack.dataclasses import ChatMessage, ChatRole, Document
 
 
 @component
@@ -400,16 +394,16 @@ class TestPipeline:
         p = Pipeline()
         p.add_component("message_producer", MessageProducer())
         p.add_component("message_producer2", MessageProducer())
-        p.add_component("agent", Agent(chat_generator=MockChatGenerator()))
+        p.add_component("agent", Agent(chat_generator=MockChatGenerator("Hello, world!")))
         p.connect("message_producer", "agent.messages")
         p.connect("message_producer2", "agent.messages")
 
         result = p.run({})
-        assert result["agent"]["messages"] == [
-            ChatMessage.from_user("Hello, world!"),
-            ChatMessage.from_user("Hello, world!"),
-            ChatMessage.from_assistant("Hello, world!"),
-        ]
+        messages = result["agent"]["messages"]
+
+        assert messages[:2] == [ChatMessage.from_user("Hello, world!"), ChatMessage.from_user("Hello, world!")]
+        assert messages[2].role == ChatRole.ASSISTANT
+        assert messages[2].text == "Hello, world!"
 
     def test_run_auto_variadic_str_to_list_str(self):
         """Two str producers connected to a list[str] input are auto-joined and flattened at runtime."""
@@ -498,3 +492,62 @@ class TestPipeline:
         p.connect("list_producer.messages", "receiver.messages")
         result = p.run({})
         assert [m.text for m in result["receiver"]["result"]] == ["hello", "world", "!"]
+
+    def test_connect_rejects_list_of_documents_to_single_document(self):
+        @component
+        class DocsProducer:
+            @component.output_types(docs=list[Document])
+            def run(self) -> dict[str, list[Document]]:
+                return {"docs": [Document(content="a"), Document(content="b"), Document(content="c")]}
+
+        @component
+        class DocConsumer:
+            @component.output_types(out=Document)
+            def run(self, doc: Document) -> dict[str, Document]:
+                return {"out": doc}
+
+        p = Pipeline()
+        p.add_component("producer", DocsProducer())
+        p.add_component("consumer", DocConsumer())
+        with pytest.raises(PipelineConnectError):
+            p.connect("producer.docs", "consumer.doc")
+
+    def test_run_raises_when_multi_element_list_is_unwrapped_at_runtime(self):
+        @component
+        class MultiStrProducer:
+            @component.output_types(texts=list[str])
+            def run(self) -> dict[str, list[str]]:
+                return {"texts": ["first", "second", "third"]}
+
+        @component
+        class SingleStrConsumer:
+            @component.output_types(out=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"out": text}
+
+        p = Pipeline()
+        p.add_component("producer", MultiStrProducer())
+        p.add_component("consumer", SingleStrConsumer())
+        p.connect("producer.texts", "consumer.text")
+
+        with pytest.raises(PipelineRuntimeError, match="Cannot unwrap a list of 3 items"):
+            p.run({})
+
+    def test_run_single_element_list_unwrap_still_works(self):
+        @component
+        class SingleStrProducer:
+            @component.output_types(texts=list[str])
+            def run(self) -> dict[str, list[str]]:
+                return {"texts": ["only-one"]}
+
+        @component
+        class SingleStrConsumer:
+            @component.output_types(out=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"out": text}
+
+        p = Pipeline()
+        p.add_component("producer", SingleStrProducer())
+        p.add_component("consumer", SingleStrConsumer())
+        p.connect("producer.texts", "consumer.text")
+        assert p.run({}) == {"consumer": {"out": "only-one"}}

@@ -8,7 +8,10 @@ from typing import Any
 import httpx
 from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-logger = logging.getLogger(__file__)
+# NOTE: this uses the standard library logger (not `haystack.logging`) on purpose: tenacity's `before_log`/`after_log`
+# call the logger with positional arguments, which Haystack's keyword-only patched logger would reject. We still name
+# it with `__name__` so it lives under the `haystack` namespace and is picked up by `configure_logging`.
+logger = logging.getLogger(__name__)
 
 
 def request_with_retry(
@@ -58,6 +61,9 @@ def request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop `timeout` once, before the retry loop.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
@@ -67,7 +73,6 @@ def request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
         with httpx.Client() as client:
             res = client.request(**kwargs, timeout=timeout)
 
@@ -168,6 +173,9 @@ async def async_request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop `timeout` once, before the retry loop.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
@@ -177,7 +185,6 @@ async def async_request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     async def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
         async with httpx.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)
 

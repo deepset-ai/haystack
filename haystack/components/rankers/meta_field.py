@@ -72,7 +72,7 @@ class MetaFieldRanker:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field.
+            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
             Possible values are:
                 - 'drop' will drop the documents entirely.
                 - 'top' will place the documents at the top of the metadata-sorted list
@@ -195,14 +195,14 @@ class MetaFieldRanker:
         :param ranking_mode:
             (optional) The mode used to combine the Retriever's and Ranker's scores.
             Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-            Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+            Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
             If not provided, the ranking_mode provided at initialization time is used.
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
             If not provided, the sort_order provided at initialization time is used.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field.
+            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
             Possible values are:
             - 'drop' will drop the documents entirely.
             - 'top' will place the documents at the top of the metadata-sorted list
@@ -234,7 +234,7 @@ class MetaFieldRanker:
         if not documents:
             return {"documents": []}
 
-        top_k = top_k or self.top_k
+        top_k = self.top_k if top_k is None else top_k
         weight = weight if weight is not None else self.weight
         ranking_mode = ranking_mode or self.ranking_mode
         sort_order = sort_order or self.sort_order
@@ -254,19 +254,21 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": deduplicated_documents[:top_k]}
 
-        docs_with_meta_field = [doc for doc in deduplicated_documents if self.meta_field in doc.meta]
-        docs_missing_meta_field = [doc for doc in deduplicated_documents if self.meta_field not in doc.meta]
+        # A None value can't be sorted against real values, so it is handled like a missing field
+        docs_with_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
+        docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is None]
 
-        # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided "
                 "Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
-                "Returning the <top_k> of the original Documents since there are no values to rank.",
+                "Applying the configured <missing_meta> policy instead of ranking.",
                 meta_field=self.meta_field,
                 document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
+            if missing_meta == "drop":
+                return {"documents": []}
             return {"documents": deduplicated_documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
@@ -335,8 +337,7 @@ class MetaFieldRanker:
         if meta_value_type is None:
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
-        unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
-        if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
+        if not all(isinstance(doc.meta[self.meta_field], str) for doc in docs_with_meta_field):
             logger.warning(
                 "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
                 "provided Documents with IDs {document_ids} are strings.\n"

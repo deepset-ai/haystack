@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Fixed a path-traversal issue in ``DocumentToImageContent`` and ``LLMDocumentContentExtractor``.
+    When ``root_path`` is set, a ``file_path`` in document metadata that escapes the root (via
+    ``../`` or an absolute path) now raises a ``ValueError`` before any file is read, preventing
+    attacker-controlled metadata from reading arbitrary files on the host.

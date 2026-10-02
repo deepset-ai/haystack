@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed schema-based serialization of lists, tuples and sets holding mixed types. Previously the
+    schema was derived from the first element only, so deserializing such a value raised an
+    ``AttributeError`` or silently returned mis-typed data (for example an Agent ``State`` field or a
+    pipeline breakpoint input holding ``[Document(...), "text", 3]``). Mixed-type arrays now record one
+    schema per position using the JSON Schema ``prefixItems`` keyword and round-trip correctly.
+    Homogeneous arrays keep the exact same output as before, so existing snapshots still load.

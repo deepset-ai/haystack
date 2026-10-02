@@ -787,11 +787,9 @@ Example using MCPToolset in a Haystack Pipeline:
 # 1. pip install uvx mcp-server-time  # Install required MCP server and tools
 # 2. export OPENAI_API_KEY="your-api-key"  # Set up your OpenAI API key
 
-import os
 from haystack import Pipeline
-from haystack.components.converters import OutputAdapter
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools import ToolInvoker
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
@@ -805,30 +803,18 @@ mcp_toolset = MCPToolset(
     tool_names=["get_current_time"]  # Only include the get_current_time tool
 )
 
-# Create a pipeline with the toolset
+# Create a pipeline with an Agent that owns the tool-calling loop.
+# The Agent passes the toolset to the chat generator, executes any requested
+# tool calls, and continues until a final answer is produced.
 pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=mcp_toolset))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=mcp_toolset))
-pipeline.add_component(
-    "adapter",
-    OutputAdapter(
-        template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-        output_type=list[ChatMessage],
-        unsafe=True,
-    ),
-)
-pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
-pipeline.connect("llm.replies", "tool_invoker.messages")
-pipeline.connect("llm.replies", "adapter.initial_tool_messages")
-pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
-pipeline.connect("adapter.output", "response_llm.messages")
+pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=mcp_toolset))
 
 # Run the pipeline with a user question
 user_input = "What is the time in New York? Be brief."
 user_input_msg = ChatMessage.from_user(text=user_input)
 
-result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
-print(result["response_llm"]["replies"][0].text)
+result = pipeline.run({"agent": {"messages": [user_input_msg]}})
+print(result["agent"]["messages"][-1].text)
 ```
 
 You can also use the toolset via Streamable HTTP to talk to remote servers:
@@ -873,7 +859,6 @@ Example using SSE (deprecated):
 
 ```python
 from haystack_integrations.tools.mcp import MCPToolset, SSEServerInfo
-from haystack.components.tools import ToolInvoker
 
 # Create the toolset with an SSE connection
 sse_toolset = MCPToolset(
@@ -941,7 +926,7 @@ warm_up() -> None
 
 Connect and load tools when eager_connect is turned off.
 
-This method is automatically called by `ToolInvoker.warm_up()` and `Pipeline.warm_up()`.
+This method is automatically called by `Agent.warm_up()` and `Pipeline.warm_up()`.
 You can also call it directly before using the toolset to ensure all tool schemas
 are available without performing a real invocation.
 

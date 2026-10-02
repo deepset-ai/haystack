@@ -68,7 +68,7 @@ class DocumentTypeRouter:
 
         :param mime_types:
             A list of MIME types or regex patterns to classify the input documents.
-            (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+            (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`). `"unclassified"` is reserved.
         :param mime_type_meta_field:
             Optional name of the metadata field that holds the MIME type.
         :param file_path_meta_field:
@@ -79,11 +79,17 @@ class DocumentTypeRouter:
             `mimetypes` module. Useful when working with uncommon or custom file types.
             For example: `{"application/vnd.custom-type": ".custom"}`.
 
-        :raises ValueError: If `mime_types` is empty or if both `mime_type_meta_field` and `file_path_meta_field` are
-            not provided.
+        :raises ValueError: If `mime_types` is empty, uses the reserved name `"unclassified"`, or if both
+            `mime_type_meta_field` and `file_path_meta_field` are not provided.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
+
+        if "unclassified" in mime_types:
+            raise ValueError(
+                "'unclassified' is a reserved output name in DocumentTypeRouter for documents "
+                "whose MIME type does not match any rule. Rename the MIME type to something else."
+            )
 
         if mime_type_meta_field is None and file_path_meta_field is None:
             raise ValueError(
@@ -134,9 +140,12 @@ class DocumentTypeRouter:
 
             matched = False
             if mime_type:
-                for pattern in self._mime_type_patterns:
-                    if pattern.fullmatch(mime_type):
-                        mime_types[pattern.pattern].append(doc)
+                for bucket_key, pattern in zip(self.mime_types, self._mime_type_patterns, strict=True):
+                    # Match an exact MIME type first, so literal types containing regex
+                    # metacharacters (e.g. the '+' in 'image/svg+xml') are not misread as
+                    # a regex; fall back to regex matching for patterns like 'audio/.*'.
+                    if mime_type == bucket_key or pattern.fullmatch(mime_type):
+                        mime_types[bucket_key].append(doc)
                         matched = True
                         break
             if not matched:

@@ -10,12 +10,7 @@ from pydantic import Field, TypeAdapter, create_model
 from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component import Component
-from haystack.core.serialization import (
-    component_from_dict,
-    component_to_dict,
-    generate_qualified_class_name,
-    import_class_by_name,
-)
+from haystack.core.serialization import component_to_dict, generate_qualified_class_name
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
@@ -31,6 +26,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
@@ -57,18 +53,19 @@ class ComponentTool(Tool):
 
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component
+    from the `serperdev-haystack` integration package (`pip install serperdev-haystack`).
 
     ## Usage Example:
     <!-- test-ignore -->
     ```python
-    from haystack import component, Pipeline
+    from haystack import component
     from haystack.tools import ComponentTool
-    from haystack.components.websearch import SerperDevWebSearch
     from haystack.utils import Secret
-    from haystack.components.tools.tool_invoker import ToolInvoker
+    from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
+    from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
     # Create a SerperDev search component
     search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
@@ -80,18 +77,13 @@ class ComponentTool(Tool):
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
-    # Create pipeline with OpenAIChatGenerator and ToolInvoker
-    pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-    # Connect components
-    pipeline.connect("llm.replies", "tool_invoker.messages")
+    # Create an Agent with an OpenAIChatGenerator and the tool
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
 
     message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
-    # Run pipeline
-    result = pipeline.run({"llm": {"messages": [message]}})
+    # Run the Agent
+    result = agent.run(messages=[message])
 
     print(result)
     ```
@@ -206,6 +198,29 @@ class ComponentTool(Tool):
             )
             return dict(component.run(**converted_kwargs))
 
+        async def async_component_invoker(**kwargs: Any) -> dict[str, Any]:
+            """
+            Asynchronous counterpart of `component_invoker`. Awaits the component's `run_async`.
+
+            :param kwargs: The keyword arguments to invoke the component with.
+            :returns: The result of the component invocation.
+            """
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            converted_kwargs = {
+                param_name: self._convert_param(param_value, input_sockets[param_name].type)
+                for param_name, param_value in kwargs.items()
+            }
+            logger.debug(
+                "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
+            # We know run_async exists at this point b/c we only pass the async invoker if the component has
+            # __haystack_supports_async__ = True
+            return dict(await component.run_async(**converted_kwargs))  # type: ignore[attr-defined]
+
+        component_supports_async = getattr(component, "__haystack_supports_async__", False)
+
         # Generate a name for the tool if not provided
         if not name:
             class_name = component.__class__.__name__
@@ -223,12 +238,14 @@ class ComponentTool(Tool):
         self._component = component
         self._is_warmed_up = False
 
-        # Create the Tool instance with the component invoker as the function to be called and the schema
+        # Create the Tool instance with the component invoker as the function to be called and the schema.
+        # When the wrapped component exposes a `run_async`, also pass the async invoker.
         super().__init__(
             name=name,
             description=description,
             parameters=tool_schema,
             function=component_invoker,
+            async_function=async_component_invoker if component_supports_async else None,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
@@ -289,8 +306,7 @@ class ComponentTool(Tool):
         Deserializes the ComponentTool from a dictionary.
         """
         inner_data = data["data"]
-        component_class = import_class_by_name(inner_data["component"]["type"])
-        component = component_from_dict(cls=component_class, data=inner_data["component"], name=inner_data["name"])
+        deserialize_component_inplace(data=inner_data, key="component")
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
@@ -299,7 +315,7 @@ class ComponentTool(Tool):
             inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         return cls(
-            component=component,
+            component=inner_data["component"],
             name=inner_data["name"],
             description=inner_data["description"],
             parameters=inner_data.get("parameters", None),
@@ -316,7 +332,7 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        component_run_description, param_descriptions = _get_component_param_descriptions(component)
+        param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
         fields: dict[str, Any] = {}
@@ -330,7 +346,7 @@ class ComponentTool(Tool):
             if _contains_callable_type(input_type):
                 continue
 
-            # Skip State-typed parameters - ToolInvoker injects them at runtime
+            # Skip State-typed parameters - Agent tool execution injects them at runtime
             if _unwrap_optional(input_type) is State:
                 continue
 
@@ -344,7 +360,9 @@ class ComponentTool(Tool):
 
         parameters_schema: dict[str, Any] = {}
         try:
-            model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
+            # No `__doc__`: it would surface as a top-level `description` on the parameters schema,
+            # which LLM providers ignore. The component description feeds the tool-level description.
+            model = create_model(component.run.__name__, **fields)
             parameters_schema = model.model_json_schema()
         except Exception as e:
             raise SchemaGenerationError(

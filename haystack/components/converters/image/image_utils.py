@@ -164,7 +164,11 @@ def _convert_pdf_to_images(
 
     for page_number in resolved_page_range:
         if page_number < 1 or page_number > num_pages:
-            logger.warning("Page {page_number} is out of range for the PDF file. Skipping it.", page_number=page_number)
+            logger.warning(
+                "Page {page_number} is out of range for the PDF file {file_path}. Skipping it.",
+                page_number=page_number,
+                file_path=bytestream.meta.get("file_path"),
+            )
             continue
 
         # Get dimensions of the page
@@ -248,6 +252,20 @@ def _extract_image_sources_info(
             )
 
         resolved_file_path = Path(root_path, file_path)
+
+        # When root_path is set, ensure the resolved path stays within it to block path-traversal
+        # payloads (e.g. "../../etc/passwd") coming from document metadata. When root_path is unset,
+        # file paths are treated as absolute by design and no containment check is applied; callers that
+        # process untrusted metadata should configure root_path (see component docstrings).
+        if root_path:
+            resolved_file_path = resolved_file_path.resolve()
+            resolved_root = Path(root_path).resolve()
+            if not resolved_file_path.is_relative_to(resolved_root):
+                raise ValueError(
+                    f"Document with ID '{doc.id}' has a file path '{file_path}' that escapes the "
+                    f"configured root '{root_path}'. Resolved path: '{resolved_file_path}'."
+                )
+
         if not resolved_file_path.is_file():
             raise ValueError(
                 f"Document with ID '{doc.id}' has an invalid file path '{resolved_file_path}'. "
@@ -298,7 +316,8 @@ def _batch_convert_pdf_pages_to_images(
     :param size: Optional tuple of width and height to resize the images to.
     :param return_base64: If True, return base64 encoded images instead of PIL images.
 
-    :returns: Dictionary mapping document indices to images (PIL.Image or base64 string).
+    :returns: Dictionary mapping document indices to images (PIL.Image or base64 string). Documents whose page could
+        not be converted are not included.
     """
     if not pdf_page_infos:
         return {}
@@ -311,16 +330,18 @@ def _batch_convert_pdf_pages_to_images(
 
     for pdf_path, page_infos_for_pdf in page_infos_by_pdf_path.items():
         page_numbers_to_convert = [info["page_number"] for info in page_infos_for_pdf]
-        bytestream = ByteStream.from_file_path(pdf_path)
+        bytestream = ByteStream.from_file_path(pdf_path, meta={"file_path": str(pdf_path)})
 
         converted_pages = _convert_pdf_to_images(
             bytestream=bytestream, return_base64=return_base64, page_range=page_numbers_to_convert, size=size
         )
 
-        # Map results back to document indices
+        # Map results back to document indices. Pages that could not be converted (out of range, or the PDF
+        # could not be read) are missing from the results, so their documents are left out.
         page_number_to_image = dict(converted_pages)
         for page_info in page_infos_for_pdf:
-            converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
+            if page_info["page_number"] in page_number_to_image:
+                converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
 
     # mypy is not able to infer that we match the declared return type
     return converted_images_by_doc_index  # type: ignore[return-value]

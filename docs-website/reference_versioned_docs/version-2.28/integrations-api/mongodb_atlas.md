@@ -46,7 +46,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create the MongoDBAtlasDocumentStore component.
@@ -92,6 +92,22 @@ Deserializes the component from a dictionary.
 
 - <code>MongoDBAtlasEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -127,8 +143,7 @@ run_async(
 ) -> dict[str, list[Document]]
 ```
 
-Asynchronously retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding
-similarity.
+Asynchronously retrieve documents from MongoDBAtlasDocumentStore based on embedding similarity.
 
 **Parameters:**
 
@@ -180,7 +195,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 **Parameters:**
@@ -223,6 +238,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>MongoDBAtlasFullTextRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -312,8 +343,7 @@ Asynchronously retrieve documents from the MongoDBAtlasDocumentStore by full-tex
 
 ### MongoDBAtlasDocumentStore
 
-A MongoDBAtlasDocumentStore implementation that uses the
-[MongoDB Atlas](https://www.mongodb.com/atlas/database) service that is easy to deploy, operate, and scale.
+A MongoDBAtlasDocumentStore backed by [MongoDB Atlas](https://www.mongodb.com/atlas/database).
 
 To connect to MongoDB Atlas, you need to provide a connection string in the format:
 `"mongodb+srv://{mongo_atlas_username}:{mongo_atlas_password}@{mongo_atlas_host}/?{mongo_atlas_params_string}"`.
@@ -360,8 +390,9 @@ __init__(
     vector_search_index: str,
     full_text_search_index: str,
     embedding_field: str = "embedding",
-    content_field: str = "content"
-)
+    content_field: str = "content",
+    meta_project_mapping: dict[str, str] | None = None
+) -> None
 ```
 
 Creates a new MongoDBAtlasDocumentStore instance.
@@ -387,10 +418,46 @@ Creates a new MongoDBAtlasDocumentStore instance.
   This field allows defining which field to load into the Haystack Document object as content.
   It can be particularly useful when integrating with an existing collection for retrieval. We discourage
   using this parameter when working with collections created by Haystack.
+- **meta_project_mapping** (<code>dict\[str, str\] | None</code>) – A dictionary mapping metadata fields in the Haystack Document (keys)
+  to custom fields in the MongoDB document (values). Values must be bare field paths, e.g.
+  `"source"` or `"metadata.author"`. A leading `"$"` is accepted for backward compatibility
+  and is stripped once during initialization. Default is None.
 
 **Raises:**
 
 - <code>ValueError</code> – If the collection name contains invalid characters.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
+
+#### connection
+
+```python
+connection: AsyncMongoClient | MongoClient
+```
+
+Return the active MongoDB client connection.
+
+#### collection
+
+```python
+collection: AsyncCollection | Collection
+```
+
+Return the active MongoDB collection.
 
 #### to_dict
 
@@ -504,8 +571,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously applies a filter selecting documents and counts the unique values for each meta field of the
-matched documents.
+Asynchronously applies a filter selecting documents and counts unique metadata values for each meta field.
 
 **Parameters:**
 
@@ -585,10 +651,18 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a field matching a search_term or all possible values if no search term is given.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: MongoDB's aggregation `$group` compares numeric values across BSON subtypes, so a
+whole-number float (e.g. `1.0`) is grouped together with a numerically equal int (`1`) and only
+one of the two survives - regardless of whether they were written to the same metadata field.
+Floats with a fractional part (e.g. `1.5`) are unaffected and stay distinct from ints.
 
 **Parameters:**
 
@@ -596,11 +670,12 @@ Retrieves unique values for a field matching a search_term or all possible value
 - **search_term** (<code>str | None</code>) – The search term to filter values. Matches as a case-insensitive substring.
 - **from\_** (<code>int</code>) – The starting index for pagination.
 - **size** (<code>int</code>) – The number of values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing a list of unique values and the total count of unique values matching the
-  search term.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing a list of unique values (in their original type) and the total count
+  of unique values matching the search term.
 
 #### get_metadata_field_unique_values_async
 
@@ -610,23 +685,29 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Asynchronously retrieves unique values for a field matching a search_term or all possible values if no search
-term is given.
+Asynchronously retrieves unique values for a metadata field, optionally filtered by a search term.
+
+Asynchronously retrieves unique values for a metadata field, optionally filtered by a search term.
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: MongoDB's aggregation `$group` compares numeric values across BSON subtypes, so a
+whole-number float (e.g. `1.0`) is grouped together with a numerically equal int (`1`) and only
+one of the two survives - regardless of whether they were written to the same metadata field.
+Floats with a fractional part (e.g. `1.5`) are unaffected and stay distinct from ints.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field to retrieve unique values for.
-- **search_term** (<code>str | None</code>) – The search term to filter values. Matches as a case-insensitive substring.
-- **from\_** (<code>int</code>) – The starting index for pagination.
-- **size** (<code>int</code>) – The number of values to return.
-
-**Returns:**
-
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing a list of unique values and the total count of unique values matching the
-  search term.
+  :param search_term: The search term to filter values. Matches as a case-insensitive substring.
+  :param from\_: The starting index for pagination.
+  :param size: The number of values to return.
+  :param filters: Optional filters to restrict the documents considered.
+  :returns: A tuple containing a list of unique values (in their original type) and the total count
+  of unique values matching the search term.
 
 #### filter_documents
 

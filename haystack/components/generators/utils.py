@@ -2,23 +2,51 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import json
-import warnings
+from collections.abc import Iterator
 from typing import Any
 
-from haystack import logging
+from haystack import logging, tracing
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
 
 
-def _generators_deprecation_warning(generator_name: str, chatgenerator_name: str) -> None:
-    warnings.warn(
-        f"The `{generator_name}` component is deprecated and will be removed in Haystack 3.0. "
-        f"Use `{chatgenerator_name}` instead, which now also supports string inputs.",
-        FutureWarning,
-        stacklevel=2,
-    )
+@contextlib.contextmanager
+def _trace_chat_generator_run(
+    chat_generator: Any, generator_inputs: dict[str, Any], parent_span: tracing.Span | None = None
+) -> Iterator[tracing.Span]:
+    """
+    Open a tracing span around a ChatGenerator call made internally by another component.
+
+    Components that embed a ChatGenerator but do not return its `ChatMessage` replies (for example rankers,
+    extractors or evaluators) would otherwise discard the LLM token usage carried in `reply.meta["usage"]`.
+    Wrapping the internal call in this span re-exposes that usage to tracers via the `haystack.component.output`
+    content tag, mirroring how the `Pipeline` traces its top-level components.
+
+    The caller is responsible for setting the output tag inside the context, so it is skipped when the call fails:
+
+    ```python
+    with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+        result = self._chat_generator.run(messages=messages)
+        span.set_content_tag("haystack.component.output", result)
+    ```
+
+    :param chat_generator: The ChatGenerator being invoked.
+    :param generator_inputs: The inputs passed to the generator, recorded as the span input content tag.
+    :param parent_span: Explicit parent span. Defaults to the current span. Pass it explicitly when the generator
+        runs in a worker thread, where the ambient span context does not propagate.
+    """
+    # Fall back to the active span so same-thread callers get correct nesting without passing a parent explicitly.
+    parent_span = parent_span or tracing.tracer.current_span()
+    with tracing.tracer.trace(
+        "haystack.chat_generator.run",
+        tags={"haystack.component.name": "chat_generator", "haystack.component.type": type(chat_generator).__name__},
+        parent_span=parent_span,
+    ) as span:
+        span.set_content_tag("haystack.component.input", generator_inputs)
+        yield span
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
@@ -61,7 +89,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 print(tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
-    # Print tool call results if available (from ToolInvoker)
+    # Print tool call results if available.
     if chunk.tool_call_result:
         # Tool Call Result is fully formed so delta accumulation is not needed
         print(f"[TOOL RESULT]\n{chunk.tool_call_result.result}", flush=True, end="")
@@ -155,11 +183,14 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             usage = chunk_usage
             break
 
+    first_chunk_meta = chunks[0].meta if chunks else {}
+    last_chunk_meta = chunks[-1].meta if chunks else {}
+
     meta = {
-        "model": chunks[-1].meta.get("model"),
+        "model": last_chunk_meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
-        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
+        "completion_start_time": first_chunk_meta.get("received_at"),  # first chunk received
         "usage": usage,
     }
 
@@ -170,7 +201,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
 
 def _serialize_object(obj: Any) -> Any:
-    """Convert an object to a serializable dict recursively"""
+    """
+    Convert an object to a serializable dict recursively.
+
+    Used to serialize `logprobs` and `usage` from OpenAI SDK response objects, so it skips any
+    attribute starting with "_" (SDK-internal fields). `base_serialization._serialize_value_with_schema`
+    doesn't skip those, so don't swap this out for it.
+    """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "__dict__"):

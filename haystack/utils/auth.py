@@ -41,10 +41,10 @@ class Secret(ABC):
 
     Usage example:
     ```python
-    from haystack.components.generators import OpenAIGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.utils import Secret
 
-    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    generator = OpenAIChatGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
     ```
     """
 
@@ -162,6 +162,10 @@ class TokenSecret(Secret):
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
 
+    def __repr__(self) -> str:
+        # Hide the token so it can't leak through print/log/traceback formatting.
+        return f"TokenSecret(_token=<redacted>, _type={self._type!r})"
+
     def resolve_value(self) -> Any | None:
         """Return the token."""
         return self._token
@@ -228,7 +232,7 @@ def deserialize_secrets_inplace(data: dict[str, Any], keys: Iterable[str], *, re
         Whether to recursively deserialize nested dictionaries.
     """
     for k, v in data.items():
-        if isinstance(v, dict) and recursive:
-            deserialize_secrets_inplace(v, keys)
-        elif k in keys and v is not None:
+        if k in keys and v is not None:
             data[k] = Secret.from_dict(v)
+        elif isinstance(v, dict) and recursive:
+            deserialize_secrets_inplace(v, keys, recursive=True)

@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Haystack components that use a document store now provide ``close`` and ``close_async`` methods for releasing
+    resources. These methods are available on: ``AutoMergingRetriever``, ``CacheChecker``, ``DocumentWriter``,
+    ``FilterRetriever``, and ``SentenceWindowRetriever``. If the underlying Document Store does not implement the
+    corresponding method, calling ``close`` or ``close_async`` has no effect.

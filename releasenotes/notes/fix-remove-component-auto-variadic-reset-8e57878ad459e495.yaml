@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue where ``PipelineBase.remove_component`` did not reset auto-variadic socket flags (``is_lazy_variadic`` and ``wrap_input_in_list``) on input sockets when components or connections were removed.
+

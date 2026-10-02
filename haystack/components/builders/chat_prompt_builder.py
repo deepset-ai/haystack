@@ -6,14 +6,13 @@ import json
 from dataclasses import replace
 from typing import Any, Literal
 
-from jinja2.sandbox import SandboxedEnvironment
-
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,10 @@ class ChatPromptBuilder:
 
     It constructs prompts using static or dynamic templates, which you can update for each pipeline run.
 
-    Template variables in the template are optional unless specified otherwise.
-    If an optional variable isn't provided, it defaults to an empty string. Use `variable` and `required_variables`
-    to define input types and required variables.
+    Template variables in the template are required by default. To make any subset of variables optional,
+    set `required_variables` to an explicit list of the variables that should remain required; any variable
+    not listed becomes optional and defaults to an empty string when missing.
+    Set `required_variables` to `None` to mark every variable as optional.
 
     ### Usage examples
 
@@ -139,7 +139,7 @@ class ChatPromptBuilder:
     def __init__(
         self,
         template: list[ChatMessage] | str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] | None = "*",
         variables: list[str] | None = None,
     ) -> None:
         """
@@ -151,8 +151,10 @@ class ChatPromptBuilder:
             the `init` method` or the `run` method.
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
-            If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            Defaults to `"*"`, which marks every variable found in the prompt as required.
+            Pass an explicit list to only require a subset of the variables; any variable not listed becomes
+            optional and is replaced with an empty string in the rendered prompt when missing.
+            Set to `None` to mark every variable as optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -162,7 +164,7 @@ class ChatPromptBuilder:
         self._required_variables = required_variables
         self.template = template
 
-        self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        self._env = HaystackSandboxedEnvironment(extensions=[ChatMessageExtension])
         if arrow_import.is_successful():
             self._env.add_extension(Jinja2TimeExtension)
 
@@ -174,12 +176,13 @@ class ChatPromptBuilder:
                         # infer variables from template
                         if message.text is None:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                        if message.text and "templatize_part" in message.text:
-                            raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                        assigned_variables, template_variables = _extract_template_variables_and_assignments(
-                            env=self._env, template=message.text
-                        )
-                        extracted_variables += list(template_variables - assigned_variables)
+                        for text in message.texts:
+                            if "templatize_part" in text:
+                                raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                                env=self._env, template=text
+                            )
+                            extracted_variables += list(template_variables - assigned_variables)
             elif isinstance(template, str):
                 assigned_variables, template_variables = _extract_template_variables_and_assignments(
                     env=self._env, template=template
@@ -192,10 +195,10 @@ class ChatPromptBuilder:
 
         if len(self.variables) > 0 and required_variables is None:
             logger.warning(
-                "ChatPromptBuilder has {length} prompt variables, but `required_variables` is not set. "
-                "By default, all prompt variables are treated as optional, which may lead to unintended behavior in "
-                "multi-branch pipelines. To avoid unexpected execution, ensure that variables intended to be required "
-                "are explicitly set in `required_variables`.",
+                "ChatPromptBuilder has {length} prompt variables and `required_variables` is explicitly set to "
+                "`None`. This treats all prompt variables as optional, which may lead to unintended behavior in "
+                "multi-branch pipelines. Only set `required_variables` to `None` if you intentionally want all "
+                "variables to be optional.",
                 length=len(self.variables),
             )
 
@@ -232,7 +235,7 @@ class ChatPromptBuilder:
         :returns: A dictionary with the following keys:
             - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
         :raises ValueError:
-            If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+            If `template` is empty or contains elements that are not instances of `ChatMessage`.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
@@ -261,12 +264,15 @@ class ChatPromptBuilder:
                     self._validate_variables(set(template_variables_combined.keys()))
                     if message.text is None:
                         raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                    if message.text and "templatize_part" in message.text:
-                        raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                    compiled_template = self._env.from_string(message.text)
-                    rendered_text = compiled_template.render(template_variables_combined)
+                    rendered_content = list(message._content)
+                    for index, part in enumerate(rendered_content):
+                        if isinstance(part, TextContent):
+                            if "templatize_part" in part.text:
+                                raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                            rendered_text = self._env.from_string(part.text).render(template_variables_combined)
+                            rendered_content[index] = TextContent(text=rendered_text)
                     # use dataclasses.replace to avoid in-place mutation of the original message
-                    rendered_message: ChatMessage = replace(message, _content=[TextContent(text=rendered_text)])
+                    rendered_message: ChatMessage = replace(message, _content=rendered_content)
                     processed_messages.append(rendered_message)
                 else:
                     processed_messages.append(message)

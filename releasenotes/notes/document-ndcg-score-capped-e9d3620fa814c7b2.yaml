@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentNDCGEvaluator`` producing NDCG scores outside the documented 0.0 to 1.0
+    range when the same document appeared more than once. A document retrieved multiple times
+    used to be counted multiple times, pushing the score above 1.0; a ground truth document
+    listed multiple times used to inflate the ideal gain, keeping a perfect retrieval below
+    1.0. Each distinct relevant document is now counted once, with the same relevance, in both
+    the actual and ideal gain, so scores stay within range.

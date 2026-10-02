@@ -45,29 +45,29 @@ dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  "openai>=1.99.2",
+  "openai>=2.6.0",
   "pydantic",
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
-  "more-itertools",         # TextDocumentSplitter
+  "more-itertools",         # DocumentSplitter
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
+  "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
   "docstring-parser",       # ComponentTool
   "filetype",               # MIME type guessing for ImageContent
-  "haystack-experimental",
 ]
 
 [tool.hatch.envs.default]
 installer = "uv"
 dependencies = [
   "pre-commit",
-  "ruff>=0.15.0",  # RUF104 (unmatched-suppression-comment) added in 0.15.0
+  "ruff>=0.16.0",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -87,17 +87,15 @@ docs = "haystack-pydoc pydoc tmp_api_reference"
 
 # we override dependencies from the default environment
 dependencies = [
-  "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+  # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x.
+  "numpy>=2",
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch, sentencepiece]>=4.57",         # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
-  "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
-  "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
-  "openai-whisper>=20231106",                         # LocalWhisperTranscriber
+  "transformers[torch, sentencepiece]>=4.57",         # SASEvaluator and TopPSampler
+  "sentence-transformers>=5.0.0",                     # SASEvaluator
   "arrow>=1.3.0",                                     # Jinja2TimeExtension
   "pillow",                                           # ImageContent
   "pypdfium2",                                        # PDFToImageContent
@@ -108,8 +106,6 @@ dependencies = [
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument
-  "tika",                             # TikaDocumentConverter
-  "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
@@ -119,19 +115,10 @@ dependencies = [
   "python-oxmsg",                     # MSGToDocument
 
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
-  "tiktoken", # RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter, TiktokenCounter
 
   # Human in the Loop
   "rich",                 # Console rendering for HITL
-
-  # OpenAPI
-  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
-  "openapi3",
-  "openapi-llm>=0.4.1",   # OpenAPIConnector
-
-  # Tracing
-  "opentelemetry-sdk",
-  "ddtrace",
 
   # Structured logging
   "structlog",
@@ -161,20 +148,9 @@ integration = 'pytest --maxfail=5 -m "integration" {args:test}'
 integration-only-fast = 'pytest --maxfail=5 -m "integration and not slow" {args:test}'
 integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test}'
 all = 'pytest {args:test}'
+e2e = 'pytest {args:e2e}'
 
-# TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/human_in_the_loop test/evaluation test/document_stores test/dataclasses}"
-
-[tool.hatch.envs.e2e]
-template = "test"
-extra-dependencies = [
-  # NamedEntityExtractor
-  "spacy>=3.8.13,<3.9",
-  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
-]
-
-[tool.hatch.envs.e2e.scripts]
-test = "pytest {args:e2e}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test}"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -197,9 +173,9 @@ include = ["/haystack", "/VERSION.txt"]
 packages = ["haystack"]
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME,Sie,unter"
 quiet-level = 3
-skip = "./test,./e2e"
+skip = "./test,./e2e,*.svg,*/abbreviations/*"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -217,7 +193,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-python_version = "3.10"
+# Deliberately above the 3.10 floor in `requires-python`: numpy's stubs use PEP 695 `type`
+# statements, which mypy rejects as a syntax error below 3.12. The floor stays covered by the
+# unit test matrix, which runs on 3.10.
+python_version = "3.12"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
@@ -232,7 +211,7 @@ module = ["haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]
-exclude = ["e2e/**", "proposals"]
+exclude = ["*.md", "e2e/**", "proposals"]
 line-length = 120
 
 
@@ -369,7 +348,7 @@ ignore = [
 # install/lock time, so no manual date updates are needed.
 # First-party packages are exempted so freshly published releases are always resolvable.
 exclude-newer = "24 hours"
-exclude-newer-package = { haystack-experimental = "0 days", haystack-pydoc-tools = "0 days" }
+exclude-newer-package = { haystack-pydoc-tools = "0 days" }
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]

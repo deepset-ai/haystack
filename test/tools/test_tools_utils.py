@@ -366,14 +366,18 @@ class TestWarmUpTools:
                 self.warm_up_count += 1
 
         class WarmupCountingToolset(Toolset):
-            """A toolset that counts how many times warm_up was called."""
+            """A toolset that counts how many times warm_up did real work."""
 
             def __init__(self, tools):
                 super().__init__(tools)
                 self.warm_up_count = 0
+                self._loaded = False
 
             def warm_up(self):
+                if self._loaded:
+                    return
                 self.warm_up_count += 1
+                self._loaded = True
                 super().warm_up()  # Also warm up individual tools
 
         tool = WarmupCountingTool(
@@ -389,7 +393,6 @@ class TestWarmUpTools:
         warm_up_tools(toolset)
         warm_up_tools(toolset)
 
-        # warm_up_tools itself doesn't prevent multiple calls,
-        # but verify the calls actually happen multiple times
-        assert toolset.warm_up_count == 3
-        assert tool.warm_up_count == 3
+        # warm_up is idempotent, so the toolset and its tools are only warmed up once
+        assert toolset.warm_up_count == 1
+        assert tool.warm_up_count == 1

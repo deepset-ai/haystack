@@ -10,15 +10,15 @@ import pytest
 from pandas import DataFrame
 from pytest_bdd import parsers, then, when
 
-from haystack import AsyncPipeline, Pipeline, component
+from haystack import Pipeline, component
 from test.tracing.utils import SpyingTracer
 
 
-@pytest.fixture(params=[AsyncPipeline, Pipeline])
-def pipeline_class(request):
+@pytest.fixture(params=["sync", "async"])
+def pipeline_run_mode(request):
     """
-    A parametrized fixture that will yield AsyncPipeline for one test run
-    and Pipeline for the next test run.
+    Parametrizes each scenario so it runs once through `Pipeline.run` (sync) and once through
+    `Pipeline.run_async` (async), exercising both execution engines.
     """
     return request.param
 
@@ -47,16 +47,15 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: tuple[Pipeline, list[PipelineRunData]] | tuple[AsyncPipeline, list[PipelineRunData]],
-    spying_tracer: SpyingTracer,
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer, pipeline_run_mode: str
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
-    if isinstance(pipeline_data[0], AsyncPipeline):
+    if pipeline_run_mode == "async":
         return run_async_pipeline(pipeline_data, spying_tracer)
     return run_sync_pipeline(pipeline_data, spying_tracer)
 
 
 def run_async_pipeline(
-    pipeline_data: tuple[AsyncPipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.

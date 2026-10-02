@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``ToolResultOffloadHook`` offloading empty tool results. An empty string, or a result made up of nothing
+    but empty text blocks, was written to the ``ToolResultStore`` as a zero-byte entry and replaced in the
+    conversation by a pointer ending in a dangling ``Preview:`` - growing the context the hook exists to shrink, and
+    inviting the model to read back an empty file. Such results are now left in context, as empty-list results
+    already were.

@@ -5,6 +5,7 @@
 import mimetypes
 import re
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +28,11 @@ class FileTypeRouter:
 
     FileTypeRouter supports both exact MIME type matching and regex patterns.
 
-    For file paths, MIME types come from extensions, while byte streams use metadata.
-    You can use regex patterns in the `mime_types` parameter to set broad categories
-    (such as 'audio/*' or 'text/*') or specific types.
-    MIME types without regex patterns are treated as exact matches.
+    For file paths, MIME types come from extensions; byte streams use metadata.
+    Each entry in `mime_types` is matched against a source's MIME type by exact equality first,
+    falling back to regex `fullmatch` if equality misses. So `"image/svg+xml"` routes
+    `image/svg+xml` streams correctly via the equality check (without `+` being interpreted as a
+    regex quantifier), and patterns like `"audio/.*"` keep matching every audio subtype.
 
     ### Usage example
 
@@ -38,10 +40,10 @@ class FileTypeRouter:
     from haystack.components.routers import FileTypeRouter
     from pathlib import Path
 
-    # For exact MIME type matching
-    router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+    # Exact MIME matching — `+`-containing IANA types like image/svg+xml work correctly
+    router = FileTypeRouter(mime_types=["text/plain", "application/pdf", "image/svg+xml"])
 
-    # For flexible matching using regex, to handle all audio types
+    # Regex matching — catch every audio subtype
     router_with_regex = FileTypeRouter(mime_types=[r"audio/.*", r"text/plain"])
 
     sources = [Path("file.txt"), Path("document.pdf"), Path("song.mp3")]
@@ -67,6 +69,7 @@ class FileTypeRouter:
         :param mime_types:
             A list of MIME types or regex patterns to classify the input files or byte streams.
             (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+            `"unclassified"` and `"failed"` are reserved output names and cannot be used here.
 
         :param additional_mimetypes:
             A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
@@ -76,9 +79,22 @@ class FileTypeRouter:
         :param raise_on_failure:
             If True, raises FileNotFoundError when a file path doesn't exist.
             If False (default), only emits a warning when a file path doesn't exist.
+        :raises ValueError:
+            If `mime_types` is empty, contains an invalid regex, or uses the reserved names
+            `"unclassified"` or `"failed"`.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
+
+        reserved = {"unclassified", "failed"}
+        collisions = reserved.intersection(mime_types)
+        if collisions:
+            names = ", ".join(repr(name) for name in sorted(collisions))
+            raise ValueError(
+                f"MIME type(s) {names} are reserved output names in FileTypeRouter "
+                "('unclassified' for unmatched sources, 'failed' for unreadable files). "
+                "Rename the MIME type to something else."
+            )
 
         if additional_mimetypes:
             for mime, ext in additional_mimetypes.items():
@@ -89,7 +105,7 @@ class FileTypeRouter:
             try:
                 pattern = re.compile(mime_type)
             except re.error as e:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
+                raise ValueError(f"Invalid MIME type or regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -185,13 +201,17 @@ class FileTypeRouter:
                     mime_types["failed"].append(source)
                     continue
 
-                source.meta.update(meta_dict)
+                # `get_bytestream_from_source` hands back a ByteStream source unchanged, so writing the
+                # metadata onto it would modify the object the caller still holds. Build a copy instead.
+                source = replace(source, meta={**source.meta, **meta_dict})
 
             matched = False
             if mime_type:
-                for pattern in self.mime_type_patterns:
-                    if pattern.fullmatch(mime_type):
-                        mime_types[pattern.pattern].append(source)
+                # Try exact equality first so MIMEs containing regex metacharacters (e.g. the `+` in
+                # `image/svg+xml`) match themselves before the regex fallback gets a chance to misread them.
+                for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
+                    if mime_type == bucket_key or pattern.fullmatch(mime_type):
+                        mime_types[bucket_key].append(source)
                         matched = True
                         break
             if not matched:

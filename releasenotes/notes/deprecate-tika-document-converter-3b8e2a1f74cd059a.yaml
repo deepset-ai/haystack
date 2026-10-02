@@ -1,0 +1,10 @@
+---
+deprecations:
+  - |
+    ``TikaDocumentConverter`` is deprecated and will be removed from Haystack in version 3.0. It is moving to
+    the ``tika-haystack`` package. To continue using it, install the package with
+    ``pip install tika-haystack`` and update your import as follows:
+
+    .. code-block:: python
+
+        from haystack_integrations.components.converters.tika import TikaDocumentConverter

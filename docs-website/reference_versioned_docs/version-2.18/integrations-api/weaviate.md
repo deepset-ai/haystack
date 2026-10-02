@@ -76,6 +76,22 @@ Deserializes the component from a dictionary.
 
 - <code>WeaviateBM25Retriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -186,6 +202,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>WeaviateEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -339,6 +371,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>WeaviateHybridRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -660,6 +708,10 @@ Create a new instance of WeaviateDocumentStore and connects to the Weaviate inst
 {"X-OpenAI-Api-Key": "<THE-KEY>"}, {"X-HuggingFace-Api-Key": "<THE-KEY>"}
 ```
 
+Every connection also carries `X-Weaviate-Client-Integration: haystack-python/<version>`, which
+identifies this integration in Weaviate's telemetry. Supplying that header here, in any casing,
+overrides it.
+
 - **embedded_options** (<code>EmbeddedOptions | None</code>) – If set, create an embedded Weaviate cluster inside the client. For a full list of options see
   `weaviate.embedded.EmbeddedOptions`.
 - **additional_config** (<code>AdditionalConfig | None</code>) – Additional and advanced configuration options for weaviate.
@@ -704,7 +756,7 @@ Return the asynchronous Weaviate collection, initializing it via the async clien
 close() -> None
 ```
 
-Close the synchronous Weaviate client connection.
+Release the associated synchronous resources.
 
 #### close_async
 
@@ -712,7 +764,7 @@ Close the synchronous Weaviate client connection.
 close_async() -> None
 ```
 
-Close the asynchronous Weaviate client connection.
+Release the associated asynchronous resources.
 
 #### to_dict
 
@@ -945,8 +997,9 @@ get_metadata_field_unique_values(
     metadata_field: str,
     search_term: str | None = None,
     from_: int = 0,
-    size: int = 10000,
-) -> tuple[list[str], int]
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Returns unique values for a metadata field with pagination support.
@@ -955,20 +1008,25 @@ Returns unique values for a metadata field with pagination support.
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
   Can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
-- **search_term** (<code>str | None</code>) – Optional term to filter documents by content before
-  extracting unique values. If provided, only documents whose content
-  contains this term will be considered.
-  Note: Uses substring matching (case-sensitive, no stemming).
+- **search_term** (<code>str | None</code>) – Optional term to filter the metadata field's values by
+  before returning them. If provided, only values of `metadata_field` that
+  contain this term will be considered.
+  Note: Uses case-insensitive substring matching (no stemming).
 - **from\_** (<code>int</code>) – The starting offset for pagination (0-indexed). Defaults to 0.
-- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10000.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (list of unique values in their original type, total count of unique values).
 
-**Raises:**
-
-- <code>ValueError</code> – If the field is not found in the collection schema.
+**Note**: a scalar `int` metadata value comes back as `float`, not `int`. weaviate-client has no
+wire-protocol field for a scalar int - non-list properties are packed into a
+`google.protobuf.Struct`, whose `Value` type only has `number_value` (a double), so the int/float
+distinction is lost before the value reaches Weaviate. `GroupByAggregate` decodes numeric group
+keys the same way, so this holds even when the field's schema type is explicitly `DataType.INT`.
+List-valued int fields (e.g. `meta={"tags": [1, 2]}`) are unaffected - those go through a
+dedicated `IntArrayProperties` wire type instead.
 
 #### get_metadata_field_unique_values_async
 
@@ -977,8 +1035,9 @@ get_metadata_field_unique_values_async(
     metadata_field: str,
     search_term: str | None = None,
     from_: int = 0,
-    size: int = 10000,
-) -> tuple[list[str], int]
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously returns unique values for a metadata field with pagination support.
@@ -987,20 +1046,25 @@ Asynchronously returns unique values for a metadata field with pagination suppor
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
   Can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
-- **search_term** (<code>str | None</code>) – Optional term to filter documents by content before
-  extracting unique values. If provided, only documents whose content
-  contains this term will be considered.
-  Note: Uses substring matching (case-sensitive, no stemming).
+- **search_term** (<code>str | None</code>) – Optional term to filter the metadata field's values by
+  before returning them. If provided, only values of `metadata_field` that
+  contain this term will be considered.
+  Note: Uses case-insensitive substring matching (no stemming).
 - **from\_** (<code>int</code>) – The starting offset for pagination (0-indexed). Defaults to 0.
-- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10000.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (list of unique values in their original type, total count of unique values).
 
-**Raises:**
-
-- <code>ValueError</code> – If the field is not found in the collection schema.
+**Note**: a scalar `int` metadata value comes back as `float`, not `int`. weaviate-client has no
+wire-protocol field for a scalar int - non-list properties are packed into a
+`google.protobuf.Struct`, whose `Value` type only has `number_value` (a double), so the int/float
+distinction is lost before the value reaches Weaviate. `GroupByAggregate` decodes numeric group
+keys the same way, so this holds even when the field's schema type is explicitly `DataType.INT`.
+List-valued int fields (e.g. `meta={"tags": [1, 2]}`) are unaffected - those go through a
+dedicated `IntArrayProperties` wire type instead.
 
 #### filter_documents
 

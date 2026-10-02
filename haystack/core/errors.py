@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot, ToolBreakpoint
+from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
 
 
 class PipelineError(Exception):
@@ -115,7 +115,7 @@ class BreakpointException(Exception):
         pipeline_snapshot: PipelineSnapshot | None = None,
         pipeline_snapshot_file_path: str | None = None,
         *,
-        break_point: AgentBreakpoint | Breakpoint | ToolBreakpoint | None = None,
+        break_point: Breakpoint | None = None,
     ) -> None:
         super().__init__(message)
         self.component = component
@@ -127,7 +127,7 @@ class BreakpointException(Exception):
             raise ValueError("Either pipeline_snapshot or break_point must be provided.")
 
     @classmethod
-    def from_triggered_breakpoint(cls, break_point: Breakpoint | ToolBreakpoint) -> "BreakpointException":
+    def from_triggered_breakpoint(cls, break_point: Breakpoint) -> "BreakpointException":
         """
         Create a BreakpointException from a triggered breakpoint.
         """
@@ -137,37 +137,25 @@ class BreakpointException(Exception):
     @property
     def inputs(self) -> dict[str, Any] | None:
         """
-        Returns the inputs of the pipeline or agent at the breakpoint.
-
-        If an AgentBreakpoint caused this exception, returns the inputs of the agent's internal components.
-        Otherwise, returns the current inputs of the pipeline.
+        Returns the current inputs of the pipeline at the breakpoint.
         """
         if not self.pipeline_snapshot:
             return None
-
-        if self.pipeline_snapshot.agent_snapshot:
-            return self.pipeline_snapshot.agent_snapshot.component_inputs
         return self.pipeline_snapshot.pipeline_state.inputs
 
     @property
     def results(self) -> dict[str, Any] | None:
         """
-        Returns the results of the pipeline or agent at the breakpoint.
-
-        If an AgentBreakpoint caused this exception, returns the current results of the agent.
-        Otherwise, returns the current outputs of the pipeline.
+        Returns the current outputs of the pipeline at the breakpoint.
         """
         if not self.pipeline_snapshot:
             return None
-
-        if self.pipeline_snapshot.agent_snapshot:
-            return self.pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"]
         return self.pipeline_snapshot.pipeline_state.pipeline_outputs
 
     @property
-    def break_point(self) -> AgentBreakpoint | Breakpoint | ToolBreakpoint:
+    def break_point(self) -> Breakpoint:
         """
-        Returns the Breakpoint or AgentBreakpoint that caused this exception, if available.
+        Returns the Breakpoint that caused this exception.
 
         If a specific break point was provided during initialization, it is returned.
         Otherwise, if the pipeline snapshot contains a break point, that is returned.

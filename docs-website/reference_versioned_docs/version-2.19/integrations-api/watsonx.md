@@ -77,6 +77,14 @@ Creates a WatsonxDocumentEmbedder component.
 - **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Watsonx embeddings client.
+
 #### to_dict
 
 ```python
@@ -186,6 +194,14 @@ Creates an WatsonxTextEmbedder component.
 - **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
 - **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Watsonx embeddings client.
 
 #### to_dict
 
@@ -378,6 +394,14 @@ Before initializing the component, you can set environment variables:
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function for streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the Watsonx client.
+
 #### to_dict
 
 ```python
@@ -424,8 +448,9 @@ Generate chat completions synchronously.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
-  passed in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   If provided this will override the `streaming_callback` set in the `__init__` method.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -454,8 +479,9 @@ Generate chat completions asynchronously.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
-  passed in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   If provided this will override the `streaming_callback` set in the `__init__` method.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -465,237 +491,3 @@ Generate chat completions asynchronously.
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
-
-## haystack_integrations.components.generators.watsonx.generator
-
-### WatsonxGenerator
-
-Bases: <code>WatsonxChatGenerator</code>
-
-Enables text completions using IBM's watsonx.ai foundation models.
-
-This component extends WatsonxChatGenerator to provide the standard Generator interface that works with prompt
-strings instead of ChatMessage objects.
-
-The generator works with IBM's foundation models that are listed
-[here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx&audience=wdp).
-
-You can customize the generation behavior by passing parameters to the watsonx.ai API through the
-`generation_kwargs` argument. These parameters are passed directly to the watsonx.ai inference endpoint.
-
-For details on watsonx.ai API parameters, see
-[IBM watsonx.ai documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-parameters.html).
-
-### Usage example
-
-```python
-from haystack_integrations.components.generators.watsonx.generator import WatsonxGenerator
-from haystack.utils import Secret
-
-generator = WatsonxGenerator(
-    api_key=Secret.from_env_var("WATSONX_API_KEY"),
-    model="ibm/granite-4-h-small",
-    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-)
-
-response = generator.run(
-    prompt="Explain quantum computing in simple terms",
-    system_prompt="You are a helpful physics teacher.",
-)
-print(response)
-```
-
-Output:
-
-```
-{
-    "replies": ["Quantum computing uses quantum-mechanical phenomena like...."],
-    "meta": [
-        {
-            "model": "ibm/granite-4-h-small",
-            "project_id": "your-project-id",
-            "usage": {
-                "prompt_tokens": 12,
-                "completion_tokens": 45,
-                "total_tokens": 57,
-            },
-        }
-    ],
-}
-```
-
-#### SUPPORTED_MODELS
-
-```python
-SUPPORTED_MODELS: list[str] = [
-    "ibm/granite-3-1-8b-base",
-    "ibm/granite-3-8b-instruct",
-    "ibm/granite-4-h-small",
-    "ibm/granite-8b-code-instruct",
-    "ibm/granite-guardian-3-8b",
-    "meta-llama/llama-3-1-70b-gptq",
-    "meta-llama/llama-3-1-8b",
-    "meta-llama/llama-3-2-11b-vision-instruct",
-    "meta-llama/llama-3-2-90b-vision-instruct",
-    "meta-llama/llama-3-3-70b-instruct",
-    "meta-llama/llama-3-405b-instruct",
-    "meta-llama/llama-4-maverick-17b-128e-instruct-fp8",
-    "meta-llama/llama-guard-3-11b-vision",
-    "mistral-large-2512",
-    "mistralai/mistral-medium-2505",
-    "mistralai/mistral-small-3-1-24b-instruct-2503",
-    "openai/gpt-oss-120b",
-]
-
-```
-
-A non-exhaustive list of models supported by this component.
-
-See https://www.ibm.com/docs/en/watsonx/saas?topic=solutions-supported-foundation-models for the
-full list of models and up-to-date model IDs.
-
-#### __init__
-
-```python
-__init__(
-    *,
-    api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-    model: str = "ibm/granite-4-h-small",
-    project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
-    api_base_url: str = "https://us-south.ml.cloud.ibm.com",
-    system_prompt: str | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    timeout: float | None = None,
-    max_retries: int | None = None,
-    verify: bool | str | None = None,
-    streaming_callback: StreamingCallbackT | None = None
-) -> None
-```
-
-Creates an instance of WatsonxGenerator.
-
-Before initializing the component, you can set environment variables:
-
-- `WATSONX_TIMEOUT` to override the default timeout
-- `WATSONX_MAX_RETRIES` to override the default retry count
-
-**Parameters:**
-
-- **api_key** (<code>Secret</code>) – IBM Cloud API key for watsonx.ai access.
-  Can be set via `WATSONX_API_KEY` environment variable or passed directly.
-- **model** (<code>str</code>) – The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
-  Available models can be found in your IBM Cloud account.
-- **project_id** (<code>Secret</code>) – IBM Cloud project ID
-- **api_base_url** (<code>str</code>) – Custom base URL for the API endpoint.
-  Defaults to "https://us-south.ml.cloud.ibm.com".
-- **system_prompt** (<code>str | None</code>) – The system prompt to use for text generation.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters to control text generation.
-  These parameters are passed directly to the watsonx.ai inference endpoint.
-  Supported parameters include:
-- `temperature`: Controls randomness (lower = more deterministic)
-- `max_new_tokens`: Maximum number of tokens to generate
-- `min_new_tokens`: Minimum number of tokens to generate
-- `top_p`: Nucleus sampling probability threshold
-- `top_k`: Number of highest probability tokens to consider
-- `repetition_penalty`: Penalty for repeated tokens
-- `length_penalty`: Penalty based on output length
-- `stop_sequences`: List of sequences where generation should stop
-- `random_seed`: Seed for reproducible results
-- **timeout** (<code>float | None</code>) – Timeout in seconds for API requests.
-  Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
-- **max_retries** (<code>int | None</code>) – Maximum number of retry attempts for failed requests.
-  Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
-- **verify** (<code>bool | str | None</code>) – SSL verification setting. Can be:
-- True: Verify SSL certificates (default)
-- False: Skip verification (insecure)
-- Path to CA bundle for custom certificates
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function for streaming responses.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serialize the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> WatsonxGenerator
-```
-
-Deserialize this component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
-
-**Returns:**
-
-- <code>WatsonxGenerator</code> – The deserialized component instance.
-
-#### run
-
-```python
-run(
-    *,
-    prompt: str,
-    system_prompt: str | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None
-) -> dict[str, Any]
-```
-
-Generate text completions synchronously.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The input prompt string for text generation.
-- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
-  If not provided, the system prompt set in the `__init__` method will be used.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-  If provided, this will override the `streaming_callback` set in the `__init__` method.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
-  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `replies`: A list of generated text completions as strings.
-- `meta`: A list of metadata dictionaries containing information about each generation,
-  including model name, finish reason, and token usage statistics.
-
-#### run_async
-
-```python
-run_async(
-    *,
-    prompt: str,
-    system_prompt: str | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None
-) -> dict[str, Any]
-```
-
-Generate text completions asynchronously.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The input prompt string for text generation.
-- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-  If provided, this will override the `streaming_callback` set in the `__init__` method.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
-  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `replies`: A list of generated text completions as strings.
-- `meta`: A list of metadata dictionaries containing information about each generation,
-  including model name, finish reason, and token usage statistics.

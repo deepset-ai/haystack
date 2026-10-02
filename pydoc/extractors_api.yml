@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/components/extractors]
-    modules: ["named_entity_extractor", "llm_metadata_extractor", "image/llm_document_content_extractor",
+    modules: ["llm_metadata_extractor", "image/llm_document_content_extractor",
       "regex_text_extractor"]
 processors:
   - type: filter

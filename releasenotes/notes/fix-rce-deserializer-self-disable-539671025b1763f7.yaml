@@ -1,0 +1,27 @@
+---
+security:
+  - |
+    Fixed a remote code execution vulnerability that could be triggered by loading an untrusted
+    pipeline in default safe mode (``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict``,
+    without ``unsafe=True``). Because the deserialization allowlist admits the whole ``haystack``
+    namespace, the deserializer's own allowlist-administration function
+    (``allow_deserialization_module``) and its resolution helpers (``deserialize_callable``,
+    ``deserialize_type``, ``import_class_by_name``) were themselves resolvable from serialized data.
+    A malicious pipeline could register ``allow_deserialization_module`` as a Jinja ``custom_filters``
+    entry (on an ``OutputAdapter`` or ``ConditionalRouter``), call it with ``"*"`` to disarm the
+    allowlist process-wide, and then use the equally-resolvable ``deserialize_callable`` to resolve
+    and invoke ``os.system``. Loading alone was enough to trigger this: a Jinja filter called with
+    constant arguments runs while the component is being constructed, so the pipeline never had to
+    be run. The same attribute walk could also reach the deserializer's mutable
+    control-plane state directly — for example a filter bound to ``_extra_allowed_modules.append``
+    — to widen the allowlist persistently and stage a later attack.
+    Relatedly, the handle resolver walked attribute names freely, so a handle could descend into
+    object internals such as ``<function>.__globals__`` (a live module namespace, and via it
+    ``__builtins__`` and ``eval``/``exec``) or ``<type>.__subclasses__`` — classic sandbox-escape
+    gadgets that stay inside an allowlisted module.
+    The fix refuses to deserialize the deserialization control plane as a whole: the allowlist
+    administration and resolution helpers (marked at definition time), everything defined in
+    ``haystack.core.serialization_security``, and any bound method of the mutable allowlist/context
+    state. It also refuses to traverse into dunder and frame/code attributes while resolving a
+    handle. This applies to both the callable- and class-resolution paths, and is bypassed only when
+    the pipeline is loaded with ``unsafe=True``.

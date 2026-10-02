@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added an opt-in ``expand_reference_ranges`` parameter to ``AnswerBuilder``.
+    When enabled, reference ranges like ``[6-10]`` and comma-separated ranges like ``[1-3,7-9]`` are expanded to the corresponding document indices in RAG answers.
+    The feature is disabled by default to preserve existing parsing behavior.

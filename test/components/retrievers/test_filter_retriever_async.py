@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from haystack import AsyncPipeline
+from haystack import Pipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -71,11 +72,20 @@ class TestFilterRetrieverAsync:
         assert TestFilterRetrieverAsync._documents_equal(result["documents"], sample_docs["de_docs"])
 
     @pytest.mark.asyncio
+    async def test_retriever_init_filter_run_empty_filter_override(self, sample_document_store, sample_docs):
+        retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "en"})
+        result = await retriever.run_async(filters={})
+
+        assert "documents" in result
+        assert len(result["documents"]) == 5
+        assert TestFilterRetrieverAsync._documents_equal(result["documents"], sample_docs["all_docs"])
+
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_run_with_pipeline(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "de"})
 
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result: dict[str, Any] = await pipeline.run_async(data={"retriever": {}})
 
@@ -85,7 +95,7 @@ class TestFilterRetrieverAsync:
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["de_docs"])
 
-        result: dict[str, Any] = await pipeline.run_async(
+        result = await pipeline.run_async(
             data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}}
         )
 
@@ -94,3 +104,24 @@ class TestFilterRetrieverAsync:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["en_docs"])
+
+        result = await pipeline.run_async(data={"retriever": {"filters": {}}})
+
+        assert result
+        assert "retriever" in result
+        results_docs = result["retriever"]["documents"]
+        assert results_docs
+        assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["all_docs"])
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        retriever = FilterRetriever(document_store=closable_document_store)
+        await retriever.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = FilterRetriever(document_store=nonclosable_document_store)
+        await retriever.close_async()
+        assert nonclosable_document_store.mock_calls == []

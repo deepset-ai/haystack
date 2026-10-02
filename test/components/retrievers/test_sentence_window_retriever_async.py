@@ -4,17 +4,18 @@
 
 import random
 import re
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
-from haystack.core.pipeline.async_pipeline import AsyncPipeline
 
 
 class TestSentenceWindowRetrieverAsync:
+    @pytest.mark.asyncio
     async def test_document_without_split_id(self, in_memory_doc_store):
         docs = [
             Document(content="This is a text with some words. There is a ", meta={"id": "doc_0"}),
@@ -62,11 +63,37 @@ class TestSentenceWindowRetrieverAsync:
             await retriever.run_async(retrieved_documents=docs)
 
     @pytest.mark.asyncio
-    async def test_run_async_invalid_window_size(self, in_memory_doc_store):
-        docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
+    async def test_init_rejects_zero_window_size(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
-            await retriever.run_async(retrieved_documents=docs)
+            SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
+
+    @pytest.mark.asyncio
+    async def test_run_async_rejects_invalid_runtime_window_size(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=3)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            await retriever.run_async(retrieved_documents=[], window_size=0)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            await retriever.run_async(retrieved_documents=[], window_size=-1)
+
+    @pytest.mark.asyncio
+    async def test_run_async_without_runtime_window_size_uses_constructor_value(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"Sentence {sent}.", meta={"id": f"doc_{sent}", "source_id": "source1", "split_id": sent})
+            for sent in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
+        retrieved_documents = [doc for doc in docs if doc.content == "Sentence 4."]
+
+        # window_size omitted: the constructor value is used, so 2 documents on each side
+        result = await retriever.run_async(retrieved_documents=retrieved_documents)
+        assert len(result["context_documents"]) == 5
+
+        # window_size passed explicitly: it overrides the constructor value
+        result = await retriever.run_async(retrieved_documents=retrieved_documents, window_size=1)
+        assert len(result["context_documents"]) == 3
 
     @pytest.mark.asyncio
     async def test_constructor_parameter_does_not_change(self, in_memory_doc_store):
@@ -178,6 +205,71 @@ class TestSentenceWindowRetrieverAsync:
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
 
     @pytest.mark.asyncio
+    async def test_run_async_queries_document_store_once_for_all_retrieved_documents(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{source}{split_id}.", meta={"source_id": source, "split_id": split_id})
+            for source in ("a", "b")
+            for split_id in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents_async", wraps=in_memory_doc_store.filter_documents_async
+        ) as filter_documents_async:
+            # docs[2] is a2 and docs[15] is b5; the duplicate a2 must not add a second condition to the filter
+            result = await retriever.run_async(retrieved_documents=[docs[2], docs[15], docs[2]])
+
+        filter_documents_async.assert_awaited_once()
+        assert len(filter_documents_async.call_args.args[0]["conditions"]) == 2
+        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert [doc.content for doc in result["context_documents"]] == [
+            "a1.",
+            "a2.",
+            "a3.",
+            "b4.",
+            "b5.",
+            "b6.",
+            "a1.",
+            "a2.",
+            "a3.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_documents_missing_metadata_queries_document_store_once(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{split_id}.", meta={"source_id": "a", "split_id": split_id}) for split_id in range(5)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(
+            document_store=in_memory_doc_store, window_size=1, raise_on_missing_meta_fields=False
+        )
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents_async", wraps=in_memory_doc_store.filter_documents_async
+        ) as filter_documents_async:
+            result = await retriever.run_async(retrieved_documents=[doc_without_meta, docs[2]])
+
+        filter_documents_async.assert_awaited_once()
+        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_does_not_query_document_store_without_documents_to_expand(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, raise_on_missing_meta_fields=False)
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(in_memory_doc_store, "filter_documents_async") as filter_documents_async:
+            assert await retriever.run_async(retrieved_documents=[]) == {"context_windows": [], "context_documents": []}
+            assert await retriever.run_async(retrieved_documents=[doc_without_meta]) == {
+                "context_windows": ["No metadata."],
+                "context_documents": [doc_without_meta],
+            }
+
+        filter_documents_async.assert_not_awaited()
+
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_run_async_with_pipeline(self, in_memory_doc_store):
         splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="period")
@@ -189,7 +281,7 @@ class TestSentenceWindowRetrieverAsync:
         docs = splitter.run([doc])
         in_memory_doc_store.write_documents(docs["documents"])
 
-        pipe = AsyncPipeline()
+        pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
             "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
@@ -214,7 +306,7 @@ class TestSentenceWindowRetrieverAsync:
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_serialization_deserialization_in_pipeline(self, in_memory_doc_store):
-        pipe = AsyncPipeline()
+        pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
             "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
@@ -222,6 +314,19 @@ class TestSentenceWindowRetrieverAsync:
         pipe.connect("bm25_retriever", "sentence_window_retriever")
 
         serialized = pipe.to_dict()
-        deserialized = AsyncPipeline.from_dict(serialized)
+        deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        retriever = SentenceWindowRetriever(document_store=closable_document_store)
+        await retriever.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = SentenceWindowRetriever(document_store=nonclosable_document_store)
+        await retriever.close_async()
+        assert nonclosable_document_store.mock_calls == []

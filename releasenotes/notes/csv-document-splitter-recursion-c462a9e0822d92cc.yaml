@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed an infinite recursion in ``CSVDocumentSplitter`` when nested row and column blocks were split together.

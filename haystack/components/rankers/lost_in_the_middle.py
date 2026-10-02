@@ -89,6 +89,10 @@ class LostInTheMiddleRanker:
         if not documents:
             return {"documents": []}
 
+        # Raise an error if any document is not textual
+        if any(doc.content is None for doc in documents):
+            raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
+
         top_k = top_k or self.top_k
         word_count_threshold = word_count_threshold or self.word_count_threshold
 
@@ -98,10 +102,6 @@ class LostInTheMiddleRanker:
         # If there's only one document, return it as is
         if len(documents_to_reorder) == 1:
             return {"documents": documents_to_reorder}
-
-        # Raise an error if any document is not textual
-        if any(not doc.content_type == "text" for doc in documents_to_reorder):
-            raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
         # Initialize word count and indices for the "lost in the middle" order
         word_count = 0

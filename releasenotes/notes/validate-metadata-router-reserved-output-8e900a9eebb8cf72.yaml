@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MetadataRouter`` now raises a clear ``ValueError`` when a rule uses the
+    reserved output name ``unmatched``, instead of failing with an internal
+    duplicate-keyword ``TypeError`` during output registration.

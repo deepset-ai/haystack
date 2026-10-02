@@ -113,7 +113,31 @@ Creates an instance of VLLMDocumentEmbedder.
 warm_up() -> None
 ```
 
-Create the OpenAI clients.
+Create the synchronous OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous OpenAI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous OpenAI client.
 
 #### run
 
@@ -242,7 +266,31 @@ Creates an instance of VLLMTextEmbedder.
 warm_up() -> None
 ```
 
-Create the OpenAI clients.
+Create the synchronous OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous OpenAI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous OpenAI client.
 
 #### run
 
@@ -444,7 +492,31 @@ Creates an instance of VLLMChatGenerator.
 warm_up() -> None
 ```
 
-Create the OpenAI clients and warm up tools.
+Create the synchronous OpenAI client and warm up tools.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous OpenAI client and warm up tools.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous OpenAI client.
 
 #### to_dict
 
@@ -493,8 +565,9 @@ Run the VLLM chat generator on the given input data.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
   For details on vLLM API parameters, see
   [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -525,8 +598,9 @@ Run the VLLM chat generator on the given input data asynchronously.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
   For details on vLLM API parameters, see
   [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -634,7 +708,31 @@ Creates an instance of VLLMRanker.
 warm_up() -> None
 ```
 
-Create the httpx clients.
+Create the synchronous HTTP client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous HTTP client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous HTTP client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous HTTP client.
 
 #### run
 

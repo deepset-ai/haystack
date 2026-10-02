@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    ``PromptBuilder`` and ``ChatPromptBuilder`` now treat every Jinja2 template variable as **required by default**.
+    Previously, variables were optional by default unless explicitly listed in ``required_variables``.
+
+    To check if you're affected: look for ``PromptBuilder(...)`` or ``ChatPromptBuilder(...)`` calls in your code
+    that do not pass ``required_variables``. If those components relied on missing variables being silently
+    rendered as empty strings, the behavior depends on how the missing variable was reaching the builder:
+
+    - Calling ``builder.run()`` directly without providing a required variable now raises ``ValueError``.
+    - In a pipeline, if a required variable is neither provided as a user input nor connected from another
+      component, ``Pipeline.run`` raises ``ValueError("Missing mandatory input '<var>' for component '<name>'.")``.
+    - In a pipeline, if a required variable is connected to a sender that never produces output on a given run
+      (for example, a loop-fed input on the first iteration or a conditional branch that isn't taken), the
+      pipeline cannot make progress and raises ``PipelineComponentsBlockedError``.
+
+    Migration options:
+
+    - To require only a subset of variables, pass ``required_variables=["var1", "var2"]``.
+    - To preserve the previous "all optional" behavior, explicitly pass ``required_variables=None``.
+    - To require everything (the new default), no change is needed.

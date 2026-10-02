@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Comparing two ``Document`` objects with ``==`` now takes all metadata into account.
+    Previously, two documents with different metadata could be considered equal if the metadata
+    contained keys with the same names as document fields (such as ``id`` or ``content``).
+  - |
+    ``Document.from_dict(document.to_dict())`` now correctly rebuilds any document.
+    Previously, if the metadata contained keys with the same names as document fields
+    (such as ``id`` or ``meta``), this either raised an error or silently lost those
+    metadata entries.

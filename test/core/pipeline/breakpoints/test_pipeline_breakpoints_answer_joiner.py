@@ -4,8 +4,8 @@
 
 import pytest
 
-from haystack import component
 from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.joiners import AnswerJoiner
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.pipeline import Pipeline
@@ -13,24 +13,13 @@ from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
 
 
-@component
-class FakeChatGenerator:
-    def __init__(self, content: str, model_name: str):
-        self.content = content
-        self.model_name = model_name
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant(self.content)]}
-
-
 class TestPipelineBreakpoints:
     @pytest.fixture
     def answer_join_pipeline(self):
         """Creates a pipeline with fake components."""
         pipeline = Pipeline()
-        pipeline.add_component("gpt-4o", FakeChatGenerator("GPT-4 response", "gpt-4o"))
-        pipeline.add_component("gpt-3", FakeChatGenerator("GPT-3 response", "gpt-3.5-turbo"))
+        pipeline.add_component("gpt-4o", MockChatGenerator("GPT-4 response", model="gpt-4o"))
+        pipeline.add_component("gpt-3", MockChatGenerator("GPT-3 response", model="gpt-3.5-turbo"))
         pipeline.add_component("answer_builder_a", AnswerBuilder())
         pipeline.add_component("answer_builder_b", AnswerBuilder())
         pipeline.add_component("answer_joiner", AnswerJoiner())

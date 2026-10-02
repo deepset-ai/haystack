@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` and ``AnswerJoiner`` now resolve ``top_k`` consistently and validate it.
+    Previously, a runtime ``top_k=0`` was treated as "unset" and silently fell back to the
+    instance's ``top_k``, instead of returning an empty list as requested. Both components now:
+
+    - Raise a ``ValueError`` at initialization if ``top_k`` is not ``None`` and is less than or
+      equal to ``0``.
+    - Raise a ``ValueError`` at runtime if ``top_k`` passed to ``run()`` is negative.
+    - Return an empty list when ``run()`` is called with ``top_k=0``, regardless of the
+      instance's configured ``top_k``.

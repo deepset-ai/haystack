@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``SentenceSplitter`` losing the whitespace between two sentences when the first one ends with a closing
+    quote, as in ``He said "Hi." Bye.``. Those characters were missing from the chunk text and shifted the
+    ``split_idx_start`` offset of every following chunk, so chunks could no longer be mapped back onto the original
+    text. This affects all components that split on sentences, such as ``DocumentSplitter``,
+    ``RecursiveDocumentSplitter``, ``MarkdownHeaderSplitter`` and ``EmbeddingBasedDocumentSplitter``. Chunk
+    boundaries change for text that contains quoted sentences, so re-indexing an existing corpus produces different
+    chunks than before.

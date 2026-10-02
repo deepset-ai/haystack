@@ -17,9 +17,6 @@ env:
   PYTHON_VERSION: "3.10"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.16.5"
-  # we use HF_TOKEN instead of HF_API_TOKEN to work around a Hugging Face bug
-  # see https://github.com/deepset-ai/haystack/issues/9552
-  HF_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
 permissions:
   contents: read
@@ -29,9 +26,11 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -41,7 +40,7 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Run tests
-        run: hatch run e2e:test
+        run: hatch run test:e2e
 
       - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'

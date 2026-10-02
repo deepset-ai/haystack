@@ -1,7 +1,10 @@
-ARG build_image
-ARG base_image
+# Pinned digest defaults so the base images are resolvable by hash even when
+# the args are not passed (e.g. by supply-chain scanners or a plain `docker build`).
+# docker/docker-bake.hcl overrides these at build time; keep the digests in sync.
+ARG build_image=python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
+ARG base_image=python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
 
-FROM $build_image AS build-image
+FROM ${build_image} AS build-image
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
@@ -25,7 +28,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN uv pip install --no-cache-dir -U setuptools && \
     uv pip install --no-cache-dir .
 
-FROM $base_image AS final
+FROM ${base_image} AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 

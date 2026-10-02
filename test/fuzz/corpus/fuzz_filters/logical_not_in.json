@@ -1,0 +1,1 @@
+{"operator": "NOT", "conditions": [{"field": "meta.name", "operator": "in", "value": ["a", "b"]}]}

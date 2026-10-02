@@ -56,6 +56,22 @@ print(f"Document Embedding: {result['documents'][0].embedding}")
 print(f"Embedding Dimension: {len(result['documents'][0].embedding)}")
 ```
 
+Running on GPU:
+
+```python
+# NVIDIA GPU (requires onnxruntime-gpu)
+doc_embedder = FastembedDocumentEmbedder(
+    model="BAAI/bge-small-en-v1.5",
+    model_kwargs={"providers": ["CUDAExecutionProvider"]},
+)
+
+# Intel GPU / XPU (requires onnxruntime-openvino)
+doc_embedder = FastembedDocumentEmbedder(
+    model="BAAI/bge-small-en-v1.5",
+    model_kwargs={"providers": ["OpenVINOExecutionProvider"]},
+)
+```
+
 #### __init__
 
 ```python
@@ -71,6 +87,7 @@ __init__(
     local_files_only: bool = False,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -94,6 +111,9 @@ Create an FastembedDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, only use the model files in the `cache_dir`.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document content.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document content.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` for NVIDIA GPU or
+  `["OpenVINOExecutionProvider"]` for Intel GPU/XPU), `cuda`, or `device_ids`.
 
 #### to_dict
 
@@ -178,7 +198,7 @@ document_list = [
 result = sparse_doc_embedder.run(document_list)
 print(f"Document Text: {result['documents'][0].content}")
 print(f"Document Sparse Embedding: {result['documents'][0].sparse_embedding}")
-print(f"Sparse Embedding Dimension: {len(result['documents'][0].sparse_embedding)}")
+print(f"Number of non-zero elements: {len(result['documents'][0].sparse_embedding.indices)}")
 ```
 
 #### __init__
@@ -198,7 +218,7 @@ __init__(
 ) -> None
 ```
 
-Create an FastembedDocumentEmbedder component.
+Create a FastembedSparseDocumentEmbedder component.
 
 **Parameters:**
 
@@ -346,7 +366,7 @@ Embeds text using the Fastembed model.
 **Returns:**
 
 - <code>dict\[str, SparseEmbedding\]</code> – A dictionary with the following keys:
-- `embedding`: A list of floats representing the embedding of the input text.
+- `sparse_embedding`: The `SparseEmbedding` of the input text.
 
 **Raises:**
 
@@ -373,6 +393,22 @@ text_embedder = FastembedTextEmbedder(
 embedding = text_embedder.run(text)["embedding"]
 ```
 
+Running on GPU:
+
+```python
+# NVIDIA GPU (requires onnxruntime-gpu)
+text_embedder = FastembedTextEmbedder(
+    model="BAAI/bge-small-en-v1.5",
+    model_kwargs={"providers": ["CUDAExecutionProvider"]},
+)
+
+# Intel GPU / XPU (requires onnxruntime-openvino)
+text_embedder = FastembedTextEmbedder(
+    model="BAAI/bge-small-en-v1.5",
+    model_kwargs={"providers": ["OpenVINOExecutionProvider"]},
+)
+```
+
 #### __init__
 
 ```python
@@ -385,6 +421,7 @@ __init__(
     progress_bar: bool = True,
     parallel: int | None = None,
     local_files_only: bool = False,
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -404,6 +441,9 @@ Create a FastembedTextEmbedder component.
   If 0, use all available cores.
   If None, don't use data-parallel processing, use default onnxruntime threading instead.
 - **local_files_only** (<code>bool</code>) – If `True`, only use the model files in the `cache_dir`.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` for NVIDIA GPU or
+  `["OpenVINOExecutionProvider"]` for Intel GPU/XPU), `cuda`, or `device_ids`.
 
 #### to_dict
 
@@ -473,6 +513,22 @@ print(output["documents"][0].content)
 # Berlin
 ```
 
+Running on GPU:
+
+```python
+# NVIDIA GPU (requires onnxruntime-gpu)
+ranker = FastembedLateInteractionRanker(
+    model_name="colbert-ir/colbertv2.0",
+    model_kwargs={"providers": ["CUDAExecutionProvider"]},
+)
+
+# Intel GPU / XPU (requires onnxruntime-openvino)
+ranker = FastembedLateInteractionRanker(
+    model_name="colbert-ir/colbertv2.0",
+    model_kwargs={"providers": ["OpenVINOExecutionProvider"]},
+)
+```
+
 #### __init__
 
 ```python
@@ -487,6 +543,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     meta_data_separator: str = "\n",
     score_threshold: float | None = None,
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -512,6 +569,9 @@ Creates an instance of the 'FastembedLateInteractionRanker'.
   to the Document content.
 - **score_threshold** (<code>float | None</code>) – If provided, only documents with a score above the threshold are returned.
   Note that ColBERT scores are unnormalized sums and typically range from 3 to 25.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` to run on an NVIDIA GPU or
+  `["OpenVINOExecutionProvider"]` to run on an Intel GPU), `cuda`, or `device_ids`.
 
 #### to_dict
 
@@ -600,6 +660,22 @@ print(output["documents"][0].content)
 # Berlin
 ```
 
+Running on GPU:
+
+```python
+# NVIDIA GPU (requires onnxruntime-gpu)
+ranker = FastembedRanker(
+    model_name="Xenova/ms-marco-MiniLM-L-6-v2",
+    model_kwargs={"providers": ["CUDAExecutionProvider"]},
+)
+
+# Intel GPU / XPU (requires onnxruntime-openvino)
+ranker = FastembedRanker(
+    model_name="Xenova/ms-marco-MiniLM-L-6-v2",
+    model_kwargs={"providers": ["OpenVINOExecutionProvider"]},
+)
+```
+
 #### __init__
 
 ```python
@@ -614,6 +690,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     meta_data_separator: str = "\n",
     score_threshold: float | None = None,
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -638,6 +715,9 @@ Creates an instance of the 'FastembedRanker'.
   to the Document content.
 - **score_threshold** (<code>float | None</code>) – If provided, only documents with a score above the threshold are returned.
   Applied after `top_k`, so the output may contain fewer than `top_k` documents.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` to run on an NVIDIA GPU or
+  `["OpenVINOExecutionProvider"]` to run on an Intel GPU), `cuda`, or `device_ids`.
 
 #### to_dict
 

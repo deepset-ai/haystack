@@ -9,6 +9,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -62,20 +63,43 @@ class MultiQueryTextRetriever:
         Initialize MultiQueryTextRetriever.
 
         :param retriever: The text-based retriever to use for document retrieval.
-        :param max_workers: Maximum number of worker threads for parallel processing. Default is 3.
+        :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
+            `run_async`. Default is 3.
         """
         self.retriever = retriever
         self.max_workers = max_workers
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the retriever if it has a warm_up method.
+        Warm up the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self.retriever, "warm_up"):
+            self.retriever.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the retriever on the serving event loop.
+        """
+        if hasattr(self.retriever, "warm_up_async"):
+            await self.retriever.warm_up_async()
+        elif hasattr(self.retriever, "warm_up"):
+            self.retriever.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the retriever's resources.
+        """
+        if hasattr(self.retriever, "close"):
+            self.retriever.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the retriever's async resources.
+        """
+        if hasattr(self.retriever, "close_async"):
+            await self.retriever.close_async()
+        elif hasattr(self.retriever, "close"):
+            self.retriever.close()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
@@ -91,8 +115,7 @@ class MultiQueryTextRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
@@ -124,10 +147,17 @@ class MultiQueryTextRetriever:
         """
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
-        results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
+        # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
+        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+
+        async def _bounded_run_one(query: str) -> list[Document] | None:
+            async with semaphore:
+                return await self._run_one_async(query, retriever_kwargs)
+
+        tasks = [asyncio.create_task(_bounded_run_one(query)) for query in queries]
+        results = await _gather_tasks_with_cancel(tasks)
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
@@ -156,12 +186,7 @@ class MultiQueryTextRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        loop = asyncio.get_running_loop()
-
-        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
-            result = await self.retriever.run_async(query=query, **retriever_kwargs)
-        else:
-            result = await loop.run_in_executor(None, lambda: self.retriever.run(query=query, **retriever_kwargs))
+        result = await _execute_component_async(self.retriever, query=query, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

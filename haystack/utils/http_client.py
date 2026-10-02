@@ -8,21 +8,13 @@ import httpx
 
 
 @overload
-def init_http_client(http_client_kwargs: dict[str, Any], async_client: Literal[False]) -> httpx.Client: ...
-@overload
 def init_http_client(
-    http_client_kwargs: dict[str, Any] | None, async_client: Literal[False]
+    http_client_kwargs: dict[str, Any] | None = ..., async_client: Literal[False] = ...
 ) -> httpx.Client | None: ...
 @overload
-def init_http_client(http_client_kwargs: dict[str, Any], async_client: Literal[True]) -> httpx.AsyncClient: ...
-@overload
 def init_http_client(
-    http_client_kwargs: dict[str, Any] | None, async_client: Literal[True]
+    http_client_kwargs: dict[str, Any] | None = ..., async_client: Literal[True] = ...
 ) -> httpx.AsyncClient | None: ...
-@overload
-def init_http_client(
-    http_client_kwargs: dict[str, Any] | None, async_client: bool
-) -> httpx.Client | httpx.AsyncClient | None: ...
 def init_http_client(
     http_client_kwargs: dict[str, Any] | None = None, async_client: bool = False
 ) -> httpx.Client | httpx.AsyncClient | None:

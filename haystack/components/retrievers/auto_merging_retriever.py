@@ -104,10 +104,12 @@ class AutoMergingRetriever:
         if not all(doc.meta.get("__parent_id") for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__parent_id'")
 
-        if not all(doc.meta.get("__level") for doc in matched_leaf_documents):
+        # HierarchicalDocumentSplitter uses __level=0 and __block_size=0 for the root, so these
+        # fields must be checked for presence rather than truthiness.
+        if not all("__level" in doc.meta for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__level'")
 
-        if not all(doc.meta.get("__block_size") for doc in matched_leaf_documents):
+        if not all("__block_size" in doc.meta for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__block_size'")
 
     @component.output_types(documents=list[Document])
@@ -224,3 +226,17 @@ class AutoMergingRetriever:
             return await _try_merge_level(merged_docs, docs_to_return)
 
         return {"documents": await _try_merge_level(documents, [])}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

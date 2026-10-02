@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``InputSocket.__post_init__`` crashing with ``IndexError`` when a Variadic input
+    uses a bare ``Iterable`` without a type argument (e.g. ``Annotated[Iterable, HAYSTACK_VARIADIC_ANNOTATION]``).
+    Now raises ``ComponentError`` with a clear message instead of an unhelpful ``IndexError``.

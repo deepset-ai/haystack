@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import builtins
 import sys
 import typing
 from collections import deque
 from types import UnionType
-from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Deque, Dict, FrozenSet, List, Literal, Optional, Set, Tuple, Union
 
 import pytest
 
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _DENIED_BUILTIN_NAMES
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import (
     _build_pep604_union_type,
@@ -77,6 +80,10 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("tuple[dict]", tuple[dict]),
     pytest.param("tuple[float]", tuple[float]),
     pytest.param("tuple[bool]", tuple[bool]),
+    # variadic tuple (the `...` is the Ellipsis singleton, not a type)
+    pytest.param("tuple[int, ...]", tuple[int, ...]),
+    pytest.param("tuple[str, ...]", tuple[str, ...]),
+    pytest.param("tuple[dict[str, int], ...]", tuple[dict[str, int], ...]),
     # typing Tuple
     pytest.param("typing.Tuple", Tuple),
     pytest.param("typing.Tuple[int]", Tuple[int]),
@@ -84,6 +91,10 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Tuple[dict]", Tuple[dict]),
     pytest.param("typing.Tuple[float]", Tuple[float]),
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
+    pytest.param("typing.Tuple[int, ...]", Tuple[int, ...]),
+    # callable (the `...` is the Ellipsis singleton, not a type)
+    pytest.param("typing.Callable[..., int]", Callable[..., int]),
+    pytest.param("typing.Callable[..., str]", Callable[..., str]),
     # PEP 604 X | Y
     pytest.param("str | int", str | int),
     pytest.param("int | float", int | float),
@@ -148,7 +159,7 @@ def test_output_type_deserialization():
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
     assert deserialize_type("None") is None
-    assert deserialize_type("NoneType") == type(None)  # type: ignore
+    assert deserialize_type("NoneType") == type(None)
 
 
 def test_output_builtin_type_deserialization():
@@ -157,6 +168,29 @@ def test_output_builtin_type_deserialization():
     assert deserialize_type("builtins.dict") == dict
     assert deserialize_type("builtins.float") == float
     assert deserialize_type("builtins.bool") == bool
+
+
+# `type` is excluded: it is a valid type in this path (covered by test_builtin_types_round_trip),
+# even though it is denied as a *callable*. Every other denied builtin is a function, not a type.
+@pytest.mark.parametrize("name", sorted(_DENIED_BUILTIN_NAMES - {"type"}))
+def test_dangerous_builtins_rejected(name):
+    # `builtins` is on the allowlist, but a type annotation must resolve to an actual type. Builtin
+    # functions are rejected both with the `builtins.` prefix and via the bare-name fallback (which
+    # skips the allowlist). The dunder-named ones (`__import__`, `__build_class__`) are refused even
+    # earlier by the object-internals traversal guard when a `builtins.` prefix is used.
+    with pytest.raises(DeserializationError, match="not a type|internal attribute"):
+        deserialize_type(f"builtins.{name}")
+    with pytest.raises(DeserializationError, match="not a type"):
+        deserialize_type(name)
+
+
+@pytest.mark.parametrize("name", ["memoryview", "type", "bytearray", "frozenset"])
+def test_builtin_types_round_trip(name):
+    # Builtin *types* must still resolve as annotations — the type gate keys on `isinstance(type)`,
+    # not on whether the name is also callable, so e.g. `memoryview` and `type` are allowed.
+    expected = getattr(builtins, name)
+    assert deserialize_type(name) is expected
+    assert deserialize_type(f"builtins.{name}") is expected
 
 
 def test_output_type_serialization_nested():
@@ -193,6 +227,104 @@ def test_output_type_deserialization_nested():
     assert deserialize_type("list[str | None]") == list[Union[str, None]]
     assert deserialize_type("dict[str, int | None]") == dict[str, Union[int, None]]
     assert deserialize_type("list[dict[str, int] | None]") == list[Union[dict[str, int], None]]
+
+
+def test_output_type_serialization_typing_generic_with_nonetype():
+    # NoneType used as a regular argument of a typing generic (not the implicit None of Optional)
+    # must be kept, otherwise the serialized type is malformed (e.g. "typing.Dict[str]") or loses information.
+    assert serialize_type(Dict[str, type(None)]) == "typing.Dict[str, None]"  # type: ignore[misc]
+    assert serialize_type(Dict[type(None), str]) == "typing.Dict[None, str]"  # type: ignore[misc]
+    assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
+    assert serialize_type(List[type(None)]) == "typing.List[None]"  # type: ignore[misc]
+    # A Union with more than two members that includes None must keep None as well.
+    assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
+    # Optional must still be serialized without a redundant trailing None.
+    assert serialize_type(Optional[str]) == "typing.Optional[str]"
+
+
+def test_output_type_round_trip_typing_generic_with_nonetype():
+    for type_ in [
+        Dict[str, type(None)],  # type: ignore[misc]
+        Dict[type(None), str],  # type: ignore[misc]
+        Tuple[int, type(None)],
+        List[type(None)],  # type: ignore[misc]
+        Union[str, int, None],
+        Optional[str],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_deserialization_legacy_ellipsis_literal():
+    # Types serialized by older versions emitted the literal "Ellipsis"; make sure they still load.
+    assert deserialize_type("tuple[int, Ellipsis]") == tuple[int, ...]
+    assert deserialize_type("typing.Callable[Ellipsis, int]") == Callable[..., int]
+
+
+def test_output_type_serialization_callable_with_parameter_list():
+    # `Callable[[X, Y], R]` returns its parameter list from `typing.get_args` as a Python list ([X, Y]),
+    # not as a type. It must be serialized as "[X, Y]" so the parameters survive the round-trip.
+    assert serialize_type(Callable[[int, str], bool]) == "typing.Callable[[int, str], bool]"
+    assert serialize_type(Callable[[], int]) == "typing.Callable[[], int]"
+    assert serialize_type(Callable[[int], List[str]]) == "typing.Callable[[int], typing.List[str]]"
+    assert serialize_type(Callable[[Union[str, int]], bool]) == "typing.Callable[[typing.Union[str, int]], bool]"
+
+
+def test_output_type_deserialization_callable_with_parameter_list():
+    assert deserialize_type("typing.Callable[[int, str], bool]") == Callable[[int, str], bool]
+    assert deserialize_type("typing.Callable[[], int]") == Callable[[], int]
+    assert deserialize_type("typing.Callable[[int], typing.List[str]]") == Callable[[int], List[str]]
+    assert deserialize_type("typing.Callable[[typing.Union[str, int]], bool]") == Callable[[Union[str, int]], bool]
+
+
+def test_output_type_round_trip_callable_with_parameter_list():
+    for type_ in [
+        Callable[[int, str], bool],
+        Callable[[], int],
+        Callable[[int], List[str]],
+        Callable[[Dict[str, int], str], List[bool]],
+        Callable[[Union[str, int]], bool],
+        List[Callable[[int], str]],
+        Dict[str, Callable[[int, str], bool]],
+        Optional[Callable[[int], str]],
+        Callable[[Callable[[int], str]], bool],
+        # The Ellipsis form (no parameter list) must still round-trip unaffected by the parameter-list
+        # handling above: `_serialize_type_arg`/`_deserialize_type_arg` only special-case a `list` argument,
+        # so `...` still falls through to the existing Ellipsis handling in serialize_type/deserialize_type.
+        Callable[..., int],
+        Callable[[int], Callable[..., str]],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_serialization_literal():
+    assert serialize_type(Literal["yes", "no"]) == "typing.Literal['yes', 'no']"
+    assert serialize_type(Literal[1, 2, 3]) == "typing.Literal[1, 2, 3]"
+    assert serialize_type(Literal[True, False]) == "typing.Literal[True, False]"
+    # A value that happens to look like a type name must stay a string, not be rendered as that type.
+    assert serialize_type(Literal["int", "str"]) == "typing.Literal['int', 'str']"
+
+
+def test_output_type_deserialization_literal():
+    assert deserialize_type("typing.Literal['yes', 'no']") == Literal["yes", "no"]
+    assert deserialize_type("typing.Literal[1, 2, 3]") == Literal[1, 2, 3]
+    assert deserialize_type("typing.Literal[True, False]") == Literal[True, False]
+    assert deserialize_type("typing.Literal['int', 'str']") == Literal["int", "str"]
+
+
+def test_output_type_round_trip_literal():
+    for type_ in [
+        Literal["yes", "no"],
+        Literal["int", "str"],  # values that look like type names must round-trip as strings, not types
+        Literal[1, 2, 3],
+        Literal[True, False],
+        Literal["None"],  # the string "None", not the NoneType singleton
+        Literal["a, b", "c"],  # a comma inside a value must not split the arguments
+        Literal["x"],
+        Literal[b"bytes"],
+        Optional[Literal["a", "b"]],
+        Union[Literal["a"], int],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
 
 
 def test_output_type_serialization_haystack_dataclasses():

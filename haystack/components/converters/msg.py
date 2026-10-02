@@ -180,11 +180,9 @@ class MSGToDocument:
 
             documents.append(Document(content=text, meta=merged_metadata))
             for attachment in attachments:
-                attachment_meta = {
-                    **merged_metadata,
-                    "parent_file_path": merged_metadata["file_path"],
-                    "file_path": attachment.meta["file_path"],
-                }
+                attachment_meta = {**merged_metadata, "file_path": attachment.meta["file_path"]}
+                if "file_path" in merged_metadata:
+                    attachment_meta["parent_file_path"] = merged_metadata["file_path"]
                 all_attachments.append(
                     ByteStream(data=attachment.data, meta=attachment_meta, mime_type=attachment.mime_type)
                 )

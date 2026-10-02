@@ -857,4 +857,16 @@ def test_normalize_messages():
     assert _normalize_messages([ChatMessage.from_user("World")]) == [ChatMessage.from_user("World")]
 
     with pytest.raises(TypeError):
-        _normalize_messages(123)
+        _normalize_messages(123)  # type: ignore[arg-type]
+
+
+def test_convert_streaming_chunks_to_chat_message_no_chunks():
+    message = _convert_streaming_chunks_to_chat_message(chunks=[])
+
+    assert message.text is None
+    assert message.tool_calls == []
+    assert message.reasoning is None
+    assert message.meta["model"] is None
+    assert message.meta["finish_reason"] is None
+    assert message.meta["completion_start_time"] is None
+    assert message.meta["usage"] is None

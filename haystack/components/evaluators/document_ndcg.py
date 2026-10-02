@@ -5,7 +5,7 @@
 from math import log2
 from typing import Any
 
-from haystack import Document, component
+from haystack import Document, component, default_to_dict
 
 
 @component
@@ -33,6 +33,69 @@ class DocumentNDCGEvaluator:
     # 0.8869
     ```
     """
+
+    def __init__(self, document_comparison_field: str = "content") -> None:
+        """
+        Create a DocumentNDCGEvaluator component.
+
+        :param document_comparison_field:
+            The Document field to use for comparison. Possible options:
+            - `"content"`: uses `doc.content`
+            - `"id"`: uses `doc.id`
+            - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+              (e.g. `"meta.file_id"`, `"meta.page_number"`)
+              Nested keys are supported (e.g. `"meta.source.url"`).
+        """
+        self.document_comparison_field = document_comparison_field
+
+    def _get_comparison_value(self, doc: Document) -> Any:
+        """
+        Extract the comparison value from a document based on the configured field.
+        """
+        if self.document_comparison_field == "content":
+            return doc.content
+        if self.document_comparison_field == "id":
+            return doc.id
+        if self.document_comparison_field.startswith("meta."):
+            parts = self.document_comparison_field[5:].split(".")
+            value = doc.meta
+            for part in parts:
+                if not isinstance(value, dict) or part not in value:
+                    return None
+                value = value[part]
+            return value
+        msg = (
+            f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
+            "Use 'content', 'id', or 'meta.<key>'."
+        )
+        raise ValueError(msg)
+
+    def _build_relevance_map(self, gt_docs: list[Document]) -> dict[Any, float]:
+        """
+        Map each ground truth comparison value to its relevance score.
+
+        Documents whose comparison value cannot be determined (e.g. missing meta key) are skipped,
+        since they can never be matched during retrieval either. Documents that share a comparison
+        value are collapsed to a single entry keeping the highest relevance, so `calculate_dcg` and
+        `calculate_idcg` credit the same unique relevant set with the same scores.
+        """
+        relevant_value_to_score: dict[Any, float] = {}
+        for doc in gt_docs:
+            value = self._get_comparison_value(doc)
+            if value is None:
+                continue
+            relevance = doc.score if doc.score is not None else 1.0
+            relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
+        return relevant_value_to_score
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, document_comparison_field=self.document_comparison_field)
 
     @component.output_types(score=float, individual_scores=list[float])
     def run(
@@ -78,7 +141,7 @@ class DocumentNDCGEvaluator:
             The retrieved_documents to validate.
 
         :raises ValueError:
-            If the ground_truth_documents or the retrieved_documents are an empty a list.
+            If the ground_truth_documents or the retrieved_documents are an empty list.
             If the length of ground_truth_documents and retrieved_documents differs.
             If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
         """
@@ -95,8 +158,7 @@ class DocumentNDCGEvaluator:
                 msg = "Either none or all documents in each list of ground_truth_documents must have a score."
                 raise ValueError(msg)
 
-    @staticmethod
-    def calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float:
+    def calculate_dcg(self, gt_docs: list[Document], ret_docs: list[Document]) -> float:
         """
         Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
@@ -109,25 +171,34 @@ class DocumentNDCGEvaluator:
             documents based on the ground truth documents.
         """
         dcg = 0.0
-        relevant_id_to_score = {doc.id: doc.score if doc.score is not None else 1 for doc in gt_docs}
+        relevant_value_to_score = self._build_relevance_map(gt_docs)
+
+        # Credit each relevant value at most once by popping it when first matched. A duplicate
+        # retrieval of the same document then finds nothing, so it cannot inflate DCG past IDCG.
         for i, doc in enumerate(ret_docs):
-            if doc.id in relevant_id_to_score:  # TODO Related to https://github.com/deepset-ai/haystack/issues/8412
-                dcg += relevant_id_to_score[doc.id] / log2(i + 2)  # i + 2 because i is 0-indexed
+            value = self._get_comparison_value(doc)
+            if value is not None and value in relevant_value_to_score:
+                dcg += relevant_value_to_score.pop(value) / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
-    @staticmethod
-    def calculate_idcg(gt_docs: list[Document]) -> float:
+    def calculate_idcg(self, gt_docs: list[Document]) -> float:
         """
         Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
+
+        Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+        are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
+        a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
+        credits each relevant value at most once. Including duplicates or unmatchable documents here
+        would inflate the IDCG and make it impossible for NDCG to reach 1.0 for a perfect retrieval.
 
         :param gt_docs:
             The ground truth documents.
         :returns:
             The ideal discounted cumulative gain (IDCG) of the ground truth documents.
         """
+        relevant_value_to_score = self._build_relevance_map(gt_docs)
+
         idcg = 0.0
-        for i, doc in enumerate(sorted(gt_docs, key=lambda x: x.score if x.score is not None else 1, reverse=True)):
-            # If the document has a score, use it; otherwise, use 1 for binary relevance.
-            relevance = doc.score if doc.score is not None else 1
+        for i, relevance in enumerate(sorted(relevant_value_to_score.values(), reverse=True)):
             idcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return idcg

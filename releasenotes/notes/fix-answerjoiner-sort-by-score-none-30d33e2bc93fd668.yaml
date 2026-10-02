@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a ``TypeError`` in ``AnswerJoiner`` when running with ``sort_by_score=True`` and at least one
+    answer had a ``score`` of ``None``. As documented, an answer without a score is now treated as if its
+    score were negative infinity and sorted last, instead of raising
+    ``TypeError: '<' not supported between instances of 'float' and 'NoneType'``.

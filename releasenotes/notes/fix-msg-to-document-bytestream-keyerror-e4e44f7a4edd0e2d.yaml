@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``MSGToDocument`` raising a ``KeyError`` when converting a ``ByteStream``
+    source that has no ``file_path`` in its ``meta`` (for example a bare
+    ``ByteStream(data=...)``, rather than a file path or a stream produced via
+    ``ByteStream.from_file_path``). Attachments extracted from such a source no
+    longer include a ``parent_file_path`` key, since there is no source file path
+    to record.

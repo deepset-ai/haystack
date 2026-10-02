@@ -5,13 +5,27 @@
 import pytest
 
 from haystack import Pipeline
-from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers.metadata_router import MetadataRouter
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ByteStream, Document
 
 
 class TestMetadataRouter:
+    @pytest.mark.parametrize("output_type", [list[Document], list[ByteStream]])
+    def test_init_rejects_reserved_output_name(self, output_type: type) -> None:
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter(
+                rules={"unmatched": {"field": "meta.language", "operator": "==", "value": "en"}},
+                output_type=output_type,
+            )
+
+    def test_from_dict_rejects_reserved_output_name(self) -> None:
+        data = MetadataRouter(rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}}).to_dict()
+        rules = data["init_parameters"]["rules"]
+        rules["unmatched"] = rules.pop("english")
+        with pytest.raises(ValueError, match="'unmatched'.*reserved"):
+            MetadataRouter.from_dict(data)
+
     def test_run(self):
         rules = {
             "edge_1": {
@@ -48,6 +62,8 @@ class TestMetadataRouter:
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=list[ByteStream]
         )
         output = router.run(documents=docs)
+        assert isinstance(output["en"][0], ByteStream)
+        assert isinstance(output["unmatched"][0], ByteStream)
         assert output["en"][0].data == byt1.data
         assert output["unmatched"][0].data == byt2.data
 
@@ -56,12 +72,18 @@ class TestMetadataRouter:
         byt2 = ByteStream.from_string(text="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
         doc1 = Document(content="What is this", meta={"language": "en"})
         doc2 = Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
-        docs = [byt1, byt2, doc1, doc2]
+        docs: list[Document | ByteStream] = [byt1, byt2, doc1, doc2]
         router = MetadataRouter(
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
             output_type=list[Document | ByteStream],
         )
-        output = router.run(documents=docs)
+        # `MetadataRouter.run` is annotated `list[Document] | list[ByteStream]`, which excludes the mixed
+        # list this test exercises. Routing handles it fine at runtime.
+        output = router.run(documents=docs)  # type: ignore[arg-type]
+        assert isinstance(output["en"][0], ByteStream)
+        assert isinstance(output["en"][1], Document)
+        assert isinstance(output["unmatched"][0], ByteStream)
+        assert isinstance(output["unmatched"][1], Document)
         assert output["en"][0].data == byt1.data
         assert output["en"][1].content == "What is this"
         assert output["unmatched"][0].data == byt2.data
@@ -94,6 +116,33 @@ class TestMetadataRouter:
         assert output["edge_1"][1].meta["created_at"] == "2025-02-01T12:45:46.435816Z"
         assert output["unmatched"][0].meta["created_at"] == "2025-01-03T12:45:46.435816Z"
 
+    def test_run_with_strict_datetime_comparison(self):
+        rules = {"matched": {"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}}
+        router = MetadataRouter(rules=rules, strict_datetime_comparison=True)
+        document = Document(meta={"created_at": "2025-02-03T12:45:46Z"})
+
+        output = router.run(documents=[document])
+
+        assert output["matched"] == []
+        assert output["unmatched"] == [document]
+
+    def test_datetime_equality_and_ordering_are_consistent_for_mixed_timezone_awareness(self):
+        """Test that equality and inclusive ordering agree for mixed-awareness datetimes."""
+        filter_value = "2023-01-01T00:00:00+00:00"
+        rules = {
+            operator: {"field": "meta.created_at", "operator": operator, "value": filter_value}
+            for operator in ["==", ">=", "<="]
+        }
+        router = MetadataRouter(rules=rules)
+        document = Document(meta={"created_at": "2023-01-01T00:00:00"})
+
+        output = router.run(documents=[document])
+
+        assert output["=="] == [document]
+        assert output[">="] == [document]
+        assert output["<="] == [document]
+        assert output["unmatched"] == []
+
     def test_to_dict(self):
         rules = {
             "edge_1": {
@@ -104,7 +153,11 @@ class TestMetadataRouter:
         router = MetadataRouter(rules=rules)
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
-            "init_parameters": {"rules": rules, "output_type": "list[haystack.dataclasses.document.Document]"},
+            "init_parameters": {
+                "rules": rules,
+                "output_type": "list[haystack.dataclasses.document.Document]",
+                "strict_datetime_comparison": False,
+            },
         }
         assert router.to_dict() == expected_dict
 
@@ -115,13 +168,14 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document])
+        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document], strict_datetime_comparison=True)
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
                 "output_type": "list[haystack.dataclasses.byte_stream.ByteStream "
                 "| haystack.dataclasses.document.Document]",
+                "strict_datetime_comparison": True,
             },
         }
         assert router.to_dict() == expected_dict
@@ -198,13 +252,11 @@ class TestMetadataRouter:
             Document(content="Hello, welcome to the world of Haystack!", meta={"language": "en"}),
             Document(content="Hallo, willkommen in der Welt von Haystack!", meta={"language": "de"}),
         ]
-        p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
         p.add_component(
             instance=MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}),
             name="router",
         )
         p.add_component(instance=DocumentWriter(document_store=in_memory_doc_store), name="writer")
-        p.connect("language_classifier.documents", "router.documents")
         p.connect("router.en", "writer.documents")
-        p.run({"language_classifier": {"documents": docs}})
+        p.run({"router": {"documents": docs}})
         assert in_memory_doc_store.filter_documents() == [docs[0]]

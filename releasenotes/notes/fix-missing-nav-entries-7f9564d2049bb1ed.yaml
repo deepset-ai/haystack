@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Add ``EmbeddingBasedDocumentSplitter`` to the PreProcessors index page, and add
+    ``MarkdownHeaderSplitter`` and ``SpacyNamedEntityExtractor`` to the sidebar navigation.
+    These components had documentation pages but were missing from navigation, making them
+    undiscoverable by users browsing the docs.

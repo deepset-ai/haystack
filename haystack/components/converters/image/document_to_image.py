@@ -34,31 +34,34 @@ class DocumentToImageContent:
     - For PDF files, a `page_number` key specifying which page to extract
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack import Document
     from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
     converter = DocumentToImageContent(
         file_path_meta_field="file_path",
-        root_path="/data/files",
+        root_path="test/test_files",
         detail="high",
         size=(800, 600)
     )
 
     documents = [
-        Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
-        Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
+        Document(content="Optional description of apple.jpg", meta={"file_path": "images/apple.jpg"}),
+        Document(
+            content="Optional description of sample_pdf_1.pdf",
+            meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
+        )
     ]
 
     result = converter.run(documents)
     image_contents = result["image_contents"]
     # [ImageContent(
-    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
+    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'images/apple.jpg'}
     #  ),
     #  ImageContent(
     #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
-    #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
+    #    meta={'file_path': 'pdf/sample_pdf_1.pdf', 'page_number': 1})
     #  )]
     ```
     """
@@ -76,7 +79,11 @@ class DocumentToImageContent:
 
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
-            document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+            document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+            file paths are treated as absolute paths with no containment check.
+            Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+            document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+            that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
             This will be passed to the created ImageContent objects.
         :param size: If provided, resizes the image to fit within the specified dimensions (width, height) while
@@ -106,23 +113,30 @@ class DocumentToImageContent:
         :returns:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-                data and metadata. The order corresponds to order of input documents.
-        :raises ValueError:
-            If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-            MIME type. The error message will specify which document and what information is missing or incorrect.
+                data and metadata. The order corresponds to the order of the input documents. A document that is
+                missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
+                to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
         """
         if not documents:
             return {"image_contents": []}
-
-        images_source_info = _extract_image_sources_info(
-            documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
-        )
 
         image_contents: list[ImageContent | None] = [None] * len(documents)
 
         pdf_page_infos: list[_PDFPageInfo] = []
 
-        for doc_idx, image_source_info in enumerate(images_source_info):
+        for doc_idx, document in enumerate(documents):
+            # Validate each document on its own so one invalid document leaves None in its slot
+            # instead of failing the whole batch
+            try:
+                image_source_info = _extract_image_sources_info(
+                    documents=[document], file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
+                )[0]
+            except ValueError as error:
+                logger.warning(
+                    "Skipping document with ID {document_id}: {error}", document_id=document.id, error=str(error)
+                )
+                continue
+
             mime_type = image_source_info["mime_type"]
             path = image_source_info["path"]
             if mime_type == "application/pdf":
@@ -139,7 +153,7 @@ class DocumentToImageContent:
                     base64_image=base64_image,
                     mime_type=mime_type,
                     detail=self.detail,
-                    meta={"file_path": documents[doc_idx].meta[self.file_path_meta_field]},
+                    meta={"file_path": document.meta[self.file_path_meta_field]},
                 )
 
         # efficiently convert PDF pages to images: each PDF is opened and processed only once

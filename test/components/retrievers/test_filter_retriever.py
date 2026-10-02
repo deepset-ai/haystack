@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -54,7 +55,7 @@ class TestFilterRetriever:
     def test_to_dict(self):
         FilterDocStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = FilterDocStore()
-        document_store.to_dict = lambda: {"type": "FilterDocStore", "init_parameters": {}}
+        document_store.to_dict = lambda: {"type": "FilterDocStore", "init_parameters": {}}  # type: ignore[method-assign]
         component = FilterRetriever(document_store=document_store)
 
         data = component.to_dict()
@@ -121,6 +122,14 @@ class TestFilterRetriever:
         assert len(result["documents"]) == 2
         assert TestFilterRetriever._documents_equal(result["documents"], sample_docs["de_docs"])
 
+    def test_retriever_init_filter_run_empty_filter_override(self, sample_document_store, sample_docs):
+        retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "en"})
+        result = retriever.run(filters={})
+
+        assert "documents" in result
+        assert len(result["documents"]) == 5
+        assert TestFilterRetriever._documents_equal(result["documents"], sample_docs["all_docs"])
+
     @pytest.mark.integration
     def test_run_with_pipeline(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "de"})
@@ -135,12 +144,29 @@ class TestFilterRetriever:
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["de_docs"])
 
-        result: dict[str, Any] = pipeline.run(
-            data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}}
-        )
+        result = pipeline.run(data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}})
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["en_docs"])
+
+        result = pipeline.run(data={"retriever": {"filters": {}}})
+
+        assert result
+        assert "retriever" in result
+        results_docs = result["retriever"]["documents"]
+        assert results_docs
+        assert TestFilterRetriever._documents_equal(results_docs, sample_docs["all_docs"])
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = FilterRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = FilterRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``ComponentTool`` no longer adds a top-level ``description`` key to the generated ``parameters``
+    JSON schema. The wrapped component's docstring was emitted inside the parameters schema, where
+    LLM providers (OpenAI, Anthropic, Google) do not use it, and for tools wrapping a
+    ``SuperComponent`` it produced a confusing auto-generated summary. The parameters schema now only
+    carries per-parameter descriptions, matching plain ``Tool`` and function-based tools. The
+    tool-level ``description`` is unchanged.

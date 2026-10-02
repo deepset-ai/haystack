@@ -39,13 +39,14 @@ pip install google-vertex-haystack
 Basic usage:
 
 ````python
-from haystack_integrations.components.generators.google_vertex import VertexAITextGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAITextGenerator,
+)
 
 generator = VertexAITextGenerator()
 res = generator.run("Tell me a good interview question for a software engineer.")
 
 print(res["replies"][0])
-
 ````
 
 You can also set other parameters like the number of answers generated, temperature to control the randomness, and stop sequences to stop generation. For a full list of possible parameters, see the documentation of [`TextGenerationModel.predict()`](https://cloud.google.com/python/docs/reference/aiplatform/latest/vertexai.language_models.TextGenerationModel#vertexai_language_models_TextGenerationModel_predict).

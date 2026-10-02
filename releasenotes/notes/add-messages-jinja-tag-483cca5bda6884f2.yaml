@@ -1,0 +1,34 @@
+---
+features:
+  - |
+    Added a new ``{% insert %}`` tag to the Jinja2 string templates used by ``ChatPromptBuilder``.
+    The tag is a placeholder that evaluates an expression to a ``ChatMessage`` or a list of ``ChatMessage``
+    objects and expands it into the prompt, so messages provided at runtime can be interleaved with literal
+    ``{% message %}`` blocks. For example, you can wrap the runtime messages with a system message above
+    and a templated user message below, then pass the messages (and any template variables) at run time:
+
+    .. code-block:: python
+
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.dataclasses import ChatMessage
+
+        template = """
+        {% message role="system" %}You are a helpful assistant.{% endmessage %}
+        {% insert messages %}
+        {% message role="user" %}{{ query }}{% endmessage %}
+        """
+
+        builder = ChatPromptBuilder(template=template)
+        result = builder.run(
+            messages=[ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello!")],
+            query="What's the weather?",
+        )
+        # result["prompt"] -> [system, user "Hi", assistant "Hello!", user "What's the weather?"]
+
+    All content types (tool calls, tool call results, images, reasoning, ``name`` and ``meta``) round trip
+    without loss. A missing or empty value expands to nothing.
+
+    The expression can be a plain variable (``{% insert messages %}``), a slice or index
+    (``{% insert messages[-1:] %}``, ``{% insert messages[-1] %}``), or a combination of variables
+    (``{% insert previous + current %}``). Multiple ``{% insert %}`` tags can be used in a single template,
+    so the runtime messages can be split, reordered, or repeated across different positions.

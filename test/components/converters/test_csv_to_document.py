@@ -219,3 +219,55 @@ class TestCSVToDocument:
         monkeypatch.setattr(csv_mod.csv, "DictReader", broken_reader, raising=True)
         with pytest.raises(RuntimeError):
             _ = conv.run(sources=[f], content_column="a")
+
+    def test_row_mode_ragged_row_does_not_crash(self):
+        # A data row with more fields than the header (e.g. an unquoted comma inside a value).
+        # Previously the surplus value landed under the None key, which broke Document id
+        # generation (TypeError sorting None against str keys) and aborted the whole batch.
+        valid = ByteStream(data=b"text,author\r\nfine,Ada\r\n", meta={"file_path": "valid.csv"})
+        ragged = ByteStream(data=b"text,note\r\nhello,city,state\r\n", meta={"file_path": "ragged.csv"})
+
+        conv = CSVToDocument(conversion_mode="row")
+        out = conv.run(sources=[valid, ragged], content_column="text")
+        docs = out["documents"]
+
+        # Both sources yielded a Document; the earlier valid source is not lost.
+        assert len(docs) == 2
+        assert docs[0].content == "fine"
+        assert docs[0].meta["author"] == "Ada"
+
+        ragged_doc = docs[1]
+        assert ragged_doc.content == "hello"
+        assert ragged_doc.meta["note"] == "city"
+        # Surplus value is preserved under an explicit (non-None) string meta key.
+        assert None not in ragged_doc.meta
+        assert "state" in ragged_doc.meta["extra_columns"]
+
+    def test_run_utf8_with_bom(self, tmp_path):
+        """
+        A CSV saved as UTF-8 with a byte order mark must not leak the BOM into the content.
+
+        Excel's "CSV UTF-8 (Comma delimited)" export writes a BOM, so this is the most
+        common way a spreadsheet-authored CSV reaches a pipeline. The BOM is in the bytes,
+        so this is not platform specific.
+        """
+        path = tmp_path / "bom.csv"
+        path.write_text("Name,Age\r\nJohn Doe,27\r\n", encoding="utf-8-sig", newline="")
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,Age\r\nJohn Doe,27\r\n"
+        assert not docs[0].content.startswith("﻿")
+
+    def test_run_utf8_without_bom_is_unchanged(self, tmp_path):
+        """Reading a plain UTF-8 CSV must keep working, including non-ASCII content."""
+        path = tmp_path / "plain.csv"
+        path.write_text("Name,City\r\nJosé,München\r\n", encoding="utf-8", newline="")
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,City\r\nJosé,München\r\n"

@@ -1,0 +1,19 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` silently dropping a trailing header that has
+    no body text. With ``keep_headers=True`` (the default), a header at the end of
+    the document whose only content is whitespace was buffered to prepend to the
+    next chunk, but with no following chunk it was never emitted, so the split
+    documents no longer reconstructed the original text. Such trailing headers
+    are now emitted as a final chunk.
+  - |
+    Fixed ``MarkdownHeaderSplitter`` collapsing blank lines that follow a header
+    with no body text. With ``keep_headers=True``, such headers were re-joined with
+    a single newline when prepended to the next chunk, so the split documents did
+    not reconstruct the original text. Chunk content is now sliced from the
+    original text and is byte-exact.
+  - |
+    Fixed ``MarkdownHeaderSplitter`` including surrounding whitespace in the
+    ``header`` and ``parent_headers`` metadata fields. The header text is now
+    stripped; chunk content still keeps the header line's original whitespace.

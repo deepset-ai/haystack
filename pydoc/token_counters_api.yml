@@ -1,0 +1,13 @@
+loaders:
+  - search_path: [../haystack/token_counters]
+    modules: ["types/protocol", "approximate_counter", "tiktoken_counter", "openai_counter"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Token Counters
+  id: token-counters-api
+  description: Estimate how many tokens a conversation occupies, for features that need a size before sending it to a
+    model.
+  filename: token_counters_api.md
