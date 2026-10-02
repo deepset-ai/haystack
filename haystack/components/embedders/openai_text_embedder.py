@@ -31,7 +31,7 @@ class OpenAITextEmbedder:
     print(text_embedder.run(text_to_embed))
 
     # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-    # 'meta': {'model': 'text-embedding-ada-002-v2',
+    # 'meta': {'model': 'text-embedding-3-small',
     #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
     ```
     """

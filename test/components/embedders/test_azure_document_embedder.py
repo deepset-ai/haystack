@@ -262,7 +262,7 @@ class TestAzureOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        # set the deployment explicitly instead of relying on the default
         embedder = AzureOpenAIDocumentEmbedder(
             azure_deployment="text-embedding-ada-002",
             meta_fields_to_embed=["topic"],
