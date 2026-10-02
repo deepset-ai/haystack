@@ -4,6 +4,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
@@ -149,7 +150,7 @@ class TestCSVToDocument:
         assert documents[0].meta == {"author": "Ada", "row_number": 0}
 
     @pytest.mark.parametrize("column_name", ["file_path", "row_number"])
-    def test_row_mode_meta_collision_prefixed(self, tmp_path, column_name: str):
+    def test_row_mode_meta_collision_prefixed(self, tmp_path: Path, column_name: str) -> None:
         # file_path collides with source metadata; row_number collides with the generated row index.
         csv_text = f"{column_name},encoding,comment\r\nsource-value,latin1,ok\r\n"
         path = tmp_path / "collide.csv"
