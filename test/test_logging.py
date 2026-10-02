@@ -418,6 +418,79 @@ class TestStructuredLoggingJSONRendering:
 
         assert len(capfd.readouterr().err) < 5_000
 
+    def test_exception_in_a_list_does_not_leak_its_payload(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    ) -> None:
+        """A UnicodeDecodeError nested in a list must go through `str` like a bare exception."""
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        try:
+            (b"%PDF-1.7\r%\xe2\xe3\xcf\xd3" + b"A" * 100_000).decode("utf-8")
+        except UnicodeDecodeError as error:
+            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"errors": [error]})
+
+        output = capfd.readouterr().err
+        assert len(output) < 1_000
+        assert json.loads(output)["errors"] == [
+            "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte"
+        ]
+
+    def test_exception_in_a_dict_does_not_leak_its_payload(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        try:
+            (b"\xe2" + b"A" * 100_000).decode("utf-8")
+        except UnicodeDecodeError as error:
+            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"result": {"error": error}})
+
+        output = capfd.readouterr().err
+        assert len(output) < 1_000
+        assert json.loads(output)["result"] == {
+            "error": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 0: invalid continuation byte"
+        }
+
+    def test_long_list_values_are_truncated(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        keys = [f"key_{i:05d}" for i in range(3_000)]
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"keys": keys})
+
+        output = capfd.readouterr().err
+        assert len(output) < 5_000
+        value = json.loads(output)["keys"]
+        assert value.startswith("['key_00000'")
+        assert value.endswith(f"... [truncated, {len(repr(keys))} chars]")
+
+    def test_self_referencing_container_does_not_recurse(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        cyclic: list = ["a"]
+        cyclic.append(cyclic)
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"value": cyclic})
+
+        assert json.loads(capfd.readouterr().err)["value"]
+
+    def test_missing_keys_warning_is_bounded(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """In-tree repro: `_parse_dict_from_json` logs `keys=list(parsed_json.keys())` unbounded."""
+        from haystack.utils.misc import _parse_dict_from_json
+
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        reply = json.dumps({f"key_{i:05d}": i for i in range(3_000)})
+        assert _parse_dict_from_json(reply, expected_keys=["score"], raise_on_failure=False) is None
+
+        # 43k chars before the fix: the `event` string and the `keys` list are each bounded on their own
+        output = capfd.readouterr().err
+        assert len(output) < 9_000
+        assert "[truncated," in json.loads(output)["keys"]
+
 
 class TestLogTraceCorrelation:
     def test_trace_log_correlation_python_logs_with_console_rendering(
