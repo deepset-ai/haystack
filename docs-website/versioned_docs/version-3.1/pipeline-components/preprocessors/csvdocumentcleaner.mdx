@@ -40,7 +40,7 @@ The `CSVDocumentCleaner` algorithm follows these steps:
 
 1. Reads each document's content as a CSV table using pandas.
 2. Retains the specified number of `ignore_rows` from the top and `ignore_columns` from the left.
-3. Drops any rows and columns that are entirely empty (contain only NaN values).
+3. Drops rows and columns containing only empty fields. Nonempty strings such as `NA`, `NULL`, and `NaN` are preserved as text.
 4. If columns are dropped, they are also removed from ignored rows.
 5. If rows are dropped, they are also removed from ignored columns.
 6. Reattaches the remaining ignored rows and columns to maintain their original positions.
