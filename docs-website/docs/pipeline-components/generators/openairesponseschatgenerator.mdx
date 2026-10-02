@@ -75,6 +75,8 @@ The `reasoning` parameter accepts:
 OpenAI does not return the actual reasoning tokens, but you can view the summary if enabled. For more details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
 :::
 
+When streaming from a compatible provider that returns `reasoning_text` entries in a completed reasoning item's `content`, Haystack exposes that text in the streaming callback and final message's `reasoning.reasoning_text`. If text has already been streamed for the same output item, Haystack preserves that text instead of appending the completed content again. The original content remains available in `reasoning.extra["content"]`.
+
 ### Multi-turn Conversations
 
 The Responses API supports multi-turn conversations using `previous_response_id`. You can pass the response ID from a previous turn to maintain conversation context:
