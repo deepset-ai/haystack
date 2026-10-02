@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
@@ -73,3 +74,25 @@ class TestCacheCheckerAsync:
         checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
         await checker.close_async()
         assert nonclosable_document_store.mock_calls == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_fresh_hit(self, in_memory_doc_store):
+        fresh_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(minutes=5)},
+        )
+        in_memory_doc_store.write_documents([fresh_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [fresh_doc], "misses": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_expired_is_miss(self, in_memory_doc_store):
+        stale_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(hours=2)},
+        )
+        in_memory_doc_store.write_documents([stale_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}

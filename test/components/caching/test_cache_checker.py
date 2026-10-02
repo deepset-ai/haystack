@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
@@ -22,20 +23,35 @@ class TestCacheChecker:
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "url",
+                "ttl": None,
+                "time_field": "cached_at",
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="my_url_field")
+        component = CacheChecker(
+            document_store=mocked_docstore_class(),
+            cache_field="my_url_field",
+            ttl=timedelta(hours=1),
+            time_field="my_time_field",
+        )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {
                 "document_store": {"type": "haystack.testing.factory.MockedDocumentStore", "init_parameters": {}},
                 "cache_field": "my_url_field",
+                "ttl": 3600.0,
+                "time_field": "my_time_field",
             },
         }
+
+    def test_to_dict_with_numeric_ttl(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        component = CacheChecker(document_store=mocked_docstore_class(), cache_field="url", ttl=90)
+        data = component.to_dict()
+        assert data["init_parameters"]["ttl"] == 90.0
 
     def test_from_dict(self):
         data = {
@@ -46,11 +62,15 @@ class TestCacheChecker:
                     "init_parameters": {},
                 },
                 "cache_field": "my_url_field",
+                "ttl": 3600.0,
+                "time_field": "my_time_field",
             },
         }
         component = CacheChecker.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.cache_field == "my_url_field"
+        assert component.ttl == timedelta(hours=1)
+        assert component.time_field == "my_time_field"
 
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}
@@ -103,3 +123,84 @@ class TestCacheChecker:
         checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
         checker.close()
         assert nonclosable_document_store.mock_calls == []
+
+    def test_run_with_ttl_fresh_hit(self, in_memory_doc_store):
+        fresh_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(minutes=5)},
+        )
+        in_memory_doc_store.write_documents([fresh_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [fresh_doc], "misses": []}
+
+    def test_run_with_ttl_expired_is_miss(self, in_memory_doc_store):
+        stale_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(hours=2)},
+        )
+        in_memory_doc_store.write_documents([stale_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_run_with_ttl_missing_time_field_is_miss(self, in_memory_doc_store):
+        undated_doc = Document(content="doc1", meta={"url": "https://example.com/1"})
+        in_memory_doc_store.write_documents([undated_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_run_with_ttl_iso_string_timestamp(self, in_memory_doc_store):
+        fresh_doc = Document(
+            content="doc1",
+            meta={
+                "url": "https://example.com/1",
+                "cached_at": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(),
+            },
+        )
+        in_memory_doc_store.write_documents([fresh_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [fresh_doc], "misses": []}
+
+    def test_run_without_ttl_ignores_time_field(self, in_memory_doc_store):
+        # backward compatibility: no ttl configured means entries never expire, regardless of cached_at
+        old_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(days=365)},
+        )
+        in_memory_doc_store.write_documents([old_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [old_doc], "misses": []}
+
+    def test_run_with_ttl_naive_datetime_timestamp(self, in_memory_doc_store):
+        # meta timestamp with no tzinfo at all (not datetime.now(timezone.utc))
+        fresh_doc = Document(
+            content="doc1",
+            meta={"url": "https://example.com/1", "cached_at": datetime.now() - timedelta(minutes=5)},  # noqa: DTZ005
+        )
+        in_memory_doc_store.write_documents([fresh_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [fresh_doc], "misses": []}
+
+    def test_run_with_ttl_malformed_iso_string_is_miss(self, in_memory_doc_store):
+        bad_doc = Document(content="doc1", meta={"url": "https://example.com/1", "cached_at": "not-a-timestamp"})
+        in_memory_doc_store.write_documents([bad_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_run_with_ttl_non_datetime_timestamp_is_miss(self, in_memory_doc_store):
+        bad_doc = Document(content="doc1", meta={"url": "https://example.com/1", "cached_at": 12345})
+        in_memory_doc_store.write_documents([bad_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = checker.run(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    def test_ttl_accepts_numeric_seconds(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url", ttl=3600)
+        assert checker.ttl == timedelta(hours=1)
