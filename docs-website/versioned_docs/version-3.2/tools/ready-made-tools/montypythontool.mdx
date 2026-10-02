@@ -1,0 +1,142 @@
+---
+title: "MontyPythonTool"
+id: montypythontool
+slug: "/montypythontool"
+description: "A Tool that lets Agents run Python code in a local Monty sandbox, a minimal Python interpreter written in Rust."
+---
+
+# MontyPythonTool
+
+A Tool that lets Agents run Python code in a local [Monty](https://pydantic.dev/docs/monty/) sandbox, a minimal Python interpreter written in Rust.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | None |
+| **API reference**            | [Monty](/reference/integrations-monty) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/monty |
+| **Package name**             | `monty-haystack` |
+
+</div>
+
+## Overview
+
+`MontyPythonTool` gives an [Agent](../../pipeline-components/agents-1/agent.mdx) a `run_python` tool that runs Python code in [Monty](https://pydantic.dev/docs/monty/), a minimal Python interpreter written in Rust by Pydantic. Use it for calculations, data processing, and anything else that is more reliable to compute than for the LLM to guess.
+
+Monty runs in-process on your machine, with no container or cloud service to set up and no API key. The tool keeps a pool of Monty worker processes and runs every call in a fresh interpreter, so nothing leaks between calls, users, or concurrent tool invocations. Each call returns up to three sections as text:
+
+- `output`: What the code printed.
+- `result`: The `repr()` of the code's last expression.
+- `error`: A traceback if the code failed, so the LLM can read it, fix its code, and retry.
+
+Monty supports a subset of Python and a subset of the standard library. The default tool description tells the LLM what is available, so it writes code that runs:
+
+- **Supported**: Functions, lambdas, closures, comprehensions, simple classes, dataclasses, `try`/`except`, f-strings, and `async`/`await`.
+- **Not supported**: Class inheritance (including custom exception classes), generators (`yield`), `match`, `del`, method decorators such as `@property` or `@staticmethod`, and third-party packages.
+- **Importable modules**, some of them partially: `asyncio`, `base64`, `binascii`, `collections`, `copy`, `dataclasses`, `datetime`, `functools`, `itertools`, `json`, `math`, `random`, `re`, `sys`, `time`, `typing`, `unicodedata`.
+
+Variables, functions, and imports don't persist between calls, so each snippet must be self-contained.
+
+### Parameters
+
+`MontyPythonTool` has no mandatory parameters.
+
+- `name` is _optional_ and defaults to `"run_python"`. Sets the tool name exposed to the LLM.
+- `description` is _optional_. A custom tool description; when not set, a description of the sandbox and the supported Python subset is used.
+- `resource_limits` is _optional_. Monty resource limits for each call, merged over the defaults of 30 seconds of execution time (`max_feed_duration_secs`) and 256 MiB of heap memory (`max_memory`). Set a key to `None` to disable that limit. See [`pydantic_monty.ResourceLimits`](https://pydantic.dev/docs/monty/concepts/resource-limits/) for all available keys.
+- `type_check` is _optional_ and defaults to `False`. If `True`, the code is type-checked with Monty's bundled type checker before it runs, and type errors are returned to the LLM instead of executing the code.
+- `max_output_chars` is _optional_ and defaults to `20000`. The printed output, the result, and the error are each truncated to this many characters before they are returned to the LLM. The error keeps its end, where the exception is.
+
+## Usage
+
+Install the Monty integration to use `MontyPythonTool`:
+
+```shell
+pip install monty-haystack
+```
+
+### With an Agent
+
+You can use `MontyPythonTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent starts the pool of Monty workers on `warm_up()`, then lets the LLM write and run code, read the result, and fix its code if it fails.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tools.monty import MontyPythonTool
+
+# Requires the OPENAI_API_KEY environment variable
+tool = MontyPythonTool()
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user("What is the sum of the first 100 prime numbers?"),
+    ],
+)
+print(result["last_message"].text)
+# >> The sum of the first 100 prime numbers is 24133.
+
+tool.close()
+```
+
+Call `close()` when you are done to shut down the Monty worker processes. If the tool is invoked again after `close()`, it starts a new pool.
+
+### Running code without an Agent
+
+You can also invoke the tool directly, which is handy for checking what the LLM will see:
+
+```python
+from haystack_integrations.tools.monty import MontyPythonTool
+
+tool = MontyPythonTool()
+
+print(
+    tool.invoke(code="import math\nprint('choosing 5 of 52 cards')\nmath.comb(52, 5)")
+)
+# >> output:
+# >> choosing 5 of 52 cards
+# >>
+# >> result:
+# >> 2598960
+
+print(tool.invoke(code="1 / 0"))
+# >> error:
+# >> Traceback (most recent call last):
+# >>   File "<python-input-0>", line 1, in <module>
+# >>     1 / 0
+# >>     ~~~~~
+# >> ZeroDivisionError: division by zero
+
+tool.close()
+```
+
+### Setting resource limits and type checking
+
+Tighten the limits for each call and type-check the code before it runs:
+
+```python
+from haystack_integrations.tools.monty import MontyPythonTool
+
+tool = MontyPythonTool(
+    resource_limits={"max_feed_duration_secs": 5.0, "max_memory": 64 * 1024 * 1024},
+    type_check=True,
+)
+
+print(tool.invoke(code="while True:\n    pass"))
+# >> error:
+# >> TimeoutError: feed time limit exceeded: 5.000084167s > 5s
+
+tool.close()
+```
+
+## Security model
+
+Monty is a language-level sandbox: its interpreter implements no operation that reaches the host, so the code an LLM writes has no access to files, the network, environment variables, or subprocesses. Two further controls keep the host safe:
+
+- **Process isolation**: Code runs in worker subprocesses started with an empty environment, so a crash never takes down the host process. If code gets stuck inside a long-running builtin, such as a huge integer power, the pool kills the worker, replaces it, and returns a `TimeoutError` to the LLM.
+- **Resource limits**: Execution time and heap memory are capped for every call by `resource_limits`.
+
+The tool mounts no directories and exposes no host functions to the sandbox, so the code can only compute with what the LLM passes in.

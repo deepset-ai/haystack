@@ -28,7 +28,7 @@ This component splits documents based on embedding similarity using cosine dista
 
 It first splits text into sentences, optionally groups them, calculates embeddings for each group, and then uses cosine
 distance between sequential embeddings to determine split points. Any distance above the specified percentile is treated
-as a break point. The component also tracks page numbers based on form feed characters (`\f`) in the original document.
+as a break point. The component also tracks page numbers based on form feed characters (`\f`) in the original document, reporting the page each chunk starts on.
 
 This component is inspired by [5 Levels of Text Splitting](https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb) by Greg Kamradt.
 

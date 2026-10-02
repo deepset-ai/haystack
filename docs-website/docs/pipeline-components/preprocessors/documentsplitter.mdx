@@ -33,7 +33,7 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 
 When `split_by="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
 
-A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document to keep track of the page it belonged to in the original document. Other metadata are copied from the original document.
+A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document with the page the chunk starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on. Other metadata are copied from the original document.
 
 The DocumentSplitter is compatible with the following DocumentStores:
 

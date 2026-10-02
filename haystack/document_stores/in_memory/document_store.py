@@ -276,6 +276,10 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25L computation."""
             freq_term = freq.get(token, 0.0)
+            # The lower bound (delta) only applies to terms that occur in the document;
+            # a missing term contributes nothing.
+            if freq_term == 0:
+                return 0.0
             ctd = freq_term / (1 - b + b * doc_len / self._avg_doc_len)
             return (1.0 + k) * (ctd + delta) / (k + ctd + delta)
 
@@ -384,6 +388,10 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: float) -> float:
             """Per-token normalized term frequency."""
             freq_term = freq.get(token, 0.0)
+            # The lower bound (delta) only applies to terms that occur in the document;
+            # a missing term contributes nothing.
+            if freq_term == 0:
+                return 0.0
             freq_damp = k * (1 - b + b * doc_len / self._avg_doc_len)
             return freq_term * (1.0 + k) / (freq_term + freq_damp) + delta
 
@@ -806,7 +814,7 @@ class InMemoryDocumentStore:
         # A tokenless corpus (every stored document has empty content) has no vocabulary and an
         # average document length of zero, which would make all three BM25 algorithms divide by
         # zero during scoring. Score every candidate as 0.0 instead; the non-positive-score
-        # handling below then keeps them for BM25Okapi (unscaled) and drops them otherwise.
+        # handling below then keeps them for BM25Okapi and drops them for BM25L and BM25Plus.
         if self._avg_doc_len == 0:
             scored_documents = [(doc, 0.0) for doc in all_documents]
         else:
@@ -814,19 +822,21 @@ class InMemoryDocumentStore:
 
         results = sorted(scored_documents, key=lambda x: x[1], reverse=True)[:top_k]
 
-        # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
+        # BM25Okapi can return meaningful negative values, so they should not be filtered out.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
         # see https://github.com/deepset-ai/haystack/pull/6889 for more context.
-        negatives_are_valid = self.bm25_algorithm == "BM25Okapi" and not scale_score
+        # BM25L and BM25Plus scores are 0 exactly when no query term occurs in the document. Filter on the raw score,
+        # because scaling maps 0 to 0.5.
+        drop_non_positive = self.bm25_algorithm != "BM25Okapi"
 
         # Create documents with the BM25 score to return them
         return_documents = []
         for doc, score in results:
+            if drop_non_positive and score <= 0.0:
+                continue
+
             if scale_score:
                 score = expit(score / BM25_SCALING_FACTOR)
-
-            if not negatives_are_valid and score <= 0.0:
-                continue
 
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
