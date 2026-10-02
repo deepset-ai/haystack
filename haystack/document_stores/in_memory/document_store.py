@@ -693,12 +693,16 @@ class InMemoryDocumentStore:
         result: dict[str, int] = {}
         for field in metadata_fields:
             key = field.removeprefix("meta.") if field.startswith("meta.") else field
-            values = {
-                _make_metadata_value_hashable(doc.meta.get(key))
-                for doc in docs
-                if key in doc.meta and doc.meta[key] is not None
-            }
-            result[key] = len(values)
+            # Key by (type name, hashable value) so int/float/bool that compare equal in Python
+            # (e.g. True == 1 == 1.0) stay distinct — same policy as get_metadata_field_unique_values.
+            unique_values: set[tuple[str, Any]] = set()
+            for doc in docs:
+                if key not in doc.meta:
+                    continue
+                value = doc.meta[key]
+                if value is not None:
+                    unique_values.add((type(value).__name__, _make_metadata_value_hashable(value)))
+            result[key] = len(unique_values)
         return result
 
     def get_metadata_fields_info(self) -> dict[str, dict[str, str]]:
