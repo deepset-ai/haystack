@@ -213,7 +213,7 @@ class CSVToDocument:
         :param content_column: Column name to use for ``Document.content``.
         :returns: A ``Document`` with chosen content and merged metadata.
             Remaining row columns are added to ``meta`` with collision-safe
-            keys (prefixed with ``csv_`` if needed), including a CSV column named ``row_number``.
+            keys (prefixed with ``csv_`` if needed).
         """
         row_meta = {**base_meta, "row_number": row_index}
 

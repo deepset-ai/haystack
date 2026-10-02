@@ -138,28 +138,38 @@ class TestCSVToDocument:
         assert docs[0].meta["row_number"] == 0
         assert os.path.basename(f) == docs[0].meta["file_path"]
 
-    def test_row_mode_meta_collision_prefixed(self, tmp_path):
-        # ByteStream meta has file_path and encoding; CSV also has those columns.
-        csv_text = "file_path,encoding,comment\r\nrowpath.csv,latin1,ok\r\n"
-        f = tmp_path / "collide.csv"
-        f.write_text(csv_text, encoding="utf-8")
-        bs = ByteStream.from_file_path(f)
-        bs.meta["file_path"] = str(f)
-        bs.meta["encoding"] = "utf-8"
+    def test_row_mode_row_number_as_content_column(self) -> None:
+        source = ByteStream(data=b"row_number,author\nrecord-42,Ada\n")
+        converter = CSVToDocument(conversion_mode="row")
 
-        conv = CSVToDocument(conversion_mode="row")
-        out = conv.run(sources=[bs], content_column="comment")
-        d = out["documents"][0]
-        # Original meta preserved
-        assert d.meta["file_path"] == os.path.basename(str(f))
-        assert d.meta["encoding"] == "utf-8"
-        # CSV columns stored with csv_ prefix (no clobber)
-        assert d.meta["csv_file_path"] == "rowpath.csv"
-        assert d.meta["csv_encoding"] == "latin1"
-        # content column isn't duplicated in meta
-        assert "comment" not in d.meta
-        assert d.meta["row_number"] == 0
-        assert d.content == "ok"
+        documents = converter.run(sources=[source], content_column="row_number")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "record-42"
+        assert documents[0].meta == {"author": "Ada", "row_number": 0}
+
+    @pytest.mark.parametrize("column_name", ["file_path", "row_number"])
+    def test_row_mode_meta_collision_prefixed(self, tmp_path, column_name: str):
+        # file_path collides with source metadata; row_number collides with the generated row index.
+        csv_text = f"{column_name},encoding,comment\r\nsource-value,latin1,ok\r\n"
+        path = tmp_path / "collide.csv"
+        path.write_text(csv_text, encoding="utf-8")
+        source = ByteStream.from_file_path(path)
+        source.meta["file_path"] = str(path)
+        source.meta["encoding"] = "utf-8"
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="comment")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "ok"
+        assert documents[0].meta == {
+            "file_path": "collide.csv",
+            "encoding": "utf-8",
+            "row_number": 0,
+            f"csv_{column_name}": "source-value",
+            "csv_encoding": "latin1",
+        }
 
     def test_row_mode_meta_collision_multiple_suffixes(self, tmp_path):
         """
@@ -271,27 +281,3 @@ class TestCSVToDocument:
 
         assert len(docs) == 1
         assert docs[0].content == "Name,City\r\nJosé,München\r\n"
-
-    @pytest.mark.parametrize("meta", [{}, {"csv_row_number": "existing", "csv_row_number_1": "also existing"}])
-    def test_row_mode_preserves_row_number_column(self, meta: dict[str, str]) -> None:
-        source = ByteStream(data=b"text,row_number\nfirst,record-42\nsecond,record-43\n")
-        converter = CSVToDocument(conversion_mode="row")
-
-        documents = converter.run(sources=[source], content_column="text", meta=meta)["documents"]
-
-        assert [document.content for document in documents] == ["first", "second"]
-        column_key = "csv_row_number_2" if meta else "csv_row_number"
-        assert [document.meta for document in documents] == [
-            {**meta, "row_number": 0, column_key: "record-42"},
-            {**meta, "row_number": 1, column_key: "record-43"},
-        ]
-
-    def test_row_mode_row_number_as_content_column(self) -> None:
-        source = ByteStream(data=b"row_number,author\nrecord-42,Ada\n")
-        converter = CSVToDocument(conversion_mode="row")
-
-        documents = converter.run(sources=[source], content_column="row_number")["documents"]
-
-        assert len(documents) == 1
-        assert documents[0].content == "record-42"
-        assert documents[0].meta == {"author": "Ada", "row_number": 0}
