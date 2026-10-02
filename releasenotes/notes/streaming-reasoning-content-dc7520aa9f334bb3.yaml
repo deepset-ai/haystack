@@ -1,4 +1,4 @@
 ---
 fixes:
   - |-
-    `OpenAIResponsesChatGenerator` now maps `reasoning_text` entries from a completed reasoning item's `content` into `reasoning.reasoning_text` when streaming, unless text was already streamed for that output item.
+    `OpenAIResponsesChatGenerator` now maps `reasoning_text` entries from a completed reasoning item's `content` into `reasoning.reasoning_text` when streaming. It skips text already streamed for the same output item and keeps distinct content on a new line.

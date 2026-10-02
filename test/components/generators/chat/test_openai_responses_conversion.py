@@ -54,17 +54,18 @@ from haystack.dataclasses import (
 
 
 @pytest.mark.parametrize(
-    "content_texts,previous_index,expected_text",
+    "content_texts,previous_text,previous_index,expected_text",
     [
-        (["First step.", "Second step."], None, "First step.\nSecond step."),
-        (["First step.", "Second step."], 0, ""),
-        (["First step.", "Second step."], 1, "First step.\nSecond step."),
-        ([], None, ""),
-        (None, None, ""),
+        (["First step.", "Second step."], None, None, "First step.\nSecond step."),
+        (["First step.", "Second step."], "First step.\nSecond step.", 0, ""),
+        (["First step.", "Second step."], "Summary.", 0, "\nFirst step.\nSecond step."),
+        (["First step.", "Second step."], "First step.\nSecond step.", 1, "First step.\nSecond step."),
+        ([], None, None, ""),
+        (None, None, None, ""),
     ],
 )
 def test_streaming_reasoning_content_fallback(
-    content_texts: list[str] | None, previous_index: int | None, expected_text: str
+    content_texts: list[str] | None, previous_text: str | None, previous_index: int | None, expected_text: str
 ) -> None:
     previous_chunks = []
     if previous_index is not None:
@@ -72,7 +73,7 @@ def test_streaming_reasoning_content_fallback(
             StreamingChunk(
                 content="",
                 index=previous_index,
-                reasoning=ReasoningContent(reasoning_text="Summary.", extra={"item_id": "rs_summary"}),
+                reasoning=ReasoningContent(reasoning_text=previous_text or "", extra={"item_id": "rs_summary"}),
             )
         )
     item = ResponseReasoningItem(
@@ -91,7 +92,7 @@ def test_streaming_reasoning_content_fallback(
 
     message = _convert_streaming_chunks_to_chat_message(chunks=[*previous_chunks, chunk])
     assert message.reasoning == ReasoningContent(
-        reasoning_text=("Summary." if previous_index is not None else "") + expected_text,
+        reasoning_text=(previous_text or "") + expected_text,
         extra={**({"item_id": "rs_summary"} if previous_index is not None else {}), **item.to_dict()},
     )
 
