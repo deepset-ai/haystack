@@ -14,7 +14,7 @@ on:
       - ".github/workflows/e2e.yml"
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.16.5"
 

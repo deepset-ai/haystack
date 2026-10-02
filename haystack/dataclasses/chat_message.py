@@ -30,7 +30,7 @@ def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
     return json.loads(raw_arguments) if raw_arguments else {}
 
 
-class ChatRole(str, Enum):
+class ChatRole(str, Enum):  # noqa: UP042 # StrEnum would change str() of this public enum
     """
     Enumeration representing the roles within a chat.
     """

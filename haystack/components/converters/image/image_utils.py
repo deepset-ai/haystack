@@ -7,9 +7,7 @@ import mimetypes
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import TypedDict, Union
-
-from typing_extensions import NotRequired
+from typing import NotRequired, TypedDict, Union
 
 from haystack import logging
 from haystack.dataclasses import ByteStream, Document
