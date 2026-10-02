@@ -233,6 +233,30 @@ class TestMultiQueryEmbeddingRetriever:
         assert contents.count("Solar energy is renewable") == 1
         assert contents.count("Wind energy is clean") == 1
 
+    def test_run_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = MultiQueryEmbeddingRetriever(
+            retriever=MockRetriever(), query_embedder=MockTextEmbedder(), max_workers=1
+        )
+
+        result = retriever.run(queries=["query"])
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
+
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run_with_filters(self, document_store_with_embeddings):
