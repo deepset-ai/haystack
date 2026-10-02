@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``LLMDocumentContentExtractor`` incorrectly treating a chat generator
+    output that carries its own ``error`` field as a failed LLM call. Such
+    documents are now processed normally.

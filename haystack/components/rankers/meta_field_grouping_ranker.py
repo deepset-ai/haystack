@@ -97,7 +97,9 @@ class MetaFieldGroupingRanker:
 
         deduplicated_documents = _deduplicate_documents(documents)
         for doc in deduplicated_documents:
-            group_value = str(doc.meta.get(self.group_by, ""))
+            # A value of None counts as missing, as it does for `sort_docs_by`
+            raw_group_value = doc.meta.get(self.group_by)
+            group_value = "" if raw_group_value is None else str(raw_group_value)
 
             # If no group value, add to no_group_docs and continue
             if not group_value:
@@ -106,7 +108,7 @@ class MetaFieldGroupingRanker:
 
             # Get subgroup value or use a default if not specified
             subgroup_value = "no_subgroup"
-            if self.subgroup_by and self.subgroup_by in doc.meta:
+            if self.subgroup_by and doc.meta.get(self.subgroup_by) is not None:
                 subgroup_value = str(doc.meta[self.subgroup_by])
 
             document_groups[group_value][subgroup_value].append(doc)
@@ -124,7 +126,7 @@ class MetaFieldGroupingRanker:
                     # (e.g. an int and a str) would still raise a TypeError. In that case we keep the
                     # group's insertion order instead of crashing, mirroring MetaFieldRanker.
                     try:
-                        docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                        docs = sorted(docs, key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
                     except TypeError as error:
                         logger.warning(
                             "Tried to sort Documents with IDs {document_ids}, but got TypeError with the "

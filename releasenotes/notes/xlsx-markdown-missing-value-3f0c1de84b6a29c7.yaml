@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``XLSXToDocument`` writing the string ``nan`` into an empty cell when
+    ``table_format="markdown"``. The same cell is written as an empty field by
+    ``table_format="csv"``, so an empty cell now reads as empty in both formats.
+    A different placeholder can be set with
+    ``table_format_kwargs={"missingval": "N/A"}``.

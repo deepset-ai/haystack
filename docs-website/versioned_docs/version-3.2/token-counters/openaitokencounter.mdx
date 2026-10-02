@@ -1,0 +1,26 @@
+---
+title: "OpenAITokenCounter"
+id: openaitokencounter
+slug: "/openaitokencounter"
+description: "Count message and tool tokens exactly with OpenAI's input token counting API."
+---
+
+# OpenAITokenCounter
+
+`OpenAITokenCounter` uses OpenAI's `POST /v1/responses/input_tokens` endpoint to count the input tokens for a specific model. It supports text, images, files, tool calls, tool results, and tool schemas in the same format used by the Responses API.
+
+Because it calls a remote API, it requires an OpenAI API key and adds network latency. Use it when you need model-specific counts or need to measure non-text inputs and tool schemas accurately. For local estimates, use [`ApproximateTokenCounter`](approximatetokencounter.mdx) or [`TiktokenCounter`](tiktokencounter.mdx).
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.token_counters import OpenAITokenCounter
+
+counter = OpenAITokenCounter("gpt-5-mini")
+messages = [ChatMessage.from_user("What's Natural Language Processing?")]
+
+token_count = counter.count(messages)
+```
+
+By default, the counter reads the API key from `OPENAI_API_KEY`. You can also pass a Haystack `Secret` explicitly and configure the API base URL, organization, timeout, retry count, and HTTP client options.
+
+See the [Token Counters API reference](/reference/token-counters-api) for all constructor parameters and methods.

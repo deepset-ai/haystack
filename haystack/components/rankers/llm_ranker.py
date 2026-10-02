@@ -253,7 +253,7 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
@@ -320,7 +320,7 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
+        if not isinstance(query, str) or not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
