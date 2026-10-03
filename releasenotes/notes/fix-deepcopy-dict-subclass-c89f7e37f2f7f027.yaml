@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``_deepcopy_with_exceptions`` collapsing ``dict`` subclasses such as
+    ``defaultdict``, ``OrderedDict`` and ``Counter`` into plain ``dict``. The
+    function rebuilt every dict with a dict comprehension, so a component input or
+    pipeline parameter that contained a ``defaultdict`` lost its ``default_factory``
+    and a ``Counter`` came back as a plain ``dict``, even though the list/tuple/set
+    branch already preserved ``type(obj)``. Dict subclasses are now copied as their
+    own type (with deep-copied values), so ``Pipeline.run`` no longer changes the
+    type of the data a component receives.

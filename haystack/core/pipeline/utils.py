@@ -4,7 +4,7 @@
 
 import heapq
 from collections.abc import Callable
-from copy import deepcopy
+from copy import copy, deepcopy
 from functools import wraps
 from itertools import count
 from typing import Any
@@ -42,7 +42,16 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 
     if isinstance(obj, dict):
-        return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
+        # Rebuild the concrete dict subclass (e.g. ``defaultdict``, ``OrderedDict``, ``Counter``) instead of
+        # collapsing it to a plain ``dict``. ``type(obj)(<iterable>)`` is unsafe here because dict subclasses
+        # have incompatible constructors (``defaultdict`` takes ``default_factory`` first), so we copy the
+        # container and refill it, mirroring the ``type(obj)`` handling above. Assigning item by item avoids
+        # ``Counter.update`` interpreting the items as an iterable to count.
+        result = copy(obj)
+        result.clear()
+        for key, value in obj.items():
+            result[key] = _deepcopy_with_exceptions(value)
+        return result
 
     # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
     # (e.g. models, clients, etc.). In this case we return the object as-is.
