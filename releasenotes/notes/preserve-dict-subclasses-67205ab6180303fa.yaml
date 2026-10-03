@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Preserve dictionary subclasses such as ``defaultdict``, ``OrderedDict`` and
+    ``Counter`` when copying pipeline inputs. Their subclass behavior and state
+    are now retained instead of being replaced by a plain ``dict``.

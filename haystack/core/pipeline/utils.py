@@ -4,7 +4,7 @@
 
 import heapq
 from collections.abc import Callable
-from copy import deepcopy
+from copy import copy, deepcopy
 from functools import wraps
 from itertools import count
 from typing import Any
@@ -42,7 +42,16 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 
     if isinstance(obj, dict):
-        return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
+        if type(obj) is dict:
+            return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
+        try:
+            copied = copy(obj)
+            copied.clear()
+            for key, value in obj.items():
+                copied[key] = _deepcopy_with_exceptions(value)
+        except Exception:
+            copied = {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
+        return copied
 
     # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
     # (e.g. models, clients, etc.). In this case we return the object as-is.

@@ -4,7 +4,7 @@
 
 import logging
 import warnings
-from collections import namedtuple
+from collections import Counter, OrderedDict, defaultdict, namedtuple
 
 import pytest
 
@@ -268,6 +268,23 @@ class TestDeepcopyWithFallback:
         assert copy["point"].y == 2
         # Its contents are deep-copied, matching how plain tuples are handled.
         assert copy["point"].x is not original["point"].x
+
+    def test_deepcopy_preserves_dict_subclasses(self):
+        originals = [
+            OrderedDict([("value", {"nested": []})]),
+            defaultdict[str, object](list, {"value": {"nested": []}}),
+            Counter({"value": 2}),
+        ]
+
+        copies = [_deepcopy_with_exceptions(original) for original in originals]
+
+        for original, copy in zip(originals, copies, strict=True):
+            assert type(copy) is type(original)
+            assert copy == original
+            assert copy is not original
+
+        assert copies[1]["missing"] == []
+        assert "missing" in copies[1]
 
 
 class TestArgsDeprecated:
