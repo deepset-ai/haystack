@@ -14,6 +14,42 @@ from haystack.dataclasses.chat_message import ChatMessage
 
 
 class TestLLMEvaluator:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("progress_bar", [False, True])
+    @pytest.mark.parametrize("run_async", [False, True])
+    async def test_progress_bar_override_is_resolved_each_run(self, monkeypatch, progress_bar, run_async):
+        monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", "false")
+        evaluator = LLMEvaluator(
+            instructions="Score the answer.",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+            progress_bar=progress_bar,
+        )
+        progress = Mock(side_effect=lambda iterable, **kwargs: iterable)
+        monkeypatch.setattr(
+            f"haystack.components.evaluators.llm_evaluator.{'async_tqdm' if run_async else 'tqdm'}", progress
+        )
+
+        for override, expected in [("false", False), ("true", True), (None, progress_bar)]:
+            if override is None:
+                monkeypatch.delenv("HAYSTACK_PROGRESS_BARS")
+            else:
+                monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", override)
+            if run_async:
+                result = await evaluator.run_async(predicted_answers=["Answer"])
+            else:
+                result = evaluator.run(predicted_answers=["Answer"])
+
+            assert result["results"] == [{"score": 1}]
+            assert progress.call_args.kwargs["disable"] is not expected
+            assert evaluator.progress_bar is progress_bar
+
+        monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", "true" if not progress_bar else "false")
+        restored = LLMEvaluator.from_dict(evaluator.to_dict())
+        assert restored.progress_bar is progress_bar
+
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(

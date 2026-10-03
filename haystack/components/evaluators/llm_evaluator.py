@@ -18,6 +18,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
 from haystack.utils.misc import _parse_dict_from_json
+from haystack.utils.progress import _get_progress_bar_setting
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class LLMEvaluator:
             If True, the component will raise an exception on an unsuccessful API call.
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -229,7 +231,9 @@ class LLMEvaluator:
         results: list[dict[str, Any] | None] = []
         metadata = []
         errors = 0
-        for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
+        for input_names_to_values in tqdm(
+            list_of_input_names_to_values, disable=not _get_progress_bar_setting(self.progress_bar)
+        ):
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
@@ -300,7 +304,9 @@ class LLMEvaluator:
         errors = 0
 
         generator_has_async = hasattr(self._chat_generator, "run_async")
-        for input_names_to_values in async_tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
+        for input_names_to_values in async_tqdm(
+            list_of_input_names_to_values, disable=not _get_progress_bar_setting(self.progress_bar)
+        ):
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:

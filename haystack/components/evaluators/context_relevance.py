@@ -134,6 +134,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             ```
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param raise_on_failure:
             Whether to raise an exception if the API call fails.
         :param chat_generator:
