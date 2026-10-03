@@ -4,7 +4,8 @@
 
 import logging
 import warnings
-from collections import namedtuple
+from collections import Counter, OrderedDict, defaultdict, namedtuple
+from functools import partial
 
 import pytest
 
@@ -268,6 +269,26 @@ class TestDeepcopyWithFallback:
         assert copy["point"].y == 2
         # Its contents are deep-copied, matching how plain tuples are handled.
         assert copy["point"].x is not original["point"].x
+
+    @pytest.mark.parametrize("factory", [partial(defaultdict, list), OrderedDict, Counter])
+    def test_deepcopy_with_fallback_dict_subclass(self, factory):
+        container = factory()
+        container["a"] = [1, 2]
+        original = {"data": container}
+        copy = _deepcopy_with_exceptions(original)
+        # The concrete dict subclass survives the copy instead of collapsing to ``dict``.
+        assert type(copy["data"]) is type(original["data"])
+        assert copy["data"] == original["data"]
+        # The container and its contents are deep-copied, matching how plain dicts are handled.
+        assert copy["data"] is not original["data"]
+        assert copy["data"]["a"] is not original["data"]["a"]
+
+    def test_deepcopy_with_fallback_defaultdict_keeps_factory(self):
+        original = {"data": defaultdict(list, a=[1])}
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["data"].default_factory is list
+        # A missing key still triggers the factory instead of raising KeyError.
+        assert copy["data"]["missing"] == []
 
 
 class TestArgsDeprecated:
