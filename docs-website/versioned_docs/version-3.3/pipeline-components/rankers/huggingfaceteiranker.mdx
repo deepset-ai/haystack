@@ -14,7 +14,7 @@ Use this component to rank documents based on their similarity to the query usin
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
-| **Mandatory init variables** | `url`: Base URL of the TEI reranking service (for example, "https://api.example.com"). |
+| **Mandatory init variables** | `url`: Base HTTP URL of the TEI reranking service, or a gRPC target when `use_grpc=True`. |
 | **Mandatory run variables** | `query`: A query string  <br /> <br />`documents`: A list of document objects |
 | **Output variables** | `documents`: A list of document objects |
 | **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
@@ -48,6 +48,15 @@ pip install huggingface-api-haystack
 
 You can use `HuggingFaceTEIRanker` outside of a pipeline to order documents based on your query.
 
+First, start a TEI server with a reranking model:
+
+```shell
+model=cross-encoder/ms-marco-MiniLM-L6-v2
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3 --model-id "$model"
+```
+
 This example uses the `HuggingFaceTEIRanker` to rank two simple documents. To run the Ranker, pass a query, provide the documents, and set the number of documents to return in the `top_k` parameter.
 
 ```python
@@ -73,8 +82,55 @@ result = reranker.run(query="What is the capital of France?", documents=docs)
 
 ranked_docs = result["documents"]
 print(ranked_docs)
-# >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
-# >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+# >> [Document(id=..., content: 'The capital of France is Paris', score: 0.9998983),
+# >>  Document(id=..., content: 'The capital of Germany is Berlin', score: 0.08855734)]
+```
+
+### Using gRPC
+
+gRPC uses binary messages instead of JSON, which can reduce serialization overhead for frequent requests. Consider it for high-throughput deployments. It requires a TEI server running a gRPC-enabled image.
+
+Install the optional dependency:
+
+```shell
+pip install "huggingface-api-haystack[grpc]"
+```
+
+Start a TEI server with a reranking model and a gRPC-enabled image:
+
+```shell
+model=cross-encoder/ms-marco-MiniLM-L6-v2
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run -p 8080:80 -v "$volume":/data --pull always ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3-grpc --model-id "$model"
+```
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.huggingface_api import (
+    HuggingFaceTEIRanker,
+)
+from haystack.utils import Secret
+
+reranker = HuggingFaceTEIRanker(
+    url="localhost:8080",
+    use_grpc=True,
+    top_k=5,
+    timeout=30,
+    token=Secret.from_token("my_api_token"),
+)
+
+docs = [
+    Document(content="The capital of France is Paris"),
+    Document(content="The capital of Germany is Berlin"),
+]
+
+result = reranker.run(query="What is the capital of France?", documents=docs)
+
+ranked_docs = result["documents"]
+print(ranked_docs)
+# >> [Document(id=..., content: 'The capital of France is Paris', score: 0.9998983),
+# >>  Document(id=..., content: 'The capital of Germany is Berlin', score: 0.08855734)]
 ```
 
 ### In a pipeline
