@@ -63,6 +63,8 @@ class XLSXToDocument:
         :param table_format: The format to convert the Excel file to.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
+            By default, `keep_default_na` is set to False and `na_values` to `[""]` so literal text
+            values like "NA" and "N/A" are preserved while empty cells remain empty.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
@@ -164,6 +166,8 @@ class XLSXToDocument:
         """
         file_bytes = io.BytesIO(bytestream.data)
         resolved_read_excel_kwargs = {
+            "keep_default_na": False,
+            "na_values": [""],
             **self.read_excel_kwargs,
             "sheet_name": self.sheet_name,
             "header": None,  # Don't assign any pandas column labels
