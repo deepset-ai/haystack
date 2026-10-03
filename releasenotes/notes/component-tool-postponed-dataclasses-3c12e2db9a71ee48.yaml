@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ComponentTool`` now resolves dataclass field annotations stored as strings, including fields in modules using
+    ``from __future__ import annotations``. Nested dataclasses and ``Annotated`` constraints are preserved in the
+    generated tool schema, while recursive dataclass references continue to work.

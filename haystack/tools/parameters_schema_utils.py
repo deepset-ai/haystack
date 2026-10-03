@@ -9,7 +9,7 @@ from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from types import NoneType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, ForwardRef, Union, get_args, get_origin, get_type_hints
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
@@ -148,21 +148,24 @@ def _get_component_param_descriptions(component: Any) -> dict[str, str]:
     return param_descriptions
 
 
-def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
+def _dataclass_to_pydantic_model(dc_type: Any, _seen: set[type[Any]] | None = None) -> type[BaseModel]:
     """
     Convert a Python dataclass to an equivalent Pydantic model.
 
     :param dc_type: The dataclass type to convert.
+    :param _seen: Dataclass types currently being converted, used to retain recursive references.
     :returns:
         A dynamically generated Pydantic model class with fields and types derived from the dataclass definition.
         Field descriptions are extracted from docstrings when available.
     """
     _, param_descriptions = _get_param_descriptions(dc_type)
     cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
+    seen = (_seen or set()) | {cls}
+    field_types = get_type_hints(cls, include_extras=True)
 
     field_defs: dict[str, Any] = {}
     for field in fields(dc_type):
-        f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
+        f_type = _resolve_type(field_types[field.name], seen)
         default = field.default if field.default is not MISSING else ...
         default = field.default_factory() if callable(field.default_factory) else default
 
@@ -178,7 +181,7 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     return create_model(cls.__name__, **field_defs)
 
 
-def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
+def _resolve_type(_type: Any, _seen: set[type[Any]] | None = None) -> Any:  # noqa: PLR0911
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 
@@ -187,6 +190,7 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
 
     :param _type: The type annotation to resolve. If the type is a dataclass, it will be converted to a Pydantic model.
         For generic types (like list[SomeDataclass]), the inner types are also resolved recursively.
+    :param _seen: Dataclass types currently being converted, used to retain recursive references.
 
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models
@@ -203,21 +207,25 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
         return _ToolsetSchemaPlaceholder
 
     if is_dataclass(_type):
-        return _dataclass_to_pydantic_model(_type)
+        cls = _type if isinstance(_type, type) else _type.__class__
+        if _seen and cls in _seen:
+            # Let Pydantic resolve a back-edge to the model being built instead of expanding it again.
+            return ForwardRef(cls.__name__)
+        return _dataclass_to_pydantic_model(_type, _seen)
 
     origin = get_origin(_type)
     args = get_args(_type)
 
     if origin is list:
-        return list[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
+        return list[_resolve_type(args[0], _seen) if args else Any]  # type: ignore[misc]
 
     if origin is collections.abc.Sequence:
-        return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
+        return Sequence[_resolve_type(args[0], _seen) if args else Any]  # type: ignore[misc]
 
     if _is_union_type(origin):
-        return Union[tuple(_resolve_type(a) for a in args)]
+        return Union[tuple(_resolve_type(a, _seen) for a in args)]
 
     if origin is dict:
-        return dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore[misc]
+        return dict[args[0] if args else Any, _resolve_type(args[1], _seen) if args else Any]  # type: ignore[misc]
 
     return _type
