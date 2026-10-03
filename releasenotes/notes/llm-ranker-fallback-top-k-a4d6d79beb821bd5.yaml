@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``LLMRanker.run`` and ``run_async`` now respect ``top_k`` when falling back
+    after an invalid query, generation failure, or invalid reply. The original
+    order and document deduplication are preserved.
+upgrade:
+  - |
+    Applications that relied on ``LLMRanker`` returning all input documents
+    on failure now receive at most ``top_k`` documents, as on successful ranking.
+    Set ``top_k`` to the input document count to retain all fallback documents.
