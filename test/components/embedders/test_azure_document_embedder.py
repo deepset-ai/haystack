@@ -19,8 +19,8 @@ class TestAzureOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -43,8 +43,8 @@ class TestAzureOpenAIDocumentEmbedder:
         embedder = AzureOpenAIDocumentEmbedder(
             azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0
         )
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -69,7 +69,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
-                "azure_deployment": "text-embedding-ada-002",
+                "azure_deployment": "text-embedding-3-small",
                 "dimensions": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "organization": None,
@@ -262,7 +262,7 @@ class TestAzureOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        # set the deployment explicitly instead of relying on the default
         embedder = AzureOpenAIDocumentEmbedder(
             azure_deployment="text-embedding-ada-002",
             meta_fields_to_embed=["topic"],

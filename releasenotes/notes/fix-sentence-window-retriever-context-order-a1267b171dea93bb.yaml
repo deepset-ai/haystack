@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``SentenceWindowRetriever`` returning ``context_windows`` with the chunks in the wrong order when the
+    documents have no ``split_idx_start`` meta field, for example chunks produced by ``MarkdownHeaderSplitter``.
+    The chunks were concatenated in the order returned by the Document Store instead of by ``split_id``, so the
+    context passed to an LLM could be scrambled while ``context_documents`` was correctly sorted. The chunks are now
+    sorted by ``split_id`` before being merged, in both ``run`` and ``run_async``.

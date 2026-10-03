@@ -27,7 +27,7 @@ When you perform embedding retrieval, you use this component to transform your q
 
 `AzureOpenAITextEmbedder` transforms a string into a vector that captures its semantics using an OpenAI embedding model. It uses Azure cognitive services for text and document embedding with models deployed on Azure.
 
-To see the list of compatible embedding models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model for `AzureOpenAITextEmbedder` is `text-embedding-ada-002`.
+To see the list of compatible embedding models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model for `AzureOpenAITextEmbedder` is `text-embedding-3-small`.
 
 Use `AzureOpenAITextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`AzureOpenAIDocumentEmbedder`](azureopenaidocumentembedder.mdx), which enriches the documents with the computed embedding, also known as vector.
 
@@ -63,7 +63,7 @@ text_embedder = AzureOpenAITextEmbedder()
 print(text_embedder.run(text_to_embed))
 
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-# 'meta': {'model': 'text-embedding-ada-002-v2',
+# 'meta': {'model': 'text-embedding-3-small',
 # 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
