@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``DocumentMAPEvaluator``, ``DocumentMRREvaluator``, ``DocumentRecallEvaluator`` and
+    ``AnswerExactMatchEvaluator`` now raise ``ValueError`` when given no questions, instead of
+    ``ZeroDivisionError``. This matches ``DocumentNDCGEvaluator``. A question whose own document
+    or answer list is empty is unchanged.
