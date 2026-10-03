@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``PPTXToDocument`` keeps soft line breaks (Shift+Enter) when ``link_format`` is
+    ``markdown`` or ``plain``. Those breaks were already kept for ``link_format="none"``.

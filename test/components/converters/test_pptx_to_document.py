@@ -123,3 +123,21 @@ class TestPPTXToDocument:
 
         assert "https://example.com" not in content
         assert "Example" in content
+
+    def test_soft_line_break_survives_every_link_format(self):
+        from io import BytesIO
+
+        from pptx import Presentation
+        from pptx.util import Inches
+
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        frame = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(7), Inches(2)).text_frame
+        frame.text = "Account: Alice\vBalance: 100"
+        buffer = BytesIO()
+        presentation.save(buffer)
+        source = ByteStream(data=buffer.getvalue())
+
+        for link_format in ("none", "markdown", "plain"):
+            documents = PPTXToDocument(link_format=link_format).run(sources=[source])["documents"]
+            assert documents[0].content == "Account: Alice\vBalance: 100"

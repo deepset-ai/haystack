@@ -14,7 +14,8 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
-    from pptx.text.text import _Paragraph
+    from pptx.oxml.text import CT_RegularTextRun, CT_TextLineBreak
+    from pptx.text.text import _Paragraph, _Run
 
 
 logger = logging.getLogger(__name__)
@@ -100,16 +101,25 @@ class PPTXToDocument:
         """
         if self.link_format == "none":
             return paragraph.text
+        # paragraph.runs skips soft line breaks (<a:br/>). Walk every content child so a
+        # Shift+Enter break survives, matching paragraph.text (a vertical tab).
         parts = []
-        for run in paragraph.runs:
-            if run.hyperlink and run.hyperlink.address:
-                if self.link_format == "markdown":
-                    parts.append(f"[{run.text}]({run.hyperlink.address})")
-                else:
-                    parts.append(f"{run.text} ({run.hyperlink.address})")
+        for child in paragraph._element.content_children:
+            if isinstance(child, CT_TextLineBreak):
+                parts.append(child.text)
+            elif isinstance(child, CT_RegularTextRun):
+                parts.append(self._format_run(_Run(child, paragraph)))
             else:
-                parts.append(run.text)
+                parts.append(child.text)
         return "".join(parts)
+
+    def _format_run(self, run: "_Run") -> str:
+        """Format one run, keeping a hyperlink when link_format asks for it."""
+        if run.hyperlink and run.hyperlink.address:
+            if self.link_format == "markdown":
+                return f"[{run.text}]({run.hyperlink.address})"
+            return f"{run.text} ({run.hyperlink.address})"
+        return run.text
 
     @component.output_types(documents=list[Document])
     def run(
