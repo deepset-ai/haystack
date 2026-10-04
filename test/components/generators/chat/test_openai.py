@@ -36,7 +36,7 @@ from haystack import component
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
-    _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_chunk_to_streaming_chunks,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -45,6 +45,7 @@ from haystack.dataclasses import (
     ChatRole,
     FileContent,
     ImageContent,
+    ReasoningContent,
     StreamingChunk,
     ToolCall,
     ToolCallDelta,
@@ -1911,17 +1912,18 @@ class TestComponentLifecycle:
 
 
 class TestChatCompletionChunkConversion:
-    def test_convert_chat_completion_chunk_to_streaming_chunk(
+    def test_convert_chat_completion_chunk_to_streaming_chunks(
         self, chat_completion_chunks: MagicMock, streaming_chunks: Any
     ) -> None:
 
+        block_indices: dict[str | int, int] = {}
         previous_chunks: list[StreamingChunk] = []
         for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
-            stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
-                chunk=openai_chunk, previous_chunks=previous_chunks
+            stream_chunks = _convert_chat_completion_chunk_to_streaming_chunks(
+                chunk=openai_chunk, block_indices=block_indices, previous_chunks=previous_chunks
             )
-            assert stream_chunk == haystack_chunk
-            previous_chunks.append(stream_chunk)
+            assert stream_chunks == [haystack_chunk]
+            previous_chunks.extend(stream_chunks)
 
     def test_convert_chat_completion_chunk_with_empty_tool_calls(self) -> None:
 
@@ -1941,7 +1943,9 @@ class TestChatCompletionChunkConversion:
             model="gpt-5-mini",
             object="chat.completion.chunk",
         )
-        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+        (result,) = _convert_chat_completion_chunk_to_streaming_chunks(
+            chunk=chunk, block_indices={}, previous_chunks=[]
+        )
         assert result.content == ""
         assert result.start is False
         assert result.tool_calls == [ToolCallDelta(index=0)]
@@ -1956,8 +1960,8 @@ class TestChatCompletionChunkConversion:
         This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
         """
 
-        result = _convert_chat_completion_chunk_to_streaming_chunk(
-            chunk=chat_completion_chunk_delta_none, previous_chunks=[]
+        (result,) = _convert_chat_completion_chunk_to_streaming_chunks(
+            chunk=chat_completion_chunk_delta_none, block_indices={}, previous_chunks=[]
         )
 
         assert result.content == ""
@@ -2023,7 +2027,9 @@ class TestChatCompletionChunkConversion:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=usage_chunk, previous_chunks=[])
+        (result,) = _convert_chat_completion_chunk_to_streaming_chunks(
+            chunk=usage_chunk, block_indices={}, previous_chunks=[]
+        )
         assert result.content == ""
         assert result.start is False
         assert result.tool_calls is None
@@ -2340,3 +2346,404 @@ class TestMakeSchemaStrict:
         assert "address" in tool_call.arguments
         assert "street" in tool_call.arguments["address"]
         assert "city" in tool_call.arguments["address"]
+
+
+@pytest.fixture
+def reasoning_response():
+    async def run_response(payload, *, run_mode, streaming=False):
+        chunks = []
+        requests = []
+
+        def respond(request):
+            requests.append(json.loads(request.content))
+            assert request.url.path == "/v1/chat/completions"
+            if streaming:
+                data = "".join(f"data: {json.dumps(chunk)}\n\n" for chunk in payload)
+                return httpx.Response(
+                    200, headers={"content-type": "text/event-stream"}, text=data + "data: [DONE]\n\n"
+                )
+            return httpx.Response(200, json=payload)
+
+        async def async_callback(chunk):
+            chunks.append(chunk)
+
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("offline-test-key"),
+            api_base_url="https://provider.invalid/v1",
+            model="compatible-reasoner",
+            http_client_kwargs={"transport": httpx.MockTransport(respond)},
+            max_retries=0,
+        )
+        callback = async_callback if run_mode == "async" else chunks.append
+        try:
+            if run_mode == "sync":
+                result = generator.run("Test", streaming_callback=callback if streaming else None)
+            else:
+                result = await generator.run_async("Test", streaming_callback=callback if streaming else None)
+        finally:
+            if run_mode == "sync":
+                generator.close()
+            else:
+                await generator.close_async()
+        assert len(requests) == 1
+        assert requests[0]["stream"] is streaming
+        assert requests[0]["messages"] == [{"role": "user", "content": "Test"}]
+        assert set(result) == {"replies"}
+        assert len(result["replies"]) == 1
+        return result["replies"][0], chunks
+
+    return run_response
+
+
+def reasoning_api_chunk(delta=None, *, finish_reason=None, usage=None):
+    return {
+        "id": "offline-completion",
+        "object": "chat.completion.chunk",
+        "created": 1,
+        "model": "compatible-reasoner",
+        "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}] if delta is not None else [],
+        "usage": usage,
+    }
+
+
+class TestOpenAIReasoning:
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    @pytest.mark.parametrize("streaming", [False, True])
+    @pytest.mark.parametrize(
+        "extra, expected",
+        [
+            ({"reasoning": "Think."}, "Think."),
+            ({"reasoning_content": "Think."}, "Think."),
+            ({"reasoning": "New", "reasoning_content": "Old"}, "New"),
+            ({"reasoning": "", "reasoning_content": "Fallback"}, "Fallback"),
+            ({"reasoning": None, "reasoning_content": "Fallback"}, "Fallback"),
+            ({"reasoning": {"text": "unsupported"}, "reasoning_content": "Fallback"}, "Fallback"),
+            ({"reasoning": " "}, " "),
+            ({}, None),
+            ({"reasoning": "", "reasoning_content": None}, None),
+            ({"reasoning": 42, "reasoning_content": ["unsupported"]}, None),
+        ],
+    )
+    async def test_reasoning_fields(self, reasoning_response, run_mode, streaming, extra, expected):
+        payload: dict[str, Any] | list[dict[str, Any]]
+        if streaming:
+            payload = [
+                reasoning_api_chunk({"role": "assistant", "content": ""}),
+                reasoning_api_chunk({"content": "Answer", **extra}),
+                reasoning_api_chunk({}, finish_reason="stop"),
+            ]
+        else:
+            payload = {
+                "id": "offline-completion",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "compatible-reasoner",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "Answer", **extra},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=streaming)
+        meta: dict[str, Any] = {"model": "compatible-reasoner", "index": 0, "finish_reason": "stop", "usage": None}
+        if streaming:
+            meta["completion_start_time"] = ANY
+            assert "".join(chunk.content for chunk in chunks) == "Answer"
+            assert [chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning] == (
+                [expected] if expected is not None else []
+            )
+            if expected is None:
+                assert [chunk.index for chunk in chunks] == [None, 0, None]
+                assert [chunk.start for chunk in chunks] == [False, True, False]
+        assert reply.to_dict() == ChatMessage.from_assistant(text="Answer", reasoning=expected, meta=meta).to_dict()
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async", "async_sync_callback"])
+    @pytest.mark.parametrize("field", ["reasoning", "reasoning_content"])
+    @pytest.mark.parametrize("combined", [False, True])
+    async def test_streaming_reasoning_and_text_blocks(self, reasoning_response, run_mode, field, combined):
+        deltas = [{"role": "assistant", "content": ""}, {field: "Think"}]
+        deltas += [{field: " more", "content": "An"}] if combined else [{field: " more"}, {"content": "An"}]
+        deltas += [{"content": "swer"}]
+        usage = {"prompt_tokens": 2, "completion_tokens": 4, "total_tokens": 6}
+        payload = [reasoning_api_chunk(delta) for delta in deltas]
+        payload += [reasoning_api_chunk({}, finish_reason="stop"), reasoning_api_chunk(usage=usage)]
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=True)
+        expected = [
+            ("", None, None, False, None),
+            ("", "Think", 0, True, None),
+            ("", " more", 0, False, None),
+            ("An", None, 1, True, None),
+            ("swer", None, 1, False, None),
+            ("", None, None, False, "stop"),
+            ("", None, None, False, None),
+        ]
+        expected_usage = CompletionUsage.model_validate(usage).model_dump()
+        assert len(chunks) == len(expected)
+        for position, (chunk, (content, reasoning, index, start, finish)) in enumerate(
+            zip(chunks, expected, strict=True)
+        ):
+            meta: dict[str, Any] = {"model": "compatible-reasoner", "received_at": ANY, "usage": None}
+            if position == len(expected) - 1:
+                meta["usage"] = expected_usage
+            else:
+                meta.update(index=0, tool_calls=None, finish_reason=finish)
+            assert chunk.to_dict() == {
+                "content": content,
+                "reasoning": {"reasoning_text": reasoning, "extra": {}} if reasoning is not None else None,
+                "index": index,
+                "start": start,
+                "finish_reason": finish,
+                "meta": meta,
+                "tool_calls": None,
+                "tool_call_result": None,
+                "component_info": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "name": None,
+                },
+            }
+        assert (
+            reply.to_dict()
+            == ChatMessage.from_assistant(
+                text="Answer",
+                reasoning="Think more",
+                meta={
+                    "model": "compatible-reasoner",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": expected_usage,
+                    "completion_start_time": ANY,
+                },
+            ).to_dict()
+        )
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    @pytest.mark.parametrize("streaming", [False, True])
+    @pytest.mark.parametrize("with_tools", [False, True])
+    async def test_reasoning_only_and_tool_calls(self, reasoning_response, run_mode, streaming, with_tools):
+        payload: dict[str, Any] | list[dict[str, Any]]
+        tool_calls = [
+            {"id": "call-0", "type": "function", "function": {"name": "weather", "arguments": '{"city":"Paris"}'}},
+            {"id": "call-1", "type": "function", "function": {"name": "weather", "arguments": '{"city":"Berlin"}'}},
+        ]
+        finish = "tool_calls" if with_tools else "stop"
+        message: dict[str, Any] = {"role": "assistant", "content": None, "reasoning": "Think."}
+        if with_tools:
+            message["tool_calls"] = tool_calls
+        if streaming:
+            if with_tools:
+                message["tool_calls"] = [
+                    {**tc, "index": i, "function": {"name": "weather", "arguments": '{"city":'}}
+                    for i, tc in enumerate(tool_calls)
+                ]
+                payload = [
+                    reasoning_api_chunk(message),
+                    reasoning_api_chunk(
+                        {
+                            "tool_calls": [
+                                {"index": 0, "function": {"arguments": '"Paris"}'}},
+                                {"index": 1, "function": {"arguments": '"Berlin"}'}},
+                            ]
+                        },
+                        finish_reason=finish,
+                    ),
+                ]
+            else:
+                payload = [reasoning_api_chunk(message, finish_reason=finish)]
+        else:
+            payload = {
+                "id": "offline-completion",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "compatible-reasoner",
+                "choices": [{"index": 0, "message": message, "finish_reason": finish}],
+            }
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=streaming)
+        meta = {"model": "compatible-reasoner", "index": 0, "finish_reason": finish, "usage": None}
+        if streaming:
+            meta["completion_start_time"] = ANY
+            assert chunks[0].reasoning == ReasoningContent(reasoning_text="Think.")
+            assert chunks[0].index == 0
+            assert chunks[0].start is True
+            assert [chunk.finish_reason for chunk in chunks if chunk.finish_reason] == [finish]
+            assert all(not chunk.content for chunk in chunks)
+            if with_tools:
+                tool_chunks = [chunk for chunk in chunks if chunk.tool_calls]
+                assert [chunk.index for chunk in tool_chunks] == [1, 1]
+                assert [chunk.start for chunk in tool_chunks] == [True, False]
+                assert [[tc.index for tc in chunk.tool_calls] for chunk in tool_chunks] == [[0, 1], [0, 1]]
+        expected_tools = (
+            [
+                ToolCall(id="call-0", tool_name="weather", arguments={"city": "Paris"}),
+                ToolCall(id="call-1", tool_name="weather", arguments={"city": "Berlin"}),
+            ]
+            if with_tools
+            else None
+        )
+        assert (
+            reply.to_dict()
+            == ChatMessage.from_assistant(reasoning="Think.", tool_calls=expected_tools, meta=meta).to_dict()
+        )
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    async def test_finish_metadata_after_mixed_reasoning_delta(self, reasoning_response, run_mode):
+        usage = {"prompt_tokens": 2, "completion_tokens": 4, "total_tokens": 6}
+        logprobs: dict[str, Any] = {
+            "content": [{"token": "Answer", "bytes": None, "logprob": -0.1, "top_logprobs": []}],
+            "refusal": None,
+        }
+        payload = reasoning_api_chunk(
+            {"role": "assistant", "reasoning_content": "Think.", "content": "Answer"},
+            finish_reason="length",
+            usage=usage,
+        )
+        payload["choices"][0]["logprobs"] = logprobs
+        reply, chunks = await reasoning_response([payload], run_mode=run_mode, streaming=True)
+        assert [(chunk.index, chunk.start, chunk.finish_reason) for chunk in chunks] == [
+            (0, True, None),
+            (1, True, "length"),
+        ]
+        assert chunks[0].meta["usage"] is None
+        assert chunks[0].meta["finish_reason"] is None
+        assert "logprobs" not in chunks[0].meta
+        assert chunks[1].meta["usage"] == CompletionUsage.model_validate(usage).model_dump()
+        assert chunks[1].meta["finish_reason"] == "length"
+        assert chunks[1].meta["logprobs"] == logprobs
+        assert reply.reasoning == ReasoningContent(reasoning_text="Think.")
+        assert reply.text == "Answer"
+        assert reply.meta["finish_reason"] == "length"
+        assert reply.meta["logprobs"] == [logprobs]
+        assert reply.meta["usage"] == CompletionUsage.model_validate(usage).model_dump()
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    async def test_reasoning_between_text_and_tool_deltas(self, reasoning_response, run_mode):
+        payload = [
+            reasoning_api_chunk({"content": "An"}),
+            reasoning_api_chunk({"reasoning": "Think"}),
+            reasoning_api_chunk(
+                {
+                    "tool_calls": [
+                        {
+                            "index": 0,
+                            "id": "call-0",
+                            "type": "function",
+                            "function": {"name": "weather", "arguments": '{"city":'},
+                        }
+                    ]
+                }
+            ),
+            reasoning_api_chunk({"reasoning": " more", "content": "swer"}),
+            reasoning_api_chunk(
+                {"tool_calls": [{"index": 0, "function": {"arguments": '"Paris"}'}}]}, finish_reason="tool_calls"
+            ),
+        ]
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=True)
+        assert [(chunk.index, chunk.start) for chunk in chunks] == [
+            (0, False),
+            (1, True),
+            (2, True),
+            (1, False),
+            (0, False),
+            (2, False),
+        ]
+        assert reply.text == "Answer"
+        assert reply.reasoning == ReasoningContent(reasoning_text="Think more")
+        assert reply.tool_calls == [ToolCall(id="call-0", tool_name="weather", arguments={"city": "Paris"})]
+        assert reply.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    @pytest.mark.parametrize("tool_indices", [[0, 1], [2, 5], [5, 2]])
+    @pytest.mark.parametrize("prefix_text", [False, True])
+    async def test_streaming_without_reasoning_preserves_tool_indices_and_order(
+        self, reasoning_response, run_mode, tool_indices, prefix_text
+    ):
+        payload = [reasoning_api_chunk({"role": "assistant", "content": ""})]
+        if prefix_text:
+            payload.append(reasoning_api_chunk({"content": "Plan"}))
+        for index in tool_indices:
+            payload.append(
+                reasoning_api_chunk(
+                    {
+                        "tool_calls": [
+                            {
+                                "index": index,
+                                "id": f"call-{index}",
+                                "type": "function",
+                                "function": {"name": "weather", "arguments": '{"city":'},
+                            }
+                        ]
+                    }
+                )
+            )
+        for index in reversed(tool_indices):
+            payload.append(
+                reasoning_api_chunk({"tool_calls": [{"index": index, "function": {"arguments": f'"City {index}"}}'}}]})
+            )
+        payload.append(reasoning_api_chunk({}, finish_reason="tool_calls"))
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=True)
+        expected_indices = tool_indices + list(reversed(tool_indices))
+        tool_chunks = [chunk for chunk in chunks if chunk.tool_calls]
+        # ToolCallDelta.index identifies the tool in the provider's list. Reconstruction sorts by that index.
+        assert [chunk.index for chunk in tool_chunks] == expected_indices
+        assert [chunk.tool_calls[0].index for chunk in tool_chunks] == expected_indices
+        assert [chunk.start for chunk in tool_chunks] == [True, True, False, False]
+        assert reply.tool_calls == [
+            ToolCall(id=f"call-{index}", tool_name="weather", arguments={"city": f"City {index}"})
+            for index in sorted(tool_indices)
+        ]
+        assert reply.text == ("Plan" if prefix_text else None)
+        assert reply.reasoning is None
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    @pytest.mark.parametrize(
+        "deltas, expected",
+        [
+            ([{"content": "Answer"}], [(0, False)]),
+            ([{"role": "assistant", "content": "Answer"}], [(None, False)]),
+            ([{"role": "assistant", "content": ""}, {"content": "Answer"}], [(None, False), (0, True)]),
+            ([{"role": "assistant"}, {}, {"content": "Answer"}], [(None, False), (None, True), (0, False)]),
+            ([{"role": "assistant"}, {"content": "Answer"}, {"content": ""}], [(None, False), (0, True), (0, False)]),
+        ],
+    )
+    async def test_streaming_without_reasoning_preserves_legacy_text_markers(
+        self, reasoning_response, run_mode, deltas, expected
+    ):
+        reply, chunks = await reasoning_response(
+            [reasoning_api_chunk(delta) for delta in deltas], run_mode=run_mode, streaming=True
+        )
+        assert [(chunk.index, chunk.start) for chunk in chunks] == expected
+        assert reply.text == "Answer"
+        assert reply.reasoning is None
+
+    @pytest.mark.parametrize("run_mode", ["sync", "async"])
+    async def test_reasoning_preserves_provider_tool_order(self, reasoning_response, run_mode):
+        payload = [reasoning_api_chunk({"reasoning": "Think"})]
+        for index in [5, 2]:
+            payload.append(
+                reasoning_api_chunk(
+                    {
+                        "tool_calls": [
+                            {
+                                "index": index,
+                                "id": f"call-{index}",
+                                "type": "function",
+                                "function": {"name": "weather", "arguments": '{"city":'},
+                            }
+                        ]
+                    }
+                )
+            )
+        for index in [2, 5]:
+            payload.append(
+                reasoning_api_chunk({"tool_calls": [{"index": index, "function": {"arguments": f'"City {index}"}}'}}]})
+            )
+        reply, chunks = await reasoning_response(payload, run_mode=run_mode, streaming=True)
+        assert [chunk.index for chunk in chunks] == [0, 1, 2, 2, 1]
+        assert [chunk.tool_calls[0].index for chunk in chunks if chunk.tool_calls] == [5, 2, 2, 5]
+        assert reply.tool_calls == [
+            ToolCall(id="call-2", tool_name="weather", arguments={"city": "City 2"}),
+            ToolCall(id="call-5", tool_name="weather", arguments={"city": "City 5"}),
+        ]
+        assert reply.reasoning == ReasoningContent(reasoning_text="Think")
+        assert reply.text is None

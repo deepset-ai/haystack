@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``OpenAIChatGenerator`` now preserves non-empty string ``reasoning`` and
+    ``reasoning_content`` fields returned by OpenAI-compatible Chat Completions
+    providers in ``ChatMessage.reasoning`` and ``StreamingChunk.reasoning``.
+    Previously these fields were discarded. Reasoning stays separate from answer
+    text, including when both arrive in the same streaming delta. The
+    ``reasoning`` field takes precedence; empty or non-string values are ignored.

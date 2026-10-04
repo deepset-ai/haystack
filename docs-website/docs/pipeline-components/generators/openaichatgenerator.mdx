@@ -93,6 +93,8 @@ print(response["replies"][0].text)
 
 ### Streaming
 
+For OpenAI-compatible providers that return reasoning text, non-empty string `reasoning` or `reasoning_content` fields populate `ChatMessage.reasoning` and `StreamingChunk.reasoning`, separately from the answer text. `reasoning` takes precedence when both contain text; empty or non-string values are ignored. A provider delta containing both reasoning and text produces separate callback chunks. Reasoning tokens in usage metadata alone do not provide reasoning text.
+
 You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
 
 ```python
