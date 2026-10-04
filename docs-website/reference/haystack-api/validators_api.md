@@ -131,5 +131,5 @@ the "validation_error" output.
 
 **Raises:**
 
-- <code>ValueError</code> – If the last message has no text content, or if no JSON schema is provided either in
-  the `run` method or in the component init.
+- <code>ValueError</code> – If `messages` is empty, if the last message has no text content, or if no JSON schema is
+  provided either in the `run` method or in the component init.

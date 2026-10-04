@@ -36,11 +36,21 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][0].content == "1"
         assert result["documents"][1].content == "2"
 
-    def test_lost_in_the_middle_with_non_textual_documents(self):
+    @pytest.mark.parametrize(
+        ("documents", "top_k"),
+        [
+            ([Document(blob=ByteStream(b"some bytes"))], None),
+            ([Document(content="text"), Document(blob=ByteStream(b"some bytes"))], None),
+            ([Document(content="text"), Document(blob=ByteStream(b"some bytes"))], 1),
+        ],
+    )
+    def test_lost_in_the_middle_with_non_textual_documents(self, documents, top_k):
         ranker = LostInTheMiddleRanker()
-        docs = [Document(content="1"), Document(blob=ByteStream(b"some bytes"))]
-        with pytest.raises(ValueError, match="Some provided documents are not textual"):
-            ranker.run(documents=docs)
+        with pytest.raises(
+            ValueError,
+            match=r"^Some provided documents are not textual; LostInTheMiddleRanker can process only text\.$",
+        ):
+            ranker.run(documents=documents, top_k=top_k)
 
     def test_lost_in_the_middle_init(self):
         # tests that LostInTheMiddleRanker initializes with default values

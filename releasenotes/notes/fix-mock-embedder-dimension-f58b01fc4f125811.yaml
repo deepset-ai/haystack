@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``MockTextEmbedder`` and ``MockDocumentEmbedder`` now accept non-positive
+    ``dimension`` values when ``embedding`` or ``embedding_fn`` is provided,
+    matching the documented behavior. The default deterministic embedding mode
+    still requires a positive ``dimension``.

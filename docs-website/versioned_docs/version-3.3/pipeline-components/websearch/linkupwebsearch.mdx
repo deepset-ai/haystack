@@ -1,0 +1,124 @@
+---
+title: "LinkupWebSearch"
+id: linkupwebsearch
+slug: "/linkupwebsearch"
+description: "Search engine using the Linkup Search API."
+---
+
+# LinkupWebSearch
+
+Search the web using the Linkup Search API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The Linkup API key. Can be set with the `LINKUP_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result content, with the result title and URL in the metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [Linkup Search API](/reference/integrations-linkup) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/linkup/src/haystack_integrations/components/websearch/linkup/linkup_websearch.py |
+| **Package name** | `linkup-haystack` |
+
+</div>
+
+## Overview
+
+When you give `LinkupWebSearch` a query, it uses the [Linkup](https://www.linkup.so) Search API to search the web and returns the results as Haystack `Document` objects, together with a list of the source URLs.
+
+Each result becomes a `Document` whose content is the text Linkup returns for that result, with the result title and URL stored in the Document's `meta`.
+
+Use the `depth` parameter to trade latency for thoroughness:
+
+- `"fast"`: keyword-based queries only, sub-second response (beta).
+- `"standard"`: a single search pass. This is the default.
+- `"deep"`: runs an agentic workflow, which takes longer.
+
+`top_k` limits the number of results and maps to the `max_results` parameter of the Linkup API. To use additional API options, such as `include_images`, `from_date`, `to_date`, `include_domains`, or `exclude_domains`, pass them in `search_params`. See the [Linkup API reference](https://docs.linkup.so/pages/documentation/api-reference/endpoint/post-search) for all available options. Image results carry no text, so enabling `include_images` adds Documents with empty content.
+
+You can override `top_k`, `depth`, and `search_params` for a single search by passing them to `run()`. Note that a `search_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
+
+`LinkupWebSearch` also supports asynchronous execution through `run_async()`. The underlying client is created lazily on the first search. To avoid the cold-start latency of the first call, you can call `warm_up()` explicitly.
+
+`LinkupWebSearch` requires a Linkup API key to work. By default, it looks for a `LINKUP_API_KEY` environment variable. Alternatively, you can pass an `api_key` directly during initialization.
+
+## Usage
+
+Install the `linkup-haystack` package to use the `LinkupWebSearch` component:
+
+```shell
+pip install linkup-haystack
+```
+
+### On its own
+
+Here is a quick example of how `LinkupWebSearch` searches the web based on a query and returns a list of Documents.
+
+```python
+from haystack_integrations.components.websearch.linkup import LinkupWebSearch
+from haystack.utils import Secret
+
+web_search = LinkupWebSearch(
+    api_key=Secret.from_env_var("LINKUP_API_KEY"),
+    top_k=5,
+    depth="standard",
+)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.meta["url"])
+    print(doc.content)
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline that uses `LinkupWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.websearch.linkup import LinkupWebSearch
+from haystack.dataclasses import ChatMessage
+
+web_search = LinkupWebSearch(
+    api_key=Secret.from_env_var("LINKUP_API_KEY"),
+    top_k=3,
+)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```
