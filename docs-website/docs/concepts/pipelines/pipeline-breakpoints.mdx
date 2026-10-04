@@ -45,9 +45,38 @@ If a `snapshot_file_path` is specified in the `Breakpoint` and snapshot file sav
 
 To access the pipeline state during the breakpoint we can both catch the exception raised by the breakpoint as well as specify where the JSON file should be saved, note that file saving is enabled must be enabled.
 
+## Breakpoints in asynchronous pipelines
+
+`Pipeline.run_async()` and `Pipeline.run_async_generator()` accept the same `break_point`, `pipeline_snapshot`, and `snapshot_callback` parameters as `Pipeline.run()`.
+
+When a breakpoint is reached, the pipeline stops scheduling new components and waits for components that have already been scheduled to finish. Their outputs and visit counts are included in the snapshot. The component at the breakpoint has not run yet. Resuming that snapshot continues from this state without rerunning the completed components.
+
+For an existing pipeline, pause and resume asynchronously:
+
+<!-- test-concept -->
+```python
+from haystack.core.errors import BreakpointException
+from haystack.dataclasses.breakpoints import Breakpoint
+
+
+async def pause_and_resume(pipeline, input_data):
+    try:
+        return await pipeline.run_async(
+            data=input_data,
+            break_point=Breakpoint(component_name="llm"),
+        )
+    except BreakpointException as error:
+        return await pipeline.run_async(
+            data={},
+            pipeline_snapshot=error.pipeline_snapshot,
+        )
+```
+
+With `run_async_generator()`, completed components can still yield partial results while the pipeline waits for the other scheduled components to finish. Catch `BreakpointException` around the `async for` loop to access its snapshot. Snapshots can be resumed with either synchronous or asynchronous pipeline execution.
+
 ## Using a custom snapshot callback
 
-You can pass a `snapshot_callback` to `Pipeline.run()` to handle snapshots yourself instead of saving to a file. When a breakpoint is triggered or a snapshot is created on error, the callback is invoked with the `PipelineSnapshot` object. This is useful for saving snapshots to a database, sending them to a remote service, or custom logging.
+You can pass a `snapshot_callback` to `Pipeline.run()`, `Pipeline.run_async()`, or `Pipeline.run_async_generator()` to handle snapshots yourself instead of saving to a file. When a breakpoint is triggered or a snapshot is created on error, the callback is invoked with the `PipelineSnapshot` object. This is useful for saving snapshots to a database, sending them to a remote service, or custom logging. The callback is a synchronous function, including when the pipeline runs asynchronously.
 
 ```python
 from haystack.core.errors import BreakpointException

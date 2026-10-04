@@ -37,6 +37,8 @@ from haystack.utils.misc import _get_output_dir
 
 logger = logging.getLogger(__name__)
 
+_PendingComponentInputs = dict[str, tuple[dict[str, list[dict[str, Any]]], int]]
+
 
 class _EndOfStream:
     """Sentinel type indicating no more chunks will arrive on the stream."""
@@ -629,14 +631,9 @@ class Pipeline(PipelineBase):
 
         done, _pending = await asyncio.wait(running_tasks.keys(), return_when=return_when)
         for finished in done:
+            # Keep failed tasks registered until the caller records which component failed and cleans up its siblings.
+            partial_result = finished.result()
             finished_component_name = running_tasks.pop(finished)
-            try:
-                partial_result = finished.result()
-            except Exception:
-                # A component failed. Cancel and drain the remaining in-flight tasks so they don't keep running in
-                # the background (and leak) after the run is aborted, then re-raise the original error.
-                await Pipeline._cancel_in_flight_tasks(running_tasks, scheduled_components)
-                raise
             scheduled_components.discard(finished_component_name)
             if partial_result:
                 yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
@@ -679,6 +676,9 @@ class Pipeline(PipelineBase):
         cached_receivers: dict[str, Any],
         include_outputs_from: set[str],
         parent_span: tracing.Span | None,
+        break_point: Breakpoint | None = None,
+        pending_inputs: _PendingComponentInputs | None = None,
+        is_resume: bool = False,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Runs a component with HIGHEST priority in isolation.
@@ -696,6 +696,9 @@ class Pipeline(PipelineBase):
         :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
         :param include_outputs_from: Set of component names whose outputs should always be included in the output.
         :param parent_span: The parent tracing span for the pipeline run.
+        :param break_point: Optional breakpoint checked before consuming this component's inputs.
+        :param pending_inputs: Saved inputs and visit counts of unfinished component attempts, mutated in place.
+        :param is_resume: Whether to consume the paused component's legacy snapshot inputs once.
         :returns: An async iterator of partial outputs.
         """
         # 1) Wait for all in-flight tasks to finish so the HIGHEST component runs alone.
@@ -708,10 +711,19 @@ class Pipeline(PipelineBase):
             # If it's already scheduled for some reason, skip.
             return
 
+        if (
+            break_point
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         # 2) Run the HIGHEST component by itself.
         scheduled_components.add(component_name)
         component = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        component_inputs = self._consume_component_inputs(component_name, component, inputs)
+        if pending_inputs is not None:
+            pending_inputs[component_name] = (inputs.get(component_name, {}), component_visits[component_name])
+        component_inputs = self._consume_component_inputs(component_name, component, inputs, is_resume=is_resume)
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         component_outputs = await self._run_component_async(
@@ -733,6 +745,8 @@ class Pipeline(PipelineBase):
             pipeline_outputs[component_name] = pruned
 
         scheduled_components.remove(component_name)
+        if pending_inputs is not None:
+            pending_inputs.pop(component_name)
         if pruned or component_name in include_outputs_from:
             yield {component_name: _deepcopy_with_exceptions(pruned)}
 
@@ -749,6 +763,9 @@ class Pipeline(PipelineBase):
         cached_receivers: dict[str, Any],
         include_outputs_from: set[str],
         parent_span: tracing.Span | None,
+        break_point: Breakpoint | None = None,
+        pending_inputs: _PendingComponentInputs | None = None,
+        is_resume: bool = False,
     ) -> None:
         """
         Schedules a component to run as a background task without waiting for it to finish.
@@ -766,14 +783,26 @@ class Pipeline(PipelineBase):
         :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
         :param include_outputs_from: Set of component names whose outputs should always be included in the output.
         :param parent_span: The parent tracing span for the pipeline run.
+        :param break_point: Optional breakpoint checked before consuming this component's inputs.
+        :param pending_inputs: Saved inputs and visit counts of unfinished component attempts, mutated in place.
+        :param is_resume: Whether to consume the paused component's legacy snapshot inputs once.
         """
         if component_name in scheduled_components:
             return  # already scheduled, do nothing
 
+        if (
+            break_point
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         scheduled_components.add(component_name)
 
         component = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        component_inputs = self._consume_component_inputs(component_name, component, inputs)
+        if pending_inputs is not None:
+            pending_inputs[component_name] = (inputs.get(component_name, {}), component_visits[component_name])
+        component_inputs = self._consume_component_inputs(component_name, component, inputs, is_resume=is_resume)
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         async def _runner() -> Mapping[str, Any]:
@@ -797,14 +826,23 @@ class Pipeline(PipelineBase):
                 pipeline_outputs[component_name] = pruned
 
             scheduled_components.remove(component_name)
+            if pending_inputs is not None:
+                pending_inputs.pop(component_name)
             return pruned
 
         task = asyncio.create_task(_runner())
         running_tasks[task] = component_name
 
     @mark_deserialization_internal
-    async def run_async_generator(  # noqa: PLR0915,C901
-        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
+    async def run_async_generator(  # noqa: PLR0915,PLR0912,C901
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        break_point: Breakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
@@ -886,6 +924,15 @@ class Pipeline(PipelineBase):
             included in the pipeline's output. For components that are
             invoked multiple times (in a loop), only the last-produced
             output is included.
+        :param break_point:
+            Optional breakpoint that pauses before the named component's specified visit. Already scheduled
+            components finish and yield their partial outputs before the snapshot is created.
+        :param pipeline_snapshot:
+            Optional snapshot to resume from. Its inputs, visit counts, outputs, and `include_outputs_from`
+            replace the corresponding run arguments. A new breakpoint must target a different component or visit.
+        :param snapshot_callback:
+            Optional synchronous callback receiving a `PipelineSnapshot` when a breakpoint or runtime error occurs.
+            Its optional return value is stored as the exception's `pipeline_snapshot_file_path`.
         :return: An async iterator containing partial (and final) outputs.
 
         :raises ValueError:
@@ -896,11 +943,30 @@ class Pipeline(PipelineBase):
             If the Pipeline contains cycles with unsupported connections that would cause
             it to get stuck and fail running.
             Or if a Component fails or returns output in an unsupported type.
+        :raises BreakpointException:
+            When the breakpoint is reached, with the pipeline snapshot attached.
+        :raises PipelineInvalidPipelineSnapshotError:
+            If the snapshot does not match the pipeline or the breakpoint would immediately trigger again.
         """
         if concurrency_limit < 1:
             raise ValueError("concurrency_limit must be greater than or equal to 1.")
 
         pipeline_running(self)  # telemetry
+
+        if (
+            break_point
+            and pipeline_snapshot
+            and break_point.component_name == pipeline_snapshot.break_point.component_name
+            and break_point.visit_count == pipeline_snapshot.break_point.visit_count
+        ):
+            raise PipelineInvalidPipelineSnapshotError(
+                "The provided break_point targets the same component and visit count as the break_point of the "
+                "pipeline_snapshot. It would trigger again before the resumed component runs, so the pipeline "
+                "could not make any progress. Provide a break_point with a different component or visit count."
+            )
+
+        if break_point:
+            _validate_break_point_against_pipeline(break_point, self.graph)
 
         # warm up the pipeline by running each component's warm_up_async (or warm_up) method
         await self.warm_up_async()
@@ -909,19 +975,29 @@ class Pipeline(PipelineBase):
             include_outputs_from = set()
 
         pipeline_outputs: dict[str, Any] = {}
+        legacy_resume_component: str | None = None
 
-        # Normalize `data` and raise ValueError if the input is malformed in some way.
-        data = self._prepare_component_input_data(data)
-
-        # Raise ValueError if input is malformed in some way
-        self.validate_input(data)
-
-        # We create a list of components in the pipeline sorted by name, so that the algorithm runs
-        # deterministically and independent of insertion order into the pipeline.
-        ordered_component_names = sorted(self.graph.nodes.keys())
-
-        # We track component visits to decide if a component can run.
-        component_visits = dict.fromkeys(ordered_component_names, 0)
+        if pipeline_snapshot is None:
+            data = self._prepare_component_input_data(data)
+            self.validate_input(data)
+            ordered_component_names = sorted(self.graph.nodes.keys())
+            component_visits = dict.fromkeys(ordered_component_names, 0)
+            inputs = self._convert_to_internal_format(pipeline_inputs=data)
+        else:
+            _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot, self.graph)
+            # A saved snapshot can be resumed more than once without changing its visit counts or input values.
+            component_visits = pipeline_snapshot.pipeline_state.component_visits.copy()
+            ordered_component_names = pipeline_snapshot.ordered_component_names.copy()
+            data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
+            if pipeline_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT:
+                inputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
+            else:
+                inputs = self._convert_to_internal_format(
+                    pipeline_inputs=_deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
+                )
+                legacy_resume_component = pipeline_snapshot.break_point.component_name
+            include_outputs_from = pipeline_snapshot.include_outputs_from.copy()
+            pipeline_outputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.pipeline_outputs)
 
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
@@ -933,6 +1009,7 @@ class Pipeline(PipelineBase):
         running_tasks: dict[asyncio.Task, str] = {}
         # A set of component names that have been scheduled but not finished.
         scheduled_components: set[str] = set()
+        pending_inputs: _PendingComponentInputs = {}
 
         with tracing.tracer.trace(
             "haystack.pipeline.run",
@@ -943,8 +1020,6 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.execution_mode": "async",
             },
         ) as parent_span:
-            inputs = self._convert_to_internal_format(pipeline_inputs=data)
-
             # check if pipeline is blocked before execution
             self.validate_pipeline(self._fill_queue(ordered_component_names, inputs, component_visits))
 
@@ -1002,8 +1077,13 @@ class Pipeline(PipelineBase):
                             cached_receivers=cached_receivers,
                             include_outputs_from=include_outputs_from,
                             parent_span=parent_span,
+                            break_point=break_point,
+                            pending_inputs=pending_inputs,
+                            is_resume=legacy_resume_component == component_name,
                         ):
                             yield partial_outputs
+                        if legacy_resume_component == component_name:
+                            legacy_resume_component = None
                         continue
 
                     if priority == ComponentPriority.READY:
@@ -1020,7 +1100,12 @@ class Pipeline(PipelineBase):
                             cached_receivers=cached_receivers,
                             include_outputs_from=include_outputs_from,
                             parent_span=parent_span,
+                            break_point=break_point,
+                            pending_inputs=pending_inputs,
+                            is_resume=legacy_resume_component == component_name,
                         )
+                        if legacy_resume_component == component_name:
+                            legacy_resume_component = None
 
                         # Possibly schedule more READY tasks if concurrency not fully used
                         while len(priority_queue) > 0 and not ready_sem.locked():
@@ -1042,7 +1127,12 @@ class Pipeline(PipelineBase):
                                 cached_receivers=cached_receivers,
                                 include_outputs_from=include_outputs_from,
                                 parent_span=parent_span,
+                                break_point=break_point,
+                                pending_inputs=pending_inputs,
+                                is_resume=legacy_resume_component == peek_name,
                             )
+                            if legacy_resume_component == peek_name:
+                                legacy_resume_component = None
 
                     # We only schedule components with priority DEFER when no other tasks are running.
                     elif priority == ComponentPriority.DEFER and not running_tasks:
@@ -1065,7 +1155,12 @@ class Pipeline(PipelineBase):
                             cached_receivers=cached_receivers,
                             include_outputs_from=include_outputs_from,
                             parent_span=parent_span,
+                            break_point=break_point,
+                            pending_inputs=pending_inputs,
+                            is_resume=legacy_resume_component == component_name,
                         )
+                        if legacy_resume_component == component_name:
+                            legacy_resume_component = None
 
                     # To make progress, we wait for one task to complete before restarting the loop.
                     async for partial_outputs in self._wait_for_tasks(
@@ -1084,8 +1179,74 @@ class Pipeline(PipelineBase):
                 # Set here so the tag reflects the final outputs.
                 parent_span.set_content_tag("haystack.pipeline.output_data", pipeline_outputs)
 
+                if break_point:
+                    logger.warning(
+                        "The given breakpoint {break_point} was never triggered. This is because:\n"
+                        "1. The provided component is not a part of the pipeline execution path.\n"
+                        "2. The component did not reach the visit count specified in the pipeline_breakpoint",
+                        break_point=break_point,
+                    )
+
                 # Yield the final pipeline outputs.
                 yield pipeline_outputs
+            except (BreakpointException, PipelineRuntimeError) as error:
+                # Helpers preserve the supplied breakpoint instance. An equal nested breakpoint belongs to
+                # the component, rather than the scheduler.
+                requested_breakpoint = isinstance(error, BreakpointException) and error.break_point is break_point
+                if requested_breakpoint:
+                    # Stop scheduling and let previously admitted work finish before serializing shared state.
+                    # This also waits for synchronous components offloaded to threads, which cannot be cancelled.
+                    try:
+                        while running_tasks:
+                            async for partial_outputs in self._wait_for_tasks(
+                                running_tasks, scheduled_components, return_when=asyncio.FIRST_COMPLETED
+                            ):
+                                yield partial_outputs
+                    except (BreakpointException, PipelineRuntimeError) as component_error:
+                        error = component_error
+                        requested_breakpoint = False
+
+                failed_component_name = component_name
+                for task, task_component_name in running_tasks.items():
+                    if task.done() and not task.cancelled() and task.exception() is error:
+                        failed_component_name = task_component_name
+                        break
+                await self._cancel_in_flight_tasks(running_tasks, scheduled_components)
+
+                # Successful tasks have removed their saved inputs. Restore only failed or cancelled attempts,
+                # retaining any new inputs that arrived from siblings while those attempts were running.
+                for pending_name, (before_consume, visits) in pending_inputs.items():
+                    current_inputs = inputs.setdefault(pending_name, {})
+                    sockets = self.graph.nodes[pending_name]["input_sockets"]
+                    for socket_name, values in before_consume.items():
+                        consumed = [v for v in values if v["sender"] is not None or sockets[socket_name].is_greedy]
+                        current_inputs[socket_name] = consumed + current_inputs.get(socket_name, [])
+                    component_visits[pending_name] = visits
+
+                if requested_breakpoint and isinstance(error, BreakpointException):
+                    saved_break_point = error.break_point
+                else:
+                    saved_break_point = Breakpoint(
+                        component_name=failed_component_name,
+                        visit_count=component_visits[failed_component_name],
+                        snapshot_file_path=_get_output_dir("pipeline_snapshot"),
+                    )
+                error.pipeline_snapshot = _create_pipeline_snapshot(
+                    inputs=_deepcopy_with_exceptions(inputs),
+                    component_inputs=_deepcopy_with_exceptions(inputs.get(saved_break_point.component_name, {})),
+                    break_point=saved_break_point,
+                    component_visits=component_visits,
+                    original_input_data=data,
+                    ordered_component_names=ordered_component_names,
+                    include_outputs_from=include_outputs_from,
+                    pipeline_outputs=pipeline_outputs,
+                )
+                error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
+                    pipeline_snapshot=error.pipeline_snapshot,
+                    raise_on_failure=isinstance(error, BreakpointException),
+                    snapshot_callback=snapshot_callback,
+                )
+                raise error
             finally:
                 # If iteration is abandoned early (e.g. the consumer stops iterating the generator and closes it) or
                 # the run is cancelled, cancel any tasks still in flight so they don't leak.
@@ -1094,7 +1255,14 @@ class Pipeline(PipelineBase):
 
     @mark_deserialization_internal
     async def run_async(
-        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        break_point: Breakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
     ) -> dict[str, Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
@@ -1188,6 +1356,15 @@ class Pipeline(PipelineBase):
             invoked multiple times (in a loop), only the last-produced
             output is included.
         :param concurrency_limit: The maximum number of components that should be allowed to run concurrently.
+        :param break_point:
+            Optional breakpoint that pauses before the named component's specified visit. Already scheduled
+            components finish before the snapshot is created.
+        :param pipeline_snapshot:
+            Optional snapshot to resume from. Its inputs, visit counts, outputs, and `include_outputs_from`
+            replace the corresponding run arguments. A new breakpoint must target a different component or visit.
+        :param snapshot_callback:
+            Optional synchronous callback receiving a `PipelineSnapshot` when a breakpoint or runtime error occurs.
+            Its optional return value is stored as the exception's `pipeline_snapshot_file_path`.
         :returns:
             A dictionary where each entry corresponds to a component name
             and its output. If `include_outputs_from` is `None`, this dictionary
@@ -1202,10 +1379,19 @@ class Pipeline(PipelineBase):
             Or if a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
+        :raises BreakpointException:
+            When the breakpoint is reached, with the pipeline snapshot attached.
+        :raises PipelineInvalidPipelineSnapshotError:
+            If the snapshot does not match the pipeline or the breakpoint would immediately trigger again.
         """
         final: dict[str, Any] = {}
         async for partial in self.run_async_generator(
-            data=data, concurrency_limit=concurrency_limit, include_outputs_from=include_outputs_from
+            data=data,
+            concurrency_limit=concurrency_limit,
+            include_outputs_from=include_outputs_from,
+            break_point=break_point,
+            pipeline_snapshot=pipeline_snapshot,
+            snapshot_callback=snapshot_callback,
         ):
             final = partial
         return final or {}

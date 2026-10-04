@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    ``Pipeline.run_async()`` and ``Pipeline.run_async_generator()`` now support
+    breakpoints, snapshot callbacks, and resuming from pipeline snapshots.
+    When a breakpoint is reached, already scheduled components finish before
+    the snapshot is captured, so resuming does not rerun completed components.
+    Runtime failures also attach snapshots with the inputs of unfinished attempts.
