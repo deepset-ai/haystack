@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix ``MarkdownHeaderSplitter`` ignoring ATX headers whose prefix is followed by a tab.
+    These headers now split sections and preserve header metadata, including when secondary splitting is enabled.
