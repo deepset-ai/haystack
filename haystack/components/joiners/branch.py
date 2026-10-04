@@ -113,8 +113,10 @@ class BranchJoiner:
         :returns:
             A deserialized `BranchJoiner` instance.
         """
-        data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
-        return default_from_dict(cls, data)
+        # Copy so the caller's data keeps the serialized type and can be deserialized again
+        init_parameters = dict(data["init_parameters"])
+        init_parameters["type_"] = deserialize_type(init_parameters["type_"])
+        return default_from_dict(cls, {**data, "init_parameters": init_parameters})
 
     def run(self, **kwargs: Any) -> dict[str, Any]:
         """

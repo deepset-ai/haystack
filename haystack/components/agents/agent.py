@@ -458,9 +458,12 @@ class Agent:
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
-        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
-        # would iterate and prematurely warm it up at init.
-        if tools is not None and not self._chat_generator_supports_tools:
+        # An empty list carries no tools, so it must not trip this check: `tools` is normalized to `[]` below, and
+        # both `clone()` and `to_dict()` feed that normalized value straight back into `__init__`. This mirrors the
+        # equivalent check in `run()`. Only a list is measured; a Toolset is never tested for truthiness here b/c
+        # that calls __len__, which for SearchableToolset would iterate and prematurely warm it up at init.
+        tools_provided = tools is not None and (not isinstance(tools, list) or len(tools) > 0)
+        if tools_provided and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
@@ -863,9 +866,10 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition), or a custom reason a hook supplied through the `stop_run` state key.
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -949,9 +953,10 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition), or a custom reason a hook supplied through the `stop_run` state key.
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}

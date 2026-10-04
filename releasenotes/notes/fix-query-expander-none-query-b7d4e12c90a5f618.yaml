@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``QueryExpander`` now returns an empty query list when ``query`` is ``None`` or not a string,
+    instead of raising ``AttributeError`` on ``str.strip``.

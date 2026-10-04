@@ -872,7 +872,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                                     Document(
                                         id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                         content="Rome is the capital of Italy",
-                                        score=1.3448247718197388,
+                                        score=0.9116077839697729,
                                         meta={"source_index": 2},
                                     ),
                                 ],
@@ -892,7 +892,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                             Document(
                                 id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                 content="Rome is the capital of Italy",
-                                score=1.3448247718197388,
+                                score=0.9116077839697729,
                             ),
                         ],
                         "meta": None,
@@ -919,7 +919,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                             Document(
                                 id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                 content="Rome is the capital of Italy",
-                                score=1.3448247718197388,
+                                score=0.9116077839697729,
                             ),
                         ],
                         "query": "What is the capital of France?",
@@ -2466,7 +2466,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                 content="some text about investigation and treatment of Alzheimer disease",
                                 meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
                                 id="doc2",
-                                score=4.148111588215998,
+                                score=2.2509916033301165,
                             )
                         ]
                     }
@@ -2480,7 +2480,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                     id="doc2",
                                     content="some text about investigation and treatment of Alzheimer disease",
                                     meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
-                                    score=4.148111588215998,
+                                    score=2.2509916033301165,
                                 )
                             ]
                         ],

@@ -129,9 +129,12 @@ class JsonSchemaValidator:
         :return:  A dictionary with the following keys:
             - "validated": A list of messages if the last message is valid.
             - "validation_error": A list of messages if the last message is invalid.
-        :raises ValueError: If the last message has no text content, or if no JSON schema is provided either in
-            the `run` method or in the component init.
+        :raises ValueError: If `messages` is empty, if the last message has no text content, or if no JSON schema is
+            provided either in the `run` method or in the component init.
         """
+        if not messages:
+            raise ValueError("The provided list of messages is empty.")
+
         last_message = messages[-1]
         if last_message.text is None:
             raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {last_message}")
@@ -147,10 +150,10 @@ class JsonSchemaValidator:
             }
 
         last_message_content = json.loads(last_message.text)
-        json_schema = json_schema or self.json_schema
+        json_schema = self.json_schema if json_schema is None else json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
-        if not json_schema:
+        if json_schema is None:
             raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema

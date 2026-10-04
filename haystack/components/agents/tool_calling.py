@@ -449,8 +449,9 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
     once — cannot be ordered by the read-after-write rule alone, so they are broken deterministically by call order
     (the lowest-index remaining call runs next, on its own).
 
-    Pure write-write overlaps create no dependency: nobody reads the contended key, and outputs are merged into State
-    sequentially in call order afterward, so the result stays deterministic without serializing execution.
+    Write-write overlaps alone create no dependency. Outputs are merged into State after each batch, in the
+    LLM's requested order within that batch, so subsequent batches see the updated values. This keeps merging
+    deterministic, but does not guarantee that writes follow the LLM's requested order across batches.
 
     :param tool_calls: The tool calls to schedule, in call order.
     :param tools: The resolved Tool for each entry in `tool_calls` (parallel list).
@@ -498,8 +499,7 @@ def _finalize_tool_result(
     Turn a single tool invocation result into a tool-result ChatMessage, merging outputs into State.
 
     On a `ToolInvocationError`, either re-raise (when `raise_on_failure`) or return an error message. Otherwise
-    merge the tool's outputs into State (in call order, so write-write merges stay deterministic) and build the
-    result message.
+    merge the tool's outputs into State and build the result message.
     """
     if isinstance(result, ToolInvocationError):
         if raise_on_failure:

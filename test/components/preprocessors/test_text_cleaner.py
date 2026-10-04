@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from haystack import Pipeline
 from haystack.components.preprocessors import TextCleaner
 
@@ -29,6 +31,16 @@ def test_run_with_empty_inputs():
     result = cleaner.run(texts=[])
     assert len(result) == 1
     assert result["texts"] == []
+
+
+def test_run_rejects_invalid_inputs():
+    cleaner = TextCleaner()
+
+    with pytest.raises(TypeError):
+        cleaner.run(texts=["Hello, World!", None, 42, ""])  # type: ignore[list-item]
+
+    with pytest.raises(TypeError):
+        cleaner.run(texts=15)  # type: ignore[arg-type]
 
 
 def test_run_with_regex():
