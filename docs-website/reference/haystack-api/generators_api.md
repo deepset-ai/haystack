@@ -14,7 +14,7 @@ Bases: <code>OpenAIChatGenerator</code>
 
 Generates text using OpenAI's models on Azure.
 
-It works with the gpt-4 - type models and supports streaming responses
+It works with OpenAI's GPT models deployed on Azure and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -40,7 +40,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+    azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
 response = client.run(messages)
 print(response)
 ```
@@ -51,7 +51,7 @@ print(response)
     "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
      enabling computers to understand, interpret, and generate human language in a way that is useful.")],
      _name=None,
-     _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
 }
 ```
@@ -938,7 +938,7 @@ replacement.
 
 Completes chats using OpenAI's large language models (LLMs).
 
-It works with the gpt-4 and gpt-5 series models and supports streaming responses
+It works with OpenAI's GPT models through the Chat Completions API and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -1221,7 +1221,7 @@ but can be used with `await` in async code.
 
 Completes chats using OpenAI's Responses API.
 
-It works with the gpt-4 and o-series models and supports streaming responses
+It works with OpenAI's GPT and o-series models and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 

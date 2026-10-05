@@ -630,7 +630,7 @@ from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.agents import Agent
 from haystack.tools import PipelineTool
@@ -666,7 +666,7 @@ retriever_tool = PipelineTool(
 
 # Create an Agent with the tool
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.6-luna"),
     tools=[retriever_tool]
 )
 
