@@ -26,13 +26,14 @@ semantically similar to improve retrieval recall.
 
 Structure:
 Follow the structure shown below in examples to generate expanded queries.
+These examples show the output when 3 queries are requested.
 
 Examples:
 1.  Query: "climate change effects"
     {"queries": ["impact of climate change", "consequences of global warming", "effects of environmental changes"]}
 
 2.  Query: "machine learning algorithms"
-    {"queries": ["neural networks", "clustering techniques", "supervised learning methods", "deep learning models"]}
+    {"queries": ["neural networks", "clustering techniques", "supervised learning methods"]}
 
 3.  Query: "open source NLP frameworks"
     {"queries": ["natural language processing tools", "free nlp libraries", "open-source NLP platforms"]}
@@ -48,8 +49,7 @@ Guidelines:
 Your Task:
 Query: "{{ query }}"
 
-You *must* respond with a JSON object containing a "queries" array with the expanded queries.
-Example: {"queries": ["query1", "query2", "query3"]}"""
+You *must* respond with a JSON object containing a "queries" array with exactly {{ n_expansions }} expanded queries."""
 
 
 @component
@@ -66,11 +66,18 @@ class QueryExpander:
     ### Usage example
 
     ```python
-    from haystack.components.generators.chat.openai import OpenAIChatGenerator
+    from pydantic import BaseModel
+
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.query import QueryExpander
 
+    class QueryExpansion(BaseModel):
+        queries: list[str]
+
     expander = QueryExpander(
-        chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+        chat_generator=OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"text_format": QueryExpansion}
+        ),
         n_expansions=3
     )
 
