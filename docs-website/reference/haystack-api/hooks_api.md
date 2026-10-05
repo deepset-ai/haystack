@@ -22,11 +22,11 @@ not included.
 
 ```python
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.hooks.budget import TokenBudgetHook
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
+    chat_generator=OpenAIResponsesChatGenerator(),
     tools=[web_search],
     hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
 )
@@ -817,7 +817,7 @@ paths, construct a `FunctionHook` directly with both `function` and `async_funct
 
 ```python
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.hooks import hook
 from haystack.components.agents.state import State
 from haystack.dataclasses import ChatMessage
@@ -839,7 +839,11 @@ def require_save(state: State) -> None:
         state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])
         state.set("continue_run", True)
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool, save], hooks={"on_exit": [require_save]})
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(),
+    tools=[weather_tool, save],
+    hooks={"on_exit": [require_save]},
+)
 ```
 
 **Parameters:**
@@ -918,7 +922,7 @@ Register it on an `Agent` to confirm, modify, or reject tool calls before they r
 
 ```python
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.tools import tool
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
@@ -941,7 +945,7 @@ hook = ConfirmationHook(
         )
     }
 )
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
 ```
 
 A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies

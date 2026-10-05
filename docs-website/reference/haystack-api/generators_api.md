@@ -607,10 +607,10 @@ without tool usage. It processes messages and returns a single response from the
 
 ```python
 from haystack.components.generators.chat import LLM
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 llm = LLM(
-    chat_generator=OpenAIChatGenerator(),
+    chat_generator=OpenAIResponsesChatGenerator(),
     system_prompt="You are a helpful translation assistant.",
     user_prompt="Summarize the following document: {{ document }}",
     required_variables=["document"],

@@ -228,7 +228,7 @@ from haystack import component
 from haystack.tools import ComponentTool
 from haystack.utils import Secret
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
@@ -242,8 +242,8 @@ tool = ComponentTool(
     description="Search the web for current information on any topic"  # Optional: defaults to component docstring
 )
 
-# Create an Agent with an OpenAIChatGenerator and the tool
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
+# Create an Agent with an OpenAIResponsesChatGenerator and the tool
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[tool])
 
 message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
@@ -861,7 +861,7 @@ without any discovery mechanism.
 from typing import Annotated
 
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import SearchableToolset, tool
 
@@ -887,7 +887,7 @@ def convert_currency(
 # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
 toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=toolset)
 
 # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
 result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
@@ -1067,14 +1067,14 @@ A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file
 
 ```python
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import SkillToolset
 from haystack.skill_stores.file_system import FileSystemSkillStore
 
 store = FileSystemSkillStore("skills/")
 skills_toolset = SkillToolset(store)
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=skills_toolset)
 result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
 ```
 
@@ -1346,7 +1346,7 @@ Toolset serves two main purposes:
 from typing import Annotated
 from haystack.tools import tool, Toolset
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 # Create tools with the @tool decorator (the recommended way)
 @tool
@@ -1363,7 +1363,7 @@ def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number
 math_toolset = Toolset([add, subtract])
 
 # Use the toolset with an Agent
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=math_toolset)
 ```
 
 2. Base class for dynamic tool loading:
