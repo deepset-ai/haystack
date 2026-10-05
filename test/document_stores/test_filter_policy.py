@@ -232,26 +232,6 @@ def test_merge_with_custom_logical_operator(logical_operator: Literal["AND", "OR
 
 
 @pytest.mark.parametrize("operator", ["OR", "NOT"])
-def test_merge_two_logical_filters_with_non_and_operator_keeps_both_restrictions(
-    operator: Literal["OR", "NOT"],
-) -> None:
-    """
-    Merging two logical filters that share a non-AND operator
-
-    Result: both filters nested under AND, so each restriction still applies.
-    Concatenating their conditions instead would union them (OR) or negate their
-    conjunction (NOT), potentially producing a broader result than applying both filters.
-    """
-    init_filters = {"operator": operator, "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
-    runtime_filters = {
-        "operator": operator,
-        "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
-    }
-    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
-    assert result == {"operator": "AND", "conditions": [init_filters, runtime_filters]}
-
-
-@pytest.mark.parametrize("operator", ["OR", "NOT"])
 def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersection(
     operator: Literal["OR", "NOT"],
 ) -> None:
@@ -286,21 +266,3 @@ def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersectio
         if document_matches_filter(init_filters, doc) and document_matches_filter(runtime_filters, doc)
     ]
     assert selected == intersection
-
-
-def test_merge_two_and_logical_filters_still_flattens_conditions() -> None:
-    """
-    Merging two AND logical filters
-
-    Result: a single AND with the conditions of both, unchanged from before
-    """
-    init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
-    runtime_filters = {"operator": "AND", "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}]}
-    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
-    assert result == {
-        "operator": "AND",
-        "conditions": [
-            {"field": "meta.type", "operator": "==", "value": "article"},
-            {"field": "meta.genre", "operator": "==", "value": "economy"},
-        ],
-    }

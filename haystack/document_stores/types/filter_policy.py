@@ -66,11 +66,9 @@ def combine_two_logical_filters(
     """
     Combine two logical filters, they must have the same operator.
 
-    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are the same, both filters
-    are combined so that each one still restricts the result. For `"AND"` that is a single `"AND"` holding the
-    conditions of both. For any other operator the two filters are nested under an `"AND"` instead, because
-    concatenating their conditions would not preserve them: `"OR"` would union the two filters and `"NOT"`
-    would negate their conjunction, either way potentially producing a broader result than applying both filters.
+    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are both `"AND"`, a single
+    `"AND"` holding the conditions of both is returned. For any other shared operator, both filters are nested
+    under an `"AND"` so that each one narrows the result, the same as when merging two `"AND"` filters.
     Otherwise, the `init_logical_filter` is ignored and `runtime_logical_filter` is returned.
 
         __Example__:
@@ -125,10 +123,6 @@ def combine_two_logical_filters(
                 "operator": "AND",
                 "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
             }
-        # For OR and NOT, concatenating conditions is not the same as applying both
-        # filters: OR would union them and NOT would negate their conjunction, either
-        # way potentially producing a broader result than applying both filters. Nest
-        # them under AND so both restrictions still hold.
         return {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
 
     logger.warning(
