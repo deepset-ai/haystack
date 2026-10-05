@@ -74,8 +74,8 @@ class LLMDocumentContentExtractor:
     - If the LLM returns a **JSON object with multiple keys**, the value of ``document_content`` (if present) is
       written to content and all other keys are merged into the document's metadata.
 
-    The ChatGenerator can be configured to return JSON (e.g. ``response_format={"type": "json_object"}``
-    in ``generation_kwargs``).
+    The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
+    `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` as shown in the usage example below.
 
     Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
 
@@ -149,7 +149,8 @@ class LLMDocumentContentExtractor:
         Initialize the LLMDocumentContentExtractor component.
 
         :param chat_generator: A ChatGenerator that supports vision input. Optionally configured for JSON
-            (e.g. ``response_format={"type": "json_object"}`` in ``generation_kwargs``).
+            (e.g. `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` when using the
+            OpenAIResponsesChatGenerator).
         :param prompt: Prompt for extraction. Must not contain Jinja variables.
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
