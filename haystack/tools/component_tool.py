@@ -63,7 +63,7 @@ class ComponentTool(Tool):
     from haystack.tools import ComponentTool
     from haystack.utils import Secret
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
@@ -77,8 +77,8 @@ class ComponentTool(Tool):
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
-    # Create an Agent with an OpenAIChatGenerator and the tool
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
+    # Create an Agent with an OpenAIResponsesChatGenerator and the tool
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[tool])
 
     message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 

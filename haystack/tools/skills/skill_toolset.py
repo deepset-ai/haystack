@@ -33,14 +33,14 @@ class SkillToolset(Toolset):
     <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SkillToolset
     from haystack.skill_stores.file_system import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
     skills_toolset = SkillToolset(store)
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=skills_toolset)
     result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
     ```
 

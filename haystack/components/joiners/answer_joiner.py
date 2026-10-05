@@ -59,7 +59,7 @@ class AnswerJoiner:
 
     from haystack.core.pipeline import Pipeline
 
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
 
 
@@ -68,8 +68,8 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("llm_1", OpenAIChatGenerator())
-    pipe.add_component("llm_2", OpenAIChatGenerator())
+    pipe.add_component("llm_1", OpenAIResponsesChatGenerator())
+    pipe.add_component("llm_2", OpenAIResponsesChatGenerator())
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())

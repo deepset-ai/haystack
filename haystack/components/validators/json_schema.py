@@ -39,7 +39,7 @@ class JsonSchemaValidator:
 
     ```python
     from haystack import Pipeline
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
     from haystack import component
@@ -55,7 +55,9 @@ class JsonSchemaValidator:
 
 
     p = Pipeline()
-    p.add_component("llm", OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component(
+        "llm", OpenAIResponsesChatGenerator(generation_kwargs={"text": {"format": {"type": "json_object"}}})
+    )
     p.add_component("schema_validator", JsonSchemaValidator())
     p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())

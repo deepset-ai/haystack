@@ -244,7 +244,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.generators.utils import print_streaming_chunk
     from haystack.dataclasses import ChatMessage
     from haystack.tools import tool
@@ -275,7 +275,7 @@ class Agent:
             "You are a helpful assistant. Use the 'search' tool to find information "
             "about a user's question and the 'calculator' tool to perform math."
         ),
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[search, calculator],
         streaming_callback=print_streaming_chunk,
     )
@@ -296,7 +296,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.tools import tool
     from typing import Annotated
 
@@ -311,7 +311,7 @@ class Agent:
         return f"[Translated '{text}' to {target_language}]"
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[translate],
         system_prompt="You are a helpful translation assistant.",
         user_prompt=\"\"\"{% message role="user"%}
@@ -350,7 +350,7 @@ class Agent:
     ```python
     from haystack.components.agents import Agent
     from haystack.components.agents.state import State
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.hooks import hook
     from haystack.tools import tool
@@ -372,7 +372,7 @@ class Agent:
 
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[save_result],
         hooks={"on_exit": [require_save]},
     )

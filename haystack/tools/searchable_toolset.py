@@ -43,7 +43,7 @@ class SearchableToolset(Toolset):
     from typing import Annotated
 
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SearchableToolset, tool
 
@@ -69,7 +69,7 @@ class SearchableToolset(Toolset):
     # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
     toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=toolset)
 
     # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
     result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
