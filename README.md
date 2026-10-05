@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                  |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                       |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                       |      373 |        2 |     99% |  197, 759 |
+| haystack/components/agents/agent.py                                       |      382 |        2 |     99% |  200, 764 |
 | haystack/components/agents/state/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                 |       77 |        2 |     97% |    76, 80 |
 | haystack/components/agents/state/state\_utils.py                          |       18 |        0 |    100% |           |
@@ -70,13 +70,13 @@
 | haystack/components/fetchers/link\_content.py                             |      202 |       18 |     91% |212-220, 288, 337-341, 426-430, 471, 504 |
 | haystack/components/generators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
-| haystack/components/generators/chat/azure.py                              |       92 |        3 |     97% |213, 371, 374 |
+| haystack/components/generators/chat/azure.py                              |       85 |        3 |     96% |212, 362, 365 |
 | haystack/components/generators/chat/azure\_responses.py                   |       46 |        1 |     98% |       274 |
 | haystack/components/generators/chat/fallback.py                           |      102 |        3 |     97% |   258-263 |
 | haystack/components/generators/chat/llm.py                                |       40 |        1 |     98% |       124 |
 | haystack/components/generators/chat/mock.py                               |      154 |        0 |    100% |           |
-| haystack/components/generators/chat/openai.py                             |      234 |        4 |     98% |469, 520, 692, 792 |
-| haystack/components/generators/chat/openai\_responses.py                  |      377 |       30 |     92% |308, 432, 513, 529, 566, 591, 644-653, 669-670, 675, 685, 702-711, 721, 778, 873, 915-916, 939, 991, 1016, 1035 |
+| haystack/components/generators/chat/openai.py                             |      227 |        4 |     98% |460, 511, 683, 783 |
+| haystack/components/generators/chat/openai\_responses.py                  |      368 |       30 |     92% |295, 419, 500, 516, 553, 578, 631-640, 656-657, 662, 672, 689-698, 708, 765, 860, 902-903, 926, 978, 1003, 1022 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                     |        4 |        0 |    100% |           |
 | haystack/components/generators/openai\_image\_generator.py                |       80 |        0 |    100% |           |
@@ -228,19 +228,19 @@
 | haystack/token\_counters/utils.py                                         |       49 |        0 |    100% |           |
 | haystack/tools/\_\_init\_\_.py                                            |        7 |        0 |    100% |           |
 | haystack/tools/agent\_tool.py                                             |       51 |        0 |    100% |           |
-| haystack/tools/component\_tool.py                                         |      100 |        5 |     95% |367-368, 411-413 |
+| haystack/tools/component\_tool.py                                         |      110 |        5 |     95% |381-382, 425-427 |
 | haystack/tools/errors.py                                                  |        6 |        0 |    100% |           |
 | haystack/tools/from\_function.py                                          |       64 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                               |       97 |        3 |     97% |95, 135-136 |
 | haystack/tools/pipeline\_tool.py                                          |       30 |        2 |     93% |  240, 243 |
-| haystack/tools/searchable\_toolset.py                                     |      110 |        0 |    100% |           |
+| haystack/tools/searchable\_toolset.py                                     |      124 |        0 |    100% |           |
 | haystack/tools/serde\_utils.py                                            |       43 |        3 |     93% |33, 35, 57 |
 | haystack/tools/skills/\_\_init\_\_.py                                     |        2 |        0 |    100% |           |
-| haystack/tools/skills/skill\_toolset.py                                   |       59 |        0 |    100% |           |
-| haystack/tools/tool.py                                                    |      150 |        5 |     97% |174, 197, 241-242, 376 |
+| haystack/tools/skills/skill\_toolset.py                                   |       64 |        0 |    100% |           |
+| haystack/tools/tool.py                                                    |      154 |        5 |     97% |175, 198, 242-243, 374 |
 | haystack/tools/tool\_types.py                                             |        5 |        0 |    100% |           |
-| haystack/tools/toolset.py                                                 |       51 |        3 |     94% |101, 157, 243 |
-| haystack/tools/utils.py                                                   |       29 |        0 |    100% |           |
+| haystack/tools/toolset.py                                                 |       46 |        3 |     93% |101, 157, 211 |
+| haystack/tools/utils.py                                                   |       53 |        0 |    100% |           |
 | haystack/tracing/\_\_init\_\_.py                                          |        1 |        0 |    100% |           |
 | haystack/tracing/logging\_tracer.py                                       |       36 |        0 |    100% |           |
 | haystack/tracing/tracer.py                                                |       54 |        4 |     93% |28, 74, 94, 103 |
@@ -267,7 +267,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17418** |  **730** | **96%** |           |
+| **TOTAL**                                                                 | **17456** |  **730** | **96%** |           |
 
 
 ## Setup coverage badge
