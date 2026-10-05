@@ -91,17 +91,17 @@ class LLMRanker:
 
     ```python
     from haystack import Document
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.rankers import LLMRanker
 
-    chat_generator = OpenAIChatGenerator(
-        model="gpt-4.1-mini",
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5.6-luna",
         generation_kwargs={
-            "temperature": 0.0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "document_ranking",
+                    "strict": True,
                     "schema": {
                         "type": "object",
                         "properties": {
@@ -118,8 +118,8 @@ class LLMRanker:
                         "required": ["documents"],
                         "additionalProperties": False,
                     },
-                },
-            },
+                }
+            }
         },
     )
 
