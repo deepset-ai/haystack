@@ -652,18 +652,16 @@ class TestAgentTelemetry:
             "tools": {"count": 0, "tools": [], "toolset_types": {}},
         }
 
-    def test_get_telemetry_data_does_not_load_searchable_toolset(self, weather_tool, monkeypatch):
-        toolset = SearchableToolset(catalog=[weather_tool])
-        warm_up = MagicMock()
-        monkeypatch.setattr(toolset, "warm_up", warm_up)
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+    def test_get_telemetry_data_reports_searchable_toolset_catalog(self, weather_tool):
+        # below the search threshold a SearchableToolset is a passthrough exposing its whole catalog
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=SearchableToolset(catalog=[weather_tool]))
+        agent.warm_up()
 
         assert agent._get_telemetry_data()["tools"] == {
-            "count": 0,
-            "tools": [],
+            "count": 1,
+            "tools": [{"type": "haystack.tools.tool.Tool", "name": "weather_tool"}],
             "toolset_types": {"haystack.tools.searchable_toolset.SearchableToolset": 1},
         }
-        warm_up.assert_not_called()
 
 
 class TestGetModelExitReason:

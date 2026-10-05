@@ -223,23 +223,15 @@ def _get_tools_telemetry_data(tools: ToolsType) -> dict[str, Any]:
     """
     Summarize the tools for telemetry.
 
-    Toolsets are read through their `tools` attribute instead of being iterated, because iterating some of them
-    (e.g. SearchableToolset) loads tools as a side effect. Toolsets that load their tools in `warm_up()` contribute
-    only their type until they are warmed up.
+    Call it only after the tools are warmed up: flattening iterates the Toolsets, and some of them (e.g.
+    SearchableToolset) warm up on iteration, while others (e.g. MCPToolset) only load their tools in `warm_up()`.
     """
-    toolset_types: Counter[str] = Counter()
-    flat_tools: list[Tool] = []
-    for entry in [tools] if isinstance(tools, Toolset) else tools:
-        if isinstance(entry, Toolset):
-            toolset_types[generate_qualified_class_name(type(entry))] += 1
-            flat_tools.extend(entry.tools)
-        else:
-            flat_tools.append(entry)
-
+    toolsets = [tools] if isinstance(tools, Toolset) else [entry for entry in tools if isinstance(entry, Toolset)]
+    flat_tools = flatten_tools_or_toolsets(tools=tools)
     return {
         "count": len(flat_tools),
         "tools": [_get_tool_telemetry_data(tool) for tool in flat_tools],
-        "toolset_types": dict(toolset_types),
+        "toolset_types": dict(Counter(generate_qualified_class_name(type(toolset)) for toolset in toolsets)),
     }
 
 

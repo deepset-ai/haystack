@@ -10,8 +10,9 @@ from haystack import Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.core.serialization import generate_qualified_class_name
+from haystack.dataclasses import ChatMessage
 from haystack.telemetry._telemetry import pipeline_running, tutorial_running
-from haystack.tools import Tool
+from haystack.tools import Tool, Toolset
 from haystack.utils.auth import Secret, TokenSecret
 
 
@@ -128,6 +129,48 @@ def test_pipeline_running_reports_agent_tools(telemetry):
             "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
             "tools": {"count": 1, "tools": [{"type": "haystack.tools.tool.Tool", "name": "tool"}], "toolset_types": {}},
         }
+    ]
+
+
+class _ToolsetLoadingOnWarmUp(Toolset):
+    def __init__(self, tool: Tool) -> None:
+        super().__init__(tools=[])
+        self._tool = tool
+
+    def warm_up(self) -> None:
+        self.tools = [self._tool]
+
+
+def _pipeline_with_agent_using_toolset_loading_on_warm_up() -> Pipeline:
+    tool = Tool(name="tool", description="A tool.", parameters={"type": "object", "properties": {}}, function=print)
+    pipe = Pipeline()
+    pipe.add_component(
+        "agent", Agent(chat_generator=MockChatGenerator("Hello"), tools=_ToolsetLoadingOnWarmUp(tool=tool))
+    )
+    return pipe
+
+
+def _reported_agent_tools(capture: Mock) -> dict:
+    return capture.call_args.kwargs["properties"]["components"]["haystack.components.agents.agent.Agent"][0]["tools"]
+
+
+def test_pipeline_run_reports_tools_loaded_on_warm_up(block_telemetry_network_calls: Mock) -> None:
+    pipe = _pipeline_with_agent_using_toolset_loading_on_warm_up()
+
+    pipe.run({"agent": {"messages": [ChatMessage.from_user("Hi")]}})
+
+    assert _reported_agent_tools(block_telemetry_network_calls)["tools"] == [
+        {"type": "haystack.tools.tool.Tool", "name": "tool"}
+    ]
+
+
+async def test_pipeline_run_async_reports_tools_loaded_on_warm_up(block_telemetry_network_calls: Mock) -> None:
+    pipe = _pipeline_with_agent_using_toolset_loading_on_warm_up()
+
+    await pipe.run_async({"agent": {"messages": [ChatMessage.from_user("Hi")]}})
+
+    assert _reported_agent_tools(block_telemetry_network_calls)["tools"] == [
+        {"type": "haystack.tools.tool.Tool", "name": "tool"}
     ]
 
 
