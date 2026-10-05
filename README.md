@@ -75,8 +75,8 @@
 | haystack/components/generators/chat/fallback.py                           |      102 |        3 |     97% |   258-263 |
 | haystack/components/generators/chat/llm.py                                |       40 |        1 |     98% |       124 |
 | haystack/components/generators/chat/mock.py                               |      154 |        0 |    100% |           |
-| haystack/components/generators/chat/openai.py                             |      233 |        4 |     98% |468, 519, 691, 791 |
-| haystack/components/generators/chat/openai\_responses.py                  |      376 |       33 |     91% |307, 431, 512, 528, 565, 590, 643-652, 668-669, 674, 684, 694-710, 720, 777, 872, 914-915, 938, 990, 1015, 1034 |
+| haystack/components/generators/chat/openai.py                             |      234 |        4 |     98% |469, 520, 692, 792 |
+| haystack/components/generators/chat/openai\_responses.py                  |      377 |       30 |     92% |308, 432, 513, 529, 566, 591, 644-653, 669-670, 675, 685, 702-711, 721, 778, 873, 915-916, 939, 991, 1016, 1035 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                     |        4 |        0 |    100% |           |
 | haystack/components/generators/openai\_image\_generator.py                |       80 |        0 |    100% |           |
@@ -267,7 +267,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17416** |  **733** | **96%** |           |
+| **TOTAL**                                                                 | **17418** |  **730** | **96%** |           |
 
 
 ## Setup coverage badge
