@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Added the experimental ``ToolResultOffloadCompactor`` for ``CompactionHook``. Once compaction is triggered, it
+    writes older tool results to a ``ToolResultStore`` and leaves a reference with a short preview in their place, so
+    the Agent can read the full output back with a tool scoped to the same store. Fresh results stay in context
+    until then.
+
+    .. code-block:: python
+
+        from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
+        from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+
+        compaction_hook = CompactionHook(
+            compactor=ToolResultOffloadCompactor(store=FileSystemToolResultStore(root="tool_results")),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
