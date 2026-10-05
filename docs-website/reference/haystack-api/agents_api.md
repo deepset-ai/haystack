@@ -270,7 +270,7 @@ Warm up the tools, hooks, and the underlying chat generator on the serving event
 close() -> None
 ```
 
-Release the hooks' and the underlying chat generator's resources.
+Release tools, hooks, and chat generator resources.
 
 #### close_async
 
@@ -278,7 +278,7 @@ Release the hooks' and the underlying chat generator's resources.
 close_async() -> None
 ```
 
-Release the hooks' and the underlying chat generator's async resources.
+Release async tools, hooks, and chat generator resources.
 
 #### clone
 
@@ -350,6 +350,8 @@ Process messages and execute tools until an exit condition is met.
   precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
+  Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+  closing them if they hold resources.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
   (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -406,6 +408,9 @@ if available.
   with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
   precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+  When passing tool names, tools are selected from the Agent's originally configured tools.
+  Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+  closing them if they hold resources.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
   (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
