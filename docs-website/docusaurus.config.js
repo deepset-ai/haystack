@@ -260,9 +260,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
+          // Redirects after docs sidebar reorganization
           {
             from: '/docs/next/external-integrations-development',
             to: '/docs/next/production-usage',
+          },
+          {
+            from: '/docs/external-integrations-development',
+            to: '/docs/production-usage',
+          },
+          {
+            from: '/docs/3.3/external-integrations-development',
+            to: '/docs/3.3/production-usage',
           },
         ],
         // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
