@@ -29,7 +29,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Generates text using OpenAI's models on Azure.
 
-    It works with the gpt-4 - type models and supports streaming responses
+    It works with OpenAI's GPT models deployed on Azure and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -53,7 +53,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     client = AzureOpenAIChatGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+        azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
     response = client.run(messages)
     print(response)
     ```
@@ -64,7 +64,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
          enabling computers to understand, interpret, and generate human language in a way that is useful.")],
          _name=None,
-         _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```

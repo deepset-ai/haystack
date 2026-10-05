@@ -70,7 +70,7 @@ class OpenAIResponsesChatGenerator:
     """
     Completes chats using OpenAI's Responses API.
 
-    It works with the gpt-4 and o-series models and supports streaming responses
+    It works with OpenAI's GPT and o-series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
