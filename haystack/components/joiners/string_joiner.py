@@ -19,9 +19,6 @@ class StringJoiner:
     from haystack.components.builders import PromptBuilder
     from haystack.core.pipeline import Pipeline
 
-    from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.dataclasses import ChatMessage
-
     string_1 = "What's Natural Language Processing?"
     string_2 = "What is life?"
 

@@ -46,7 +46,7 @@ class LLMMetadataExtractor:
     ```python
     from haystack import Document
     from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
     NER_PROMPT = '''
     -Goal-
@@ -92,15 +92,13 @@ class LLMMetadataExtractor:
         Document(content="Hugging Face is a company that was founded in New York, USA and is known for its Transformers library")
     ]
 
-    chat_generator = OpenAIChatGenerator(
+    chat_generator = OpenAIResponsesChatGenerator(
         generation_kwargs={
-            "max_completion_tokens": 500,
-            "temperature": 0.0,
-            "seed": 0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "entity_extraction",
+                    "strict": True,
                     "schema": {
                         "type": "object",
                         "properties": {

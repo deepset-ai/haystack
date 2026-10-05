@@ -83,7 +83,7 @@ class LLMDocumentContentExtractor:
 
     ```python
     from haystack import Document
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.extractors.image import LLMDocumentContentExtractor
 
     prompt = \"\"\"
@@ -95,12 +95,13 @@ class LLMDocumentContentExtractor:
     Return this metadata as additional key-value pairs in the same JSON object.
     \"\"\"
 
-    chat_generator = OpenAIChatGenerator(
+    chat_generator = OpenAIResponsesChatGenerator(
             generation_kwargs={
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "entity_extraction",
+                            "strict": False,
                             "schema": {
                                 "type": "object",
                                 "properties": {

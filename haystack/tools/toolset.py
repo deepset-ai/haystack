@@ -26,7 +26,7 @@ class Toolset:
     from typing import Annotated
     from haystack.tools import tool, Toolset
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
     # Create tools with the @tool decorator (the recommended way)
     @tool
@@ -43,7 +43,7 @@ class Toolset:
     math_toolset = Toolset([add, subtract])
 
     # Use the toolset with an Agent
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=math_toolset)
     ```
 
     2. Base class for dynamic tool loading:
