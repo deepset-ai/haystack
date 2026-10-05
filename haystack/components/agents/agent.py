@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -28,7 +29,12 @@ from haystack.components.agents.utils import (
 )
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.hooks.protocol import (
@@ -51,6 +57,8 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
+    ComponentTool,
+    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -197,6 +205,42 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
         return []
     last_message = messages[-1]
     return [last_message] if last_message.tool_calls else []
+
+
+def _get_tool_telemetry_data(tool: Tool) -> dict[str, Any]:
+    """
+    Describe a single tool for telemetry.
+
+    Descriptions are deliberately left out: they are free text that can hold personal or confidential data.
+    """
+    data = {"type": generate_qualified_class_name(type(tool)), "name": tool.name}
+    if isinstance(tool, ComponentTool):
+        data["component"] = generate_qualified_class_name(type(tool._component))
+    return data
+
+
+def _get_tools_telemetry_data(tools: ToolsType) -> dict[str, Any]:
+    """
+    Summarize the tools for telemetry.
+
+    Toolsets are read through their `tools` attribute instead of being iterated, because iterating some of them
+    (e.g. SearchableToolset) loads tools as a side effect. Toolsets that load their tools in `warm_up()` contribute
+    only their type until they are warmed up.
+    """
+    toolset_types: Counter[str] = Counter()
+    flat_tools: list[Tool] = []
+    for entry in [tools] if isinstance(tools, Toolset) else tools:
+        if isinstance(entry, Toolset):
+            toolset_types[generate_qualified_class_name(type(entry))] += 1
+            flat_tools.extend(entry.tools)
+        else:
+            flat_tools.append(entry)
+
+    return {
+        "count": len(flat_tools),
+        "tools": [_get_tool_telemetry_data(tool) for tool in flat_tools],
+        "toolset_types": dict(toolset_types),
+    }
 
 
 @dataclass(kw_only=True)
@@ -632,6 +676,15 @@ class Agent:
         init_params = inspect.signature(type(self).__init__).parameters
         params: dict[str, Any] = {name: getattr(self, name) for name in init_params if name != "self"}
         return type(self)(**{**params, **overrides})
+
+    def _get_telemetry_data(self) -> dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        chat_generator_data: dict[str, Any] = {"type": generate_qualified_class_name(type(self.chat_generator))}
+        if hasattr(self.chat_generator, "_get_telemetry_data"):
+            chat_generator_data.update(self.chat_generator._get_telemetry_data())
+        return {"chat_generator": chat_generator_data, "tools": _get_tools_telemetry_data(self.tools)}
 
     def to_dict(self) -> dict[str, Any]:
         """

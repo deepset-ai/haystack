@@ -7,8 +7,11 @@ import logging
 from unittest.mock import Mock, patch
 
 from haystack import Pipeline, component
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._telemetry import pipeline_running, tutorial_running
+from haystack.tools import Tool
 from haystack.utils.auth import Secret, TokenSecret
 
 
@@ -107,6 +110,25 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
             "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
+
+
+@patch("haystack.telemetry._telemetry.telemetry")
+def test_pipeline_running_reports_agent_tools(telemetry):
+    telemetry.send_event = Mock()
+    tool = Tool(name="tool", description="A tool.", parameters={"type": "object", "properties": {}}, function=print)
+
+    pipe = Pipeline()
+    pipe.add_component("agent", Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool]))
+    pipeline_running(pipe)
+
+    event_properties = telemetry.send_event.call_args.args[1]
+    assert event_properties["components"]["haystack.components.agents.agent.Agent"] == [
+        {
+            "name": "agent",
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 1, "tools": [{"type": "haystack.tools.tool.Tool", "name": "tool"}], "toolset_types": {}},
+        }
+    ]
 
 
 def test_pipeline_running_with_non_dict_telemetry_data(caplog):
