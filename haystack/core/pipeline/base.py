@@ -1793,9 +1793,7 @@ class PipelineBase:  # noqa: PLW1641
 
         :returns:
             A tuple containing:
-            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
-            - A dictionary mapping component names to boolean indicating that this component was part of a
-              SuperComponent
+            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all its SuperComponents
             - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()

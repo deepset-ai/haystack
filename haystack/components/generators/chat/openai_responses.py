@@ -29,6 +29,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.chat_message import _parse_openai_tool_call_arguments
 from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
@@ -692,7 +693,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
         elif output.type == "function_call":
             try:
-                arguments = json.loads(output.arguments)
+                arguments = _parse_openai_tool_call_arguments(output.arguments)
                 tool_calls.append(
                     ToolCall(
                         id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id}
