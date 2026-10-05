@@ -40,10 +40,9 @@ def _offloadable_content_blocks(
     result: ToolCallResult, store: ToolResultStore
 ) -> list[TextContent | ImageContent | FileContent] | None:
     """
-    Return a result's content blocks when `store` can take them, or None when the result stays in context.
+    Return a result's content blocks, or None when the result is empty or `store` cannot hold its image or file content.
 
-    A result made up of nothing but empty text has nothing worth storing. Image and file content only goes to a store
-    that sets `supports_binary_content`; a text-only store leaves the whole result in context and logs a warning.
+    A warning is logged when a text-only store is given image or file content.
 
     :param result: The tool result to inspect.
     :param store: The store the result would be written to.
@@ -82,16 +81,12 @@ def _offloaded_message(
     additional_meta: dict[str, Any] | None = None,
 ) -> ChatMessage:
     """
-    Write a tool result to the store and return the message that points to it.
-
-    Callers decide whether a result should be offloaded; keeping the write and the message construction here gives
-    every offloading entry point the same pointer format and metadata marker.
+    Write a tool result to the store and return a message with the same origin and error flag that points to it.
 
     :param message: The tool-result message being offloaded. Must carry a tool result.
     :param content_blocks: The result's content blocks, as returned by `_offloadable_content_blocks`.
     :param store: The store to write the content blocks to.
-    :param key_prefix: The result's store key prefix, unique within the run so results from different tools and steps
-        do not collide.
+    :param key_prefix: The result's store key prefix, unique within the run.
     :param preview_chars: Number of leading characters of each offloaded text to include in the pointer.
     :param additional_meta: Extra metadata to record on the offloaded message, such as a compaction marker.
     :returns: A new tool-result message whose content points at the stored result.

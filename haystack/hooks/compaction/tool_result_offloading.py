@@ -23,15 +23,11 @@ from haystack.utils.experimental import _experimental
 @_experimental
 class ToolResultOffloadCompactor(Compactor):
     """
-    Writes older tool results to a `ToolResultStore`, leaving a compact reference in the conversation.
+    Writes older tool results to a `ToolResultStore` and leaves a reference with a preview in their place.
 
-    Like `ToolResultPruningCompactor` this rewrites tool results in place, so every tool call keeps its matching
-    result. The difference is that the full output survives: the model is left a reference it can read back with a
-    tool scoped to the same store, instead of a placeholder telling it to run the tool again.
-
-    Because `CompactionHook` only calls a compactor once the conversation crosses its threshold, fresh tool output
-    goes to the model directly and only starts being offloaded under context pressure. Use `ToolResultOffloadHook`
-    instead when a tool's output should always be offloaded, however short the run.
+    Every tool call keeps its matching result, and the model can read the full output back with a tool scoped to the
+    same store. `CompactionHook` only calls the compactor once the conversation crosses its threshold, so fresh output
+    stays in context until then. Use `ToolResultOffloadHook` to offload a tool's output as soon as it arrives.
 
     <!-- test-ignore -->
     ```python
@@ -53,32 +49,26 @@ class ToolResultOffloadCompactor(Compactor):
     )
     ```
 
-    A compactor takes no per-run context, so unlike `ToolResultOffloadHook` it cannot be given a store per run. In a
-    multi-user server, build a compactor (and its hook) per run with that run's own isolated store, so concurrent
-    users never read each other's offloaded results.
+    The store is fixed when the compactor is created. In a multi-user server, build a compactor and its hook per run
+    with that run's own store, so users never read each other's results.
 
-    Whether an image or file result is worth offloading depends on the `TokenCounter` in use: a local counter measures
-    non-text content as a short stand-in, so offloading it frees nothing measurable and the result stays in context.
-    A counter that measures what the provider actually charges for, such as `OpenAITokenCounter`, reports the real
-    size and those results are offloaded like any other.
+    Image and file results are only offloaded when the `TokenCounter` measures their real size, as `OpenAITokenCounter`
+    does. A local counter measures them as a short stand-in, so offloading them saves nothing and they stay in context.
     """
 
     def __init__(
         self, store: ToolResultStore, *, min_keep_steps: int = 1, min_tokens: int = 200, preview_chars: int = 200
     ) -> None:
         """
-        Initialize the compactor with its store and the rules deciding which results it offloads.
+        Initialize the compactor.
 
-        :param store: Where offloaded results are written. A store that sets `supports_binary_content` also receives
-            image and file results; with a text-only store those stay in the conversation.
-        :param min_keep_steps: The minimum number of recent tool-calling Agent steps whose results remain untouched,
-            even when they exceed the target. Must be at least 1, which ensures the current result batch remains intact
-            until the model has acted on it.
-        :param min_tokens: Only offload tool-result messages that use more than this many tokens. Small results cost
-            little to keep and their references would save almost nothing.
-        :param preview_chars: Number of leading characters of each offloaded text to include in the reference left in
-            the conversation, so the model knows roughly what was offloaded. Image and file results are described by
-            their MIME type and size instead.
+        :param store: Where offloaded results are written. Image and file results are only written to a store that sets
+            `supports_binary_content`; otherwise they stay in the conversation.
+        :param min_keep_steps: Number of most recent tool-calling Agent steps whose results are never offloaded, even
+            when the target is missed. Must be at least 1, so the model always sees the latest results.
+        :param min_tokens: Only offload tool-result messages larger than this many tokens.
+        :param preview_chars: Number of leading characters of each offloaded text kept in its reference. Image and file
+            results are described by MIME type and size instead.
         :raises ValueError: If `min_keep_steps` is less than 1, or `min_tokens` or `preview_chars` is negative.
         """
         if min_keep_steps < 1:
@@ -99,18 +89,14 @@ class ToolResultOffloadCompactor(Compactor):
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
     ) -> list[ChatMessage] | None:
         """
-        Replace the content of offloadable tool results with a reference to the stored result.
+        Offload tool results to the store, oldest first, until the conversation fits within `target_tokens`.
 
-        Results are considered oldest first and offloading stops as soon as the conversation reaches `target_tokens`.
-        This keeps as much output as possible directly in context. Results from the most recent `min_keep_steps`
-        tool-calling Agent steps are never considered, even when the target cannot otherwise be reached. After
-        measuring the initial conversation, the running total is updated with per-result token deltas to avoid
-        repeatedly counting the full context.
+        Results from the most recent `min_keep_steps` tool-calling Agent steps are never offloaded.
 
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the compacted conversation should come in under.
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
-        :returns: The conversation with older tool results offloaded, or None when no result was offloadable.
+        :returns: The conversation with older tool results replaced by references, or None when nothing was offloaded.
         """
         current_tokens = token_counter.count(messages=messages)
         if current_tokens <= target_tokens:
@@ -128,7 +114,7 @@ class ToolResultOffloadCompactor(Compactor):
         # Replace entries in a new list so the caller-owned input list remains unchanged.
         compacted = list(messages)
         changed = False
-        # Iterate oldest-first so we can stop at the target while leaving as much recent output in context as possible.
+        # Go oldest first and stop at the target, so as much recent output as possible stays in context.
         for index, message in enumerate(messages):
             if message.tool_call_result is None or index in protected_positions:
                 continue
@@ -136,29 +122,24 @@ class ToolResultOffloadCompactor(Compactor):
             if replacement is None:
                 continue
             offloaded, saved_tokens = replacement
-
-            # Update the compacted list and the running token count
             compacted[index] = offloaded
             current_tokens -= saved_tokens
             changed = True
-
-            # Once we reach the target, stop offloading to keep as much recent output in context as possible.
             if current_tokens <= target_tokens:
                 break
 
-        # If no candidates were offloaded, return None to indicate no change.
         return compacted if changed else None
 
     async def compact_async(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
     ) -> list[ChatMessage] | None:
         """
-        Asynchronous version of `compact`, running the store writes in a thread so the event loop is not blocked.
+        Run `compact` in a thread so the store writes do not block the event loop.
 
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the compacted conversation should come in under.
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
-        :returns: The conversation with older tool results offloaded, or None when no result was offloadable.
+        :returns: The conversation with older tool results replaced by references, or None when nothing was offloaded.
         """
         return await asyncio.to_thread(
             self.compact, messages=messages, target_tokens=target_tokens, token_counter=token_counter
@@ -168,17 +149,13 @@ class ToolResultOffloadCompactor(Compactor):
         """
         Write one tool result to the store and report how many tokens its reference saves.
 
-        The result's `origin` is carried over so the message keeps pointing at the tool call it answers, and its error
-        flag is preserved.
-
         :param message: The tool-result message to consider.
         :param index: The message's position in the conversation, used to keep its store key unique.
-        :param token_counter: The `TokenCounter` used to determine whether the result exceeds `min_tokens`.
+        :param token_counter: The `TokenCounter` that measures the result and its reference.
         :returns: The offloaded message and the number of tokens it saves, or None when the result stays in context.
         """
         result = message.tool_call_result
-        # Only successful tool output is offloaded - never errors, a result another compactor already rewrote, or one
-        # that is already offloaded, whose content is the reference the model needs to read it back.
+        # Skip errors, results another compactor already rewrote, and results that are already a reference.
         if (
             result is None
             or result.error
@@ -188,7 +165,6 @@ class ToolResultOffloadCompactor(Compactor):
             return None
 
         original_tokens = token_counter.count(messages=[message])
-        # If the result is small enough, leave it alone.
         if original_tokens <= self.min_tokens:
             return None
 
@@ -197,8 +173,7 @@ class ToolResultOffloadCompactor(Compactor):
         if content_blocks is None:
             return None
 
-        # A tool call id is unique within a run, so it keeps results from different tools and steps from colliding; an
-        # id-less call falls back to the message's position, which is unique within the conversation.
+        # The tool call id keeps store keys unique; an id-less call falls back to the message's position.
         offloaded = _offloaded_message(
             message=message,
             content_blocks=content_blocks,
@@ -210,8 +185,7 @@ class ToolResultOffloadCompactor(Compactor):
             },
         )
         saved_tokens = original_tokens - token_counter.count(messages=[offloaded])
-        # A reference to a barely-larger-than-`min_tokens` result can cost more than the result itself; only return
-        # replacements that reduce context. The written store entry is then left unreferenced.
+        # A reference can cost more than a small result. That replacement is dropped and its store entry left unused.
         return (offloaded, saved_tokens) if saved_tokens > 0 else None
 
     def to_dict(self) -> dict[str, Any]:
