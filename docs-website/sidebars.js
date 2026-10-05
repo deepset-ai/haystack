@@ -20,6 +20,17 @@ export default {
           label: 'Quickstart',
         },
         'overview/docs-mcp-server',
+        {
+          type: 'category',
+          label: 'Migration',
+          link: {
+            type: 'doc',
+            id: 'overview/migration'
+          },
+          items: [
+            'overview/migrating-from-langgraphlangchain-to-haystack',
+          ],
+        },
       ],
     },
     {
@@ -887,17 +898,6 @@ export default {
         'overview/faq',
         'overview/telemetry',
         'overview/breaking-change-policy',
-        {
-          type: 'category',
-          label: 'Migration',
-          link: {
-            type: 'doc',
-            id: 'overview/migration'
-          },
-          items: [
-            'overview/migrating-from-langgraphlangchain-to-haystack',
-          ],
-        },
         'overview/platform-components',
       ],
     },
