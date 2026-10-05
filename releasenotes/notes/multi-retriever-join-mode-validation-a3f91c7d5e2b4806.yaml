@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``MultiRetriever`` now rejects an unsupported ``join_mode`` with a ``ValueError`` when it is
+    initialized. Previously any value other than ``"reciprocal_rank_fusion"`` - for example a typo
+    such as ``"Concatenate"``, ``"rrf"`` or ``"reciprocal_rank_fusion "`` - was accepted silently and
+    fell through to the ``concatenate`` branch of the merge step, so the merged documents came back
+    with different scores and in a different order without any error being raised. This also covers
+    pipelines deserialized from YAML, where a wrong value could not be caught by a type checker.
