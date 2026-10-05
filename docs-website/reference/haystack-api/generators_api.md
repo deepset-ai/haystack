@@ -198,7 +198,7 @@ Initialize the Azure OpenAI Chat Generator component.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous Azure OpenAI client.
+Initialize the synchronous Azure OpenAI client.
 
 #### warm_up_async
 
@@ -206,7 +206,7 @@ Warm up the tools and initialize the synchronous Azure OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+Initialize the asynchronous Azure OpenAI client on the serving event loop.
 
 #### close
 
@@ -1087,7 +1087,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1095,7 +1095,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 
@@ -1379,7 +1379,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1387,7 +1387,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 

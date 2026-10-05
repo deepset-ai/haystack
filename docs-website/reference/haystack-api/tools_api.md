@@ -342,7 +342,31 @@ Example:
 warm_up() -> None
 ```
 
-Prepare the ComponentTool for use.
+Warm up the wrapped component.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the wrapped component on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the wrapped component's synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the wrapped component's async resources.
 
 #### to_dict
 
@@ -913,16 +937,15 @@ Adding new tools after initialization is not supported for SearchableToolset.
 warm_up() -> None
 ```
 
-Prepare the toolset for use.
+Warm up the catalog tools and initialize tool discovery.
 
-Warms up the catalog (so lazy toolsets like MCPToolset can connect) and flattens it. Above the passthrough
-threshold, it also indexes the catalog and creates the search_tools bootstrap tool.
+#### warm_up_async
 
-This method is idempotent: it only warms up the toolset the first time it is called.
+```python
+warm_up_async() -> None
+```
 
-**Raises:**
-
-- <code>ValueError</code> – If the flattened catalog contains tools with duplicate names.
+Warm up the catalog tools asynchronously and initialize tool discovery.
 
 #### get_selectable_tools
 
@@ -933,11 +956,28 @@ get_selectable_tools() -> list[Tool]
 Return the full catalog of tools that can be selected by name.
 
 Iteration only exposes the search tool plus already-discovered tools, but name-based selection can target
-any tool in the catalog, so this returns the entire flattened catalog (warming up first if needed).
+any tool in the catalog, so this returns the entire flattened catalog. Prepare it with `warm_up()`
+or `warm_up_async()` before selection.
 
 **Returns:**
 
 - <code>list\[Tool\]</code> – The flattened catalog of tools.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the tools and toolsets in the catalog.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the tools and toolsets in the catalog asynchronously.
 
 #### clear
 
@@ -1090,6 +1130,14 @@ Only the description content is dynamic, so the (static) tools created in `__ini
 refreshes `load_skill`'s description once the catalog is known. Idempotent: repeated calls after the
 first are no-ops.
 
+#### close
+
+```python
+close() -> None
+```
+
+Close the skill store and invalidate the cached catalog.
+
 #### add
 
 ```python
@@ -1136,9 +1184,10 @@ Accurate definitions of the textual attributes such as `name` and `description`
 are important for the Language Model to correctly prepare the call.
 
 For resource-intensive operations like establishing connections to remote services or
-loading models, override the `warm_up()` method. This method is called before the Tool
-is used and should be idempotent, as it may be called multiple times during
-pipeline/agent setup.
+loading models, implement an optional `warm_up()` method. It is called before invocation
+and during pipeline/agent setup, and must be idempotent. Native async tools can implement
+`warm_up_async()` instead. Implement `close()` and/or `close_async()` to release owned resources;
+these methods must be safe to call before warm-up and multiple times.
 
 **Parameters:**
 
@@ -1222,25 +1271,13 @@ tool_spec: dict[str, Any]
 
 Return the Tool specification to be used by the Language Model.
 
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Prepare the Tool for use.
-
-Override this method to establish connections to remote services, load models,
-or perform other resource-intensive initialization. This method should be idempotent,
-as it may be called multiple times.
-
 #### invoke
 
 ```python
 invoke(**kwargs: Any) -> Any
 ```
 
-Invoke the Tool synchronously with the provided keyword arguments.
+Warm up the Tool if supported and invoke it synchronously with the provided keyword arguments.
 
 **Raises:**
 
@@ -1255,8 +1292,9 @@ invoke_async(**kwargs: Any) -> Any
 
 Invoke the Tool asynchronously with the provided keyword arguments.
 
-If `async_function` is set, it is awaited directly. Otherwise the sync `function` is dispatched to a worker
-thread via `asyncio.to_thread`, which propagates the current context to the worker.
+If `async_function` is set, prepare with `warm_up_async` (falling back to `warm_up`) before awaiting it.
+Otherwise, synchronous preparation and invocation run in a worker thread via `asyncio.to_thread`,
+which propagates the current context to the worker.
 
 **Raises:**
 
@@ -1380,8 +1418,9 @@ get_selectable_tools() -> list[Tool]
 
 Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
 
-Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
-not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
+Prepare lazy toolsets with `warm_up_tools` or `warm_up_tools_async` before selection.
+Subclasses whose iteration does not surface every selectable tool (e.g. SearchableToolset)
+override this to return the full set.
 
 **Returns:**
 
@@ -1407,38 +1446,6 @@ don't corrupt each other.
 **Returns:**
 
 - <code>Toolset</code> – This Toolset, or a run-scoped copy of it.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Prepare the Toolset for use.
-
-By default, this method iterates through and warms up all tools in the Toolset.
-Subclasses can override this method to customize initialization behavior, such as:
-
-- Setting up shared resources (database connections, HTTP sessions) instead of
-  warming individual tools
-- Loading tools dynamically from an external source and assigning them to `self.tools`
-- Controlling when and how tools are initialized
-
-For example, a Toolset that manages tools from an external service (like MCPToolset)
-might override this to initialize a shared connection and load the tools through it:
-
-```python
-class MCPToolset(Toolset):
-    def warm_up(self) -> None:
-        if self.mcp_connection is not None:
-            return
-        self.mcp_connection = establish_connection(self.server_url)
-        self.tools = self.mcp_connection.fetch_tools()
-```
-
-This method may be called multiple times (e.g. before every run): implementations are responsible for
-their own idempotence, guarding on their own state as in the example above. The default implementation delegates
-to the tools' own idempotent `warm_up()`.
 
 #### add
 
