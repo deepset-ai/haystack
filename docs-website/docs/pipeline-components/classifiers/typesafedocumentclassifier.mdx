@@ -1,0 +1,202 @@
+---
+title: "TypeSafeDocumentClassifier"
+id: typesafedocumentclassifier
+slug: "/typesafedocumentclassifier"
+description: "Answers typed questions about each document with a TypeSafe System One model, such as Jev, and stores the answers in its metadata."
+---
+
+# TypeSafeDocumentClassifier
+
+Answers typed questions about each document with a TypeSafe System One model, such as Jev, and stores the answers in its metadata.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [MetadataRouter](../routers/metadatarouter.mdx) |
+| **Mandatory init variables** | `questions`: The questions to answer for every document, keyed by question ID <br /> <br />`api_key`: The TypeSafe API key. Can be set with the `TYPESAFE_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to classify |
+| **Output variables** | `documents`: The classified documents, with the answers in their metadata <br /> <br />`failed_documents`: The documents that couldn't be classified |
+| **API reference** | [TypeSafe](/reference/integrations-typesafe) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/typesafe |
+| **Package name** | `typesafe-haystack` |
+
+</div>
+
+## Overview
+
+`TypeSafeDocumentClassifier` sends each document to a [TypeSafe](https://typesafe.ai) System One model and stores the answers in the document's metadata. System One models such as Jev don't generate text. They answer every question about a document in one request and return calibrated probabilities.
+
+Each question has one of three types:
+
+- `choice`: picks one label from `criteria`, a dict of label to description (or `None`).
+- `score`: rates the text on the ordered levels in `criteria`, a list of level descriptions.
+- `noul`: returns the probability that the yes/no question in `instructions` is true.
+
+You can write questions as dicts or use the `Choice`, `Score`, and `Noul` objects from the `typesafe-sdk` package. See the [TypeSafe documentation](https://docs.typesafe.ai/primitives) for the full question and answer format.
+
+The answers are stored under `meta["typesafe"]`, keyed by question ID. You can change the field name with `metadata_field`. The component classifies the document's `content` by default. To classify a metadata field instead, set `classification_field`.
+
+Documents without text to classify are returned in `failed_documents` with the reason in `meta["classification_error"]`. So are documents whose request failed, unless you set `raise_on_failure=True`, in which case the first failed request raises its error.
+
+Each document is sent as its own request. `max_workers` sets how many requests run at once, in both `run` and `run_async`.
+
+### Authentication
+
+The component reads the API key from the `TYPESAFE_API_KEY` environment variable by default. You can also pass it at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.classifiers.typesafe import (
+    TypeSafeDocumentClassifier,
+)
+
+classifier = TypeSafeDocumentClassifier(
+    questions={
+        "refund": {
+            "type": "noul",
+            "instructions": "Is the customer asking for a refund?",
+        }
+    },
+    api_key=Secret.from_token("<your-api-key>"),
+)
+```
+
+### Running models locally with Ollaya
+
+The component works with any server that implements the TypeSafe API, such as [Ollaya](https://ollaya.dev), which runs open decision models on your own machine. Set `api_base_url` to the server and `model` to one of its models. Ollaya accepts any non-empty API key unless it is configured with one.
+
+```shell
+docker run -d --name ollaya -p 11435:11435 -v ollaya:/home/ollaya/.ollaya ghcr.io/ollaya-dev/ollaya
+docker exec ollaya ollaya pull laya:en
+```
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.classifiers.typesafe import (
+    TypeSafeDocumentClassifier,
+)
+
+classifier = TypeSafeDocumentClassifier(
+    questions={
+        "refund": {
+            "type": "noul",
+            "instructions": "Is the customer asking for a refund?",
+        }
+    },
+    model="laya:en",
+    api_key=Secret.from_token("local"),
+    api_base_url="http://localhost:11435",
+)
+```
+
+## Usage
+
+Install the `typesafe-haystack` package to use the `TypeSafeDocumentClassifier`:
+
+```shell
+pip install typesafe-haystack
+```
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.classifiers.typesafe import (
+    TypeSafeDocumentClassifier,
+)
+
+classifier = TypeSafeDocumentClassifier(
+    questions={
+        "department": {
+            "type": "choice",
+            "instructions": "Which department should handle this ticket?",
+            "criteria": {"billing": None, "technical": None, "sales": None},
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is this ticket?",
+            "criteria": ["can wait", "this week", "today"],
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "Is the customer asking for a refund?",
+        },
+    },
+)
+
+result = classifier.run(
+    documents=[Document(content="I was charged twice, please refund me today.")]
+)
+print(result["documents"][0].meta["typesafe"])
+# {'department': {'type': 'choice', 'choice': 'billing', 'confidence': 0.9516,
+#                 'probabilities': {'billing': 0.9677, 'technical': 0.0221, 'sales': 0.0102}},
+#  'urgency': {'type': 'score', 'score': 1.948, 'confidence': 0.9389,
+#              'legend': {'0': 'can wait', '1': 'this week', '2': 'today'},
+#              'probabilities': {'0': 0.0113, '1': 0.0295, '2': 0.9593}},
+#  'refund': {'type': 'noul', 'noul': 0.9498}}
+```
+
+### In a pipeline
+
+The following pipeline classifies support tickets by department and sends each one to a different output of a `MetadataRouter`, which matches on the nested answer field:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.routers import MetadataRouter
+from haystack_integrations.components.classifiers.typesafe import (
+    TypeSafeDocumentClassifier,
+)
+
+labels = ["billing", "technical"]
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "classifier",
+    TypeSafeDocumentClassifier(
+        questions={
+            "department": {
+                "type": "choice",
+                "instructions": "Which department should handle this ticket?",
+                "criteria": dict.fromkeys(labels),
+            }
+        },
+    ),
+)
+pipeline.add_component(
+    "router",
+    MetadataRouter(
+        rules={
+            label: {
+                "field": "meta.typesafe.department.choice",
+                "operator": "==",
+                "value": label,
+            }
+            for label in labels
+        }
+    ),
+)
+pipeline.connect("classifier.documents", "router.documents")
+
+result = pipeline.run(
+    {
+        "classifier": {
+            "documents": [
+                Document(content="I was charged twice for my subscription."),
+                Document(
+                    content="The app crashes every time I open the settings page."
+                ),
+            ]
+        }
+    }
+)
+print(
+    {
+        output: [document.content for document in documents]
+        for output, documents in result["router"].items()
+    }
+)
+# {'billing': ['I was charged twice for my subscription.'],
+#  'technical': ['The app crashes every time I open the settings page.'],
+#  'unmatched': []}
+```
