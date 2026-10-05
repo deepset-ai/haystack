@@ -130,11 +130,17 @@ Output:
 
 ### With a ChatGenerator
 
+Lazy toolsets, such as [`MCPToolset`](mcptoolset.mdx), load their tools during warm-up. When using them directly with a Chat Generator, prepare them first as shown in the comments below.
+
 You can pass a `Toolset` directly to a Chat Generator. The model prepares the tool calls; executing them (for example, with `Tool.invoke`) is up to you:
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
+
+# For a lazy toolset such as MCPToolset, prepare it before passing it to the generator:
+# from haystack.tools import warm_up_tools
+# warm_up_tools(toolset)
 
 chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=math_toolset)
 

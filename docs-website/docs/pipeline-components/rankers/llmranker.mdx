@@ -26,7 +26,9 @@ Ranks documents for a query using a Large Language Model (LLM). The LLM is promp
 
 `LLMRanker` uses an LLM to reorder documents by relevance to the query. Unlike cross-encoder rankers, it treats relevance as a semantic reasoning task, which can yield better results for complex or multi-step queries. The component sends the query and document contents to the LLM and parses the response as JSON: an array of objects with an `index` field (1-based document position). Only documents that the LLM includes in this list are returned, in the order given.
 
-Before ranking, duplicate documents are removed. You can set `top_k` to limit how many documents are returned. If generation or parsing fails, the ranker either raises (when `raise_on_failure=True`) or returns the input documents in their original order (when `raise_on_failure=False`, the default).
+Before ranking, duplicate documents are removed. You can set `top_k` to limit how many ranked documents are returned. Because only the documents the LLM considers relevant are kept, the output can contain fewer than `top_k` documents, or none at all.
+
+If generation or parsing fails, the ranker either raises (when `raise_on_failure=True`) or falls back to the deduplicated input documents in their original order (when `raise_on_failure=False`, the default). With an empty query, the ranker skips the LLM call and returns the same fallback documents. `top_k` is not applied to the fallback documents: the input documents aren't necessarily sorted by relevance, for example when they come from several Retrievers joined together, so cutting them off at `top_k` could drop relevant ones.
 
 You can pass any Haystack `ChatGenerator` that supports structured JSON output. If you omit `chat_generator`, a default `OpenAIChatGenerator` (e.g. `gpt-4.1-mini`) with JSON schema for the ranking response is used. You need to provide an OPENAI_API_KEY for this `ChatGenerator`. You can also provide a custom `prompt` template. It must include exactly the variables `query` and `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
 
@@ -136,4 +138,6 @@ result = pipeline.run(
 :::note[`top_k` parameter]
 
 The Retriever's `top_k` controls how many documents are retrieved. The Ranker's `top_k` limits how many of those documents are returned after ranking. You can set the same or a smaller `top_k` for the Ranker to optimize cost and latency.
+
+If the Ranker falls back to the input documents, it returns all of them. In that case, the Retriever's `top_k` is what limits the number of documents passed on to the next component.
 :::

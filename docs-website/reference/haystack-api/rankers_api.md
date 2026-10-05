@@ -12,23 +12,28 @@ slug: "/rankers-api"
 
 Ranks documents for a query using a Large Language Model.
 
-The LLM is expected to return a JSON object containing ranked document indices.
+The LLM is expected to return a JSON object containing ranked document indices. Only the documents the LLM returns
+are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
+
+If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
+to the deduplicated input documents in their original order. `top_k` is not applied to these fallback documents:
+the input documents aren't necessarily sorted by relevance, so cutting them off could drop relevant ones.
 
 Usage example:
 
 ```python
 from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.rankers import LLMRanker
 
-chat_generator = OpenAIChatGenerator(
-    model="gpt-4.1-mini",
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
     generation_kwargs={
-        "temperature": 0.0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
+        "text": {
+            "format": {
+                "type": "json_schema",
                 "name": "document_ranking",
+                "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -45,8 +50,8 @@ chat_generator = OpenAIChatGenerator(
                     "required": ["documents"],
                     "additionalProperties": False,
                 },
-            },
-        },
+            }
+        }
     },
 )
 
@@ -81,9 +86,15 @@ Initialize the LLMRanker component.
   output is used.
 - **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
   `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
-- **top_k** (<code>int</code>) – The maximum number of documents to return.
-- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
-  input documents in fallback order.
+- **top_k** (<code>int</code>) – The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
+  documents.
+- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
+  deduplicated input documents in their original order, without applying `top_k`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0 or if `prompt` doesn't include exactly the variables `query` and
+  `documents`.
 
 #### warm_up
 
@@ -159,13 +170,21 @@ Before ranking, duplicate documents are removed.
 
 **Parameters:**
 
-- **query** (<code>str</code>) – The query used for reranking.
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
 - **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 #### run_async
 
@@ -185,13 +204,21 @@ but can be used with `await` in an async code. If the chat generator only implem
 
 **Parameters:**
 
-- **query** (<code>str</code>) – The query used for reranking.
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
 - **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 ## lost_in_the_middle
 
