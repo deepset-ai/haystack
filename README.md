@@ -15,7 +15,7 @@
 | haystack/components/agents/utils.py                                       |      120 |        3 |     98% |80, 126, 297 |
 | haystack/components/builders/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/builders/answer\_builder.py                           |       98 |        3 |     97% |270, 291, 303 |
-| haystack/components/builders/chat\_prompt\_builder.py                     |      114 |        2 |     98% |  178, 266 |
+| haystack/components/builders/chat\_prompt\_builder.py                     |      114 |        2 |     98% |  170, 258 |
 | haystack/components/builders/prompt\_builder.py                           |       50 |        0 |    100% |           |
 | haystack/components/caching/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/caching/cache\_checker.py                             |       43 |        0 |    100% |           |
