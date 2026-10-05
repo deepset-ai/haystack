@@ -806,7 +806,7 @@ class TestChatMessageSerde:
             "meta": {},
         }
 
-    def test_to_trace_dict_with_tool_call_result(self, base64_image_string, base64_pdf_string):
+    def test_to_trace_dict_with_tool_call_result(self, monkeypatch, base64_image_string, base64_pdf_string):
         tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={"item": "report"})
         image = ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})
         file_part = FileContent(
@@ -814,6 +814,12 @@ class TestChatMessageSerde:
         )
         text_part = TextContent(text="Report generated successfully.")
         message = ChatMessage.from_tool(tool_result=[text_part, image, file_part], origin=tc)
+
+        def fail_to_dict(*args, **kwargs):
+            raise AssertionError("ToolCallResult.to_dict() should not be called during _to_trace_dict()")
+
+        monkeypatch.setattr(ToolCallResult, "to_dict", fail_to_dict)
+
         trace_dict = message._to_trace_dict()
 
         tool_results = trace_dict["content"][0]["tool_call_result"]["result"]

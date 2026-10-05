@@ -612,14 +612,11 @@ class ChatMessage:
 
         serialized["content"] = []
         for part in self._content:
-            serialized_part = _serialize_content_part(part)
-            if isinstance(part, ImageContent):
-                serialized_part["image"] = part._to_trace_dict()
-            elif isinstance(part, FileContent):
-                serialized_part["file"] = part._to_trace_dict()
-            elif isinstance(part, ToolCallResult):
-                serialized_part["tool_call_result"] = part._to_trace_dict()
-            serialized["content"].append(serialized_part)
+            key = _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.get(type(part))
+            if key and hasattr(part, "_to_trace_dict"):
+                serialized["content"].append({key: part._to_trace_dict()})
+            else:
+                serialized["content"].append(_serialize_content_part(part))
 
         return serialized
 
