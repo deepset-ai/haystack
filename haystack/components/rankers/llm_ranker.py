@@ -90,20 +90,37 @@ class LLMRanker:
     Usage example:
 
     ```python
-    from pydantic import BaseModel
-
     from haystack import Document
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.rankers import LLMRanker
 
-    class RankedDocument(BaseModel):
-        index: int
-
-    class DocumentRanking(BaseModel):
-        documents: list[RankedDocument]
-
     chat_generator = OpenAIResponsesChatGenerator(
-        model="gpt-5.6-luna", generation_kwargs={"text_format": DocumentRanking}
+        model="gpt-5.6-luna",
+        generation_kwargs={
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "document_ranking",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "documents": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {"index": {"type": "integer"}},
+                                    "required": ["index"],
+                                    "additionalProperties": False,
+                                },
+                            }
+                        },
+                        "required": ["documents"],
+                        "additionalProperties": False,
+                    },
+                }
+            }
+        },
     )
 
     ranker = LLMRanker(chat_generator=chat_generator)
