@@ -99,3 +99,32 @@ class TestTextfileToDocument:
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert document.meta == {"author": "test_author", "language": "it"}
+
+    def test_run_utf8_with_bom(self, tmp_path: Path) -> None:
+        """
+        A UTF-8 file saved with a byte order mark must not leak the BOM into the content.
+
+        Windows tooling writes a BOM by default (Notepad, PowerShell redirection,
+        Excel's "CSV UTF-8"), so these files are common in real corpora. The BOM is in
+        the bytes, so this is not platform specific.
+        """
+        path = tmp_path / "bom.txt"
+        path.write_text("Some text for testing.", encoding="utf-8-sig")
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = TextFileToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Some text for testing."
+        assert not docs[0].content.startswith("﻿")
+
+    def test_run_utf8_without_bom_is_unchanged(self, tmp_path: Path) -> None:
+        """Reading a plain UTF-8 file must keep working, including non-ASCII content."""
+        path = tmp_path / "plain.txt"
+        path.write_text("café 日本語", encoding="utf-8")
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = TextFileToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "café 日本語"

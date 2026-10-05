@@ -20,4 +20,5 @@ class TestOffloadPolicies:
 
     def test_offload_over_chars_roundtrip(self):
         restored = OffloadOverChars.from_dict(OffloadOverChars(threshold=42).to_dict())
+        assert isinstance(restored, OffloadOverChars)
         assert restored.threshold == 42

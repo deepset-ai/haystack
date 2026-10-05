@@ -8,9 +8,11 @@ from enum import Enum
 from math import inf
 from typing import Any
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
+
+logger = logging.getLogger(__name__)
 
 AnswerType = GeneratedAnswer | ExtractedAnswer
 
@@ -57,7 +59,7 @@ class AnswerJoiner:
 
     from haystack.core.pipeline import Pipeline
 
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
 
 
@@ -66,8 +68,8 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("llm_1", OpenAIChatGenerator())
-    pipe.add_component("llm_2", OpenAIChatGenerator())
+    pipe.add_component("llm_1", OpenAIResponsesChatGenerator())
+    pipe.add_component("llm_2", OpenAIResponsesChatGenerator())
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())
@@ -119,6 +121,10 @@ class AnswerJoiner:
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
+        If the instance was created with `sort_by_score=True`, the merged Answers are sorted by
+        score in descending order before `top_k` is applied; Answers without a score are handled
+        as if their score were -infinity. Otherwise, the input order is preserved.
+
         :param answers:
             Nested list of Answers to be merged.
 
@@ -128,7 +134,8 @@ class AnswerJoiner:
 
         :returns:
             A dictionary with the following keys:
-            - `answers`: Merged list of Answers
+            - `answers`: Merged list of Answers, sorted by score if `sort_by_score` was set to
+              `True` on the instance, otherwise in input order
 
         :raises ValueError:
             If `top_k` is negative.
@@ -143,6 +150,11 @@ class AnswerJoiner:
                 key=lambda answer: score if (score := getattr(answer, "score", None)) is not None else -inf,
                 reverse=True,
             )
+            if any(getattr(answer, "score", None) is None for answer in output_answers):
+                logger.info(
+                    "Some of the Answers AnswerJoiner got have score=None. It was configured to sort Answers by "
+                    "score, so those with score=None were sorted as if they had a score of -infinity."
+                )
 
         if top_k is not None:
             if top_k < 0:

@@ -102,6 +102,32 @@ def test_from_function_annotated():
     }
 
 
+def test_from_function_with_postponed_annotations():
+    # String annotations are what `from __future__ import annotations` turns every annotation into.
+    def function_with_postponed_annotations(
+        city: "Annotated[str, 'the city for which to get the weather']" = "Munich",
+        unit: "Annotated[Literal['Celsius', 'Fahrenheit'], 'the unit for the temperature']" = "Celsius",
+        state: "State | None" = None,
+    ) -> str:
+        """A simple function to get the current weather for a location."""
+        return f"Weather report for {city}: 20 {unit}, sunny"
+
+    tool = create_tool_from_function(function=function_with_postponed_annotations)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "the city for which to get the weather", "default": "Munich"},
+            "unit": {
+                "type": "string",
+                "enum": ["Celsius", "Fahrenheit"],
+                "description": "the unit for the temperature",
+                "default": "Celsius",
+            },
+        },
+    }
+
+
 def test_from_function_missing_type_hint():
     def function_missing_type_hint(city) -> str:  # type: ignore[no-untyped-def]
         return f"Weather report for {city}: 20°C, sunny"

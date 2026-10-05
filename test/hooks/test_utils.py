@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack.components.agents.state import State
-from haystack.hooks import FunctionHook, hook
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.hooks import FunctionHook, Hook, HookPoint, hook
 from haystack.hooks.utils import (
     _deserialize_hooks_dictionary,
     _serialize_hooks_dictionary,
@@ -45,6 +48,13 @@ class LifecycleSpy:
     async def close_async(self) -> None:
         self.closed_async += 1
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LifecycleSpy":
+        return default_from_dict(cls, data)
+
 
 class WarmOnlyHook:
     """Hook with a sync `warm_up`/`close` but no async variants."""
@@ -62,12 +72,26 @@ class WarmOnlyHook:
     def close(self) -> None:
         self.closed += 1
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WarmOnlyHook":
+        return default_from_dict(cls, data)
+
 
 class PlainHook:
     """Hook with no lifecycle methods."""
 
     def run(self, state: State) -> None:
         pass
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PlainHook":
+        return default_from_dict(cls, data)
 
 
 class TestUniqueHooks:
@@ -82,11 +106,13 @@ class TestUniqueHooks:
 
 class TestSerializeHooks:
     def test_roundtrip_multiple_hook_points(self):
-        hooks = {"before_llm": [hook(noop)], "on_exit": [hook(noop)]}
+        hooks: dict[HookPoint, list[Hook]] = {"before_llm": [hook(noop)], "on_exit": [hook(noop)]}
         restored = _deserialize_hooks_dictionary(_serialize_hooks_dictionary(hooks))
         assert set(restored) == {"before_llm", "on_exit"}
         assert all(isinstance(h, FunctionHook) for hook_list in restored.values() for h in hook_list)
-        assert restored["before_llm"][0].function is noop
+        first = restored["before_llm"][0]
+        assert isinstance(first, FunctionHook)
+        assert first.function is noop
 
 
 class TestWarmUpHooks:

@@ -1,0 +1,90 @@
+---
+title: "AmazonBedrockTokenCounter"
+id: amazonbedrocktokencounter
+slug: "/amazonbedrocktokencounter"
+description: "Count message and tool tokens exactly for Bedrock-hosted models with Amazon Bedrock's CountTokens API."
+---
+
+# AmazonBedrockTokenCounter
+
+`AmazonBedrockTokenCounter` uses Amazon Bedrock's `CountTokens` API to count the input tokens of `ChatMessage` objects and optional tool schemas for a specific Bedrock model. The API returns an exact count without generating a response, so it does not incur generation costs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Import path** | `haystack_integrations.token_counters.amazon_bedrock.AmazonBedrockTokenCounter` |
+| **Mandatory init variables** | `model`: The Bedrock model ID or ARN to count for |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
+| **Package name** | `amazon-bedrock-haystack` |
+
+</div>
+
+Because it calls a remote API, it needs AWS credentials and adds network latency to every count. Use it when you need exact, model-specific counts for models hosted on Bedrock. For local estimates, use [`ApproximateTokenCounter`](approximatetokencounter.mdx) or [`TiktokenCounter`](tiktokencounter.mdx).
+
+The counter converts messages and tools to the Bedrock `Converse` format in the same way [`AmazonBedrockChatGenerator`](../pipeline-components/generators/amazonbedrockchatgenerator.mdx) does, so the count matches what an equivalent `Converse` request consumes.
+
+## Installation
+
+Install the `amazon-bedrock-haystack` package:
+
+```bash
+pip install amazon-bedrock-haystack
+```
+
+## Usage
+
+Token counts are model-specific, so pass the model you intend to generate with. The model must support the `CountTokens` API:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.amazon_bedrock import (
+    AmazonBedrockTokenCounter,
+)
+
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("Explain retrieval-augmented generation."),
+]
+
+counter = AmazonBedrockTokenCounter(model="anthropic.claude-sonnet-4-20250514-v1:0")
+token_count = counter.count(messages)
+print(token_count)
+```
+
+The counter authenticates like the other Amazon Bedrock components. By default, it reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_DEFAULT_REGION`, and `AWS_PROFILE` from the environment. You can also pass them as Haystack [Secret](../concepts/secret-management.mdx) arguments and configure the underlying Boto3 client with `boto3_config`:
+
+```python
+from haystack.utils import Secret
+
+counter = AmazonBedrockTokenCounter(
+    model="anthropic.claude-sonnet-4-20250514-v1:0",
+    aws_region_name=Secret.from_token("us-west-2"),
+    boto3_config={"read_timeout": 30},
+)
+```
+
+To include the context consumed by tool schemas, pass the tools to `count()`:
+
+```python
+token_count = counter.count(messages, tools=[search_tool])
+```
+
+The counter creates its Bedrock client on the first call to `count()`. To create it during application startup instead, call `warm_up()` explicitly. Call `close()` when you are done with the counter to release the client's resources:
+
+```python
+counter.warm_up()
+...
+counter.close()
+```
+
+## Whole conversations only
+
+Bedrock validates the input of `CountTokens` the same way it validates a `Converse` request: the conversation must begin with a user message, and each tool result must follow the tool call that produced it. The counter therefore measures complete conversations, and raises `AmazonBedrockInferenceError` for fragments such as a single tool result message.
+
+Because of this, do not pass the counter to [`CompactionHook`](../pipeline-components/agents-1/compaction/compaction-hook.mdx) or a compactor. They count groups of messages and lone tool results, which Bedrock rejects. Use a local counter such as [`ApproximateTokenCounter`](approximatetokencounter.mdx) for compaction, and use `AmazonBedrockTokenCounter` to size a full request before you send it.
+
+## Non-text content
+
+The counter sends images and files to Bedrock in the same format as [`AmazonBedrockChatGenerator`](../pipeline-components/generators/amazonbedrockchatgenerator.mdx), so Bedrock counts them as part of the request instead of applying a flat estimate. It supports the same content types as the generator: JPEG, PNG, GIF, and WebP images, PDF and other document formats, and video files. Unsupported MIME types raise an error rather than being estimated.

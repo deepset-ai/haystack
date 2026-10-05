@@ -1,0 +1,90 @@
+---
+title: "SlidingWindowCompactor"
+id: sliding-window-compactor
+slug: "/sliding-window-compactor"
+description: "Use SlidingWindowCompactor to remove older Agent history while preserving the current task and as much recent complete conversation as fits."
+---
+
+# SlidingWindowCompactor
+
+`SlidingWindowCompactor` removes older conversation history while preserving the Agent's instructions, current task, and as much complete recent conversation as the token target allows. It removes complete historical turns first, and only trims the current task's own Agent steps when removing every historical turn is not enough.
+
+:::warning[Experimental]
+
+`SlidingWindowCompactor` is experimental and may change without a deprecation cycle. Compaction is lossy: messages removed by this strategy cannot be recovered or summarized.
+:::
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Used by** | [`CompactionHook`](compaction-hook.mdx) |
+| **Mandatory init variables** | None |
+| **Import path** | `haystack.hooks.compaction.SlidingWindowCompactor` |
+| **API reference** | [Hooks](/reference/hooks-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/sliding_window.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Pass the compactor to a `CompactionHook`:
+
+```python
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(
+        min_keep_steps=1,
+        omission_note=(
+            "[{num_removed} earlier messages were removed to free up context.]"
+        ),
+    ),
+    context_window=200_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+```
+
+`CompactionHook` determines when compaction runs and provides the target token count. `SlidingWindowCompactor` determines which messages to retain.
+
+## How the sliding window is selected
+
+The compactor divides a conversation into protected context, historical turns, and the current task's Agent steps:
+
+1. It preserves all leading system messages as the Agent's instructions.
+2. It preserves the latest user message as the current task.
+3. It groups the history before that task into complete historical turns, each running from one user message up to the next.
+4. It groups each assistant message and all immediately following tool-result messages into one complete Agent step.
+5. Working backwards from the newest, it keeps as many complete historical turns as fit within the target.
+6. Only when the current task alone still exceeds the target does it begin removing that task's own steps, oldest first.
+7. It replaces what it removed with an omission note, unless the note is disabled.
+
+Keeping complete steps ensures that an assistant tool call is not separated from its results, including batches of parallel tool calls. Incomplete tool-call exchanges are rejected by chat-completion providers. Historical turns are kept or removed in full for the same reason: an assistant reply is never retained without the user message it answers.
+
+The target is a goal rather than a guarantee, and the conversation can end up above it rather than below. Leading system messages and the current task are never removed, and `min_keep_steps` holds on to the newest Agent steps whatever their size, so a long system prompt or a single large tool result can leave the conversation well over the target.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `min_keep_steps` | `1` | The minimum number of complete recent Agent steps to preserve, even if they exceed the target. Set it to `0` to allow all completed steps to be removed. |
+| `omission_note` | `"[{num_removed} earlier messages were removed from this conversation to free up context and cannot be recovered.]"` | A user message inserted where history was removed. Use `{num_removed}` to include the number of removed messages, provide custom text without the placeholder, or set it to `None` to remove history silently. |
+
+`min_keep_steps` cannot be negative.
+
+### Omission notes
+
+An omission note tells the model that earlier context is missing. Without one, the shortened conversation can appear complete and the model may repeat work or behave as though it still has the removed information.
+
+The note is left where the removed messages used to sit: directly after the leading system messages when only historical turns were removed, and directly after the latest user message when the current task's own steps were removed. Repeated compactions fold an earlier note into the new one, so the conversation carries at most one.
+
+Compaction metadata is stored on the note, including the strategy name and the numbers of removed and retained messages.
+
+## When the conversation is unchanged
+
+The compactor returns `None` without changing the conversation when:
+
+- The conversation already fits within `target_tokens`.
+- There is no removable history outside the protected messages and the history it retained.

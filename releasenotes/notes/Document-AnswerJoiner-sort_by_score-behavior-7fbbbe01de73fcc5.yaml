@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the ``AnswerJoiner.run`` docstring: it did not mention that the ``sort_by_score``
+    init parameter affects the order of the returned answers. The docstring now documents
+    that when ``sort_by_score=True`` the merged answers are sorted by score in descending
+    order (answers without a score are handled as if their score were ``-infinity``) before
+    ``top_k`` is applied, and that the input order is preserved otherwise.

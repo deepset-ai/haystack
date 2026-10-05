@@ -4,6 +4,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
@@ -138,28 +139,38 @@ class TestCSVToDocument:
         assert docs[0].meta["row_number"] == 0
         assert os.path.basename(f) == docs[0].meta["file_path"]
 
-    def test_row_mode_meta_collision_prefixed(self, tmp_path):
-        # ByteStream meta has file_path and encoding; CSV also has those columns.
-        csv_text = "file_path,encoding,comment\r\nrowpath.csv,latin1,ok\r\n"
-        f = tmp_path / "collide.csv"
-        f.write_text(csv_text, encoding="utf-8")
-        bs = ByteStream.from_file_path(f)
-        bs.meta["file_path"] = str(f)
-        bs.meta["encoding"] = "utf-8"
+    def test_row_mode_row_number_as_content_column(self) -> None:
+        source = ByteStream(data=b"row_number,author\nrecord-42,Ada\n")
+        converter = CSVToDocument(conversion_mode="row")
 
-        conv = CSVToDocument(conversion_mode="row")
-        out = conv.run(sources=[bs], content_column="comment")
-        d = out["documents"][0]
-        # Original meta preserved
-        assert d.meta["file_path"] == os.path.basename(str(f))
-        assert d.meta["encoding"] == "utf-8"
-        # CSV columns stored with csv_ prefix (no clobber)
-        assert d.meta["csv_file_path"] == "rowpath.csv"
-        assert d.meta["csv_encoding"] == "latin1"
-        # content column isn't duplicated in meta
-        assert "comment" not in d.meta
-        assert d.meta["row_number"] == 0
-        assert d.content == "ok"
+        documents = converter.run(sources=[source], content_column="row_number")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "record-42"
+        assert documents[0].meta == {"author": "Ada", "row_number": 0}
+
+    @pytest.mark.parametrize("column_name", ["file_path", "row_number"])
+    def test_row_mode_meta_collision_prefixed(self, tmp_path: Path, column_name: str) -> None:
+        # file_path collides with source metadata; row_number collides with the generated row index.
+        csv_text = f"{column_name},encoding,comment\r\nsource-value,latin1,ok\r\n"
+        path = tmp_path / "collide.csv"
+        path.write_text(csv_text, encoding="utf-8")
+        source = ByteStream.from_file_path(path)
+        source.meta["file_path"] = str(path)
+        source.meta["encoding"] = "utf-8"
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="comment")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "ok"
+        assert documents[0].meta == {
+            "file_path": "collide.csv",
+            "encoding": "utf-8",
+            "row_number": 0,
+            f"csv_{column_name}": "source-value",
+            "csv_encoding": "latin1",
+        }
 
     def test_row_mode_meta_collision_multiple_suffixes(self, tmp_path):
         """
@@ -242,3 +253,32 @@ class TestCSVToDocument:
         # Surplus value is preserved under an explicit (non-None) string meta key.
         assert None not in ragged_doc.meta
         assert "state" in ragged_doc.meta["extra_columns"]
+
+    def test_run_utf8_with_bom(self, tmp_path):
+        """
+        A CSV saved as UTF-8 with a byte order mark must not leak the BOM into the content.
+
+        Excel's "CSV UTF-8 (Comma delimited)" export writes a BOM, so this is the most
+        common way a spreadsheet-authored CSV reaches a pipeline. The BOM is in the bytes,
+        so this is not platform specific.
+        """
+        path = tmp_path / "bom.csv"
+        path.write_text("Name,Age\r\nJohn Doe,27\r\n", encoding="utf-8-sig", newline="")
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,Age\r\nJohn Doe,27\r\n"
+        assert not docs[0].content.startswith("﻿")
+
+    def test_run_utf8_without_bom_is_unchanged(self, tmp_path):
+        """Reading a plain UTF-8 CSV must keep working, including non-ASCII content."""
+        path = tmp_path / "plain.csv"
+        path.write_text("Name,City\r\nJosé,München\r\n", encoding="utf-8", newline="")
+        assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+        docs = CSVToDocument().run(sources=[str(path)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].content == "Name,City\r\nJosé,München\r\n"

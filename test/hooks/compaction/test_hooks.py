@@ -3,13 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
+from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
+from haystack.hooks import Hook, HookPoint
 from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCompactor, ToolResultPruningCompactor
 from haystack.hooks.compaction.hooks import _estimated_context_tokens
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _last_assistant_index
@@ -81,9 +84,17 @@ class _RecordingCompactor(Compactor):
     async def close_async(self) -> None:
         self.calls.append("close_async")
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
 
-def _hook(compactor=None, **overrides) -> CompactionHook:
-    settings = {"context_window": WINDOW, "compact_at": 0.7, "compact_to": 0.4, "token_counter": FakeCounter()}
+
+def _hook(compactor: Compactor | None = None, **overrides: Any) -> CompactionHook:
+    settings: dict[str, Any] = {
+        "context_window": WINDOW,
+        "compact_at": 0.7,
+        "compact_to": 0.4,
+        "token_counter": FakeCounter(),
+    }
     return CompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
 
 
@@ -92,7 +103,7 @@ def _fetch_call(call_id: str) -> ChatMessage:
     return tool_call(call_id, name="fetch", arguments={"topic": "haystack"})
 
 
-def _agent(hooks) -> Agent:
+def _agent(hooks: dict[HookPoint, list[Hook]] | None) -> Agent:
     return Agent(
         chat_generator=MockChatGenerator(
             responses=[_fetch_call("c1"), _fetch_call("c2"), _fetch_call("c3"), "done"], meta=USAGE_META
@@ -350,7 +361,12 @@ class TestCompactionHook:
             tool_call("recent"),
             tool_result("recent result " * 400, call_id="recent"),
         ]
-        settings = {"context_window": 2000, "compact_at": 0.5, "compact_to": 0.1, "token_counter": counter}
+        settings: dict[str, Any] = {
+            "context_window": 2000,
+            "compact_at": 0.5,
+            "compact_to": 0.1,
+            "token_counter": counter,
+        }
         pruning_hook = CompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings)
         sliding_window_hook = CompactionHook(compactor=SlidingWindowCompactor(), **settings)
         # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
@@ -372,11 +388,14 @@ class TestCompactionHook:
         )
         assert compacted[-2:] == messages[-2:]
 
-    def test_lifecycle_delegates_to_the_compactor(self):
+    def test_lifecycle_delegates_to_the_counter_and_compactor(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         hook.warm_up()
         hook.close()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up", "close"]
 
 
@@ -407,11 +426,14 @@ class TestCompactionHookAsync:
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
-    async def test_lifecycle_prefers_the_async_methods(self):
+    async def test_lifecycle_prefers_async_methods_with_sync_fallback(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         await hook.warm_up_async()
         await hook.close_async()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up_async", "close_async"]
 
     @pytest.mark.asyncio

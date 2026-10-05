@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix ``MetaFieldRanker`` to return no documents when ``missing_meta="drop"``
+    and all documents lack the ranking field or have a ``None`` value.
