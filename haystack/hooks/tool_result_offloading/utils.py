@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent
-from haystack.dataclasses.chat_message import ToolCallResult
+from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent, ToolCallResult
 from haystack.hooks.tool_result_offloading.types import ToolResultStore
 
 logger = logging.getLogger(__name__)
