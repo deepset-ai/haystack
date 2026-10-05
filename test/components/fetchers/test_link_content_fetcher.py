@@ -80,6 +80,18 @@ class TestLinkContentFetcher:
         assert "verify" in fetcher.client_kwargs
         assert fetcher.client_kwargs["verify"] is False
 
+    def test_init_does_not_mutate_client_kwargs(self):
+        client_kwargs = {"headers": {"X-Request-ID": "example"}}
+
+        fetcher = LinkContentFetcher(timeout=10, client_kwargs=client_kwargs)
+
+        assert client_kwargs == {"headers": {"X-Request-ID": "example"}}
+        assert fetcher.client_kwargs == {
+            "headers": {"X-Request-ID": "example"},
+            "timeout": 10,
+            "follow_redirects": True,
+        }
+
     def test_run_text(self):
         """Test fetching text content"""
         correct_response = b"Example test response"
@@ -399,7 +411,7 @@ class TestLinkContentFetcherIntegration:
         for stream in streams:
             assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.meta["content_type"] == "text/html":
-                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+                assert b"Haystack" in stream.data or b"Google" in stream.data  # noqa: PLR2004
                 assert stream.mime_type == "text/html"
             elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0

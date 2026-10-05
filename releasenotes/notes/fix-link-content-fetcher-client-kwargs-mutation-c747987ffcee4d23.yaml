@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``LinkContentFetcher`` no longer adds its ``timeout`` and ``follow_redirects`` defaults to the
+    ``client_kwargs`` dictionary passed by the caller. The dictionary is now copied before the defaults are
+    applied, so reusing one HTTP client configuration across components no longer leaks these defaults.

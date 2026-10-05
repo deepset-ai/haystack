@@ -8,6 +8,7 @@ from typing import Literal
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 
 logger = logging.getLogger(__name__)
 
@@ -294,8 +295,12 @@ class MarkdownHeaderSplitter:
                     secondary_content_start_idx = header_match.end()
                     content_for_splitting = doc.content[secondary_content_start_idx:]
 
-            # The page this header chunk starts on; its splits are numbered relative to it.
-            chunk_start_page = doc.meta.get("page_number", 1)
+            # The page this header chunk's first character is on; its splits are numbered relative to it.
+            # doc.meta holds the page the chunk's *text* starts on, which already counts the breaks the chunk
+            # opens with, and page_break_ends below counts those same breaks again - so take them back off.
+            chunk_start_page = doc.meta.get("page_number", 1) - _leading_page_breaks(
+                doc.content, self.page_break_character
+            )
 
             clean_meta = {k: v for k, v in doc.meta.items() if k != "split_id"}
 
@@ -312,7 +317,11 @@ class MarkdownHeaderSplitter:
                 while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
                     page_break_count += 1
 
-                split.meta["page_number"] = chunk_start_page + page_break_count
+                split.meta["page_number"] = (
+                    chunk_start_page
+                    + page_break_count
+                    + _leading_page_breaks(split.content or "", self.page_break_character)
+                )
                 split.meta["split_id"] = current_split_id
                 if "source_id" in doc.meta:
                     split.meta["source_id"] = doc.meta["source_id"]
@@ -321,7 +330,7 @@ class MarkdownHeaderSplitter:
                 if not self.keep_headers:
                     for key in ["header", "parent_headers"]:
                         if key in doc.meta:
-                            split.meta[key] = doc.meta[key]
+                            split.meta[key] = deepcopy(doc.meta[key])
 
                 result_docs.append(split)
 
@@ -358,8 +367,11 @@ class MarkdownHeaderSplitter:
             )
             for split_idx, split in enumerate(splits):
                 meta = deepcopy(doc.meta) if doc.meta else {}
-                chunk_start_page = document_start_page + doc.content.count(
-                    self.page_break_character, 0, split["source_start_idx"]
+                chunk_start_page = (
+                    document_start_page
+                    + doc.content.count(self.page_break_character, 0, split["source_start_idx"])
+                    # breaks the chunk opens with end the previous page, so its text is on a later one
+                    + _leading_page_breaks(split["content"], self.page_break_character)
                 )
                 meta.update({"source_id": doc.id, "page_number": chunk_start_page, "split_id": split_idx})
                 from_header_split = split["from_header_split"]
@@ -386,7 +398,8 @@ class MarkdownHeaderSplitter:
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting
+                  `page_break_character` occurrences in the original document.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
                 - All other metadata copied from the original document.
         :raises ValueError: If a document has `None` content.

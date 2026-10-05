@@ -293,8 +293,24 @@ class TestEmbeddingBasedDocumentSplitter:
         assert documents[0].content == "Page 1 content.\f"
         assert documents[0].meta["page_number"] == 1
         assert documents[1].content == "Page 2 content.\f\f\f"
-        # Should be page 2, not 4, because consecutive page breaks at the end are adjusted
+        # Page 2, not 4: the breaks end the chunk, so they are not part of the page its text starts on
         assert documents[1].meta["page_number"] == 2
+
+    def test_create_documents_from_splits_leading_page_breaks(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        original_doc = Document(content="Page 1 content.\f\fPage 3 content.", meta={"key": "value"})
+        splits = ["Page 1 content.", "\f\fPage 3 content."]
+
+        documents = splitter._create_documents_from_splits(splits, original_doc)
+
+        assert len(documents) == 2
+        assert documents[0].content == "Page 1 content."
+        assert documents[0].meta["page_number"] == 1
+        assert documents[1].content == "\f\fPage 3 content."
+        # The breaks open the chunk, so all of its text is on page 3
+        assert documents[1].meta["page_number"] == 3
 
     def test_create_documents_from_splits_split_idx_start(self):
         """_create_documents_from_splits must set split_idx_start to the character offset of each chunk."""

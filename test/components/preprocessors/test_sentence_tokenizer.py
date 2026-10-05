@@ -72,6 +72,19 @@ def test_read_abbreviations_missing_file(caplog: LogCaptureFixture) -> None:
         assert "No abbreviations file found for pt. Using default abbreviations." in caplog.text
 
 
+def test_read_abbreviations_decodes_utf8_regardless_of_locale() -> None:
+    # simulate a Windows locale: without an explicit encoding, the file would be decoded as cp1252
+    original_read_text = Path.read_text
+
+    def read_text_with_cp1252_default(self, encoding=None, *args, **kwargs):
+        return original_read_text(self, encoding or "cp1252", *args, **kwargs)
+
+    with patch.object(Path, "read_text", read_text_with_cp1252_default):
+        abbreviations = SentenceSplitter._read_abbreviations("de")
+
+    assert "ggü" in abbreviations
+
+
 def test_quote_spans_regex():
     # double quotes
     text1 = 'He said "Hello world" and left.'
@@ -102,6 +115,65 @@ def test_quote_spans_regex():
     text5 = "This text has no quotes."
     matches5 = list(QUOTE_SPANS_RE.finditer(text5))
     assert len(matches5) == 0
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'He said "Two." Three.',
+        "He said 'Two.' Three.",
+        "He said “Two.” Three.",
+        "He said ‘Two.’ Three.",
+        "Il a dit «Deux.» Trois.",
+        'He shouted "Stop!" Three.',
+        "He said (two.) Three.",  # brackets are already handled, this is the control case
+    ],
+)
+def test_split_sentences_keeps_white_spaces_after_a_closing_quote(text: str) -> None:
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+    sentences = splitter.split_sentences(text)
+
+    # no character of the original text is lost
+    assert "".join(sentence["sentence"] for sentence in sentences) == text
+
+    # and the spans still tile the text, so they can be mapped back onto it
+    assert sentences[0]["start"] == 0
+    assert sentences[-1]["end"] == len(text)
+    for index in range(1, len(sentences)):
+        assert sentences[index]["start"] == sentences[index - 1]["end"]
+
+
+def test_split_sentences_keeps_a_cited_question_joined() -> None:
+    # a quoted question is not a sentence boundary, the split rules must keep joining it
+    text = 'She asked "Are you sure?" Then she left.'
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+
+    sentences = splitter.split_sentences(text)
+
+    assert [sentence["sentence"] for sentence in sentences] == [text]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'He said "Hi.", then left.',  # comma directly after the closing quote
+        "He said 'Hi.', then left.",  # single quotes
+        'He said "Hi."; then left.',  # semicolon
+        'He said "Hi.": then left.',  # colon
+        'He said "Hi."—then left.',  # em dash
+        'He said "Hi."–then left.',  # en dash
+        'He said "Hi."-then left.',  # hyphen
+        'He said "Hi."then left.',  # no space at all
+    ],
+)
+def test_split_sentences_keeps_a_quote_with_trailing_punctuation_joined(text: str) -> None:
+    # a closing quote that is not followed by whitespace is not a sentence boundary; widening the
+    # closing-char class must not turn e.g. `.",` into a split that would start a chunk with a comma
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+
+    sentences = splitter.split_sentences(text)
+
+    assert [sentence["sentence"] for sentence in sentences] == [text]
 
 
 def test_split_sentences_performance() -> None:

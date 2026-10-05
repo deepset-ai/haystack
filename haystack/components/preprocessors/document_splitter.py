@@ -9,6 +9,7 @@ from typing import Any, Literal
 from more_itertools import windowed
 
 from haystack import Document, component, logging
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -101,6 +102,7 @@ class DocumentSplitter:
             from non-textual documents.
         :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to
             `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+            Special-token strings in document content are encoded as ordinary text.
         """
 
         self.split_by = split_by
@@ -198,7 +200,8 @@ class DocumentSplitter:
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises TypeError: if the input is not a list of Documents.
@@ -270,7 +273,7 @@ class DocumentSplitter:
         with `split_overlap` overlap, then decodes each chunk back to a string.
         Stops once a chunk reaches the end of the document, avoiding overlap-only trailing chunks.
         """
-        tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
+        tokens = self._tiktoken_tokenizer.encode_ordinary(doc.content)  # type: ignore[union-attr, arg-type]
         if not tokens:
             if self.skip_empty_documents:
                 return []
@@ -449,7 +452,7 @@ class DocumentSplitter:
 
         for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs, strict=True)):
             copied_meta = deepcopy(meta)
-            copied_meta["page_number"] = splits_pages[i]
+            copied_meta["page_number"] = splits_pages[i] + _leading_page_breaks(txt)
             copied_meta["split_id"] = i
             copied_meta["split_idx_start"] = split_idx
             doc = Document(content=txt, meta=copied_meta)

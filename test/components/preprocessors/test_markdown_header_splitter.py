@@ -270,6 +270,71 @@ def test_nested_metadata_is_not_shared_between_splits():
     assert doc.meta["tags"] == ["docs"]
 
 
+@pytest.mark.parametrize(
+    "keep_headers, prefix, parent_headers, expected_content",
+    [
+        (False, "# Top\n## Child\n", ["Top"], ["\none two three ", "four five six"]),
+        (False, "# Child\n", [], ["\none two three ", "four five six"]),
+        (True, "# Top\n## Child\n", ["Top"], ["# Top\n## Child\none ", "two three four ", "five six"]),
+        (True, "# Child\n", [], ["# Child\none two ", "three four five ", "six"]),
+    ],
+)
+def test_secondary_splits_have_independent_header_metadata(keep_headers, prefix, parent_headers, expected_content):
+    body = "one two three four five six"
+    doc = Document(content=prefix + body, meta={"tags": ["docs"]})
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split="word", split_length=3)
+
+    split_docs = splitter.run(documents=[doc])["documents"]
+
+    assert [split.content for split in split_docs] == expected_content
+    assert "".join(expected_content) == (doc.content if keep_headers else "\n" + body)
+    offset = 0
+    for split_id, (split, content) in enumerate(zip(split_docs, expected_content, strict=True)):
+        assert split.meta == {
+            "tags": ["docs"],
+            "source_id": doc.id,
+            "page_number": 1,
+            "header": "Child",
+            "parent_headers": parent_headers,
+            "split_id": split_id,
+            "split_idx_start": offset,
+        }
+        offset += len(content)
+
+    split_docs[0].meta["parent_headers"].append("changed")
+    split_docs[0].meta["tags"].append("changed")
+
+    for sibling in split_docs[1:]:
+        assert sibling.meta["parent_headers"] == parent_headers
+        assert sibling.meta["tags"] == ["docs"]
+    assert doc.meta == {"tags": ["docs"]}
+
+
+@pytest.mark.parametrize("keep_headers", [False, True])
+def test_secondary_splits_without_headings_preserve_independent_input_header_metadata(keep_headers):
+    doc = Document(content="one two three four five six", meta={"header": "Existing", "parent_headers": ["Original"]})
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split="word", split_length=3)
+
+    split_docs = splitter.run(documents=[doc])["documents"]
+
+    assert [split.content for split in split_docs] == ["one two three ", "four five six"]
+    assert "".join(split.content or "" for split in split_docs) == doc.content
+    for split_id, split in enumerate(split_docs):
+        assert split.meta == {
+            "header": "Existing",
+            "parent_headers": ["Original"],
+            "source_id": doc.id,
+            "page_number": 1,
+            "split_id": split_id,
+            "split_idx_start": split_id * len("one two three "),
+        }
+
+    split_docs[0].meta["parent_headers"].append("changed")
+
+    assert split_docs[1].meta["parent_headers"] == ["Original"]
+    assert doc.meta == {"header": "Existing", "parent_headers": ["Original"]}
+
+
 def test_secondary_split_keeps_content_before_embedded_header():
     """With keep_headers=False, prose before an embedded lower-level header must
     not be dropped during the secondary split."""
@@ -940,6 +1005,44 @@ def test_custom_page_break_character_in_secondary_splitting():
     docs = splitter.run(documents=[Document(content=text)])["documents"]
 
     assert [doc.content for doc in docs] == ["# H1\nw1 w2 <PAGE> ", "w3 w4"]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+
+
+def test_page_number_of_split_starting_with_page_break():
+    # The break ends the preceding page, so this split's own text starts on the page after it.
+    text = "# H1\nSentence one.\fSentence two."
+    splitter = MarkdownHeaderSplitter(secondary_split="period", split_length=1)
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["# H1\nSentence one.", "\fSentence two."]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+
+    reference = DocumentSplitter(split_by="period", split_length=1).run(documents=[Document(content=text)])["documents"]
+    assert [doc.meta["page_number"] for doc in docs] == [doc.meta["page_number"] for doc in reference]
+
+
+def test_page_number_of_secondary_splits_under_a_chunk_starting_with_a_page_break():
+    # The content before the first header opens with a page break, so that break is counted both by the
+    # header chunk's own page and by the page-break scan the secondary splits are numbered against.
+    text = "\fAAA. BBB.\n# H1\nCCC."
+
+    docs = MarkdownHeaderSplitter(secondary_split="period", split_length=1).run(documents=[Document(content=text)])[
+        "documents"
+    ]
+
+    assert [doc.content for doc in docs] == ["\fAAA.", " BBB.", "\n", "# H1\nCCC."]
+    # the text holds a single page break, so everything after it is on page 2 - never page 3
+    assert [doc.meta["page_number"] for doc in docs] == [2, 2, 2, 2]
+
+
+def test_page_number_of_split_starting_with_multi_character_page_break():
+    text = "# H1\nw1 w2.<PAGE>w3 w4."
+    splitter = MarkdownHeaderSplitter(page_break_character="<PAGE>", secondary_split="period", split_length=1)
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["# H1\nw1 w2.", "<PAGE>w3 w4."]
     assert [doc.meta["page_number"] for doc in docs] == [1, 2]
 
 

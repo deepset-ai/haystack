@@ -444,9 +444,17 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The 2nd and 4th chunks open with the page break(s) that end the preceding page, so their text
+        # starts on the following page.
+        expected = [
+            ("This is some text.", 1),
+            ("\f This text is on another page.", 2),
+            ("This content has two.", 1),
+            ("\f\f page brakes.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
@@ -456,9 +464,16 @@ class TestSplittingByFunctionOrCharacterRegex:
         )
         result = splitter.run(documents=[doc1])
 
-        expected_pages = [1, 2, 2, 2]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The last chunk opens with the page break, so its text starts on page 3.
+        expected = [
+            ("This is a text with some words.\f There is a second sentence.\n\n", 1),
+            ("And there is a third sentence.\n\n", 2),
+            ("And more passages.\n\n", 2),
+            ("\f And another passage.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
@@ -482,6 +497,18 @@ class TestSplittingByFunctionOrCharacterRegex:
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
+    def test_add_page_number_to_metadata_for_blank_pages(self):
+        splitter = DocumentSplitter(split_by="page", split_length=1)
+
+        result = splitter.run(documents=[Document(content="Hello\f\fWorld")])
+        # The middle chunk is a blank page: it is page 2 itself, not a chunk pushed onto page 3.
+        assert [doc.content for doc in result["documents"]] == ["Hello\f", "\f", "World"]
+        assert [doc.meta["page_number"] for doc in result["documents"]] == [1, 2, 3]
+
+        result = splitter.run(documents=[Document(content="\fHello")])
+        assert [doc.content for doc in result["documents"]] == ["\f", "Hello"]
+        assert [doc.meta["page_number"] for doc in result["documents"]] == [1, 2]
+
     def test_add_page_number_to_metadata_with_overlap_word_split(self):
         splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
         doc1 = Document(content="This is some text. And\f this text is on another page.")
@@ -501,9 +528,18 @@ class TestSplittingByFunctionOrCharacterRegex:
         # No overlap-only trailing chunks: " End." is fully contained in doc1's previous chunk and
         # " More text." in doc2's previous chunk, so both are skipped instead of creating redundant
         # chunks (the latter even carried a wrong page number).
-        expected_pages = [1, 1, 1, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages, strict=True):
-            assert doc.meta["page_number"] == p
+        # The 3rd and 5th chunks open with the page break(s) that end the preceding page, so their text
+        # starts on the following page.
+        expected = [
+            ("This is some text. And this is more text.", 1),
+            (" And this is more text.\f This text is on another page.", 1),
+            ("\f This text is on another page. End.", 2),
+            ("This content has two.\f\f page brakes.", 1),
+            ("\f\f page brakes. More text.", 3),
+        ]
+        for doc, (content, page) in zip(result["documents"], expected, strict=True):
+            assert doc.content == content
+            assert doc.meta["page_number"] == page
 
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=2, split_overlap=1)
@@ -832,6 +868,27 @@ class TestSplittingNLTKSentenceSplitter:
         assert documents[2].meta["split_id"] == 2
         assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
 
+    def test_run_split_by_sentence_quoted_text_keeps_offsets_aligned(self) -> None:
+        document_splitter = DocumentSplitter(
+            split_by="sentence",
+            split_length=1,
+            split_overlap=0,
+            split_threshold=0,
+            language="en",
+            use_split_rules=True,
+            extend_abbreviations=True,
+        )
+        text = 'One. He said "Two." Three.'
+        documents = document_splitter.run(documents=[Document(content=text)])["documents"]
+
+        rebuilt = ""
+        for document in documents:
+            assert document.content is not None
+            start = document.meta["split_idx_start"]
+            assert text[start : start + len(document.content)] == document.content
+            rebuilt += document.content
+        assert rebuilt == text
+
     def test_run_split_by_word_respect_sentence_boundary(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="word",
@@ -998,7 +1055,9 @@ def mock_tiktoken_tokenizer():
         return full_text, offsets
 
     mock_tokenizer = Mock()
-    mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+    mock_tokenizer.encode_ordinary.side_effect = lambda text: [
+        f" {w}" if i > 0 else w for i, w in enumerate(text.split())
+    ]
     mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
     return mock_tokenizer
 
@@ -1091,7 +1150,7 @@ class TestSplittingByToken:
     @pytest.mark.parametrize("skip_empty_documents,expected_count", [(True, 0), (False, 1)])
     def test_split_by_token_skip_empty_documents_mock(self, skip_empty_documents, expected_count):
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.return_value = []
+        mock_tokenizer.encode_ordinary.return_value = []
 
         splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=skip_empty_documents)
         splitter._tiktoken_tokenizer = mock_tokenizer
@@ -1109,6 +1168,34 @@ class TestSplittingByToken:
 @pytest.mark.integration
 class TestSplittingByTokenIntegration:
     """Integration tests for split_by="token" mode requiring real tiktoken."""
+
+    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+    @pytest.mark.parametrize("split_overlap", [0, 2])
+    def test_special_token_strings_are_split_as_literal_text(self, encoding, split_overlap):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=5, split_overlap=split_overlap, tokenizer_encoding=encoding
+        )
+        text = (
+            "The manual documents <|endoftext|> as a literal marker.\f"
+            "A second example includes <|fim_suffix|> in the source."
+        )
+        source = Document(content=text)
+
+        chunks = splitter.run(documents=[source])["documents"]
+
+        assert len(chunks) > 1
+        assert merge_documents(chunks) == text
+        assert splitter._tiktoken_tokenizer is not None
+        for split_id, chunk in enumerate(chunks):
+            assert chunk.content is not None
+            assert len(splitter._tiktoken_tokenizer.encode_ordinary(chunk.content)) <= 5
+            assert chunk.meta["source_id"] == source.id
+            assert chunk.meta["split_id"] == split_id
+            start = chunk.meta["split_idx_start"]
+            assert text[start : start + len(chunk.content)] == chunk.content
+            # page_number is the page the chunk's text starts on, so breaks it opens with count toward it
+            leading_breaks = len(chunk.content) - len(chunk.content.lstrip("\f"))
+            assert chunk.meta["page_number"] == 1 + text[: start + leading_breaks].count("\f")
 
     def test_basic_chunking(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
@@ -1174,7 +1261,9 @@ class TestSplittingByTokenIntegration:
         assert len(docs) > 1
         assert docs[0].meta["page_number"] == 1
         for d in docs:
-            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.content is not None
+            leading_breaks = len(d.content) - len(d.content.lstrip("\f"))
+            expected_page = 1 + text[: d.meta["split_idx_start"] + leading_breaks].count("\f")
             assert d.meta["page_number"] == expected_page
         assert docs[-1].meta["page_number"] == 3
 
@@ -1185,6 +1274,8 @@ class TestSplittingByTokenIntegration:
         docs = splitter.run(documents=[doc])["documents"]
         assert len(docs) > 1
         for d in docs:
-            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.content is not None
+            leading_breaks = len(d.content) - len(d.content.lstrip("\f"))
+            expected_page = 1 + text[: d.meta["split_idx_start"] + leading_breaks].count("\f")
             assert d.meta["page_number"] == expected_page
         assert docs[-1].meta["page_number"] == 3

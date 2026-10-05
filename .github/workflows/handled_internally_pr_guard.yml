@@ -1,0 +1,105 @@
+name: Handled internally PR guard
+
+# Close community PRs that target issues the team handles internally, i.e.
+# issues labeled `handled internally` (see handled_internally_footer.yml) or
+# carrying the footer maintainers used to add by hand. The check runs whenever a
+# PR is opened, reopened or edited (a "fixes #123" can be added later), so a PR
+# reopened while its issue is still marked gets closed again. To let a PR
+# through, remove the label from the issue first.
+#
+# Uses pull_request_target so it can comment on and close fork PRs; this is safe
+# because the workflow never checks out or executes PR code.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited]
+
+permissions:
+  contents: read
+  issues: read
+  # Commenting on and closing a PR count as pull request (not issue) operations.
+  pull-requests: write
+
+concurrency:
+  group: handled-internally-pr-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-slim
+    if: ${{ github.event.pull_request.state == 'open' }}
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const LABEL = "handled internally";
+            const FOOTER_PHRASE = "isn't open for external contributions";
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            // Team members are exempt. author_association is unreliable for this
+            // (private org members appear as CONTRIBUTOR/NONE in the payload), so
+            // fall back to the effective repository permission. The association
+            // check still short-circuits the common case without an API call.
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
+
+            if (pr.user?.type === "Bot") return;
+            if (["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association)) return;
+            if (await isTeamMember(pr.user.login)) return;
+
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        number url body repository { nameWithOwner }
+                        labels(first: 100) { nodes { name } }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { owner, repo, number: pr.number },
+            );
+            const internal = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+              (issue) =>
+                issue.repository.nameWithOwner === `${owner}/${repo}` &&
+                (issue.labels.nodes.some((l) => l.name === LABEL) ||
+                  (issue.body ?? "").includes(FOOTER_PHRASE)),
+            );
+            if (!internal.length) {
+              core.info("PR doesn't target any issue handled internally.");
+              return;
+            }
+
+            const refs = internal.map((i) => `#${i.number}`);
+            const reason =
+              internal.length === 1
+                ? `Issue #${internal[0].number} is one our team is handling internally, as ` +
+                  `noted at the end of its [description](${internal[0].url}), so it isn't ` +
+                  "open for external contributions."
+                : `Issues ${refs.slice(0, -1).join(", ")} and ${refs.at(-1)} are ones our team ` +
+                  "is handling internally, as noted at the end of their descriptions, so " +
+                  "they aren't open for external contributions.";
+            const body = [
+              "<!-- handled-internally-pr-guard -->",
+              `Hi @${pr.user.login}, thank you so much for taking the time to work on this! :pray:`,
+              "",
+              `${reason} To avoid you spending more effort on work that we can't merge, ` +
+                "we're closing this PR.",
+            ].join("\n");
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+            await github.rest.pulls.update({ owner, repo, pull_number: pr.number, state: "closed" });
+            core.info(
+              `Closed PR #${pr.number} (targets ${refs.join(", ")}).`,
+            );
