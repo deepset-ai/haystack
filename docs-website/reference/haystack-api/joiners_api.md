@@ -175,7 +175,7 @@ to its output. This is useful for scenarios where multiple branches need to conv
 import json
 
 from haystack import Pipeline
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
 from haystack.dataclasses import ChatMessage
@@ -196,7 +196,7 @@ pipe = Pipeline()
 
 # Add components to the pipeline
 pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
-pipe.add_component("generator", OpenAIChatGenerator(model="gpt-4.1-mini"))
+pipe.add_component("generator", OpenAIResponsesChatGenerator(model="gpt-5.6-luna"))
 pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
 
 # And connect them
@@ -206,7 +206,7 @@ pipe.connect("validator.validation_error", "joiner")
 
 result = pipe.run(
     data={
-    "generator": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
+    "generator": {"generation_kwargs": {"text": {"format": {"type": "json_object"}}}},
     "joiner": {"value": [ChatMessage.from_user("Create json from Peter Parker")]}}
 )
 
@@ -222,9 +222,9 @@ passing `list[ChatMessage]`. This determines the type of data that `BranchJoiner
 connected components and also the type of data that `BranchJoiner` will send through its output.
 
 In the code example, `BranchJoiner` receives a looped back `list[ChatMessage]` from the `JsonSchemaValidator` and
-sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loopback connections in the
-pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline could
-have more than one downstream component.
+sends it down to the `OpenAIResponsesChatGenerator` for re-generation. We can have multiple loopback connections in
+the pipeline. In this instance, the downstream component is only one (the `OpenAIResponsesChatGenerator`), but the
+pipeline could have more than one downstream component.
 
 #### __init__
 
