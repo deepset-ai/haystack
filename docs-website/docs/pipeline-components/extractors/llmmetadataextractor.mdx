@@ -37,6 +37,7 @@ These documents can be re-run with another extractor to extract metadata using t
 
 `chat_generator` accepts any Haystack Chat Generator configured to return a JSON object, for example:
 
+- [OpenAIResponsesChatGenerator](../generators/openairesponseschatgenerator.mdx)
 - [OpenAIChatGenerator](../generators/openaichatgenerator.mdx)
 - [AzureOpenAIChatGenerator](../generators/azureopenaichatgenerator.mdx)
 - [AmazonBedrockChatGenerator](../generators/amazonbedrockchatgenerator.mdx)
@@ -51,7 +52,7 @@ First, the mandatory imports:
 ```python
 from haystack import Document
 from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 ```
 
 Then, define some documents:
@@ -113,11 +114,34 @@ NER_PROMPT = """
 Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to extract named entities from the documents:
 
 ```python
-chat_generator = OpenAIChatGenerator(
+chat_generator = OpenAIResponsesChatGenerator(
     generation_kwargs={
-        "max_completion_tokens": 500,
-        "seed": 0,
-        "response_format": {"type": "json_object"},
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "entity_extraction",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "entities": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "entity": {"type": "string"},
+                                    "entity_type": {"type": "string"},
+                                },
+                                "required": ["entity", "entity_type"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "required": ["entities"],
+                    "additionalProperties": False,
+                },
+            },
+        },
     },
     max_retries=1,
     timeout=60.0,

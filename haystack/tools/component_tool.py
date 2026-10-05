@@ -63,7 +63,7 @@ class ComponentTool(Tool):
     from haystack.tools import ComponentTool
     from haystack.utils import Secret
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
@@ -77,8 +77,8 @@ class ComponentTool(Tool):
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
-    # Create an Agent with an OpenAIChatGenerator and the tool
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
+    # Create an Agent with an OpenAIResponsesChatGenerator and the tool
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[tool])
 
     message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
@@ -236,7 +236,6 @@ class ComponentTool(Tool):
 
         # Store component before calling super().__init__() so _get_valid_outputs() can access it
         self._component = component
-        self._is_warmed_up = False
 
         # Create the Tool instance with the component invoker as the function to be called and the schema.
         # When the wrapped component exposes a `run_async`, also pass the async invoker.
@@ -274,13 +273,28 @@ class ComponentTool(Tool):
         return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self) -> None:
-        """
-        Prepare the ComponentTool for use.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self._component, "warm_up"):
-                self._component.warm_up()
-            self._is_warmed_up = True
+        """Warm up the wrapped component."""
+        if hasattr(self._component, "warm_up"):
+            self._component.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the wrapped component on the serving event loop."""
+        if self.async_function is not None and hasattr(self._component, "warm_up_async"):
+            await self._component.warm_up_async()
+        elif hasattr(self._component, "warm_up"):
+            self._component.warm_up()
+
+    def close(self) -> None:
+        """Release the wrapped component's synchronous resources."""
+        if hasattr(self._component, "close"):
+            self._component.close()
+
+    async def close_async(self) -> None:
+        """Release the wrapped component's async resources."""
+        if self.async_function is not None and hasattr(self._component, "close_async"):
+            await self._component.close_async()
+        elif hasattr(self._component, "close"):
+            self._component.close()
 
     def to_dict(self) -> dict[str, Any]:
         """

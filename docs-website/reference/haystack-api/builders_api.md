@@ -378,7 +378,7 @@ with the contents of the retrieved documents and a query. The rendered prompt is
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 # in a real world use case documents could come from a retriever, web, or any other source
@@ -395,7 +395,7 @@ prompt_template = """
     """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-p.add_component(instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(instance=OpenAIResponsesChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
 p.connect("prompt_builder", "llm")
 
 question = "Where does Joe live?"

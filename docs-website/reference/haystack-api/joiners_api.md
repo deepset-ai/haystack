@@ -40,7 +40,7 @@ from haystack.components.joiners import AnswerJoiner
 
 from haystack.core.pipeline import Pipeline
 
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
 
@@ -49,8 +49,8 @@ messages = [ChatMessage.from_system("You are a helpful, respectful and honest as
             ChatMessage.from_user(query)]
 
 pipe = Pipeline()
-pipe.add_component("llm_1", OpenAIChatGenerator())
-pipe.add_component("llm_2", OpenAIChatGenerator())
+pipe.add_component("llm_1", OpenAIResponsesChatGenerator())
+pipe.add_component("llm_2", OpenAIResponsesChatGenerator())
 pipe.add_component("aba", AnswerBuilder())
 pipe.add_component("abb", AnswerBuilder())
 pipe.add_component("joiner", AnswerJoiner())
@@ -441,7 +441,7 @@ Usage example:
 
 ```python
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack.components.joiners import ListJoiner
@@ -459,8 +459,8 @@ feedback_message = [ChatMessage.from_system(feedback_prompt)]
 
 prompt_builder = ChatPromptBuilder(template=user_message)
 feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-llm = OpenAIChatGenerator()
-feedback_llm = OpenAIChatGenerator()
+llm = OpenAIResponsesChatGenerator()
+feedback_llm = OpenAIResponsesChatGenerator()
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
@@ -553,9 +553,6 @@ Component to join strings from different components to a list of strings.
 from haystack.components.joiners import StringJoiner
 from haystack.components.builders import PromptBuilder
 from haystack.core.pipeline import Pipeline
-
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage
 
 string_1 = "What's Natural Language Processing?"
 string_2 = "What is life?"
