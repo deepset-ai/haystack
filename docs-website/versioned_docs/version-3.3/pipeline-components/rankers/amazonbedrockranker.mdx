@@ -14,7 +14,7 @@ Use this component to rank documents based on their similarity to the query usin
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
-| **Mandatory init variables** | `aws_access_key_id`: AWS access key ID. Can be set with AWS_ACCESS_KEY_ID env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with AWS_SECRET_ACCESS_KEY env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with AWS_DEFAULT_REGION env var. |
+| **Optional init variables** | `aws_access_key_id`: AWS access key ID. Can be set with AWS_ACCESS_KEY_ID env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with AWS_SECRET_ACCESS_KEY env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with AWS_DEFAULT_REGION env var.  <br /> <br />If you don't set the access keys, the component uses the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). |
 | **Mandatory run variables** | `documents`: A list of document objects  <br /> <br />`query`: A query string |
 | **Output variables** | `documents`: A list of document objects |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
@@ -47,6 +47,14 @@ Consider using AWS CLI as a more straightforward tool to manage your AWS service
 :::
 
 To use this component, initialize it with the model name. The AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, configured as described above, or passed as [Secret](../../concepts/secret-management.mdx) arguments. Make sure the region you set supports Amazon Bedrock.
+
+### Running on Amazon EKS
+
+On Amazon EKS, the component can authenticate with the pod's IAM role through [IAM roles for service accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), so you don't need access keys. When no access keys are set, the component falls back to the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html), which picks up the role that EKS assigns to the pod.
+
+1. Associate an IAM role with the pod's Kubernetes service account and allow the role to call `bedrock:Rerank` and `bedrock:InvokeModel`.
+2. Don't pass `aws_access_key_id` and `aws_secret_access_key` to the component, and don't set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables in the pod. Access keys take precedence over the pod's role.
+3. Set the region with `aws_region_name` or the `AWS_DEFAULT_REGION` environment variable.
 
 ## Usage
 

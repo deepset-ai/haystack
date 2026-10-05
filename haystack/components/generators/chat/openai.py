@@ -39,6 +39,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.chat_message import _parse_openai_tool_call_arguments
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
@@ -659,7 +660,7 @@ def _convert_chat_completion_to_chat_message(
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:
-                arguments = json.loads(arguments_str)
+                arguments = _parse_openai_tool_call_arguments(arguments_str)
                 tool_calls.append(ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(
