@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_71a12776cfeb16cc_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-05 10:16 +0000
+            created at 2026-10-05 11:26 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -503,7 +503,7 @@
     <p class="pln"><span class="n"><a id="t421" href="#t421">421</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t422" href="#t422">422</a></span><span class="t"><span class="str">    ```python</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t423" href="#t423">423</a></span><span class="t"><span class="str">    from haystack import Pipeline, SuperComponent</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t424" href="#t424">424</a></span><span class="t"><span class="str">    from haystack.components.generators.chat import OpenAIChatGenerator</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t424" href="#t424">424</a></span><span class="t"><span class="str">    from haystack.components.generators.chat import OpenAIResponsesChatGenerator</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t425" href="#t425">425</a></span><span class="t"><span class="str">    from haystack.components.builders import ChatPromptBuilder</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t426" href="#t426">426</a></span><span class="t"><span class="str">    from haystack.components.retrievers import InMemoryBM25Retriever</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t427" href="#t427">427</a></span><span class="t"><span class="str">    from haystack.dataclasses.chat_message import ChatMessage</span>&nbsp;</span><span class="r"></span></p>
@@ -535,7 +535,7 @@
     <p class="pln"><span class="n"><a id="t453" href="#t453">453</a></span><span class="t"><span class="str">    pipeline = Pipeline()</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t454" href="#t454">454</a></span><span class="t"><span class="str">    pipeline.add_component(&quot;retriever&quot;, InMemoryBM25Retriever(document_store=document_store))</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t455" href="#t455">455</a></span><span class="t"><span class="str">    pipeline.add_component(&quot;prompt_builder&quot;, prompt_builder)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t456" href="#t456">456</a></span><span class="t"><span class="str">    pipeline.add_component(&quot;llm&quot;, OpenAIChatGenerator())</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t456" href="#t456">456</a></span><span class="t"><span class="str">    pipeline.add_component(&quot;llm&quot;, OpenAIResponsesChatGenerator())</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t457" href="#t457">457</a></span><span class="t"><span class="str">    pipeline.connect(&quot;retriever.documents&quot;, &quot;prompt_builder.documents&quot;)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t458" href="#t458">458</a></span><span class="t"><span class="str">    pipeline.connect(&quot;prompt_builder.prompt&quot;, &quot;llm.messages&quot;)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t459" href="#t459">459</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -727,7 +727,7 @@
             <a class="nav" href="z_71a12776cfeb16cc_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-05 10:16 +0000
+            created at 2026-10-05 11:26 +0000
         </p>
     </div>
 </footer>

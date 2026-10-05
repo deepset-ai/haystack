@@ -64,7 +64,7 @@
 | haystack/components/extractors/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/llm\_document\_content\_extractor.py |      152 |        0 |    100% |           |
-| haystack/components/extractors/llm\_metadata\_extractor.py                |      166 |       12 |     93% |316-324, 339-347, 408, 470 |
+| haystack/components/extractors/llm\_metadata\_extractor.py                |      166 |       12 |     93% |315-323, 338-346, 407, 469 |
 | haystack/components/extractors/regex\_text\_extractor.py                  |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                             |      202 |       18 |     91% |212-220, 288, 337-341, 426-430, 471, 504 |
@@ -131,7 +131,7 @@
 | haystack/components/samplers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                    |       67 |        0 |    100% |           |
 | haystack/components/validators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
-| haystack/components/validators/json\_schema.py                            |       73 |        7 |     90% |23-24, 140, 142, 157, 245, 251 |
+| haystack/components/validators/json\_schema.py                            |       73 |        7 |     90% |23-24, 142, 144, 159, 247, 253 |
 | haystack/components/writers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/writers/document\_writer.py                           |       38 |        0 |    100% |           |
 | haystack/core/\_\_init\_\_.py                                             |        2 |        0 |    100% |           |
