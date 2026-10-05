@@ -265,16 +265,21 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             to: '/docs/fastembedlateinteractionranker',
           },
           {
-            from: '/docs/sentencewindowretrieval',
-            to: '/docs/sentencewindowretriever',
-          },
-          {
             from: '/docs/pipeline-templates',
             to: '/docs/pipelines',
           },
           {
             from: '/docs/external-integrations-converters',
             to: '/docs/converters',
+          },
+          // Redirects after docs sidebar reorganization
+          {
+            from: '/docs/next/external-integrations-development',
+            to: '/docs/next/production-usage',
+          },
+          {
+            from: '/docs/external-integrations-development',
+            to: '/docs/production-usage',
           },
         ],
         // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
