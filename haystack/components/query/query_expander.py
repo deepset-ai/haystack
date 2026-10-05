@@ -66,20 +66,29 @@ class QueryExpander:
     ### Usage example
 
     ```python
-    from pydantic import BaseModel
-
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.query import QueryExpander
 
-    class QueryExpansion(BaseModel):
-        queries: list[str]
-
-    expander = QueryExpander(
-        chat_generator=OpenAIResponsesChatGenerator(
-            model="gpt-5.6-luna", generation_kwargs={"text_format": QueryExpansion}
-        ),
-        n_expansions=3
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5.6-luna",
+        generation_kwargs={
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "query_expansion",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["queries"],
+                        "additionalProperties": False,
+                    },
+                }
+            }
+        },
     )
+
+    expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
 
     result = expander.run(query="green energy sources")
     print(result["queries"])
