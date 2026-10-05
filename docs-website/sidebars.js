@@ -111,6 +111,7 @@ export default {
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
+        'document-stores/azuredocumentdbdocumentstore',
         'document-stores/chromadocumentstore',
         'document-stores/dynamodbdocumentstore',
         {
@@ -245,6 +246,7 @@ export default {
           items: [
             'pipeline-components/classifiers/documentlanguageclassifier',
             'pipeline-components/classifiers/transformerszeroshotdocumentclassifier',
+            'pipeline-components/classifiers/typesafedocumentclassifier',
           ],
         },
         {
@@ -289,6 +291,7 @@ export default {
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
             'pipeline-components/converters/filetofilecontent',
+            'pipeline-components/converters/gotenbergfileconverter',
             'pipeline-components/converters/htmltodocument',
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
@@ -350,6 +353,8 @@ export default {
             'pipeline-components/embedders/googlegenaimultimodaldocumentembedder',
             'pipeline-components/embedders/huggingfaceapidocumentembedder',
             'pipeline-components/embedders/huggingfaceapitextembedder',
+            'pipeline-components/embedders/huggingfaceteisparsedocumentembedder',
+            'pipeline-components/embedders/huggingfaceteisparsetextembedder',
             'pipeline-components/embedders/jinadocumentembedder',
             'pipeline-components/embedders/jinadocumentimageembedder',
             'pipeline-components/embedders/jinatextembedder',
@@ -607,6 +612,8 @@ export default {
             'pipeline-components/retrievers/azureaisearchbm25retriever',
             'pipeline-components/retrievers/azureaisearchembeddingretriever',
             'pipeline-components/retrievers/azureaisearchhybridretriever',
+            'pipeline-components/retrievers/azuredocumentdbembeddingretriever',
+            'pipeline-components/retrievers/azuredocumentdbfulltextretriever',
             'pipeline-components/retrievers/chromaembeddingretriever',
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/dynamodbembeddingretriever',
@@ -679,6 +686,7 @@ export default {
             'pipeline-components/routers/textlanguagerouter',
             'pipeline-components/routers/transformerstextrouter',
             'pipeline-components/routers/transformerszeroshottextrouter',
+            'pipeline-components/routers/typesafetextrouter',
           ],
         },
         {
@@ -763,6 +771,7 @@ export default {
             'tools/ready-made-tools/githubrepoviewertool',
             'tools/ready-made-tools/mem0memorytools',
             'tools/ready-made-tools/mirageshelltool',
+            'tools/ready-made-tools/montypythontool',
             'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },

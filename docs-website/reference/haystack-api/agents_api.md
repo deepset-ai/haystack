@@ -270,7 +270,7 @@ Warm up the tools, hooks, and the underlying chat generator on the serving event
 close() -> None
 ```
 
-Release the hooks' and the underlying chat generator's resources.
+Release tools, hooks, and chat generator resources.
 
 #### close_async
 
@@ -278,7 +278,7 @@ Release the hooks' and the underlying chat generator's resources.
 close_async() -> None
 ```
 
-Release the hooks' and the underlying chat generator's async resources.
+Release async tools, hooks, and chat generator resources.
 
 #### clone
 
@@ -350,6 +350,8 @@ Process messages and execute tools until an exit condition is met.
   precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
+  Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+  closing them if they hold resources.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
   (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -371,9 +373,10 @@ Process messages and execute tools until an exit condition is met.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
   `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
   `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-  condition), or a custom reason a hook supplied through the `stop_run` state key.
+  text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+  `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+  the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+  meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 #### run_async
@@ -405,6 +408,9 @@ if available.
   with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
   precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+  When passing tool names, tools are selected from the Agent's originally configured tools.
+  Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+  closing them if they hold resources.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
   (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -426,9 +432,10 @@ if available.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
   `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
   `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-  condition), or a custom reason a hook supplied through the `stop_run` state key.
+  text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+  `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+  the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+  meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 ## state/state

@@ -103,6 +103,13 @@ class SkillToolset(Toolset):
         self._load_skill_tool.description = self._load_skill_description()
         self._is_warmed_up = True
 
+    def close(self) -> None:
+        """Close the skill store and invalidate the cached catalog."""
+        if hasattr(self._store, "close"):
+            self._store.close()
+        self._skills = {}
+        self._is_warmed_up = False
+
     def add(self, tool: Tool) -> None:
         """Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store."""
         raise NotImplementedError(

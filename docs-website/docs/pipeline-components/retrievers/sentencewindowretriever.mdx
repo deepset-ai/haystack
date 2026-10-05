@@ -16,7 +16,7 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 | **Most common position in a pipeline** | Used after the main Retriever component, like the `InMemoryEmbeddingRetriever` or any other Retriever. |
 | **Mandatory init variables** | `document_store`: An instance of a Document Store |
 | **Mandatory run variables** | `retrieved_documents`: A list of already retrieved documents for which you want to get a context window |
-| **Output variables** | `context_windows`: A list of strings  <br /> <br />`context_documents`: A list of documents ordered by `split_idx_start` |
+| **Output variables** | `context_windows`: A list of strings, one per retrieved document  <br /> <br />`context_documents`: A list of documents, grouped by retrieved document and ordered by `split_id` within each window |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/sentence_window_retriever.py |
 | **Package name** | `haystack-ai` |
@@ -25,13 +25,24 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 
 ## Overview
 
-The "sentence window" is a retrieval technique that allows for the retrieval of the context around relevant sentences.
+Sentence-window retrieval is a technique for retrieving the context around relevant text. During indexing, documents are split into small chunks, such as sentences, and written to a Document Store. During retrieval, a Retriever such as `InMemoryEmbeddingRetriever` or `InMemoryBM25Retriever` finds the chunks most relevant to the query. `SentenceWindowRetriever` then fetches up to `window_size` chunks before and after each of them (3 by default) from the same source document.
 
-During indexing, documents are broken into smaller chunks or sentences and indexed. During retrieval, the sentences most relevant to a given query, based on a certain similarity metric, are retrieved.
+This combines the strengths of both chunk sizes: small chunks match a query precisely, and the surrounding window gives the LLM enough context to answer. Despite its name, the component works with chunks of any size, not only sentences. You can override `window_size` for a single call by passing it to `run()`.
 
-Once we have the relevant sentences, we can retrieve neighboring sentences to provide full context. The number of neighboring sentences to retrieve is defined by a fixed number of sentences before and after the relevant sentence.
+### Required metadata
 
-This component is meant to be used with other Retrievers, such as the `InMemoryEmbeddingRetriever`. These Retrievers find relevant sentences by comparing a query against indexed sentences using a similarity metric. Then, the `SentenceWindowRetriever` component retrieves neighboring sentences around the relevant ones by leveraging metadata stored in the `Document` object.
+The component uses these `meta` fields to find neighboring chunks:
+
+- `source_id`: identifies the original document a chunk comes from. To match on several fields, pass a list to `source_id_meta_field`.
+- `split_id`: the chunk's position within its source document. To use a different field, set `split_id_meta_field`.
+- `split_idx_start` (optional): the chunk's start position in the source text. If every chunk in a window has it, text that overlaps between chunks is removed when they're merged. Otherwise, the chunks are joined in `split_id` order without removing any overlap.
+
+[`DocumentSplitter`](../preprocessors/documentsplitter.mdx) and [`RecursiveDocumentSplitter`](../preprocessors/recursivesplitter.mdx) add all three fields. If a retrieved document is missing `source_id` or `split_id`, the component raises a `ValueError`. To pass such documents through unchanged instead, set `raise_on_missing_meta_fields=False`.
+
+### Outputs
+
+- `context_windows`: one string per retrieved document, in the same order, containing the merged text of its window.
+- `context_documents`: the documents in each window, grouped by retrieved document and ordered by `split_id` within each window. If two retrieved documents are close together, their windows overlap and the shared chunks appear in both.
 
 ## Usage
 

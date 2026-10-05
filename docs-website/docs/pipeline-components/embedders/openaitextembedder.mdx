@@ -27,7 +27,7 @@ When you perform embedding retrieval, you use this component to transform your q
 
 ## Overview
 
-To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings). The default model for `OpenAITextEmbedder` is `text-embedding-ada-002`. You can specify another model with the `model` parameter when initializing this component.
+To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings). The default model for `OpenAITextEmbedder` is `text-embedding-3-small`. You can specify another model with the `model` parameter when initializing this component.
 
 Use `OpenAITextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [OpenAIDocumentEmbedder](openaidocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
@@ -54,7 +54,7 @@ text_embedder = OpenAITextEmbedder(api_key=Secret.from_token("<your-api-key>"))
 print(text_embedder.run(text_to_embed))
 
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-# 'meta': {'model': 'text-embedding-ada-002-v2',
+# 'meta': {'model': 'text-embedding-3-small',
 # 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 

@@ -1,0 +1,118 @@
+---
+title: "Token Budget"
+id: token-budget
+slug: "/token-budget"
+description: "Use TokenBudgetHook to stop an Agent run when its cumulative token usage reaches a configured threshold."
+---
+
+# Token Budget
+
+`TokenBudgetHook` lets you limit the token usage of an Agent run. When the configured threshold is reached, the Agent stops before its next LLM call. The messages collected up to that point remain available.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on**       | The [`Agent`](./agent.mdx) component, as a `TokenBudgetHook` registered under the `before_llm` [hook point](./hooks.mdx) |
+| **Key classes**         | `TokenBudgetHook` |
+| **Import path**         | `haystack.hooks.budget` |
+| **API reference**       | [Hooks](/reference/hooks-api) |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/budget/ |
+| **Package name**        | `haystack-ai` |
+
+</div>
+
+:::warning
+`TokenBudgetHook` is experimental. Its API can change in any release, without following the usual deprecation policy.
+:::
+
+## Overview
+
+A token budget is one use of the Agent's general [hooks](./hooks.mdx) mechanism. Registered under `before_llm`, `TokenBudgetHook` compares the cumulative `token_usage` in the Agent's [`State`](./state.mdx) with the configured threshold before every LLM call.
+
+When usage reaches or exceeds the threshold, the hook sets `stop_run`. The Agent ends the run without making another LLM call and sets `exit_reason` to `"token_budget_exceeded"`.
+
+## What the budget covers
+
+The budget applies to the `token_usage` accumulated from the Agent's chat generator replies. Calls made by tools or other hooks are not counted. For example, if a tool makes its own LLM call, the tokens used by that call do not count toward the Agent's budget.
+
+Because the hook checks usage before each LLM call, the call that takes the total past the threshold has already completed. The final usage can therefore exceed `max_total_tokens` by the cost of one LLM call.
+
+## Usage
+
+### Basic setup
+
+Register the hook under `before_llm` and set the token threshold with `max_total_tokens`. The threshold below is low enough to stop the research task before the Agent completes its report:
+
+```python
+import random
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.budget import TokenBudgetHook
+from haystack.tools import tool
+
+FACTS = [
+    "Capybaras are the largest living rodents, weighing up to 65 kg. ",
+    "Capybaras are highly social and live in groups of ten to twenty. ",
+    "Capybaras are excellent swimmers and can stay underwater for five minutes. ",
+    "Capybaras are famously relaxed and often share space with birds and monkeys. ",
+]
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web."""
+    # Placeholder: would call a real search API
+    # Repeat the result to simulate a longer search response
+    return random.choice(FACTS) * 20
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5-mini"),
+    tools=[search],
+    system_prompt="You are a research assistant. Search one aspect at a time before answering.",
+    hooks={"before_llm": [TokenBudgetHook(max_total_tokens=3_000)]},
+)
+agent.warm_up()
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Research capybaras: size, social life, swimming and temperament."
+        )
+    ]
+)
+
+print(result["exit_reason"])
+# >> token_budget_exceeded
+```
+
+The Agent stops partway through its research and preserves the messages collected so far. With a higher threshold, it can complete the report and return `"text"` as its `exit_reason`.
+
+### Adding a final message
+
+When the budget stops a run, the last message may be a tool result rather than a final answer. Set `add_final_message=True` to append an assistant message explaining why the run ended. This message then becomes `last_message`:
+
+```python
+TokenBudgetHook(max_total_tokens=3_000, add_final_message=True)
+```
+
+To customize the message or handle other exit reasons such as `max_agent_steps`, use an `after_run` hook. It runs after the Agent ends, regardless of its exit reason:
+
+```python
+from haystack.components.agents.state import State
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+
+
+@hook
+def explain_stop(state: State) -> None:
+    if state.get("exit_reason") == "token_budget_exceeded":
+        state.set(
+            "messages",
+            [ChatMessage.from_assistant("I ran out of budget before finishing.")],
+        )
+```

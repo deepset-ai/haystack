@@ -307,10 +307,9 @@ To ease the review process, please follow the instructions in this paragraph whe
 - For the body, follow the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md) to describe and document your changes.
 - If you used an AI assistant and the PR was **fully AI-generated**, include a brief disclaimer in the PR description
   (see [Using AI assistants to contribute](#using-ai-assistants-to-contribute)).
-- **First-time contributors can have at most one open pull request** in this repository until it has been approved
-  by a maintainer. Additional PRs opened in the meantime are closed automatically and can be reopened once your first
-  PR is approved. This lets us give each new contributor's first
-  contribution the attention it deserves while keeping the review queue manageable.
+- **Community contributors can have only one open pull request at a time** in this repository. Please wait until your
+  open PR is merged or closed before opening another one. This lets us give each contribution the attention it
+  deserves while keeping the review queue manageable.
 
 ### Release notes
 

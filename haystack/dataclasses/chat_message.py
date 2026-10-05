@@ -16,6 +16,20 @@ from haystack.utils.dataclasses import _warn_on_inplace_mutation
 logger = logging.getLogger(__name__)
 
 
+def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
+    """
+    Parse OpenAI-style tool call arguments into a dictionary.
+
+    A dict is returned as is, a missing, null, or empty value becomes `{}`, and anything else is parsed as a
+    JSON string.
+
+    :raises json.JSONDecodeError: If the arguments are not valid JSON.
+    """
+    if isinstance(raw_arguments, dict):
+        return raw_arguments
+    return json.loads(raw_arguments) if raw_arguments else {}
+
+
 class ChatRole(str, Enum):
     """
     Enumeration representing the roles within a chat.
@@ -815,11 +829,12 @@ class ChatMessage:
                 for tc in tool_calls:
                     # Zero-argument tool calls from OpenAI-compatible servers may send an
                     # empty string, null, or omit `arguments` entirely; treat all as {}.
+                    # Some servers also send a parsed dict instead of a JSON string.
                     raw_arguments = tc["function"].get("arguments")
                     haystack_tc = ToolCall(
                         id=tc.get("id"),
                         tool_name=tc["function"]["name"],
-                        arguments=json.loads(raw_arguments) if raw_arguments else {},
+                        arguments=_parse_openai_tool_call_arguments(raw_arguments),
                     )
                     haystack_tool_calls.append(haystack_tc)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)
