@@ -849,6 +849,8 @@ class Agent:
             precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -877,7 +879,11 @@ class Agent:
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         self.warm_up()
         # warm up tools passed at runtime
-        warm_up_tools(tools=tools)
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        warm_up_tools(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -938,6 +944,9 @@ class Agent:
             with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
             precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -966,7 +975,11 @@ class Agent:
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         await self.warm_up_async()
         # warm up tools passed at runtime
-        await warm_up_tools_async(tools=tools)
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        await warm_up_tools_async(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,

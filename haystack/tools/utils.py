@@ -12,15 +12,15 @@ if TYPE_CHECKING:
     from haystack.tools import ToolsType
 
 
-def _as_tool_sequence(tools: "ToolsType | list[str] | None") -> Sequence[Tool | Toolset]:
+def _as_tool_sequence(tools: "ToolsType | None") -> Sequence[Tool | Toolset]:
     if tools is None:
         return []
     if isinstance(tools, Toolset):
         return [tools]
-    return [item for item in tools if not isinstance(item, str)]
+    return tools
 
 
-def warm_up_tools(tools: "ToolsType | list[str] | None" = None) -> None:
+def warm_up_tools(tools: "ToolsType | None" = None) -> None:
     """
     Warm up tools from various formats (Tools, Toolsets, or mixed lists).
 
@@ -28,8 +28,7 @@ def warm_up_tools(tools: "ToolsType | list[str] | None" = None) -> None:
     it calls warm_up() on each tool that implements it. Toolset subclasses can implement warm_up()
     to customize initialization behavior (e.g., setting up shared resources).
 
-    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset,
-        a list of tool names, or None. Lists of names are ignored.
+    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
     for item in _as_tool_sequence(tools):
         if hasattr(item, "warm_up"):
@@ -38,15 +37,14 @@ def warm_up_tools(tools: "ToolsType | list[str] | None" = None) -> None:
             warm_up_tools(tools=item.tools)
 
 
-async def warm_up_tools_async(tools: "ToolsType | list[str] | None" = None) -> None:
+async def warm_up_tools_async(tools: "ToolsType | None" = None) -> None:
     """
     Warm up tools asynchronously from various formats (Tools, Toolsets, or mixed lists).
 
     Call warm_up_async() if implemented, otherwise warm_up() if available.
     If a Toolset implements neither method, this function warms up its tools.
 
-    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset,
-        a list of tool names, or None. Lists of names are ignored.
+    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
     for item in _as_tool_sequence(tools):
         if hasattr(item, "warm_up_async"):
@@ -57,15 +55,14 @@ async def warm_up_tools_async(tools: "ToolsType | list[str] | None" = None) -> N
             await warm_up_tools_async(tools=item.tools)
 
 
-def close_tools(tools: "ToolsType | list[str] | None" = None) -> None:
+def close_tools(tools: "ToolsType | None" = None) -> None:
     """
     Close tools from various formats (Tools, Toolsets, or mixed lists).
 
     For Toolset objects, this delegates to close() if implemented; otherwise,
     it calls close() on each tool that implements it.
 
-    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset,
-        a list of tool names, or None. Lists of names are ignored.
+    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
     for item in _as_tool_sequence(tools):
         if hasattr(item, "close"):
@@ -74,15 +71,14 @@ def close_tools(tools: "ToolsType | list[str] | None" = None) -> None:
             close_tools(tools=item.tools)
 
 
-async def close_tools_async(tools: "ToolsType | list[str] | None" = None) -> None:
+async def close_tools_async(tools: "ToolsType | None" = None) -> None:
     """
     Close tools asynchronously from various formats (Tools, Toolsets, or mixed lists).
 
     Call close_async() if implemented, otherwise close() if available.
     If a Toolset implements neither method, this function closes its tools.
 
-    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset,
-        a list of tool names, or None. Lists of names are ignored.
+    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
     for item in _as_tool_sequence(tools):
         if hasattr(item, "close_async"):

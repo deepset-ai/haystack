@@ -177,9 +177,8 @@ class TestFlattenToolsOrToolsets:
 
 
 class TestWarmUpTools:
-    def test_ignores_names_and_tools_without_warm_up(self, add_tool):
+    def test_ignores_none_and_tools_without_warm_up(self, add_tool):
         warm_up_tools(None)
-        warm_up_tools(["add"])
         warm_up_tools([add_tool])
 
     def test_warms_up_tools_in_mixed_list(self, add_tool, multiply_tool, subtract_tool, monkeypatch):
@@ -203,9 +202,8 @@ class TestWarmUpTools:
 
 
 class TestWarmUpToolsAsync:
-    async def test_ignores_names_and_tools_without_warm_up(self, add_tool):
+    async def test_ignores_none_and_tools_without_warm_up(self, add_tool):
         await warm_up_tools_async(None)
-        await warm_up_tools_async(["add"])
         await warm_up_tools_async([add_tool])
 
     async def test_prefers_async_warm_up_for_children(self):
@@ -230,9 +228,8 @@ class TestWarmUpToolsAsync:
 
 
 class TestCloseTools:
-    def test_ignores_names_and_tools_without_close(self, add_tool):
+    def test_ignores_none_and_tools_without_close(self, add_tool):
         close_tools(None)
-        close_tools(["add"])
         close_tools([add_tool])
 
     def test_closes_children_of_plain_toolset(self):
@@ -252,9 +249,8 @@ class TestCloseTools:
 
 
 class TestCloseToolsAsync:
-    async def test_ignores_names_and_tools_without_close(self, add_tool):
+    async def test_ignores_none_and_tools_without_close(self, add_tool):
         await close_tools_async(None)
-        await close_tools_async(["add"])
         await close_tools_async([add_tool])
 
     async def test_prefers_async_close_for_children(self):
