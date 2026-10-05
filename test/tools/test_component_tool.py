@@ -4,13 +4,14 @@
 
 import json
 import os
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Annotated, Any
 from unittest.mock import patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
+from pydantic import Field
 
 from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
@@ -130,6 +131,56 @@ class PersonProcessor:
         :return: A dictionary with the person's information.
         """
         return {"info": f"{person.name} lives at {person.address.street}, {person.address.city}."}
+
+
+@dataclass
+class PostponedPerson:
+    """A dataclass whose field annotations are stored as strings."""
+
+    name: "Annotated[str, Field(min_length=1)]"
+    addresses: "list[Address]"
+
+
+@component
+class PostponedPersonProcessor:
+    """Process a dataclass with postponed annotations through sync and async tools."""
+
+    @component.output_types(info=str)
+    def run(self, person: PostponedPerson) -> dict[str, str]:
+        """
+        :param person: The person and their addresses.
+        :returns: A summary of the person's addresses.
+        """
+        return {"info": f"{person.name}: {', '.join(address.city for address in person.addresses)}"}
+
+    @component.output_types(info=str)
+    async def run_async(self, person: PostponedPerson) -> dict[str, str]:
+        """
+        :param person: The person and their addresses.
+        :returns: A summary of the person's addresses.
+        """
+        return self.run(person)
+
+
+@dataclass
+class RecursivePerson:
+    """A recursive dataclass with a forward reference to itself."""
+
+    name: str
+    children: "list[RecursivePerson]" = field(default_factory=list)
+
+
+@component
+class RecursivePersonProcessor:
+    """Process a recursive dataclass."""
+
+    @component.output_types(names=list[str])
+    def run(self, person: RecursivePerson) -> dict[str, list[str]]:
+        """
+        :param person: The person and their children.
+        :returns: The children's names.
+        """
+        return {"names": [child.name for child in person.children]}
 
 
 @component
@@ -286,6 +337,28 @@ class TestComponentTool:
         assert isinstance(result, dict)
         assert "info" in result
         assert result["info"] == "Diana lives at 123 Elm Street, Metropolis."
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_postponed_dataclass_fields_keep_nested_schema_and_constraints(self, use_async: bool) -> None:
+        tool = ComponentTool(component=PostponedPersonProcessor())
+        definitions = tool.parameters["$defs"]
+        person_properties = definitions["PostponedPerson"]["properties"]
+        assert person_properties["name"]["minLength"] == 1
+        assert person_properties["addresses"]["items"] == {"$ref": "#/$defs/Address"}
+        assert definitions["Address"]["properties"]["city"]["description"] == "Field 'city' of 'Address'."
+
+        restored = ComponentTool.from_dict(tool.to_dict())
+        assert restored.parameters == tool.parameters
+        person = {"name": "Diana", "addresses": [{"street": "123 Elm Street", "city": "Metropolis"}]}
+        result = await restored.invoke_async(person=person) if use_async else restored.invoke(person=person)
+        assert result == {"info": "Diana: Metropolis"}
+
+    def test_recursive_dataclass_schema_and_invocation(self) -> None:
+        tool = ComponentTool(component=RecursivePersonProcessor())
+        person_schema = tool.parameters["$defs"]["RecursivePerson"]
+        assert person_schema["properties"]["children"]["items"] == {"$ref": "#/$defs/RecursivePerson"}
+        assert tool.invoke(person={"name": "Diana", "children": [{"name": "Alice"}]}) == {"names": ["Alice"]}
 
     def test_from_component_with_list_of_documents(self):
         tool = ComponentTool(
