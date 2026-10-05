@@ -183,6 +183,8 @@ class OpenAIResponsesChatGenerator:
                 - `generate_summary`: Whether to generate a summary of the reasoning.
                 - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+                If a provider returns the raw reasoning as `reasoning_text` content instead,
+                it is mapped to `ReasoningContent.reasoning_text` when no summary is returned.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
             - `include`: Specify additional output data to include in the model response. Supported values are:
                 - web_search_call.action.sources: Include the sources of the web search tool call.
@@ -662,20 +664,13 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
                     logprobs.append(_serialize_object(content.logprobs))
 
         if output.type == "reasoning":
-            # openai doesn't return the reasoning tokens, but we can view summary if its enabled
-            # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
-            summaries = output.summary
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
-            if output.content:
-                logger.warning(
-                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
-                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
-                    "reflected in ReasoningContent.reasoning_text.",
-                    _id=output.id,
-                )
-            reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
+            # OpenAI returns reasoning summaries, other providers may return raw reasoning as `reasoning_text` content
+            reasoning_text = "\n".join(summary.text for summary in output.summary)
+            if not reasoning_text:
+                reasoning_text = "\n".join(part.text for part in output.content or [] if part.type == "reasoning_text")
             reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
 
         elif output.type == "function_call":
@@ -761,15 +756,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
-            if chunk.item.content:
-                logger.warning(
-                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
-                    "This field is currently undocumented and was never observed in practice. "
-                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
-                    "reflected in ReasoningContent.reasoning_text. Please report this at "
-                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
-                    _id=chunk.item.id,
-                )
+            # The completed item repeats the reasoning text already streamed as deltas, so we only keep its fields
             reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
             return StreamingChunk(
                 content="",
@@ -804,7 +791,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
-    elif chunk.type == "response.reasoning_summary_text.delta":
+    elif chunk.type == "response.reasoning_summary_text.delta" or chunk.type == "response.reasoning_text.delta":
         # We remove the delta from the extra because it is already in the reasoning_text
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
@@ -1042,7 +1029,8 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
             filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
             reasoning_item = {"summary": [], **filtered_extra}
-            if reasoning.reasoning_text:
+            # Raw reasoning text is already sent back in `content`, repeating it as a summary would duplicate it
+            if reasoning.reasoning_text and not filtered_extra.get("content"):
                 reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
