@@ -14,7 +14,7 @@ Bases: <code>OpenAIChatGenerator</code>
 
 Generates text using OpenAI's models on Azure.
 
-It works with the gpt-4 - type models and supports streaming responses
+It works with OpenAI's GPT models deployed on Azure and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -40,7 +40,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+    azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
 response = client.run(messages)
 print(response)
 ```
@@ -51,7 +51,7 @@ print(response)
     "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
      enabling computers to understand, interpret, and generate human language in a way that is useful.")],
      _name=None,
-     _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
 }
 ```
@@ -198,7 +198,7 @@ Initialize the Azure OpenAI Chat Generator component.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous Azure OpenAI client.
+Initialize the synchronous Azure OpenAI client.
 
 #### warm_up_async
 
@@ -206,7 +206,7 @@ Warm up the tools and initialize the synchronous Azure OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+Initialize the asynchronous Azure OpenAI client on the serving event loop.
 
 #### close
 
@@ -347,7 +347,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
-    tools: ToolsType | None = None,
+    tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None
 ) -> None
@@ -403,7 +403,7 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   - `generate_summary`: Whether to generate a summary of the reasoning.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+- **tools** (<code>ToolsType | list\[dict\] | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - **tools_strict** (<code>bool</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
@@ -607,10 +607,10 @@ without tool usage. It processes messages and returns a single response from the
 
 ```python
 from haystack.components.generators.chat import LLM
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 llm = LLM(
-    chat_generator=OpenAIChatGenerator(),
+    chat_generator=OpenAIResponsesChatGenerator(),
     system_prompt="You are a helpful translation assistant.",
     user_prompt="Summarize the following document: {{ document }}",
     required_variables=["document"],
@@ -938,7 +938,7 @@ replacement.
 
 Completes chats using OpenAI's large language models (LLMs).
 
-It works with the gpt-4 and gpt-5 series models and supports streaming responses
+It works with OpenAI's GPT models through the Chat Completions API and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -1087,7 +1087,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1095,7 +1095,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 
@@ -1221,7 +1221,7 @@ but can be used with `await` in async code.
 
 Completes chats using OpenAI's Responses API.
 
-It works with the gpt-4 and o-series models and supports streaming responses
+It works with OpenAI's GPT and o-series models and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -1379,7 +1379,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1387,7 +1387,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 

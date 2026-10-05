@@ -47,6 +47,7 @@ def test_pipeline_running(telemetry):
     telemetry.send_event.assert_not_called()
 
     # Set the last telemetry sent time to pretend one minute has passed
+    assert pipe._last_telemetry_sent is not None
     pipe._last_telemetry_sent = pipe._last_telemetry_sent - datetime.timedelta(minutes=1)
 
     telemetry.send_event.reset_mock()
@@ -150,4 +151,5 @@ def test_send_telemetry_preserves_function_metadata():
     assert "tutorial_id" in tutorial_running.__annotations__
 
     # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
+    assert hasattr(pipeline_running, "__wrapped__")
     assert pipeline_running.__wrapped__.__name__ == "pipeline_running"

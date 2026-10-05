@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``DocumentSplitter`` with ``split_by="word"``, ``"period"``,
+    ``"page"``, ``"passage"``, ``"line"`` or ``"sentence"`` generating
+    redundant trailing chunks containing only overlap. Segments that add no
+    new text beyond the already covered units are now skipped, mirroring the
+    ``split_by="token"`` fix.

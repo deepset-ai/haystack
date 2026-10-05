@@ -162,7 +162,7 @@ jobs:
       - name: Coverage comment
         id: coverage_comment
         if: matrix.os == 'ubuntu-latest'
-        uses: py-cov-action/python-coverage-comment-action@a05be3d2e8a6272d3ef5fb2840ab20368bb2eb71 # v4.3
+        uses: py-cov-action/python-coverage-comment-action@e5fb2218463c3377f3504b0c5b5646ed53da7a2f # v4.5
         with:
           GITHUB_TOKEN: ${{ github.token }}
           MINIMUM_GREEN: 90
@@ -194,7 +194,6 @@ jobs:
             **/*.py
             pyproject.toml
           files_ignore: |
-            test/**
             .github/**
             scripts/**
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0

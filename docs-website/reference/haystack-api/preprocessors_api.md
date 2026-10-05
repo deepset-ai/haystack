@@ -443,6 +443,7 @@ Initialize DocumentSplitter.
   from non-textual documents.
 - **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
   `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+  Special-token strings in document content are encoded as ordinary text.
 
 #### warm_up
 
@@ -472,7 +473,8 @@ and an overlap of `split_overlap`.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -629,7 +631,8 @@ Split documents based on embedding similarity.
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -659,7 +662,8 @@ This is the asynchronous version of the `run` method with the same parameters an
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -883,7 +887,8 @@ Run the markdown header splitter with optional secondary splitting.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting
+    `page_break_character` occurrences in the original document.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
@@ -956,6 +961,7 @@ Initializes a RecursiveDocumentSplitter.
   `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
   If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
   text will be split into sentences using a custom sentence tokenizer based on NLTK.
@@ -963,6 +969,8 @@ Initializes a RecursiveDocumentSplitter.
   If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
 - **sentence_splitter_params** (<code>dict\[str, Any\] | None</code>) – Optional parameters to pass to the sentence tokenizer.
   See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
+  The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
+  changes the rules the tokenizer uses to decide where a sentence ends.
 
 **Raises:**
 
@@ -1004,7 +1012,8 @@ Split a list of documents into documents with smaller chunks of text.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
-  to the input documents.
+  to the input documents. Each chunk carries a metadata field `page_number` with the page the chunk
+  starts on, counting form feed ("") characters in the original document.
 
 ## text_cleaner
 
@@ -1075,3 +1084,7 @@ Cleans up the given list of strings.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following key:
 - `texts`: the cleaned list of strings.
+
+**Raises:**
+
+- <code>TypeError</code> – If `texts` is not a list or any element is not a string.

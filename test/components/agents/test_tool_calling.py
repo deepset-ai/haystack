@@ -6,6 +6,7 @@ import asyncio
 import datetime
 import json
 import time
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
 
@@ -111,7 +112,7 @@ def faulty_tool():
     )
 
 
-def add_function(num1: int, num2: int):
+def add_function(num1: int, num2: int) -> int:
     return num1 + num2
 
 
@@ -396,6 +397,7 @@ class TestRunTool:
         tool_messages, _ = _run_tool(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
         assert not tool_call_result.error
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
@@ -407,6 +409,7 @@ class TestRunTool:
 
         tool_messages, _ = await _run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
         tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
         assert not tool_call_result.error
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
@@ -750,7 +753,7 @@ class TestRunToolErrorHandling:
 
     def test_run_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
+            def set(self, key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
@@ -765,7 +768,7 @@ class TestRunToolErrorHandling:
     @pytest.mark.asyncio
     async def test_run_async_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
+            def set(self, key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
@@ -957,7 +960,7 @@ class TestUtilities:
         ]
 
 
-def _reader_tool(state_key: str = "documents", seen: list | None = None):
+def _reader_tool(state_key: str = "documents", seen: list[Any] | None = None) -> Tool:
     """A tool that reads `state_key` from State into its `value` param (no writes).
 
     If `seen` is provided, the value the tool received is appended to it, so behavioral tests can assert what the
@@ -978,7 +981,7 @@ def _reader_tool(state_key: str = "documents", seen: list | None = None):
     )
 
 
-def _writer_tool(state_key: str = "documents", value: str = "written"):
+def _writer_tool(state_key: str = "documents", value: str = "written") -> Tool:
     """A tool that writes `value` to `state_key` in State (no reads)."""
 
     def writer_fn():
@@ -1088,7 +1091,7 @@ class TestStateDependencyScheduling:
 
     def test_reader_requested_before_writer_still_sees_write(self):
         """A reader listed before a writer of the same key must still run after the writer (forced read-after-write)."""
-        seen = []
+        seen: list[Any] = []
         reader_tool = _reader_tool("value", seen=seen)
         writer_tool = _writer_tool("value")
         state = State(schema={"value": {"type": str}})
@@ -1116,7 +1119,9 @@ class TestRunToolAsync:
             )
 
         to_thread_mock.assert_not_called()
-        assert json.loads(tool_messages[0].tool_call_results[0].result)["weather"] == "mostly sunny"
+        result = tool_messages[0].tool_call_results[0].result
+        assert isinstance(result, str)
+        assert json.loads(result)["weather"] == "mostly sunny"
 
     @pytest.mark.asyncio
     async def test_sync_tool_is_dispatched_to_thread(self, weather_tool):

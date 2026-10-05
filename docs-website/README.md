@@ -17,7 +17,7 @@ This directory contains the Docusaurus-powered documentation website for [Haysta
 - [CI/CD and Automation](#cicd-and-automation)
   - [Versioning](#versioning)
 - [Deployment](#deployment)
-- [llms.txt for AI tools](#llms.txt-for-ai-tools)
+- [llms.txt for AI tools](#llmstxt-for-ai-tools)
 
 ## About
 

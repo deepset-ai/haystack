@@ -10,7 +10,7 @@ with LazyImport(message="Run 'pip install azure-identity") as azure_import:
 
 def default_azure_ad_token_provider() -> str:
     """
-    Get a Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
+    Get an Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
     """
     azure_import.check()
     return get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")()

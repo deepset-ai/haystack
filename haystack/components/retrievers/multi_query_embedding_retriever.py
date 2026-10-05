@@ -80,7 +80,8 @@ class MultiQueryEmbeddingRetriever:
 
         :param retriever: The embedding-based retriever to use for document retrieval.
         :param query_embedder: The query embedder to convert text queries to embeddings.
-        :param max_workers: Maximum number of worker threads for parallel processing.
+        :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
+            `run_async`.
         """
         self.retriever = retriever
         self.query_embedder = query_embedder
@@ -170,7 +171,14 @@ class MultiQueryEmbeddingRetriever:
 
         await self.warm_up_async()
 
-        tasks = [asyncio.create_task(self._run_one_async(query, retriever_kwargs)) for query in queries]
+        # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
+        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+
+        async def _bounded_run_one(query: str) -> list[Document] | None:
+            async with semaphore:
+                return await self._run_one_async(query, retriever_kwargs)
+
+        tasks = [asyncio.create_task(_bounded_run_one(query)) for query in queries]
         results = await _gather_tasks_with_cancel(tasks)
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)

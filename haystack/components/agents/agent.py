@@ -54,10 +54,13 @@ from haystack.tools import (
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
+    close_tools,
+    close_tools_async,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
     warm_up_tools,
+    warm_up_tools_async,
 )
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
@@ -241,7 +244,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.generators.utils import print_streaming_chunk
     from haystack.dataclasses import ChatMessage
     from haystack.tools import tool
@@ -272,7 +275,7 @@ class Agent:
             "You are a helpful assistant. Use the 'search' tool to find information "
             "about a user's question and the 'calculator' tool to perform math."
         ),
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[search, calculator],
         streaming_callback=print_streaming_chunk,
     )
@@ -293,7 +296,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.tools import tool
     from typing import Annotated
 
@@ -308,7 +311,7 @@ class Agent:
         return f"[Translated '{text}' to {target_language}]"
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[translate],
         system_prompt="You are a helpful translation assistant.",
         user_prompt=\"\"\"{% message role="user"%}
@@ -347,7 +350,7 @@ class Agent:
     ```python
     from haystack.components.agents import Agent
     from haystack.components.agents.state import State
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.hooks import hook
     from haystack.tools import tool
@@ -369,7 +372,7 @@ class Agent:
 
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[save_result],
         hooks={"on_exit": [require_save]},
     )
@@ -458,9 +461,12 @@ class Agent:
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
-        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
-        # would iterate and prematurely warm it up at init.
-        if tools is not None and not self._chat_generator_supports_tools:
+        # An empty list carries no tools, so it must not trip this check: `tools` is normalized to `[]` below, and
+        # both `clone()` and `to_dict()` feed that normalized value straight back into `__init__`. This mirrors the
+        # equivalent check in `run()`. Only a list is measured; a Toolset is never tested for truthiness here b/c
+        # that calls __len__, which for SearchableToolset would iterate and prematurely warm it up at init.
+        tools_provided = tools is not None and (not isinstance(tools, list) or len(tools) > 0)
+        if tools_provided and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
@@ -598,7 +604,7 @@ class Agent:
 
     async def warm_up_async(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
-        warm_up_tools(tools=self.tools)
+        await warm_up_tools_async(tools=self.tools)
         await warm_up_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
@@ -606,13 +612,15 @@ class Agent:
             self.chat_generator.warm_up()
 
     def close(self) -> None:
-        """Release the hooks' and the underlying chat generator's resources."""
+        """Release tools, hooks, and chat generator resources."""
+        close_tools(tools=self.tools)
         close_hooks(self.hooks)
         if hasattr(self.chat_generator, "close"):
             self.chat_generator.close()
 
     async def close_async(self) -> None:
-        """Release the hooks' and the underlying chat generator's async resources."""
+        """Release async tools, hooks, and chat generator resources."""
+        await close_tools_async(tools=self.tools)
         await close_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "close_async"):
             await self.chat_generator.close_async()
@@ -814,9 +822,6 @@ class Agent:
 
         if isinstance(tools, (Toolset, list)):
             selected = cast(ToolsType, tools)  # mypy can't narrow the Union type from the isinstance checks
-            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
-            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools=selected)
             return _spawn_tools(tools=selected)
 
         raise TypeError(
@@ -844,6 +849,8 @@ class Agent:
             precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -863,13 +870,20 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition), or a custom reason a hook supplied through the `stop_run` state key.
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         self.warm_up()
+        # warm up tools passed at runtime
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        warm_up_tools(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -930,6 +944,9 @@ class Agent:
             with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
             precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -949,13 +966,20 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
-              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
-              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition), or a custom reason a hook supplied through the `stop_run` state key.
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         await self.warm_up_async()
+        # warm up tools passed at runtime
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        await warm_up_tools_async(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,

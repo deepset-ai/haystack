@@ -44,7 +44,7 @@ messages = [
     ChatMessage.from_user("Explain retrieval-augmented generation."),
 ]
 
-counter = GoogleGenAITokenCounter(model="gemini-2.5-flash")
+counter = GoogleGenAITokenCounter(model="gemini-3.8-flash")
 token_count = counter.count(messages)
 print(token_count)
 ```
@@ -53,7 +53,7 @@ By default, the counter uses the Gemini Developer API and reads the API key from
 
 ```python
 counter = GoogleGenAITokenCounter(
-    model="gemini-2.5-flash",
+    model="gemini-3.8-flash",
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
@@ -92,7 +92,7 @@ from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 compaction_hook = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=1_000_000,
-    token_counter=GoogleGenAITokenCounter(model="gemini-2.5-flash", api="vertex"),
+    token_counter=GoogleGenAITokenCounter(model="gemini-3.8-flash", api="vertex"),
 )
 ```
 

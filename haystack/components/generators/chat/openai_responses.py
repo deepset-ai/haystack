@@ -29,6 +29,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.chat_message import _parse_openai_tool_call_arguments
 from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
@@ -36,7 +37,6 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -69,7 +69,7 @@ class OpenAIResponsesChatGenerator:
     """
     Completes chats using OpenAI's Responses API.
 
-    It works with the gpt-4 and o-series models and supports streaming responses
+    It works with OpenAI's GPT and o-series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -231,7 +231,6 @@ class OpenAIResponsesChatGenerator:
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
-        self._tools_warmed_up = False
 
     def _client_kwargs(self) -> dict[str, Any]:
         timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -247,20 +246,10 @@ class OpenAIResponsesChatGenerator:
             "max_retries": max_retries,
         }
 
-    def _warm_up_tools(self) -> None:
-        if not self._tools_warmed_up:
-            is_openai_tool = isinstance(self.tools, list) and bool(self.tools) and isinstance(self.tools[0], dict)
-            # We only warm up Haystack tools, not OpenAI/MCP tools
-            # The type ignore is needed because mypy cannot infer the type correctly
-            if not is_openai_tool:
-                warm_up_tools(self.tools)  # type: ignore[arg-type]
-            self._tools_warmed_up = True
-
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous OpenAI client.
+        Initialize the synchronous OpenAI client.
         """
-        self._warm_up_tools()
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -272,9 +261,8 @@ class OpenAIResponsesChatGenerator:
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        Initialize the asynchronous OpenAI client on the serving event loop.
         """
-        self._warm_up_tools()
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -365,12 +353,15 @@ class OpenAIResponsesChatGenerator:
         """
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
-        tools = data["init_parameters"].get("tools")
+        tools = data.get("init_parameters", {}).get("tools")
         if tools and (
             isinstance(tools, dict)
-            and tools.get("type") == "haystack.tools.toolset.Toolset"
+            and "type" in tools
+            and "data" in tools
             or isinstance(tools, list)
-            and tools[0].get("type") == "haystack.tools.tool.Tool"
+            and isinstance(tools[0], dict)
+            and "type" in tools[0]
+            and "data" in tools[0]
         ):
             deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
 
@@ -689,7 +680,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
         elif output.type == "function_call":
             try:
-                arguments = json.loads(output.arguments)
+                arguments = _parse_openai_tool_call_arguments(output.arguments)
                 tool_calls.append(
                     ToolCall(
                         id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id}
