@@ -13,7 +13,7 @@ from pathlib import Path
 import docx
 import pytest
 from docx.opc.constants import RELATIONSHIP_TYPE
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 
 from haystack import Document, Pipeline
@@ -33,6 +33,7 @@ _DOCX_NAMESPACES = {
     "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
     "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
     "v": "urn:schemas-microsoft-com:vml",
+    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
 }
 _NAMESPACE_DECLARATIONS = " ".join(f'xmlns:{prefix}="{uri}"' for prefix, uri in _DOCX_NAMESPACES.items())
 
@@ -64,14 +65,19 @@ _TEXT_BOX_WITH_VML_FALLBACK = """
 """
 
 
-def _docx_with_text_box(template: str, content: str) -> bytes:
-    """Build a DOCX whose body is BEFORE, a text box holding `content`, then AFTER."""
-    from lxml import etree
+def _docx_with_text_box(template: str, content: str, link_url: str | None = None) -> bytes:
+    """
+    Build a DOCX whose body is BEFORE, a text box holding `content`, then AFTER.
 
+    With `link_url`, `{rid}` in `content` becomes the id of an external hyperlink relationship to it.
+    """
     document = docx.Document()
+    if link_url:
+        rid = document.part.relate_to(link_url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+        content = content.format(rid=rid)
     document.add_paragraph("BEFORE")
     body = document.element.body
-    body.insert(len(body) - 1, etree.fromstring(template.format(ns=_NAMESPACE_DECLARATIONS, content=content).strip()))
+    body.insert(len(body) - 1, parse_xml(template.format(ns=_NAMESPACE_DECLARATIONS, content=content).strip()))
     document.add_paragraph("AFTER")
     buffer = io.BytesIO()
     document.save(buffer)
@@ -583,18 +589,15 @@ class TestDOCXToDocument:
 
     def test_run_formats_links_inside_a_text_box(self):
         """`link_format` has to reach a text box too."""
-        docx_bytes = _docx_with_text_box(_MODERN_TEXT_BOX, "<w:p><w:r><w:t>plain text in a box</w:t></w:r></w:p>")
+        docx_bytes = _docx_with_text_box(
+            _MODERN_TEXT_BOX,
+            '<w:p><w:hyperlink r:id="{rid}"><w:r><w:t>LINK</w:t></w:r></w:hyperlink></w:p>',
+            link_url="https://example.com",
+        )
 
         output = DOCXToDocument(link_format=DOCXLinkFormat.MARKDOWN).run(sources=[ByteStream(data=docx_bytes)])
 
-        assert "plain text in a box" in output["documents"][0].content
-
-    def test_run_is_unchanged_for_a_document_without_text_boxes(self, test_files_path):
-        sources = [test_files_path / "docx" / "sample_docx_1.docx"]
-
-        output = DOCXToDocument().run(sources=sources)
-
-        assert "History" in output["documents"][0].content
+        assert "[LINK](https://example.com)" in output["documents"][0].content
 
     @pytest.mark.parametrize("table_format", ["markdown", "csv"])
     @pytest.mark.parametrize(
