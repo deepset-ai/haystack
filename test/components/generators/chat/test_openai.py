@@ -37,6 +37,7 @@ from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_to_chat_message,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -2030,6 +2031,34 @@ class TestChatCompletionChunkConversion:
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
+
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_chat_completion_with_zero_argument_tool_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        completion = ChatCompletion(
+            id="1",
+            model="gpt-5-mini",
+            object="chat.completion",
+            created=1234567890,
+            choices=[
+                Choice(
+                    finish_reason="tool_calls",
+                    index=0,
+                    message=ChatCompletionMessage(
+                        role="assistant",
+                        tool_calls=[
+                            ChatCompletionMessageFunctionToolCall(
+                                id="1",
+                                type="function",
+                                function=Function.model_construct(name="get_time", arguments=arguments),
+                            )
+                        ],
+                    ),
+                )
+            ],
+        )
+        message = _convert_chat_completion_to_chat_message(completion, completion.choices[0])
+        assert message.tool_calls == [ToolCall(id="1", tool_name="get_time", arguments={})]
 
 
 class TestMakeSchemaStrict:
