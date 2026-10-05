@@ -227,18 +227,6 @@ def _parallel_tool_calling_generator() -> MockChatGenerator:
     )
 
 
-def _failing_tool_calling_generator() -> MockChatGenerator:
-    """Requests one `weather_tool` call on the first turn, then returns a plain reply so the agent loop exits."""
-    return MockChatGenerator(
-        [
-            ChatMessage.from_assistant(
-                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-            ),
-            "done",
-        ]
-    )
-
-
 class TestAgentInit:
     def test_state_schema_resolution(self, weather_tool):
         agent = Agent(
@@ -1477,23 +1465,27 @@ class TestAgentTracing:
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
 
     def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
-        agent = Agent(chat_generator=_failing_tool_calling_generator(), tools=[failing_tool])
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
 
-        agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
 
-        tool_span = next(s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool")
-        assert tool_span.tags["haystack.tool.error"] is True
-        assert "weather service unavailable" in tool_span.tags["haystack.agent.step.tool.output"]["error"]
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
 
     @pytest.mark.asyncio
     async def test_tracing_span_run_async_with_failing_tool_call(self, spying_tracer, failing_tool):
-        agent = Agent(chat_generator=_failing_tool_calling_generator(), tools=[failing_tool])
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
 
-        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin?")])
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
 
-        tool_span = next(s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool")
-        assert tool_span.tags["haystack.tool.error"] is True
-        assert "weather service unavailable" in tool_span.tags["haystack.agent.step.tool.output"]["error"]
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
 
     def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""
