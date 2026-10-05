@@ -22,8 +22,8 @@ Response handling:
 - If the LLM returns a **JSON object with multiple keys**, the value of `document_content` (if present) is
   written to content and all other keys are merged into the document's metadata.
 
-The ChatGenerator can be configured to return JSON (e.g. `response_format={"type": "json_object"}`
-in `generation_kwargs`).
+The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
+`{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` as shown in the usage example below.
 
 Documents that fail extraction are returned in `failed_documents` with `content_extraction_error` in metadata.
 
@@ -31,7 +31,7 @@ Documents that fail extraction are returned in `failed_documents` with `content_
 
 ```python
 from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
 
 prompt = """
@@ -43,12 +43,13 @@ Extract metadata about the image like source of the image, date of creation, etc
 Return this metadata as additional key-value pairs in the same JSON object.
 """
 
-chat_generator = OpenAIChatGenerator(
+chat_generator = OpenAIResponsesChatGenerator(
         generation_kwargs={
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
+                "text": {
+                    "format": {
+                        "type": "json_schema",
                         "name": "entity_extraction",
+                        "strict": False,
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -100,7 +101,8 @@ Initialize the LLMDocumentContentExtractor component.
 **Parameters:**
 
 - **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator that supports vision input. Optionally configured for JSON
-  (e.g. `response_format={"type": "json_object"}` in `generation_kwargs`).
+  (e.g. `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` when using the
+  OpenAIResponsesChatGenerator).
 - **prompt** (<code>str</code>) – Prompt for extraction. Must not contain Jinja variables.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
@@ -232,7 +234,7 @@ extract metadata by using the `metadata_extraction_response` and `metadata_extra
 ```python
 from haystack import Document
 from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 NER_PROMPT = '''
 -Goal-
@@ -278,15 +280,13 @@ docs = [
     Document(content="Hugging Face is a company that was founded in New York, USA and is known for its Transformers library")
 ]
 
-chat_generator = OpenAIChatGenerator(
+chat_generator = OpenAIResponsesChatGenerator(
     generation_kwargs={
-        "max_completion_tokens": 500,
-        "temperature": 0.0,
-        "seed": 0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
+        "text": {
+            "format": {
+                "type": "json_schema",
                 "name": "entity_extraction",
+                "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -357,8 +357,9 @@ Initializes the LLMMetadataExtractor.
   which points to a single document in the list of documents. For example, to access the content of the
   document, use `{{ document.content }}` in the prompt.
 - **chat_generator** (<code>ChatGenerator</code>) – a ChatGenerator instance which represents the LLM. In order for the component to work,
-  the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
-  should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
+  the LLM should be configured to return a JSON object. For example, when using the
+  OpenAIResponsesChatGenerator, you should pass `{"text": {"format": {"type": "json_schema", ...}}}` in the
+  `generation_kwargs`.
 - **expected_keys** (<code>list\[str\] | None</code>) – The keys expected in the JSON output from the LLM.
 - **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
   metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:
