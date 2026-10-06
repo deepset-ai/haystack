@@ -11,6 +11,8 @@ upgrade:
     To keep sending images by URL, download them and build the message yourself, for example
     ``ChatMessage.from_user(content_parts=["Describe this image", ImageContent.from_url(url)])``.
     Send files inline as base64 ``file_data`` instead of referencing them by ``file_id``.
+    Extra keys on content parts, such as ``cache_control``, are no longer passed through, so prompt caching through
+    OpenRouter or LiteLLM stops for these messages.
 fixes:
   - |
     ``ChatMessage.from_openai_dict_format`` now converts messages whose ``content`` is a list of content parts.
