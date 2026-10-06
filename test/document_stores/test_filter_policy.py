@@ -232,6 +232,30 @@ def test_merge_with_custom_logical_operator(logical_operator: Literal["AND", "OR
 
 
 @pytest.mark.parametrize("operator", ["OR", "NOT"])
+def test_mutating_merged_non_and_filters_does_not_change_input_filters(operator: Literal["OR", "NOT"]) -> None:
+    init_filters = {"operator": operator, "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
+    runtime_filters = {
+        "operator": operator,
+        "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
+    }
+
+    merged = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert merged is not None
+    for logical_filter in merged["conditions"]:
+        logical_filter["operator"] = "AND"
+        logical_filter["conditions"].clear()
+
+    assert init_filters == {
+        "operator": operator,
+        "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}],
+    }
+    assert runtime_filters == {
+        "operator": operator,
+        "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
+    }
+
+
+@pytest.mark.parametrize("operator", ["OR", "NOT"])
 def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersection(
     operator: Literal["OR", "NOT"],
 ) -> None:

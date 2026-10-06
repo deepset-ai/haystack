@@ -64,12 +64,11 @@ def combine_two_logical_filters(
     init_logical_filter: dict[str, Any], runtime_logical_filter: dict[str, Any]
 ) -> dict[str, Any]:
     """
-    Combine two logical filters, they must have the same operator.
+    Combine two logical filters.
 
-    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are both `"AND"`, a single
-    `"AND"` holding the conditions of both is returned. For any other shared operator, both filters are nested
-    under an `"AND"` so that each one narrows the result, the same as when merging two `"AND"` filters.
-    Otherwise, the `init_logical_filter` is ignored and `runtime_logical_filter` is returned.
+    If both operators are `"AND"`, a single `"AND"` holding the conditions of both is returned. If both use the
+    same other operator, both filters are nested under an `"AND"`. Otherwise, `init_logical_filter` is ignored and
+    `runtime_logical_filter` is returned.
 
         __Example__:
 
@@ -123,7 +122,13 @@ def combine_two_logical_filters(
                 "operator": "AND",
                 "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
             }
-        return {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
+        return {
+            "operator": "AND",
+            "conditions": [
+                {**init_logical_filter, "conditions": list(init_logical_filter["conditions"])},
+                {**runtime_logical_filter, "conditions": list(runtime_logical_filter["conditions"])},
+            ],
+        }
 
     logger.warning(
         "The provided logical operators, {parsed_operator} and {operator}, do not match so the parsed logical "
