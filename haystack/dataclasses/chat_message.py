@@ -882,21 +882,30 @@ class ChatMessage:
         Join the text content parts of a system, developer, or assistant message in OpenAI format.
 
         The parts are joined into a single text because `to_openai_dict_format` only sends the first text of these
-        messages. OpenAI also allows refusal parts in assistant messages, but `ChatMessage` can't represent them.
+        messages. Refusal parts in assistant messages are kept as text: `ChatMessage` has no refusal content, and the
+        refusal is part of the conversation history.
 
         :param content: A list of content parts in OpenAI format.
-        :param role: The role of the message, used in the error message.
+        :param role: The role of the message, which decides whether refusal parts are accepted.
         :returns: The texts of the parts, joined with a newline.
-        :raises ValueError: If a content part is not a text part with a `text` string.
+        :raises ValueError: If a content part is not a text part with a `text` string, or, in an assistant message, a
+            refusal part with a `refusal` string.
         """
+        allowed_types = ("text", "refusal") if role == "assistant" else ("text",)
         texts = []
         for part in content:
-            if not isinstance(part, dict) or part.get("type") != "text" or not isinstance(part.get("text"), str):
+            # In OpenAI format, a part's text sits under a key named after its type.
+            if (
+                not isinstance(part, dict)
+                or part.get("type") not in allowed_types
+                or not isinstance(part.get(part["type"]), str)
+            ):
+                supported = " and ".join(f"`{t}` parts with a `{t}` string" for t in allowed_types)
                 raise ValueError(
                     f"Unsupported content part in {role} message: {_CONTENT_PART_REPR.repr(part)}. "
-                    "Only text parts with a `text` string are supported."
+                    f"Only {supported} are supported."
                 )
-            texts.append(part["text"])
+            texts.append(part[part["type"]])
         return "\n".join(texts)
 
     @classmethod
@@ -906,8 +915,8 @@ class ChatMessage:
 
         `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
         `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
-        `FileContent`. System, developer, and assistant messages accept only `text` parts, which are joined with a
-        newline into a single text.
+        `FileContent`. System and developer messages accept only `text` parts, and assistant messages accept `text` and
+        `refusal` parts. These parts are joined with a newline into a single text.
 
         NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
         accepts messages without it to support shallow OpenAI-compatible APIs.

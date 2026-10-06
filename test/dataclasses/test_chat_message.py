@@ -1121,12 +1121,29 @@ class TestFromOpenaiDictFormat:
         [
             ("system", {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgo="}}),
             ("developer", {"type": "text"}),
-            ("assistant", {"type": "refusal", "refusal": "I can't help with that."}),
+            ("system", {"type": "refusal", "refusal": "I can't help with that."}),
+            ("assistant", {"type": "refusal"}),
         ],
     )
     def test_from_openai_dict_format_system_and_assistant_messages_with_unsupported_parts(self, role, part):
         with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
             ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
+
+    def test_from_openai_dict_format_assistant_message_with_refusal_part(self):
+        openai_msg = {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "Here is a summary."},
+                {"type": "refusal", "refusal": "I can't share the rest."},
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "assistant"
+        assert message.text == "Here is a summary.\nI can't share the rest."
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "content": "Here is a summary.\nI can't share the rest.",
+        }
 
     @pytest.mark.parametrize(
         "role, part, match",
