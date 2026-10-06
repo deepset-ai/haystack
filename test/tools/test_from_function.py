@@ -157,6 +157,25 @@ def test_from_function_with_callable_params_skipped():
     assert "query" in param_names
 
 
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        Annotated[Callable[[str], str], "Format the output"],
+        Annotated[Callable[[str], str] | None, "Format the output"],
+        Annotated[Callable[[str], str], "Format the output"] | None,
+    ],
+)
+def test_from_function_with_annotated_callable_params_skipped(callback_type):
+    def format_query(query: str, callback: Callable[[str], str] | None = str.upper) -> str:
+        return callback(query) if callback else query
+
+    format_query.__annotations__["callback"] = callback_type
+    tool = create_tool_from_function(function=format_query)
+
+    assert tool.parameters == {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+    assert tool.invoke(query="hello") == "HELLO"
+
+
 @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
 def test_from_function_state_param_excluded_from_schema(state_annotation: Any) -> None:
     def function_with_state(city: str, state: State) -> str:

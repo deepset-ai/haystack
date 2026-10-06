@@ -4,6 +4,7 @@
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Any
 from unittest.mock import AsyncMock, Mock, patch
@@ -503,6 +504,28 @@ class TestComponentTool:
         assert "snapshot_callback" not in param_names
         assert "streaming_callback" not in param_names
         assert "messages" in param_names
+
+    @pytest.mark.parametrize(
+        "callback_type",
+        [
+            Annotated[Callable[[str], str], "Format the output"],
+            Annotated[Callable[[str], str] | None, "Format the output"],
+            Annotated[Callable[[str], str], "Format the output"] | None,
+        ],
+    )
+    def test_from_component_with_annotated_callable_params_skipped(self, callback_type):
+        class FormatQuery:
+            @component.output_types(result=str)
+            def run(self, query: str, callback: Callable[[str], str] | None = str.upper) -> dict[str, str]:
+                return {"result": callback(query) if callback else query}
+
+        FormatQuery.run.__annotations__["callback"] = callback_type
+        formatter = component(FormatQuery)()
+        tool = ComponentTool(component=formatter)
+
+        assert set(tool.parameters["properties"]) == {"query"}
+        assert tool.parameters["required"] == ["query"]
+        assert tool.invoke(query="hello") == {"result": "HELLO"}
 
     @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
     def test_from_component_with_state_param_excluded_from_schema(self, state_annotation: Any) -> None:
