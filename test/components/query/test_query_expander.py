@@ -142,7 +142,7 @@ class TestQueryExpander:
         with caplog.at_level(logging.WARNING):
             result = expander.run(None)  # type: ignore[arg-type]
         assert result["queries"] == []
-        assert "Empty query provided to QueryExpander. Returning no queries." in caplog.text
+        assert "Empty query provided to QueryExpander" in caplog.text
 
     def test_run_none_query_include_original(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")

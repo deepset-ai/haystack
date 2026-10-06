@@ -199,12 +199,8 @@ class QueryExpander:
         self.warm_up()
 
         if not isinstance(query, str) or not query.strip():
-            returns_query = self.include_original_query and isinstance(query, str)
-            logger.warning(
-                "Empty query provided to QueryExpander. {fallback}",
-                fallback="Returning only the original query." if returns_query else "Returning no queries.",
-            )
-            return {"queries": [query] if returns_query else []}
+            logger.warning("Empty query provided to QueryExpander. {fallback}", fallback=self._fallback_message())
+            return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
 
         response = {"queries": [query] if self.include_original_query else []}
 
@@ -282,12 +278,8 @@ class QueryExpander:
         await self.warm_up_async()
 
         if not isinstance(query, str) or not query.strip():
-            returns_query = self.include_original_query and isinstance(query, str)
-            logger.warning(
-                "Empty query provided to QueryExpander. {fallback}",
-                fallback="Returning only the original query." if returns_query else "Returning no queries.",
-            )
-            return {"queries": [query] if returns_query else []}
+            logger.warning("Empty query provided to QueryExpander. {fallback}", fallback=self._fallback_message())
+            return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
 
         response = {"queries": [query] if self.include_original_query else []}
 
