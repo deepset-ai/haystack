@@ -31,6 +31,10 @@ class _FakeEncoder:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
+    def encode_ordinary(self, text: str) -> list[int]:
+        # Mirrors `tiktoken.Encoding.encode_ordinary`: no special-token handling.
+        return self.encode(text)
+
 
 @pytest.fixture
 def fake_encoder(monkeypatch: pytest.MonkeyPatch) -> _FakeEncoder:
@@ -130,6 +134,33 @@ class TestTiktokenCounterTools:
     def test_nothing_to_measure_is_zero(self):
         assert TiktokenCounter().count([]) == 0
         assert TiktokenCounter().count([], tools=None) == 0
+
+
+@tool
+def search_with_marker(query: Annotated[str, "the search query"]) -> str:
+    """Search the web. The manual documents <|endoftext|> as a literal marker."""
+    return "result"
+
+
+class TestTiktokenCounterSpecialTokens:
+    # Regression tests for https://github.com/deepset-ai/haystack/issues/12869:
+    # literal special-token markers in counted text must be measured as ordinary
+    # text, not raise ValueError.
+
+    def test_literal_special_token_in_message_is_counted(self, fake_encoder):
+        counter = TiktokenCounter()
+
+        count = counter.count([ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")])
+
+        assert count > 0
+        assert "<|endoftext|>" in fake_encoder.encoded[0]
+
+    def test_literal_special_token_in_tool_description_is_counted(self, fake_encoder):
+        counter = TiktokenCounter()
+
+        count = counter.count([ChatMessage.from_user("hi")], tools=[search_with_marker])
+
+        assert count > 0
 
 
 @pytest.mark.integration
