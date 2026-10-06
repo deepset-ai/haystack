@@ -655,6 +655,8 @@ class ChatMessage:
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
         The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+        The exception is `meta["refusal"]` of an assistant message, which is sent as a refusal content part, or as the
+        `refusal` field if the message also has text.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
@@ -753,6 +755,13 @@ class ChatMessage:
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
+        # OpenAI's content array holds either text parts or exactly one refusal part, so a refusal next to text goes
+        # into the `refusal` field.
+        refusal = self._meta.get("refusal") if self.is_from(ChatRole.ASSISTANT) else None
+        if refusal and "content" in openai_msg:
+            openai_msg["refusal"] = refusal
+        elif refusal:
+            openai_msg["content"] = [{"type": "refusal", "refusal": refusal}]
         if self.tool_calls:
             openai_tool_calls = []
             for tc in self.tool_calls:
@@ -796,10 +805,15 @@ class ChatMessage:
             )
 
         if role == "assistant":
+            refusal = message.get("refusal")
+            if refusal is not None and not isinstance(refusal, str):
+                raise ValueError(f"The `refusal` field must be a string, got {type(refusal).__name__}.")
             # An empty string is valid content for an assistant message: that is how a reply with nothing to send
-            # is serialized. Other falsy content requires tool calls.
-            if not content and content != "" and not tool_calls:
-                raise ValueError("For assistant messages, either `content` or `tool_calls` must be present.")
+            # is serialized. Other falsy content requires tool calls or a refusal.
+            if not content and content != "" and not tool_calls and not refusal:
+                raise ValueError(
+                    "For assistant messages, either `content`, `tool_calls`, or `refusal` must be present."
+                )
             if tool_calls:
                 for tc in tool_calls:
                     if "function" not in tc:
@@ -877,22 +891,22 @@ class ChatMessage:
         return parts
 
     @staticmethod
-    def _join_openai_text_parts(content: list[Any], role: str) -> str:
+    def _join_openai_text_parts(content: list[Any], role: str) -> dict[str, str]:
         """
-        Join the text content parts of a system, developer, or assistant message in OpenAI format.
+        Join the text and refusal content parts of a system, developer, or assistant message in OpenAI format.
 
-        The parts are joined into a single text because `to_openai_dict_format` only sends the first text of these
-        messages. Refusal parts in assistant messages are kept as text: `ChatMessage` has no refusal content, and the
-        refusal is part of the conversation history.
+        Text parts are joined into a single text because `to_openai_dict_format` only sends the first text of these
+        messages. Refusal parts are accepted only in assistant messages and are joined separately, so a refusal never
+        ends up in the text.
 
         :param content: A list of content parts in OpenAI format.
         :param role: The role of the message, which decides whether refusal parts are accepted.
-        :returns: The texts of the parts, joined with a newline.
+        :returns: A dictionary that maps each part type in `content` to the texts of its parts, joined with a newline.
         :raises ValueError: If a content part is not a text part with a `text` string, or, in an assistant message, a
             refusal part with a `refusal` string.
         """
         allowed_types = ("text", "refusal") if role == "assistant" else ("text",)
-        texts = []
+        texts: dict[str, list[str]] = {}
         for part in content:
             # In OpenAI format, a part's text sits under a key named after its type.
             if (
@@ -905,8 +919,8 @@ class ChatMessage:
                     f"Unsupported content part in {role} message: {_CONTENT_PART_REPR.repr(part)}. "
                     f"Only {supported} are supported."
                 )
-            texts.append(part[part["type"]])
-        return "\n".join(texts)
+            texts.setdefault(part["type"], []).append(part[part["type"]])
+        return {part_type: "\n".join(part_texts) for part_type, part_texts in texts.items()}
 
     @classmethod
     def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
@@ -915,8 +929,9 @@ class ChatMessage:
 
         `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
         `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
-        `FileContent`. System and developer messages accept only `text` parts, and assistant messages accept `text` and
-        `refusal` parts. These parts are joined with a newline into a single text.
+        `FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
+        into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
+        `meta["refusal"]` instead of the text.
 
         NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
         accepts messages without it to support shallow OpenAI-compatible APIs.
@@ -956,9 +971,17 @@ class ChatMessage:
                         arguments=_parse_openai_tool_call_arguments(raw_arguments),
                     )
                     haystack_tool_calls.append(haystack_tc)
+            text = content
+            refusals = [message["refusal"]] if message.get("refusal") else []
             if isinstance(content, list):
-                content = cls._join_openai_text_parts(content=content, role=role)
-            return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)
+                joined = cls._join_openai_text_parts(content=content, role=role)
+                text = joined.get("text")
+                if "refusal" in joined:
+                    refusals.append(joined["refusal"])
+            # ChatMessage has no refusal content, so the refusal goes to meta, from which to_openai_dict_format
+            # sends it back.
+            meta = {"refusal": "\n".join(refusals)} if refusals else None
+            return cls.from_assistant(text=text, meta=meta, name=name, tool_calls=haystack_tool_calls)
 
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
 
@@ -968,7 +991,7 @@ class ChatMessage:
             return cls.from_user(content_parts=cls._from_openai_content_parts(content), name=name)
         if role in ["system", "developer"]:
             if isinstance(content, list):
-                content = cls._join_openai_text_parts(content=content, role=role)
+                content = cls._join_openai_text_parts(content=content, role=role)["text"]
             return cls.from_system(text=content, name=name)
 
         if isinstance(content, list):

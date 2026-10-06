@@ -912,6 +912,20 @@ class TestToOpenaiDictFormat:
             ],
         }
 
+    def test_to_openai_dict_format_assistant_message_with_refusal(self):
+        message = ChatMessage.from_assistant(meta={"refusal": "I can't help with that."})
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "content": [{"type": "refusal", "refusal": "I can't help with that."}],
+        }
+
+        message = ChatMessage.from_assistant(text="Here is a summary.", meta={"refusal": "I can't help with that."})
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "content": "Here is a summary.",
+            "refusal": "I can't help with that.",
+        }
+
     def test_to_openai_dict_format_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
@@ -1129,21 +1143,26 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
             ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
 
-    def test_from_openai_dict_format_assistant_message_with_refusal_part(self):
-        openai_msg = {
-            "role": "assistant",
-            "content": [
-                {"type": "text", "text": "Here is a summary."},
-                {"type": "refusal", "refusal": "I can't share the rest."},
-            ],
-        }
+    @pytest.mark.parametrize(
+        "openai_msg, expected_text",
+        [
+            ({"role": "assistant", "content": [{"type": "refusal", "refusal": "I can't help with that."}]}, None),
+            ({"role": "assistant", "content": None, "refusal": "I can't help with that."}, None),
+            (
+                {"role": "assistant", "content": "Here is a summary.", "refusal": "I can't help with that."},
+                "Here is a summary.",
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_assistant_message_with_refusal(self, openai_msg, expected_text):
         message = ChatMessage.from_openai_dict_format(openai_msg)
-        assert message.role.value == "assistant"
-        assert message.text == "Here is a summary.\nI can't share the rest."
-        assert message.to_openai_dict_format() == {
-            "role": "assistant",
-            "content": "Here is a summary.\nI can't share the rest.",
-        }
+        assert message.text == expected_text
+        assert message.meta == {"refusal": "I can't help with that."}
+        assert ChatMessage.from_openai_dict_format(message.to_openai_dict_format()) == message
+
+    def test_from_openai_dict_format_assistant_message_with_non_string_refusal(self):
+        with pytest.raises(ValueError, match="The `refusal` field must be a string, got dict"):
+            ChatMessage.from_openai_dict_format({"role": "assistant", "content": "Hi", "refusal": {"text": "no"}})
 
     @pytest.mark.parametrize(
         "role, part, match",

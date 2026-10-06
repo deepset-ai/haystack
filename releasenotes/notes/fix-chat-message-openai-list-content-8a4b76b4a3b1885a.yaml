@@ -18,5 +18,6 @@ fixes:
     of a string. In user messages, ``text`` parts now become ``TextContent``, ``image_url`` parts with base64 data
     URLs become ``ImageContent``, and ``file`` parts with inline ``file_data`` become ``FileContent``.
     In system, developer, and assistant messages, ``text`` parts are joined with a newline into a single text.
-    In assistant messages, ``refusal`` parts are joined in as text too, so a refusal stays in the conversation history.
+    An assistant's refusal, given as a ``refusal`` part or as the ``refusal`` field, is stored in
+    ``ChatMessage.meta["refusal"]`` instead of the text, and ``ChatMessage.to_openai_dict_format`` sends it back.
     ``content`` that is neither a string nor a list now raises a ``ValueError`` instead of being stored as text.
