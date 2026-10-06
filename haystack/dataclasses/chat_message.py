@@ -665,8 +665,8 @@ class ChatMessage:
             The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
         :raises ValueError:
-            If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
-            `id` attribute.
+            If the message format is invalid, if an assistant message has both `meta["refusal"]` and tool calls, or if
+            `require_tool_call_ids` is True and any Tool Call is missing an `id` attribute.
         """
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
         # We convert an assistant message with no content part into a message with empty content, which the API accepts
@@ -758,6 +758,12 @@ class ChatMessage:
         # OpenAI's content array holds either text parts or exactly one refusal part, so a refusal next to text goes
         # into the `refusal` field.
         refusal = self._meta.get("refusal") if self.is_from(ChatRole.ASSISTANT) else None
+        if refusal and self.tool_calls:
+            # OpenAI drops the tool calls of a message with a refusal, then rejects the tool results that follow.
+            raise ValueError(
+                "An assistant message with both `meta['refusal']` and tool calls can't be sent to OpenAI, which "
+                "ignores the tool calls of a message with a refusal. Remove the refusal or the tool calls."
+            )
         if refusal and "content" in openai_msg:
             openai_msg["refusal"] = refusal
         elif refusal:

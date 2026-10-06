@@ -926,6 +926,12 @@ class TestToOpenaiDictFormat:
             "refusal": "I can't help with that.",
         }
 
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id="123", tool_name="weather", arguments={})], meta={"refusal": "I can't help."}
+        )
+        with pytest.raises(ValueError, match="both `meta\\['refusal'\\]` and tool calls"):
+            message.to_openai_dict_format()
+
     def test_to_openai_dict_format_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
