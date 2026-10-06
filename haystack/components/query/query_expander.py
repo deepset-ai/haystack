@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.component import component
@@ -98,7 +98,7 @@ class QueryExpander:
         Initialize the QueryExpander component.
 
         :param chat_generator: The chat generator component to use for query expansion.
-            If None, a default OpenAIChatGenerator with gpt-4.1-mini model is used.
+            If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model is used.
         :param prompt_template: Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
             template for query expansion. The template should instruct the LLM to return a JSON response with the
             structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and
@@ -113,13 +113,13 @@ class QueryExpander:
         self.include_original_query = include_original_query
 
         if chat_generator is None:
-            self.chat_generator: ChatGenerator = OpenAIChatGenerator(
+            self.chat_generator: ChatGenerator = OpenAIResponsesChatGenerator(
                 model="gpt-4.1-mini",
                 generation_kwargs={
                     "temperature": 0.7,
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "query_expansion",
                             "schema": {
                                 "type": "object",
@@ -127,9 +127,8 @@ class QueryExpander:
                                 "required": ["queries"],
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
-                    "seed": 42,
                 },
             )
         else:

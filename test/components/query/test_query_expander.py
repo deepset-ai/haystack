@@ -10,6 +10,7 @@ import pytest
 
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 from haystack.dataclasses.chat_message import ChatMessage
 
@@ -26,7 +27,7 @@ class TestQueryExpander:
 
         assert expander.n_expansions == 4
         assert expander.include_original_query is True
-        assert isinstance(expander.chat_generator, OpenAIChatGenerator)
+        assert isinstance(expander.chat_generator, OpenAIResponsesChatGenerator)
         assert expander.chat_generator.model == "gpt-4.1-mini"
         assert expander._prompt_builder is not None
 
