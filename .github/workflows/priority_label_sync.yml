@@ -3,7 +3,9 @@ name: Priority label sync
 # Mirror the priority label (P0-P3) of the issues a PR links (via "Fixes #123"
 # & co. or the "Development" sidebar) onto the PR. If the linked issues carry
 # different priorities, the highest one wins. PRs without linked issues in this
-# repository are left untouched.
+# repository are left untouched, and so are priority labels set by hand on PRs
+# whose linked issues have no priority. Removing a priority from an issue removes
+# that same label from its PRs unless another linked issue still has a priority.
 #
 # - pull_request_target: a PR is opened, or its description is edited to link an issue
 # - issues: a priority label is added to or removed from a linked issue
@@ -55,7 +57,7 @@ jobs:
                 }
               }`;
 
-            async function syncPr(pr) {
+            async function syncPr(pr, removedLabel = null) {
               const issues = pr.closingIssuesReferences.nodes.filter(
                 (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
               );
@@ -69,7 +71,10 @@ jobs:
               const wanted = PRIORITIES.find((p) => issuePriorities.has(p));
               const current = pr.labels.nodes.map((l) => l.name).filter((n) => PRIORITIES.includes(n));
 
-              for (const name of current.filter((n) => n !== wanted)) {
+              // Without a priority on any linked issue, keep labels set by hand on the PR
+              // and only drop the label that was just removed from an issue.
+              const toRemove = wanted ? current.filter((n) => n !== wanted) : current.filter((n) => n === removedLabel);
+              for (const name of toRemove) {
                 await github.rest.issues.removeLabel({ owner, repo, issue_number: pr.number, name });
                 core.info(`Removed ${name} from PR #${pr.number}`);
               }
@@ -88,6 +93,7 @@ jobs:
               );
               await syncPr(result.repository.pullRequest);
             } else if (context.eventName === "issues") {
+              const removedLabel = context.payload.action === "unlabeled" ? context.payload.label.name : null;
               const result = await github.graphql(
                 `query($owner: String!, $repo: String!, $number: Int!) {
                   repository(owner: $owner, name: $repo) {
@@ -104,7 +110,7 @@ jobs:
                 (pr) => pr.repository.nameWithOwner === `${owner}/${repo}`,
               );
               if (!prs.length) core.info(`Issue #${context.payload.issue.number} has no open linked PRs.`);
-              for (const pr of prs) await syncPr(pr);
+              for (const pr of prs) await syncPr(pr, removedLabel);
             } else {
               let cursor = null;
               do {
