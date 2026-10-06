@@ -2,5 +2,4 @@
 enhancements:
   - |
     When no ``chat_generator`` is passed, ``LLMRanker`` and ``QueryExpander`` now use ``OpenAIResponsesChatGenerator``
-    instead of ``OpenAIChatGenerator``, with the same model and temperature. ``QueryExpander``'s default no longer sets
-    ``seed``, since the OpenAI Responses API doesn't support it.
+    instead of ``OpenAIChatGenerator``, with the same model and temperature.
