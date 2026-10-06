@@ -655,8 +655,9 @@ class ChatMessage:
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
         The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
-        The exception is `meta["refusal"]` of an assistant message, which is sent as a refusal content part, or as the
-        `refusal` field if the message also has text.
+        The exception is a non-empty string in `meta["refusal"]` of an assistant message. It is sent as a refusal
+        content part, or as the `refusal` field if the message also has text. If the message also has tool calls, the
+        refusal is dropped with a warning, because OpenAI ignores the tool calls of a message with a refusal.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
@@ -665,8 +666,8 @@ class ChatMessage:
             The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
         :raises ValueError:
-            If the message format is invalid, if an assistant message has both `meta["refusal"]` and tool calls, or if
-            `require_tool_call_ids` is True and any Tool Call is missing an `id` attribute.
+            If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
+            `id` attribute.
         """
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
         # We convert an assistant message with no content part into a message with empty content, which the API accepts
@@ -755,15 +756,18 @@ class ChatMessage:
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
+        refusal = self._meta.get("refusal") if self.is_from(ChatRole.ASSISTANT) else None
+        # Only a string is a refusal. Any other value under this key is ordinary metadata, which isn't sent.
+        if not isinstance(refusal, str):
+            refusal = None
+        elif refusal and self.tool_calls:
+            logger.warning(
+                "Dropping the refusal of an assistant message that also has tool calls, because OpenAI ignores the "
+                "tool calls of a message with a refusal and then rejects the tool results that follow."
+            )
+            refusal = None
         # OpenAI's content array holds either text parts or exactly one refusal part, so a refusal next to text goes
         # into the `refusal` field.
-        refusal = self._meta.get("refusal") if self.is_from(ChatRole.ASSISTANT) else None
-        if refusal and self.tool_calls:
-            # OpenAI drops the tool calls of a message with a refusal, then rejects the tool results that follow.
-            raise ValueError(
-                "An assistant message with both `meta['refusal']` and tool calls can't be sent to OpenAI, which "
-                "ignores the tool calls of a message with a refusal. Remove the refusal or the tool calls."
-            )
         if refusal and "content" in openai_msg:
             openai_msg["refusal"] = refusal
         elif refusal:
@@ -985,8 +989,8 @@ class ChatMessage:
                 if "refusal" in joined:
                     refusals.append(joined["refusal"])
             # ChatMessage has no refusal content, so the refusal goes to meta, from which to_openai_dict_format
-            # sends it back.
-            meta = {"refusal": "\n".join(refusals)} if refusals else None
+            # sends it back. dict.fromkeys keeps a refusal sent both as the field and as a part only once.
+            meta = {"refusal": "\n".join(dict.fromkeys(refusals))} if refusals else None
             return cls.from_assistant(text=text, meta=meta, name=name, tool_calls=haystack_tool_calls)
 
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy

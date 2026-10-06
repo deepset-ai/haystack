@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 import warnings
 from collections.abc import Sequence
 from typing import Any
@@ -912,7 +913,7 @@ class TestToOpenaiDictFormat:
             ],
         }
 
-    def test_to_openai_dict_format_assistant_message_with_refusal(self):
+    def test_to_openai_dict_format_assistant_message_with_refusal(self, caplog):
         message = ChatMessage.from_assistant(meta={"refusal": "I can't help with that."})
         assert message.to_openai_dict_format() == {
             "role": "assistant",
@@ -929,8 +930,18 @@ class TestToOpenaiDictFormat:
         message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(id="123", tool_name="weather", arguments={})], meta={"refusal": "I can't help."}
         )
-        with pytest.raises(ValueError, match="both `meta\\['refusal'\\]` and tool calls"):
-            message.to_openai_dict_format()
+        with caplog.at_level(logging.WARNING):
+            openai_msg = message.to_openai_dict_format()
+        assert openai_msg == {
+            "role": "assistant",
+            "tool_calls": [{"id": "123", "type": "function", "function": {"name": "weather", "arguments": "{}"}}],
+        }
+        assert "Dropping the refusal of an assistant message that also has tool calls" in caplog.text
+
+    @pytest.mark.parametrize("refusal", [True, {"reason": "policy"}, ""])
+    def test_to_openai_dict_format_assistant_message_ignores_non_string_or_empty_refusal(self, refusal):
+        message = ChatMessage.from_assistant(text="Hi", meta={"refusal": refusal})
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": "Hi"}
 
     def test_to_openai_dict_format_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
@@ -1157,6 +1168,14 @@ class TestFromOpenaiDictFormat:
             (
                 {"role": "assistant", "content": "Here is a summary.", "refusal": "I can't help with that."},
                 "Here is a summary.",
+            ),
+            (
+                {
+                    "role": "assistant",
+                    "content": [{"type": "refusal", "refusal": "I can't help with that."}],
+                    "refusal": "I can't help with that.",
+                },
+                None,
             ),
         ],
     )
