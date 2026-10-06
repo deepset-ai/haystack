@@ -1,19 +1,10 @@
 name: Priority label sync
 
-# Mirror the priority label (P0-P3) of the issues a PR links (via "Fixes #123"
-# & co. or the "Development" sidebar) onto the PR. If the linked issues carry
-# different priorities, the highest one wins. PRs without linked issues in this
+# Mirror the priority label of the issues a PR links onto the PR. PRs without linked issues in this
 # repository are left untouched, and so are priority labels set by hand on PRs
-# whose linked issues have no priority. Removing a priority from an issue removes
-# that same label from its PRs unless another linked issue still has a priority.
+# whose linked issues have no priority. 
 #
-# - pull_request_target: a PR is opened, or its description is edited to link an issue
-# - issues: a priority label is added to or removed from a linked issue
-# - schedule: catches links made via the "Development" sidebar, which emit no event
-#
-# Uses pull_request_target so it also has write permissions on fork PRs; this
-# is safe because the workflow never checks out or executes PR code.
-# Label changes made with GITHUB_TOKEN don't trigger workflows, so there are no loops.
+# We use "schedule" in addition to "pull_request_target" and "issues trigger" to catch links made via the "Development" sidebar, which emit no event
 
 on:
   pull_request_target:
