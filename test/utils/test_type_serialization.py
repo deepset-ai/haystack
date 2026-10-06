@@ -16,6 +16,7 @@ from haystack.core.serialization_security import _DENIED_BUILTIN_NAMES
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import (
     _build_pep604_union_type,
+    _class_path_hint,
     _is_union_type,
     _parse_pep604_union_args,
     deserialize_type,
@@ -509,3 +510,17 @@ if sys.version_info < (3, 14):
         assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
         assert serialize_type(Optional[float]) == "typing.Optional[float]"
         assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
+
+
+@pytest.mark.parametrize(
+    "fully_qualified_name",
+    [
+        pytest.param("haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator", id="correct"),
+        pytest.param("haystack.components.generators.chat.openai.NonExistentClass", id="unknown-class"),
+        pytest.param("haystack.components.generators.OpenAIResponsesChatGenerator", id="not-in-module-or-parent"),
+        pytest.param("NonExistentClass", id="no-module"),
+        pytest.param("os.path.join", id="not-allowlisted"),
+    ],
+)
+def test_class_path_hint_without_suggestion(fully_qualified_name):
+    assert _class_path_hint(fully_qualified_name) == ""
