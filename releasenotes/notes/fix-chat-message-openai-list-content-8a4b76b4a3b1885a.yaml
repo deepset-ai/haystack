@@ -11,7 +11,6 @@ upgrade:
     To keep sending images by URL, download them and build the message yourself, for example
     ``ChatMessage.from_user(content_parts=["Describe this image", ImageContent.from_url(url)])``.
     Send files inline as base64 ``file_data`` instead of referencing them by ``file_id``.
-    Remove audio parts or transcribe them into text first, because ``ChatMessage`` can't hold audio.
 fixes:
   - |
     ``ChatMessage.from_openai_dict_format`` now converts messages whose ``content`` is a list of content parts.
