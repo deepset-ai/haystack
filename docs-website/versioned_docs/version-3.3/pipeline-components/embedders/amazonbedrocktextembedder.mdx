@@ -3,6 +3,7 @@ title: "AmazonBedrockTextEmbedder"
 id: amazonbedrocktextembedder
 slug: "/amazonbedrocktextembedder"
 description: "This component computes embeddings for text (such as a query) using models through Amazon Bedrock API."
+hep_available: true
 ---
 
 # AmazonBedrockTextEmbedder
@@ -14,7 +15,8 @@ This component computes embeddings for text (such as a query) using models throu
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | `model`: The embedding model to use  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory init variables** | `model`: The embedding model to use |
+| **Optional init variables** | `aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var.  <br /> <br />If you don't set the access keys, the component uses the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers (vector) |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
@@ -35,6 +37,14 @@ Use `AmazonBedrockTextEmbedder` to embed a simple string (such as a query) int
 
 `AmazonBedrockTextEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
 To initialize `AmazonBedrockTextEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name`. Other parameters are optional, you can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrocktextembedder).
+
+### Running on Amazon EKS
+
+On Amazon EKS, the component can authenticate with the pod's IAM role through [IAM roles for service accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), so you don't need access keys. When no access keys are set, the component falls back to the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html), which picks up the role that EKS assigns to the pod.
+
+1. Associate an IAM role with the pod's Kubernetes service account and allow the role to call `bedrock:InvokeModel`.
+2. Don't pass `aws_access_key_id` and `aws_secret_access_key` to the component, and don't set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables in the pod. Access keys take precedence over the pod's role.
+3. Set the region with `aws_region_name` or the `AWS_DEFAULT_REGION` environment variable.
 
 ### Model-specific parameters
 
