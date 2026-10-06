@@ -89,8 +89,8 @@ class LLMRanker:
     are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
 
     If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
-    to the deduplicated input documents in their original order. `top_k` is not applied to these fallback documents:
-    the input documents aren't necessarily sorted by relevance, so cutting them off could drop relevant ones.
+    to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
+    cutting off unranked documents could drop relevant ones.
 
     Usage example:
 
@@ -162,7 +162,7 @@ class LLMRanker:
             documents.
         :param raise_on_failure:
             If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
-            deduplicated input documents in their original order, without applying `top_k`.
+            deduplicated input documents unranked, in their original order, without applying `top_k`.
         :raises ValueError:
             If `top_k` is not greater than 0 or if `prompt` doesn't include exactly the variables `query` and
             `documents`.
@@ -254,7 +254,7 @@ class LLMRanker:
             A dictionary with the following key:
             - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
               `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
-              input documents in their original order.
+              input documents unranked, in their original order.
         :raises ValueError:
             If `top_k` is not greater than 0.
         """
@@ -269,7 +269,7 @@ class LLMRanker:
         fallback_documents = deduplicated_documents
 
         if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+            logger.warning("Empty query provided to LLMRanker. Returning the deduplicated input documents unranked.")
             return {"documents": fallback_documents}
 
         self.warm_up()
@@ -285,7 +285,9 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+                "LLMRanker failed during chat generation. Returning the deduplicated input documents unranked. "
+                "Error: {error}",
+                error=exc,
             )
             return {"documents": fallback_documents}
 
@@ -296,7 +298,8 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                "LLMRanker failed while processing the chat response. Returning the deduplicated input documents "
+                "unranked. Error: {error}",
                 error=exc,
             )
             return {"documents": fallback_documents}
@@ -327,7 +330,7 @@ class LLMRanker:
             A dictionary with the following key:
             - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
               `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
-              input documents in their original order.
+              input documents unranked, in their original order.
         :raises ValueError:
             If `top_k` is not greater than 0.
         """
@@ -342,7 +345,7 @@ class LLMRanker:
         fallback_documents = deduplicated_documents
 
         if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+            logger.warning("Empty query provided to LLMRanker. Returning the deduplicated input documents unranked.")
             return {"documents": fallback_documents}
 
         await self.warm_up_async()
@@ -358,7 +361,9 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+                "LLMRanker failed during chat generation. Returning the deduplicated input documents unranked. "
+                "Error: {error}",
+                error=exc,
             )
             return {"documents": fallback_documents}
 
@@ -369,7 +374,8 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                "LLMRanker failed while processing the chat response. Returning the deduplicated input documents "
+                "unranked. Error: {error}",
                 error=exc,
             )
             return {"documents": fallback_documents}
