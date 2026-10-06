@@ -756,6 +756,9 @@ to_openai_dict_format(require_tool_call_ids: bool = True) -> dict[str, Any]
 Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
 The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+The exception is a non-empty string in `meta["refusal"]` of an assistant message. It is sent as a refusal
+content part, or as the `refusal` field if the message also has text. If the message also has tool calls, the
+refusal is dropped with a warning, because OpenAI ignores the tool calls of a message with a refusal.
 
 **Parameters:**
 
@@ -779,6 +782,12 @@ from_openai_dict_format(message: dict[str, Any]) -> ChatMessage
 
 Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
 
+`content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
+`image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
+`FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
+into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
+`meta["refusal"]` instead of the text.
+
 NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
 accepts messages without it to support shallow OpenAI-compatible APIs.
 If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
@@ -794,7 +803,9 @@ encounter validation errors.
 
 **Raises:**
 
-- <code>ValueError</code> – If the message dictionary is missing required fields.
+- <code>ValueError</code> – If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
+  it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
+  files referenced by `file_id`.
 
 ## document
 
