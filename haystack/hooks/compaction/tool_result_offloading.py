@@ -59,8 +59,9 @@ class ToolResultOffloadCompactor(Compactor):
     )
     ```
 
-    The store is fixed when the compactor is created. In a multi-user server, build a compactor and its hook per run
-    with that run's own store, so users never read each other's results.
+    The compactor always writes to the store it was created with; unlike `ToolResultOffloadHook`, it does not read a
+    per-run store from `hook_context`. In a multi-user server, create an Agent per run with its own compactor and
+    store, so users never read each other's results.
 
     For results with images or files, we recommend passing a provider token counter such as `OpenAITokenCounter` to
     `CompactionHook`, which measures their real size. Its default `ApproximateTokenCounter` charges a flat
