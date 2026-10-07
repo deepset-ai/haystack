@@ -8,7 +8,7 @@ from typing import Any
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_spans
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _replace_tool_results_until_target
 from haystack.hooks.tool_result_offloading.types import ToolResultStore
 from haystack.hooks.tool_result_offloading.utils import (
     _OFFLOADED_META_KEY,
@@ -111,37 +111,13 @@ class ToolResultOffloadCompactor(Compactor):
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
         :returns: The conversation with older tool results replaced by references, or None when nothing was offloaded.
         """
-        current_tokens = token_counter.count(messages=messages)
-        if current_tokens <= target_tokens:
-            return None
-
-        # Filter the shared Agent-step spans to tool-calling steps; parallel results remain grouped in one span.
-        result_steps = [
-            list(range(start + 1, end))
-            for start, end in _agent_step_spans(messages=messages, start=0)
-            # An assistant-only span has no result to protect and must not consume one of `min_keep_steps`.
-            if end > start + 1
-        ]
-        protected_positions = {position for step in result_steps[-self.min_keep_steps :] for position in step}
-
-        # Replace entries in a new list so the caller-owned input list remains unchanged.
-        compacted = list(messages)
-        changed = False
-        # Go oldest first and stop at the target, so as much recent output as possible stays in context.
-        for index, message in enumerate(messages):
-            if message.tool_call_result is None or index in protected_positions:
-                continue
-            replacement = self._offload(message=message, index=index, token_counter=token_counter)
-            if replacement is None:
-                continue
-            offloaded, saved_tokens = replacement
-            compacted[index] = offloaded
-            current_tokens -= saved_tokens
-            changed = True
-            if current_tokens <= target_tokens:
-                break
-
-        return compacted if changed else None
+        return _replace_tool_results_until_target(
+            messages=messages,
+            target_tokens=target_tokens,
+            token_counter=token_counter,
+            min_keep_steps=self.min_keep_steps,
+            replace=lambda message, index: self._offload(message=message, index=index, token_counter=token_counter),
+        )
 
     async def compact_async(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter

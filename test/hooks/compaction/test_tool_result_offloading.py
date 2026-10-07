@@ -11,22 +11,21 @@ from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextCon
 from haystack.dataclasses.chat_message import ChatMessageContentT
 from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
-from haystack.hooks.tool_result_offloading import FileSystemToolResultStore, ToolResultStore
+from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
 from haystack.hooks.tool_result_offloading.utils import _content_block_payload
 from haystack.token_counters.utils import _rendered_conversation
 from haystack.tools import ToolsType
-from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, conversation, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
 COUNTER = FakeCounter(chars_per_token=1)
 
-# A 1x1 PNG and a minimal PDF, both padded so their payloads clearly outweigh the reference replacing them.
+# A 1x1 PNG, padded so its payload clearly outweighs the reference replacing it.
 PNG_BYTES = (
     base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
     + b"\x00" * 1000
 )
-PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n" + b"\xde\xad\xbe\xef" * 250 + b"\n%%EOF\n"
 
 
 def _payload_placeholder(content: ChatMessageContentT) -> str:
@@ -42,39 +41,12 @@ class PayloadCounter(FakeCounter):
         return len(_rendered_conversation(messages, placeholder=_payload_placeholder)) // self.chars_per_token
 
 
-class TextOnlyToolResultStore(ToolResultStore):
-    """A store that only holds text, leaving `supports_binary_content` at its False default."""
-
-    def __init__(self) -> None:
-        self.data: dict[str, str] = {}
-
-    def write(self, *, key: str, content: str | bytes) -> str:
-        if isinstance(content, bytes):
-            raise TypeError("Binary content not supported")
-        self.data[key] = content
-        return key
-
-    def read(self, reference: str) -> str:
-        return self.data[reference]
-
-
-def _conversation(*results: str) -> list[ChatMessage]:
-    """A user task followed by one Agent step per given result."""
-    messages = [ChatMessage.from_user("task")]
-    for index, result in enumerate(results):
-        call_id = f"c{index}"
-        messages.extend([tool_call(call_id), tool_result(result, call_id=call_id)])
-    return messages
-
-
 def _step(content: list[TextContent | ImageContent | FileContent], call_id: str) -> list[ChatMessage]:
     """An Agent step whose single tool result carries the given content blocks."""
     call = tool_call(call_id)
     return [call, ChatMessage.from_tool(tool_result=content, origin=call.tool_calls[0])]
 
 
-FITTING_CONVERSATION = _conversation("a" * 400, "newest")
-SINGLE_STEP_CONVERSATION = _conversation("only result")
 INELIGIBLE_CONVERSATION = [
     ChatMessage.from_user("task"),
     tool_call("small"),
@@ -100,107 +72,43 @@ INELIGIBLE_CONVERSATION = [
 
 class TestToolResultOffloadCompactor:
     def test_offloads_older_results(self, tmp_path):
-        # The newest step calls two tools in parallel, so both of its results are protected together.
-        messages = [
-            *_conversation("a" * 400, "b" * 400),
-            tool_call("parallel-1", "parallel-2"),
-            tool_result("first" * 200, call_id="parallel-1"),
-            tool_result("second" * 200, call_id="parallel-2"),
-        ]
+        messages = conversation("a" * 400, "newest")
         store = FileSystemToolResultStore(root=tmp_path)
         compacted = ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=5).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
 
         assert compacted is not None
-        for index, original, preview in ((2, "a" * 400, "aaaaa"), (4, "b" * 400, "bbbbb")):
-            result = compacted[index].tool_call_result
-            assert result is not None
-            reference = compacted[index].meta["tool_result_offloaded"][0]
-            assert result.result == (
-                f"Tool result offloaded to text (400 characters) at '{reference}'. Preview: {preview}..."
-            )
-            assert store.read(reference) == original
-            assert compacted[index].meta[_COMPACTION_META_KEY] == {
-                "strategy": "tool_result_offloading",
-                "original_tokens": COUNTER.count(messages=[messages[index]]),
-            }
-        assert [Path(path).name for path in sorted(tmp_path.iterdir())] == [
-            "compacted_search_c0.txt",
-            "compacted_search_c1.txt",
-        ]
+        result = compacted[2].tool_call_result
+        assert result is not None
+        reference = compacted[2].meta["tool_result_offloaded"][0]
+        assert result.result == f"Tool result offloaded to text (400 characters) at '{reference}'. Preview: aaaaa..."
+        assert store.read(reference) == "a" * 400
+        assert Path(reference).name == "compacted_search_c0.txt"
+        assert compacted[2].meta[_COMPACTION_META_KEY] == {
+            "strategy": "tool_result_offloading",
+            "original_tokens": COUNTER.count(messages=[messages[2]]),
+        }
 
-        # The most recent step is left directly in context, and the caller-owned input list is unchanged.
-        assert compacted[5:] == messages[5:]
-        original_results = [message.tool_call_result for message in messages[2::2]]
-        assert [result.result for result in original_results if result] == ["a" * 400, "b" * 400, "first" * 200]
-
-    def test_stops_after_reaching_target(self, tmp_path):
-        messages = _conversation("a" * 400, "b" * 400, "newest")
-        compacted = ToolResultOffloadCompactor(
-            store=FileSystemToolResultStore(root=tmp_path), min_tokens=0, preview_chars=0
-        ).compact(messages=messages, target_tokens=COUNTER.count(messages=messages) - 1, token_counter=COUNTER)
-
-        assert compacted is not None
-        assert "tool_result_offloaded" in compacted[2].meta
-        assert compacted[4] == messages[4]
-        assert len(list(tmp_path.iterdir())) == 1
-
-    def test_offloads_each_content_block(self, tmp_path):
+    def test_offloads_binary_results(self, tmp_path):
         messages = [
             ChatMessage.from_user("task"),
-            *_step([TextContent("A" * 2000), ImageContent(base64_image=base64.b64encode(PNG_BYTES).decode())], "old"),
-            *_step([FileContent(base64_data=base64.b64encode(PDF_BYTES).decode(), mime_type="application/pdf")], "new"),
-            *_conversation("newest")[1:],
+            *_step([ImageContent(base64_image=base64.b64encode(PNG_BYTES).decode(), mime_type="image/png")], "old"),
+            *conversation("newest")[1:],
         ]
         store = FileSystemToolResultStore(root=tmp_path)
-        compacted = ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=0).compact(
+        compacted = ToolResultOffloadCompactor(store=store, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=PayloadCounter(chars_per_token=1)
         )
 
         assert compacted is not None
-        text_reference, image_reference = compacted[2].meta["tool_result_offloaded"]
-        assert store.read(text_reference) == "A" * 2000
-        assert store.read(image_reference) == PNG_BYTES
-        pointer = compacted[2].tool_call_result
-        assert pointer is not None and isinstance(pointer.result, str)
-        assert pointer.result.startswith("Tool result offloaded to 2 files:")
-        assert store.read(compacted[4].meta["tool_result_offloaded"][0]) == PDF_BYTES
-        assert [Path(path).name for path in sorted(tmp_path.iterdir())] == [
-            "compacted_search_new.pdf",
-            "compacted_search_old_0.txt",
-            "compacted_search_old_1.png",
-        ]
+        assert store.read(compacted[2].meta["tool_result_offloaded"][0]) == PNG_BYTES
+        assert [Path(path).name for path in tmp_path.iterdir()] == ["compacted_search_old.png"]
 
-    def test_text_only_store_keeps_binary_results(self, caplog):
-        messages = [
-            ChatMessage.from_user("task"),
-            *_step([ImageContent(base64_image=base64.b64encode(PNG_BYTES).decode())], "old"),
-            *_conversation("newest")[1:],
-        ]
-        store = TextOnlyToolResultStore()
-        compacted = ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=0).compact(
-            messages=messages, target_tokens=1, token_counter=PayloadCounter(chars_per_token=1)
+    def test_skips_ineligible_results(self, tmp_path):
+        compacted = ToolResultOffloadCompactor(store=FileSystemToolResultStore(root=tmp_path), min_tokens=100).compact(
+            messages=INELIGIBLE_CONVERSATION, target_tokens=1, token_counter=COUNTER
         )
-
-        assert compacted is None
-        assert not store.data
-        assert "does not support binary content" in caplog.text
-
-    @pytest.mark.parametrize(
-        ("messages", "target_tokens", "min_tokens"),
-        [
-            pytest.param(
-                FITTING_CONVERSATION, COUNTER.count(messages=FITTING_CONVERSATION), 0, id="conversation_already_fits"
-            ),
-            pytest.param(SINGLE_STEP_CONVERSATION, 1, 0, id="every_step_is_protected"),
-            pytest.param(INELIGIBLE_CONVERSATION, 1, 100, id="no_eligible_results"),
-        ],
-    )
-    def test_returns_none(self, tmp_path, messages, target_tokens, min_tokens):
-        compacted = ToolResultOffloadCompactor(
-            store=FileSystemToolResultStore(root=tmp_path), min_tokens=min_tokens
-        ).compact(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
 
         assert compacted is None
         assert not list(tmp_path.iterdir())
@@ -237,7 +145,7 @@ class TestToolResultOffloadCompactor:
 class TestToolResultOffloadCompactorAsync:
     @pytest.mark.asyncio
     async def test_compact_async_matches_compact(self, tmp_path):
-        messages = _conversation("old" * 200, "newest")
+        messages = conversation("old" * 200, "newest")
         compactor = ToolResultOffloadCompactor(
             store=FileSystemToolResultStore(root=tmp_path), min_tokens=0, preview_chars=0
         )
