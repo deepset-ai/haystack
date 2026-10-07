@@ -1,0 +1,374 @@
+{
+  "repo": "probityai/agent-evidence-observer",
+  "commit": "5d9feedcfffcf441380e11e9f25a5db44d274068",
+  "files": [
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "size": 11358,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/d645695673349e3947e8e5ae42332d0ac3164cd7"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a04fb335b5c755a38648a0833195172c8e2ada1a",
+      "size": 3938,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/a04fb335b5c755a38648a0833195172c8e2ada1a"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "29a4b52fc8977585234141feb934aef776f2e6c6",
+      "size": 47,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/29a4b52fc8977585234141feb934aef776f2e6c6"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/PROFILE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0098e8f627f821aa70b4afd8e3eecfadcb300985",
+      "size": 3673,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/0098e8f627f821aa70b4afd8e3eecfadcb300985"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78f0be0983dae24b0230ffdc5e6bc89bae61e5bf",
+      "size": 994,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/78f0be0983dae24b0230ffdc5e6bc89bae61e5bf"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/probity_haystack/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e8a0b012c9b1755a159492a809eb1ebb034cc9f",
+      "size": 77,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/7e8a0b012c9b1755a159492a809eb1ebb034cc9f"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/probity_haystack/contract.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "538737ca6a15576e4563d56a2c4a5fc13cc1ac03",
+      "size": 1678,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/538737ca6a15576e4563d56a2c4a5fc13cc1ac03"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/probity_haystack/producer.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c7c6809ee8dc95c1fb741c9766f0d1e1d1521e0",
+      "size": 9354,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/2c7c6809ee8dc95c1fb741c9766f0d1e1d1521e0"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/probity_haystack/reader.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "537e3195130c1b51bc205405e5fc05b7989023d9",
+      "size": 8831,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/537e3195130c1b51bc205405e5fc05b7989023d9"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/pyproject.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c180a34a31d80f0def08ccb2e0990820cbc9d6fa",
+      "size": 500,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/c180a34a31d80f0def08ccb2e0990820cbc9d6fa"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/requirements-reader.in",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "694ff0284cc0873482935dde3e222a1abb6e1780",
+      "size": 21,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/694ff0284cc0873482935dde3e222a1abb6e1780"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/requirements-reader.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bab63da9e6e28f7dd68f8ab5fb2c1d38ea1f011a",
+      "size": 13207,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/bab63da9e6e28f7dd68f8ab5fb2c1d38ea1f011a"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/requirements.in",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a745cf444bb228cbd4127b7ac659470fdf98d7e4",
+      "size": 100,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/a745cf444bb228cbd4127b7ac659470fdf98d7e4"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/requirements.lock",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b8c9ea675abd24e030b20e5a567f6140803b04d",
+      "size": 92735,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/6b8c9ea675abd24e030b20e5a567f6140803b04d"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/test_native.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7754b35cbbf1b0496523343a32bf37c1c7e07c58",
+      "size": 7772,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/7754b35cbbf1b0496523343a32bf37c1c7e07c58"
+    },
+    {
+      "path": "interop/haystack-native-2026-10-03/verify_install.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "327b178f79a8e65322836d055320584964e4bfa6",
+      "size": 2015,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/327b178f79a8e65322836d055320584964e4bfa6"
+    },
+    {
+      "path": "pyproject.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ed3e3bcddca283971c4ede0374c2d739804c665",
+      "size": 1357,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/1ed3e3bcddca283971c4ede0374c2d739804c665"
+    },
+    {
+      "path": "src/probity_observer/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8cc5bd8971d99c69415f3214ad5d12901ca74e9a",
+      "size": 723,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/8cc5bd8971d99c69415f3214ad5d12901ca74e9a"
+    },
+    {
+      "path": "src/probity_observer/aae_binding.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f87f0f196dc44d319d4a7a096e82a3576c8a91a2",
+      "size": 10885,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/f87f0f196dc44d319d4a7a096e82a3576c8a91a2"
+    },
+    {
+      "path": "src/probity_observer/aae_dispatch.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c32395ec77f4206b93a1691c110350de033490b",
+      "size": 8015,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/6c32395ec77f4206b93a1691c110350de033490b"
+    },
+    {
+      "path": "src/probity_observer/aae_enforce.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3aff211562c90eb59375f82469cfe14b44e3595d",
+      "size": 21776,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/3aff211562c90eb59375f82469cfe14b44e3595d"
+    },
+    {
+      "path": "src/probity_observer/aae_ticket.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01443cd9b45eb69526870ae9260ae19ef4aed3a7",
+      "size": 6287,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/01443cd9b45eb69526870ae9260ae19ef4aed3a7"
+    },
+    {
+      "path": "src/probity_observer/admission.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef0162dd12516c13781cab09c08f4d965b74a01a",
+      "size": 20440,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/ef0162dd12516c13781cab09c08f4d965b74a01a"
+    },
+    {
+      "path": "src/probity_observer/atomic_reader.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9776eef7d8314e20db820ed5292d091e7cb26bff",
+      "size": 15087,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/9776eef7d8314e20db820ed5292d091e7cb26bff"
+    },
+    {
+      "path": "src/probity_observer/attribution.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "986aa9fe179ffd3e722b22aed71875f61003918b",
+      "size": 7799,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/986aa9fe179ffd3e722b22aed71875f61003918b"
+    },
+    {
+      "path": "src/probity_observer/authorization.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e68bd819943b83e21e8091a70308694e00f33ce1",
+      "size": 29467,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/e68bd819943b83e21e8091a70308694e00f33ce1"
+    },
+    {
+      "path": "src/probity_observer/broker.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41761b052164dacf1622fe1b78a4398851fe4658",
+      "size": 20264,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/41761b052164dacf1622fe1b78a4398851fe4658"
+    },
+    {
+      "path": "src/probity_observer/cli.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee5b867d580db77fd8402e35c4bbf66e59cbf131",
+      "size": 4090,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/ee5b867d580db77fd8402e35c4bbf66e59cbf131"
+    },
+    {
+      "path": "src/probity_observer/crypto.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41f59a7dbefc8fc9a4573dc4d1bcd7abd5908d04",
+      "size": 5729,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/41f59a7dbefc8fc9a4573dc4d1bcd7abd5908d04"
+    },
+    {
+      "path": "src/probity_observer/declaration.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4dc12aa2f32c56c6dfa4331723391fa9c49e124",
+      "size": 20694,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/a4dc12aa2f32c56c6dfa4331723391fa9c49e124"
+    },
+    {
+      "path": "src/probity_observer/evaluation_history.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a221121b979ab229e87916ccb74e9a1bf399d2ae",
+      "size": 23576,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/a221121b979ab229e87916ccb74e9a1bf399d2ae"
+    },
+    {
+      "path": "src/probity_observer/history.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20f9ba426e2ce350076b7b2bc9b8231e723d2d3c",
+      "size": 11134,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/20f9ba426e2ce350076b7b2bc9b8231e723d2d3c"
+    },
+    {
+      "path": "src/probity_observer/inspect_history.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8dada16a77a23b1073aa774597bdacbc8eb4054",
+      "size": 26903,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/c8dada16a77a23b1073aa774597bdacbc8eb4054"
+    },
+    {
+      "path": "src/probity_observer/isolation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e41db79db6f561a679e3b3150444f796f25a79f0",
+      "size": 13166,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/e41db79db6f561a679e3b3150444f796f25a79f0"
+    },
+    {
+      "path": "src/probity_observer/ledger.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4cb0ab35c4c9cae4ada265bcb633fabb796ba5a2",
+      "size": 18404,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/4cb0ab35c4c9cae4ada265bcb633fabb796ba5a2"
+    },
+    {
+      "path": "src/probity_observer/native_reader.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "129cfbdca0e9b165fe6ae5d36dde23393f9d65a7",
+      "size": 12815,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/129cfbdca0e9b165fe6ae5d36dde23393f9d65a7"
+    },
+    {
+      "path": "src/probity_observer/probe_agent.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "315fbabe36079c8e4406fcefdafdb39496d43177",
+      "size": 2584,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/315fbabe36079c8e4406fcefdafdb39496d43177"
+    },
+    {
+      "path": "src/probity_observer/protected_dispatch.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b5430bb9e7c095f4c505b763a8dbc7298f009c5",
+      "size": 38146,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/3b5430bb9e7c095f4c505b763a8dbc7298f009c5"
+    },
+    {
+      "path": "src/probity_observer/protected_isolation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43e8405382e880654c8ea7c504d11bb9326d009f",
+      "size": 19183,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/43e8405382e880654c8ea7c504d11bb9326d009f"
+    },
+    {
+      "path": "src/probity_observer/protected_probe.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a6d8b7635867ea36650eaa5a35214fe0c8826fd8",
+      "size": 5872,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/a6d8b7635867ea36650eaa5a35214fe0c8826fd8"
+    },
+    {
+      "path": "src/probity_observer/replay.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "556692fd9630dfec0a0b2adee8fadbb5d583cd28",
+      "size": 29625,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/556692fd9630dfec0a0b2adee8fadbb5d583cd28"
+    },
+    {
+      "path": "src/probity_observer/run_selection.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0d24f29aa369bf473235353cd63afc861c00a5b",
+      "size": 11374,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/c0d24f29aa369bf473235353cd63afc861c00a5b"
+    },
+    {
+      "path": "src/probity_observer/selection_profile.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91e55d54a8ebc43b0b8fdeed9117922ef1349ef4",
+      "size": 15773,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/91e55d54a8ebc43b0b8fdeed9117922ef1349ef4"
+    },
+    {
+      "path": "src/probity_observer/ticket_service.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f100788bad8dea4deba6e6107c47ecb7bc0a6c3",
+      "size": 38767,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/0f100788bad8dea4deba6e6107c47ecb7bc0a6c3"
+    },
+    {
+      "path": "src/probity_observer/verify.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e16e5937e37ae251c0efc8058ea481b502a2fa1",
+      "size": 9511,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/9e16e5937e37ae251c0efc8058ea481b502a2fa1"
+    },
+    {
+      "path": "src/probity_observer/witness_port.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "795e8f28da07d5124c32f2e79390eb42f64f96cb",
+      "size": 2677,
+      "url": "https://api.github.com/repos/probityai/agent-evidence-observer/git/blobs/795e8f28da07d5124c32f2e79390eb42f64f96cb"
+    }
+  ]
+}

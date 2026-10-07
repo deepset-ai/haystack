@@ -1,0 +1,10 @@
+[project]
+name = "haystack-signed-effect-contract"
+version = "0.0.0"
+requires-python = ">=3.13"
+
+[tool.hatch.envs.default]
+skip-install = true
+python = "3.13"
+installer = "uv"
+dependencies = ["uv==0.11.28", "hatch==1.16.5"]
