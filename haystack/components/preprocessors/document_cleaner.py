@@ -301,20 +301,42 @@ class DocumentCleaner:
 
         # header
         start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
-        found_header = self._find_longest_common_ngram(start_of_pages)
+        found_header = self._find_longest_common_ngram(start_of_pages, position="start")
         if found_header:
-            pages = [page.replace(found_header, "") for page in pages]
+            pages = [self._remove_prefix(page, found_header) for page in pages]
 
         # footer
         end_of_pages = [p[-n_chars:] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
-        found_footer = self._find_longest_common_ngram(end_of_pages)
+        found_footer = self._find_longest_common_ngram(end_of_pages, position="end")
         if found_footer:
-            pages = [page.replace(found_footer, "") for page in pages]
+            pages = [self._remove_suffix(page, found_footer) for page in pages]
 
         logger.debug(
             "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
         )
         return "\f".join(pages)
+
+    @staticmethod
+    def _remove_prefix(page: str, header: str) -> str:
+        """
+        Remove `header` from the start of `page` (ignoring leading whitespace), leaving the rest of the page untouched.
+        """
+        stripped = page.lstrip()
+        header = header.lstrip()
+        if not stripped.startswith(header):
+            return page
+        return page[: len(page) - len(stripped)] + stripped[len(header) :]
+
+    @staticmethod
+    def _remove_suffix(page: str, footer: str) -> str:
+        """
+        Remove `footer` from the end of `page` (ignoring trailing whitespace), leaving the rest of the page untouched.
+        """
+        stripped = page.rstrip()
+        footer = footer.rstrip()
+        if not stripped.endswith(footer):
+            return page
+        return stripped[: len(stripped) - len(footer)] + page[len(stripped) :]
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
@@ -348,7 +370,13 @@ class DocumentCleaner:
         ngrams = map(partial(self._ngram, seq), lengths)
         return set(chain.from_iterable(ngrams))
 
-    def _find_longest_common_ngram(self, sequences: list[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
+    def _find_longest_common_ngram(
+        self,
+        sequences: list[str],
+        min_ngram: int = 3,
+        max_ngram: int = 30,
+        position: Literal["start", "end"] | None = None,
+    ) -> str:
         """
         Find the longest common ngram across a list of text sequences (e.g. start of pages).
 
@@ -358,6 +386,8 @@ class DocumentCleaner:
         :param sequences: The list of strings that shall be searched for common n_grams.
         :param max_ngram: The maximum length of ngram to consider.
         :param min_ngram: The minimum length of ngram to consider.
+        :param position: If "start", only consider ngrams that every sequence starts with (headers); if "end", only
+            consider ngrams that every sequence ends with (footers). Leading/trailing whitespace is ignored.
         :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
@@ -367,6 +397,10 @@ class DocumentCleaner:
             return ""
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
+        if position == "start":
+            intersection = {ng for ng in intersection if all(s.lstrip().startswith(ng.lstrip()) for s in sequences)}
+        elif position == "end":
+            intersection = {ng for ng in intersection if all(s.rstrip().endswith(ng.rstrip()) for s in sequences)}
 
         longest = max(intersection, key=len, default="")
         return longest if longest.strip() else ""

@@ -169,6 +169,25 @@ class TestDocumentCleaner:
         assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
         assert result.content == text
 
+    def test_remove_repeated_substrings_only_strips_page_prefix_and_suffix(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        names = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]
+
+        # Text shared by all pages, but not at the start/end of the page, is body text and must be kept
+        text = "\f".join(
+            f"Item {i} notes: the quick brown fox jumps over the lazy dog, case {n}." for i, n in enumerate(names)
+        )
+        result = cleaner.run(documents=[Document(content=text)])
+        assert result["documents"][0].content == text
+
+        # A real header is removed only at the start of each page, not where the same words appear in the body
+        text = "\f".join(f"ACME Corp Report\n{n} says the ACME Corp Report grew {i}%." for i, n in enumerate(names))
+        expected = "\f".join(f"\n{n} says the ACME Corp Report grew {i}%." for i, n in enumerate(names))
+        result = cleaner.run(documents=[Document(content=text)])
+        assert result["documents"][0].content == expected
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [
