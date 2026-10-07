@@ -165,8 +165,8 @@ def test_detailed_report_csv_writes_utf8_regardless_of_locale(tmp_path):
     csv_file = tmp_path / "report.csv"
 
     # simulate a Windows locale: without an explicit encoding, the file would be written as cp1252
-    def open_with_cp1252_default(file, mode="r", *args, encoding=None, **kwargs):
-        return builtins.open(file, mode, *args, encoding=encoding or "cp1252", **kwargs)
+    def open_with_cp1252_default(file, mode="r", newline=None, encoding=None):
+        return builtins.open(file, mode, newline=newline, encoding=encoding or "cp1252")
 
     with patch("haystack.evaluation.eval_run_result.open", open_with_cp1252_default, create=True):
         message = result.detailed_report(output_format="csv", csv_file=str(csv_file))
