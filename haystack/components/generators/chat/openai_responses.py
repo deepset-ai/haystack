@@ -791,7 +791,10 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
-    elif chunk.type == "response.reasoning_summary_text.delta" or chunk.type == "response.reasoning_text.delta":
+        # Unlike non-streaming, where raw reasoning text is only a fallback when there is no summary, summary and raw
+        # reasoning deltas are both streamed as they arrive and end up concatenated in the final reasoning_text.
+        # In practice this rarely matters, because providers usually send only one kind.
+    elif chunk.type in ("response.reasoning_summary_text.delta", "response.reasoning_text.delta"):
         # We remove the delta from the extra because it is already in the reasoning_text
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
