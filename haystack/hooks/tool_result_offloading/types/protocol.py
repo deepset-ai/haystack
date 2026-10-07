@@ -10,7 +10,7 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 
 class ToolResultStore(Protocol):
     """
-    A place a `ToolResultOffloadHook` or `ToolResultOffloadCompactor` writes tool results to and reads them back from.
+    Where a `ToolResultOffloadHook` or `ToolResultOffloadCompactor` writes tool results and a read tool fetches them.
 
     Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
     storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full

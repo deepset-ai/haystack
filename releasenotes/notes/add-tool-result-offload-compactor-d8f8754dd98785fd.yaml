@@ -2,18 +2,34 @@
 features:
   - |
     Added the experimental ``ToolResultOffloadCompactor`` for ``CompactionHook``. Once compaction is triggered, it
-    writes older tool results to a ``ToolResultStore`` and leaves a reference with a short preview in their place, so
-    the Agent can read the full output back with a tool scoped to the same store. Fresh results stay in context
-    until then.
+    writes older tool results to a ``ToolResultStore`` and leaves a reference in their place, so the Agent can read
+    the full output back with a read tool you scope to the same store. Fresh results stay in context until then.
 
     .. code-block:: python
 
+        from typing import Annotated
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
         from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+        from haystack.tools import tool
 
-        compaction_hook = CompactionHook(
-            compactor=ToolResultOffloadCompactor(store=FileSystemToolResultStore(root="tool_results")),
-            context_window=400_000,
-            compact_at=0.7,
-            compact_to=0.4,
+        store = FileSystemToolResultStore(root="tool_results")
+
+
+        @tool
+        def read_offloaded_result(path: Annotated[str, "Path of an offloaded tool result"]) -> str:
+            """Read back the full content of an offloaded tool result."""
+            content = store.read(path)
+            if isinstance(content, bytes):
+                return f"'{path}' holds {len(content)} bytes of binary content and cannot be read as text."
+            return content
+
+
+        hook = CompactionHook(compactor=ToolResultOffloadCompactor(store=store), context_window=400_000)
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+            tools=[web_search, read_offloaded_result],
+            hooks={"before_llm": [hook]},
         )

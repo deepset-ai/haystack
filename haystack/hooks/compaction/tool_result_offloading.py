@@ -23,25 +23,35 @@ from haystack.utils.experimental import _experimental
 @_experimental
 class ToolResultOffloadCompactor(Compactor):
     """
-    Writes older tool results to a `ToolResultStore` and leaves a reference with a preview in their place.
+    Writes older tool results to a `ToolResultStore` and leaves a reference in their place.
 
-    Every tool call keeps its matching result, and the model can read the full output back with a tool scoped to the
-    same store. `CompactionHook` only calls the compactor once the conversation crosses its threshold, so fresh output
-    stays in context until then. Use `ToolResultOffloadHook` to offload a tool's output as soon as it arrives.
+    Every tool call keeps its matching result, and the model can read the full output back with a read tool you scope
+    to the same store. `CompactionHook` only calls the compactor once the conversation reaches `compact_at`, so fresh
+    output stays in context until then. Use `ToolResultOffloadHook` to offload a tool's output as soon as it arrives.
 
     <!-- test-ignore -->
     ```python
+    from typing import Annotated
+
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
     from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+    from haystack.tools import tool
 
-    hook = CompactionHook(
-        compactor=ToolResultOffloadCompactor(store=FileSystemToolResultStore(root="tool_results")),
-        context_window=400_000,
-        compact_at=0.7,
-        compact_to=0.4,
-    )
+    store = FileSystemToolResultStore(root="tool_results")
+
+
+    @tool
+    def read_offloaded_result(path: Annotated[str, "Path of an offloaded tool result"]) -> str:
+        '''Read back the full content of an offloaded tool result.'''
+        content = store.read(path)
+        if isinstance(content, bytes):
+            return f"'{path}' holds {len(content)} bytes of binary content and cannot be read as text."
+        return content
+
+
+    hook = CompactionHook(compactor=ToolResultOffloadCompactor(store=store), context_window=400_000)
     agent = Agent(
         chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
         tools=[web_search, read_offloaded_result],
@@ -52,9 +62,10 @@ class ToolResultOffloadCompactor(Compactor):
     The store is fixed when the compactor is created. In a multi-user server, build a compactor and its hook per run
     with that run's own store, so users never read each other's results.
 
-    For results with images or files, we recommend a provider token counter such as `OpenAITokenCounter`, which
-    measures their real size. Local counters like `ApproximateTokenCounter` charge a flat `tokens_per_image` and
-    `tokens_per_file` instead, which can undercount such results and keep them below `min_tokens`.
+    For results with images or files, we recommend passing a provider token counter such as `OpenAITokenCounter` to
+    `CompactionHook`, which measures their real size. Its default `ApproximateTokenCounter` charges a flat
+    `tokens_per_image` and `tokens_per_file` instead, which can undercount such results and keep them below
+    `min_tokens`.
     """
 
     def __init__(
@@ -95,7 +106,7 @@ class ToolResultOffloadCompactor(Compactor):
         Results from the most recent `min_keep_steps` tool-calling Agent steps are never offloaded.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param target_tokens: The size the compacted conversation should come in under.
+        :param target_tokens: The token count the compacted conversation should fit within.
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
         :returns: The conversation with older tool results replaced by references, or None when nothing was offloaded.
         """
@@ -135,10 +146,10 @@ class ToolResultOffloadCompactor(Compactor):
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
     ) -> list[ChatMessage] | None:
         """
-        Run `compact` in a thread so the store writes do not block the event loop.
+        Run `compact` in a thread so store writes and token counting do not block the event loop.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param target_tokens: The size the compacted conversation should come in under.
+        :param target_tokens: The token count the compacted conversation should fit within.
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
         :returns: The conversation with older tool results replaced by references, or None when nothing was offloaded.
         """
@@ -151,7 +162,7 @@ class ToolResultOffloadCompactor(Compactor):
         Write one tool result to the store and report how many tokens its reference saves.
 
         :param message: The tool-result message to consider.
-        :param index: The message's position in the conversation, used to keep its store key unique.
+        :param index: The message's position in the conversation, used in the store key when the tool call has no id.
         :param token_counter: The `TokenCounter` that measures the result and its reference.
         :returns: The offloaded message and the number of tokens it saves, or None when the result stays in context.
         """
