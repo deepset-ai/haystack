@@ -25,14 +25,20 @@ def _unwrap_optional(type_hint: Any) -> Any:
     """
     Unwrap Optional types (i.e. ``X | None`` or ``Optional[X]``) to get the inner type.
 
+    Also unwraps ``Annotated[X, ...]`` so that ``Annotated[State, ...]`` and
+    ``Optional[Annotated[State, ...]]`` are recognised as State parameters.
+
     :param type_hint: The type hint to unwrap.
     :returns: The inner type if ``type_hint`` is ``Optional[X]``, otherwise ``type_hint`` unchanged.
     """
+    # Unwrap Annotated[X, ...] -> X
+    if hasattr(type_hint, "__metadata__"):
+        return _unwrap_optional(type_hint.__origin__)
     origin = get_origin(type_hint)
     if origin is Union or origin is types.UnionType:
         non_none = [a for a in get_args(type_hint) if a is not NoneType]
         if len(non_none) == 1:
-            return non_none[0]
+            return _unwrap_optional(non_none[0])
     return type_hint
 
 

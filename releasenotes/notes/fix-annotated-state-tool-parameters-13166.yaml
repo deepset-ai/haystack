@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed ``Annotated[State, ...]`` parameters breaking tool creation. The ``_unwrap_optional`` helper now unwraps ``Annotated`` wrappers before checking for ``Optional``/``Union``, so ``Annotated[State, ...]``, ``Optional[Annotated[State, ...]]``, and ``Annotated[Optional[State], ...]`` are all correctly recognized as State parameters and excluded from the tool schema.

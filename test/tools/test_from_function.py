@@ -194,6 +194,48 @@ def test_from_function_optional_state_param_excluded_from_schema():
     assert "city" in param_names
 
 
+def test_from_function_annotated_state_param_excluded_from_schema():
+    def function_with_annotated_state(
+        city: str, state: Annotated[State, "Live agent state"]
+    ) -> str:
+        """Get weather for a city, with annotated agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_annotated_state)
+
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
+def test_from_function_optional_annotated_state_param_excluded_from_schema():
+    def function_with_optional_annotated_state(
+        city: str, state: Optional[Annotated[State, "Live agent state"]] = None
+    ) -> str:
+        """Get weather for a city, optionally using annotated agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_optional_annotated_state)
+
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
+def test_from_function_annotated_optional_state_param_excluded_from_schema():
+    def function_with_annotated_optional_state(
+        city: str, state: Annotated[State | None, "Live agent state"] = None
+    ) -> str:
+        """Get weather for a city, with annotated optional agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_annotated_optional_state)
+
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
 def test_tool_decorator():
     @tool
     def get_weather(city: str) -> str:
