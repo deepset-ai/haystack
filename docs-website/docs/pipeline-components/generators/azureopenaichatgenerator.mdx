@@ -138,6 +138,10 @@ See our [Streaming Support](guides-to-generators/choosing-the-right-generator.md
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
+### Rate Limit Headers
+
+To keep track of your Azure OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response, such as `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens`, are then added to the `meta` of each reply under the `rate_limit_headers` key. This also works with streaming.
+
 ## Usage
 
 ### On its own
