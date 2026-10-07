@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import reprlib
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -14,6 +15,11 @@ from haystack.dataclasses.image_content import ImageContent
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
+
+# Shows OpenAI content parts in error messages without their base64 payloads. The string limit matches the reprs of
+# ImageContent and FileContent.
+_CONTENT_PART_REPR = reprlib.Repr()
+_CONTENT_PART_REPR.maxstring = 100
 
 
 def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
@@ -649,6 +655,9 @@ class ChatMessage:
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
         The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+        The exception is a non-empty string in `meta["refusal"]` of an assistant message. It is sent as a refusal
+        content part, or as the `refusal` field if the message also has text. If the message also has tool calls, the
+        refusal is dropped with a warning, because OpenAI ignores the tool calls of a message with a refusal.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
@@ -747,6 +756,22 @@ class ChatMessage:
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
+        refusal = self._meta.get("refusal") if self.is_from(ChatRole.ASSISTANT) else None
+        # Only a string is a refusal. Any other value under this key is ordinary metadata, which isn't sent.
+        if not isinstance(refusal, str):
+            refusal = None
+        elif refusal and self.tool_calls:
+            logger.warning(
+                "Dropping the refusal of an assistant message that also has tool calls, because OpenAI ignores the "
+                "tool calls of a message with a refusal and then rejects the tool results that follow."
+            )
+            refusal = None
+        # OpenAI's content array holds either text parts or exactly one refusal part, so a refusal next to text goes
+        # into the `refusal` field.
+        if refusal and "content" in openai_msg:
+            openai_msg["refusal"] = refusal
+        elif refusal:
+            openai_msg["content"] = [{"type": "refusal", "refusal": refusal}]
         if self.tool_calls:
             openai_tool_calls = []
             for tc in self.tool_calls:
@@ -784,11 +809,21 @@ class ChatMessage:
         if role not in ["assistant", "user", "system", "developer", "tool"]:
             raise ValueError(f"Unsupported role: {role}")
 
+        if content is not None and not isinstance(content, (str, list)):
+            raise ValueError(
+                f"The `content` field must be a string or a list of content parts, got {type(content).__name__}."
+            )
+
         if role == "assistant":
+            refusal = message.get("refusal")
+            if refusal is not None and not isinstance(refusal, str):
+                raise ValueError(f"The `refusal` field must be a string, got {type(refusal).__name__}.")
             # An empty string is valid content for an assistant message: that is how a reply with nothing to send
-            # is serialized. Other falsy content requires tool calls.
-            if not content and content != "" and not tool_calls:
-                raise ValueError("For assistant messages, either `content` or `tool_calls` must be present.")
+            # is serialized. Other falsy content requires tool calls or a refusal.
+            if not content and content != "" and not tool_calls and not refusal:
+                raise ValueError(
+                    "For assistant messages, either `content`, `tool_calls`, or `refusal` must be present."
+                )
             if tool_calls:
                 for tc in tool_calls:
                     if "function" not in tc:
@@ -796,10 +831,117 @@ class ChatMessage:
         elif not content:
             raise ValueError(f"The `content` field is required for {role} messages.")
 
+    @staticmethod
+    def _parse_openai_data_url(data_url: Any) -> tuple[str | None, str]:
+        """
+        Split a base64 data URL in OpenAI format into its MIME type and base64 payload.
+
+        :param data_url: A data URL in the format `data:<mime_type>;base64,<base64_data>`.
+        :returns: A tuple containing the MIME type (or None if absent) and the base64 data.
+        :raises ValueError: If the URL is not a string or not a base64 data URL.
+        """
+        if not isinstance(data_url, str) or not data_url.startswith("data:") or ";base64," not in data_url:
+            raise ValueError(
+                f"Unsupported URL: {_CONTENT_PART_REPR.repr(data_url)}. Only base64 data URLs in the format "
+                "`data:<mime_type>;base64,<base64_data>` are supported."
+            )
+        header, base64_data = data_url.split(";base64,", 1)
+        return header[len("data:") :] or None, base64_data
+
+    @classmethod
+    def _from_openai_content_parts(cls, content: list[Any]) -> list[TextContent | ImageContent | FileContent]:
+        """
+        Convert a list of content parts in OpenAI format into Haystack content parts.
+
+        :param content: A list of content parts in OpenAI format.
+        :returns: A list of TextContent, ImageContent, and FileContent objects.
+        :raises ValueError: If a content part is malformed or of an unsupported type.
+        """
+        parts: list[TextContent | ImageContent | FileContent] = []
+        for part in content:
+            part_type = part.get("type") if isinstance(part, dict) else None
+            if part_type == "text":
+                if not isinstance(part.get("text"), str):
+                    raise ValueError(
+                        f"Unsupported text content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "Text parts must contain a `text` string."
+                    )
+                parts.append(TextContent(text=part["text"]))
+            elif part_type == "image_url":
+                image_url = part.get("image_url")
+                if not isinstance(image_url, dict):
+                    raise ValueError(
+                        f"Unsupported image content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "Image parts must contain an `image_url` object."
+                    )
+                mime_type, base64_image = cls._parse_openai_data_url(image_url.get("url"))
+                parts.append(
+                    ImageContent(base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail"))
+                )
+            elif part_type == "file":
+                file = part.get("file")
+                if not isinstance(file, dict):
+                    raise ValueError(
+                        f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. "
+                        "File parts must contain a `file` object."
+                    )
+                file_data = file.get("file_data")
+                if not file_data:
+                    raise ValueError(
+                        f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. Only files with inline "
+                        "base64 `file_data` are supported: files referenced by `file_id` cannot be converted."
+                    )
+                mime_type, base64_data = cls._parse_openai_data_url(file_data)
+                parts.append(FileContent(base64_data=base64_data, mime_type=mime_type, filename=file.get("filename")))
+            else:
+                raise ValueError(
+                    f"Unsupported content part: {_CONTENT_PART_REPR.repr(part)}. "
+                    "Supported part types are `text`, `image_url`, and `file`."
+                )
+        return parts
+
+    @staticmethod
+    def _join_openai_text_parts(content: list[Any], role: str) -> dict[str, str]:
+        """
+        Join the text and refusal content parts of a system, developer, or assistant message in OpenAI format.
+
+        Text parts are joined into a single text because `to_openai_dict_format` only sends the first text of these
+        messages. Refusal parts are accepted only in assistant messages and are joined separately, so a refusal never
+        ends up in the text.
+
+        :param content: A list of content parts in OpenAI format.
+        :param role: The role of the message, which decides whether refusal parts are accepted.
+        :returns: A dictionary that maps each part type in `content` to the texts of its parts, joined with a newline.
+        :raises ValueError: If a content part is not a text part with a `text` string, or, in an assistant message, a
+            refusal part with a `refusal` string.
+        """
+        allowed_types = ("text", "refusal") if role == "assistant" else ("text",)
+        texts: dict[str, list[str]] = {}
+        for part in content:
+            # In OpenAI format, a part's text sits under a key named after its type.
+            if (
+                not isinstance(part, dict)
+                or part.get("type") not in allowed_types
+                or not isinstance(part.get(part["type"]), str)
+            ):
+                supported = " and ".join(f"`{t}` parts with a `{t}` string" for t in allowed_types)
+                raise ValueError(
+                    f"Unsupported content part in {role} message: {_CONTENT_PART_REPR.repr(part)}. "
+                    f"Only {supported} are supported."
+                )
+            texts.setdefault(part["type"], []).append(part[part["type"]])
+        return {part_type: "\n".join(part_texts) for part_type, part_texts in texts.items()}
+
     @classmethod
     def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
         """
         Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+
+        `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
+        `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
+        `FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
+        into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
+        `meta["refusal"]` instead of the text.
 
         NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
         accepts messages without it to support shallow OpenAI-compatible APIs.
@@ -812,7 +954,9 @@ class ChatMessage:
             The created ChatMessage object.
 
         :raises ValueError:
-            If the message dictionary is missing required fields.
+            If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
+            it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
+            files referenced by `file_id`.
         """
         cls._validate_openai_message(message)
 
@@ -837,13 +981,27 @@ class ChatMessage:
                         arguments=_parse_openai_tool_call_arguments(raw_arguments),
                     )
                     haystack_tool_calls.append(haystack_tc)
-            return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)
+            text = content
+            refusals = [message["refusal"]] if message.get("refusal") else []
+            if isinstance(content, list):
+                joined = cls._join_openai_text_parts(content=content, role=role)
+                text = joined.get("text")
+                if "refusal" in joined:
+                    refusals.append(joined["refusal"])
+            # ChatMessage has no refusal content, so the refusal goes to meta, from which to_openai_dict_format
+            # sends it back. dict.fromkeys keeps a refusal sent both as the field and as a part only once.
+            meta = {"refusal": "\n".join(dict.fromkeys(refusals))} if refusals else None
+            return cls.from_assistant(text=text, meta=meta, name=name, tool_calls=haystack_tool_calls)
 
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
 
         if role == "user":
-            return cls.from_user(text=content, name=name)
+            if isinstance(content, str):
+                return cls.from_user(text=content, name=name)
+            return cls.from_user(content_parts=cls._from_openai_content_parts(content), name=name)
         if role in ["system", "developer"]:
+            if isinstance(content, list):
+                content = cls._join_openai_text_parts(content=content, role=role)["text"]
             return cls.from_system(text=content, name=name)
 
         if isinstance(content, list):

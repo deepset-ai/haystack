@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.component import component
@@ -98,7 +98,8 @@ class QueryExpander:
         Initialize the QueryExpander component.
 
         :param chat_generator: The chat generator component to use for query expansion.
-            If None, a default OpenAIChatGenerator with gpt-4.1-mini model is used.
+            If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model and `store` set to `False`
+            is used.
         :param prompt_template: Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
             template for query expansion. The template should instruct the LLM to return a JSON response with the
             structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and
@@ -113,13 +114,14 @@ class QueryExpander:
         self.include_original_query = include_original_query
 
         if chat_generator is None:
-            self.chat_generator: ChatGenerator = OpenAIChatGenerator(
+            self.chat_generator: ChatGenerator = OpenAIResponsesChatGenerator(
                 model="gpt-4.1-mini",
                 generation_kwargs={
                     "temperature": 0.7,
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "store": False,
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "query_expansion",
                             "schema": {
                                 "type": "object",
@@ -127,9 +129,8 @@ class QueryExpander:
                                 "required": ["queries"],
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
-                    "seed": 42,
                 },
             )
         else:
@@ -199,7 +200,7 @@ class QueryExpander:
         self.warm_up()
 
         if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty query provided to QueryExpander")
+            logger.warning("Empty query provided to QueryExpander. {fallback}", fallback=self._fallback_message())
             return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
 
         response = {"queries": [query] if self.include_original_query else []}
@@ -216,7 +217,11 @@ class QueryExpander:
                 span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
-                logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
+                logger.warning(
+                    "ChatGenerator returned no replies for query: {query}. {fallback}",
+                    query=query,
+                    fallback=self._fallback_message(),
+                )
                 return response
 
             expanded_text = generator_result["replies"][0].text.strip()
@@ -243,7 +248,12 @@ class QueryExpander:
 
         except Exception as e:
             # Fallback: return original query to maintain pipeline functionality
-            logger.exception("Failed to expand query {query}: {error}", query=query, error=str(e))
+            logger.exception(
+                "Failed to expand query {query}. {fallback} Error: {error}",
+                query=query,
+                fallback=self._fallback_message(),
+                error=str(e),
+            )
             return response
 
     @component.output_types(queries=list[str])
@@ -269,7 +279,7 @@ class QueryExpander:
         await self.warm_up_async()
 
         if not isinstance(query, str) or not query.strip():
-            logger.warning("Empty query provided to QueryExpander")
+            logger.warning("Empty query provided to QueryExpander. {fallback}", fallback=self._fallback_message())
             return {"queries": [query] if self.include_original_query and isinstance(query, str) else []}
 
         response = {"queries": [query] if self.include_original_query else []}
@@ -286,7 +296,11 @@ class QueryExpander:
                 span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
-                logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
+                logger.warning(
+                    "ChatGenerator returned no replies for query: {query}. {fallback}",
+                    query=query,
+                    fallback=self._fallback_message(),
+                )
                 return response
 
             expanded_text = generator_result["replies"][0].text.strip()
@@ -313,7 +327,12 @@ class QueryExpander:
 
         except Exception as e:
             # Fallback: return original query to maintain pipeline functionality
-            logger.exception("Failed to expand query {query}: {error}", query=query, error=str(e))
+            logger.exception(
+                "Failed to expand query {query}. {fallback} Error: {error}",
+                query=query,
+                fallback=self._fallback_message(),
+                error=str(e),
+            )
             return response
 
     def warm_up(self) -> None:
@@ -348,23 +367,32 @@ class QueryExpander:
         elif hasattr(self.chat_generator, "close"):
             self.chat_generator.close()
 
-    @staticmethod
-    def _parse_expanded_queries(generator_response: str) -> list[str]:
+    def _fallback_message(self) -> str:
+        return "Returning only the original query." if self.include_original_query else "Returning no queries."
+
+    def _parse_expanded_queries(self, generator_response: str) -> list[str]:
         """
         Parse the generator response to extract individual expanded queries.
 
         :param generator_response: The raw text response from the generator.
         :return: List of parsed expanded queries, deduplicated in first-seen order.
         """
-        parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
-
-        if parsed is None:
+        try:
+            parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=True)
+        except ValueError as e:
+            logger.warning(
+                "QueryExpander failed to parse the ChatGenerator response: {response}. {fallback} Error: {error}",
+                response=generator_response,
+                fallback=self._fallback_message(),
+                error=e,
+            )
             return []
 
         if not isinstance(parsed["queries"], list):
             logger.warning(
-                "Expected 'queries' to be a list but got {type}. Returning no expanded queries.",
+                "Expected 'queries' to be a list but got {type}. {fallback}",
                 type=type(parsed["queries"]).__name__,
+                fallback=self._fallback_message(),
             )
             return []
 
@@ -378,5 +406,11 @@ class QueryExpander:
                     queries.append(stripped)
             else:
                 logger.warning("Skipping non-string or empty query in response: {item}", item=item)
+
+        if not queries:
+            logger.warning(
+                "QueryExpander found no valid queries in the ChatGenerator response. {fallback}",
+                fallback=self._fallback_message(),
+            )
 
         return queries

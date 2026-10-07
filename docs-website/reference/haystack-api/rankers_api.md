@@ -16,8 +16,8 @@ The LLM is expected to return a JSON object containing ranked document indices. 
 are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
 
 If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
-to the deduplicated input documents in their original order. `top_k` is not applied to these fallback documents:
-the input documents aren't necessarily sorted by relevance, so cutting them off could drop relevant ones.
+to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
+cutting off unranked documents could drop relevant ones.
 
 Usage example:
 
@@ -82,14 +82,14 @@ Initialize the LLMRanker component.
 
 **Parameters:**
 
-- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-  output is used.
+- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+  JSON output and with `store` set to `False` is used.
 - **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
   `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
 - **top_k** (<code>int</code>) – The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
   documents.
 - **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
-  deduplicated input documents in their original order, without applying `top_k`.
+  deduplicated input documents unranked, in their original order, without applying `top_k`.
 
 **Raises:**
 
@@ -180,7 +180,7 @@ Before ranking, duplicate documents are removed.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
   `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
-  input documents in their original order.
+  input documents unranked, in their original order.
 
 **Raises:**
 
@@ -214,7 +214,7 @@ but can be used with `await` in an async code. If the chat generator only implem
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
   `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
-  input documents in their original order.
+  input documents unranked, in their original order.
 
 **Raises:**
 
