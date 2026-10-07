@@ -23,7 +23,7 @@ HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 # stall a whole log pipeline rather than just producing noise.
 MAX_LOG_VALUE_LENGTH = 4096
 
-# Depth limit for walking list/tuple/dict log values, so a self-referencing container cannot recurse forever.
+# Limit nesting independently of the total traversal budget.
 _MAX_LOG_CONTAINER_DEPTH = 8
 
 # Attribute set on a logger once we have patched its methods. `logging.getLogger` returns a shared singleton, so we
@@ -325,50 +325,66 @@ def _render_log_exception(value: BaseException) -> str:
 
 
 def _bound_container_values(value: Any, depth: int) -> Any:
-    """
-    Apply the log value rules to the items of a list, tuple or dict.
+    """Bound container traversal without calling repr on a cycle or an unvisited subtree."""
+    remaining_items = 256
+    remaining_chars = MAX_LOG_VALUE_LENGTH
+    active_containers: set[int] = set()
 
-    Exceptions become their `str`, and values the JSON renderer cannot serialize become their `repr`. `depth`
-    bounds the walk so a cyclic container stops at a `repr` instead of recursing forever.
-    """
-    if isinstance(value, BaseException):
-        return _render_log_exception(value)
-    if isinstance(value, (list, tuple)):
-        if depth <= 0:
-            return repr(value)
-        return [_bound_container_values(item, depth - 1) for item in value]
-    if isinstance(value, dict):
-        if depth <= 0:
-            return repr(value)
-        return {key: _bound_container_values(item, depth - 1) for key, item in value.items()}
-    if not isinstance(value, (str, int, float, bool, type(None))):
-        return repr(value)
-    return value
+    def bound(item: Any, level: int) -> Any:
+        nonlocal remaining_items, remaining_chars
+        remaining_items -= 1
+        if isinstance(item, BaseException):
+            item = _render_log_exception(item)
+        if isinstance(item, (list, tuple, dict)):
+            if id(item) in active_containers:
+                return "[recursive container]"
+            if level <= 0:
+                return "[maximum depth reached]"
+            active_containers.add(id(item))
+            try:
+                if isinstance(item, dict):
+                    result_dict = {}
+                    for key, child in item.items():
+                        if remaining_items <= 0 or remaining_chars <= 0:
+                            result_dict["[truncated]"] = "[container budget exhausted]"
+                            break
+                        if isinstance(key, str):
+                            remaining_chars -= len(key)
+                            key = key[:MAX_LOG_VALUE_LENGTH]
+                        result_dict[key] = bound(child, level - 1)
+                    return result_dict
+                result_list = []
+                for child in item:
+                    if remaining_items <= 0 or remaining_chars <= 0:
+                        result_list.append("[container budget exhausted]")
+                        break
+                    result_list.append(bound(child, level - 1))
+                return result_list
+            finally:
+                active_containers.remove(id(item))
+        if not isinstance(item, (str, int, float, bool, type(None))):
+            item = repr(item)
+        if isinstance(item, str) and level != depth:
+            length = len(item)
+            allowed = max(0, remaining_chars)
+            remaining_chars -= length
+            if length > allowed:
+                return f"{item[:allowed]}... [truncated, {length} chars]"
+        return item
+
+    return bound(value, depth)
 
 
 def bound_event_dict_values(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
-    """
-    Keep individual log values from growing without bound.
-
-    Exceptions are rendered with `str` rather than `repr`, because some carry their whole input in their
-    `repr`: `UnicodeDecodeError` keeps the entire buffer it failed to decode, so logging one raised while
-    decoding a large file would otherwise emit that whole file as a single log line. The same applies to
-    exceptions nested in a list, tuple or dict, and a container whose rendered form exceeds the bound is
-    replaced by a truncated string.
-    """
+    """Bound each log value, rendering exceptions without their input buffers."""
     for key, value in list(event_dict.items()):
-        if key == "exc_info":  # `ExceptionRenderer` runs after this processor and needs it untouched
+        if key == "exc_info":  # ExceptionRenderer still needs the original exception.
             continue
-        if isinstance(value, BaseException):
-            value = _render_log_exception(value)
-        elif isinstance(value, (list, tuple, dict)):
-            value = _bound_container_values(value, _MAX_LOG_CONTAINER_DEPTH)
+        value = _bound_container_values(value, _MAX_LOG_CONTAINER_DEPTH)
+        if isinstance(value, (list, dict)):
             rendered = repr(value)
             if len(rendered) > MAX_LOG_VALUE_LENGTH:
-                event_dict[key] = f"{rendered[:MAX_LOG_VALUE_LENGTH]}... [truncated, {len(rendered)} chars]"
-                continue
-        elif not isinstance(value, (str, int, float, bool, type(None))):
-            value = repr(value)  # what the renderer would do anyway, but here the result can be bounded
+                value = rendered
         if isinstance(value, str) and len(value) > MAX_LOG_VALUE_LENGTH:
             value = f"{value[:MAX_LOG_VALUE_LENGTH]}... [truncated, {len(value)} chars]"
         event_dict[key] = value

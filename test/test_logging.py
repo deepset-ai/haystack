@@ -23,6 +23,7 @@ from structlog.typing import EventDict
 
 import haystack.utils.jupyter
 from haystack import logging as haystack_logging
+from haystack.utils.misc import _parse_dict_from_json
 from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
@@ -418,40 +419,54 @@ class TestStructuredLoggingJSONRendering:
 
         assert len(capfd.readouterr().err) < 5_000
 
-    def test_exception_in_a_list_does_not_leak_its_payload(
-        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
-    ) -> None:
-        """A UnicodeDecodeError nested in a list must go through `str` like a bare exception."""
-        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
-        haystack_logging.configure_logging()
-
-        try:
-            (b"%PDF-1.7\r%\xe2\xe3\xcf\xd3" + b"A" * 100_000).decode("utf-8")
-        except UnicodeDecodeError as error:
-            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"errors": [error]})
-
-        output = capfd.readouterr().err
-        assert len(output) < 1_000
-        assert json.loads(output)["errors"] == [
-            "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte"
-        ]
-
-    def test_exception_in_a_dict_does_not_leak_its_payload(
-        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch
+    @pytest.mark.parametrize("container", [list, tuple, dict])
+    def test_exception_in_a_container_does_not_leak_its_payload(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch, container: type
     ) -> None:
         monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
         haystack_logging.configure_logging()
+        error = UnicodeDecodeError("utf-8", b"\xe2" + b"A" * 100_000, 0, 1, "invalid continuation byte")
+        value = {"error": error} if container is dict else container([error])
+        logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"errors": value})
+        expected = "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 0: invalid continuation byte"
+        assert json.loads(capfd.readouterr().err)["errors"] == (
+            {"error": expected} if container is dict else [expected]
+        )
 
-        try:
-            (b"\xe2" + b"A" * 100_000).decode("utf-8")
-        except UnicodeDecodeError as error:
-            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"result": {"error": error}})
+    def test_deep_exception_never_uses_container_repr(self) -> None:
+        value = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
+        for _ in range(9):
+            value = [value]
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
+        assert "SECRET" not in repr(result)
+        assert "[maximum depth reached]" in repr(result)
 
-        output = capfd.readouterr().err
-        assert len(output) < 1_000
-        assert json.loads(output)["result"] == {
-            "error": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 0: invalid continuation byte"
-        }
+    def test_exception_at_depth_cutoff_uses_safe_rendering(self) -> None:
+        value = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
+        for _ in range(8):
+            value = [value]
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
+        assert "SECRET" not in repr(result)
+        assert "UnicodeDecodeError:" in repr(result)
+
+    def test_nested_strings_obey_character_budget(self) -> None:
+        result = haystack_logging._bound_container_values(["x" * 100_000] * 10, 8)
+        assert len(result) == 2
+        assert result[-1] == "[container budget exhausted]"
+        assert len(repr(result)) < 5_000
+
+    def test_wide_cycle_is_bounded(self) -> None:
+        value: list = []
+        value.extend([value] * 100_000)
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
+        assert "[recursive container]" in str(result["value"])
+        assert len(str(result["value"])) < 5_000
+
+    def test_wide_nested_lists_obey_shared_budget(self) -> None:
+        value = [["x"] * 1_000 for _ in range(1_000)]
+        result = haystack_logging._bound_container_values(value, 8)
+        assert "[container budget exhausted]" in repr(result)
+        assert len(repr(result)) < 2_000
 
     def test_long_list_values_are_truncated(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
@@ -463,8 +478,8 @@ class TestStructuredLoggingJSONRendering:
         output = capfd.readouterr().err
         assert len(output) < 5_000
         value = json.loads(output)["keys"]
-        assert value.startswith("['key_00000'")
-        assert value.endswith(f"... [truncated, {len(repr(keys))} chars]")
+        assert value[0] == "key_00000"
+        assert value[-1] == "[container budget exhausted]"
 
     def test_self_referencing_container_does_not_recurse(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
@@ -474,11 +489,10 @@ class TestStructuredLoggingJSONRendering:
         cyclic.append(cyclic)
         logging.getLogger("haystack.test_logging").warning("Hello", extra={"value": cyclic})
 
-        assert json.loads(capfd.readouterr().err)["value"]
+        assert json.loads(capfd.readouterr().err)["value"] == ["a", "[recursive container]"]
 
     def test_missing_keys_warning_is_bounded(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
-        """In-tree repro: `_parse_dict_from_json` logs `keys=list(parsed_json.keys())` unbounded."""
-        from haystack.utils.misc import _parse_dict_from_json
+        """`_parse_dict_from_json` logs the full key list when the expected keys are missing."""
 
         monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
         haystack_logging.configure_logging()
@@ -486,10 +500,10 @@ class TestStructuredLoggingJSONRendering:
         reply = json.dumps({f"key_{i:05d}": i for i in range(3_000)})
         assert _parse_dict_from_json(reply, expected_keys=["score"], raise_on_failure=False) is None
 
-        # 43k chars before the fix: the `event` string and the `keys` list are each bounded on their own
+        # the `event` string and the `keys` list are each bounded on their own
         output = capfd.readouterr().err
         assert len(output) < 9_000
-        assert "[truncated," in json.loads(output)["keys"]
+        assert json.loads(output)["keys"][-1] == "[container budget exhausted]"
 
 
 class TestLogTraceCorrelation:
