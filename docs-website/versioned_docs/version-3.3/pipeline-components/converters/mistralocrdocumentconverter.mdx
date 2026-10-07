@@ -35,7 +35,7 @@ The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#
 
 By default, the component uses the `MISTRAL_API_KEY` environment variable for authentication. You can also pass an `api_key` at initialization. Local files are automatically uploaded to Mistral's storage for processing and deleted afterward (configurable with `cleanup_uploaded_files`).
 
-When you initialize the component, you can optionally specify which pages to process, set limits on image extraction, configure minimum image sizes, or include base64-encoded images in the response. The default model is `"mistral-ocr-4-1"`. See the [Mistral models documentation](https://docs.mistral.ai/getting-started/models/models_overview/) for available models.
+When you initialize the component, you can optionally specify which pages to process, set limits on image extraction, configure minimum image sizes, or include base64-encoded images in the response. The default model is `"mistral-ocr-4-1"`. You can also use `"mistral-ocr-latest"` or the earlier `"mistral-ocr-3-0"`. See the [Mistral models documentation](https://docs.mistral.ai/models) for available models.
 
 ### Structured Annotations
 

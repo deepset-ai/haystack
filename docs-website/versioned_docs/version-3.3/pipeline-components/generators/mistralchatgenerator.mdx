@@ -25,19 +25,23 @@ This component enables chat completion using Mistral’s text generation models.
 
 ## Overview
 
-This integration supports Mistral’s models provided through the generative endpoint. For a full list of available models, check out the [Mistral documentation](https://docs.mistral.ai/platform/endpoints/#generative-endpoints).
+This integration supports Mistral’s models provided through the generative endpoint. For a full list of available models, check out the [Mistral documentation](https://docs.mistral.ai/models).
 
 `MistralChatGenerator` needs a Mistral API key to work. You can write this key in:
 
 - The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
 - The `MISTRAL_API_KEY` environment variable (recommended)
 
-Currently, available models are:
+Some of the available models are:
 
 - `mistral-small-latest` (default)
 - `mistral-medium-latest`
 - `mistral-large-latest`
+- `mistral-large-4`
+- `ministral-14b-latest`
 - `codestral-latest`
+
+The `MistralChatGenerator.SUPPORTED_MODELS` attribute holds the complete list of chat models.
 
 This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
@@ -110,7 +114,7 @@ With multimodal inputs:
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.mistral import MistralChatGenerator
 
-llm = MistralChatGenerator(model="pixtral-12b-2409")
+llm = MistralChatGenerator(model="mistral-large-4")
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(
@@ -143,7 +147,7 @@ converter = HTMLToDocument()
 prompt_builder = ChatPromptBuilder(variables=["documents"])
 llm = MistralChatGenerator(
     streaming_callback=print_streaming_chunk,
-    model="mistral-small",
+    model="mistral-large-4",
 )
 
 message_template = """Answer the following question based on the contents of the article: {{query}}\n
