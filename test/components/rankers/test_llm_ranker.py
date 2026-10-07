@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
 from unittest.mock import AsyncMock, Mock
 
@@ -11,6 +12,7 @@ from jinja2 import TemplateSyntaxError
 from haystack import Document
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.rankers.llm_ranker import DEFAULT_PROMPT_TEMPLATE, LLMRanker
 from haystack.dataclasses import ChatMessage
 
@@ -33,8 +35,9 @@ def test_init_default_generator(monkeypatch):
     assert ranker.top_k == 10
     assert ranker.raise_on_failure is False
     assert ranker.prompt == DEFAULT_PROMPT_TEMPLATE
-    assert isinstance(ranker._chat_generator, OpenAIChatGenerator)
+    assert isinstance(ranker._chat_generator, OpenAIResponsesChatGenerator)
     assert ranker._chat_generator.model == "gpt-4.1-mini"
+    assert ranker._chat_generator.generation_kwargs["store"] is False
     assert ranker._prompt_builder is not None
 
 
@@ -208,14 +211,17 @@ def test_run_invalid_json_raises():
         ranker.run(query="test query", documents=documents)
 
 
-def test_run_generator_exception_falls_back(mock_chat_generator):
+def test_run_generator_exception_falls_back(mock_chat_generator, caplog):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
     mock_chat_generator.run.side_effect = RuntimeError("generator failed")
     ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
 
-    result = ranker.run(query="test query", documents=documents)
+    with caplog.at_level(logging.WARNING):
+        result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": documents}
+    assert "Returning the deduplicated input documents unranked" in caplog.text
+    assert "generator failed" in caplog.text
 
 
 def test_run_generator_exception_raises(mock_chat_generator):
@@ -406,15 +412,18 @@ class TestLLMRankerAsync:
         fake_chat_generator.run.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_run_async_generator_exception_falls_back(self):
+    async def test_run_async_generator_exception_falls_back(self, caplog):
         documents = [Document(id="1", content="first"), Document(id="2", content="second")]
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
         ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
 
-        result = await ranker.run_async(query="test query", documents=documents)
+        with caplog.at_level(logging.WARNING):
+            result = await ranker.run_async(query="test query", documents=documents)
 
         assert result == {"documents": documents}
+        assert "Returning the deduplicated input documents unranked" in caplog.text
+        assert "generator failed" in caplog.text
 
     @pytest.mark.asyncio
     async def test_run_async_generator_exception_raises(self):
