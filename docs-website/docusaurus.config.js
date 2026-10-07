@@ -56,6 +56,15 @@ const config = {
   headTags: [
     {
       tagName: "script",
+      attributes: {
+        id: "usercentrics-cmp",
+        src: "https://web.cmp.usercentrics.eu/ui/loader.js",
+        "data-ruleset-id": "LxbKaInvO8Ncwr",
+        async: "true",
+      },
+    },
+    {
+      tagName: "script",
       attributes: {},
       innerHTML: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],

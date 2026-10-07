@@ -12,6 +12,7 @@ from jinja2 import TemplateSyntaxError
 from haystack import Document
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.rankers.llm_ranker import DEFAULT_PROMPT_TEMPLATE, LLMRanker
 from haystack.dataclasses import ChatMessage
 
@@ -34,8 +35,9 @@ def test_init_default_generator(monkeypatch):
     assert ranker.top_k == 10
     assert ranker.raise_on_failure is False
     assert ranker.prompt == DEFAULT_PROMPT_TEMPLATE
-    assert isinstance(ranker._chat_generator, OpenAIChatGenerator)
+    assert isinstance(ranker._chat_generator, OpenAIResponsesChatGenerator)
     assert ranker._chat_generator.model == "gpt-4.1-mini"
+    assert ranker._chat_generator.generation_kwargs["store"] is False
     assert ranker._prompt_builder is not None
 
 
