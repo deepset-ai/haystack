@@ -6,7 +6,7 @@ import json
 import os
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
@@ -471,22 +471,19 @@ class TestComponentTool:
         assert result["output_a"] == "A processed: test input"
         assert result["output_b"] == "B processed: test input"
 
-    def test_warm_up_is_idempotent(self):
-        """Test that calling warm_up multiple times only warms up the component once."""
-        from unittest.mock import MagicMock, patch
-
+    def test_warm_up_delegates_to_component(self):
         component = SimpleComponent()
-
         tool = ComponentTool(component=component)
+        with patch.object(component, "warm_up") as component_warm_up:
+            tool.warm_up()
+            tool.warm_up()
+            assert component_warm_up.call_count == 2
 
-        with patch.object(component, "warm_up", MagicMock()) as mock_warm_up:
-            # Call warm_up multiple times
-            tool.warm_up()
-            tool.warm_up()
-            tool.warm_up()
-
-            # Component's warm_up should only be called once
-            mock_warm_up.assert_called_once()
+    def test_close_delegates_to_component(self):
+        component = SimpleComponent()
+        with patch.object(component, "close", create=True) as component_close:
+            ComponentTool(component=component).close()
+            component_close.assert_called_once_with()
 
     def test_from_component_with_callable_params_skipped(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -922,3 +919,23 @@ class TestComponentToolAsync:
 
     def test_invoke_uses_run_on_dual_mode_component(self, dual_tool):
         assert dual_tool.invoke(text="hi") == {"reply": "sync:hi"}
+
+    async def test_async_lifecycle_delegates_to_component(self, dual_tool, monkeypatch):
+        component_warm_up_async, component_close_async = AsyncMock(), AsyncMock()
+        monkeypatch.setattr(dual_tool._component, "warm_up_async", component_warm_up_async, raising=False)
+        monkeypatch.setattr(dual_tool._component, "close_async", component_close_async, raising=False)
+        await dual_tool.warm_up_async()
+        await dual_tool.close_async()
+        component_warm_up_async.assert_awaited_once_with()
+        component_close_async.assert_awaited_once_with()
+
+    async def test_sync_component_uses_sync_lifecycle(self, sync_tool, monkeypatch):
+        component_warm_up, component_close = Mock(), Mock()
+        monkeypatch.setattr(sync_tool._component, "warm_up", component_warm_up, raising=False)
+        monkeypatch.setattr(sync_tool._component, "close", component_close, raising=False)
+        monkeypatch.setattr(sync_tool._component, "warm_up_async", AsyncMock(side_effect=AssertionError), raising=False)
+        monkeypatch.setattr(sync_tool._component, "close_async", AsyncMock(side_effect=AssertionError), raising=False)
+        await sync_tool.warm_up_async()
+        await sync_tool.close_async()
+        component_warm_up.assert_called_once_with()
+        component_close.assert_called_once_with()

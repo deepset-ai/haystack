@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -343,35 +344,13 @@ class TestToolsetWithAgent:
         assert new_pipeline.to_dict() == pipeline_dict
 
 
-class TestToolsetWarmUp:
-    """Stress tests for Toolset warm_up behavior."""
-
-    def test_warm_up_warms_all_tools(self):
-        t1, t2 = WarmUpCountingTool("a"), WarmUpCountingTool("b")
-        toolset = Toolset([t1, t2])
-        assert t1.warm_up_count == 0
-        assert t2.warm_up_count == 0
-        toolset.warm_up()
-        assert t1.warm_up_count == 1
-        assert t2.warm_up_count == 1
-
-    def test_warm_up_can_be_called_multiple_times(self):
-        t1 = WarmUpCountingTool("a")
-        toolset = Toolset([t1])
-        toolset.warm_up()
-        toolset.warm_up()
-        toolset.warm_up()
-        assert t1.warm_up_count == 3
-
+class TestToolsetAdd:
     def test_add_never_warms_the_new_tool(self):
         existing = WarmUpCountingTool("a")
         toolset = Toolset([existing])
-        toolset.warm_up()
         new_tool = WarmUpCountingTool("b")
         toolset.add(new_tool)
         assert new_tool.warm_up_count == 0
-        toolset.warm_up()
-        assert new_tool.warm_up_count == 1
 
     def test_add_toolset_raises(self):
         toolset = Toolset([WarmUpCountingTool("a")])
@@ -393,27 +372,9 @@ class TestToolsetSpawn:
 class TestToolsetToolSelection:
     """Tests for get_selectable_tools()."""
 
-    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool, monkeypatch):
         toolset = Toolset([add_tool, multiply_tool])
+        warm_up = Mock()
+        monkeypatch.setattr(toolset, "warm_up", warm_up, raising=False)
         assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
-
-    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
-        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
-
-        class LazyToolset(Toolset):
-            def __init__(self):
-                self._loaded = False
-                super().__init__([])  # no tools until warm_up
-
-            def warm_up(self):
-                if self._loaded:
-                    return
-                self._loaded = True
-                self.tools = [add_tool, multiply_tool]
-
-        toolset = LazyToolset()
-        assert toolset.tools == []  # not loaded yet
-
-        selectable = toolset.get_selectable_tools()
-
-        assert [tool.name for tool in selectable] == ["add", "multiply"]
+        warm_up.assert_not_called()
