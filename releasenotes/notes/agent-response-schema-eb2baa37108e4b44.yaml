@@ -1,0 +1,33 @@
+---
+features:
+  - |
+    Added ``response_schema`` and ``max_schema_retries`` parameters to the ``Agent`` component,
+    enabling schema-constrained structured output validation and automatic recovery.
+
+    Users can provide a Pydantic ``BaseModel`` subclass or a JSON Schema dictionary. When the Agent
+    reaches a terminal text response, it validates the generated output against the schema.
+    If valid, the parsed model or dictionary is emitted under the ``structured_output`` state and
+    output socket. If validation fails, the Agent automatically appends a targeted correction prompt
+    to the conversation history and retries up to ``max_schema_retries`` times within ``max_agent_steps``.
+
+    Example usage:
+    .. code:: python
+
+      from pydantic import BaseModel
+      from haystack.components.agents import Agent
+      from haystack.components.generators.chat import OpenAIChatGenerator
+      from haystack.dataclasses import ChatMessage
+
+      class UserProfile(BaseModel):
+          name: str
+          age: int
+          interests: list[str]
+
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          response_schema=UserProfile,
+          max_schema_retries=3,
+      )
+
+      result = agent.run(messages=[ChatMessage.from_user("Extract profile for Alice, 30, loves cycling.")])
+      profile: UserProfile | None = result["structured_output"]

@@ -185,6 +185,8 @@ class TestAgentTool:
                         "tool_concurrency_limit": 4,
                         "tool_streaming_callback_passthrough": False,
                         "hooks": None,
+                        "response_schema": None,
+                        "max_schema_retries": 3,
                     },
                 },
             },

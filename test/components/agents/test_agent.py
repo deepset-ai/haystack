@@ -15,6 +15,7 @@ import pytest
 from jinja2 import TemplateSyntaxError
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
+from pydantic import BaseModel
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents.agent import Agent, _get_model_exit_reason
@@ -29,6 +30,7 @@ from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import OutputSocket
+from haystack.core.serialization import allow_deserialization_module
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
@@ -390,6 +392,8 @@ class TestAgentSerialization:
                 "tool_concurrency_limit": 5,
                 "tool_streaming_callback_passthrough": True,
                 "hooks": None,
+                "response_schema": None,
+                "max_schema_retries": 3,
             },
         }
         assert serialized_agent == expected_structure
@@ -2310,3 +2314,209 @@ class TestAgentNotTriggeredByInjectedInput:
 
         assert "agent" not in result
         run_mock.assert_not_called()
+
+
+class CityInfo(BaseModel):
+    city: str
+    temperature: float
+
+
+class TestAgentStructuredOutput:
+    def test_init_validation(self, weather_tool):
+        # Invalid response_schema type
+        with pytest.raises(
+            TypeError, match="response_schema must be a Pydantic BaseModel subclass or a JSON schema dict"
+        ):
+            Agent(chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema=123)  # type: ignore[arg-type]
+
+        # Negative max_schema_retries
+        with pytest.raises(ValueError, match="max_schema_retries must be greater than or equal to 0"):
+            Agent(
+                chat_generator=MockChatGenerator("hi"),
+                tools=[weather_tool],
+                response_schema=CityInfo,
+                max_schema_retries=-1,
+            )
+
+        # Reserved structured_output in state_schema when response_schema is set
+        with pytest.raises(ValueError, match="reserved for Agent internal state"):
+            Agent(
+                chat_generator=MockChatGenerator("hi"),
+                tools=[weather_tool],
+                response_schema=CityInfo,
+                state_schema={"structured_output": {"type": str}},
+            )
+
+        # Malformed JSON schema dict
+        with pytest.raises(ValueError, match="Invalid JSON schema provided in response_schema"):
+            Agent(
+                chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema={"type": "invalid_type"}
+            )
+
+        # Output types
+        agent = Agent(chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema=CityInfo)
+        output_sockets = agent.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
+        input_sockets = agent.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+        assert "structured_output" in output_sockets
+        assert output_sockets["structured_output"].type == (CityInfo | None)
+        assert "structured_output" not in input_sockets
+
+        # Dict schema output type
+        dict_schema = {"type": "object", "properties": {"city": {"type": "string"}}}
+        agent_dict = Agent(chat_generator=MockChatGenerator("hi"), tools=[weather_tool], response_schema=dict_schema)
+        output_sockets_dict = agent_dict.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
+        assert "structured_output" in output_sockets_dict
+        assert output_sockets_dict["structured_output"].type == (dict[str, Any] | None)
+
+    def test_no_tools_with_tool_call_does_not_trigger_schema_validation(self):
+        reply_with_tool_call = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="unknown_tool", arguments={"foo": "bar"})]
+        )
+        generator = MockChatGenerator(reply_with_tool_call)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=2)
+        result = agent.run(messages=[ChatMessage.from_user("Run unknown tool")])
+
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 1
+        assert result["structured_output"] is None
+
+    def test_pydantic_schema_success(self):
+        generator = MockChatGenerator('{"city": "Paris", "temperature": 21.5}')
+        agent = Agent(chat_generator=generator, response_schema=CityInfo)
+        result = agent.run(messages=[ChatMessage.from_user("Weather in Paris?")])
+
+        assert isinstance(result["structured_output"], CityInfo)
+        assert result["structured_output"].city == "Paris"
+        assert result["structured_output"].temperature == 21.5
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 1
+
+    def test_json_schema_dict_success(self):
+        schema = {
+            "type": "object",
+            "properties": {"city": {"type": "string"}, "count": {"type": "integer"}},
+            "required": ["city", "count"],
+        }
+        generator = MockChatGenerator('{"city": "Berlin", "count": 42}')
+        agent = Agent(chat_generator=generator, response_schema=schema)
+        result = agent.run(messages=[ChatMessage.from_user("Info?")])
+
+        assert result["structured_output"] == {"city": "Berlin", "count": 42}
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 1
+
+    def test_markdown_fenced_json(self):
+        response_text = '```json\n{"city": "Tokyo", "temperature": 18.0}\n```'
+        generator = MockChatGenerator(response_text)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo)
+        result = agent.run(messages=[ChatMessage.from_user("Weather in Tokyo?")])
+
+        assert isinstance(result["structured_output"], CityInfo)
+        assert result["structured_output"].city == "Tokyo"
+        assert result["step_count"] == 1
+
+    def test_retry_on_invalid_json_then_success(self):
+        replies = [
+            ChatMessage.from_assistant("I cannot provide JSON right now."),
+            ChatMessage.from_assistant('{"city": "Rome", "temperature": 25.0}'),
+        ]
+        generator = MockChatGenerator(replies)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=2)
+        result = agent.run(messages=[ChatMessage.from_user("Weather in Rome?")])
+
+        assert isinstance(result["structured_output"], CityInfo)
+        assert result["structured_output"].city == "Rome"
+        assert result["step_count"] == 2
+        # Verify correction message was injected as a user turn
+        assert len(result["messages"]) == 4
+        assert result["messages"][0].is_from(ChatRole.USER)
+        assert result["messages"][1].is_from(ChatRole.ASSISTANT)
+        assert result["messages"][2].is_from(ChatRole.USER)
+        assert "Your previous response did not match the expected schema" in result["messages"][2].text
+        assert result["messages"][3].is_from(ChatRole.ASSISTANT)
+
+    def test_retry_on_schema_mismatch_then_success(self):
+        replies = [
+            ChatMessage.from_assistant('{"city": "Madrid", "temperature": "twenty"}'),  # string instead of float
+            ChatMessage.from_assistant('{"city": "Madrid", "temperature": 20.0}'),
+        ]
+        generator = MockChatGenerator(replies)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=2)
+        result = agent.run(messages=[ChatMessage.from_user("Weather in Madrid?")])
+
+        assert isinstance(result["structured_output"], CityInfo)
+        assert result["structured_output"].temperature == 20.0
+        assert result["step_count"] == 2
+
+    def test_retries_exhausted_returns_none(self):
+        replies = [
+            ChatMessage.from_assistant("Invalid JSON 1"),
+            ChatMessage.from_assistant("Invalid JSON 2"),
+            ChatMessage.from_assistant("Invalid JSON 3"),
+        ]
+        generator = MockChatGenerator(replies)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=2)
+        result = agent.run(messages=[ChatMessage.from_user("Weather?")])
+
+        assert result["structured_output"] is None
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 3
+        assert result["last_message"].text == "Invalid JSON 3"
+
+    def test_max_agent_steps_stops_retries(self):
+        replies = [ChatMessage.from_assistant("Invalid JSON 1"), ChatMessage.from_assistant("Invalid JSON 2")]
+        generator = MockChatGenerator(replies)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=5, max_agent_steps=1)
+        result = agent.run(messages=[ChatMessage.from_user("Weather?")])
+
+        assert result["structured_output"] is None
+        assert result["step_count"] == 1
+
+    async def test_run_async_mirrors_sync(self):
+        replies = [
+            ChatMessage.from_assistant("Not JSON"),
+            ChatMessage.from_assistant('{"city": "London", "temperature": 15.0}'),
+        ]
+        generator = MockChatGenerator(replies)
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=2)
+        result = await agent.run_async(messages=[ChatMessage.from_user("Weather in London?")])
+
+        assert isinstance(result["structured_output"], CityInfo)
+        assert result["structured_output"].city == "London"
+        assert result["step_count"] == 2
+
+    def test_response_schema_none_backward_compatibility(self):
+        generator = MockChatGenerator("Plain text response")
+        agent = Agent(chat_generator=generator)
+        result = agent.run(messages=[ChatMessage.from_user("Hello")])
+
+        assert "structured_output" not in result
+        assert "structured_output" not in agent.resolved_state_schema
+        assert result["last_message"].text == "Plain text response"
+
+    def test_serialization_and_deserialization(self):
+        allow_deserialization_module(CityInfo.__module__)
+        generator = MockChatGenerator("test")
+        agent = Agent(chat_generator=generator, response_schema=CityInfo, max_schema_retries=5)
+        serialized = agent.to_dict()
+
+        assert serialized["init_parameters"]["response_schema"] == f"{CityInfo.__module__}.CityInfo"
+        assert serialized["init_parameters"]["max_schema_retries"] == 5
+
+        deserialized = Agent.from_dict(serialized)
+        assert deserialized.response_schema == CityInfo
+        assert deserialized.max_schema_retries == 5
+
+        # Dict schema serialization
+        dict_schema = {"type": "object", "properties": {"x": {"type": "number"}}}
+        agent_dict = Agent(chat_generator=generator, response_schema=dict_schema)
+        serialized_dict = agent_dict.to_dict()
+        assert serialized_dict["init_parameters"]["response_schema"] == dict_schema
+
+        deserialized_dict = Agent.from_dict(serialized_dict)
+        assert deserialized_dict.response_schema == dict_schema
+
+        # Clone
+        cloned = agent.clone(max_schema_retries=1)
+        assert cloned.response_schema == CityInfo
+        assert cloned.max_schema_retries == 1
