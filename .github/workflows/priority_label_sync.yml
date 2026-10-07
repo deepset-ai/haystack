@@ -6,12 +6,10 @@ name: Priority label sync
 # again; priority labels set by hand stay.
 #
 # We use "schedule" in addition to the "pull_request_target" and "issues" triggers to catch
-# links made via the "Development" sidebar, which emit no event. Every run reconciles the
-# current state, so the schedule also catches up on dropped or failed runs.
+# links made via the "Development" sidebar, which emit no event.
 #
 # Uses pull_request_target so it also has write permissions on fork PRs; this
 # is safe because the workflow never checks out or executes PR code.
-# Label changes made with GITHUB_TOKEN don't trigger workflows, so there are no loops.
 
 on:
   pull_request_target:
