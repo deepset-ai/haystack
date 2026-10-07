@@ -82,8 +82,8 @@ Initialize the LLMRanker component.
 
 **Parameters:**
 
-- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-  output is used.
+- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+  JSON output and with `store` set to `False` is used.
 - **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
   `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
 - **top_k** (<code>int</code>) – The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
