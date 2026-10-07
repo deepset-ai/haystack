@@ -1,0 +1,100 @@
+name: Native signed-effect contract
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '29 1 * * *'
+  pull_request:
+    paths:
+      - 'haystack/components/agents/**'
+      - 'haystack/core/pipeline/**'
+      - 'haystack/tools/**'
+      - 'haystack/tracing/**'
+      - 'haystack/dataclasses/**'
+      - 'e2e/probity_evidence/**'
+      - 'pyproject.toml'
+      - 'VERSION.txt'
+      - '.github/workflows/probity-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-signed-effect-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signed-effects:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      UV_LINK_MODE: copy
+      UV_CONCURRENT_BUILDS: '1'
+      CMAKE_BUILD_PARALLEL_LEVEL: '1'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMEXPR_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: host
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: probityai/agent-evidence-observer
+          ref: 5d9feedcfffcf441380e11e9f25a5db44d274068
+          persist-credentials: false
+          path: selected-observer
+          sparse-checkout: |
+            src
+            interop/haystack-native-2026-10-03
+            pyproject.toml
+            README.md
+            LICENSE
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.3'
+      - name: Install repository tooling
+        run: python -m pip install hatch==1.16.5
+      - name: Check source mutation refusals
+        working-directory: host/e2e/probity_evidence
+        run: >-
+          hatch run python -m unittest -v test_source_selection
+          > '${{ runner.temp }}/haystack-source-guards.stdout'
+          2> '${{ runner.temp }}/haystack-source-guards.stderr'
+      - name: Qualify the current framework and installed consumer
+        working-directory: host/e2e/probity_evidence
+        run: >-
+          hatch run python run.py
+          --source ../../../selected-observer
+          --selection observer-source-selection.json
+          --framework-source ../..
+          --output '${{ runner.temp }}/haystack-evidence-contract'
+          --python 3.13.3
+      - name: Retain original native records and decisions
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-signed-effect-contract
+          path: |
+            ${{ runner.temp }}/haystack-source-guards.stdout
+            ${{ runner.temp }}/haystack-source-guards.stderr
+            ${{ runner.temp }}/haystack-evidence-contract/packet/
+            ${{ runner.temp }}/haystack-evidence-contract/changed-input-packet/
+            ${{ runner.temp }}/haystack-evidence-contract/changed-input-publication/
+            ${{ runner.temp }}/haystack-evidence-contract/unselected-publication/
+            ${{ runner.temp }}/haystack-evidence-contract/wheels/
+            ${{ runner.temp }}/haystack-evidence-contract/framework-wheels/
+            ${{ runner.temp }}/haystack-evidence-contract/reference-derivation/
+            ${{ runner.temp }}/haystack-evidence-contract/host-selected*.json
+            ${{ runner.temp }}/haystack-evidence-contract/publication/
+            ${{ runner.temp }}/haystack-evidence-contract/*source-selection.json
+            ${{ runner.temp }}/haystack-evidence-contract/commands.json
+            ${{ runner.temp }}/haystack-evidence-contract/native-tests.xml
+            ${{ runner.temp }}/haystack-evidence-contract/COMPLETE.json
+            ${{ runner.temp }}/haystack-evidence-contract/*.stdout
+            ${{ runner.temp }}/haystack-evidence-contract/*.stderr
+          if-no-files-found: error
+          retention-days: 14
