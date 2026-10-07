@@ -157,19 +157,17 @@ class Tool:
                         )
 
         if self.outputs_to_string is not None:
-            if "source" in self.outputs_to_string and not isinstance(self.outputs_to_string["source"], str):
-                raise ValueError("outputs_to_string source must be a string.")
-            if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
-                raise ValueError("outputs_to_string handler must be callable")
-            if "raw_result" in self.outputs_to_string and not isinstance(self.outputs_to_string["raw_result"], bool):
-                raise ValueError("outputs_to_string raw_result must be a boolean.")
-
-            if (
-                "source" in self.outputs_to_string
-                or "handler" in self.outputs_to_string
-                or "raw_result" in self.outputs_to_string
-            ):
+            if _is_single_output_config(self.outputs_to_string):
                 # Single output configuration
+                if "source" in self.outputs_to_string and not isinstance(self.outputs_to_string["source"], str):
+                    raise ValueError("outputs_to_string source must be a string.")
+                if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
+                    raise ValueError("outputs_to_string handler must be callable")
+                if "raw_result" in self.outputs_to_string and not isinstance(
+                    self.outputs_to_string["raw_result"], bool
+                ):
+                    raise ValueError("outputs_to_string raw_result must be a boolean.")
+
                 for key in self.outputs_to_string:
                     if key not in {"source", "handler", "raw_result"}:
                         raise ValueError(
@@ -425,6 +423,13 @@ def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -
     return _convert_handler_in_configs(outputs_to_state, deserialize_callable)
 
 
+def _is_single_output_config(outputs_to_string: dict[str, Any]) -> bool:
+    return any(
+        key in outputs_to_string and not isinstance(outputs_to_string[key], dict)
+        for key in ("source", "handler", "raw_result")
+    )
+
+
 def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
     """
     Serializes the outputs_to_string dictionary, converting any callable handlers to their string representation.
@@ -432,7 +437,7 @@ def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str,
     :param outputs_to_string: The outputs_to_string dictionary to serialize.
     :returns: The serialized outputs_to_string dictionary.
     """
-    if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
+    if _is_single_output_config(outputs_to_string):
         # Single output configuration
         return _convert_handler(outputs_to_string, serialize_callable)
 
@@ -447,7 +452,7 @@ def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[st
     :param outputs_to_string: The outputs_to_string dictionary to deserialize.
     :returns: The deserialized outputs_to_string dictionary.
     """
-    if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
+    if _is_single_output_config(outputs_to_string):
         # Single output configuration
         return _convert_handler(outputs_to_string, deserialize_callable)
 

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import re
 import threading
 from typing import Any
@@ -214,6 +215,21 @@ class TestTool:
         assert tool.outputs_to_string == {"handler": format_string}
         assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
+
+    @pytest.mark.parametrize("output_key", ["source", "handler", "raw_result"])
+    def test_outputs_to_string_reserved_output_names_round_trip(self, output_key):
+        config = {output_key: {"source": "report", "handler": format_string}, "temp": {"source": "temperature"}}
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_string=config,
+        )
+
+        restored_tool = Tool.from_dict(json.loads(json.dumps(tool.to_dict())))
+
+        assert restored_tool.outputs_to_string == config
 
     def test_serialize_outputs_to_string(self):
         config = {"handler": format_string, "source": "result", "raw_result": False}

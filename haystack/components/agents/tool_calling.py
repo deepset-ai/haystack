@@ -18,6 +18,7 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingCh
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _is_state_annotation
+from haystack.tools.tool import _is_single_output_config
 from haystack.tracing.utils import _serializable_value
 
 logger = logging.getLogger(__name__)
@@ -146,7 +147,7 @@ def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool, *, 
     outputs_config = tool.outputs_to_string or {}
 
     # Single-output config (or no config): keys are at the root level
-    if not outputs_config or any(k in outputs_config for k in ("source", "handler", "raw_result")):
+    if not outputs_config or _is_single_output_config(outputs_config):
         tool_result = _process_tool_output(outputs_config, result, tool_call, raise_on_failure=raise_on_failure)
         return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
