@@ -10,6 +10,7 @@ import sys
 from collections.abc import Callable, Generator
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from unittest.mock import ANY
 
 import pytest
@@ -434,7 +435,7 @@ class TestStructuredLoggingJSONRendering:
         )
 
     def test_deep_exception_never_uses_container_repr(self) -> None:
-        value = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
+        value: Any = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
         for _ in range(9):
             value = [value]
         result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
@@ -442,7 +443,7 @@ class TestStructuredLoggingJSONRendering:
         assert "[maximum depth reached]" in repr(result)
 
     def test_exception_at_depth_cutoff_uses_safe_rendering(self) -> None:
-        value = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
+        value: Any = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
         for _ in range(8):
             value = [value]
         result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
