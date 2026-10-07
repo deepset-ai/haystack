@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    ``OpenAIChatGenerator`` and ``AzureOpenAIChatGenerator`` have a new ``include_rate_limit_headers`` init
+    parameter. When set to ``True``, the ``x-ratelimit-*`` headers of the API response (for example
+    ``x-ratelimit-remaining-requests`` and ``x-ratelimit-remaining-tokens``) are added to the ``meta`` of each
+    reply under the ``rate_limit_headers`` key. This works with and without streaming. It is disabled by default.
