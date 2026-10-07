@@ -38,6 +38,7 @@ from haystack.components.generators.chat.openai import (
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
     _convert_chat_completion_to_chat_message,
+    _extract_rate_limit_headers,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -289,6 +290,7 @@ class TestOpenAIChatGenerator:
                 "max_retries": None,
                 "timeout": None,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -312,6 +314,7 @@ class TestOpenAIChatGenerator:
             max_retries=10,
             timeout=100.0,
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
+            include_rate_limit_headers=True,
         )
         data = component.to_dict()
 
@@ -365,6 +368,7 @@ class TestOpenAIChatGenerator:
                 ],
                 "tools_strict": True,
                 "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
+                "include_rate_limit_headers": True,
             },
         }
 
@@ -390,6 +394,7 @@ class TestOpenAIChatGenerator:
                 "max_retries": None,
                 "timeout": None,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -419,6 +424,7 @@ class TestOpenAIChatGenerator:
                 ],
                 "tools_strict": True,
                 "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
+                "include_rate_limit_headers": True,
             },
         }
         component = OpenAIChatGenerator.from_dict(data)
@@ -436,6 +442,7 @@ class TestOpenAIChatGenerator:
         assert component.timeout == 100.0
         assert component.max_retries == 10
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
+        assert component.include_rate_limit_headers is True
 
     def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
@@ -2335,3 +2342,115 @@ class TestMakeSchemaStrict:
         assert "address" in tool_call.arguments
         assert "street" in tool_call.arguments["address"]
         assert "city" in tool_call.arguments["address"]
+
+
+# trimmed capture of the headers OpenAI returns with a /chat/completions response
+RATE_LIMIT_HEADERS = {
+    "x-ratelimit-limit-requests": "5000",
+    "x-ratelimit-limit-tokens": "4000000",
+    "x-ratelimit-remaining-requests": "4999",
+    "x-ratelimit-remaining-tokens": "3999975",
+    "x-ratelimit-reset-requests": "12ms",
+    "x-ratelimit-reset-tokens": "0s",
+}
+OTHER_HEADERS = {"openai-processing-ms": "312", "x-request-id": "req_123"}
+
+
+COMPLETION_WITH_TWO_CHOICES = {
+    "id": "chatcmpl-123",
+    "object": "chat.completion",
+    "created": 1786704941,
+    "model": "gpt-5-mini-2025-08-07",
+    "choices": [
+        {"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"},
+        {"index": 1, "message": {"role": "assistant", "content": "Paris."}, "finish_reason": "stop"},
+    ],
+    "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+}
+
+
+def _sse_body(deltas: list[dict[str, Any]]) -> bytes:
+    events = []
+    for delta in deltas:
+        chunk = {"id": "chatcmpl-123", "object": "chat.completion.chunk", "created": 1786704941, "model": "gpt-5-mini"}
+        events.append(f"data: {json.dumps({**chunk, 'choices': [{'index': 0, **delta}]})}\n\n")
+    events.append("data: [DONE]\n\n")
+    return "".join(events).encode()
+
+
+class TestRateLimitHeaders:
+    @staticmethod
+    def _generator(response: httpx.Response, **kwargs: Any) -> OpenAIChatGenerator:
+        return OpenAIChatGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(lambda _: response)},
+            **kwargs,
+        )
+
+    def test_not_included_by_default(self) -> None:
+        response = httpx.Response(
+            200, json=COMPLETION_WITH_TWO_CHOICES, headers={**RATE_LIMIT_HEADERS, **OTHER_HEADERS}
+        )
+        result = self._generator(response).run("What's the capital of France?")
+
+        assert all("rate_limit_headers" not in reply.meta for reply in result["replies"])
+
+    def test_included_in_meta_of_each_reply(self) -> None:
+        response = httpx.Response(
+            200, json=COMPLETION_WITH_TWO_CHOICES, headers={**RATE_LIMIT_HEADERS, **OTHER_HEADERS}
+        )
+        generator = self._generator(response, include_rate_limit_headers=True)
+        result = generator.run("What's the capital of France?", generation_kwargs={"n": 2})
+
+        assert [reply.text for reply in result["replies"]] == ["Paris", "Paris."]
+        for reply in result["replies"]:
+            assert reply.meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
+            assert reply.meta["usage"]["total_tokens"] == 27
+
+    def test_included_with_structured_output(self) -> None:
+        class City(BaseModel):
+            name: str
+
+        completion = {
+            **COMPLETION_WITH_TWO_CHOICES,
+            "choices": [
+                {"index": 0, "message": {"role": "assistant", "content": '{"name": "Paris"}'}, "finish_reason": "stop"}
+            ],
+        }
+        response = httpx.Response(200, json=completion, headers=RATE_LIMIT_HEADERS)
+        generator = self._generator(
+            response, include_rate_limit_headers=True, generation_kwargs={"response_format": City}
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert result["replies"][0].text == '{"name": "Paris"}'
+        assert result["replies"][0].meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
+
+    def test_included_when_streaming(self) -> None:
+        body = _sse_body(
+            [
+                {"delta": {"role": "assistant", "content": "Paris"}, "finish_reason": None},
+                {"delta": {}, "finish_reason": "stop"},
+            ]
+        )
+        response = httpx.Response(
+            200, content=body, headers={"content-type": "text/event-stream", **RATE_LIMIT_HEADERS}
+        )
+        streamed: list[StreamingChunk] = []
+        generator = self._generator(response, include_rate_limit_headers=True, streaming_callback=streamed.append)
+        result = generator.run("What's the capital of France?")
+
+        assert [chunk.content for chunk in streamed] == ["Paris", ""]
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
+
+    def test_empty_when_api_sends_no_rate_limit_headers(self) -> None:
+        response = httpx.Response(200, json=COMPLETION_WITH_TWO_CHOICES, headers=OTHER_HEADERS)
+        result = self._generator(response, include_rate_limit_headers=True).run("What's the capital of France?")
+
+        assert result["replies"][0].meta["rate_limit_headers"] == {}
+
+    def test_extract_rate_limit_headers(self) -> None:
+        headers = httpx.Headers({"X-RateLimit-Remaining-Requests": "99", "Content-Type": "application/json"})
+
+        assert _extract_rate_limit_headers(headers) == {"x-ratelimit-remaining-requests": "99"}

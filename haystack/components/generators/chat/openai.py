@@ -5,6 +5,7 @@
 import asyncio
 import json
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -131,6 +132,8 @@ class OpenAIChatGenerator:
         tools: ToolsType | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        *,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -193,6 +196,10 @@ class OpenAIChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Disabled by default.
 
         """
         self.api_key = api_key
@@ -206,6 +213,7 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         # Check for duplicate tool names
         _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
@@ -310,6 +318,7 @@ class OpenAIChatGenerator:
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
@@ -385,8 +394,14 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
-        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
-        chat_completion = openai_endpoint_method(**api_args)
+        rate_limit_headers = None
+        if self.include_rate_limit_headers:
+            raw_response = getattr(self.client.chat.completions.with_raw_response, openai_endpoint)(**api_args)
+            rate_limit_headers = _extract_rate_limit_headers(raw_response.headers)
+            chat_completion = raw_response.parse()
+        else:
+            openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
+            chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -405,6 +420,8 @@ class OpenAIChatGenerator:
         # before returning, do post-processing of the completions
         for message in completions:
             _check_finish_reason(message.meta)
+            if rate_limit_headers is not None:
+                message.meta["rate_limit_headers"] = dict(rate_limit_headers)
 
         return {"replies": completions}
 
@@ -469,8 +486,16 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
-        openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
-        chat_completion = await openai_endpoint_method(**api_args)
+        rate_limit_headers = None
+        if self.include_rate_limit_headers:
+            raw_response = await getattr(self.async_client.chat.completions.with_raw_response, openai_endpoint)(
+                **api_args
+            )
+            rate_limit_headers = _extract_rate_limit_headers(raw_response.headers)
+            chat_completion = raw_response.parse()
+        else:
+            openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
+            chat_completion = await openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
@@ -489,6 +514,8 @@ class OpenAIChatGenerator:
         # before returning, do post-processing of the completions
         for message in completions:
             _check_finish_reason(message.meta)
+            if rate_limit_headers is not None:
+                message.meta["rate_limit_headers"] = dict(rate_limit_headers)
 
         return {"replies": completions}
 
@@ -622,6 +649,13 @@ def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
             schema[combinator] = [_make_schema_strict(s) for s in schema[combinator]]
 
     return schema
+
+
+def _extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    """
+    Extract the rate limit headers (`x-ratelimit-*`) sent by OpenAI and Azure OpenAI from the HTTP response headers.
+    """
+    return {name.lower(): value for name, value in headers.items() if name.lower().startswith("x-ratelimit-")}
 
 
 def _check_finish_reason(meta: dict[str, Any]) -> None:

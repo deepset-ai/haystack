@@ -4,6 +4,7 @@
 
 import asyncio
 import contextlib
+import json
 import os
 from datetime import datetime
 from typing import Any
@@ -142,6 +143,61 @@ class TestOpenAIChatGeneratorAsync:
         assert result["replies"][0].text == "Paris"
         assert component.async_client is not None
         assert component.async_client._client.follow_redirects is False
+
+    async def test_rate_limit_headers_included_in_meta(self) -> None:
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "4999", "x-ratelimit-remaining-tokens": "3999975"}
+        completion = {
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        async def handler(request: httpx.Request) -> httpx.Response:  # noqa: RUF029
+            return httpx.Response(200, json=completion, headers={**rate_limit_headers, "x-request-id": "req_123"})
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            include_rate_limit_headers=True,
+        )
+        result = await component.run_async("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
+
+    async def test_rate_limit_headers_included_in_meta_when_streaming(self) -> None:
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "4999", "x-ratelimit-remaining-tokens": "3999975"}
+        chunk = {"id": "chatcmpl-123", "object": "chat.completion.chunk", "created": 1786704941, "model": "gpt-5-mini"}
+        body = (
+            f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {'content': 'Paris'}}]})}\n\n"
+            f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+            "data: [DONE]\n\n"
+        )
+
+        async def handler(request: httpx.Request) -> httpx.Response:  # noqa: RUF029
+            return httpx.Response(
+                200, content=body.encode(), headers={"content-type": "text/event-stream", **rate_limit_headers}
+            )
+
+        streamed: list[StreamingChunk] = []
+
+        async def callback(chunk: StreamingChunk) -> None:  # noqa: RUF029
+            streamed.append(chunk)
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            streaming_callback=callback,
+            include_rate_limit_headers=True,
+        )
+        result = await component.run_async("What's the capital of France?")
+
+        assert [c.content for c in streamed] == ["Paris", ""]
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
 
     @pytest.mark.asyncio
     async def test_run_async(

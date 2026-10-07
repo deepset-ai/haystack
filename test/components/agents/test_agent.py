@@ -339,6 +339,7 @@ class TestAgentSerialization:
                         "tools": None,
                         "tools_strict": False,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 },
                 "tools": [
