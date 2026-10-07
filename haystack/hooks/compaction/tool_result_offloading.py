@@ -52,8 +52,9 @@ class ToolResultOffloadCompactor(Compactor):
     The store is fixed when the compactor is created. In a multi-user server, build a compactor and its hook per run
     with that run's own store, so users never read each other's results.
 
-    Image and file results are only offloaded when the `TokenCounter` measures their real size, as `OpenAITokenCounter`
-    does. A local counter measures them as a short stand-in, so offloading them saves nothing and they stay in context.
+    For results with images or files, we recommend a provider token counter such as `OpenAITokenCounter`, which
+    measures their real size. Local counters like `ApproximateTokenCounter` charge a flat `tokens_per_image` and
+    `tokens_per_file` instead, which can undercount such results and keep them below `min_tokens`.
     """
 
     def __init__(
