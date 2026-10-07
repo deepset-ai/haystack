@@ -176,7 +176,7 @@
 | haystack/document\_stores/types/protocol.py                               |       11 |        0 |    100% |           |
 | haystack/errors.py                                                        |        2 |        0 |    100% |           |
 | haystack/evaluation/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
-| haystack/evaluation/eval\_run\_result.py                                  |       93 |       35 |     62% |72-97, 111-120, 189, 192, 195, 200, 211, 215 |
+| haystack/evaluation/eval\_run\_result.py                                  |       93 |       17 |     82% |75, 92-97, 112-113, 117, 120, 189, 192, 195, 200, 211, 215 |
 | haystack/hooks/\_\_init\_\_.py                                            |        5 |        0 |    100% |           |
 | haystack/hooks/budget/\_\_init\_\_.py                                     |        5 |        0 |    100% |           |
 | haystack/hooks/budget/hooks.py                                            |       32 |        0 |    100% |           |
@@ -267,7 +267,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17552** |  **730** | **96%** |           |
+| **TOTAL**                                                                 | **17552** |  **712** | **96%** |           |
 
 
 ## Setup coverage badge
