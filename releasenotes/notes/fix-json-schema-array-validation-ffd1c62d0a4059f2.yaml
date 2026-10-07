@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``JsonSchemaValidator`` validating arrays against array schemas, including
+    constraints on empty arrays. Object and OpenAI function-calling schemas
+    continue to validate arrays as batches.

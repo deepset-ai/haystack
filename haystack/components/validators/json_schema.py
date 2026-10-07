@@ -121,6 +121,9 @@ class JsonSchemaValidator:
         If it does, the message is passed along the "validated" output. If it does not, the message is passed along
         the "validation_error" output.
 
+        JSON arrays are validated as a whole. For schemas with `type: object` or OpenAI function-calling schemas,
+        a JSON array is treated as a batch of objects to validate individually.
+
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
             that is validated.
         :param json_schema: A dictionary representing the [JSON schema](https://json-schema.org/)
@@ -166,8 +169,12 @@ class JsonSchemaValidator:
         else:
             validation_schema = json_schema
         try:
-            last_message_json = [last_message_json] if not isinstance(last_message_json, list) else last_message_json
-            for content in last_message_json:
+            contents_to_validate = (
+                last_message_json
+                if isinstance(last_message_json, list) and (using_openai_schema or json_schema.get("type") == "object")
+                else [last_message_json]
+            )
+            for content in contents_to_validate:
                 if using_openai_schema:
                     validate(instance=content["function"]["arguments"], schema=validation_schema)
                 else:

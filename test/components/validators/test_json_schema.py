@@ -107,6 +107,27 @@ class TestJsonSchemaValidator:
 
         assert result == {"validated": [message]}
 
+    @pytest.mark.parametrize(
+        "schema, content, expected_output",
+        [
+            ({"type": "array", "items": {"type": "integer"}}, [1, 2], "validated"),
+            ({"type": "array", "items": {"type": "integer"}}, [1, "two"], "validation_error"),
+            ({"type": "array"}, [], "validated"),
+            ({"type": "array", "minItems": 1}, [], "validation_error"),
+            ({"type": "array", "maxItems": 1}, [1, 2], "validation_error"),
+            ({"type": "array", "uniqueItems": True}, [1, 1], "validation_error"),
+        ],
+    )
+    def test_validates_array_against_schema(self, schema, content, expected_output):
+        validator = JsonSchemaValidator(json_schema=schema)
+        message = ChatMessage.from_assistant(json.dumps(content))
+
+        result = validator.run(messages=[message])
+
+        assert list(result) == [expected_output]
+        if expected_output == "validated":
+            assert result == {"validated": [message]}
+
     # Validates recursive_json_to_object method
     def test_recursive_json_to_object(self, genuine_fc_message):
         arguments_is_string = json.loads(genuine_fc_message)

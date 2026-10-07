@@ -27,6 +27,8 @@ Use this component to ensure that an LLM-generated chat message JSON adheres to 
 
 `JsonSchemaValidator` checks the JSON content of a `ChatMessage` against a given [JSON Schema](https://json-schema.org/). If a message's JSON content follows the provided schema, it's moved to the `validated` output. If not, it's moved to the `validation_error`output. When there's an error, the component uses either the provided custom `error_template` or a default template to create the error message. These error `ChatMessages` can be used in Haystack recovery loops.
 
+JSON arrays are validated as a whole, including constraints such as `items`, `minItems`, `maxItems`, and `uniqueItems`. With a schema specifying `"type": "object"` or an OpenAI function-calling schema, each item in a JSON array is validated individually as part of a batch.
+
 ## Usage
 
 ### In a pipeline
