@@ -29,22 +29,42 @@ description: "Use ToolResultOffloadCompactor to store older tool results only wh
 
 ## Usage
 
-Pass the compactor a [`ToolResultStore`](../tool-result-offloading.mdx#stores) and give the result to a `CompactionHook`:
+Pass the compactor a [`ToolResultStore`](../tool-result-offloading.mdx#stores), register its `CompactionHook` under the Agent's `before_llm` hook point, and give the Agent a tool that reads from the same store:
 
 ```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
 from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+from haystack.tools import tool
 
-result_store = FileSystemToolResultStore(root="tool_results")
-compaction_hook = CompactionHook(
-    compactor=ToolResultOffloadCompactor(store=result_store),
-    context_window=400_000,
-    compact_at=0.7,
-    compact_to=0.4,
+store = FileSystemToolResultStore(root="tool_results")
+
+
+@tool
+def read_offloaded_result(
+    path: Annotated[str, "Path of an offloaded tool result"],
+) -> str:
+    """Read back the full content of an offloaded tool result."""
+    content = store.read(path)
+    if isinstance(content, bytes):
+        return f"'{path}' holds {len(content)} bytes of binary content and cannot be read as text."
+    return content
+
+
+hook = CompactionHook(
+    compactor=ToolResultOffloadCompactor(store=store), context_window=400_000
+)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search, read_offloaded_result],
+    hooks={"before_llm": [hook]},
 )
 ```
 
-Register the hook under the Agent's `before_llm` hook point, as shown in [`CompactionHook`](compaction-hook.mdx). The Agent then initially sends each tool's full output to the model. Once the context reaches `compact_at`, the compactor processes eligible older results until the messages reach the target derived from `compact_to`. Each replacement names the store reference, the size of the original result, and a preview of its text. Give the Agent a tool that reads from the same store so it can retrieve the full output later, as shown in [Reading offloaded results back](#reading-offloaded-results-back).
+Here `web_search` stands in for any tool whose results can grow large. The Agent initially sends each tool's full output to the model. Once the context reaches `compact_at`, the compactor processes eligible older results until the messages reach the target derived from `compact_to`. Each replacement names the store reference, the size of the original result, and a preview of its text, and the model can call `read_offloaded_result` to get the full output back.
 
 ## How offloading works
 
@@ -88,41 +108,31 @@ The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by
 
 The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its reference. The compactor updates its running total using the difference between those two counts.
 
-This also decides whether a non-text result is worth offloading. A local counter measures an image or a file as a short stand-in, so offloading it frees nothing measurable and the result stays in context. A counter that measures what the provider actually charges for, such as [`OpenAITokenCounter`](../../../token-counters.mdx), reports the real size, and those results are offloaded like any other.
+For results with images or files, we recommend a provider token counter such as [`OpenAITokenCounter`](../../../token-counters/openaitokencounter.mdx), which measures their real size. The default [`ApproximateTokenCounter`](../../../token-counters/approximatetokencounter.mdx) charges a flat `tokens_per_image` and `tokens_per_file` instead, which can undercount such results and keep them below `min_tokens`. Pass the counter to `CompactionHook`:
+
+```python
+from haystack.token_counters import OpenAITokenCounter
+
+hook = CompactionHook(
+    compactor=ToolResultOffloadCompactor(store=store),
+    context_window=400_000,
+    token_counter=OpenAITokenCounter(model="gpt-5.4-nano"),
+)
+```
+
+See [Token Counters](../../../token-counters.mdx) for the provider counters available for other model providers.
 
 ## Reading offloaded results back
 
-The reference in the conversation is only useful if the Agent can resolve it, so give the Agent a tool that reads from the same store:
+The reference in the conversation is only useful if the Agent can resolve it, so give the Agent a tool that reads from the same store the compactor writes to, like `read_offloaded_result` in [Usage](#usage). That tool returns a short note for an offloaded image or file; to put one back in front of the model, a tool can return it as an `ImageContent` or `FileContent` block instead.
 
-```python
-from typing import Annotated
-
-from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
-from haystack.tools import tool
-
-result_store = FileSystemToolResultStore(root="tool_results")
-
-
-@tool
-def read_offloaded_result(
-    reference: Annotated[str, "A reference from an offloaded tool result."],
-) -> str:
-    """Read back the full content of a tool result that was offloaded to storage."""
-    content = result_store.read(reference)
-    return (
-        content
-        if isinstance(content, str)
-        else f"{len(content)} bytes of binary content"
-    )
-```
-
-Pass that tool to the Agent alongside the tools whose results get offloaded, reading from the same store the compactor writes to. Without such a tool the offloaded output is gone from the Agent's reach, which makes [`ToolResultPruningCompactor`](tool-result-pruning-compactor.mdx) the simpler choice.
+Without such a tool the offloaded output is gone from the Agent's reach, which makes [`ToolResultPruningCompactor`](tool-result-pruning-compactor.mdx) the simpler choice.
 
 ## Choosing between the compactor and the hook
 
 Use `ToolResultOffloadCompactor` when fresh results should remain directly available and offloading should happen only as the context fills. Use [`ToolResultOffloadHook`](../tool-result-offloading.mdx) when selected outputs should always be offloaded immediately, including on short Agent runs.
 
-The hook supports per-tool `OffloadPolicy` configuration and request-scoped store overrides through `hook_context`. A compactor receives no per-run context, so in a multi-user server build a compactor and its hook per run, each with that run's own isolated store.
+The hook supports per-tool `OffloadPolicy` configuration and request-scoped store overrides through `hook_context`. The compactor always writes to the store it was created with and does not read a store from `hook_context`, so in a multi-user server create an Agent per run with its own compactor and store.
 
 Both use the same `ToolResultStore` abstraction, reference format, and `tool_result_offloaded` metadata, so a tool that reads references back handles them the same way regardless of when offloading happened.
 
