@@ -2,7 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import builtins
+import csv
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -153,6 +156,28 @@ def test_to_df():
             "semantic_answer_similarity": [0.971241, 0.15932, 0.019722, 1.0],
         }
     )
+
+
+def test_detailed_report_csv_writes_utf8_regardless_of_locale(tmp_path):
+    inputs = {"question": ["¿Cuál es la capital de España?", "東京は日本の首都ですか?"], "answer": ["Madrid", "はい"]}
+    metrics = {"exact_match": {"score": 0.5, "individual_scores": [1, 0]}}
+    result = EvaluationRunResult("testing_pipeline", inputs=inputs, results=metrics)
+    csv_file = tmp_path / "report.csv"
+
+    # simulate a Windows locale: without an explicit encoding, the file would be written as cp1252
+    def open_with_cp1252_default(file, mode="r", *args, encoding=None, **kwargs):
+        return builtins.open(file, mode, *args, encoding=encoding or "cp1252", **kwargs)
+
+    with patch("haystack.evaluation.eval_run_result.open", open_with_cp1252_default, create=True):
+        message = result.detailed_report(output_format="csv", csv_file=str(csv_file))
+
+    assert message == f"Data successfully written to {csv_file}"
+    with open(csv_file, newline="", encoding="utf-8") as f:
+        assert list(csv.reader(f)) == [
+            ["question", "answer", "exact_match"],
+            ["¿Cuál es la capital de España?", "Madrid", "1"],
+            ["東京は日本の首都ですか?", "はい", "0"],
+        ]
 
 
 def test_comparative_individual_scores_report():

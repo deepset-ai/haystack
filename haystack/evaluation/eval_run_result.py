@@ -83,7 +83,7 @@ class EvaluationRunResult:
                 row = [data[header][i] for header in headers]
                 rows.append(row)
 
-            with open(csv_file, "w", newline="") as csvfile:
+            with open(csv_file, "w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(headers)
                 writer.writerows(rows)
