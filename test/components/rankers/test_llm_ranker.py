@@ -36,6 +36,7 @@ def test_init_default_generator(monkeypatch):
     assert ranker.prompt == DEFAULT_PROMPT_TEMPLATE
     assert isinstance(ranker._chat_generator, OpenAIResponsesChatGenerator)
     assert ranker._chat_generator.model == "gpt-4.1-mini"
+    assert ranker._chat_generator.generation_kwargs["store"] is False
     assert ranker._prompt_builder is not None
 
 

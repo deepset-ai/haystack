@@ -98,7 +98,8 @@ class QueryExpander:
         Initialize the QueryExpander component.
 
         :param chat_generator: The chat generator component to use for query expansion.
-            If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model is used.
+            If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model and `store` set to `False`
+            is used.
         :param prompt_template: Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
             template for query expansion. The template should instruct the LLM to return a JSON response with the
             structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and
@@ -117,6 +118,7 @@ class QueryExpander:
                 model="gpt-4.1-mini",
                 generation_kwargs={
                     "temperature": 0.7,
+                    "store": False,
                     "text": {
                         "format": {
                             "type": "json_schema",

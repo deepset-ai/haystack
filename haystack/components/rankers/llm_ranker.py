@@ -23,6 +23,7 @@ def _default_openai_chat_generator() -> ChatGenerator:
         model="gpt-4.1-mini",
         generation_kwargs={
             "temperature": 0.0,
+            "store": False,
             "text": {
                 "format": {
                     "type": "json_schema",
@@ -153,7 +154,7 @@ class LLMRanker:
 
         :param chat_generator:
             The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
-            JSON output is used.
+            JSON output and with `store` set to `False` is used.
         :param prompt:
             Custom prompt template for reranking. The prompt must include exactly the variables `query` and
             `documents` and instruct the LLM to return ranked 1-based document indices as JSON.

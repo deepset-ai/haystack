@@ -2,4 +2,5 @@
 enhancements:
   - |
     When no ``chat_generator`` is passed, ``LLMRanker`` and ``QueryExpander`` now use ``OpenAIResponsesChatGenerator``
-    instead of ``OpenAIChatGenerator``, with the same model and temperature.
+    instead of ``OpenAIChatGenerator``, with the same model and temperature. The default generator sets
+    ``"store": False`` so OpenAI does not keep the requests and responses.

@@ -29,6 +29,7 @@ class TestQueryExpander:
         assert expander.include_original_query is True
         assert isinstance(expander.chat_generator, OpenAIResponsesChatGenerator)
         assert expander.chat_generator.model == "gpt-4.1-mini"
+        assert expander.chat_generator.generation_kwargs["store"] is False
         assert expander._prompt_builder is not None
 
     def test_init_custom_generator(self, mock_chat_generator):
