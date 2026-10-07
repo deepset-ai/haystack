@@ -102,9 +102,9 @@
 | haystack/components/preprocessors/sentence\_tokenizer.py                  |       87 |        4 |     95% |65-66, 73-78 |
 | haystack/components/preprocessors/text\_cleaner.py                        |       33 |        0 |    100% |           |
 | haystack/components/query/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/query/query\_expander.py                              |      142 |       10 |     93% |281-282, 288, 298-303, 310-316, 327-335 |
+| haystack/components/query/query\_expander.py                              |      142 |       10 |     93% |282-283, 289, 299-304, 311-317, 328-336 |
 | haystack/components/rankers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/rankers/llm\_ranker.py                                |      154 |        5 |     97% |341, 375, 403, 412, 416 |
+| haystack/components/rankers/llm\_ranker.py                                |      154 |        5 |     97% |342, 376, 404, 413, 417 |
 | haystack/components/rankers/lost\_in\_the\_middle.py                      |       43 |        2 |     95% |   83, 117 |
 | haystack/components/rankers/meta\_field.py                                |      119 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py              |       39 |        0 |    100% |           |
