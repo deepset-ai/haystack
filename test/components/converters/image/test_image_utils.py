@@ -96,6 +96,22 @@ class TestConvertPdfToImages:
 
         assert "Large PDF detected" in caplog.text
 
+    def test_convert_pdf_to_images_closes_pdf_when_rendering_fails(self) -> None:
+        bytestream = get_bytestream_from_source(Path("test/test_files/pdf/sample_pdf_1.pdf"))
+
+        mock_pdf_document = MagicMock()
+        mock_pdf_document.__len__.return_value = 1
+        mock_page = MagicMock()
+        mock_page.get_mediabox.return_value = (0, 0, 100, 100)
+        mock_page.render.side_effect = RuntimeError("render failed")
+        mock_pdf_document.__getitem__.return_value = mock_page
+
+        with patch("haystack.components.converters.image.image_utils.PdfDocument", return_value=mock_pdf_document):
+            with pytest.raises(RuntimeError, match="render failed"):
+                _convert_pdf_to_images(bytestream=bytestream, page_range=[1])
+
+        mock_pdf_document.close.assert_called_once()
+
 
 class TestEncodeImageToBase64:
     def test_encode_image_to_base64(self) -> None:
