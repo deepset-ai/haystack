@@ -377,7 +377,8 @@ class Pipeline(PipelineBase):
             _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot, self.graph)
 
             # Handle resuming the pipeline from a snapshot
-            component_visits = pipeline_snapshot.pipeline_state.component_visits
+            # Advancing or failing a resumed run must not consume the snapshot's saved run budget.
+            component_visits = pipeline_snapshot.pipeline_state.component_visits.copy()
             ordered_component_names = pipeline_snapshot.ordered_component_names
             data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
 
