@@ -376,7 +376,14 @@ def _bound_container_values(value: Any, depth: int) -> Any:
 
 
 def bound_event_dict_values(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
-    """Bound each log value, rendering exceptions without their input buffers."""
+    """
+    Keep individual log values from growing without bound.
+
+    Exceptions are rendered with `str` rather than `repr`, because some carry their whole input in their
+    `repr`: `UnicodeDecodeError` keeps the entire buffer it failed to decode, so logging one raised while
+    decoding a large file would otherwise emit that whole file as a single log line. The same applies to
+    exceptions nested in a list, tuple or dict.
+    """
     for key, value in list(event_dict.items()):
         if key == "exc_info":  # ExceptionRenderer still needs the original exception.
             continue

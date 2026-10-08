@@ -2,5 +2,6 @@ fixes:
   - |
     ``bound_event_dict_values`` now also bounds log values nested inside ``list``, ``tuple`` and ``dict``
     fields. Exceptions in a container are rendered with ``str`` instead of ``repr``, so a
-    ``UnicodeDecodeError`` no longer writes the whole buffer it failed to decode into the log line, and a
-    container whose rendered form exceeds ``MAX_LOG_VALUE_LENGTH`` is replaced by a truncated string.
+    ``UnicodeDecodeError`` no longer writes the whole buffer it failed to decode into the log line, and
+    containers are cut short in place with ``[container budget exhausted]``, ``[recursive container]`` or
+    ``[maximum depth reached]`` markers when they reach the traversal limits.

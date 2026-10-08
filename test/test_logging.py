@@ -434,21 +434,14 @@ class TestStructuredLoggingJSONRendering:
             {"error": expected} if container is dict else [expected]
         )
 
-    def test_deep_exception_never_uses_container_repr(self) -> None:
+    @pytest.mark.parametrize("depth, expected_marker", [(9, "[maximum depth reached]"), (8, "UnicodeDecodeError:")])
+    def test_deep_exception_never_uses_container_repr(self, depth: int, expected_marker: str) -> None:
         value: Any = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
-        for _ in range(9):
+        for _ in range(depth):
             value = [value]
         result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
         assert "SECRET" not in repr(result)
-        assert "[maximum depth reached]" in repr(result)
-
-    def test_exception_at_depth_cutoff_uses_safe_rendering(self) -> None:
-        value: Any = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
-        for _ in range(8):
-            value = [value]
-        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
-        assert "SECRET" not in repr(result)
-        assert "UnicodeDecodeError:" in repr(result)
+        assert expected_marker in repr(result)
 
     def test_nested_strings_obey_character_budget(self) -> None:
         result = haystack_logging._bound_container_values(["x" * 100_000] * 10, 8)
