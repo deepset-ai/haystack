@@ -1,0 +1,72 @@
+name: Handled internally label
+
+# Label issues opened by deepset-ai members who aren't Haystack maintainers as
+# `handled internally`. As with a label added by hand,
+# handled_internally_footer.yml then adds the footer to the issue description
+# and handled_internally_pr_guard.yml closes community PRs that target it.
+# Remove the label to open such an issue for external contributions.
+#
+# Private org memberships are hidden from author_association in the event
+# payload and from GITHUB_TOKEN, so all API calls use HANDLED_INTERNALLY_PAT: a
+# token of a deepset-ai member with the organization "Members: read" and
+# repository "Issues: read and write" permissions (classic PAT: `read:org` and
+# `public_repo` scopes). Adding the label with this token rather than
+# GITHUB_TOKEN is also what lets the resulting `labeled` event trigger the
+# footer workflow.
+
+on:
+  issues:
+    types: [opened]
+
+# All API calls use HANDLED_INTERNALLY_PAT.
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.HANDLED_INTERNALLY_PAT }}
+          script: |
+            const LABEL = "handled internally";
+            // Lowercase GitHub logins; issues opened by maintainers aren't labeled.
+            const MAINTAINERS = new Set([
+              "anakin87",
+              "bilgeyucel",
+              "bogdankostic",
+              "davidsbatista",
+              "dfokina",
+              "julian-risch",
+              "kacperlukawski",
+              "sjrl",
+            ]);
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+            const login = issue.user?.login;
+
+            if (!login || issue.user.type === "Bot") return;
+            if (MAINTAINERS.has(login.toLowerCase())) return;
+            if (issue.labels?.some((l) => l.name === LABEL)) return;
+
+            // author_association only reveals public members and saves an API call
+            // for them.
+            async function isOrgMember(username) {
+              if (["MEMBER", "OWNER"].includes(issue.author_association)) return true;
+              try {
+                await github.rest.orgs.checkMembershipForUser({ org: owner, username });
+                return true;
+              } catch (error) {
+                if (error.status === 404) return false;
+                throw error;
+              }
+            }
+
+            if (!(await isOrgMember(login))) {
+              core.info(`@${login} isn't a member of ${owner}.`);
+              return;
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: issue.number, labels: [LABEL],
+            });
+            core.info(`Labeled issue #${issue.number} by @${login} as "${LABEL}".`);
