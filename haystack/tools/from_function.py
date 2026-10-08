@@ -68,7 +68,8 @@ def create_tool_from_function(
         The function must include type hints for all parameters.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
-        If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
+        If a parameter is annotated using `typing.Annotated`, the first string in its metadata will be used as
+        parameter description. Other metadata, such as a Pydantic `Field`, is passed on to Pydantic.
     :param name:
         The name of the Tool. If not provided, the name of the function will be used.
     :param description:
@@ -164,8 +165,11 @@ def create_tool_from_function(
         default = param.default if param.default is not param.empty else ...
         fields[param_name] = (annotation, default)
 
+        # Only a string in `Annotated` metadata is a description; other metadata like `Field(...)` is left to Pydantic
         if hasattr(annotation, "__metadata__"):
-            descriptions[param_name] = annotation.__metadata__[0]
+            description = next((meta for meta in annotation.__metadata__ if isinstance(meta, str)), None)
+            if description is not None:
+                descriptions[param_name] = description
 
     # create Pydantic model and generate JSON schema
     try:

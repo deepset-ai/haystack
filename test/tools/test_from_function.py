@@ -128,6 +128,28 @@ def test_from_function_with_postponed_annotations():
     }
 
 
+def test_from_function_annotated_with_pydantic_field():
+    def function_with_fields(
+        city: Annotated[str, Field(min_length=1), "the city for which to get the weather"],
+        days: Annotated[int, Field(ge=1, description="the number of days to forecast")] = 1,
+        verbose: Annotated[bool, Field(strict=True)] = False,
+    ) -> str:
+        """A simple function to get the weather forecast for a location."""
+        return f"Weather report for {city}: 20°C, sunny"
+
+    tool = create_tool_from_function(function=function_with_fields)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "minLength": 1, "description": "the city for which to get the weather"},
+            "days": {"type": "integer", "minimum": 1, "description": "the number of days to forecast", "default": 1},
+            "verbose": {"type": "boolean", "default": False},
+        },
+        "required": ["city"],
+    }
+
+
 def test_from_function_missing_type_hint():
     def function_missing_type_hint(city) -> str:  # type: ignore[no-untyped-def]
         return f"Weather report for {city}: 20°C, sunny"
