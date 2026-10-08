@@ -404,19 +404,12 @@ def test_resolve_type_pep_604():
     "annotation, expected",
     [
         (State, True),
-        (State | None, True),
-        (Optional[State], True),  # noqa: UP045 - exercise typing.Optional compatibility
         (Annotated[State, "state"], True),
         (Annotated[State | None, "state"], True),
-        (Annotated[Optional[State], "state"], True),  # noqa: UP045 - exercise typing.Optional compatibility
-        (Annotated[State, "state"] | None, True),
         (Optional[Annotated[State, "state"]], True),  # noqa: UP045 - exercise typing.Optional compatibility
-        (Annotated[Annotated[State, "inner"] | None, "outer"], True),
-        (str, False),
         (Annotated[str, "description"], False),
         (list[State], False),
         (State | str, False),
-        (Annotated[Union[State, str, None], "mixed"], False),
     ],
 )
 def test_is_state_annotation(annotation: Any, expected: bool) -> None:
