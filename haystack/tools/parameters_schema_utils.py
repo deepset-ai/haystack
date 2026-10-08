@@ -9,12 +9,13 @@ from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from types import NoneType
-from typing import Any, Union, get_args, get_origin
+from typing import Annotated, Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
+from haystack.components.agents.state.state import State
 from haystack.dataclasses import ChatMessage
 from haystack.utils.type_serialization import _is_union_type
 
@@ -25,21 +26,27 @@ def _unwrap_optional(type_hint: Any) -> Any:
     """
     Unwrap Optional types (i.e. ``X | None`` or ``Optional[X]``) to get the inner type.
 
-    Also unwraps ``Annotated[X, ...]`` so that ``Annotated[State, ...]`` and
-    ``Optional[Annotated[State, ...]]`` are recognised as State parameters.
-
     :param type_hint: The type hint to unwrap.
     :returns: The inner type if ``type_hint`` is ``Optional[X]``, otherwise ``type_hint`` unchanged.
     """
-    # Unwrap Annotated[X, ...] -> X
-    if hasattr(type_hint, "__metadata__"):
-        return _unwrap_optional(type_hint.__origin__)
     origin = get_origin(type_hint)
     if origin is Union or origin is types.UnionType:
         non_none = [a for a in get_args(type_hint) if a is not NoneType]
         if len(non_none) == 1:
-            return _unwrap_optional(non_none[0])
+            return non_none[0]
     return type_hint
+
+
+def _is_state_annotation(annotation: Any) -> bool:
+    """Recognize State through Annotated and optional wrappers."""
+    if get_origin(annotation) is Annotated:
+        return _is_state_annotation(get_args(annotation)[0])
+
+    unwrapped = _unwrap_optional(annotation)
+    if unwrapped is not annotation:
+        return _is_state_annotation(unwrapped)
+
+    return annotation is State
 
 
 def _contains_callable_type(type_hint: Any) -> bool:

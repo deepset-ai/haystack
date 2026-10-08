@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import jsonschema
 import pytest
@@ -157,11 +157,13 @@ def test_from_function_with_callable_params_skipped():
     assert "query" in param_names
 
 
-def test_from_function_state_param_excluded_from_schema():
+@pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+def test_from_function_state_param_excluded_from_schema(state_annotation: Any) -> None:
     def function_with_state(city: str, state: State) -> str:
         """Get weather for a city, with access to agent state."""
         return f"Weather in {city}: sunny"
 
+    function_with_state.__annotations__["state"] = state_annotation
     tool = create_tool_from_function(function=function_with_state)
 
     assert tool.name == "function_with_state"
@@ -188,48 +190,6 @@ def test_from_function_optional_state_param_excluded_from_schema():
         return f"Weather in {city}: sunny"
 
     tool = create_tool_from_function(function=function_with_optional_state)
-
-    param_names = list(tool.parameters.get("properties", {}).keys())
-    assert "state" not in param_names
-    assert "city" in param_names
-
-
-def test_from_function_annotated_state_param_excluded_from_schema():
-    def function_with_annotated_state(
-        city: str, state: Annotated[State, "Live agent state"]
-    ) -> str:
-        """Get weather for a city, with annotated agent state."""
-        return f"Weather in {city}: sunny"
-
-    tool = create_tool_from_function(function=function_with_annotated_state)
-
-    param_names = list(tool.parameters.get("properties", {}).keys())
-    assert "state" not in param_names
-    assert "city" in param_names
-
-
-def test_from_function_optional_annotated_state_param_excluded_from_schema():
-    def function_with_optional_annotated_state(
-        city: str, state: Optional[Annotated[State, "Live agent state"]] = None
-    ) -> str:
-        """Get weather for a city, optionally using annotated agent state."""
-        return f"Weather in {city}: sunny"
-
-    tool = create_tool_from_function(function=function_with_optional_annotated_state)
-
-    param_names = list(tool.parameters.get("properties", {}).keys())
-    assert "state" not in param_names
-    assert "city" in param_names
-
-
-def test_from_function_annotated_optional_state_param_excluded_from_schema():
-    def function_with_annotated_optional_state(
-        city: str, state: Annotated[State | None, "Live agent state"] = None
-    ) -> str:
-        """Get weather for a city, with annotated optional agent state."""
-        return f"Weather in {city}: sunny"
-
-    tool = create_tool_from_function(function=function_with_annotated_optional_state)
 
     param_names = list(tool.parameters.get("properties", {}).keys())
     assert "state" not in param_names
