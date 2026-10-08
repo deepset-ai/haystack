@@ -134,7 +134,7 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
             raise
         logger.warning(
             "Output handler '{handler}' for tool '{tool}' failed, falling back to string conversion. Error: {err}",
-            handler=handler.__name__,
+            handler=getattr(handler, "__name__", type(handler).__name__),
             tool=tool_call.tool_name,
             err=e,
         )
