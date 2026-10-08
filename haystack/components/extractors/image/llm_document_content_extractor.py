@@ -77,7 +77,8 @@ class LLMDocumentContentExtractor:
     The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
     `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` as shown in the usage example below.
 
-    Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
+    Documents that fail extraction are returned in `failed_documents` with the error in their `extraction_error`
+    metadata field.
 
     ### Usage example
 
@@ -161,7 +162,8 @@ class LLMDocumentContentExtractor:
             that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
         :param size: If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
-        :param raise_on_failure: If True, exceptions from the LLM are raised. If False, failed documents are returned.
+        :param raise_on_failure: If True, exceptions from the LLM are raised. If False, documents that fail extraction
+            are returned in `failed_documents` with the error in their `extraction_error` metadata field.
         :param max_workers: Maximum number of threads for parallel LLM calls.
         """
         self._chat_generator = chat_generator
@@ -292,7 +294,7 @@ class LLMDocumentContentExtractor:
             The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            return self._fail(document, "Document has no content, skipping LLM call.")
+            return self._fail(document, "Document could not be converted to an image, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document/thread
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -307,8 +309,8 @@ class LLMDocumentContentExtractor:
             if self.raise_on_failure:
                 raise e
             logger.exception(
-                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
-                class_name=self._chat_generator.__class__.__name__,
+                "LLMDocumentContentExtractor failed during chat generation. Returning the document in "
+                "failed_documents. Error: {error}",
                 error=e,
             )
             return self._fail(document, "LLM failed with exception: " + str(e))
@@ -328,7 +330,7 @@ class LLMDocumentContentExtractor:
             The updated document and True on success, or the document with failure metadata and False.
         """
         if image_content is None:
-            return self._fail(document, "Document has no content, skipping LLM call.")
+            return self._fail(document, "Document could not be converted to an image, skipping LLM call.")
 
         # the prompt is the same for all documents, so we can set it up once here for each document
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
@@ -343,8 +345,8 @@ class LLMDocumentContentExtractor:
             if self.raise_on_failure:
                 raise e
             logger.exception(
-                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
-                class_name=self._chat_generator.__class__.__name__,
+                "LLMDocumentContentExtractor failed during chat generation. Returning the document in "
+                "failed_documents. Error: {error}",
                 error=e,
             )
             return self._fail(document, "LLM failed with exception: " + str(e))
@@ -366,6 +368,12 @@ class LLMDocumentContentExtractor:
         content, meta_updates, error = LLMDocumentContentExtractor._process_response(reply.text or "")
 
         if error:
+            logger.warning(
+                "LLMDocumentContentExtractor couldn't use the ChatGenerator response for document {document_id}. "
+                "Returning the document in failed_documents. Error: {error}",
+                document_id=document.id,
+                error=error,
+            )
             new_meta["extraction_error"] = error
             return replace(document, meta=new_meta), False
 
