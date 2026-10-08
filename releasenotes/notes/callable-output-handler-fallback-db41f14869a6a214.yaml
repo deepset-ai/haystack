@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``Agent`` raising an ``AttributeError`` when an ``outputs_to_string``
+    handler without ``__name__``, such as ``functools.partial`` or a callable
+    instance, fails. With ``raise_on_tool_invocation_failure=False``, the Agent
+    now falls back to string conversion as intended.

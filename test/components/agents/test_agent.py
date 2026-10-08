@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 import os
 import re
 import threading
 from collections.abc import Callable, Iterator
 from datetime import datetime
+from functools import partial
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -685,6 +687,38 @@ class TestGetModelExitReason:
 
 
 class TestAgentRun:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("run_async", [False, True], ids=["sync", "async"])
+    async def test_output_handler_failure_falls_back_to_string(self, run_async):
+        def get_time():
+            return datetime(2026, 1, 1)
+
+        tool = Tool(
+            name="get_time",
+            description="Return the current time.",
+            parameters={"type": "object", "properties": {}},
+            function=get_time,
+            outputs_to_string={"handler": partial(json.dumps, ensure_ascii=False)},
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                responses=[
+                    ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})]),
+                    "Done",
+                ]
+            ),
+            tools=[tool],
+            raise_on_tool_invocation_failure=False,
+        )
+        messages = [ChatMessage.from_user("Get the time")]
+
+        result = await agent.run_async(messages) if run_async else agent.run(messages)
+
+        tool_result = result["messages"][2].tool_call_results[0]
+        assert tool_result.result == "2026-01-01 00:00:00"
+        assert not tool_result.error
+        assert result["last_message"].text == "Done"
+
     def test_agent_with_no_tools(self):
         agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
 

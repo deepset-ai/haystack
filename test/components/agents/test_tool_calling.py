@@ -7,6 +7,7 @@ import datetime
 import json
 import time
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 from unittest.mock import patch
 
@@ -60,6 +61,11 @@ def weather_with_postponed_state_annotation(city: str, state: "State") -> str:
 
 
 weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
+
+
+class JsonOutputHandler:
+    def __call__(self, value):
+        return json.dumps(value)
 
 
 @pytest.fixture
@@ -702,21 +708,26 @@ class TestRunToolErrorHandling:
         chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
         assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": "25"}'
 
-    def test_output_handler_failure_falls_back_to_string(self):
+    @pytest.mark.parametrize(
+        "handler",
+        [json.dumps, partial(json.dumps, ensure_ascii=False), JsonOutputHandler()],
+        ids=["function", "partial", "callable_instance"],
+    )
+    def test_output_handler_failure_falls_back_to_string(self, handler):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
             parameters=weather_parameters,
             function=weather_function,
-            outputs_to_string={"handler": json.dumps},
+            outputs_to_string={"handler": handler},
         )
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
-        tool_result = datetime.datetime.now()
+        tool_result = datetime.datetime(2026, 1, 1)
         tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
 
         assert not tool_message.tool_call_results[0].error
-        assert isinstance(tool_message.tool_call_results[0].result, str)
+        assert tool_message.tool_call_results[0].result == "2026-01-01 00:00:00"
 
     def test_output_handler_failure_falls_back_to_string_raw_result(self):
         def handler(result):
