@@ -40,14 +40,20 @@ class HierarchicalDocumentSplitter:
         self,
         block_sizes: set[int],
         split_overlap: int = 0,
-        split_by: Literal["word", "sentence", "page", "passage"] = "word",
+        split_by: Literal["word", "sentence", "page", "passage", "token"] = "word",
+        *,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initialize HierarchicalDocumentSplitter.
 
         :param block_sizes: Set of block sizes to split the document into. The blocks are split in descending order.
         :param split_overlap: The number of overlapping units for each split.
-        :param split_by: The unit for splitting your documents.
+        :param split_by: The unit for splitting your documents: `word`, `sentence`, `page`, `passage`, or `token`.
+            `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that block sizes
+            match an LLM's context budget.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to `"o200k_base"`
+            (current OpenAI models). Only used when `split_by="token"`.
         :raises ValueError: If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
             greater than or equal to the smallest value in `block_sizes`.
         """
@@ -69,7 +75,15 @@ class HierarchicalDocumentSplitter:
         self.splitters: dict[int, DocumentSplitter] = {}
         self.split_overlap = split_overlap
         self.split_by = split_by
+        self.tokenizer_encoding = tokenizer_encoding
         self._build_block_sizes()
+
+    def warm_up(self) -> None:
+        """
+        Warm up the splitters by loading the sentence tokenizer or the tiktoken encoding they need.
+        """
+        for splitter in self.splitters.values():
+            splitter.warm_up()
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -87,7 +101,10 @@ class HierarchicalDocumentSplitter:
     def _build_block_sizes(self) -> None:
         for block_size in self.block_sizes:
             self.splitters[block_size] = DocumentSplitter(
-                split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by
+                split_length=block_size,
+                split_overlap=self.split_overlap,
+                split_by=self.split_by,
+                tokenizer_encoding=self.tokenizer_encoding,
             )
 
     @staticmethod
@@ -141,7 +158,11 @@ class HierarchicalDocumentSplitter:
                 Serialized dictionary representation of the component.
         """
         return default_to_dict(
-            self, block_sizes=self.block_sizes, split_overlap=self.split_overlap, split_by=self.split_by
+            self,
+            block_sizes=self.block_sizes,
+            split_overlap=self.split_overlap,
+            split_by=self.split_by,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
     @classmethod
