@@ -34,7 +34,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool, warm_up_tools, warm_up_tools_async
+from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -618,6 +618,50 @@ class TestAgentClone:
 
         assert clone.tools == [weather_tool, component_tool]
         assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
+
+
+class TestAgentTelemetry:
+    def test_get_telemetry_data(self, weather_tool, component_tool):
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, Toolset([component_tool])])
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {
+                "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                "model": chat_generator.model,
+            },
+            "tools": {
+                "count": 2,
+                "tools": [
+                    {"type": "haystack.tools.tool.Tool", "name": "weather_tool"},
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "name": "parrot",
+                        "component": "haystack.components.builders.prompt_builder.PromptBuilder",
+                    },
+                ],
+                "toolset_types": {"haystack.tools.toolset.Toolset": 1},
+            },
+        }
+
+    def test_get_telemetry_data_without_tools(self):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"))
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 0, "tools": [], "toolset_types": {}},
+        }
+
+    def test_get_telemetry_data_reports_searchable_toolset_catalog(self, weather_tool):
+        # below the search threshold a SearchableToolset is a passthrough exposing its whole catalog
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=SearchableToolset(catalog=[weather_tool]))
+        agent.warm_up()
+
+        assert agent._get_telemetry_data()["tools"] == {
+            "count": 1,
+            "tools": [{"type": "haystack.tools.tool.Tool", "name": "weather_tool"}],
+            "toolset_types": {"haystack.tools.searchable_toolset.SearchableToolset": 1},
+        }
 
 
 class TestGetModelExitReason:
