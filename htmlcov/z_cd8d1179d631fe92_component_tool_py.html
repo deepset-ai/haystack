@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">110 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">105<span class="text"> run</span></button>
+            <span class="text">109 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">104<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">5<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_cd8d1179d631fe92_errors_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-08 14:48 +0000
+            created at 2026-10-08 14:49 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -90,15 +90,15 @@
     <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">pydantic</span> <span class="key">import</span> <span class="nam">Field</span><span class="op">,</span> <span class="nam">TypeAdapter</span><span class="op">,</span> <span class="nam">create_model</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span> <span class="key">import</span> <span class="nam">logging</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">components</span><span class="op">.</span><span class="nam">agents</span><span class="op">.</span><span class="nam">state</span><span class="op">.</span><span class="nam">state</span> <span class="key">import</span> <span class="nam">State</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">core</span><span class="op">.</span><span class="nam">component</span> <span class="key">import</span> <span class="nam">Component</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">core</span><span class="op">.</span><span class="nam">serialization</span> <span class="key">import</span> <span class="nam">component_to_dict</span><span class="op">,</span> <span class="nam">generate_qualified_class_name</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span> <span class="key">import</span> <span class="nam">Tool</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">errors</span> <span class="key">import</span> <span class="nam">SchemaGenerationError</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">from_function</span> <span class="key">import</span> <span class="nam">_remove_title_from_schema</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t17" href="#t17">17</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">parameters_schema_utils</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t18" href="#t18">18</a></span><span class="t">    <span class="nam">_contains_callable_type</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t19" href="#t19">19</a></span><span class="t">    <span class="nam">_get_component_param_descriptions</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">core</span><span class="op">.</span><span class="nam">component</span> <span class="key">import</span> <span class="nam">Component</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">core</span><span class="op">.</span><span class="nam">serialization</span> <span class="key">import</span> <span class="nam">component_to_dict</span><span class="op">,</span> <span class="nam">generate_qualified_class_name</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span> <span class="key">import</span> <span class="nam">Tool</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">errors</span> <span class="key">import</span> <span class="nam">SchemaGenerationError</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">from_function</span> <span class="key">import</span> <span class="nam">_remove_title_from_schema</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">parameters_schema_utils</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t17" href="#t17">17</a></span><span class="t">    <span class="nam">_contains_callable_type</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t18" href="#t18">18</a></span><span class="t">    <span class="nam">_get_component_param_descriptions</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t19" href="#t19">19</a></span><span class="t">    <span class="nam">_is_state_annotation</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t20" href="#t20">20</a></span><span class="t">    <span class="nam">_resolve_type</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t21" href="#t21">21</a></span><span class="t">    <span class="nam">_unwrap_optional</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t22" href="#t22">22</a></span><span class="t"><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -443,7 +443,7 @@
     <p class="run"><span class="n"><a id="t361" href="#t361">361</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t362" href="#t362">362</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t363" href="#t363">363</a></span><span class="t">            <span class="com"># Skip State-typed parameters - Agent tool execution injects them at runtime</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t364" href="#t364">364</a></span><span class="t">            <span class="key">if</span> <span class="nam">_unwrap_optional</span><span class="op">(</span><span class="nam">input_type</span><span class="op">)</span> <span class="key">is</span> <span class="nam">State</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t364" href="#t364">364</a></span><span class="t">            <span class="key">if</span> <span class="nam">_is_state_annotation</span><span class="op">(</span><span class="nam">input_type</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t365" href="#t365">365</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t366" href="#t366">366</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t367" href="#t367">367</a></span><span class="t">            <span class="nam">description</span> <span class="op">=</span> <span class="nam">param_descriptions</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">input_name</span><span class="op">,</span> <span class="fst">f&quot;</span><span class="fst">Input &#x27;</span><span class="op">{</span><span class="nam">input_name</span><span class="op">}</span><span class="fst">&#x27; for the component.</span><span class="fst">&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -519,7 +519,7 @@
             <a class="nav" href="z_cd8d1179d631fe92_errors_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-08 14:48 +0000
+            created at 2026-10-08 14:49 +0000
         </p>
     </div>
 </footer>

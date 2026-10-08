@@ -228,10 +228,10 @@
 | haystack/token\_counters/utils.py                                         |       49 |        0 |    100% |           |
 | haystack/tools/\_\_init\_\_.py                                            |        7 |        0 |    100% |           |
 | haystack/tools/agent\_tool.py                                             |       51 |        0 |    100% |           |
-| haystack/tools/component\_tool.py                                         |      110 |        5 |     95% |381-382, 425-427 |
+| haystack/tools/component\_tool.py                                         |      109 |        5 |     95% |381-382, 425-427 |
 | haystack/tools/errors.py                                                  |        6 |        0 |    100% |           |
-| haystack/tools/from\_function.py                                          |       64 |        0 |    100% |           |
-| haystack/tools/parameters\_schema\_utils.py                               |       97 |        3 |     97% |95, 135-136 |
+| haystack/tools/from\_function.py                                          |       63 |        0 |    100% |           |
+| haystack/tools/parameters\_schema\_utils.py                               |      105 |        3 |     97% |108, 148-149 |
 | haystack/tools/pipeline\_tool.py                                          |       30 |        2 |     93% |  240, 243 |
 | haystack/tools/searchable\_toolset.py                                     |      124 |        0 |    100% |           |
 | haystack/tools/serde\_utils.py                                            |       43 |        3 |     93% |33, 35, 57 |
@@ -267,7 +267,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17572** |  **710** | **96%** |           |
+| **TOTAL**                                                                 | **17578** |  **710** | **96%** |           |
 
 
 ## Setup coverage badge
