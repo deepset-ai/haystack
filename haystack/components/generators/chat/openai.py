@@ -790,9 +790,9 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         content=content,
         component_info=component_info,
         index=resolved_index,
-        # The first chunk is always a start message chunk that only contains role information, so if we reach here
-        # and previous_chunks is length 1 then this is the start of text content.
-        start=len(previous_chunks) == 1,
+        # Text starts at the first chunk with content. OpenAI sends the role in a chunk of its own first, but some
+        # OpenAI-compatible servers (e.g. Ollama) send the role and the first token in the same chunk.
+        start=bool(content) and not any(previous.content for previous in previous_chunks),
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
         meta=meta,
     )

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``OpenAIChatGenerator`` now sets ``start=True`` on the first streamed chunk that contains text. Before, it set
+    ``start=True`` on the second chunk, which is only correct when the server sends the role in a chunk of its own,
+    as OpenAI does. With OpenAI-compatible servers that send the role and the first token in the same chunk, such as
+    Ollama, the first chunk had ``start=False`` and the second had ``start=True``, so ``print_streaming_chunk``
+    printed the ``[ASSISTANT]`` header after the first token.

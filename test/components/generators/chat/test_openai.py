@@ -1890,6 +1890,45 @@ class TestChatCompletionChunkConversion:
             assert stream_chunk == haystack_chunk
             previous_chunks.append(stream_chunk)
 
+    @pytest.mark.parametrize(
+        ("deltas", "expected"),
+        [
+            pytest.param(
+                [
+                    ChoiceDelta(role="assistant", content=""),
+                    ChoiceDelta(content="Hello"),
+                    ChoiceDelta(content=" there"),
+                ],
+                [("", False), ("Hello", True), (" there", False)],
+                id="role-in-own-chunk",
+            ),
+            pytest.param(
+                [ChoiceDelta(role="assistant", content="Hello"), ChoiceDelta(content=" there")],
+                [("Hello", True), (" there", False)],
+                id="role-with-first-token",
+            ),
+        ],
+    )
+    def test_convert_chat_completion_chunk_start_is_first_text_chunk(
+        self, deltas: list[ChoiceDelta], expected: list[tuple[str, bool]]
+    ) -> None:
+        # OpenAI sends the role in a chunk of its own, but some OpenAI-compatible servers (e.g. Ollama) send the role
+        # and the first token in the same chunk.
+        previous_chunks: list[StreamingChunk] = []
+        for delta in deltas:
+            chunk = ChatCompletionChunk(
+                id="chatcmpl-1",
+                choices=[chat_completion_chunk.Choice(delta=delta, index=0)],
+                created=1742207200,
+                model="llama3.2",
+                object="chat.completion.chunk",
+            )
+            previous_chunks.append(
+                _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=previous_chunks)
+            )
+
+        assert [(c.content, c.start) for c in previous_chunks] == expected
+
     def test_convert_chat_completion_chunk_with_empty_tool_calls(self) -> None:
 
         # This can happen with some LLM providers where tool calls are not present but the pydantic models are still
