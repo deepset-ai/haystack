@@ -116,7 +116,7 @@ class PatchedLogger(typing.Protocol):
         msg: str,
         *,
         _: Any = None,
-        exc_info: Any = None,
+        exc_info: Any = True,
         stack_info: Any = False,
         stacklevel: int = 1,
         **kwargs: Any,
@@ -273,7 +273,8 @@ def getLogger(name: str) -> PatchedLogger:
     logger.warning = patch_log_method_to_kwargs_only(logger.warning)  # type: ignore
     logger.error = patch_log_method_to_kwargs_only(logger.error)  # type: ignore
     logger.critical = patch_log_method_to_kwargs_only(logger.critical)  # type: ignore
-    logger.exception = patch_log_method_to_kwargs_only(logger.exception)  # type: ignore
+    # `exception` stays unpatched: the stdlib version calls the patched `error` with `exc_info=True`. Wrapping it would
+    # pass `exc_info=None` and drop the traceback.
     logger.fatal = patch_log_method_to_kwargs_only(logger.fatal)  # type: ignore
     logger.log = patch_log_with_level_method_to_kwargs_only(logger.log)  # type: ignore
 

@@ -557,6 +557,31 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
+    def test_exception_logs_traceback_and_caller(self, caplog: LogCaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        # Use a plain `logging.Logger`: structlog's logger class ignores `stacklevel`, so it would hide a wrong caller
+        monkeypatch.setattr(logging.Logger.manager, "loggerClass", logging.Logger)
+        logger = haystack_logging.getLogger("haystack.test_logging.exception")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened")
+
+        record = caplog.records[0]
+        assert record.exc_info is not None
+        assert record.exc_info[0] is ZeroDivisionError
+        assert record.funcName == "test_exception_logs_traceback_and_caller"
+
+    def test_exception_respects_explicit_exc_info(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened", exc_info=False)
+
+        assert not caplog.records[0].exc_info
+
     def test_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
