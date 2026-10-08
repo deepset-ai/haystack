@@ -84,7 +84,8 @@ class LLMEvaluator:
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
         :param raise_on_failure:
-            If True, the component will raise an exception on an unsuccessful API call.
+            If True, the component raises an exception when the chat generator call fails or its response isn't valid
+            JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param chat_generator:
@@ -199,6 +200,27 @@ class LLMEvaluator:
                 )
                 raise ValueError(msg)
 
+    def _parse_reply(self, reply_text: str) -> dict[str, Any] | None:
+        """
+        Parse the chat generator's reply into a dictionary with the expected output keys.
+
+        :param reply_text: The text of the chat generator's reply.
+        :returns: The parsed dictionary, or `None` if parsing fails and `raise_on_failure` is False.
+        :raises ValueError: If parsing fails and `raise_on_failure` is True.
+        """
+        try:
+            return _parse_dict_from_json(reply_text, expected_keys=self.outputs, raise_on_failure=True)
+        except ValueError as e:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "LLMEvaluator failed to parse the ChatGenerator response: {response}. Setting the result for this "
+                "input to None. Error: {error}",
+                response=reply_text,
+                error=e,
+            )
+            return None
+
     @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
@@ -239,14 +261,17 @@ class LLMEvaluator:
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
-                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
+                logger.warning(
+                    "LLMEvaluator failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "input to None. Error: {e}",
+                    prompt=prompt,
+                    e=e,
+                )
                 results.append(None)
                 errors += 1
                 continue
 
-            parsed_result = _parse_dict_from_json(
-                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
-            )
+            parsed_result = self._parse_reply(result["replies"][0].text)
             if parsed_result is None:
                 results.append(None)
                 errors += 1
@@ -258,9 +283,9 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                "LLMEvaluator failed for {errors} out of {total} inputs. The results for these inputs are None.",
                 errors=errors,
-                len=len(list_of_input_names_to_values),
+                total=len(list_of_input_names_to_values),
             )
 
         return {"results": results, "meta": metadata or None}
@@ -318,14 +343,17 @@ class LLMEvaluator:
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
-                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
+                logger.warning(
+                    "LLMEvaluator failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "input to None. Error: {e}",
+                    prompt=prompt,
+                    e=e,
+                )
                 results.append(None)
                 errors += 1
                 continue
 
-            parsed_result = _parse_dict_from_json(
-                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
-            )
+            parsed_result = self._parse_reply(result["replies"][0].text)
             if parsed_result is None:
                 results.append(None)
                 errors += 1
@@ -337,9 +365,9 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                "LLMEvaluator failed for {errors} out of {total} inputs. The results for these inputs are None.",
                 errors=errors,
-                len=len(list_of_input_names_to_values),
+                total=len(list_of_input_names_to_values),
             )
 
         return {"results": results, "meta": metadata or None}

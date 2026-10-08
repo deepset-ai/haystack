@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -420,7 +421,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError, match="Missing expected keys"):
             component.run(predicted_answers=["answer"])
 
-    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
+    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -437,8 +438,14 @@ class TestLLMEvaluator:
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
-        result = component.run(predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = component.run(predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert (
+            "LLMEvaluator failed to parse the ChatGenerator response: some_invalid_json_output. "
+            "Setting the result for this input to None." in caplog.text
+        )
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -522,7 +529,7 @@ class TestLLMEvaluatorAsync:
         assert results == {"results": [{"score": 0}], "meta": None}
 
     @pytest.mark.asyncio
-    async def test_run_async_raise_on_failure_false(self, monkeypatch):
+    async def test_run_async_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -547,8 +554,12 @@ class TestLLMEvaluatorAsync:
             "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
         )
 
-        result = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = await component.run_async(questions=["question"], predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert "LLMEvaluator failed during chat generation" in caplog.text
+        assert "Setting the result for this input to None. Error: API error" in caplog.text
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     @pytest.mark.asyncio
     async def test_run_async_raise_on_failure_true(self, monkeypatch):
