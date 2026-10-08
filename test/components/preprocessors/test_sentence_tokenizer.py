@@ -72,6 +72,19 @@ def test_read_abbreviations_missing_file(caplog: LogCaptureFixture) -> None:
         assert "No abbreviations file found for pt. Using default abbreviations." in caplog.text
 
 
+def test_read_abbreviations_decodes_utf8_regardless_of_locale() -> None:
+    # simulate a Windows locale: without an explicit encoding, the file would be decoded as cp1252
+    original_read_text = Path.read_text
+
+    def read_text_with_cp1252_default(self, encoding=None, *args, **kwargs):
+        return original_read_text(self, encoding or "cp1252", *args, **kwargs)
+
+    with patch.object(Path, "read_text", read_text_with_cp1252_default):
+        abbreviations = SentenceSplitter._read_abbreviations("de")
+
+    assert "ggü" in abbreviations
+
+
 def test_quote_spans_regex():
     # double quotes
     text1 = 'He said "Hello world" and left.'

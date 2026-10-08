@@ -56,6 +56,15 @@ const config = {
   headTags: [
     {
       tagName: "script",
+      attributes: {
+        id: "usercentrics-cmp",
+        src: "https://web.cmp.usercentrics.eu/ui/loader.js",
+        "data-ruleset-id": "LxbKaInvO8Ncwr",
+        async: "true",
+      },
+    },
+    {
+      tagName: "script",
       attributes: {},
       innerHTML: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -81,12 +90,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.3-unstable',
+              label: '3.4-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.2',
+          lastVersion: '3.3',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -134,12 +143,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.3-unstable',
+            label: '3.4-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.2',
+        lastVersion: '3.3',
       },
     ],
     [
@@ -259,6 +268,27 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           {
             from: '/docs/function-calling',
             to: '/docs/tool',
+          },
+          {
+            from: '/docs/fastembedcolbertranker',
+            to: '/docs/fastembedlateinteractionranker',
+          },
+          {
+            from: '/docs/pipeline-templates',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/external-integrations-converters',
+            to: '/docs/converters',
+          },
+          // Redirects after docs sidebar reorganization
+          {
+            from: '/docs/next/external-integrations-development',
+            to: '/docs/next/production-usage',
+          },
+          {
+            from: '/docs/external-integrations-development',
+            to: '/docs/production-usage',
           },
         ],
         // Non-chat Generators removed from core integrations: redirect the old pages of every built docs

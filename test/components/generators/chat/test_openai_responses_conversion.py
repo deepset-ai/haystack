@@ -24,12 +24,16 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
+    ResponseReasoningSummaryTextDeltaEvent,
+    ResponseReasoningTextDeltaEvent,
+    ResponseStreamEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
     ResponseTextDoneEvent,
     ResponseUsage,
 )
 from openai.types.responses.response import IncompleteDetails
+from openai.types.responses.response_reasoning_item import Content, Summary
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from haystack.components.generators.chat.openai_responses import (
@@ -272,6 +276,67 @@ class TestConversionToStreamingChunks:
             "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3},
             "finish_reason": "stop",
         }
+
+    @pytest.mark.parametrize(
+        ("delta_event", "completed_item"),
+        [
+            (
+                ResponseReasoningTextDeltaEvent(
+                    content_index=0,
+                    delta="Thinking.",
+                    item_id="rs_1",
+                    output_index=0,
+                    sequence_number=1,
+                    type="response.reasoning_text.delta",
+                ),
+                ResponseReasoningItem(
+                    id="rs_1",
+                    summary=[],
+                    type="reasoning",
+                    content=[Content(text="Thinking.", type="reasoning_text")],
+                    status="completed",
+                ),
+            ),
+            (
+                ResponseReasoningSummaryTextDeltaEvent(
+                    delta="Thinking.",
+                    item_id="rs_1",
+                    output_index=0,
+                    sequence_number=1,
+                    summary_index=0,
+                    type="response.reasoning_summary_text.delta",
+                ),
+                ResponseReasoningItem(
+                    id="rs_1",
+                    summary=[Summary(text="Thinking.", type="summary_text")],
+                    type="reasoning",
+                    status="completed",
+                ),
+            ),
+        ],
+    )
+    def test_convert_streamed_reasoning_text_is_not_repeated_from_completed_item(
+        self,
+        delta_event: ResponseReasoningTextDeltaEvent | ResponseReasoningSummaryTextDeltaEvent,
+        completed_item: ResponseReasoningItem,
+    ) -> None:
+        events: list[ResponseStreamEvent] = [
+            delta_event,
+            ResponseOutputItemDoneEvent(
+                item=completed_item, output_index=0, sequence_number=2, type="response.output_item.done"
+            ),
+        ]
+
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(event, previous_chunks=chunks))
+
+        delta_extra = {key: value for key, value in delta_event.to_dict().items() if key != "delta"}
+        assert chunks[0].reasoning == ReasoningContent(reasoning_text="Thinking.", extra=delta_extra)
+        assert chunks[1].reasoning == ReasoningContent(reasoning_text="", extra=completed_item.to_dict())
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == "Thinking."
 
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
@@ -1296,6 +1361,50 @@ class TestResponseToChatMessage:
 
         assert message.meta["finish_reason"] == finish_reason
 
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_zero_argument_function_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        function_call = ResponseFunctionToolCall.model_construct(
+            arguments=arguments, call_id="call_1", name="get_time", type="function_call", id="fc_1", status="completed"
+        )
+        response = Response.model_construct(output=[function_call], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.tool_calls == [
+            ToolCall(id="fc_1", tool_name="get_time", arguments={}, extra={"call_id": "call_1"})
+        ]
+
+    @pytest.mark.parametrize(
+        ("summary", "content", "expected_text"),
+        [
+            ([Summary(text="Summary.", type="summary_text")], None, "Summary."),
+            (
+                [],
+                [
+                    Content(text="First step.", type="reasoning_text"),
+                    Content(text="Second step.", type="reasoning_text"),
+                ],
+                "First step.\nSecond step.",
+            ),
+            (
+                [Summary(text="Summary.", type="summary_text")],
+                [Content(text="Raw reasoning.", type="reasoning_text")],
+                "Summary.",
+            ),
+        ],
+    )
+    def test_convert_reasoning_item(
+        self, summary: list[Summary], content: list[Content] | None, expected_text: str
+    ) -> None:
+        item = ResponseReasoningItem(id="rs_1", summary=summary, type="reasoning", content=content, status="completed")
+        response = Response.model_construct(output=[item], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        extra = {key: value for key, value in item.to_dict().items() if key != "summary"}
+        assert message.reasoning == ReasoningContent(reasoning_text=expected_text, extra=extra)
+
     def test_convert_system_message(self) -> None:
 
         message = ChatMessage.from_system("You are good assistant")
@@ -1477,6 +1586,28 @@ class TestResponseToChatMessage:
                 "encrypted_content": "enc123",
                 "status": "completed",
                 "summary": [{"text": "Let me think.", "type": "summary_text"}],
+            }
+        ]
+
+    def test_convert_reasoning_text_content_round_trip_without_duplicate_summary(self) -> None:
+        item = ResponseReasoningItem(
+            id="rs_1",
+            summary=[],
+            type="reasoning",
+            content=[Content(text="Thinking.", type="reasoning_text")],
+            status="completed",
+        )
+        response = Response.model_construct(output=[item], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "id": "rs_1",
+                "type": "reasoning",
+                "content": [{"text": "Thinking.", "type": "reasoning_text"}],
+                "status": "completed",
+                "summary": [],
             }
         ]
 
