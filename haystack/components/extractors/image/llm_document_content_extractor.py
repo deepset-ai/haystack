@@ -71,7 +71,7 @@ class LLMDocumentContentExtractor:
     Response handling:
     - If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
     - If the LLM returns a **JSON object with only the key** `document_content`, that value is written to content.
-    - If the LLM returns a **JSON object with multiple keys**, the value of ``document_content`` (if present) is
+    - If the LLM returns a **JSON object with multiple keys**, the value of `document_content` (if present) is
       written to content and all other keys are merged into the document's metadata.
 
     The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
@@ -262,7 +262,7 @@ class LLMDocumentContentExtractor:
         Parse LLM response. Returns (content, meta_updates, error).
 
         - Plain string (non-JSON): use entire response as document content;
-        - Valid JSON object: use key ``document_content`` for Document.content and all other keys for Document.metadata;
+        - Valid JSON object: use key `document_content` for Document.content and all other keys for Document.metadata;
         - Valid JSON but not an object (e.g. array or primitive), report an error;
         """
         try:
@@ -278,7 +278,7 @@ class LLMDocumentContentExtractor:
 
     @staticmethod
     def _fail(document: Document, error: str) -> tuple[Document, bool]:
-        """Return a copy of ``document`` with ``extraction_error`` set, flagged as failed."""
+        """Return a copy of `document` with `extraction_error` set, flagged as failed."""
         return replace(document, meta={**document.meta, "extraction_error": error}), False
 
     def _run_on_thread(
