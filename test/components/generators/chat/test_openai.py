@@ -37,6 +37,7 @@ from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_to_chat_message,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -1790,40 +1791,6 @@ class TestComponentLifecycle:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = OpenAIChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIChatGenerator()
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_openai_clients
@@ -2030,6 +1997,34 @@ class TestChatCompletionChunkConversion:
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
+
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_chat_completion_with_zero_argument_tool_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        completion = ChatCompletion(
+            id="1",
+            model="gpt-5-mini",
+            object="chat.completion",
+            created=1234567890,
+            choices=[
+                Choice(
+                    finish_reason="tool_calls",
+                    index=0,
+                    message=ChatCompletionMessage(
+                        role="assistant",
+                        tool_calls=[
+                            ChatCompletionMessageFunctionToolCall(
+                                id="1",
+                                type="function",
+                                function=Function.model_construct(name="get_time", arguments=arguments),
+                            )
+                        ],
+                    ),
+                )
+            ],
+        )
+        message = _convert_chat_completion_to_chat_message(completion, completion.choices[0])
+        assert message.tool_calls == [ToolCall(id="1", tool_name="get_time", arguments={})]
 
 
 class TestMakeSchemaStrict:

@@ -111,7 +111,7 @@ class ToolResultOffloadHook:
     <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.tool_result_offloading import (
         AlwaysOffload,
         FileSystemToolResultStore,
@@ -130,7 +130,7 @@ class ToolResultOffloadHook:
         },
     )
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.6-luna"),
         tools=[web_search, get_time, read_file, list_dir],
         hooks={"after_tool": [hook]},
     )

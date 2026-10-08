@@ -93,6 +93,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     concurrency_limit: int = 4,
+    use_grpc: bool = False,
 ) -> None
 ```
 
@@ -103,9 +104,9 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 - **api_type** (<code>HFEmbeddingAPIType | str</code>) – The type of Hugging Face API to use.
 - **api_params** (<code>dict\[str, str\]</code>) – A dictionary with the following keys:
 - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-  `TEXT_EMBEDDINGS_INFERENCE`.
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
+- `url`: URL of the inference endpoint, or gRPC target. Required when `api_type` is
+  `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.
+- **token** (<code>Secret | None</code>) – The Hugging Face token to use as bearer authorization.
   Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
@@ -117,17 +118,18 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
   Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
   if the backend uses Text Embeddings Inference.
   If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-- **batch_size** (<code>int</code>) – Number of documents to process at once.
+- **batch_size** (<code>int</code>) – Number of documents to process at once. Only used with HTTP.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **concurrency_limit** (<code>int</code>) – The maximum number of requests that should be allowed to run concurrently.
+- **concurrency_limit** (<code>int</code>) – The maximum number of HTTP requests or gRPC streams that should be allowed to run concurrently.
   This parameter is only used in the `run_async` method.
+- **use_grpc** (<code>bool</code>) – Use gRPC instead of HTTP. Requires `huggingface-api-haystack[grpc]`.
 
 **Raises:**
 
-- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
-  or the `api_type` is unknown.
+- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the HTTP `url` is invalid,
+  or the `api_type` is unknown or is `SERVERLESS_INFERENCE_API` with `use_grpc=True`.
 
 #### warm_up
 
@@ -135,7 +137,7 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 warm_up() -> None
 ```
 
-Create the synchronous Hugging Face client.
+Create the synchronous client.
 
 #### warm_up_async
 
@@ -143,7 +145,7 @@ Create the synchronous Hugging Face client.
 warm_up_async() -> None
 ```
 
-Create the asynchronous Hugging Face client.
+Create the asynchronous client.
 
 #### close
 
@@ -151,7 +153,7 @@ Create the asynchronous Hugging Face client.
 close() -> None
 ```
 
-Close the synchronous Hugging Face client.
+Close the synchronous client.
 
 #### close_async
 
@@ -159,7 +161,7 @@ Close the synchronous Hugging Face client.
 close_async() -> None
 ```
 
-Close the asynchronous Hugging Face client.
+Close the asynchronous client.
 
 #### to_dict
 
@@ -235,17 +237,17 @@ Embeds a list of documents asynchronously.
 
 ## haystack_integrations.components.embedders.huggingface_api.sparse_document_embedder
 
-### HuggingFaceAPISparseDocumentEmbedder
+### HuggingFaceTEISparseDocumentEmbedder
 
 Embeds Documents into sparse vectors using a Hugging Face Text Embeddings Inference (TEI) server.
 
-The component batches requests and returns copies of the input Documents with `sparse_embedding` set.
+The component returns copies of the input Documents with `sparse_embedding` set.
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPISparseDocumentEmbedder
+from haystack_integrations.components.embedders.huggingface_api import HuggingFaceTEISparseDocumentEmbedder
 
-embedder = HuggingFaceAPISparseDocumentEmbedder(api_base_url="http://localhost:8080")
+embedder = HuggingFaceTEISparseDocumentEmbedder(api_base_url="http://localhost:8080")
 documents = embedder.run([Document(content="Sparse retrieval")])["documents"]
 print(documents[0].sparse_embedding)
 ```
@@ -267,7 +269,8 @@ __init__(
     embedding_separator: str = "\n",
     timeout: float | None = 30.0,
     headers: dict[str, str] | None = None,
-    concurrency_limit: int = 4
+    concurrency_limit: int = 4,
+    use_grpc: bool = False
 ) -> None
 ```
 
@@ -275,21 +278,54 @@ Create a sparse Document embedder backed by TEI.
 
 **Parameters:**
 
-- **api_base_url** (<code>str</code>) – Base URL of the TEI server.
-- **token** (<code>Secret | None</code>) – Token sent to TEI as HTTP bearer authorization, if set.
+- **api_base_url** (<code>str</code>) – Base URL of the TEI server, or gRPC target.
+- **token** (<code>Secret | None</code>) – Token sent to TEI as bearer authorization, if set.
 - **prefix** (<code>str</code>) – A string to add before each prepared Document text.
 - **suffix** (<code>str</code>) – A string to add after each prepared Document text.
-- **batch_size** (<code>int</code>) – Number of Documents sent in each request.
+- **batch_size** (<code>int</code>) – Number of Documents sent in each request. Only used with HTTP.
 - **progress_bar** (<code>bool</code>) – If `True`, show a progress bar while embedding.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Metadata fields to embed before the Document content.
 - **embedding_separator** (<code>str</code>) – Separator for metadata fields and Document content.
 - **timeout** (<code>float | None</code>) – HTTP request timeout in seconds. Set to `None` to disable it.
 - **headers** (<code>dict\[str, str\] | None</code>) – Additional HTTP headers to send with each request.
-- **concurrency_limit** (<code>int</code>) – Maximum concurrent requests made by `run_async`.
+- **concurrency_limit** (<code>int</code>) – Maximum concurrent HTTP requests or gRPC streams made by `run_async`.
+- **use_grpc** (<code>bool</code>) – Use gRPC instead of HTTP. Requires `huggingface-api-haystack[grpc]`.
 
 **Raises:**
 
-- <code>ValueError</code> – If `api_base_url` is invalid or a numeric parameter is not positive.
+- <code>ValueError</code> – If `api_base_url` is invalid when using HTTP or a numeric parameter is not positive.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous client.
 
 #### to_dict
 
@@ -302,7 +338,7 @@ Serialize this component to a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> HuggingFaceAPISparseDocumentEmbedder
+from_dict(data: dict[str, Any]) -> HuggingFaceTEISparseDocumentEmbedder
 ```
 
 Deserialize this component from a dictionary.
@@ -341,16 +377,16 @@ Embed a list of Documents asynchronously.
 
 ## haystack_integrations.components.embedders.huggingface_api.sparse_text_embedder
 
-### HuggingFaceAPISparseTextEmbedder
+### HuggingFaceTEISparseTextEmbedder
 
 Embeds text into a sparse vector using a Hugging Face Text Embeddings Inference (TEI) server.
 
-The TEI server must be running a sparse embedding model and expose the `/embed_sparse` endpoint.
+The TEI server must be running a sparse embedding model and, when using HTTP, expose the `/embed_sparse` endpoint.
 
 ```python
-from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPISparseTextEmbedder
+from haystack_integrations.components.embedders.huggingface_api import HuggingFaceTEISparseTextEmbedder
 
-embedder = HuggingFaceAPISparseTextEmbedder(api_base_url="http://localhost:8080")
+embedder = HuggingFaceTEISparseTextEmbedder(api_base_url="http://localhost:8080")
 result = embedder.run("What is sparse retrieval?")
 print(result["sparse_embedding"])
 ```
@@ -367,7 +403,8 @@ __init__(
     prefix: str = "",
     suffix: str = "",
     timeout: float | None = 30.0,
-    headers: dict[str, str] | None = None
+    headers: dict[str, str] | None = None,
+    use_grpc: bool = False
 ) -> None
 ```
 
@@ -375,16 +412,17 @@ Create a sparse text embedder backed by TEI.
 
 **Parameters:**
 
-- **api_base_url** (<code>str</code>) – Base URL of the TEI server.
-- **token** (<code>Secret | None</code>) – Token sent to TEI as HTTP bearer authorization, if set.
+- **api_base_url** (<code>str</code>) – Base URL of the TEI server, or gRPC target.
+- **token** (<code>Secret | None</code>) – Token sent to TEI as bearer authorization, if set.
 - **prefix** (<code>str</code>) – A string to add before the text.
 - **suffix** (<code>str</code>) – A string to add after the text.
 - **timeout** (<code>float | None</code>) – HTTP request timeout in seconds. Set to `None` to disable it.
 - **headers** (<code>dict\[str, str\] | None</code>) – Additional HTTP headers to send with each request.
+- **use_grpc** (<code>bool</code>) – Use gRPC instead of HTTP. Requires `huggingface-api-haystack[grpc]`.
 
 **Raises:**
 
-- <code>ValueError</code> – If `api_base_url` is not a valid HTTP URL.
+- <code>ValueError</code> – If `api_base_url` is not a valid HTTP URL when using HTTP.
 
 #### to_dict
 
@@ -397,10 +435,42 @@ Serialize this component to a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> HuggingFaceAPISparseTextEmbedder
+from_dict(data: dict[str, Any]) -> HuggingFaceTEISparseTextEmbedder
 ```
 
 Deserialize this component from a dictionary.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous client.
 
 #### run
 
@@ -504,6 +574,7 @@ __init__(
     suffix: str = "",
     truncate: bool | None = True,
     normalize: bool | None = False,
+    use_grpc: bool = False,
 ) -> None
 ```
 
@@ -514,9 +585,9 @@ Creates a HuggingFaceAPITextEmbedder component.
 - **api_type** (<code>HFEmbeddingAPIType | str</code>) – The type of Hugging Face API to use.
 - **api_params** (<code>dict\[str, str\]</code>) – A dictionary with the following keys:
 - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-  `TEXT_EMBEDDINGS_INFERENCE`.
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
+- `url`: URL of the inference endpoint, or gRPC target. Required when `api_type` is
+  `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.
+- **token** (<code>Secret | None</code>) – The Hugging Face token to use as bearer authorization.
   Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
@@ -528,11 +599,12 @@ Creates a HuggingFaceAPITextEmbedder component.
   Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
   if the backend uses Text Embeddings Inference.
   If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
+- **use_grpc** (<code>bool</code>) – Use gRPC instead of HTTP. Requires `huggingface-api-haystack[grpc]`.
 
 **Raises:**
 
-- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
-  or the `api_type` is unknown.
+- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the HTTP `url` is invalid,
+  or the `api_type` is unknown or is `SERVERLESS_INFERENCE_API` with `use_grpc=True`.
 
 #### warm_up
 
@@ -540,7 +612,7 @@ Creates a HuggingFaceAPITextEmbedder component.
 warm_up() -> None
 ```
 
-Create the synchronous Hugging Face client.
+Create the synchronous client.
 
 #### warm_up_async
 
@@ -548,7 +620,7 @@ Create the synchronous Hugging Face client.
 warm_up_async() -> None
 ```
 
-Create the asynchronous Hugging Face client.
+Create the asynchronous client.
 
 #### close
 
@@ -556,7 +628,7 @@ Create the asynchronous Hugging Face client.
 close() -> None
 ```
 
-Close the synchronous Hugging Face client.
+Close the synchronous client.
 
 #### close_async
 
@@ -564,7 +636,7 @@ Close the synchronous Hugging Face client.
 close_async() -> None
 ```
 
-Close the asynchronous Hugging Face client.
+Close the asynchronous client.
 
 #### to_dict
 
@@ -792,9 +864,7 @@ Initialize the HuggingFaceAPIChatGenerator instance.
 warm_up() -> None
 ```
 
-Warm up the Hugging Face API chat generator.
-
-This creates the synchronous client and warms up the configured tools.
+Create the synchronous Hugging Face client.
 
 #### warm_up_async
 
@@ -802,7 +872,7 @@ This creates the synchronous client and warms up the configured tools.
 warm_up_async() -> None
 ```
 
-Create the asynchronous Hugging Face client and warm up the configured tools.
+Create the asynchronous Hugging Face client.
 
 #### close
 
@@ -972,7 +1042,8 @@ __init__(
     retry_status_codes: list[int] | None = None,
     token: Secret | None = Secret.from_env_var(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    )
+    ),
+    use_grpc: bool = False
 ) -> None
 ```
 
@@ -980,16 +1051,49 @@ Initializes the TEI reranker component.
 
 **Parameters:**
 
-- **url** (<code>str</code>) – Base URL of the TEI reranking service (for example, "https://api.example.com").
+- **url** (<code>str</code>) – Base URL of the TEI reranking service, or gRPC target.
 - **top_k** (<code>int</code>) – Maximum number of top documents to return.
 - **raw_scores** (<code>bool</code>) – If True, include raw relevance scores in the API payload.
 - **timeout** (<code>int | None</code>) – Request timeout in seconds.
-- **max_retries** (<code>int</code>) – Maximum number of retry attempts for failed requests.
+- **max_retries** (<code>int</code>) – Maximum number of retry attempts for failed HTTP requests.
 - **retry_status_codes** (<code>list\[int\] | None</code>) – List of HTTP status codes that will trigger a retry.
   When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization. Not always required
+- **token** (<code>Secret | None</code>) – The Hugging Face token to use as bearer authorization. Not always required
   depending on your TEI server configuration.
   Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+- **use_grpc** (<code>bool</code>) – Use gRPC instead of HTTP. Requires `huggingface-api-haystack[grpc]`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous client.
 
 #### to_dict
 

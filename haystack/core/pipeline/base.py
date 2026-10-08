@@ -764,7 +764,8 @@ class PipelineBase:  # noqa: PLW1641
             receiver_socket_name=receiver_socket.name,
         )
 
-        if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
+        edge_key = f"{sender_socket.name}/{receiver_socket.name}"
+        if self.graph.has_edge(sender_component_name, receiver_component_name, key=edge_key):
             # This is already connected, nothing to do
             return self
 
@@ -1793,9 +1794,7 @@ class PipelineBase:  # noqa: PLW1641
 
         :returns:
             A tuple containing:
-            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
-            - A dictionary mapping component names to boolean indicating that this component was part of a
-              SuperComponent
+            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all its SuperComponents
             - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()

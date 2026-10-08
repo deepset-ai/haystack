@@ -60,6 +60,10 @@ hatch run release-note SHORT_DESCRIPTION
 
 Edit the generated file in `releasenotes/notes/`. Release notes use reStructuredText formatting; see the [release notes section in CONTRIBUTING.md](CONTRIBUTING.md#release-notes) for details.
 
+## Pull Requests
+
+Community contributors can have only one open pull request at a time in this repository. Before opening a PR on the user's behalf, check whether they already have one open (`gh pr list --author @me`); if so, tell them instead of opening another.
+
 In addition, there are rules inferred from previous code reviews. Follow them like a
 reviewer's note: they encode reasons, not ceremony, so when a rule genuinely does not
 fit the change at hand, say why rather than contorting the code to satisfy it.
@@ -90,7 +94,8 @@ Also see directory-specific guidelines:
 - Keep inline comments and private-helper docs to what is non-obvious — remove restatements, keep durable caveats and rationale
 - Keep docstrings current with signatures and behavior, in the existing Haystack style: each public `:param` by meaning, default, and constraints; `:returns:` contracts; exceptions in the existing `:raises ValueError:` style; aliases like `ToolsType` reflected — stale docs mislead users and assistants
 - Keep doc examples minimal, runnable, and local: default constructors with required env vars like `OPENAI_API_KEY` noted nearby, only the imports the snippet uses, no restated defaults (name a model only for model-specific behavior), expected output as comments, generally `# >> ...`
-- When behavior, fields, or names change, update every surface in the same PR: `haystack/components/` docstrings and examples, `docs-website/docs/` plus the current `versioned_docs/version-*/` page (e.g. `concepts/data-classes.mdx`), and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
+- When behavior, fields, or names change, update every relevant surface in the same PR: `haystack/components/` docstrings and examples, documentation pages, and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
+- Choose which documentation versions to update: update `docs-website/docs/` by default; also update the latest stable `versioned_docs/version-X.Y/` pages for corrections to stable docs or already-released core integration features.
 
 ## Code Style
 

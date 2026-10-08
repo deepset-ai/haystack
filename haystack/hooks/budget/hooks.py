@@ -31,11 +31,11 @@ class TokenBudgetHook:
     <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.budget import TokenBudgetHook
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[web_search],
         hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
     )

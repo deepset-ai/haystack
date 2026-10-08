@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed BM25 tokenization in ``InMemoryDocumentStore`` for Chinese, Japanese and Korean text. The default
+    ``bm25_tokenization_regex`` now splits CJK characters into one token each, so bare-term queries can match
+    words inside longer unspaced runs. Text is also NFC-normalized before tokenization, so composed and
+    decomposed spellings produce the same tokens.
