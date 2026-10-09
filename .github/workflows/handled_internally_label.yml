@@ -7,18 +7,16 @@ name: Handled internally label
 # Remove the label to open such an issue for external contributions.
 #
 # Private org memberships are hidden from author_association in the event
-# payload and from GITHUB_TOKEN, so all API calls use HANDLED_INTERNALLY_PAT: a
-# token of a deepset-ai member with the organization "Members: read" and
-# repository "Issues: read and write" permissions (classic PAT: `read:org` and
-# `public_repo` scopes). Adding the label with this token rather than
-# GITHUB_TOKEN is also what lets the resulting `labeled` event trigger the
-# footer workflow.
+# payload and from GITHUB_TOKEN, so all API calls use the HaystackBot PAT, which
+# needs the `read:org` scope for the membership check. Adding the label with it
+# rather than GITHUB_TOKEN is also what lets the resulting `labeled` event
+# trigger the footer workflow.
 
 on:
   issues:
     types: [opened]
 
-# All API calls use HANDLED_INTERNALLY_PAT.
+# All API calls use HAYSTACK_BOT_TOKEN.
 permissions: {}
 
 jobs:
@@ -27,7 +25,7 @@ jobs:
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.HANDLED_INTERNALLY_PAT }}
+          github-token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           script: |
             const LABEL = "handled internally";
             // Lowercase GitHub logins; issues opened by maintainers aren't labeled.
