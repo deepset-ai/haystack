@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from openai import OpenAIError
 from pydantic import BaseModel
@@ -265,6 +266,7 @@ class TestAzureOpenAIChatGenerator:
                 "tools_strict": False,
                 "azure_ad_token_provider": None,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -285,6 +287,7 @@ class TestAzureOpenAIChatGenerator:
             },
             azure_ad_token_provider=default_azure_ad_token_provider,
             http_client_kwargs={"proxy": "http://localhost:8080"},
+            include_rate_limit_headers=True,
         )
         data = component.to_dict()
         assert data == {
@@ -326,6 +329,7 @@ class TestAzureOpenAIChatGenerator:
                 "default_headers": {},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
+                "include_rate_limit_headers": True,
             },
         }
 
@@ -427,6 +431,7 @@ class TestAzureOpenAIChatGenerator:
                         "tools_strict": False,
                         "azure_ad_token_provider": None,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 }
             },
@@ -566,6 +571,34 @@ class TestAzureOpenAIChatGenerator:
             },
         }
         assert data["init_parameters"]["tools"] == expected_tools_data
+
+    def test_rate_limit_headers_included_in_meta(self) -> None:
+        requests: list[httpx.Request] = []
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "99", "x-ratelimit-remaining-tokens": "99990"}
+        completion = {
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-4.1-mini",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion, headers={**rate_limit_headers, "apim-request-id": "abc"})
+
+        generator = AzureOpenAIChatGenerator(
+            azure_endpoint="https://example-resource.azure.openai.com/",
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            include_rate_limit_headers=True,
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert requests[0].url.path == "/openai/deployments/gpt-4.1-mini/chat/completions"
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
 
 
 class TestAzureOpenAIChatGeneratorAsync:
