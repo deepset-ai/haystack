@@ -85,8 +85,8 @@ Every part of a result goes to its own store entry, and the reference left in th
 
 ```
 Tool result offloaded to 2 files:
-1. text (4120 characters) at '/abs/path/tool_results/compacted_fetch_call-123_0.txt'. Preview: Quarterly report...
-2. image/png (48210 bytes) at '/abs/path/tool_results/compacted_fetch_call-123_1.png'
+1. text (4120 characters) at '/abs/path/tool_results/compacted_fetch_9b1c4e7a0d2f4c6b8e1a3d5f7b9c2e4a_0.txt'. Preview: Quarterly report...
+2. image/png (48210 bytes) at '/abs/path/tool_results/compacted_fetch_9b1c4e7a0d2f4c6b8e1a3d5f7b9c2e4a_1.png'
 ```
 
 Image and file content is only written to a store that sets `supports_binary_content`, which [`FileSystemToolResultStore`](../tool-result-offloading.mdx#stores) does. With a text-only store, a result carrying images or files stays in the conversation and a warning is logged.
