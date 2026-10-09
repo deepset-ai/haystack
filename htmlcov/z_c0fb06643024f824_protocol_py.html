@@ -62,10 +62,10 @@
         <p class="text">
             <a id="prevFileLink" class="nav" href="z_c0fb06643024f824___init___py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a id="nextFileLink" class="nav" href="z_177ee90f6ce1b012_utils_py.html">&#xbb; next</a>
+            <a id="nextFileLink" class="nav" href="z_b6cecdb34c1b0c86_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-09 08:18 +0000
+            created at 2026-10-09 11:51 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -92,7 +92,7 @@
     <p class="pln"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="key">class</span> <span class="nam">ToolResultStore</span><span class="op">(</span><span class="nam">Protocol</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t">    <span class="str">&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="str">    A place a `ToolResultOffloadHook` writes offloaded tool results to, and reads them back from.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="str">    Where a `ToolResultOffloadHook` or `ToolResultOffloadCompactor` writes tool results and a read tool fetches them.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t"><span class="str">    Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t"><span class="str">    storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full</span>&nbsp;</span><span class="r"></span></p>
@@ -114,8 +114,8 @@
     <p class="pln"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t">        <span class="str">&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="str">        Persist `content` under `key` and return a reference to it.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t"><span class="str">        :param key: A stable, per-result identifier the hook derives from the tool call (e.g. a file name). It carries</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="str">            an extension matching the content, so a store that maps keys to files can use it as-is.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t"><span class="str">        :param key: A stable, per-result identifier derived from the tool call (e.g. a file name). It carries an</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="str">            extension matching the content, so a store that maps keys to files can use it as-is.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t37" href="#t37">37</a></span><span class="t"><span class="str">        :param content: The tool result to persist. Text arrives as a string. Image and file content arrives as the</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t38" href="#t38">38</a></span><span class="t"><span class="str">            decoded bytes of its base64 payload, and only when the store sets `supports_binary_content` to True - a</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t39" href="#t39">39</a></span><span class="t"><span class="str">            text-only store may narrow this parameter to `str`.</span>&nbsp;</span><span class="r"></span></p>
@@ -181,10 +181,10 @@
         <p>
             <a class="nav" href="z_c0fb06643024f824___init___py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a class="nav" href="z_177ee90f6ce1b012_utils_py.html">&#xbb; next</a>
+            <a class="nav" href="z_b6cecdb34c1b0c86_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
-            created at 2026-10-09 08:18 +0000
+            created at 2026-10-09 11:51 +0000
         </p>
     </div>
 </footer>

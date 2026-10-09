@@ -184,10 +184,11 @@
 | haystack/hooks/compaction/hooks.py                                        |      111 |        1 |     99% |       296 |
 | haystack/hooks/compaction/sliding\_window.py                              |       67 |        0 |    100% |           |
 | haystack/hooks/compaction/summarization.py                                |      171 |       16 |     91% |89, 314-317, 475-479, 483-484, 488-492 |
-| haystack/hooks/compaction/tool\_result\_pruning.py                        |       55 |        0 |    100% |           |
+| haystack/hooks/compaction/tool\_result\_offloading.py                     |       50 |        1 |     98% |       164 |
+| haystack/hooks/compaction/tool\_result\_pruning.py                        |       36 |        0 |    100% |           |
 | haystack/hooks/compaction/types/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/hooks/compaction/types/protocol.py                               |       12 |        0 |    100% |           |
-| haystack/hooks/compaction/utils.py                                        |       49 |        0 |    100% |           |
+| haystack/hooks/compaction/utils.py                                        |       71 |        0 |    100% |           |
 | haystack/hooks/from\_function.py                                          |       45 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/dataclasses.py                        |       16 |        0 |    100% |           |
@@ -200,11 +201,12 @@
 | haystack/hooks/invocation.py                                              |       40 |        0 |    100% |           |
 | haystack/hooks/protocol.py                                                |       15 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/\_\_init\_\_.py                   |        5 |        0 |    100% |           |
-| haystack/hooks/tool\_result\_offloading/hooks.py                          |      121 |        1 |     99% |       205 |
+| haystack/hooks/tool\_result\_offloading/hooks.py                          |       76 |        2 |     97% |  183, 253 |
 | haystack/hooks/tool\_result\_offloading/policies.py                       |       17 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/stores.py                         |       34 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/types/\_\_init\_\_.py             |        2 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/types/protocol.py                 |       19 |        2 |     89% |    56, 61 |
+| haystack/hooks/tool\_result\_offloading/utils.py                          |       58 |        0 |    100% |           |
 | haystack/hooks/utils.py                                                   |       47 |        0 |    100% |           |
 | haystack/lazy\_imports.py                                                 |       13 |        0 |    100% |           |
 | haystack/logging.py                                                       |      142 |        4 |     97% |251-252, 383-385 |
@@ -267,7 +269,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17578** |  **710** | **96%** |           |
+| **TOTAL**                                                                 | **17644** |  **712** | **96%** |           |
 
 
 ## Setup coverage badge
