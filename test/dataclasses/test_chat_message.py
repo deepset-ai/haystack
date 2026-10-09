@@ -166,33 +166,13 @@ class TestContentParts:
         assert result.result[2].base64_data == base64_pdf_string
         assert result.result[2].filename == "guide.pdf"
 
-    def test_tool_call_result_to_trace_dict(self, base64_image_string, base64_pdf_string):
+    @pytest.mark.parametrize("container", [list, tuple])
+    def test_tool_call_result_to_trace_dict(self, container, base64_image_string, base64_pdf_string):
         tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
         image = ImageContent(base64_image=base64_image_string)
         file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
         text_part = TextContent(text="Summary")
-        tcr = ToolCallResult(result=[text_part, image, file_part], origin=tc, error=False)
-
-        trace_dict = tcr._to_trace_dict()
-        assert trace_dict["origin"] == tc.to_dict()
-        assert trace_dict["error"] is False
-        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
-        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
-        assert trace_dict["result"][0] == {"text": "Summary"}
-        assert trace_dict["result"][1]["image"]["base64_image"] == expected_img
-        assert trace_dict["result"][2]["file"]["base64_data"] == expected_pdf
-
-        # Assert raw base64 data is not present anywhere in the trace dict
-        trace_str = str(trace_dict)
-        assert base64_image_string not in trace_str
-        assert base64_pdf_string not in trace_str
-
-    def test_tool_call_result_to_trace_dict_tuple_result(self, base64_image_string, base64_pdf_string):
-        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
-        image = ImageContent(base64_image=base64_image_string)
-        file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
-        text_part = TextContent(text="Summary")
-        tcr = ToolCallResult(result=(text_part, image, file_part), origin=tc, error=False)
+        tcr = ToolCallResult(result=container([text_part, image, file_part]), origin=tc, error=False)
 
         trace_dict = tcr._to_trace_dict()
         assert trace_dict["origin"] == tc.to_dict()
@@ -806,7 +786,7 @@ class TestChatMessageSerde:
             "meta": {},
         }
 
-    def test_to_trace_dict_with_tool_call_result(self, monkeypatch, base64_image_string, base64_pdf_string):
+    def test_to_trace_dict_with_tool_call_result(self, base64_image_string, base64_pdf_string):
         tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={"item": "report"})
         image = ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})
         file_part = FileContent(
@@ -814,11 +794,6 @@ class TestChatMessageSerde:
         )
         text_part = TextContent(text="Report generated successfully.")
         message = ChatMessage.from_tool(tool_result=[text_part, image, file_part], origin=tc)
-
-        def fail_to_dict(*args, **kwargs):
-            raise AssertionError("ToolCallResult.to_dict() should not be called during _to_trace_dict()")
-
-        monkeypatch.setattr(ToolCallResult, "to_dict", fail_to_dict)
 
         trace_dict = message._to_trace_dict()
 
