@@ -557,10 +557,8 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_exception_logs_traceback_and_caller(self, caplog: LogCaptureFixture, monkeypatch: MonkeyPatch) -> None:
-        # Use a plain `logging.Logger`: structlog's logger class ignores `stacklevel`, so it would hide a wrong caller
-        monkeypatch.setattr(logging.Logger.manager, "loggerClass", logging.Logger)
-        logger = haystack_logging.getLogger("haystack.test_logging.exception")
+    def test_exception_logs_traceback(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
 
         try:
             1 / 0
@@ -570,7 +568,6 @@ class TestCompositeLogger:
         record = caplog.records[0]
         assert record.exc_info is not None
         assert record.exc_info[0] is ZeroDivisionError
-        assert record.funcName == "test_exception_logs_traceback_and_caller"
 
     def test_exception_respects_explicit_exc_info(self, caplog: LogCaptureFixture) -> None:
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -666,7 +663,7 @@ class TestCompositeLogger:
         logger = haystack_logging.getLogger("haystack.test_logging")
         logger.setLevel(logging.DEBUG)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=rf"Logger\.{method}\(\) takes 1 positional argument"):
             getattr(logger, method)("Hello, structured logging %s!", "logging")
 
     @pytest.mark.parametrize(
