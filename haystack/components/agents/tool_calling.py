@@ -17,7 +17,7 @@ from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.parameters_schema_utils import _unwrap_optional
+from haystack.tools.parameters_schema_utils import _is_state_annotation
 from haystack.tracing.utils import _serializable_value
 
 logger = logging.getLogger(__name__)
@@ -309,7 +309,7 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
 
     # We also inject the full State object for any parameter annotated as State
     for param_name, param_type in func_params.items():
-        if _unwrap_optional(param_type) is State:
+        if _is_state_annotation(param_type):
             final_args[param_name] = state
 
     return final_args
@@ -426,7 +426,7 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
     """
     func_params = _get_func_params(tool)
     # Check if State is in func_params
-    if any(_unwrap_optional(param_type) is State for param_type in func_params.values()):
+    if any(_is_state_annotation(param_type) for param_type in func_params.values()):
         return _ALL_STATE_KEYS, _ALL_STATE_KEYS
 
     # Calculate reads

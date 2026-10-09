@@ -37,7 +37,6 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -70,7 +69,7 @@ class OpenAIResponsesChatGenerator:
     """
     Completes chats using OpenAI's Responses API.
 
-    It works with the gpt-4 and o-series models and supports streaming responses
+    It works with OpenAI's GPT and o-series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -184,6 +183,8 @@ class OpenAIResponsesChatGenerator:
                 - `generate_summary`: Whether to generate a summary of the reasoning.
                 - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+                If a provider returns the raw reasoning as `reasoning_text` content instead,
+                it is mapped to `ReasoningContent.reasoning_text` when no summary is returned.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
             - `include`: Specify additional output data to include in the model response. Supported values are:
                 - web_search_call.action.sources: Include the sources of the web search tool call.
@@ -232,7 +233,6 @@ class OpenAIResponsesChatGenerator:
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
-        self._tools_warmed_up = False
 
     def _client_kwargs(self) -> dict[str, Any]:
         timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -248,20 +248,10 @@ class OpenAIResponsesChatGenerator:
             "max_retries": max_retries,
         }
 
-    def _warm_up_tools(self) -> None:
-        if not self._tools_warmed_up:
-            is_openai_tool = isinstance(self.tools, list) and bool(self.tools) and isinstance(self.tools[0], dict)
-            # We only warm up Haystack tools, not OpenAI/MCP tools
-            # The type ignore is needed because mypy cannot infer the type correctly
-            if not is_openai_tool:
-                warm_up_tools(self.tools)  # type: ignore[arg-type]
-            self._tools_warmed_up = True
-
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous OpenAI client.
+        Initialize the synchronous OpenAI client.
         """
-        self._warm_up_tools()
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -273,9 +263,8 @@ class OpenAIResponsesChatGenerator:
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        Initialize the asynchronous OpenAI client on the serving event loop.
         """
-        self._warm_up_tools()
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -675,20 +664,13 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
                     logprobs.append(_serialize_object(content.logprobs))
 
         if output.type == "reasoning":
-            # openai doesn't return the reasoning tokens, but we can view summary if its enabled
-            # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
-            summaries = output.summary
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
-            if output.content:
-                logger.warning(
-                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
-                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
-                    "reflected in ReasoningContent.reasoning_text.",
-                    _id=output.id,
-                )
-            reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
+            # OpenAI returns reasoning summaries, other providers may return raw reasoning as `reasoning_text` content
+            reasoning_text = "\n".join(summary.text for summary in output.summary)
+            if not reasoning_text:
+                reasoning_text = "\n".join(part.text for part in output.content or [] if part.type == "reasoning_text")
             reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
 
         elif output.type == "function_call":
@@ -774,15 +756,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
-            if chunk.item.content:
-                logger.warning(
-                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
-                    "This field is currently undocumented and was never observed in practice. "
-                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
-                    "reflected in ReasoningContent.reasoning_text. Please report this at "
-                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
-                    _id=chunk.item.id,
-                )
+            # The completed item repeats the reasoning text already streamed as deltas, so we only keep its fields
             reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
             return StreamingChunk(
                 content="",
@@ -817,7 +791,10 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
-    elif chunk.type == "response.reasoning_summary_text.delta":
+        # Unlike non-streaming, where raw reasoning text is only a fallback when there is no summary, summary and raw
+        # reasoning deltas are both streamed as they arrive and end up concatenated in the final reasoning_text.
+        # In practice this rarely matters, because providers usually send only one kind.
+    elif chunk.type in ("response.reasoning_summary_text.delta", "response.reasoning_text.delta"):
         # We remove the delta from the extra because it is already in the reasoning_text
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
@@ -1055,7 +1032,8 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
             filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
             reasoning_item = {"summary": [], **filtered_extra}
-            if reasoning.reasoning_text:
+            # Raw reasoning text is already sent back in `content`, repeating it as a summary would duplicate it
+            if reasoning.reasoning_text and not filtered_extra.get("content"):
                 reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)

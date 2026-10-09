@@ -14,7 +14,13 @@ from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
-from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
+from haystack.tools.utils import (
+    close_tools,
+    close_tools_async,
+    flatten_tools_or_toolsets,
+    warm_up_tools,
+    warm_up_tools_async,
+)
 
 if TYPE_CHECKING:
     from haystack.tools import ToolsType
@@ -37,7 +43,7 @@ class SearchableToolset(Toolset):
     from typing import Annotated
 
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SearchableToolset, tool
 
@@ -63,7 +69,7 @@ class SearchableToolset(Toolset):
     # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
     toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=toolset)
 
     # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
     result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
@@ -143,21 +149,32 @@ class SearchableToolset(Toolset):
 
     def warm_up(self) -> None:
         """
-        Prepare the toolset for use.
-
-        Warms up the catalog (so lazy toolsets like MCPToolset can connect) and flattens it. Above the passthrough
-        threshold, it also indexes the catalog and creates the search_tools bootstrap tool.
-
-        This method is idempotent: it only warms up the toolset the first time it is called.
-
-        :raises ValueError: If the flattened catalog contains tools with duplicate names.
+        Warm up the catalog tools and initialize tool discovery.
         """
-        if self._passthrough is not None:
-            return
-
         # Warm up the catalog first (triggers lazy connections like MCPToolset), then flatten — lazy toolsets will
         # have their real tools available.
         warm_up_tools(self._raw_catalog)
+        self._build_catalog()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the catalog tools asynchronously and initialize tool discovery.
+        """
+        await warm_up_tools_async(self._raw_catalog)
+        self._build_catalog()
+
+    def _build_catalog(self) -> None:
+        """
+        Flatten the warmed-up catalog, validate tool names, and initialize discovery once.
+
+        The catalog must be warmed up first so lazy toolsets, such as MCPToolset, expose their tools.
+        Catalogs below the search threshold use passthrough mode. Otherwise, build the BM25 index
+        and create the search_tools bootstrap tool.
+
+        :raises ValueError: If the catalog contains tools with duplicate names.
+        """
+        if self._passthrough is not None:
+            return
         self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
         _check_duplicate_tool_names(self._catalog)
         self._passthrough = len(self._catalog) < self._search_threshold
@@ -180,12 +197,24 @@ class SearchableToolset(Toolset):
         Return the full catalog of tools that can be selected by name.
 
         Iteration only exposes the search tool plus already-discovered tools, but name-based selection can target
-        any tool in the catalog, so this returns the entire flattened catalog (warming up first if needed).
+        any tool in the catalog, so this returns the entire flattened catalog. Prepare it with `warm_up()`
+        or `warm_up_async()` before selection.
 
         :returns: The flattened catalog of tools.
         """
-        self.warm_up()
         return list(self._catalog)
+
+    def close(self) -> None:
+        """Close the tools and toolsets in the catalog."""
+        close_tools(self._raw_catalog)
+        self._passthrough = None
+        self._discovered_tools = {}
+
+    async def close_async(self) -> None:
+        """Close the tools and toolsets in the catalog asynchronously."""
+        await close_tools_async(self._raw_catalog)
+        self._passthrough = None
+        self._discovered_tools = {}
 
     def clear(self) -> None:
         """
@@ -209,7 +238,8 @@ class SearchableToolset(Toolset):
             restriction.
         :returns: A run-scoped copy of this SearchableToolset.
         """
-        self.warm_up()
+        if self._passthrough is None:
+            self.warm_up()
         new = copy.copy(self)
         new._discovered_tools = {}
         new._selected_tool_names = set(selected_tool_names) if selected_tool_names is not None else None
@@ -308,7 +338,8 @@ class SearchableToolset(Toolset):
         # This toolset materializes everything (flattened catalog, bootstrap tool, passthrough decision) in warm_up.
         # Without warming here, iterating before warm_up would yield nothing, so we warm up to make the toolset usable
         # at all.
-        self.warm_up()
+        if self._passthrough is None:
+            self.warm_up()
         if self._passthrough:
             yield from (tool for tool in self._catalog if self._is_selected(tool.name))
         else:

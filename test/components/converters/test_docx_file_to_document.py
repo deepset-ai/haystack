@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
+import io
 import json
 import logging
 import os
@@ -12,7 +13,7 @@ from pathlib import Path
 import docx
 import pytest
 from docx.opc.constants import RELATIONSHIP_TYPE
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 
 from haystack import Document, Pipeline
@@ -23,6 +24,64 @@ from haystack.dataclasses import ByteStream
 @pytest.fixture
 def docx_converter():
     return DOCXToDocument()
+
+
+_DOCX_NAMESPACES = {
+    "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+    "wps": "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+    "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+    "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    "v": "urn:schemas-microsoft-com:vml",
+    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+}
+_NAMESPACE_DECLARATIONS = " ".join(f'xmlns:{prefix}="{uri}"' for prefix, uri in _DOCX_NAMESPACES.items())
+
+_MODERN_TEXT_BOX = """
+<w:p {ns}>
+  <w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+    <wp:extent cx="2743200" cy="914400"/><wp:docPr id="1" name="Text Box 1"/>
+    <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+      <wps:wsp><wps:txbx><w:txbxContent>{content}</w:txbxContent></wps:txbx></wps:wsp>
+    </a:graphicData></a:graphic>
+  </wp:inline></w:drawing></w:r>
+</w:p>
+"""
+
+_TEXT_BOX_WITH_VML_FALLBACK = """
+<w:p {ns}>
+  <w:r><mc:AlternateContent>
+    <mc:Choice Requires="wps"><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+      <wp:extent cx="2743200" cy="914400"/><wp:docPr id="1" name="Text Box 1"/>
+      <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+        <wps:wsp><wps:txbx><w:txbxContent>{content}</w:txbxContent></wps:txbx></wps:wsp>
+      </a:graphicData></a:graphic>
+    </wp:inline></w:drawing></mc:Choice>
+    <mc:Fallback><w:pict><v:shape id="_x0000_s1026" type="#_x0000_t202">
+      <v:textbox><w:txbxContent>{content}</w:txbxContent></v:textbox>
+    </v:shape></w:pict></mc:Fallback>
+  </mc:AlternateContent></w:r>
+</w:p>
+"""
+
+
+def _docx_with_text_box(template: str, content: str, link_url: str | None = None) -> bytes:
+    """
+    Build a DOCX whose body is BEFORE, a text box holding `content`, then AFTER.
+
+    With `link_url`, `{rid}` in `content` becomes the id of an external hyperlink relationship to it.
+    """
+    document = docx.Document()
+    if link_url:
+        rid = document.part.relate_to(link_url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+        content = content.format(rid=rid)
+    document.add_paragraph("BEFORE")
+    body = document.element.body
+    body.insert(len(body) - 1, parse_xml(template.format(ns=_NAMESPACE_DECLARATIONS, content=content).strip()))
+    document.add_paragraph("AFTER")
+    buffer = io.BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
 
 
 def _convert_docx_table(tmp_path: Path, cells: list[list[str]], table_format: str) -> str:
@@ -494,6 +553,51 @@ class TestDOCXToDocument:
 
         assert "[PDF](https://en.wikipedia.org/wiki/PDF)" not in content
         assert "PDF (https://en.wikipedia.org/wiki/PDF)" not in content
+
+    def test_run_reads_text_inside_a_text_box(self):
+        """A text box keeps its paragraphs in `w:txbxContent`, which the anchoring
+        paragraph's own text never reaches."""
+        docx_bytes = _docx_with_text_box(_MODERN_TEXT_BOX, "<w:p><w:r><w:t>TEXT INSIDE A TEXT BOX</w:t></w:r></w:p>")
+
+        output = DOCXToDocument().run(sources=[ByteStream(data=docx_bytes)])
+
+        content = output["documents"][0].content
+        assert "TEXT INSIDE A TEXT BOX" in content
+        # In reading order, between the paragraphs it sits among.
+        assert content.index("BEFORE") < content.index("TEXT INSIDE A TEXT BOX") < content.index("AFTER")
+
+    def test_run_does_not_repeat_a_text_box_that_has_a_vml_fallback(self):
+        """Word writes the same text under `mc:Choice` and again under `mc:Fallback`."""
+        docx_bytes = _docx_with_text_box(_TEXT_BOX_WITH_VML_FALLBACK, "<w:p><w:r><w:t>CALLOUT TEXT</w:t></w:r></w:p>")
+
+        output = DOCXToDocument().run(sources=[ByteStream(data=docx_bytes)])
+
+        assert output["documents"][0].content.count("CALLOUT TEXT") == 1
+
+    def test_run_reads_a_table_inside_a_text_box(self):
+        table_xml = (
+            "<w:tbl><w:tr>"
+            "<w:tc><w:p><w:r><w:t>CELL A</w:t></w:r></w:p></w:tc>"
+            "<w:tc><w:p><w:r><w:t>CELL B</w:t></w:r></w:p></w:tc>"
+            "</w:tr></w:tbl>"
+        )
+        docx_bytes = _docx_with_text_box(_MODERN_TEXT_BOX, table_xml)
+
+        output = DOCXToDocument(table_format=DOCXTableFormat.CSV).run(sources=[ByteStream(data=docx_bytes)])
+
+        assert "CELL A,CELL B" in output["documents"][0].content
+
+    def test_run_formats_links_inside_a_text_box(self):
+        """`link_format` has to reach a text box too."""
+        docx_bytes = _docx_with_text_box(
+            _MODERN_TEXT_BOX,
+            '<w:p><w:hyperlink r:id="{rid}"><w:r><w:t>LINK</w:t></w:r></w:hyperlink></w:p>',
+            link_url="https://example.com",
+        )
+
+        output = DOCXToDocument(link_format=DOCXLinkFormat.MARKDOWN).run(sources=[ByteStream(data=docx_bytes)])
+
+        assert "[LINK](https://example.com)" in output["documents"][0].content
 
     @pytest.mark.parametrize("table_format", ["markdown", "csv"])
     @pytest.mark.parametrize(
