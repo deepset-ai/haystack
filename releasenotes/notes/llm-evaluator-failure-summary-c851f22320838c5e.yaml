@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed the ``LLMEvaluator`` warning that summarizes failed inputs. It logged the raw template
+    ``LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.`` instead of the counts.
+    This also affects ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator``.
+enhancements:
+  - |
+    ``LLMEvaluator`` fallback warnings now name the component and say that the result for a failed input is set to
+    ``None``. A response that isn't valid JSON or is missing the expected keys now gets its own ``LLMEvaluator``
+    warning with the response and the parsing error.
