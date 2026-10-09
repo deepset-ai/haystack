@@ -159,6 +159,17 @@ def test_from_dict():
     assert str(b2) == str(b)
 
 
+def test_from_dict_preserves_subclass():
+    class CustomByteStream(ByteStream):
+        pass
+
+    original = CustomByteStream.from_string("Hello, world!", mime_type="text/plain", meta={"foo": "bar"})
+    restored = CustomByteStream.from_dict(original.to_dict())
+
+    assert isinstance(restored, CustomByteStream)
+    assert restored.to_dict() == original.to_dict()
+
+
 def test_no_warning_on_init():
     with warnings.catch_warnings():
         warnings.simplefilter("error", Warning)

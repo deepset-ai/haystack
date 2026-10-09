@@ -119,6 +119,6 @@ class ByteStream:
 
         :param data: A dictionary with keys 'data', 'meta', and 'mime_type'.
 
-        :returns: A ByteStream instance.
+        :returns: An instance of this class.
         """
-        return ByteStream(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))
+        return cls(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))
