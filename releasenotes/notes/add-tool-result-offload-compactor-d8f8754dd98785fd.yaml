@@ -27,6 +27,7 @@ features:
             return content
 
 
+        # web_search stands in for your own tool that returns long results.
         hook = CompactionHook(compactor=ToolResultOffloadCompactor(store=store), context_window=400_000)
         agent = Agent(
             chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),

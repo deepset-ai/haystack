@@ -4,6 +4,7 @@
 
 import asyncio
 from typing import Any
+from uuid import uuid4
 
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
@@ -51,6 +52,7 @@ class ToolResultOffloadCompactor(Compactor):
         return content
 
 
+    # `web_search` stands in for your own tool that returns long results.
     hook = CompactionHook(compactor=ToolResultOffloadCompactor(store=store), context_window=400_000)
     agent = Agent(
         chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
@@ -116,7 +118,7 @@ class ToolResultOffloadCompactor(Compactor):
             target_tokens=target_tokens,
             token_counter=token_counter,
             min_keep_steps=self.min_keep_steps,
-            replace=lambda message, index: self._offload(message=message, index=index, token_counter=token_counter),
+            replace=lambda message, _index: self._offload(message=message, token_counter=token_counter),
         )
 
     async def compact_async(
@@ -134,12 +136,11 @@ class ToolResultOffloadCompactor(Compactor):
             self.compact, messages=messages, target_tokens=target_tokens, token_counter=token_counter
         )
 
-    def _offload(self, message: ChatMessage, index: int, token_counter: TokenCounter) -> tuple[ChatMessage, int] | None:
+    def _offload(self, message: ChatMessage, token_counter: TokenCounter) -> tuple[ChatMessage, int] | None:
         """
         Write one tool result to the store and report how many tokens its reference saves.
 
         :param message: The tool-result message to consider.
-        :param index: The message's position in the conversation, used in the store key when the tool call has no id.
         :param token_counter: The `TokenCounter` that measures the result and its reference.
         :returns: The offloaded message and the number of tokens it saves, or None when the result stays in context.
         """
@@ -162,12 +163,12 @@ class ToolResultOffloadCompactor(Compactor):
         if content_blocks is None:
             return None
 
-        # The tool call id keeps store keys unique; an id-less call falls back to the message's position.
+        # A random suffix keeps store keys unique across runs that share the store, with or without a tool call id.
         offloaded = _offloaded_message(
             message=message,
             content_blocks=content_blocks,
             store=self.store,
-            key_prefix=f"compacted_{result.origin.tool_name}_{result.origin.id or f'call{index}'}",
+            key_prefix=f"compacted_{result.origin.tool_name}_{uuid4().hex}",
             preview_chars=self.preview_chars,
             additional_meta={
                 _COMPACTION_META_KEY: {"strategy": "tool_result_offloading", "original_tokens": original_tokens}

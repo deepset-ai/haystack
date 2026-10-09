@@ -84,11 +84,34 @@ class TestToolResultOffloadCompactor:
         reference = compacted[2].meta["tool_result_offloaded"][0]
         assert result.result == f"Tool result offloaded to text (400 characters) at '{reference}'. Preview: aaaaa..."
         assert store.read(reference) == "a" * 400
-        assert Path(reference).name == "compacted_search_c0.txt"
+        assert Path(reference).name.startswith("compacted_search_")
         assert compacted[2].meta[_COMPACTION_META_KEY] == {
             "strategy": "tool_result_offloading",
             "original_tokens": COUNTER.count(messages=[messages[2]]),
         }
+
+    def test_repeated_runs_do_not_overwrite_results(self, tmp_path):
+        def id_less_conversation(result: str) -> list[ChatMessage]:
+            call = ToolCall(tool_name="search", arguments={})
+            return [
+                ChatMessage.from_user("task"),
+                ChatMessage.from_assistant(tool_calls=[call]),
+                ChatMessage.from_tool(tool_result=result, origin=call),
+                *conversation("newest")[1:],
+            ]
+
+        store = FileSystemToolResultStore(root=tmp_path)
+        compactor = ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=0)
+        first = compactor.compact(messages=id_less_conversation("a" * 400), target_tokens=1, token_counter=COUNTER)
+        second = compactor.compact(messages=id_less_conversation("b" * 400), target_tokens=1, token_counter=COUNTER)
+
+        assert first is not None
+        assert second is not None
+        first_reference = first[2].meta["tool_result_offloaded"][0]
+        second_reference = second[2].meta["tool_result_offloaded"][0]
+        assert first_reference != second_reference
+        assert store.read(first_reference) == "a" * 400
+        assert store.read(second_reference) == "b" * 400
 
     def test_offloads_binary_results(self, tmp_path):
         messages = [
@@ -103,7 +126,7 @@ class TestToolResultOffloadCompactor:
 
         assert compacted is not None
         assert store.read(compacted[2].meta["tool_result_offloaded"][0]) == PNG_BYTES
-        assert [Path(path).name for path in tmp_path.iterdir()] == ["compacted_search_old.png"]
+        assert [Path(path).suffix for path in tmp_path.iterdir()] == [".png"]
 
     def test_skips_ineligible_results(self, tmp_path):
         compacted = ToolResultOffloadCompactor(store=FileSystemToolResultStore(root=tmp_path), min_tokens=100).compact(
@@ -146,10 +169,11 @@ class TestToolResultOffloadCompactorAsync:
     @pytest.mark.asyncio
     async def test_compact_async_matches_compact(self, tmp_path):
         messages = conversation("old" * 200, "newest")
-        compactor = ToolResultOffloadCompactor(
-            store=FileSystemToolResultStore(root=tmp_path), min_tokens=0, preview_chars=0
+        store = FileSystemToolResultStore(root=tmp_path)
+        compacted = await ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=0).compact_async(
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
-        compacted = await compactor.compact_async(messages=messages, target_tokens=1, token_counter=COUNTER)
 
         assert compacted is not None
-        assert compacted == compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
+        assert store.read(compacted[2].meta["tool_result_offloaded"][0]) == "old" * 200
+        assert compacted[3:] == messages[3:]
