@@ -7,9 +7,12 @@ from unittest.mock import ANY
 
 import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline
+from haystack.components.converters import TextFileToDocument
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
+from haystack.components.retrievers import FilterRetriever
+from haystack.components.writers import DocumentWriter
 
 
 # Fixtures
@@ -50,6 +53,116 @@ def sample_text_with_page_breaks():
 
 
 # Basic splitting and structure
+@pytest.mark.parametrize("separator", [" ", "\t", " \t", "\t "])
+@pytest.mark.parametrize("keep_headers", [True, False])
+def test_horizontal_whitespace_after_header_prefix(separator, keep_headers):
+    sections = [
+        (f"#{separator}Root  ", "\nRoot body.\n"),
+        (f"##{separator}Child", "\nChild body.\n"),
+        (f"######{separator}Deep", "\nDeep body."),
+    ]
+    text = "".join(header + body for header, body in sections)
+    documents = [Document(content=text, meta={"file_path": "guide.md"}), Document(content=f"#{separator}Other\nBody.")]
+    split_docs = MarkdownHeaderSplitter(keep_headers=keep_headers).run(documents=documents)["documents"]
+
+    assert [doc.content for doc in split_docs] == [
+        *(header + body if keep_headers else body for header, body in sections),
+        f"#{separator}Other\nBody." if keep_headers else "\nBody.",
+    ]
+    assert [doc.meta for doc in split_docs] == [
+        {
+            "file_path": "guide.md",
+            "source_id": documents[0].id,
+            "page_number": 1,
+            "split_id": split_id,
+            "header": header,
+            "parent_headers": parents,
+        }
+        for split_id, (header, parents) in enumerate([("Root", []), ("Child", ["Root"]), ("Deep", ["Root", "Child"])])
+    ] + [{"source_id": documents[1].id, "page_number": 1, "split_id": 0, "header": "Other", "parent_headers": []}]
+    if keep_headers:
+        assert "".join(doc.content or "" for doc in split_docs[:3]) == text
+
+
+@pytest.mark.parametrize("text", ["#No separator", "#######\tToo deep", "#\vVertical tab", "#\u00a0Non-breaking space"])
+def test_non_atx_header_prefix_is_not_split(text):
+    document = Document(content=text)
+    split_docs = MarkdownHeaderSplitter().run(documents=[document])["documents"]
+
+    assert len(split_docs) == 1
+    assert split_docs[0].content == text
+    assert split_docs[0].meta == {"source_id": document.id, "page_number": 1, "split_id": 0}
+
+
+def test_tab_separated_header_inside_code_fence_is_not_split():
+    text = "#\tGuide\nIntroduction.\n```markdown\n##\tCode example\n```\n##\tUsage\nInstructions."
+    document = Document(content=text)
+    split_docs = MarkdownHeaderSplitter().run(documents=[document])["documents"]
+
+    assert [doc.content for doc in split_docs] == [
+        "#\tGuide\nIntroduction.\n```markdown\n##\tCode example\n```\n",
+        "##\tUsage\nInstructions.",
+    ]
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in split_docs] == [
+        ("Guide", []),
+        ("Usage", ["Guide"]),
+    ]
+    assert "".join(doc.content or "" for doc in split_docs) == text
+
+
+@pytest.mark.parametrize("keep_headers", [True, False])
+def test_tab_separated_headers_preserve_metadata_with_secondary_splitting(keep_headers):
+    text = "##\tParent\n###\tChild\none two three four five six"
+    document = Document(content=text)
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split="word", split_length=3)
+    split_docs = splitter.run(documents=[document])["documents"]
+
+    first_content = "##\tParent\n###\tChild\none two three " if keep_headers else "\none two three "
+    assert [doc.content for doc in split_docs] == [first_content, "four five six"]
+    for split_id, doc in enumerate(split_docs):
+        assert doc.meta == {
+            "source_id": document.id,
+            "page_number": 1,
+            "split_id": split_id,
+            "header": "Child",
+            "parent_headers": ["Parent"],
+            "split_idx_start": 0 if split_id == 0 else len(first_content),
+        }
+    assert "".join(doc.content or "" for doc in split_docs) == (
+        text if keep_headers else "\none two three four five six"
+    )
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+async def test_tab_separated_sections_can_be_retrieved_after_indexing(tmp_path, in_memory_doc_store, use_async):
+    text = "#\tGuide\nIntroduction.\n##\tUsage\nUse the feature."
+    path = tmp_path / "guide.md"
+    path.write_text(text, encoding="utf-8")
+    pipeline = Pipeline()
+    pipeline.add_component("converter", TextFileToDocument())
+    pipeline.add_component("splitter", MarkdownHeaderSplitter())
+    pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
+    pipeline.connect("converter.documents", "splitter.documents")
+    pipeline.connect("splitter.documents", "writer.documents")
+    data = {"converter": {"sources": [path]}}
+    result = await pipeline.run_async(data=data) if use_async else pipeline.run(data=data)
+
+    assert result == {"writer": {"documents_written": 2}}
+    retriever = FilterRetriever(document_store=in_memory_doc_store)
+    filters = {"field": "meta.header", "operator": "==", "value": "Usage"}
+    retrieved = await retriever.run_async(filters=filters) if use_async else retriever.run(filters=filters)
+    assert len(retrieved["documents"]) == 1
+    assert retrieved["documents"][0].content == "##\tUsage\nUse the feature."
+    assert retrieved["documents"][0].meta == {
+        "file_path": "guide.md",
+        "source_id": Document(content=text, meta={"file_path": "guide.md"}).id,
+        "page_number": 1,
+        "split_id": 1,
+        "header": "Usage",
+        "parent_headers": ["Guide"],
+    }
+
+
 def test_basic_split(sample_text):
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content=sample_text)]
