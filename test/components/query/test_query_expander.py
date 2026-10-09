@@ -10,6 +10,7 @@ import pytest
 
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 from haystack.dataclasses.chat_message import ChatMessage
 
@@ -26,8 +27,9 @@ class TestQueryExpander:
 
         assert expander.n_expansions == 4
         assert expander.include_original_query is True
-        assert isinstance(expander.chat_generator, OpenAIChatGenerator)
+        assert isinstance(expander.chat_generator, OpenAIResponsesChatGenerator)
         assert expander.chat_generator.model == "gpt-4.1-mini"
+        assert expander.chat_generator.generation_kwargs["store"] is False
         assert expander._prompt_builder is not None
 
     def test_init_custom_generator(self, mock_chat_generator):
@@ -119,12 +121,14 @@ class TestQueryExpander:
 
         assert result["queries"] == [""]
 
-    def test_run_empty_query_no_original(self, monkeypatch):
+    def test_run_empty_query_no_original(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander(include_original_query=False)
-        result = expander.run("   ")
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("   ")
 
         assert result["queries"] == []
+        assert "Returning no queries." in caplog.text
 
     def test_run_whitespace_only_query(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -132,7 +136,7 @@ class TestQueryExpander:
         with caplog.at_level(logging.WARNING):
             result = expander.run("\t\n  \r")
         assert result["queries"] == ["\t\n  \r"]
-        assert "Empty query provided" in caplog.text
+        assert "Empty query provided to QueryExpander. Returning only the original query." in caplog.text
 
     def test_run_none_query(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -140,7 +144,7 @@ class TestQueryExpander:
         with caplog.at_level(logging.WARNING):
             result = expander.run(None)  # type: ignore[arg-type]
         assert result["queries"] == []
-        assert "Empty query provided" in caplog.text
+        assert "Empty query provided to QueryExpander" in caplog.text
 
     def test_run_none_query_include_original(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -148,23 +152,31 @@ class TestQueryExpander:
         result = expander.run(None)  # type: ignore[arg-type]
         assert result["queries"] == []
 
-    def test_run_generator_no_replies(self, mock_chat_generator):
+    def test_run_generator_no_replies(self, mock_chat_generator, caplog):
         mock_chat_generator.run.return_value = {"replies": []}
         expander = QueryExpander(chat_generator=mock_chat_generator)
-        result = expander.run("test query")
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("test query")
 
         assert result["queries"] == ["test query"]
+        assert "Returning only the original query." in caplog.text
 
-    def test_run_generator_exception(self, mock_chat_generator):
+    def test_run_generator_exception(self, mock_chat_generator, caplog):
         mock_chat_generator.run.side_effect = Exception("Generator error")
         expander = QueryExpander(chat_generator=mock_chat_generator)
-        result = expander.run("test query")
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("test query")
         assert result["queries"] == ["test query"]
+        assert "Returning only the original query." in caplog.text
+        assert "Generator error" in caplog.text
 
-    def test_run_invalid_json_response(self):
+    def test_run_invalid_json_response(self, caplog):
         expander = QueryExpander(chat_generator=MockChatGenerator("invalid json response"))
-        result = expander.run("test query")
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("test query")
         assert result["queries"] == ["test query"]
+        assert "QueryExpander failed to parse the ChatGenerator response" in caplog.text
+        assert "Returning only the original query." in caplog.text
 
     def test_parse_expanded_queries_valid_json(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -206,6 +218,18 @@ class TestQueryExpander:
         expander = QueryExpander()
         queries = expander._parse_expanded_queries('{"queries": ["valid query", 123, "", "another valid"]}')
         assert queries == ["valid query", "another valid"]
+
+    @pytest.mark.parametrize("response", ['{"queries": ["", 123, null]}', '{"queries": []}'])
+    def test_parse_expanded_queries_no_valid_queries(self, monkeypatch, caplog, response):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander()
+        with caplog.at_level(logging.WARNING):
+            queries = expander._parse_expanded_queries(response)
+        assert queries == []
+        assert (
+            "QueryExpander found no valid queries in the ChatGenerator response. Returning only the original query."
+            in caplog.text
+        )
 
     def test_run_query_deduplication(self):
         chat_generator = MockChatGenerator('{"queries": ["original query", "alt1", "alt2"]}')

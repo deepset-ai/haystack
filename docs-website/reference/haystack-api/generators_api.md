@@ -1345,6 +1345,8 @@ in the OpenAI client.
   - `generate_summary`: Whether to generate a summary of the reasoning.
   - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+    If a provider returns the raw reasoning as `reasoning_text` content instead,
+    it is mapped to `ReasoningContent.reasoning_text` when no summary is returned.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
 - `include`: Specify additional output data to include in the model response. Supported values are:
   - web_search_call.action.sources: Include the sources of the web search tool call.

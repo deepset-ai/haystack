@@ -162,14 +162,15 @@ def _save_pipeline_snapshot(
     the function will return None without saving to a file (custom callbacks are still invoked).
 
     :param pipeline_snapshot: The pipeline snapshot to save.
-    :param raise_on_failure: If True, raises an exception if saving fails. If False, logs the error and returns.
+    :param raise_on_failure: If True, raises an exception if saving fails. If False, logs the error and returns None.
     :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
         If provided, the callback is invoked instead of the default file-saving behavior.
         The callback should return an optional string (e.g., a file path or identifier) or None.
 
     :returns:
         The full path to the saved JSON file (or the value returned by the callback), or None if
-        `snapshot_file_path` is None, no callback is provided, or snapshot saving is disabled.
+        `snapshot_file_path` is None, no callback is provided, snapshot saving is disabled, or saving fails and
+        `raise_on_failure` is False.
     :raises:
         Exception: If saving the JSON snapshot fails (when raise_on_failure is True).
     """
@@ -217,6 +218,7 @@ def _save_pipeline_snapshot(
         logger.exception("Failed to save pipeline snapshot to '{full_path}'. Error: {e}", full_path=full_path, e=error)
         if raise_on_failure:
             raise
+        return None
 
     return str(full_path)
 
