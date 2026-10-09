@@ -523,6 +523,157 @@ from_dict(data: dict[str, Any]) -> SummarizationCompactor
 
 Deserialize the compactor and reconstruct its Chat Generator.
 
+## compaction/tool_result_offloading
+
+### ToolResultOffloadCompactor
+
+Bases: <code>Compactor</code>
+
+Writes older tool results to a `ToolResultStore` and leaves a reference in their place.
+
+Every tool call keeps its matching result, and the model can read the full output back with a read tool you scope
+to the same store. `CompactionHook` only calls the compactor once the conversation reaches `compact_at`, so fresh
+output stays in context until then. Use `ToolResultOffloadHook` to offload a tool's output as soon as it arrives.
+
+<!-- test-ignore -->
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
+from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+from haystack.tools import tool
+
+store = FileSystemToolResultStore(root="tool_results")
+
+
+@tool
+def read_offloaded_result(path: Annotated[str, "Path of an offloaded tool result"]) -> str:
+    '''Read back the full content of an offloaded tool result.'''
+    content = store.read(path)
+    if isinstance(content, bytes):
+        return f"'{path}' holds {len(content)} bytes of binary content and cannot be read as text."
+    return content
+
+
+# `web_search` stands in for your own tool that returns long results.
+hook = CompactionHook(compactor=ToolResultOffloadCompactor(store=store), context_window=400_000)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search, read_offloaded_result],
+    hooks={"before_llm": [hook]},
+)
+```
+
+The compactor always writes to the store it was created with; unlike `ToolResultOffloadHook`, it does not read a
+per-run store from `hook_context`. In a multi-user server, create an Agent per run with its own compactor and
+store, so users never read each other's results.
+
+For results with images or files, we recommend passing a provider token counter such as `OpenAITokenCounter` to
+`CompactionHook`, which measures their real size. Its default `ApproximateTokenCounter` charges a flat
+`tokens_per_image` and `tokens_per_file` instead, which can undercount such results and keep them below
+`min_tokens`.
+
+#### __init__
+
+```python
+__init__(
+    store: ToolResultStore,
+    *,
+    min_keep_steps: int = 1,
+    min_tokens: int = 200,
+    preview_chars: int = 200
+) -> None
+```
+
+Initialize the compactor.
+
+**Parameters:**
+
+- **store** (<code>ToolResultStore</code>) – Where offloaded results are written. Image and file results are only written to a store that sets
+  `supports_binary_content`; otherwise they stay in the conversation.
+- **min_keep_steps** (<code>int</code>) – Number of most recent tool-calling Agent steps whose results are never offloaded, even
+  when the target is missed. Must be at least 1, so the model always sees the latest results.
+- **min_tokens** (<code>int</code>) – Only offload tool-result messages larger than this many tokens.
+- **preview_chars** (<code>int</code>) – Number of leading characters of each offloaded text kept in its reference. Image and file
+  results are described by MIME type and size instead.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is less than 1, or `min_tokens` or `preview_chars` is negative.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Offload tool results to the store, oldest first, until the conversation fits within `target_tokens`.
+
+Results from the most recent `min_keep_steps` tool-calling Agent steps are never offloaded.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The token count the compacted conversation should fit within.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` used to measure the conversation before and after each replacement.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The conversation with older tool results replaced by references, or None when nothing was offloaded.
+
+#### compact_async
+
+```python
+compact_async(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Run `compact` in a thread so store writes and token counting do not block the event loop.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The token count the compacted conversation should fit within.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` used to measure the conversation before and after each replacement.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The conversation with older tool results replaced by references, or None when nothing was offloaded.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor, including its store.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> ToolResultOffloadCompactor
+```
+
+Deserialize the compactor, reconstructing its store.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – A dictionary representation produced by `to_dict`.
+
+**Returns:**
+
+- <code>ToolResultOffloadCompactor</code> – The deserialized `ToolResultOffloadCompactor`.
+
 ## compaction/tool_result_pruning
 
 ### ToolResultPruningCompactor
@@ -1726,7 +1877,7 @@ Deserialize the store from a dictionary.
 
 Bases: <code>Protocol</code>
 
-A place a `ToolResultOffloadHook` writes offloaded tool results to, and reads them back from.
+Where a `ToolResultOffloadHook` or `ToolResultOffloadCompactor` writes tool results and a read tool fetches them.
 
 Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
 storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full
@@ -1749,8 +1900,8 @@ Persist `content` under `key` and return a reference to it.
 
 **Parameters:**
 
-- **key** (<code>str</code>) – A stable, per-result identifier the hook derives from the tool call (e.g. a file name). It carries
-  an extension matching the content, so a store that maps keys to files can use it as-is.
+- **key** (<code>str</code>) – A stable, per-result identifier derived from the tool call (e.g. a file name). It carries an
+  extension matching the content, so a store that maps keys to files can use it as-is.
 - **content** (<code>str | bytes</code>) – The tool result to persist. Text arrives as a string. Image and file content arrives as the
   decoded bytes of its base64 payload, and only when the store sets `supports_binary_content` to True - a
   text-only store may narrow this parameter to `str`.
