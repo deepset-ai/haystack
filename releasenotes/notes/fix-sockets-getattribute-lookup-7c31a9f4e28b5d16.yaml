@@ -1,9 +1,9 @@
 ---
-fixes:
+enhancements:
   - |
-    Fixed ``Sockets.__getattribute__`` looking up a ``_sockets`` attribute that no
-    instance has. The lookup raised ``AttributeError`` on every attribute access
-    and fell through to the default, so the intended fast path never ran and
-    socket access only worked through the copy ``__init__`` places in ``__dict__``.
-    It now reads ``_sockets_dict``, which removes an exception from every socket
-    attribute access.
+    Removed the ``Sockets.__getattribute__`` override. It looked up a ``_sockets``
+    attribute that no instance has, so on every attribute access it raised and
+    caught ``AttributeError`` and never returned a socket; socket access has always
+    gone through the copies ``__init__`` and ``__setitem__`` put in ``__dict__``.
+    Without the override, accessing a socket attribute such as
+    ``component.__haystack_input__.query`` is about 14x faster.
