@@ -3,19 +3,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
+from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
+from haystack.hooks import Hook, HookPoint
+from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCompactor, ToolResultPruningCompactor
+from haystack.hooks.compaction.hooks import _estimated_context_tokens
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _last_assistant_index
+from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
-from test.hooks.compaction.helpers import FakeCounter, count_markers, long_conversation, make_state, tool_call
+from test.hooks.compaction.helpers import (
+    FakeCounter,
+    count_markers,
+    fresh_conversation_with_two_steps,
+    make_state,
+    tool_call,
+    tool_result,
+)
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -24,6 +36,12 @@ WINDOW = 1000
 # `_record_context_tokens` sums the prompt and completion tokens, so every reply reports a context of 800 tokens - 80%
 # of the window, which is over any `compact_at` these tests use.
 USAGE_META = {"usage": {"prompt_tokens": 700, "completion_tokens": 100}}
+
+
+@tool
+def lookup(query: str) -> str:
+    """Look up information relevant to a query."""
+    return query
 
 
 @tool
@@ -66,10 +84,18 @@ class _RecordingCompactor(Compactor):
     async def close_async(self) -> None:
         self.calls.append("close_async")
 
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
 
-def _hook(compactor=None, **overrides) -> ContextCompactionHook:
-    settings = {"context_window": WINDOW, "compact_at": 0.7, "compact_to": 0.4, "token_counter": FakeCounter()}
-    return ContextCompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
+
+def _hook(compactor: Compactor | None = None, **overrides: Any) -> CompactionHook:
+    settings: dict[str, Any] = {
+        "context_window": WINDOW,
+        "compact_at": 0.7,
+        "compact_to": 0.4,
+        "token_counter": FakeCounter(),
+    }
+    return CompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
 
 
 def _fetch_call(call_id: str) -> ChatMessage:
@@ -77,7 +103,7 @@ def _fetch_call(call_id: str) -> ChatMessage:
     return tool_call(call_id, name="fetch", arguments={"topic": "haystack"})
 
 
-def _agent(hooks) -> Agent:
+def _agent(hooks: dict[HookPoint, list[Hook]] | None) -> Agent:
     return Agent(
         chat_generator=MockChatGenerator(
             responses=[_fetch_call("c1"), _fetch_call("c2"), _fetch_call("c3"), "done"], meta=USAGE_META
@@ -98,7 +124,71 @@ def _assert_every_tool_result_is_answered(messages: list[ChatMessage]) -> None:
             assert result.origin.id in offered_call_ids, f"orphaned tool result: {result.origin}"
 
 
-class TestContextCompactionHookConfiguration:
+class TestEstimatedContextTokens:
+    def test_counts_only_what_the_generator_has_not_seen(self):
+        counter = FakeCounter()
+        # The reported count covers everything through the assistant reply; only the tool result came after.
+        messages = [
+            ChatMessage.from_user(text="start"),
+            ChatMessage.from_assistant(text="reply"),
+            tool_result(result="R" * 400),
+        ]
+        delta = counter.count(messages=messages[2:])
+        assert _estimated_context_tokens(messages=messages, context_tokens=5000, token_counter=counter) == 5000 + delta
+        assert delta > 0
+
+    def test_equals_the_reported_count_when_nothing_followed(self):
+        messages = [ChatMessage.from_user(text="start"), ChatMessage.from_assistant(text="reply")]
+        assert _estimated_context_tokens(messages=messages, context_tokens=5000, token_counter=FakeCounter()) == 5000
+
+    def test_falls_back_to_counting_everything_without_reported_usage(self):
+        counter = FakeCounter()
+        messages = [
+            ChatMessage.from_user(text="start"),
+            ChatMessage.from_assistant(text="reply"),
+            tool_result(result="R" * 400),
+        ]
+        assert _estimated_context_tokens(
+            messages=messages, context_tokens=0, token_counter=counter, tools=[lookup]
+        ) == counter.count(messages=messages, tools=[lookup])
+
+    def test_the_written_back_value_does_not_double_count(self):
+        # After compacting, the hook writes back the count through the last assistant message. Feeding that straight
+        # back in must reproduce the size of the whole conversation, not overshoot it. Counting the two parts separately
+        # loses the separator between them, so allow a couple of tokens of slack.
+        counter = FakeCounter()
+        messages = [
+            ChatMessage.from_user(text="start"),
+            ChatMessage.from_assistant(text="reply"),
+            tool_result(result="R" * 400),
+        ]
+        written = counter.count(messages=messages[: _last_assistant_index(messages=messages) + 1])
+        assert _estimated_context_tokens(
+            messages=messages, context_tokens=written, token_counter=counter
+        ) == pytest.approx(counter.count(messages=messages), abs=2)
+
+    @pytest.mark.parametrize(
+        "messages",
+        [
+            pytest.param([ChatMessage.from_user(text="hi"), tool_result(result="R" * 400)], id="after-user"),
+            pytest.param([ChatMessage.from_system(text="rules"), tool_result(result="R" * 400)], id="after-system"),
+        ],
+    )
+    def test_returns_the_reported_count_without_an_assistant_message(self, messages):
+        # The reported count covers the whole conversation when no assistant message splits it, so nothing is added.
+        assert _estimated_context_tokens(messages=messages, context_tokens=1000, token_counter=FakeCounter()) == 1000
+
+    def test_the_written_back_value_does_not_under_count_without_an_assistant_message(self):
+        # After compacting to a conversation with no assistant message, the hook writes back the count of the whole
+        # conversation. Feeding that straight back in must reproduce it rather than drop the messages.
+        counter = FakeCounter()
+        messages = [ChatMessage.from_system(text="rules"), ChatMessage.from_user(text="a summary of the work so far")]
+        written = counter.count(messages=messages)
+        assert _estimated_context_tokens(messages=messages, context_tokens=written, token_counter=counter) == written
+        assert written > 0
+
+
+class TestCompactionHookConfiguration:
     @pytest.mark.parametrize(
         ("compact_at", "compact_to"),
         [
@@ -114,7 +204,7 @@ class TestContextCompactionHookConfiguration:
 
     @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
     def test_warns_that_the_feature_is_experimental(self):
-        with pytest.warns(ExperimentalWarning, match="ContextCompactionHook.*experimental"):
+        with pytest.warns(ExperimentalWarning, match="CompactionHook.*experimental"):
             _hook()
 
     def test_rejects_a_non_positive_window(self):
@@ -122,7 +212,7 @@ class TestContextCompactionHookConfiguration:
             _hook(context_window=0)
 
     def test_serde_round_trip(self):
-        hook = ContextCompactionHook(
+        hook = CompactionHook(
             compactor=SlidingWindowCompactor(min_keep_steps=4), context_window=200_000, compact_at=0.6
         )
         data = hook.to_dict()
@@ -130,7 +220,7 @@ class TestContextCompactionHookConfiguration:
         assert data["init_parameters"]["compact_at"] == 0.6
         assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_steps"] == 4
         assert data["init_parameters"]["token_counter"]["type"].endswith("ApproximateTokenCounter")
-        restored = ContextCompactionHook.from_dict(data)
+        restored = CompactionHook.from_dict(data)
         assert isinstance(restored.compactor, SlidingWindowCompactor)
         assert restored.context_window == 200_000
         assert restored.compact_at == 0.6
@@ -138,7 +228,7 @@ class TestContextCompactionHookConfiguration:
     def test_survives_an_agent_serde_round_trip(self):
         agent = _agent({"before_llm": [_hook()]})
         hook = Agent.from_dict(agent.to_dict()).hooks["before_llm"][0]
-        assert isinstance(hook, ContextCompactionHook)
+        assert isinstance(hook, CompactionHook)
         assert isinstance(hook.compactor, SlidingWindowCompactor)
         assert hook.context_window == WINDOW
 
@@ -147,7 +237,7 @@ class TestContextCompactionHookConfiguration:
             Agent(chat_generator=MockChatGenerator(), tools=[fetch], hooks={"after_tool": [_hook()]})
 
 
-class TestContextCompactionHook:
+class TestCompactionHook:
     @pytest.mark.parametrize(
         ("context_tokens", "should_compact"),
         [
@@ -158,7 +248,7 @@ class TestContextCompactionHook:
     )
     def test_trigger(self, context_tokens, should_compact):
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=context_tokens))
+        _hook(compactor).run(make_state(messages=fresh_conversation_with_two_steps(), context_tokens=context_tokens))
         assert compactor.calls == (["compact"] if should_compact else [])
 
     def test_fires_without_reported_usage_by_counting_locally(self):
@@ -194,7 +284,7 @@ class TestContextCompactionHook:
         # The reported count also covers tool schemas and template overhead, which a compactor cannot remove. Here that
         # overhead alone exceeds the target, so the compactor is told to cut the messages as far as it is allowed.
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=800))
+        _hook(compactor).run(make_state(messages=fresh_conversation_with_two_steps(), context_tokens=800))
         assert compactor.targets[0] == 0
 
     def test_warns_when_the_token_counter_exceeds_the_context_estimate(self, caplog):
@@ -206,7 +296,7 @@ class TestContextCompactionHook:
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
         counter = FakeCounter()
         hook = _hook(token_counter=counter)
-        messages = long_conversation()
+        messages = fresh_conversation_with_two_steps()
         original_context_tokens = 800
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=original_context_tokens, token_counter=counter
@@ -229,6 +319,25 @@ class TestContextCompactionHook:
         assert state.data["token_usage"] == {"prompt_tokens": 12}
         assert state.data["tool_call_counts"] == {"fetch": 2}
 
+    def test_re_estimates_context_tokens_when_compaction_leaves_no_assistant_message(self):
+        # A compactor can summarize every step away, leaving only system and user messages. The written back count then
+        # accounts for the whole conversation, so a second hook running right after reads it back unchanged instead of
+        # losing the surviving messages.
+        counter = FakeCounter()
+        compacted = [ChatMessage.from_system("rules"), ChatMessage.from_user("a summary of the work so far")]
+        messages = fresh_conversation_with_two_steps()
+        original_context_tokens = 800
+        estimated_overhead = _estimated_context_tokens(
+            messages=messages, context_tokens=original_context_tokens, token_counter=counter
+        ) - counter.count(messages=messages)
+        state = make_state(messages=messages, context_tokens=original_context_tokens)
+
+        _hook(_RecordingCompactor(result=compacted), token_counter=counter).run(state=state)
+
+        written = counter.count(messages=compacted) + estimated_overhead
+        assert state.data["context_tokens"] == written
+        assert _estimated_context_tokens(messages=compacted, context_tokens=written, token_counter=counter) == written
+
     def test_preserves_the_no_usage_sentinel_after_compaction(self):
         compacted = [ChatMessage.from_assistant("kept")]
         state = make_state([ChatMessage.from_user("x" * 4000)], context_tokens=0)
@@ -237,21 +346,60 @@ class TestContextCompactionHook:
         assert state.data["context_tokens"] == 0
 
     def test_leaves_the_conversation_alone_when_the_compactor_declines(self):
-        messages = long_conversation()
+        messages = fresh_conversation_with_two_steps()
         state = make_state(messages, context_tokens=800)
         _hook(_RecordingCompactor(result=None)).run(state=state)
         assert state.data["messages"] == messages
         assert state.data["context_tokens"] == 800
 
-    def test_lifecycle_delegates_to_the_compactor(self):
+    def test_chains_tool_result_pruning_before_sliding_window(self):
+        counter = FakeCounter(chars_per_token=1)
+        messages = [
+            ChatMessage.from_user("task"),
+            tool_call("old"),
+            tool_result("old result " * 400, call_id="old"),
+            tool_call("recent"),
+            tool_result("recent result " * 400, call_id="recent"),
+        ]
+        settings: dict[str, Any] = {
+            "context_window": 2000,
+            "compact_at": 0.5,
+            "compact_to": 0.1,
+            "token_counter": counter,
+        }
+        pruning_hook = CompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings)
+        sliding_window_hook = CompactionHook(compactor=SlidingWindowCompactor(), **settings)
+        # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
+        reported_context_tokens = counter.count(messages=messages[:-1]) + 100
+        state = make_state(messages, context_tokens=reported_context_tokens)
+
+        pruning_hook.run(state=state)
+        after_pruning = state.data["messages"]
+        assert after_pruning[2].meta[_COMPACTION_META_KEY]["strategy"] == "tool_result_pruning"
+        assert len(after_pruning) == len(messages)
+
+        # Pruning cannot reach the target while retaining the recent result, so the next hook sees the smaller history
+        # but remains above its trigger and falls back to dropping the old step.
+        sliding_window_hook.run(state=state)
+        compacted = state.data["messages"]
+        assert len(compacted) < len(after_pruning)
+        assert any(
+            message.meta.get(_COMPACTION_META_KEY, {}).get("strategy") == "sliding_window" for message in compacted
+        )
+        assert compacted[-2:] == messages[-2:]
+
+    def test_lifecycle_delegates_to_the_counter_and_compactor(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         hook.warm_up()
         hook.close()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up", "close"]
 
 
-class TestContextCompactionHookInAgent:
+class TestCompactionHookInAgent:
     def test_compacts_a_multi_step_run(self):
         compacted = _agent({"before_llm": [_hook()]}).run(messages=[ChatMessage.from_user("start")])
         uncompacted = _agent(None).run(messages=[ChatMessage.from_user("start")])
@@ -270,19 +418,22 @@ class TestContextCompactionHookInAgent:
         assert count_markers(messages=result["messages"]) == 0
 
 
-class TestContextCompactionHookAsync:
+class TestCompactionHookAsync:
     @pytest.mark.asyncio
     async def test_run_async_uses_the_async_compaction_path(self):
         compactor = _RecordingCompactor()
-        await _hook(compactor).run_async(make_state(long_conversation(), context_tokens=800))
+        await _hook(compactor).run_async(make_state(fresh_conversation_with_two_steps(), context_tokens=800))
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
-    async def test_lifecycle_prefers_the_async_methods(self):
+    async def test_lifecycle_prefers_async_methods_with_sync_fallback(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         await hook.warm_up_async()
         await hook.close_async()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up_async", "close_async"]
 
     @pytest.mark.asyncio
@@ -290,3 +441,66 @@ class TestContextCompactionHookAsync:
         result = await _agent({"before_llm": [_hook()]}).run_async(messages=[ChatMessage.from_user("start")])
         assert count_markers(result["messages"]) == 1
         _assert_every_tool_result_is_answered(result["messages"])
+
+
+class TestCompactionHookTracing:
+    def test_adds_compaction_tags_to_hook_span(self, spying_tracer):
+        compacted = [ChatMessage.from_assistant(text="kept")]
+        hook = _hook(compactor=_RecordingCompactor(result=compacted))
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=800)
+        _run_hooks(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 800,
+            "haystack.agent.hook.compaction.triggered": True,
+            "haystack.agent.hook.compaction.target_tokens": 0,
+            "haystack.agent.hook.compaction.compacted": True,
+        }
+
+    def test_traces_when_compaction_is_not_triggered(self, spying_tracer):
+        hook = _hook(compactor=_RecordingCompactor())
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=300)
+        _run_hooks(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 300,
+            "haystack.agent.hook.compaction.triggered": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_adds_compaction_tags_to_hook_span_async(self, spying_tracer):
+        compacted = [ChatMessage.from_assistant(text="kept")]
+        hook = _hook(compactor=_RecordingCompactor(result=compacted))
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=800)
+        await _run_hooks_async(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks_async
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 800,
+            "haystack.agent.hook.compaction.triggered": True,
+            "haystack.agent.hook.compaction.target_tokens": 0,
+            "haystack.agent.hook.compaction.compacted": True,
+        }

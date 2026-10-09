@@ -6,6 +6,7 @@
 import os
 from collections.abc import Callable
 from typing import Annotated, Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -129,10 +130,6 @@ class TestSearchableToolset:
 
     def test_not_implemented_methods(self):
         toolset = SearchableToolset(catalog=[])
-        with pytest.raises(NotImplementedError):
-            toolset + Tool(
-                name="test", description="test", parameters={"type": "object", "properties": {}}, function=lambda: None
-            )
         with pytest.raises(NotImplementedError):
             toolset.add(
                 Tool(
@@ -344,10 +341,10 @@ class TestSearchableToolsetIteration:
 
     def test_iter_automatically_warms_up(self, large_catalog):
         toolset = SearchableToolset(catalog=large_catalog)
-        assert not toolset._is_warmed_up
+        assert toolset._passthrough is None  # not warmed up yet
 
         list(toolset)
-        assert toolset._is_warmed_up
+        assert toolset._passthrough is not None
 
     def test_contains_bootstrap_tool(self, large_catalog):
         """Test __contains__ for bootstrap tool."""
@@ -521,23 +518,22 @@ class TestSearchableToolsetWithToolset:
         assert any(t.name == "multiply_numbers" for t in search_toolset._catalog)
 
 
-class TestSearchableToolsetWarmUp:
-    """Tests for warm_up behavior."""
-
+class TestSearchableToolsetLifecycle:
     def test_not_warmed_up_after_agent_init(self, large_catalog, monkeypatch):
         """Initializing an Agent with a SearchableToolset must not warm it up (no premature flatten/connect)."""
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         toolset = SearchableToolset(catalog=large_catalog)
-        assert toolset._is_warmed_up is False
+        assert toolset._passthrough is None  # not warmed up yet
 
         Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
-        assert toolset._is_warmed_up is False
+        assert toolset._passthrough is None  # still not warmed up
 
     def test_warm_up_idempotent(self, large_catalog):
         """Test that warm_up can be called multiple times safely."""
         toolset = SearchableToolset(catalog=large_catalog)
 
+        assert toolset._bootstrap_tool is None
         toolset.warm_up()
         first_bootstrap = toolset._bootstrap_tool
 
@@ -558,12 +554,6 @@ class TestSearchableToolsetWarmUp:
         toolset.warm_up()
         assert len(list(toolset)) == len(small_catalog)
 
-    def test_bootstrap_tool_before_warm_up(self, large_catalog):
-        """Test that bootstrap tool is None before warm_up."""
-        toolset = SearchableToolset(catalog=large_catalog)
-
-        assert toolset._bootstrap_tool is None
-
     def test_warm_up_raises_on_duplicate_tool_names(self):
         """Test that warm_up raises when the flattened catalog has duplicate tool names."""
         params = {"type": "object", "properties": {}}
@@ -573,6 +563,48 @@ class TestSearchableToolsetWarmUp:
 
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             toolset.warm_up()
+
+    async def test_spawn_and_iteration_do_not_repeat_warm_up_after_async_warm_up(self, large_catalog, monkeypatch):
+        catalog = Toolset(large_catalog)
+        catalog_warm_up_async = AsyncMock()
+        monkeypatch.setattr(catalog, "warm_up_async", catalog_warm_up_async, raising=False)
+        monkeypatch.setattr(catalog, "warm_up", Mock(side_effect=AssertionError), raising=False)
+        toolset = SearchableToolset(catalog=catalog)
+        await toolset.warm_up_async()
+        spawn = toolset.spawn()
+        search_tool = next(iter(spawn))
+        assert search_tool.name == "search_tools"
+        catalog_warm_up_async.assert_awaited_once_with()
+
+    def test_close_clears_discovery_and_allows_warm_up_again(self, large_catalog, monkeypatch):
+        catalog = Toolset(large_catalog)
+        catalog_close = Mock()
+        monkeypatch.setattr(catalog, "close", catalog_close, raising=False)
+        toolset = SearchableToolset(catalog=catalog)
+        search_tool = next(iter(toolset))
+        search_tool.invoke(tool_keywords="weather")
+        assert toolset._discovered_tools
+        toolset.close()
+        catalog_close.assert_called_once_with()
+        assert toolset._discovered_tools == {}
+        catalog.tools = [large_catalog[0]]
+        toolset.warm_up()
+        assert list(toolset) == catalog.tools
+
+    async def test_close_async_releases_catalog_and_allows_warm_up_again(self, small_catalog, monkeypatch):
+        tool_close_async = AsyncMock()
+        monkeypatch.setattr(small_catalog[0], "close_async", tool_close_async, raising=False)
+        toolset = SearchableToolset(catalog=small_catalog, search_threshold=1)
+        await toolset.warm_up_async()
+        search_tool = next(iter(toolset))
+        search_tool.invoke(tool_keywords="weather")
+        assert toolset._discovered_tools
+        await toolset.close_async()
+        tool_close_async.assert_awaited_once_with()
+        assert toolset._discovered_tools == {}
+        small_catalog.pop()
+        await toolset.warm_up_async()
+        assert toolset.get_selectable_tools() == small_catalog
 
 
 class TestSearchableToolsetEdgeCases:
@@ -835,6 +867,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         # An isolated spawn is returned with the selection; the configured toolset is not mutated.
@@ -856,9 +889,8 @@ class TestSearchableToolsetAgentToolSelection:
     def test_spawns_have_independent_discovered_tools_and_selection(self, large_catalog):
         """Two spawns of one SearchableToolset don't share discovered tools or collide on the active selection."""
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
-        toolset.warm_up()
 
-        spawn_a = toolset.spawn()
+        spawn_a = toolset.spawn(selected_tool_names={"get_weather"})
         spawn_b = toolset.spawn()
 
         assert spawn_a is not spawn_b
@@ -867,7 +899,6 @@ class TestSearchableToolsetAgentToolSelection:
         assert spawn_a._bootstrap_tool is not None
         assert spawn_a._bootstrap_tool is not spawn_b._bootstrap_tool
 
-        spawn_a._selected_tool_names = {"get_weather"}
         spawn_a._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
 
         # Discovery on spawn_a does not leak into spawn_b or the configured toolset.
@@ -884,6 +915,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # 8 < 20 -> passthrough
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         assert selected == [toolset]

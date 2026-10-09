@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed deserialization of ``Tool`` subclasses such as ``ComponentTool`` in
+    ``OpenAIResponsesChatGenerator.from_dict()`` and
+    ``AzureOpenAIResponsesChatGenerator.from_dict()``.

@@ -52,6 +52,14 @@ Initializes the ChonkieRecursiveDocumentSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Whether to skip empty documents.
 - **page_break_character** (<code>str</code>) – The character to use for page breaks.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Chonkie recursive chunker.
+
 #### run
 
 ```python
@@ -262,6 +270,14 @@ Initializes the ChonkieSentenceDocumentSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Whether to skip empty documents.
 - **page_break_character** (<code>str</code>) – The character to use for page breaks.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Chonkie sentence chunker.
+
 #### run
 
 ```python
@@ -348,6 +364,14 @@ Initializes the ChonkieTokenDocumentSplitter.
 - **chunk_overlap** (<code>int</code>) – The overlap between consecutive chunks.
 - **skip_empty_documents** (<code>bool</code>) – Whether to skip empty documents.
 - **page_break_character** (<code>str</code>) – The character to use for page breaks.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Chonkie token chunker.
 
 #### run
 

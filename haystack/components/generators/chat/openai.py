@@ -39,6 +39,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.chat_message import _parse_openai_tool_call_arguments
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
@@ -46,7 +47,6 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -59,7 +59,7 @@ class OpenAIChatGenerator:
     """
     Completes chats using OpenAI's large language models (LLMs).
 
-    It works with the gpt-4 and gpt-5 series models and supports streaming responses
+    It works with OpenAI's GPT models through the Chat Completions API and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -211,7 +211,6 @@ class OpenAIChatGenerator:
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
-        self._tools_warmed_up = False
 
     def _client_kwargs(self) -> dict[str, Any]:
         timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -226,29 +225,30 @@ class OpenAIChatGenerator:
             "max_retries": max_retries,
         }
 
-    def _warm_up_tools(self) -> None:
-        if not self._tools_warmed_up:
-            warm_up_tools(self.tools)
-            self._tools_warmed_up = True
-
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous OpenAI client.
+        Initialize the synchronous OpenAI client.
         """
-        self._warm_up_tools()
         if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = OpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        Initialize the asynchronous OpenAI client on the serving event loop.
         """
-        self._warm_up_tools()
         if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncOpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     def close(self) -> None:
@@ -348,8 +348,9 @@ class OpenAIChatGenerator:
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -430,8 +431,9 @@ class OpenAIChatGenerator:
             A callback function that is called when a new token is received from the stream. Async callbacks are
             preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             If set, it will override the `tools` parameter provided during initialization.
@@ -512,7 +514,8 @@ class OpenAIChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        flattened_tools = flatten_tools_or_toolsets(tools or self.tools)
+        resolved_tools = tools if tools is not None else self.tools
+        flattened_tools = flatten_tools_or_toolsets(resolved_tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(flattened_tools)
 
@@ -657,7 +660,7 @@ def _convert_chat_completion_to_chat_message(
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:
-                arguments = json.loads(arguments_str)
+                arguments = _parse_openai_tool_call_arguments(arguments_str)
                 tool_calls.append(ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(

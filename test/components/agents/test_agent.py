@@ -5,18 +5,19 @@
 import logging
 import os
 import re
-from collections.abc import Iterator
+import threading
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from jinja2 import TemplateSyntaxError
-from openai import Stream
+from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
-from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
+from haystack import Document, Pipeline, component
+from haystack.components.agents.agent import Agent, _get_model_exit_reason
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -33,10 +34,9 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool, tool
+from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
-from haystack.tracing.logging_tracer import LoggingTracer
-from haystack.utils import Secret, serialize_callable
+from haystack.utils import Secret
 
 
 def _user_msg(text: str) -> str:
@@ -47,7 +47,9 @@ def _sys_msg(text: str) -> str:
     return f'{{% message role="system" %}}{text}{{% endmessage %}}'
 
 
-def _assistant_with_usage(text: str | None = None, *, tool_calls=None, usage: dict[str, Any] | None = None):
+def _assistant_with_usage(
+    text: str | None = None, *, tool_calls: list[ToolCall] | None = None, usage: dict[str, Any] | None = None
+) -> ChatMessage:
     """Build an assistant ChatMessage with optional tool_calls and `meta['usage']` populated."""
     meta: dict[str, Any] = {}
     if usage is not None:
@@ -79,12 +81,6 @@ def weather_function(location):
     return {"weather": "unknown", "temperature": 0, "unit": "celsius"}
 
 
-@tool
-def weather_tool_with_decorator(location: str) -> str:
-    """Provides weather information for a given location."""
-    return f"Weather report for {location}: 20°C, sunny"
-
-
 @pytest.fixture
 def weather_tool():
     return Tool(
@@ -109,7 +105,9 @@ def make_agent(weather_tool):
 
 
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
-    def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
+    def __init__(
+        self, mock_chunk: ChatCompletionChunk, client: OpenAI | None = None, *args: Any, **kwargs: Any
+    ) -> None:
         client = client or MagicMock()
         super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
@@ -151,7 +149,7 @@ class MockChatGeneratorWithoutTools:
     """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
 
     def to_dict(self) -> dict[str, Any]:
-        return {"type": "MockChatGeneratorWithoutTools", "data": {}}
+        return {"type": "test.components.agents.test_agent.MockChatGeneratorWithoutTools", "init_parameters": {}}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutTools":
@@ -174,7 +172,9 @@ class MockChatGeneratorWithoutRunAsync:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
@@ -187,7 +187,9 @@ class ToolAssertingChatGenerator:
         self.tool_invoked = False
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         assert tools == self.expected_tools
         tool_message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
@@ -212,11 +214,33 @@ def _parallel_tool_calling_generator() -> MockChatGenerator:
     )
 
 
-class TestAgent:
+class TestAgentInit:
+    def test_state_schema_resolution(self, weather_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], state_schema={"foo": {"type": str}}
+        )
+
+        assert agent.state_schema == {"foo": {"type": str}}
+        assert agent.resolved_state_schema == {
+            "foo": {"type": str},
+            "messages": {"type": list[ChatMessage], "handler": merge_lists},
+            "step_count": {"type": int, "handler": replace_values},
+            "token_usage": {"type": dict[str, Any], "handler": replace_values},
+            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+            "exit_reason": {"type": str, "handler": replace_values},
+            "continue_run": {"type": bool, "handler": replace_values},
+            "stop_run": {"type": str, "handler": replace_values},
+            "tools": {"type": list, "handler": replace_values},
+            "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
+        }
+
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
+        assert hasattr(agent, "__haystack_output__")
+        assert hasattr(agent, "__haystack_input__")
         assert agent.__haystack_output__._sockets_dict == {
             "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
             "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
@@ -234,6 +258,54 @@ class TestAgent:
             assert internal_key not in agent.__haystack_input__._sockets_dict
             assert internal_key not in agent.__haystack_output__._sockets_dict
 
+    def test_reserved_state_schema_keys_raise(self, weather_tool):
+        for reserved in ("step_count", "token_usage", "context_tokens", "tool_call_counts", "exit_reason", "stop_run"):
+            with pytest.raises(ValueError, match="reserved for Agent internal state"):
+                Agent(
+                    chat_generator=MockChatGenerator("Hello"),
+                    tools=[weather_tool],
+                    state_schema={reserved: {"type": int}},
+                )
+
+    def test_exit_conditions(self, weather_tool, component_tool):
+        # Default exit condition
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool, component_tool])
+        assert agent.exit_conditions == ["text"]
+
+        # Multiple exit conditions are stored as-is
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool, component_tool],
+            exit_conditions=["text", "weather_tool"],
+        )
+        assert agent.exit_conditions == ["text", "weather_tool"]
+
+        # Exit conditions are no longer validated against tool names at init: tool sets can be dynamic
+        # (e.g. SearchableToolset/MCPToolset) or provided at runtime, so unknown names pass through.
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], exit_conditions=["not_loaded_yet"]
+        )
+        assert agent.exit_conditions == ["not_loaded_yet"]
+
+    def test_tool_concurrency_limit_validation(self, weather_tool):
+        with pytest.raises(ValueError, match="tool_concurrency_limit must be greater than or equal to 1"):
+            Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], tool_concurrency_limit=0)
+
+    def test_chat_generator_must_support_tools(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutTools()
+
+        with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
+            Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    def test_empty_tools_list_with_chat_generator_without_tools_support(self):
+        # An empty list carries no tools, so it must be accepted just like `tools=None`. `run()` already
+        # treats it that way, and `clone()`/`to_dict()` both feed the normalized `[]` back into `__init__`.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), tools=[])
+
+        assert agent.tools == []
+
+
+class TestAgentSerialization:
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
@@ -322,86 +394,6 @@ class TestAgent:
         }
         assert serialized_agent == expected_structure
 
-    def test_to_dict_with_toolset(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        toolset = Toolset(tools=[weather_tool])
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
-        serialized_agent = agent.to_dict()
-        # Verify the model is truthy and serialized
-        assert "model" in serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]
-        model_name = serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]["model"]
-        # Check the rest of the structure
-        expected_structure = {
-            "type": "haystack.components.agents.agent.Agent",
-            "init_parameters": {
-                "chat_generator": {
-                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
-                    "init_parameters": {
-                        "model": model_name,
-                        "streaming_callback": None,
-                        "api_base_url": None,
-                        "organization": None,
-                        "generation_kwargs": {},
-                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
-                        "timeout": None,
-                        "max_retries": None,
-                        "tools": None,
-                        "tools_strict": False,
-                        "http_client_kwargs": None,
-                    },
-                },
-                "tools": {
-                    "type": "haystack.tools.toolset.Toolset",
-                    "data": {
-                        "tools": [
-                            {
-                                "type": "haystack.tools.tool.Tool",
-                                "data": {
-                                    "name": "weather_tool",
-                                    "description": "Provides weather information for a given location.",
-                                    "parameters": {
-                                        "type": "object",
-                                        "properties": {"location": {"type": "string"}},
-                                        "required": ["location"],
-                                    },
-                                    "function": "agents.test_agent.weather_function",
-                                    "async_function": None,
-                                    "outputs_to_string": None,
-                                    "inputs_from_state": None,
-                                    "outputs_to_state": None,
-                                },
-                            }
-                        ]
-                    },
-                },
-                "system_prompt": None,
-                "user_prompt": None,
-                "required_variables": "*",
-                "exit_conditions": ["text"],
-                "state_schema": {},
-                "max_agent_steps": 100,
-                "raise_on_tool_invocation_failure": False,
-                "streaming_callback": None,
-                "tool_concurrency_limit": 4,
-                "tool_streaming_callback_passthrough": False,
-                "hooks": None,
-            },
-        }
-        assert serialized_agent == expected_structure
-
-    def test_agent_serialization_with_tool_decorator(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool_with_decorator])
-        serialized_agent = agent.to_dict()
-        deserialized_agent = Agent.from_dict(serialized_agent)
-
-        assert deserialized_agent.tools == agent.tools
-        assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
-        # Model name should match whatever the default is - not testing specific model
-        assert deserialized_agent.chat_generator.model == agent.chat_generator.model
-        assert deserialized_agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
-        assert deserialized_agent.exit_conditions == ["text"]
-
     def test_from_dict(self, monkeypatch):
         model = "gpt-5"
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -478,88 +470,14 @@ class TestAgent:
         # from_dict should restore the model from the dict (testing backward compatibility)
         assert agent.chat_generator.model == model
         assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert isinstance(agent.tools[0], Tool)
         assert agent.tools[0].function is weather_function
+        assert isinstance(agent.tools[1], ComponentTool)
         assert isinstance(agent.tools[1]._component, PromptBuilder)
         assert agent.exit_conditions == ["text", "weather_tool"]
-        assert agent.state_schema == {
-            "foo": {"type": str},
-            "messages": {"handler": merge_lists, "type": list[ChatMessage]},
-            "step_count": {"type": int, "handler": replace_values},
-            "token_usage": {"type": dict[str, Any], "handler": replace_values},
-            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
-            "exit_reason": {"type": str, "handler": replace_values},
-            "continue_run": {"type": bool, "handler": replace_values},
-            "tools": {"type": list, "handler": replace_values},
-            "hook_context": {"type": dict[str, Any], "handler": replace_values},
-            "context_tokens": {"type": int, "handler": replace_values},
-        }
+        assert agent.state_schema == {"foo": {"type": str}}
         assert agent.tool_concurrency_limit == 5
         assert agent.tool_streaming_callback_passthrough is True
-
-    def test_from_dict_with_toolset(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        data = {
-            "type": "haystack.components.agents.agent.Agent",
-            "init_parameters": {
-                "chat_generator": {
-                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
-                    "init_parameters": {
-                        "model": "gpt-4o-mini",
-                        "streaming_callback": None,
-                        "api_base_url": None,
-                        "organization": None,
-                        "generation_kwargs": {},
-                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
-                        "timeout": None,
-                        "max_retries": None,
-                        "tools": None,
-                        "tools_strict": False,
-                        "http_client_kwargs": None,
-                    },
-                },
-                "tools": {
-                    "type": "haystack.tools.toolset.Toolset",
-                    "data": {
-                        "tools": [
-                            {
-                                "type": "haystack.tools.tool.Tool",
-                                "data": {
-                                    "name": "weather_tool",
-                                    "description": "Provides weather information for a given location.",
-                                    "parameters": {
-                                        "type": "object",
-                                        "properties": {"location": {"type": "string"}},
-                                        "required": ["location"],
-                                    },
-                                    "function": "agents.test_agent.weather_function",
-                                    "async_function": None,
-                                    "outputs_to_string": None,
-                                    "inputs_from_state": None,
-                                    "outputs_to_state": None,
-                                },
-                            }
-                        ]
-                    },
-                },
-                "system_prompt": None,
-                "exit_conditions": ["text"],
-                "state_schema": {},
-                "max_agent_steps": 100,
-                "raise_on_tool_invocation_failure": False,
-                "streaming_callback": None,
-                "tool_concurrency_limit": 1,
-                "tool_streaming_callback_passthrough": False,
-            },
-        }
-        agent = Agent.from_dict(data)
-        assert isinstance(agent, Agent)
-        assert isinstance(agent.chat_generator, OpenAIChatGenerator)
-        # from_dict should restore the model from the dict (testing backward compatibility)
-        assert agent.chat_generator.model == "gpt-4o-mini"
-        assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
-        assert isinstance(agent.tools, Toolset)
-        assert agent.tools[0].function is weather_function
-        assert agent.exit_conditions == ["text"]
 
     def test_from_dict_state_schema_none(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -568,43 +486,13 @@ class TestAgent:
             "init_parameters": {
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
-                    "init_parameters": {
-                        "model": "gpt-4o-mini",
-                        "streaming_callback": None,
-                        "api_base_url": None,
-                        "organization": None,
-                        "generation_kwargs": {},
-                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
-                        "timeout": None,
-                        "max_retries": None,
-                        "tools": None,
-                        "tools_strict": False,
-                        "http_client_kwargs": None,
-                    },
+                    "init_parameters": {"model": "gpt-4o-mini"},
                 },
-                "tools": None,
-                "system_prompt": None,
-                "exit_conditions": ["text"],
                 "state_schema": None,
-                "max_agent_steps": 100,
-                "raise_on_tool_invocation_failure": False,
-                "streaming_callback": None,
-                "tool_concurrency_limit": 4,
-                "tool_streaming_callback_passthrough": False,
             },
         }
         agent = Agent.from_dict(data)
-        assert agent.state_schema == {
-            "messages": {"type": list[ChatMessage], "handler": merge_lists},
-            "step_count": {"type": int, "handler": replace_values},
-            "token_usage": {"type": dict[str, Any], "handler": replace_values},
-            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
-            "exit_reason": {"type": str, "handler": replace_values},
-            "continue_run": {"type": bool, "handler": replace_values},
-            "tools": {"type": list, "handler": replace_values},
-            "hook_context": {"type": dict[str, Any], "handler": replace_values},
-            "context_tokens": {"type": int, "handler": replace_values},
-        }
+        assert agent.state_schema == {}
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -617,149 +505,202 @@ class TestAgent:
             streaming_callback=sync_streaming_callback,
         )
 
-        serialized_agent = agent.to_dict()
+        deserialized_agent = Agent.from_dict(agent.to_dict())
 
-        init_parameters = serialized_agent["init_parameters"]
-        assert serialized_agent["type"] == "haystack.components.agents.agent.Agent"
-        assert (
-            init_parameters["chat_generator"]["type"]
-            == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
-        )
-        assert init_parameters["streaming_callback"] == "agents.test_agent.sync_streaming_callback"
-        assert init_parameters["tools"][0]["data"]["function"] == serialize_callable(weather_function)
-        assert (
-            init_parameters["tools"][1]["data"]["component"]["type"]
-            == "haystack.components.builders.prompt_builder.PromptBuilder"
-        )
-        assert init_parameters["exit_conditions"] == ["text", "weather_tool"]
-
-        deserialized_agent = Agent.from_dict(serialized_agent)
-        assert isinstance(deserialized_agent, Agent)
+        assert deserialized_agent.to_dict() == agent.to_dict()
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
+        assert isinstance(deserialized_agent.tools[0], Tool)
         assert deserialized_agent.tools[0].function is weather_function
+        assert isinstance(deserialized_agent.tools[1], ComponentTool)
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
-        assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
-        assert deserialized_agent.state_schema == {
-            "foo": {"type": str},
-            "messages": {"handler": merge_lists, "type": list[ChatMessage]},
-            "step_count": {"type": int, "handler": replace_values},
-            "token_usage": {"type": dict[str, Any], "handler": replace_values},
-            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
-            "exit_reason": {"type": str, "handler": replace_values},
-            "continue_run": {"type": bool, "handler": replace_values},
-            "tools": {"type": list, "handler": replace_values},
-            "hook_context": {"type": dict[str, Any], "handler": replace_values},
-            "context_tokens": {"type": int, "handler": replace_values},
-        }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
-    def test_exit_conditions(self, weather_tool, component_tool, monkeypatch):
-        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
-        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+    def test_serde_with_toolset(self, weather_tool, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=Toolset(tools=[weather_tool]))
 
-        # Default exit condition
-        agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
-        assert agent.exit_conditions == ["text"]
+        restored = Agent.from_dict(agent.to_dict())
 
-        # Multiple exit conditions are stored as-is
+        assert isinstance(restored.tools, Toolset)
+        assert restored.tools[0].function is weather_function
+
+    def test_serde_with_list_of_toolsets(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[Toolset([weather_tool]), Toolset([component_tool])])
+
+        restored = Agent.from_dict(agent.to_dict())
+
+        assert isinstance(restored.tools, list)
+        assert len(restored.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in restored.tools)
+        assert restored.tools[0][0].function is weather_function
+
+    def test_to_dict_from_dict_without_tools(self):
+        # `to_dict` serializes the normalized `self.tools`, which is `[]` when no tools were given.
+        # `from_dict` hands that `[]` straight back to `__init__`, so the round trip must survive it.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), max_agent_steps=3)
+
+        data = agent.to_dict()
+        assert data["init_parameters"]["tools"] == []
+
+        restored = Agent.from_dict(data)
+
+        assert restored.tools == []
+        assert restored.max_agent_steps == 3
+        assert type(restored.chat_generator).__name__ == "MockChatGeneratorWithoutTools"
+
+
+class TestAgentClone:
+    def test_clone_without_tools(self):
+        # `clone()` reads back the normalized `self.tools` (`[]`) and passes it to `__init__`.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), system_prompt="You are helpful")
+
+        clone = agent.clone()
+
+        assert clone is not agent
+        assert clone.tools == []
+        assert clone.to_dict() == agent.to_dict()
+
+    def test_clone(self, weather_tool):
         agent = Agent(
-            chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
-        )
-        assert agent.exit_conditions == ["text", "weather_tool"]
-
-        # Exit conditions are no longer validated against tool names at init: tool sets can be dynamic
-        # (e.g. SearchableToolset/MCPToolset) or provided at runtime, so unknown names pass through.
-        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["not_loaded_yet"])
-        assert agent.exit_conditions == ["not_loaded_yet"]
-
-    def test_tool_concurrency_limit_validation(self, weather_tool, monkeypatch):
-        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
-        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
-
-        with pytest.raises(ValueError, match="tool_concurrency_limit must be greater than or equal to 1"):
-            Agent(chat_generator=generator, tools=[weather_tool], tool_concurrency_limit=0)
-
-    def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
-        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        agent = Agent(chat_generator=chat_generator, streaming_callback=streaming_callback, tools=[weather_tool])
-        response = agent.run([ChatMessage.from_user("Hello")])
-
-        # check we called the streaming callback
-        assert streaming_callback_called is True
-
-        # check that the component still returns the correct response
-        assert isinstance(response, dict)
-        assert "messages" in response
-        assert isinstance(response["messages"], list)
-        assert len(response["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
-        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
-        assert "last_message" in response
-        assert isinstance(response["last_message"], ChatMessage)
-
-    def test_run_with_run_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
-        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
-
-        # check we called the streaming callback
-        assert streaming_callback_called is True
-
-        # check that the component still returns the correct response
-        assert isinstance(response, dict)
-        assert "messages" in response
-        assert isinstance(response["messages"], list)
-        assert len(response["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
-        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
-        assert "last_message" in response
-        assert isinstance(response["last_message"], ChatMessage)
-
-    def test_keep_generator_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        chat_generator = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+            max_agent_steps=7,
         )
 
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        response = agent.run([ChatMessage.from_user("Hello")])
+        clone = agent.clone()
 
-        # check we called the streaming callback
-        assert streaming_callback_called is True
+        assert clone is not agent
+        assert clone.to_dict() == agent.to_dict()
 
-        # check that the component still returns the correct response
+    @pytest.mark.parametrize(
+        "name, value",
+        [
+            ("system_prompt", "A nice system prompt"),
+            ("max_agent_steps", 3),
+            ("exit_conditions", ["weather_tool"]),
+            ("state_schema", {"bar": {"type": int}}),
+        ],
+    )
+    def test_clone_with_overrides(self, weather_tool, name, value):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            state_schema={"foo": {"type": str}},
+        )
+
+        clone = agent.clone(**{name: value})
+
+        assert getattr(clone, name) == value
+
+        # only the overridden init parameter differs
+        original_params = agent.to_dict()["init_parameters"]
+        clone_params = clone.to_dict()["init_parameters"]
+        assert clone_params.keys() == original_params.keys()
+        for key in original_params:
+            if key == name:
+                assert clone_params[key] != original_params[key]
+            else:
+                assert clone_params[key] == original_params[key]
+
+    def test_clone_with_additional_state_schema_and_tools(self, weather_tool, component_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], state_schema={"foo": {"type": str}}
+        )
+
+        clone = agent.clone(
+            tools=[*agent.tools, component_tool], state_schema={**agent.state_schema, "notes": {"type": str}}
+        )
+
+        assert clone.tools == [weather_tool, component_tool]
+        assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
+
+
+class TestAgentTelemetry:
+    def test_get_telemetry_data(self, weather_tool, component_tool):
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, Toolset([component_tool])])
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {
+                "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                "model": chat_generator.model,
+            },
+            "tools": {
+                "count": 2,
+                "tools": [
+                    {"type": "haystack.tools.tool.Tool", "name": "weather_tool"},
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "name": "parrot",
+                        "component": "haystack.components.builders.prompt_builder.PromptBuilder",
+                    },
+                ],
+                "toolset_types": {"haystack.tools.toolset.Toolset": 1},
+            },
+        }
+
+    def test_get_telemetry_data_without_tools(self):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"))
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 0, "tools": [], "toolset_types": {}},
+        }
+
+    def test_get_telemetry_data_reports_searchable_toolset_catalog(self, weather_tool):
+        # below the search threshold a SearchableToolset is a passthrough exposing its whole catalog
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=SearchableToolset(catalog=[weather_tool]))
+        agent.warm_up()
+
+        assert agent._get_telemetry_data()["tools"] == {
+            "count": 1,
+            "tools": [{"type": "haystack.tools.tool.Tool", "name": "weather_tool"}],
+            "toolset_types": {"haystack.tools.searchable_toolset.SearchableToolset": 1},
+        }
+
+
+class TestGetModelExitReason:
+    @pytest.mark.parametrize(
+        ("message", "expected"),
+        [
+            (ChatMessage.from_assistant("Complete answer."), "text"),
+            (ChatMessage.from_assistant("", meta={"finish_reason": "length"}), "length"),
+            (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "length"}), "length"),
+            (ChatMessage.from_assistant("", meta={"finish_reason": "content_filter"}), "content_filter"),
+            (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "content_filter"}), "content_filter"),
+            (ChatMessage.from_assistant(""), None),
+            (ChatMessage.from_user("Not an assistant reply."), None),
+        ],
+    )
+    def test_classifies_tool_call_free_model_replies(self, message, expected):
+        assert _get_model_exit_reason([message]) == expected
+
+    def test_empty_message_batch_is_not_an_exit(self):
+        assert _get_model_exit_reason([]) is None
+
+
+class TestAgentRun:
+    def test_agent_with_no_tools(self):
+        agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
+
+        response = agent.run([ChatMessage.from_user("What is the capital of Germany?")])
+
         assert isinstance(response, dict)
         assert "messages" in response
         assert isinstance(response["messages"], list)
         assert len(response["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
-        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["messages"][0].text == "What is the capital of Germany?"
+        assert response["messages"][1].text == "Berlin"
         assert "last_message" in response
         assert isinstance(response["last_message"], ChatMessage)
-
-    def test_chat_generator_must_support_tools(self, weather_tool):
-        chat_generator = MockChatGeneratorWithoutTools()
-
-        with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
-            Agent(chat_generator=chat_generator, tools=[weather_tool])
+        assert response["messages"][-1] == response["last_message"]
+        # With no tools the loop always exits after the first reply, reporting the "text" exit reason.
+        assert response["exit_reason"] == "text"
 
     def test_no_tools_with_chat_generator_without_tools_support(self):
         chat_generator = MockChatGeneratorWithoutTools()
@@ -774,182 +715,25 @@ class TestAgent:
         assert response["messages"][1].text == "Hello"
         assert response["last_message"] == response["messages"][-1]
 
-    def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        generator = OpenAIChatGenerator()
-
-        mock_messages = [
-            ChatMessage.from_assistant("First response"),
-            ChatMessage.from_assistant(
-                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-            ),
-        ]
-
-        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=0)
-
-        # Patch agent.chat_generator.run to return mock_messages
-        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
-
-        with caplog.at_level(logging.WARNING):
-            result = agent.run([ChatMessage.from_user("Hello")])
-            assert "Agent reached maximum agent steps" in caplog.text
-            assert result["step_count"] == 0
-
-    def test_exit_condition_exits(self, weather_tool):
-        tool_call_message = ChatMessage.from_assistant(
-            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        )
-        agent = Agent(
-            chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], exit_conditions=["weather_tool"]
-        )
-
-        result = agent.run([ChatMessage.from_user("Hello")])
-
-        assert "messages" in result
-        assert len(result["messages"]) == 3
-        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
-        assert (
-            result["messages"][-1].tool_call_result.result
-            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
-        )
-        assert "last_message" in result
-        assert isinstance(result["last_message"], ChatMessage)
-        assert result["messages"][-1] == result["last_message"]
-        # The exit reason is the tool that triggered the exit, and `last_message` is that tool's result.
-        assert result["exit_reason"] == "weather_tool"
-
-    def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
-        """An exit condition naming a tool absent at init still triggers once that tool is provided at runtime."""
-        # weather_tool is NOT among the init tools, but it is named as an exit condition. The model calls
-        # weather_tool, which is supplied only at runtime.
-        tool_call_message = ChatMessage.from_assistant(
-            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        )
-        agent = Agent(
-            chat_generator=MockChatGenerator(tool_call_message),
-            tools=[],
-            exit_conditions=["weather_tool"],
-            max_agent_steps=5,
-        )
-
-        result = agent.run([ChatMessage.from_user("What's the weather in Berlin?")], tools=[weather_tool])
-
-        # The agent exits right after the exit-condition tool runs (single step), not at max_agent_steps.
-        assert result["step_count"] == 1
-        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
-        assert (
-            result["messages"][-1].tool_call_result.result
-            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
-        )
-        assert result["messages"][-1] == result["last_message"]
-
-    def test_does_not_exit_on_empty_assistant_message(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
-
-        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
-        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
-        # keeps looping and recovers on the second reply.
-        empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
-        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
-        agent.chat_generator.run = MagicMock(side_effect=[empty_reply, recovered_reply])
-
-        result = agent.run([ChatMessage.from_user("What's the weather?")])
-
-        assert agent.chat_generator.run.call_count == 2
-        assert result["last_message"].text == "The weather is sunny."
-
-    def test_check_exit_conditions_parallel_tool_calls(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
-
-        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
-
-        # Exit-condition call first
-        llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
-        # Exit-condition call second
-        llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
-        tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
-
-        assert agent._check_exit_conditions(llm_first, tool_messages_ok) == "weather_tool"
-        assert agent._check_exit_conditions(llm_second, tool_messages_ok) == "weather_tool"
-
-    def test_check_exit_conditions_parallel_calls_with_errored_exit_tool(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
-
-        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
-
-        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
-        tool_messages_errored = [ChatMessage.from_tool(tool_result="boom", origin=finish_call, error=True)]
-
-        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is None
-
-    def test_check_exit_conditions_parallel_calls_error_only_on_non_exit_tool(
-        self, monkeypatch, weather_tool, component_tool
-    ):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(), tools=[weather_tool, component_tool], exit_conditions=["weather_tool"]
-        )
-
-        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        other_call = ToolCall(tool_name="parrot", arguments={"parrot": "hi"})
-
-        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
-        tool_messages = [
-            ChatMessage.from_tool(tool_result="boom", origin=other_call, error=True),
-            ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False),
-        ]
-
-        assert agent._check_exit_conditions(llm_messages, tool_messages) == "weather_tool"
-
-    def test_check_exit_conditions_errored_exit_tool_cancels_a_succeeding_one(self, monkeypatch, weather_tool):
-        """An errored exit-condition tool cancels the exit even when another exit-condition tool succeeded."""
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool", "search"]
-        )
-
-        ok_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        errored_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
-
-        # The succeeding exit tool is listed first, so a naive first-match scan would wrongly return it.
-        llm_messages = [ChatMessage.from_assistant(tool_calls=[ok_call, errored_call])]
-        tool_messages = [
-            ChatMessage.from_tool(tool_result="ok", origin=ok_call, error=False),
-            ChatMessage.from_tool(tool_result="boom", origin=errored_call, error=True),
-        ]
-
-        assert agent._check_exit_conditions(llm_messages, tool_messages) is None
-
-    def test_agent_with_no_tools(self):
-        agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
-
-        response = agent.run([ChatMessage.from_user("What is the capital of Germany?")])
-
-        assert isinstance(response, dict)
-        assert "messages" in response
-        assert isinstance(response["messages"], list)
-        assert len(response["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
-        assert response["messages"][0].text == "What is the capital of Germany?"
-        assert response["messages"][1].text == "Berlin"
-        assert "last_message" in response
-        assert isinstance(response["last_message"], ChatMessage)
-        assert response["messages"][-1] == response["last_message"]
-        # With no tools the loop always exits after the first reply, reporting the "text" exit reason.
-        assert response["exit_reason"] == "text"
-
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
-    def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+    def test_run_only_system_prompt(self, caplog):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
+        _ = agent.run([])
+        assert "All messages provided to the Agent component are system messages." in caplog.text
+
+    def test_run_no_messages(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[])
+        result = agent.run([])
+        assert result["messages"] == []
+
+    def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool) -> None:
         chat_generator = ToolAssertingChatGenerator(expected_tools=[weather_tool])
         agent = Agent(
             chat_generator=chat_generator,
@@ -965,7 +749,7 @@ class TestAgent:
         assert run_tool_mock.call_args.kwargs["max_workers"] == 3
         assert run_tool_mock.call_args.kwargs["enable_streaming_callback_passthrough"] is True
 
-    def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+    def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool) -> None:
         chat_generator = ToolAssertingChatGenerator(expected_tools=[weather_tool])
         agent = Agent(
             chat_generator=chat_generator,
@@ -977,64 +761,14 @@ class TestAgent:
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
-    def test_run_no_messages(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        chat_generator = OpenAIChatGenerator()
-        agent = Agent(chat_generator=chat_generator, tools=[])
-        result = agent.run([])
-        assert result["messages"] == []
-
-    def test_run_only_system_prompt(self, caplog):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
-        _ = agent.run([])
-        assert "All messages provided to the Agent component are system messages." in caplog.text
-
-    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    @pytest.mark.integration
-    def test_run(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
-        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-
-        assert isinstance(response, dict)
-        assert "messages" in response
-        assert isinstance(response["messages"], list)
-        assert len(response["messages"]) == 4
-        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
-        # Loose check of message texts
-        assert response["messages"][0].text == "What is the weather in Berlin?"
-        assert response["messages"][1].text is None
-        assert response["messages"][2].text is None
-        assert response["messages"][3].text is not None
-        # Loose check of message metadata
-        assert response["messages"][0].meta == {}
-        assert response["messages"][1].meta.get("model") is not None
-        assert response["messages"][2].meta == {}
-        assert response["messages"][3].meta.get("model") is not None
-        # Loose check of tool calls and results
-        assert response["messages"][1].tool_calls[0].tool_name == "weather_tool"
-        assert response["messages"][1].tool_calls[0].arguments is not None
-        assert response["messages"][2].tool_call_results[0].result is not None
-        assert response["messages"][2].tool_call_results[0].origin is not None
-        assert "last_message" in response
-        assert isinstance(response["last_message"], ChatMessage)
-        assert response["messages"][-1] == response["last_message"]
-        # Auto-populated run outputs:
-        # 4 messages → tool call + final answer = 2 LLM calls = 2 steps; one weather_tool invocation.
-        assert response["step_count"] == 2
-        assert response["tool_call_counts"] == {"weather_tool": 1}
-        assert response["token_usage"]["prompt_tokens"] > 0
-        assert response["token_usage"]["completion_tokens"] > 0
-        assert response["token_usage"]["total_tokens"] > 0
-
     @pytest.mark.asyncio
-    async def test_generation_kwargs(self):
+    async def test_generation_kwargs(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
 
         agent = Agent(chat_generator=chat_generator)
 
-        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+        run_async_mock = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+        monkeypatch.setattr(chat_generator, "run_async", run_async_mock)
 
         await agent.run_async([ChatMessage.from_user("Hello")], generation_kwargs={"temperature": 0.0})
 
@@ -1042,38 +776,34 @@ class TestAgent:
             ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
         ]
         # No tools were configured, so the Agent does not pass a `tools` argument to the chat generator.
-        chat_generator.run_async.assert_called_once_with(
-            messages=expected_messages, generation_kwargs={"temperature": 0.0}
-        )
+        run_async_mock.assert_called_once_with(messages=expected_messages, generation_kwargs={"temperature": 0.0})
 
     @pytest.mark.asyncio
-    async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
+    async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
 
-        chat_generator.run_async = AsyncMock(
-            return_value={"replies": [ChatMessage.from_assistant("Hello from run_async")]}
-        )
+        run_async_mock = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("Hello from run_async")]})
+        monkeypatch.setattr(chat_generator, "run_async", run_async_mock)
 
         result = await agent.run_async([ChatMessage.from_user("Hello")])
 
         expected_messages = [
             ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
         ]
-        chat_generator.run_async.assert_called_once_with(messages=expected_messages, tools=[weather_tool])
+        run_async_mock.assert_called_once_with(messages=expected_messages, tools=[weather_tool])
 
         assert isinstance(result, dict)
         assert "messages" in result
         assert isinstance(result["messages"], list)
         assert len(result["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello from run_async" in result["messages"][1].text
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
     @pytest.mark.asyncio
-    async def test_run_async_falls_back_to_sync_run_for_sync_only_chat_generator(self, weather_tool):
+    async def test_run_async_falls_back_to_sync_run_for_sync_only_chat_generator(self, weather_tool, monkeypatch):
         """`agent.run_async` must accept a chat generator that only implements `run` (no `run_async`).
         The Agent should dispatch the sync call to the default executor rather than raising AttributeError."""
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -1082,7 +812,7 @@ class TestAgent:
         assert not getattr(chat_generator, "__haystack_supports_async__", False)
 
         run_mock = MagicMock(wraps=chat_generator.run)
-        chat_generator.run = run_mock
+        monkeypatch.setattr(chat_generator, "run", run_mock)
 
         result = await agent.run_async([ChatMessage.from_user("Hello")])
 
@@ -1091,140 +821,23 @@ class TestAgent:
         assert result["messages"][1].text == "Hello"
         assert result["last_message"] == result["messages"][-1]
 
-    @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        result = agent.run(
-            [ChatMessage.from_user("What's the weather in Paris?")],
-            streaming_callback=streaming_callback,
-            generation_kwargs={"stream_options": {"include_usage": True}},
-        )
-
-        assert result is not None
-        assert result["messages"] is not None
-        assert result["last_message"] is not None
-        assert streaming_callback_called
-        # Auto-populated run outputs.
-        assert result["step_count"] == 2
-        assert result["tool_call_counts"] == {"weather_tool": 1}
-        assert result["token_usage"]["prompt_tokens"] > 0
-        assert result["token_usage"]["completion_tokens"] > 0
-        assert result["token_usage"]["total_tokens"] > 0
-
-    @pytest.mark.asyncio
-    async def test_does_not_exit_on_empty_assistant_message_async(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
-
-        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
-        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
-        # keeps looping and recovers on the second reply.
-        empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
-        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
-        agent.chat_generator.run_async = AsyncMock(side_effect=[empty_reply, recovered_reply])
-
-        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
-
-        assert agent.chat_generator.run_async.call_count == 2
-        assert result["last_message"].text == "The weather is sunny."
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_async_streaming_callback(self, weather_tool):
-        chat_generator = MockChatGenerator("Hello")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-
-        # This should not raise any exception
-        result = await agent.run_async([ChatMessage.from_user("Hello")])
-
-        assert "messages" in result
-        assert len(result["messages"]) == 2
-        assert result["messages"][1].text == "Hello"
-
-    def test_run_with_async_streaming_callback_fails(self, weather_tool):
-        chat_generator = MockChatGenerator("Hello")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-
-        with pytest.raises(ValueError, match="The init callback cannot be a coroutine"):
-            agent.run([ChatMessage.from_user("Hello")])
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool, caplog):
-        chat_generator = MockChatGenerator("Hello")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
-
-        with caplog.at_level(logging.WARNING):
-            result = await agent.run_async([ChatMessage.from_user("Hello")])
-
-        assert "sync streaming callback" in caplog.text
-        assert "messages" in result
-        assert len(result["messages"]) == 2
-
-    def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        for reserved in ("step_count", "token_usage", "context_tokens", "tool_call_counts", "exit_reason"):
-            with pytest.raises(ValueError, match="reserved for Agent internal state"):
-                Agent(
-                    chat_generator=OpenAIChatGenerator(), tools=[weather_tool], state_schema={reserved: {"type": int}}
-                )
-
-    def test_run_populates_token_usage_and_tool_call_counts(self, weather_tool, component_tool):
-        """A multi-step run aggregates step_count, token_usage (incl. nested details), and tool_call_counts."""
-        # Step 1: two parallel tool calls + usage with nested detail dicts.
-        # Step 2: one more weather_tool call + flat usage.
-        # Step 3: final text answer + usage.
+    def test_run_populates_token_usage_and_tool_call_counts(self, weather_tool):
+        """A multi-step run aggregates step_count, token_usage, and tool_call_counts."""
         first_step = [
             _assistant_with_usage(
-                tool_calls=[
-                    ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
-                    ToolCall(tool_name="parrot", arguments={"parrot": "hi"}),
-                ],
-                usage={
-                    "prompt_tokens": 10,
-                    "completion_tokens": 5,
-                    "total_tokens": 15,
-                    "completion_tokens_details": {"reasoning_tokens": 2},
-                },
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
             )
         ]
         second_step = [
-            _assistant_with_usage(
-                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Paris"})],
-                usage={"prompt_tokens": 6, "completion_tokens": 3, "total_tokens": 9},
-            )
+            _assistant_with_usage("Done.", usage={"prompt_tokens": 6, "completion_tokens": 3, "total_tokens": 9})
         ]
-        third_step = [
-            _assistant_with_usage(
-                "Done.",
-                usage={
-                    "prompt_tokens": 4,
-                    "completion_tokens": 2,
-                    "total_tokens": 6,
-                    "completion_tokens_details": {"reasoning_tokens": 1},
-                },
-            )
-        ]
-        agent = Agent(
-            chat_generator=MockChatGenerator(first_step + second_step + third_step),
-            tools=[weather_tool, component_tool],
-        )
+        agent = Agent(chat_generator=MockChatGenerator(first_step + second_step), tools=[weather_tool])
 
         result = agent.run([ChatMessage.from_user("Hi")])
-        assert result["step_count"] == 3
-        assert result["tool_call_counts"] == {"weather_tool": 2, "parrot": 1}
-        assert result["token_usage"] == {
-            "prompt_tokens": 20,
-            "completion_tokens": 10,
-            "total_tokens": 30,
-            "completion_tokens_details": {"reasoning_tokens": 3},
-        }
+        assert result["step_count"] == 2
+        assert result["tool_call_counts"] == {"weather_tool": 1}
+        assert result["token_usage"] == {"prompt_tokens": 16, "completion_tokens": 8, "total_tokens": 24}
 
     @pytest.mark.asyncio
     async def test_run_async_populates_token_usage_and_tool_call_counts(self, weather_tool):
@@ -1253,6 +866,154 @@ class TestAgent:
         assert result["step_count"] == 1
         assert result["token_usage"] == {}
         assert result["tool_call_counts"] == {"weather_tool": 0}
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.integration
+    def test_run(self, weather_tool):
+        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
+        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
+        assert isinstance(response, dict)
+        assert "messages" in response
+        assert isinstance(response["messages"], list)
+        assert len(response["messages"]) == 4
+        # Loose check of message texts
+        assert response["messages"][0].text == "What is the weather in Berlin?"
+        assert response["messages"][1].text is None
+        assert response["messages"][2].text is None
+        assert response["messages"][3].text is not None
+        # Loose check of message metadata
+        assert response["messages"][0].meta == {}
+        assert response["messages"][1].meta.get("model") is not None
+        assert response["messages"][2].meta == {}
+        assert response["messages"][3].meta.get("model") is not None
+        # Loose check of tool calls and results
+        assert response["messages"][1].tool_calls[0].tool_name == "weather_tool"
+        assert response["messages"][1].tool_calls[0].arguments is not None
+        assert response["messages"][2].tool_call_results[0].result is not None
+        assert response["messages"][2].tool_call_results[0].origin is not None
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
+        assert response["messages"][-1] == response["last_message"]
+        # Auto-populated run outputs:
+        # 4 messages → tool call + final answer = 2 LLM calls = 2 steps; one weather_tool invocation.
+        assert response["step_count"] == 2
+        assert response["tool_call_counts"] == {"weather_tool": 1}
+        assert response["token_usage"]["prompt_tokens"] > 0
+        assert response["token_usage"]["completion_tokens"] > 0
+        assert response["token_usage"]["total_tokens"] > 0
+
+
+class TestAgentStreaming:
+    def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=streaming_callback)
+        response = agent.run([ChatMessage.from_user("Hello")])
+
+        assert streaming_callback_called is True
+        assert len(response["messages"]) == 2
+        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["last_message"] == response["messages"][-1]
+
+    def test_run_with_run_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
+
+        assert streaming_callback_called is True
+        assert len(response["messages"]) == 2
+        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["last_message"] == response["messages"][-1]
+
+    def test_keep_generator_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        response = agent.run([ChatMessage.from_user("Hello")])
+
+        assert streaming_callback_called is True
+        assert len(response["messages"]) == 2
+        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["last_message"] == response["messages"][-1]
+
+    def test_run_with_async_streaming_callback_fails(self, weather_tool):
+        chat_generator = MockChatGenerator("Hello")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
+
+        with pytest.raises(ValueError, match="The init callback cannot be a coroutine"):
+            agent.run([ChatMessage.from_user("Hello")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_async_streaming_callback(self, weather_tool):
+        chat_generator = MockChatGenerator("Hello")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
+
+        # This should not raise any exception
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 2
+        assert result["messages"][1].text == "Hello"
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool, caplog):
+        chat_generator = MockChatGenerator("Hello")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
+
+        with caplog.at_level(logging.WARNING):
+            result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "sync streaming callback" in caplog.text
+        assert "messages" in result
+        assert len(result["messages"]) == 2
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    def test_agent_streaming_with_tool_call(self, weather_tool):
+        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        result = agent.run(
+            [ChatMessage.from_user("What's the weather in Paris?")],
+            streaming_callback=streaming_callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
+        )
+
+        assert result is not None
+        assert result["messages"] is not None
+        assert result["last_message"] is not None
+        assert streaming_callback_called
+        # Auto-populated run outputs.
+        assert result["step_count"] == 2
+        assert result["tool_call_counts"] == {"weather_tool": 1}
+        assert result["token_usage"]["prompt_tokens"] > 0
+        assert result["token_usage"]["completion_tokens"] > 0
+        assert result["token_usage"]["total_tokens"] > 0
 
 
 class TestAgentContextTokens:
@@ -1286,8 +1047,6 @@ class TestAgentContextTokens:
         # confirming the recorder runs in the loop and the value is refreshed per call rather than accumulated.
         assert seen == [0, 15]
 
-
-class TestAgentContextTokensAsync:
     @pytest.mark.asyncio
     async def test_before_llm_hook_reads_refreshed_context_tokens_async(self, weather_tool):
         first_step = [
@@ -1313,8 +1072,209 @@ class TestAgentContextTokensAsync:
         assert seen == [0, 15]
 
 
-class TestAgentExitReason:
-    """The Agent reports why it stopped via the `exit_reason` output, so downstream code can route its output."""
+class TestAgentExitConditions:
+    def test_check_exit_conditions_parallel_tool_calls(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # Exit-condition call first
+        llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
+        # Exit-condition call second
+        llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
+
+        assert agent._check_exit_conditions(llm_first, tool_messages_ok) == "weather_tool"
+        assert agent._check_exit_conditions(llm_second, tool_messages_ok) == "weather_tool"
+
+    def test_check_exit_conditions_parallel_calls_with_errored_exit_tool(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_errored = [ChatMessage.from_tool(tool_result="boom", origin=finish_call, error=True)]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is None
+
+    def test_check_exit_conditions_parallel_calls_error_only_on_non_exit_tool(self, weather_tool, component_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool, component_tool],
+            exit_conditions=["weather_tool"],
+        )
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="parrot", arguments={"parrot": "hi"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="boom", origin=other_call, error=True),
+            ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) == "weather_tool"
+
+    def test_check_exit_conditions_errored_exit_tool_cancels_a_succeeding_one(self, weather_tool):
+        """An errored exit-condition tool cancels the exit even when another exit-condition tool succeeded."""
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], exit_conditions=["weather_tool", "search"]
+        )
+
+        ok_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        errored_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # The succeeding exit tool is listed first, so a naive first-match scan would wrongly return it.
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[ok_call, errored_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="ok", origin=ok_call, error=False),
+            ChatMessage.from_tool(tool_result="boom", origin=errored_call, error=True),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) is None
+
+    def test_exit_condition_exits(self, weather_tool):
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], exit_conditions=["weather_tool"]
+        )
+
+        result = agent.run([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 3
+        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
+        )
+        assert "last_message" in result
+        assert isinstance(result["last_message"], ChatMessage)
+        assert result["messages"][-1] == result["last_message"]
+        assert result["exit_reason"] == "weather_tool"
+
+    def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
+        """An exit condition naming a tool absent at init still triggers once that tool is provided at runtime."""
+        # weather_tool is NOT among the init tools, but it is named as an exit condition. The model calls
+        # weather_tool, which is supplied only at runtime.
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(tool_call_message),
+            tools=[],
+            exit_conditions=["weather_tool"],
+            max_agent_steps=5,
+        )
+
+        result = agent.run([ChatMessage.from_user("What's the weather in Berlin?")], tools=[weather_tool])
+
+        # The agent exits right after the exit-condition tool runs (single step), not at max_agent_steps.
+        assert result["step_count"] == 1
+        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
+        )
+        assert result["messages"][-1] == result["last_message"]
+
+    def test_does_not_exit_on_empty_assistant_message(self, weather_tool):
+        # The first reply simulates the LLM producing an invalid tool call that our code discards, leaving an
+        # assistant message with empty text and no tool calls. This must not be treated as a "text" exit
+        # condition, so the agent keeps looping and recovers on the second reply.
+        replies: list[str | ChatMessage] = [ChatMessage.from_assistant(text=""), "The weather is sunny."]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool], exit_conditions=["text"])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 2
+        assert result["last_message"].text == "The weather is sunny."
+
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    @pytest.mark.parametrize("text", ["", "Partial answer."])
+    def test_incomplete_model_reply_exits_with_specific_reason(self, weather_tool, finish_reason, text):
+        replies: list[str | ChatMessage] = [
+            ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
+            "Recovered answer that must not be generated.",
+        ]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+        assert result["last_message"].text == text
+
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    def test_incomplete_model_reply_without_tools_preserves_reason(self, finish_reason):
+        reply = ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": finish_reason})
+        agent = Agent(chat_generator=MockChatGenerator(reply))
+
+        result = agent.run([ChatMessage.from_user("Question")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+
+    def test_exits_on_empty_assistant_message_truncated_by_output_limit(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        run_mock = MagicMock(side_effect=[truncated_reply, recovered_reply])
+        monkeypatch.setattr(agent.chat_generator, "run", run_mock)
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert run_mock.call_count == 1
+        assert result["last_message"].text == ""
+        assert result["exit_reason"] == "length"
+
+    @pytest.mark.asyncio
+    async def test_does_not_exit_on_empty_assistant_message_async(self, weather_tool):
+        replies: list[str | ChatMessage] = [ChatMessage.from_assistant(text=""), "The weather is sunny."]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool], exit_conditions=["text"])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 2
+        assert result["last_message"].text == "The weather is sunny."
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    @pytest.mark.parametrize("text", ["", "Partial answer."])
+    async def test_incomplete_model_reply_exits_with_specific_reason_async(self, weather_tool, finish_reason, text):
+        replies: list[str | ChatMessage] = [
+            ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
+            "Recovered answer that must not be generated.",
+        ]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+        assert result["last_message"].text == text
+
+    @pytest.mark.asyncio
+    async def test_exits_on_empty_assistant_message_truncated_by_output_limit_async(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        run_async_mock = AsyncMock(side_effect=[truncated_reply, recovered_reply])
+        monkeypatch.setattr(agent.chat_generator, "run_async", run_async_mock)
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert run_async_mock.call_count == 1
+        assert result["last_message"].text == ""
+        assert result["exit_reason"] == "length"
 
     def test_text_exit(self, weather_tool):
         """A plain assistant reply with no tool calls reports the `"text"` exit reason."""
@@ -1337,16 +1297,22 @@ class TestAgentExitReason:
         )
         result = agent.run([ChatMessage.from_user("Go")])
         assert result["exit_reason"] == "parrot"
+        assert result["last_message"].tool_call_result.origin.tool_name == "weather_tool"
 
-    def test_max_steps_exit(self, weather_tool):
+    def test_max_steps_exit(self, weather_tool, caplog):
         """Exhausting `max_agent_steps` before meeting an exit condition reports `"max_agent_steps"`."""
         # The model keeps requesting a (non-exit-condition) tool call, so the loop never exits on its own.
         tool_call_message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
         agent = Agent(chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], max_agent_steps=2)
-        result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
+
+        with caplog.at_level(logging.WARNING):
+            result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
+
+        assert "Agent reached maximum agent steps" in caplog.text
         assert result["exit_reason"] == "max_agent_steps"
+        assert result["step_count"] == 2
 
     def test_exit_reason_is_readable_in_after_run_hook(self, weather_tool):
         """The `after_run` hook can read `exit_reason` to, e.g., append a fallback answer when max steps is hit."""
@@ -1372,10 +1338,6 @@ class TestAgentExitReason:
         assert seen_reasons == ["max_agent_steps"]
         assert result["exit_reason"] == "max_agent_steps"
         assert result["last_message"].text == "Fallback answer."
-
-
-class TestAgentExitReasonAsync:
-    """Async coverage for the `exit_reason` output."""
 
     @pytest.mark.asyncio
     async def test_text_exit_async(self, weather_tool):
@@ -1404,139 +1366,103 @@ class TestAgentExitReasonAsync:
         assert result["exit_reason"] == "max_agent_steps"
 
 
-class TestAccumulateUsage:
-    """Unit tests for the `_accumulate_usage` helper used to merge ChatGenerator usage dicts."""
-
-    def test_sums_flat_numeric_keys(self):
-        current = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
-        new = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
-        assert _accumulate_usage(current, new) == {"prompt_tokens": 13, "completion_tokens": 7, "total_tokens": 20}
-
-    def test_merges_nested_detail_dicts_recursively(self):
-        current = {"prompt_tokens": 10, "completion_tokens_details": {"reasoning_tokens": 2, "audio_tokens": 0}}
-        new = {
-            "prompt_tokens": 4,
-            "completion_tokens_details": {"reasoning_tokens": 3, "audio_tokens": 1},
-            "prompt_tokens_details": {"cached_tokens": 6},
-        }
-        assert _accumulate_usage(current, new) == {
-            "prompt_tokens": 14,
-            "completion_tokens_details": {"reasoning_tokens": 5, "audio_tokens": 1},
-            "prompt_tokens_details": {"cached_tokens": 6},
-        }
-
-    def test_adds_keys_missing_in_current(self):
-        assert _accumulate_usage({"prompt_tokens": 5}, {"completion_tokens": 7}) == {
-            "prompt_tokens": 5,
-            "completion_tokens": 7,
-        }
-
-    def test_empty_current_dict_returns_copy_of_new(self):
-        new = {"prompt_tokens": 5, "details": {"cached_tokens": 1}}
-        result = _accumulate_usage({}, new)
-        assert result == new
-        # Nested dicts must be deep-copied so future merges don't mutate the source.
-        new["details"]["cached_tokens"] = 999
-        assert result["details"]["cached_tokens"] == 1
-
-    def test_non_dict_non_numeric_falls_back_to_new(self):
-        # Strings, lists, or any other type that isn't a dict-or-number pair returns `new` unchanged.
-        assert _accumulate_usage("old-model", "new-model") == "new-model"
-        assert _accumulate_usage(5, "stringified") == "stringified"
-        assert _accumulate_usage({"model": "gpt-x"}, {"model": "gpt-y"}) == {"model": "gpt-y"}
-
-    def test_sums_floats(self):
-        assert _accumulate_usage(1.5, 2.25) == 3.75
-
-
 class TestAgentTracing:
-    def test_agent_tracing_span_run(self, caplog, monkeypatch, weather_tool):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+    def test_tracing_span_run(self, spying_tracer, weather_tool):
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])
 
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+        result = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
 
-        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
+        assert [s.operation_name for s in spying_tracer.spans] == [
+            "haystack.agent.run",
+            "haystack.agent.step",
+            "haystack.agent.step.llm",
+        ]
+        run_span, step_span, llm_span = spying_tracer.spans
+        assert step_span.parent_span is run_span
+        assert llm_span.parent_span is step_span
 
-        # LoggingTracer emits one "Operation: <name>" record when a span exits, immediately followed by that
-        # span's tag records. We walk the log stream and bucket tags under the operation that owns them so we
-        # can assert the agent's nested span hierarchy, not just a flat list of tags.
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        # Keep only the agent's own spans. With the chat generator returning no tool calls, the inner
-        # `haystack.agent.step.tool` span never fires - the loop exits after the LLM call.
-        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
-
-        # Exit order (innermost first): LLM child -> step wrapper -> agent.run.
-        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
-
-        # LLM child span carries the chat_generator's input/output, nothing else.
-        _, llm_tags = agent_spans[0]
-        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
-        assert (
-            llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
-        )
-        assert (
-            llm_tags["haystack.agent.step.llm.output"]
-            == '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}'
-        )
-
-        # The step wrapper only carries the iteration counter.
-        _, step_tags = agent_spans[1]
-        assert step_tags == {"haystack.agent.step": 0}
-
-        # agent.run carries the static config + the final input/output/steps-taken summary.
-        _, run_tags = agent_spans[2]
-        assert run_tags == {
+        assert run_span.tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
-            "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
-            "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
+            "haystack.agent.tools": [weather_tool],
+            "haystack.agent.exit_conditions": ["text"],
+            "haystack.agent.state_schema": {
+                "messages": {
+                    "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                },
+                "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+                "token_usage": {
+                    "type": "dict[str, typing.Any]",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "tool_call_counts": {
+                    "type": "dict[str, int]",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "exit_reason": {
+                    "type": "str",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "continue_run": {
+                    "type": "bool",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "stop_run": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+                "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+                "hook_context": {
+                    "type": "dict[str, typing.Any]",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "context_tokens": {
+                    "type": "int",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+            },
+            "haystack.agent.input": {
+                "messages": [ChatMessage.from_user("What's the weather in Paris?")],
+                "streaming_callback": None,
+            },
+            "haystack.agent.output": result,
             "haystack.agent.steps_taken": 1,
         }
 
-        # Clean up
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
+        assert step_span.tags == {"haystack.agent.step": 0}
 
-    def test_agent_tracing_span_run_reflects_runtime_tools(self, caplog, monkeypatch, weather_tool, component_tool):
+        assert llm_span.tags == {
+            "haystack.agent.step.llm.input": {
+                "messages": [ChatMessage.from_user("What's the weather in Paris?")],
+                "tools": [weather_tool],
+            },
+            "haystack.agent.step.llm.output": {"replies": [ChatMessage.from_assistant("Hello")]},
+        }
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async(self, spying_tracer, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather in Paris?")])
+
+        assert [s.operation_name for s in spying_tracer.spans] == [
+            "haystack.agent.run",
+            "haystack.agent.step",
+            "haystack.agent.step.llm",
+        ]
+        run_span, _, llm_span = spying_tracer.spans
+        assert run_span.tags["haystack.agent.steps_taken"] == 1
+        assert run_span.tags["haystack.agent.output"] == result
+        assert llm_span.tags["haystack.agent.step.llm.output"]["replies"][0].text == "Hello"
+
+    def test_tracing_span_run_reflects_runtime_tools(self, spying_tracer, weather_tool, component_tool):
         """The `haystack.agent.tools` span tag should reflect the tools selected for the run, not just init tools."""
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
-
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool, component_tool])
 
         # Override at runtime to only use weather_tool, even though the agent was configured with both.
-        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")], tools=[weather_tool.name])
+        agent.run([ChatMessage.from_user("What's the weather in Paris?")], tools=[weather_tool.name])
 
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
+        run_span = spying_tracer.spans[0]
+        assert run_span.tags["haystack.agent.tools"] == [weather_tool]
 
-        run_tags = next(tags for op, tags in spans if op == "haystack.agent.run")
-        serialized_tools = run_tags["haystack.agent.tools"]
-        assert "weather_tool" in serialized_tools
-        assert "parrot" not in serialized_tools
-
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
-
-    def test_agent_tracing_span_run_with_tool_call(self, caplog, monkeypatch, weather_tool):
+    def test_tracing_span_run_with_tool_call(self, spying_tracer, weather_tool):
         chat_generator = MockChatGenerator(
             [
                 ChatMessage.from_assistant(
@@ -1547,170 +1473,76 @@ class TestAgentTracing:
         )
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
 
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+        agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
 
-        _ = agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
-
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
-        assert [op for op, _ in agent_spans] == [
+        assert [s.operation_name for s in spying_tracer.spans] == [
+            "haystack.agent.run",
+            "haystack.agent.step",
             "haystack.agent.step.llm",
             "haystack.agent.step.tool",
             "haystack.agent.step",
             "haystack.agent.step.llm",
-            "haystack.agent.step",
-            "haystack.agent.run",
         ]
 
         # The single tool call gets its own tool span carrying the tool's identity plus its call args and result.
-        _, tool_tags = agent_spans[1]
-        assert set(tool_tags) == {
-            "haystack.tool.name",
-            "haystack.tool.description",
-            "haystack.agent.step.tool.input",
-            "haystack.agent.step.tool.output",
+        tool_span = spying_tracer.spans[3]
+        assert tool_span.tags == {
+            "haystack.tool.name": "weather_tool",
+            "haystack.tool.description": "Provides weather information for a given location.",
+            "haystack.agent.step.tool.input": {"location": "Berlin"},
+            "haystack.agent.step.tool.output": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         }
-        assert tool_tags["haystack.tool.name"] == "weather_tool"
-        assert tool_tags["haystack.agent.step.tool.input"] == '{"location": "Berlin"}'
 
-        _, run_tags = agent_spans[-1]
-        assert run_tags["haystack.agent.steps_taken"] == 2
+        assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
 
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
-
-    def test_agent_tracing_span_run_with_parallel_tool_calls(self, caplog, monkeypatch, weather_tool):
+    def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""
+        # The barrier holds each call inside its own tool span until the other call has opened its span too, so both
+        # spans are provably open at the same time — the situation in which a span could pick a sibling as its parent.
+        barrier = threading.Barrier(2, timeout=10)
+
+        def blocking_weather_function(location: str) -> dict[str, str | int]:
+            barrier.wait()
+            return weather_function(location)
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+            function=blocking_weather_function,
+        )
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[weather_tool])
 
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
 
-        _ = agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
-
-        # The two tool calls run in parallel worker threads; LoggingTracer serializes each span's records so tags
-        # stay bucketed under their owning span even under concurrency.
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        tool_spans = [tags for op, tags in spans if op == "haystack.agent.step.tool"]
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
         # Two tool calls -> two tool spans, one per call, each carrying its own identity, arguments, and result.
         assert len(tool_spans) == 2
-        for tags in tool_spans:
-            assert set(tags) == {
-                "haystack.tool.name",
-                "haystack.tool.description",
-                "haystack.agent.step.tool.input",
-                "haystack.agent.step.tool.output",
-            }
-        assert {tags["haystack.agent.step.tool.input"] for tags in tool_spans} == {
-            '{"location": "Berlin"}',
-            '{"location": "Paris"}',
-        }
-
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
+        for span in tool_spans:
+            assert span.tags["haystack.tool.name"] == "weather_tool"
+        assert {span.tags["haystack.agent.step.tool.input"]["location"] for span in tool_spans} == {"Berlin", "Paris"}
+        # The tool spans are siblings under the step that requested the calls, not chained under each other.
+        step_span = spying_tracer.spans[1]
+        assert step_span.operation_name == "haystack.agent.step"
+        assert all(span.parent_span is step_span for span in tool_spans)
 
     @pytest.mark.asyncio
-    async def test_agent_tracing_span_async_run(self, caplog, monkeypatch, weather_tool):
-        chat_generator = MockChatGenerator("Hello")
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
-
-        _ = await agent.run_async([ChatMessage.from_user("What's the weather in Paris?")])
-
-        # Bucket each tag under the operation it was emitted from (see sync version for details).
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
-
-        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
-
-        _, llm_tags = agent_spans[0]
-        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
-        assert (
-            llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
-        )
-        assert (
-            llm_tags["haystack.agent.step.llm.output"]
-            == '{"replies": [{"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}]}'  # noqa: E501
-        )
-
-        _, step_tags = agent_spans[1]
-        assert step_tags == {"haystack.agent.step": 0}
-
-        _, run_tags = agent_spans[2]
-        assert run_tags == {
-            "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
-            "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
-            "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
-            "haystack.agent.steps_taken": 1,
-        }
-
-        # Clean up
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
-
-    @pytest.mark.asyncio
-    async def test_agent_tracing_span_async_run_with_parallel_tool_calls(self, caplog, monkeypatch, weather_tool):
+    async def test_tracing_span_run_async_with_parallel_tool_calls(self, spying_tracer, weather_tool):
         """The async path also emits one `haystack.agent.step.tool` span per tool call."""
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[weather_tool])
 
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
 
-        _ = await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
-
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        tool_spans = [tags for op, tags in spans if op == "haystack.agent.step.tool"]
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
         assert len(tool_spans) == 2
-        assert {tags["haystack.agent.step.tool.input"] for tags in tool_spans} == {
-            '{"location": "Berlin"}',
-            '{"location": "Paris"}',
-        }
+        assert {span.tags["haystack.agent.step.tool.input"]["location"] for span in tool_spans} == {"Berlin", "Paris"}
+        # The tool spans are siblings under the step that requested the calls, not chained under each other.
+        step_span = spying_tracer.spans[1]
+        assert step_span.operation_name == "haystack.agent.step"
+        assert all(span.parent_span is step_span for span in tool_spans)
 
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
-
-    def test_agent_tracing_in_pipeline(self, caplog, monkeypatch, weather_tool):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-
-        tracing.tracer.is_content_tracing_enabled = True
-        tracing.enable_tracing(LoggingTracer())
-        caplog.set_level(logging.DEBUG)
+    def test_tracing_in_pipeline(self, spying_tracer, weather_tool):
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])
 
         pipeline = Pipeline()
         pipeline.add_component(
@@ -1721,67 +1553,20 @@ class TestAgentTracing:
 
         pipeline.run(data={"prompt_builder": {"location": "Berlin"}})
 
-        # Bucket each tag under the operation it was emitted from (see sync standalone test for details).
-        spans: list[tuple[str, dict[str, Any]]] = []
-        for record in caplog.records:
-            if hasattr(record, "operation_name"):
-                spans.append((record.operation_name, {}))
-            elif hasattr(record, "tag_name") and spans:
-                spans[-1][1][record.tag_name] = record.tag_value
-
-        # Full span hierarchy in exit order (innermost first):
-        #   prompt_builder.component.run -> agent.step.llm -> agent.step -> agent.run -> agent.component.run
-        #   -> pipeline.run
-        assert [op for op, _ in spans] == [
-            "haystack.component.run",
-            "haystack.agent.step.llm",
-            "haystack.agent.step",
-            "haystack.agent.run",
-            "haystack.component.run",
+        assert [s.operation_name for s in spying_tracer.spans] == [
             "haystack.pipeline.run",
+            "haystack.component.run",
+            "haystack.component.run",
+            "haystack.agent.run",
+            "haystack.agent.step",
+            "haystack.agent.step.llm",
         ]
-
-        # The two `haystack.component.run` spans wrap prompt_builder and agent respectively.
-        prompt_builder_component, _ = spans[0], spans[0][1]
-        assert prompt_builder_component[1]["haystack.component.name"] == "prompt_builder"
-        agent_component = spans[4]
-        assert agent_component[1]["haystack.component.name"] == "agent"
-
-        # Agent's own spans: shape and ownership identical to the standalone test.
-        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
-        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
-
-        _, llm_tags = agent_spans[0]
-        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
-
-        _, step_tags = agent_spans[1]
-        assert step_tags == {"haystack.agent.step": 0}
-
-        _, run_tags = agent_spans[2]
-        assert set(run_tags) == {
-            "haystack.agent.max_steps",
-            "haystack.agent.tools",
-            "haystack.agent.exit_conditions",
-            "haystack.agent.state_schema",
-            "haystack.agent.input",
-            "haystack.agent.output",
-            "haystack.agent.steps_taken",
-        }
-        assert run_tags["haystack.agent.steps_taken"] == 1
-
-        # And pipeline.run wraps everything, carrying the pipeline-level summary tags.
-        _, pipeline_tags = spans[-1]
-        assert set(pipeline_tags) == {
-            "haystack.pipeline.input_data",
-            "haystack.pipeline.output_data",
-            "haystack.pipeline.metadata",
-            "haystack.pipeline.max_runs_per_component",
-            "haystack.pipeline.execution_mode",
-        }
-
-        # Clean up
-        tracing.tracer.is_content_tracing_enabled = False
-        tracing.disable_tracing()
+        component_names = [
+            s.tags["haystack.component.name"]
+            for s in spying_tracer.spans
+            if s.operation_name == "haystack.component.run"
+        ]
+        assert component_names == ["prompt_builder", "agent"]
 
     def test_agent_span_has_parent_when_in_pipeline(self, spying_tracer, weather_tool):
         """Test that the agent's span has the component span as its parent when running in a pipeline."""
@@ -1816,63 +1601,42 @@ class TestAgentTracing:
         assert agent_span.parent_span == agent_component_span
 
 
-class TestSelectToolsByName:
-    """Tests for the _select_tools_by_name helper (runtime tool-name selection)."""
-
-    def test_selects_standalone_tools_by_name(self, weather_tool: Tool, component_tool: Tool):
-        result = _select_tools_by_name([weather_tool, component_tool], [weather_tool.name])
-        assert result == [weather_tool]
-
-    def test_raises_on_invalid_name(self, weather_tool: Tool, component_tool: Tool):
-        with pytest.raises(
-            ValueError, match="The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: ."
-        ):
-            _select_tools_by_name([weather_tool, component_tool], ["invalid_tool_name"])
-
-    def test_raises_when_no_tools_configured(self, weather_tool: Tool):
-        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            _select_tools_by_name([], [weather_tool.name])
-
-    def test_returns_isolated_spawn_with_selection(self, weather_tool: Tool, component_tool: Tool):
-        """A Toolset exposing a requested name is replaced by an isolated spawn carrying the selection.
-
-        The shared, configured Toolset is not mutated.
-        """
-        toolset = Toolset([weather_tool, component_tool])
-
-        result = _select_tools_by_name([toolset], [weather_tool.name])
-
-        assert len(result) == 1
-        spawned = result[0]
-        assert isinstance(spawned, Toolset)
-        assert spawned is not toolset  # an isolated per-run copy
-        assert spawned._selected_tool_names == {weather_tool.name}
-        assert [tool.name for tool in spawned] == [weather_tool.name]
-        # The configured toolset is untouched.
-        assert toolset._selected_tool_names is None
-
-    def test_mixed_standalone_tools_and_toolsets(self, weather_tool: Tool, component_tool: Tool):
-        toolset = Toolset([weather_tool])
-
-        result = _select_tools_by_name([component_tool, toolset], [weather_tool.name, component_tool.name])
-
-        # The standalone tool is passed through; the toolset is replaced by an isolated spawn with the selection.
-        assert component_tool in result
-        spawns = [t for t in result if isinstance(t, Toolset)]
-        assert len(spawns) == 1
-        assert spawns[0] is not toolset
-        assert spawns[0]._selected_tool_names == {weather_tool.name}
-        assert toolset._selected_tool_names is None
-
-
 class TestAgentToolSelection:
-    def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
+    @staticmethod
+    def _agent_with_duplicate_tool_names() -> Agent:
+        def make_tool(description: str) -> Tool:
+            return Tool(
+                name="same_name",
+                description=description,
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[Toolset([make_tool("first")]), Toolset([make_tool("second")])],
+        )
+        agent.warm_up()
+        return agent
+
+    def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            agent.run(messages=[ChatMessage.from_user("hi")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
+    def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool) -> None:
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
         result = agent._select_tools([component_tool])
         assert result == [component_tool]
 
-    def test_tool_selection_existing_tools(self, weather_tool: Tool, component_tool: Tool):
+    def test_tool_selection_existing_tools(self, weather_tool: Tool, component_tool: Tool) -> None:
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(
             chat_generator=chat_generator,
@@ -1882,7 +1646,7 @@ class TestAgentToolSelection:
         result = agent._select_tools(None)
         assert result == [weather_tool, component_tool]
 
-    def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool):
+    def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool) -> None:
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(
             chat_generator=chat_generator,
@@ -1897,52 +1661,8 @@ class TestAgentToolSelection:
                 )
             ),
         ):
-            agent._select_tools("invalid_tool_name")
-
-    def test_tool_selection_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool):
-        """Test that list of Toolsets and Tools can be passed to agent."""
-        chat_generator = MockChatGenerator("Hello")
-        toolset1 = Toolset([weather_tool])
-        standalone_tool = Tool(
-            name="standalone",
-            description="A standalone tool",
-            parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-            function=lambda x: f"Result: {x}",
-        )
-        toolset2 = Toolset([component_tool])
-
-        agent = Agent(chat_generator=chat_generator, tools=[toolset1, standalone_tool, toolset2])
-        result = agent._select_tools(None)
-
-        assert result == [toolset1, standalone_tool, toolset2]
-        assert isinstance(result, list)
-        assert len(result) == 3
-
-    def test_agent_serde_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
-        """Test Agent serialization and deserialization with a list of Toolsets."""
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-
-        toolset1 = Toolset([weather_tool])
-        toolset2 = Toolset([component_tool])
-
-        generator = OpenAIChatGenerator()
-        agent = Agent(chat_generator=generator, tools=[toolset1, toolset2])
-
-        serialized_agent = agent.to_dict()
-
-        # Verify serialization preserves list[Toolset] structure
-        tools_data = serialized_agent["init_parameters"]["tools"]
-        assert isinstance(tools_data, list)
-        assert len(tools_data) == 2
-        assert all(isinstance(ts, dict) for ts in tools_data)
-        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
-        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
-
-        # Deserialize and verify
-        deserialized_agent = Agent.from_dict(serialized_agent)
-        assert isinstance(deserialized_agent.tools, list)
-        assert len(deserialized_agent.tools) == 2
-        assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
+            # Deliberately pass a bare string to verify runtime input validation.
+            agent._select_tools("invalid_tool_name")  # type: ignore[arg-type]
 
 
 class TestRegisterPromptVariables:
@@ -2000,12 +1720,16 @@ class TestPrompts:
         with pytest.raises(TemplateSyntaxError):
             make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
 
-    def test_system_prompt_plain_string(self, make_agent):
-        agent = make_agent(system_prompt="You are a helpful assistant.")
-        assert agent._system_chat_prompt_builder is not None
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        assert result["messages"][0].is_from(ChatRole.SYSTEM)
-        assert result["messages"][0].text == "You are a helpful assistant."
+    def test_prompt_wrong_role_raises_at_init(self, make_agent):
+        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
+            make_agent(system_prompt=_user_msg("This is a user message, not system."))
+        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
+            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+
+    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
+        agent = make_agent(user_prompt="{% message role=role_name %}Q: {{question}}{% endmessage %}")
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
+            agent.run(messages=[], role_name="assistant", question="Will it snow?")
 
     def test_system_prompt_plain_string_with_template_variables(self, make_agent):
         agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
@@ -2021,38 +1745,6 @@ class TestPrompts:
         assert "company" in input_names
         assert "role" in input_names
 
-    def test_system_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."))
-        assert agent._system_chat_prompt_builder is not None
-        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
-        sys_msg = result["messages"][0]
-        assert sys_msg.is_from(ChatRole.SYSTEM)
-        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "company" in input_names
-        assert "role" in input_names
-
-    def test_system_prompt_with_meta(self, make_agent):
-        agent = make_agent(
-            system_prompt="{% message role='system' meta={'key': 'value'} %}System message with meta{% endmessage %}"
-        )
-        assert agent._system_chat_prompt_builder is not None
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        messages = result["messages"]
-        assert messages[0].is_from(ChatRole.SYSTEM)
-        assert messages[0].text == "System message with meta"
-        assert messages[0].meta == {"key": "value"}
-
-    def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
-        # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
-        assert "messages" in result
-
     def test_user_prompt_plain_string_with_template_variables(self, make_agent):
         agent = make_agent(user_prompt="Question: {{question}}")
         result = agent.run(messages=[], question="Will it snow?")
@@ -2061,23 +1753,6 @@ class TestPrompts:
 
         input_names = set(agent.__haystack_input__._sockets_dict.keys())
         assert "question" in input_names
-
-    def test_user_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(
-            user_prompt=_user_msg(
-                "Hello {{name|upper}}, check weather for: "
-                + "{% for c in cities %}{{c}}{% if not loop.last %}, {% endif %}{% endfor %}"
-                + " on {{date}}?"
-            )
-        )
-        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "name" in input_names
-        assert "cities" in input_names
-        assert "date" in input_names
 
     def test_user_prompt_appended_after_initial_messages(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
@@ -2102,28 +1777,6 @@ class TestPrompts:
         user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
 
-    def test_prompt_wrong_role_raises_at_init(self, make_agent):
-        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
-            make_agent(system_prompt=_user_msg("This is a user message, not system."))
-
-        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
-            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
-
-    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
-        agent = make_agent(user_prompt="{% message role=role_name %}Question: {{question}}{% endmessage %}")
-        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
-            agent.run(messages=[], role_name="assistant", question="Will it snow?")
-
-    def test_prompt_multiple_message_blocks_raises_at_init(self, make_agent):
-        multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
-        {% message role='user' %}How are you?{% endmessage %}"""
-
-        with pytest.raises(ValueError, match="system_prompt must define exactly one message block"):
-            make_agent(system_prompt=multi_message_prompt)
-
-        with pytest.raises(ValueError, match="user_prompt must define exactly one message block"):
-            make_agent(user_prompt=multi_message_prompt)
-
 
 @pytest.mark.integration
 class TestAgentUserPromptInPipeline:
@@ -2140,8 +1793,10 @@ class TestAgentUserPromptInPipeline:
         return store
 
     @pytest.fixture
-    def make_rag_pipeline(self, document_store_with_docs: InMemoryDocumentStore, make_agent):
-        def _factory(user_prompt: str | None = None):
+    def make_rag_pipeline(
+        self, document_store_with_docs: InMemoryDocumentStore, make_agent: Callable[..., Agent]
+    ) -> Callable[[str | None], Pipeline]:
+        def _factory(user_prompt: str | None = None) -> Pipeline:
             agent = make_agent(
                 user_prompt=user_prompt
                 or _user_msg(
@@ -2181,7 +1836,7 @@ class TestAgentUserPromptInPipeline:
         assert "Question: Where is the Colosseum?" in rendered
         assert "Documents:" in rendered
 
-    def test_rag_pipeline_messages_plus_user_prompt(self, document_store_with_docs, weather_tool):
+    def test_rag_pipeline_messages_plus_user_prompt(self, document_store_with_docs, weather_tool, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
 
         agent = Agent(
@@ -2189,7 +1844,9 @@ class TestAgentUserPromptInPipeline:
             tools=[weather_tool],
             user_prompt=_user_msg("Relevant docs:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}"),
         )
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Berlin")]})
+        monkeypatch.setattr(
+            chat_generator, "run", MagicMock(return_value={"replies": [ChatMessage.from_assistant("Berlin")]})
+        )
 
         pipeline = Pipeline()
         pipeline.add_component(
@@ -2245,7 +1902,7 @@ class TestAgentWaitsForBlockedPredecessor:
         ValueError("No messages provided to the Agent and neither user_prompt nor system_prompt is set.")
     """
 
-    def test_agent_waits_for_messages_when_predecessor_is_blocked(self, weather_tool):
+    def test_agent_waits_for_messages_when_predecessor_is_blocked(self, weather_tool, monkeypatch):
         @component
         class HistoryParser:
             @component.output_types(messages=list[ChatMessage])
@@ -2276,7 +1933,9 @@ class TestAgentWaitsForBlockedPredecessor:
             tools=[weather_tool],
             state_schema={"retrieval_filters": {"type": dict[str, Any]}},
         )
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        monkeypatch.setattr(
+            chat_generator, "run", MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        )
 
         pipeline = Pipeline()
         pipeline.add_component("history_parser", HistoryParser())
@@ -2303,131 +1962,75 @@ class TestAgentWaitsForBlockedPredecessor:
         assert "agent" in result
 
 
-class TestAgentWarmUp:
-    """Tests that Agent.warm_up() correctly warms up tools and toolsets."""
+class _TrackingTool(Tool):
+    was_warmed_up: bool = False
 
-    def _make_tracking_tool(self, name: str = "test_tool") -> Tool:
-        tool = Tool(
+    def warm_up(self) -> None:
+        self.was_warmed_up = True
+
+
+class _TrackingToolset(Toolset):
+    was_warmed_up: bool = False
+    was_warmed_up_async: bool = False
+
+    def warm_up(self) -> None:
+        warm_up_tools(tools=self.tools)
+        self.was_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        await warm_up_tools_async(tools=self.tools)
+        self.was_warmed_up_async = True
+
+
+class TestComponentLifecycle:
+    def _make_tracking_tool(self, name: str = "test_tool") -> _TrackingTool:
+        return _TrackingTool(
             name=name,
             description="A test tool",
             parameters={"type": "object", "properties": {}},
             function=lambda: "result",
         )
-        tool.was_warmed_up = False
-        original_warm_up = tool.warm_up
-
-        def tracking_warm_up():
-            original_warm_up()
-            tool.was_warmed_up = True
-
-        tool.warm_up = tracking_warm_up
-        return tool
-
-    def _make_tracking_toolset(self, tools: list) -> Toolset:
-        toolset = Toolset(tools)
-        toolset.was_warmed_up = False
-        original_warm_up = toolset.warm_up
-
-        def tracking_warm_up():
-            original_warm_up()
-            toolset.was_warmed_up = True
-
-        toolset.warm_up = tracking_warm_up
-        return toolset
-
-    def test_warm_up_single_tool(self):
-        tool = self._make_tracking_tool()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool])
-
-        assert not tool.was_warmed_up
-        agent.warm_up()
-        assert tool.was_warmed_up
-
-    def test_warm_up_multiple_tools(self):
-        tool1 = self._make_tracking_tool("tool1")
-        tool2 = self._make_tracking_tool("tool2")
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool1, tool2])
-
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-        agent.warm_up()
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
 
     def test_warm_up_toolset(self):
         inner_tool = self._make_tracking_tool()
-        toolset = self._make_tracking_toolset([inner_tool])
+        toolset = _TrackingToolset([inner_tool])
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
 
         assert not toolset.was_warmed_up
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_mixed_toolsets(self):
-        tool1 = self._make_tracking_tool("tool1")
-        toolset1 = self._make_tracking_toolset([tool1])
-        tool2 = self._make_tracking_tool("tool2")
-        toolset2 = self._make_tracking_toolset([tool2])
-
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset1 + toolset2)
-
-        assert not toolset1.was_warmed_up
-        assert not toolset2.was_warmed_up
-        agent.warm_up()
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
-
     def test_warm_up_mixed_list_of_tools_and_toolsets(self):
-        tool1 = self._make_tracking_tool("standalone_tool1")
-        tool2 = self._make_tracking_tool("standalone_tool2")
-        tool3 = self._make_tracking_tool("toolset_tool1")
-        toolset1 = self._make_tracking_toolset([tool3])
-        tool4 = self._make_tracking_tool("toolset_tool2")
-        toolset2 = self._make_tracking_toolset([tool4])
+        standalone_tool = self._make_tracking_tool("standalone")
+        toolset = _TrackingToolset([self._make_tracking_tool("child")])
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[standalone_tool, toolset])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool1, toolset1, tool2, toolset2])
-
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-        assert not toolset1.was_warmed_up
-        assert not toolset2.was_warmed_up
+        assert not standalone_tool.was_warmed_up
+        assert not toolset.was_warmed_up
         agent.warm_up()
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
+        assert standalone_tool.was_warmed_up
+        assert toolset.was_warmed_up
 
-    def test_warm_up_is_idempotent(self):
-        call_count = {"n": 0}
-        tool = Tool(
-            name="counting_tool",
-            description="A tool that counts warm_up calls",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "test",
-        )
-        original = tool.warm_up
-
-        def counting_warm_up():
-            original()
-            call_count["n"] += 1
-
-        tool.warm_up = counting_warm_up
-
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool])
-        agent.warm_up()
-        agent.warm_up()
-        agent.warm_up()
-
-        assert call_count["n"] == 1
-
-    def test_warm_up_refreshes_toolset(self):
-        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
-        placeholder_tool = Tool(
-            name="mcp_not_connected_placeholder_123",
-            description="Placeholder tool before connection",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "placeholder",
-        )
+    @pytest.mark.parametrize(
+        "initial_tools",
+        [
+            pytest.param([], id="empty"),
+            pytest.param(
+                [
+                    Tool(
+                        name="mcp_not_connected_placeholder_123",
+                        description="Placeholder tool before connection",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: "placeholder",
+                    )
+                ],
+                id="placeholder",
+            ),
+        ],
+    )
+    def test_warm_up_loads_lazy_toolset(self, initial_tools):
+        # Before warm_up(), a lazy toolset (e.g. MCPToolset) is either empty or contains a placeholder tool.
+        # Agent.warm_up() must load the real tools in both cases.
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
@@ -2435,21 +2038,21 @@ class TestAgentWarmUp:
             function=lambda: "2024-12-01T12:00:00Z",
         )
 
-        class MockMCPToolset(Toolset):
+        class LazyToolset(Toolset):
             def __init__(self):
-                super().__init__([placeholder_tool])
                 self._connected = False
+                super().__init__(list(initial_tools))
 
             def warm_up(self):
                 if not self._connected:
                     self.tools = [actual_tool]
                     self._connected = True
 
-        mcp_toolset = MockMCPToolset()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=mcp_toolset)
-        assert mcp_toolset.tools == [placeholder_tool]
+        toolset = LazyToolset()
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+        assert toolset.tools == initial_tools
         agent.warm_up()
-        assert mcp_toolset.tools == [actual_tool]
+        assert toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """
@@ -2483,7 +2086,7 @@ class TestAgentWarmUp:
             tool_invoked = False
 
             @component.output_types(replies=list[ChatMessage])
-            def run(self, messages: list[ChatMessage], tools: Toolset | None = None, **kwargs) -> dict[str, Any]:
+            def run(self, messages: list[ChatMessage], tools: Toolset | None = None, **kwargs: Any) -> dict[str, Any]:
                 assert tools is not None
                 assert [tool.name for tool in tools] == ["get_time"]
                 if self.tool_invoked:
@@ -2502,14 +2105,55 @@ class TestAgentWarmUp:
         assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
         assert result["last_message"].text == "done"
 
-    def test_run_warms_up_per_run_toolset(self):
+    def test_run_warms_empty_toolset_before_selection_by_name(self):
+        actual_tool = self._make_tracking_tool("get_time")
+
+        class LazyToolset(Toolset):
+            def warm_up(self):
+                self.tools = [actual_tool]
+
+        toolset = LazyToolset([])
+        generator = MockChatGenerator(
+            [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})]), "done"]
+        )
+        agent = Agent(chat_generator=generator, tools=toolset)
+
+        result = agent.run(messages=[ChatMessage.from_user("What time is it?")], tools=["get_time"])
+
+        assert toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "result"
+        assert result["last_message"].text == "done"
+
+    @pytest.mark.asyncio
+    async def test_run_async_warms_empty_toolset_before_selection_by_name(self):
+        actual_tool = self._make_tracking_tool("get_time")
+
+        class LazyToolset(Toolset):
+            async def warm_up_async(self):
+                self.tools = [actual_tool]
+
+        toolset = LazyToolset([])
+        generator = MockChatGenerator(
+            [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})]), "done"]
+        )
+        agent = Agent(chat_generator=generator, tools=toolset)
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("What time is it?")], tools=["get_time"])
+
+        assert toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "result"
+        assert result["last_message"].text == "done"
+
+    def test_run_warms_up_but_does_not_close_per_run_toolset(self, monkeypatch):
         """Per-run tools passed to run() are not covered by Agent.warm_up() and must be warmed up at run time."""
         init_tool = self._make_tracking_tool("init_tool")
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=Toolset([init_tool]))
         agent.warm_up()
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
-        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        per_run_toolset = _TrackingToolset([per_run_tool])
+        toolset_close = MagicMock()
+        monkeypatch.setattr(per_run_toolset, "close", toolset_close, raising=False)
         assert not per_run_toolset.was_warmed_up
         assert not per_run_tool.was_warmed_up
 
@@ -2517,6 +2161,8 @@ class TestAgentWarmUp:
 
         assert per_run_toolset.was_warmed_up
         assert per_run_tool.was_warmed_up
+        agent.close()
+        toolset_close.assert_not_called()
 
     def test_run_warms_up_per_run_list_of_tools_and_toolsets(self):
         """A per-run list of Tools and Toolsets must be warmed up at run time."""
@@ -2526,89 +2172,128 @@ class TestAgentWarmUp:
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
         toolset_tool = self._make_tracking_tool("toolset_tool")
-        per_run_toolset = self._make_tracking_toolset([toolset_tool])
+        per_run_toolset = _TrackingToolset([toolset_tool])
 
-        agent.run(messages=[ChatMessage.from_user("hi")], tools=[per_run_tool, per_run_toolset])
+        per_run_tools: list[Tool | Toolset] = [per_run_tool, per_run_toolset]
+        agent.run(messages=[ChatMessage.from_user("hi")], tools=per_run_tools)
 
         assert per_run_tool.was_warmed_up
         assert per_run_toolset.was_warmed_up
         assert toolset_tool.was_warmed_up
 
     @pytest.mark.asyncio
-    async def test_run_async_warms_up_per_run_toolset(self):
+    async def test_run_async_warms_up_but_does_not_close_per_run_toolset(self, monkeypatch):
         """The async run path must also warm up per-run tools."""
         init_tool = self._make_tracking_tool("init_tool")
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=Toolset([init_tool]))
         agent.warm_up()
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
-        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        per_run_toolset = _TrackingToolset([per_run_tool])
+        toolset_close_async = AsyncMock()
+        monkeypatch.setattr(per_run_toolset, "close_async", toolset_close_async, raising=False)
 
         await agent.run_async(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
 
-        assert per_run_toolset.was_warmed_up
+        assert per_run_toolset.was_warmed_up_async
         assert per_run_tool.was_warmed_up
+        assert not per_run_toolset.was_warmed_up
+        await agent.close_async()
+        toolset_close_async.assert_not_called()
 
-
-class TestComponentLifecycle:
-    def test_warm_up_delegates_to_chat_generator(self, weather_tool):
+    def test_warm_up_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        chat_generator.warm_up = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool], system_prompt="This is a system prompt.")
 
         agent.warm_up()
-        chat_generator.warm_up.assert_called_once()
+        generator_warm_up.assert_called_once_with()
+        tool.warm_up.assert_called_once_with()
 
-        chat_generator.warm_up.reset_mock()
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
-        # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
-        assert chat_generator.warm_up.call_count == 2
+        agent.warm_up()
+        assert generator_warm_up.call_count == 2
+        assert tool.warm_up.call_count == 2
 
-    @pytest.mark.asyncio
-    async def test_warm_up_async_delegates_to_chat_generator(self):
+    def test_run_warms_up_tools_and_chat_generator(self, monkeypatch, weather_tool):
         chat_generator = MockChatGenerator("Hello")
-        chat_generator.warm_up_async = AsyncMock()
-        chat_generator.warm_up = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
-        await agent.warm_up_async()
-        chat_generator.warm_up_async.assert_awaited_once()
-        chat_generator.warm_up.assert_not_called()
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool_warm_up = MagicMock()
+        monkeypatch.setattr(weather_tool, "warm_up", tool_warm_up, raising=False)
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+        agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+
+        generator_warm_up.assert_called_with()
+        tool_warm_up.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+    async def test_warm_up_async_delegates_to_tools_and_chat_generator(self, monkeypatch):
+        chat_generator = MockChatGenerator("Hello")
+        generator_warm_up_async = AsyncMock()
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up_async", generator_warm_up_async, raising=False)
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock(), warm_up_async=AsyncMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
+        await agent.warm_up_async()
+        generator_warm_up_async.assert_awaited_once_with()
+        generator_warm_up.assert_not_called()
+        tool.warm_up_async.assert_awaited_once_with()
+        tool.warm_up.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self, monkeypatch):
         chat_generator = MockChatGeneratorWithoutRunAsync()
-        chat_generator.warm_up = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up, raising=False)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.warm_up_async()
-        chat_generator.warm_up.assert_called_once()
+        generator_warm_up.assert_called_once_with()
+        tool.warm_up.assert_called_once_with()
 
-    def test_close_delegates_to_chat_generator(self):
+    def test_close_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        chat_generator.close = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         agent.close()
-        chat_generator.close.assert_called_once()
+        generator_close.assert_called_once_with()
+        tool.close.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_close_async_delegates_to_chat_generator(self):
+    async def test_close_async_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        chat_generator.close_async = AsyncMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        generator_close_async = AsyncMock()
+        monkeypatch.setattr(chat_generator, "close_async", generator_close_async, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock(), close_async=AsyncMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.close_async()
-        chat_generator.close_async.assert_awaited_once()
+        generator_close_async.assert_awaited_once_with()
+        generator_close.assert_not_called()
+        tool.close_async.assert_awaited_once_with()
+        tool.close.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_close_async_falls_back_to_sync_close(self):
+    async def test_close_async_falls_back_to_sync_close(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        chat_generator.close = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.close_async()
-        chat_generator.close.assert_called_once()
+        generator_close.assert_called_once_with()
+        tool.close.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
-        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[])
+    async def test_lifecycle_is_safe_when_tools_and_chat_generator_lack_methods(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])
         agent.warm_up()
         await agent.warm_up_async()
         agent.close()
@@ -2625,7 +2310,7 @@ class TestAgentNotTriggeredByInjectedInput:
     `sender=None` entry flips `has_user_input()` to True).
     """
 
-    def test_agent_not_triggered_by_injected_streaming_callback(self, weather_tool):
+    def test_agent_not_triggered_by_injected_streaming_callback(self, weather_tool, monkeypatch):
         @component
         class Planner:
             @component.output_types(messages=list[ChatMessage], last_role=str)
@@ -2634,7 +2319,8 @@ class TestAgentNotTriggeredByInjectedInput:
 
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+        run_mock = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+        monkeypatch.setattr(chat_generator, "run", run_mock)
 
         router = ConditionalRouter(
             routes=[
@@ -2667,4 +2353,4 @@ class TestAgentNotTriggeredByInjectedInput:
         result = pipeline.run(data={"agent": {"streaming_callback": sync_streaming_callback}})
 
         assert "agent" not in result
-        chat_generator.run.assert_not_called()
+        run_mock.assert_not_called()

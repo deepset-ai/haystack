@@ -3,6 +3,7 @@ title: "OptimumDocumentEmbedder"
 id: optimumdocumentembedder
 slug: "/optimumdocumentembedder"
 description: "A component to compute documents’ embeddings using models loaded with the Hugging Face Optimum library."
+hep_available: false
 ---
 
 # OptimumDocumentEmbedder
@@ -103,7 +104,7 @@ embedder = OptimumDocumentEmbedder(
 pipeline = Pipeline()
 pipeline.add_component("embedder", embedder)
 
-pipeline.run({"embedder": {"documents": documents}})
+results = pipeline.run({"embedder": {"documents": documents}})
 
-print(results["embedder"]["embedding"])
+print(results["embedder"]["documents"][0].embedding)
 ```

@@ -3,6 +3,7 @@ title: "OpenAIImageGenerator"
 id: openaiimagegenerator
 slug: "/openaiimagegenerator"
 description: "Generate images using OpenAI's image generation models such as `gpt-image-2`."
+hep_available: false
 ---
 
 # OpenAIImageGenerator
@@ -60,14 +61,14 @@ from haystack.components.generators import OpenAIImageGenerator
 from haystack.components.builders import PromptBuilder
 
 prompt_builder = PromptBuilder(
-    template="""Create a {style} image with the following details:
+    template="""Create a {{ style }} image with the following details:
 
-                Main subject: {prompt}
-                Artistic style: {art_style}
-                Lighting: {lighting}
-                Color palette: {colors}
-                Composition: {composition}
-                Additional details: {details}""",
+                Main subject: {{ prompt }}
+                Artistic style: {{ art_style }}
+                Lighting: {{ lighting }}
+                Color palette: {{ colors }}
+                Composition: {{ composition }}
+                Additional details: {{ details }}""",
 )
 
 image_generator = OpenAIImageGenerator()

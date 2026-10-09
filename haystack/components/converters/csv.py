@@ -22,7 +22,8 @@ class CSVToDocument:
     """
     Converts CSV files to Documents.
 
-    By default, it uses UTF-8 encoding when converting files but
+    By default, it uses UTF-8 encoding (`utf-8-sig`, which also strips a byte order mark if
+    present) when converting files but
     you can also set a custom encoding.
     It can attach metadata to the resulting documents.
 
@@ -44,7 +45,7 @@ class CSVToDocument:
 
     def __init__(
         self,
-        encoding: str = "utf-8",
+        encoding: str = "utf-8-sig",
         store_full_path: bool = False,
         *,
         conversion_mode: Literal["file", "row"] = "file",
@@ -214,7 +215,7 @@ class CSVToDocument:
             Remaining row columns are added to ``meta`` with collision-safe
             keys (prefixed with ``csv_`` if needed).
         """
-        row_meta = dict(base_meta)
+        row_meta = {**base_meta, "row_number": row_index}
 
         # content (strict: content_column must exist; validated by caller)
         content = self._safe_value(row.get(content_column))
@@ -234,5 +235,4 @@ class CSVToDocument:
                     suffix += 1
             row_meta[key_to_use] = self._safe_value(v)
 
-        row_meta["row_number"] = row_index
         return Document(content=content, meta=row_meta)

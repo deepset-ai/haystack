@@ -7,8 +7,12 @@ import logging
 from unittest.mock import Mock, patch
 
 from haystack import Pipeline, component
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.core.serialization import generate_qualified_class_name
+from haystack.dataclasses import ChatMessage
 from haystack.telemetry._telemetry import pipeline_running, tutorial_running
+from haystack.tools import Tool, Toolset
 from haystack.utils.auth import Secret, TokenSecret
 
 
@@ -32,7 +36,7 @@ def test_pipeline_running(telemetry):
     expected_type = generate_qualified_class_name(type(pipe))
     # First run is always sent
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -47,12 +51,13 @@ def test_pipeline_running(telemetry):
     telemetry.send_event.assert_not_called()
 
     # Set the last telemetry sent time to pretend one minute has passed
+    assert pipe._last_telemetry_sent is not None
     pipe._last_telemetry_sent = pipe._last_telemetry_sent - datetime.timedelta(minutes=1)
 
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -68,7 +73,7 @@ def test_pipeline_running(telemetry):
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -98,7 +103,7 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
     pipe.add_component("component", Component())
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": "haystack.core.pipeline.pipeline.Pipeline",
@@ -106,6 +111,67 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
             "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
+
+
+@patch("haystack.telemetry._telemetry.telemetry")
+def test_pipeline_running_reports_agent_tools(telemetry):
+    telemetry.send_event = Mock()
+    tool = Tool(name="tool", description="A tool.", parameters={"type": "object", "properties": {}}, function=print)
+
+    pipe = Pipeline()
+    pipe.add_component("agent", Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool]))
+    pipeline_running(pipe)
+
+    event_properties = telemetry.send_event.call_args.args[1]
+    assert event_properties["components"]["haystack.components.agents.agent.Agent"] == [
+        {
+            "name": "agent",
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 1, "tools": [{"type": "haystack.tools.tool.Tool", "name": "tool"}], "toolset_types": {}},
+        }
+    ]
+
+
+class _ToolsetLoadingOnWarmUp(Toolset):
+    def __init__(self, tool: Tool) -> None:
+        super().__init__(tools=[])
+        self._tool = tool
+
+    def warm_up(self) -> None:
+        self.tools = [self._tool]
+
+
+def _pipeline_with_agent_using_toolset_loading_on_warm_up() -> Pipeline:
+    tool = Tool(name="tool", description="A tool.", parameters={"type": "object", "properties": {}}, function=print)
+    pipe = Pipeline()
+    pipe.add_component(
+        "agent", Agent(chat_generator=MockChatGenerator("Hello"), tools=_ToolsetLoadingOnWarmUp(tool=tool))
+    )
+    return pipe
+
+
+def _reported_agent_tools(capture: Mock) -> dict:
+    return capture.call_args.kwargs["properties"]["components"]["haystack.components.agents.agent.Agent"][0]["tools"]
+
+
+def test_pipeline_run_reports_tools_loaded_on_warm_up(block_telemetry_network_calls: Mock) -> None:
+    pipe = _pipeline_with_agent_using_toolset_loading_on_warm_up()
+
+    pipe.run({"agent": {"messages": [ChatMessage.from_user("Hi")]}})
+
+    assert _reported_agent_tools(block_telemetry_network_calls)["tools"] == [
+        {"type": "haystack.tools.tool.Tool", "name": "tool"}
+    ]
+
+
+async def test_pipeline_run_async_reports_tools_loaded_on_warm_up(block_telemetry_network_calls: Mock) -> None:
+    pipe = _pipeline_with_agent_using_toolset_loading_on_warm_up()
+
+    await pipe.run_async({"agent": {"messages": [ChatMessage.from_user("Hi")]}})
+
+    assert _reported_agent_tools(block_telemetry_network_calls)["tools"] == [
+        {"type": "haystack.tools.tool.Tool", "name": "tool"}
+    ]
 
 
 def test_pipeline_running_with_non_dict_telemetry_data(caplog):
@@ -150,4 +216,5 @@ def test_send_telemetry_preserves_function_metadata():
     assert "tutorial_id" in tutorial_running.__annotations__
 
     # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
+    assert hasattr(pipeline_running, "__wrapped__")
     assert pipeline_running.__wrapped__.__name__ == "pipeline_running"

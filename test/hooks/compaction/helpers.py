@@ -54,6 +54,15 @@ def tool_result(result: str, *, call_id: str = "c1", name: str = "search", error
     )
 
 
+def conversation(*results: str) -> list[ChatMessage]:
+    """A user task followed by one Agent step per given result."""
+    messages = [ChatMessage.from_user("task")]
+    for index, result in enumerate(results):
+        call_id = f"c{index}"
+        messages.extend([tool_call(call_id), tool_result(result, call_id=call_id)])
+    return messages
+
+
 def make_state(messages: list[ChatMessage], **data: Any) -> State:
     """A State shaped like the Agent's, holding `messages` and whatever run metadata a test overrides."""
     base = {
@@ -67,12 +76,11 @@ def make_state(messages: list[ChatMessage], **data: Any) -> State:
     return State(schema=_SCHEMA, data={**base, **data})
 
 
-def long_conversation() -> list[ChatMessage]:
+def fresh_conversation_with_two_steps() -> list[ChatMessage]:
     """
-    Six messages: a system prefix, a user turn, then two tool round-trips.
+    A system prefix and a first user task with two Agent steps behind it, so there are no earlier turns to remove.
 
-    The results are padded so that removing them saves more than an omission note costs, which is what a compactor
-    weighs before leaving one behind.
+    The tool results are padded so that dropping a step is a saving worth making.
     """
     return [
         ChatMessage.from_system("rules"),

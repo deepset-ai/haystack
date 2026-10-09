@@ -3,6 +3,7 @@ title: "ChatPromptBuilder"
 id: chatpromptbuilder
 slug: "/chatpromptbuilder"
 description: "This component constructs prompts dynamically by processing chat messages."
+hep_available: true
 ---
 
 # ChatPromptBuilder
@@ -87,7 +88,7 @@ builder = ChatPromptBuilder(
 )
 
 result = builder.run(name="Alice")
-# Output: "Hello, Alice. How can I assist you with ?"
+# >> "Hello, Alice. How can I assist you with ?"
 ```
 
 The component only waits for the required inputs before running.
@@ -146,7 +147,7 @@ The expression can be a plain variable (`{% insert messages %}`), a slice or ind
 
 ### Jinja2 Time Extension
 
-`PromptBuilder` supports the Jinja2 TimeExtension, which allows you to work with datetime formats.
+`ChatPromptBuilder` supports the Jinja2 TimeExtension, which allows you to work with datetime formats.
 
 The Time Extension provides two main features:
 

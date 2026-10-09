@@ -71,7 +71,7 @@ print(result)
 ```
 
 ```bash
-{'documents': [Document(id=..., content: 'agents', meta: {'path': 'haystack/components/agents', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/agents'}), Document(id=..., content: 'audio', meta: {'path': 'haystack/components/audio', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/audio'}),...]}
+{'documents': [Document(id=..., content: 'agents', meta: {'path': 'haystack/components/agents', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/agents'}), Document(id=..., content: 'builders', meta: {'path': 'haystack/components/builders', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/builders'}),...]}
 ```
 
 ### With an Agent
@@ -81,8 +81,6 @@ You can use `GitHubRepoViewerTool` with the [Agent](../../pipeline-components/ag
 Note that we set the Agent's `state_schema` parameter in this code example so that the GitHubRepoViewerTool can write documents to the state.
 
 ```python
-from typing import List
-
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, Document
 from haystack.components.agents import Agent
@@ -94,7 +92,7 @@ agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[repo_tool],
     exit_conditions=["text"],
-    state_schema={"documents": {"type": List[Document]}},
+    state_schema={"documents": {"type": list[Document]}},
 )
 
 response = agent.run(

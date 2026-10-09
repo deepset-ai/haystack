@@ -104,18 +104,43 @@ class MultiRetriever:
             `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
             `top_k`. If None, all results are returned.
         :param max_workers:
-            The maximum number of threads to use for parallel retrieval.
+            The maximum number of threads in `run` and of concurrent retriever calls in `run_async`.
         :param join_mode:
             How to merge results from multiple retrievers. Available modes:
             - `concatenate`: Combines all results into a single list and deduplicates.
             - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
+
+        :raises ValueError:
+            If `top_k` or `top_k_per_retriever` is set and is not greater than 0.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be greater than 0, but got {top_k}")
+        if top_k_per_retriever is not None and top_k_per_retriever <= 0:
+            raise ValueError(f"top_k_per_retriever must be greater than 0, but got {top_k_per_retriever}")
         self.retrievers = retrievers
         self.filters = filters
         self.top_k_per_retriever = top_k_per_retriever
         self.top_k = top_k
         self.max_workers = max_workers
         self.join_mode = join_mode
+
+    def _resolve_top_k(self, top_k_per_retriever: int | None, top_k: int | None) -> tuple[int | None, int | None]:
+        """
+        Resolve runtime values against the init defaults and reject negatives.
+
+        A resolved value of 0 is valid and means no documents are returned.
+        """
+        resolved_top_k_per_retriever = (
+            top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
+        )
+        resolved_top_k = top_k if top_k is not None else self.top_k
+        if resolved_top_k is not None and resolved_top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {resolved_top_k}")
+        if resolved_top_k_per_retriever is not None and resolved_top_k_per_retriever < 0:
+            raise ValueError(
+                f"top_k_per_retriever must be greater than or equal to 0, but got {resolved_top_k_per_retriever}"
+            )
+        return resolved_top_k_per_retriever, resolved_top_k
 
     def _merge_results(self, document_lists: list[list[Document]], top_k: int | None = None) -> list[Document]:
         """
@@ -212,12 +237,13 @@ class MultiRetriever:
         :param top_k_per_retriever:
             The maximum number of documents to return per retriever. When set, this will override the `top_k`
             parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
-            Defaults to the value set at initialization.
+            If 0, no documents are returned. Defaults to the value set at initialization.
         :param top_k:
             The maximum number of documents to return overall, extracted from the combined results of all
             retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
             `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
-            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
+            `top_k`. If None, all results are returned. If 0, no documents are returned.
+            Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -226,17 +252,17 @@ class MultiRetriever:
                 - "documents": A deduplicated list of retrieved documents.
 
         :raises ValueError:
-            If any name in `active_retrievers` does not match a retriever name.
+            If any name in `active_retrievers` does not match a retriever name,
+            or if the resolved `top_k` or `top_k_per_retriever` is negative.
         """
         self.warm_up()
 
-        resolved_top_k_per_retriever = (
-            top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
-        )
-        resolved_top_k = top_k if top_k is not None else self.top_k
+        resolved_top_k_per_retriever, resolved_top_k = self._resolve_top_k(top_k_per_retriever, top_k)
         resolved_filters = filters if filters is not None else self.filters
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
+        if resolved_top_k == 0 or resolved_top_k_per_retriever == 0:
+            return {"documents": []}
 
         results_by_name: dict[str, list[Document]] = {}
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -281,12 +307,13 @@ class MultiRetriever:
         :param top_k_per_retriever:
             The maximum number of documents to return per retriever. When set, this will override the `top_k`
             parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
-            Defaults to the value set at initialization.
+            If 0, no documents are returned. Defaults to the value set at initialization.
         :param top_k:
             The maximum number of documents to return overall, extracted from the combined results of all
             retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
             `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
-            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
+            `top_k`. If None, all results are returned. If 0, no documents are returned.
+            Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -295,17 +322,17 @@ class MultiRetriever:
                 - "documents": A deduplicated list of retrieved documents.
 
         :raises ValueError:
-            If any name in `active_retrievers` does not match a retriever name.
+            If any name in `active_retrievers` does not match a retriever name,
+            or if the resolved `top_k` or `top_k_per_retriever` is negative.
         """
         await self.warm_up_async()
 
-        resolved_top_k_per_retriever = (
-            top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
-        )
-        resolved_top_k = top_k if top_k is not None else self.top_k
+        resolved_top_k_per_retriever, resolved_top_k = self._resolve_top_k(top_k_per_retriever, top_k)
         resolved_filters = filters if filters is not None else self.filters
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
+        if resolved_top_k == 0 or resolved_top_k_per_retriever == 0:
+            return {"documents": []}
 
         run_kwargs: dict[str, Any] = {"query": query}
         if resolved_top_k_per_retriever is not None:
@@ -313,12 +340,16 @@ class MultiRetriever:
         if resolved_filters is not None:
             run_kwargs["filters"] = resolved_filters
 
+        # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
+        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
-            try:
-                result = await _execute_component_async(retriever, **run_kwargs)
-                return result.get("documents", [])
-            except Exception as e:
-                raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
+            async with semaphore:
+                try:
+                    result = await _execute_component_async(retriever, **run_kwargs)
+                    return result.get("documents", [])
+                except Exception as e:
+                    raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         tasks = [asyncio.create_task(_run_one(name, retriever)) for name, retriever in retrievers_to_run.items()]
         document_lists = await _gather_tasks_with_cancel(tasks)

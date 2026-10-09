@@ -6,7 +6,8 @@ import asyncio
 import datetime
 import json
 import time
-from typing import Any
+from collections.abc import Callable
+from typing import Annotated, Any
 from unittest.mock import patch
 
 import pytest
@@ -111,7 +112,7 @@ def faulty_tool():
     )
 
 
-def add_function(num1: int, num2: int):
+def add_function(num1: int, num2: int) -> int:
     return num1 + num2
 
 
@@ -396,6 +397,7 @@ class TestRunTool:
         tool_messages, _ = _run_tool(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
         assert not tool_call_result.error
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
@@ -407,6 +409,7 @@ class TestRunTool:
 
         tool_messages, _ = await _run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
         tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
         assert not tool_call_result.error
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
@@ -579,13 +582,15 @@ class TestRunTool:
         )
         assert len(tool_messages_2) == 3
 
-    def test_run_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_run_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -603,13 +608,15 @@ class TestRunTool:
         assert received_state["state"] is state
 
     @pytest.mark.asyncio
-    async def test_run_async_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    async def test_run_async_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -750,7 +757,7 @@ class TestRunToolErrorHandling:
 
     def test_run_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
+            def set(self, key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
@@ -765,7 +772,7 @@ class TestRunToolErrorHandling:
     @pytest.mark.asyncio
     async def test_run_async_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
+            def set(self, key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
@@ -957,7 +964,7 @@ class TestUtilities:
         ]
 
 
-def _reader_tool(state_key: str = "documents", seen: list | None = None):
+def _reader_tool(state_key: str = "documents", seen: list[Any] | None = None) -> Tool:
     """A tool that reads `state_key` from State into its `value` param (no writes).
 
     If `seen` is provided, the value the tool received is appended to it, so behavioral tests can assert what the
@@ -978,7 +985,7 @@ def _reader_tool(state_key: str = "documents", seen: list | None = None):
     )
 
 
-def _writer_tool(state_key: str = "documents", value: str = "written"):
+def _writer_tool(state_key: str = "documents", value: str = "written") -> Tool:
     """A tool that writes `value` to `state_key` in State (no reads)."""
 
     def writer_fn():
@@ -993,12 +1000,13 @@ def _writer_tool(state_key: str = "documents", value: str = "written"):
     )
 
 
-def _state_param_tool():
+def _state_param_tool(state_annotation: Any = State) -> Tool:
     """A tool that receives the live State object, so it may read/write any key."""
 
     def fn(state: State) -> str:
         return "done"
 
+    fn.__annotations__["state"] = state_annotation
     return Tool(
         name="state_tool",
         description="Receives the live State.",
@@ -1050,7 +1058,8 @@ class TestScheduleToolCalls:
         tools = [_make_retrieval_tool(), _make_retrieval_tool()]
         assert _schedule_tool_calls(calls, tools) == [[0], [1]]
 
-    def test_state_param_tool_is_a_barrier(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_state_param_tool_is_a_barrier(self, state_annotation: Any) -> None:
         # A State-typed tool reads/writes every key, so it serializes everything around it even when the other
         # calls touch disjoint keys ("a" and "b"): writer("b") must run before the state tool (which reads "b"),
         # and reader("a") must run after it (the state tool may write "a").
@@ -1059,7 +1068,7 @@ class TestScheduleToolCalls:
             ToolCall(tool_name="state_tool", arguments={}),
             ToolCall(tool_name="writer_tool", arguments={}),
         ]
-        tools = [_reader_tool("a"), _state_param_tool(), _writer_tool("b")]
+        tools = [_reader_tool("a"), _state_param_tool(state_annotation=state_annotation), _writer_tool("b")]
         assert _schedule_tool_calls(calls, tools) == [[2], [1], [0]]
 
     def test_llm_supplied_arg_is_not_a_state_read(self):
@@ -1088,7 +1097,7 @@ class TestStateDependencyScheduling:
 
     def test_reader_requested_before_writer_still_sees_write(self):
         """A reader listed before a writer of the same key must still run after the writer (forced read-after-write)."""
-        seen = []
+        seen: list[Any] = []
         reader_tool = _reader_tool("value", seen=seen)
         writer_tool = _writer_tool("value")
         state = State(schema={"value": {"type": str}})
@@ -1116,7 +1125,9 @@ class TestRunToolAsync:
             )
 
         to_thread_mock.assert_not_called()
-        assert json.loads(tool_messages[0].tool_call_results[0].result)["weather"] == "mostly sunny"
+        result = tool_messages[0].tool_call_results[0].result
+        assert isinstance(result, str)
+        assert json.loads(result)["weather"] == "mostly sunny"
 
     @pytest.mark.asyncio
     async def test_sync_tool_is_dispatched_to_thread(self, weather_tool):

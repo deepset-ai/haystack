@@ -3,6 +3,7 @@ title: "AzureAISearchBM25Retriever"
 id: azureaisearchbm25retriever
 slug: "/azureaisearchbm25retriever"
 description: "A keyword-based Retriever that fetches Documents matching a query from the Azure AI Search Document Store."
+hep_available: true
 ---
 
 # AzureAISearchBM25Retriever
@@ -81,7 +82,6 @@ retriever.run(query="How many languages are spoken around the world today?")
 The below example shows how to use the `AzureAISearchBM25Retriever` in a RAG pipeline. Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
 
 ```python
-
 from haystack_integrations.components.retrievers.azure_ai_search import (
     AzureAISearchBM25Retriever,
 )

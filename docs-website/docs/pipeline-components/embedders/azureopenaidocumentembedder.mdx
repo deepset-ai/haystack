@@ -3,6 +3,7 @@ title: "AzureOpenAIDocumentEmbedder"
 id: azureopenaidocumentembedder
 slug: "/azureopenaidocumentembedder"
 description: "This component computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Azure cognitive services for text and document embedding with models deployed on Azure."
+hep_available: true
 ---
 
 # AzureOpenAIDocumentEmbedder
@@ -27,7 +28,7 @@ This component computes the embeddings of a list of documents and stores the obt
 
 The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents.
 
-To see the list of compatible embedding models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model for `AzureOpenAITextEmbedder` is `text-embedding-ada-002`.
+To see the list of compatible embedding models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model for `AzureOpenAIDocumentEmbedder` is `text-embedding-3-small`.
 
 This component should be used to embed a list of documents. To embed a string, you should use the [`AzureOpenAITextEmbedder`](azureopenaitextembedder.mdx).
 
@@ -85,7 +86,7 @@ print(result["documents"][0].embedding)
 ### In a pipeline
 
 ```python
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.embedders import (
     AzureOpenAITextEmbedder,
@@ -123,6 +124,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

@@ -17,8 +17,10 @@ from haystack.components.retrievers import (
     MultiRetriever,
     TextEmbeddingRetriever,
 )
+from haystack.components.retrievers.types import TextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.experimental import ExperimentalWarning
 
@@ -31,14 +33,18 @@ class MockRetriever:
         self.documents = documents or []
 
     @component.output_types(documents=list[Document])
-    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+    def run(
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+    ) -> dict[str, list[Document]]:
         return {"documents": self.documents}
 
 
 @component
 class FailingRetriever:
     @component.output_types(documents=list[Document])
-    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+    def run(
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+    ) -> dict[str, list[Document]]:
         raise RuntimeError("connection error")
 
 
@@ -99,7 +105,7 @@ def embedding_retriever(document_store_with_embeddings):
 
 class TestMultiRetriever:
     def test_init_default_parameters(self):
-        retrievers = {"mock": MockRetriever()}
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
         retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
@@ -109,7 +115,7 @@ class TestMultiRetriever:
         assert retriever.join_mode == "reciprocal_rank_fusion"
 
     def test_init_custom_parameters(self):
-        retrievers = {"mock": MockRetriever()}
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
         retriever = MultiRetriever(
             retrievers=retrievers, filters={"field": "meta.category"}, top_k=5, max_workers=2, join_mode="concatenate"
         )
@@ -126,8 +132,10 @@ class TestMultiRetriever:
             retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
         )
         result = retriever.run(query="energy")
-        assert all(doc.score is not None for doc in result["documents"])
-        scores = [doc.score for doc in result["documents"]]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
         # doc1 ranked 1st in a and 2nd in b, doc3 ranked 3rd in a and 1st in b — doc1 should beat doc3
         ids = [doc.id for doc in result["documents"]]
@@ -170,7 +178,9 @@ class TestMultiRetriever:
         @component
         class CapturingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 received["filters"] = filters
                 received["top_k"] = top_k
                 return {"documents": []}
@@ -195,7 +205,9 @@ class TestMultiRetriever:
         @component
         class CapturingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 received["top_k"] = top_k
                 return {"documents": []}
 
@@ -210,6 +222,37 @@ class TestMultiRetriever:
         retriever.run(query="energy", top_k=5)
         assert received.get("top_k") is None
 
+    @pytest.mark.parametrize("top_k", [-1, -3, 0])
+    def test_init_with_invalid_top_k_raises(self, top_k):
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            MultiRetriever(retrievers=retrievers, top_k=top_k)
+
+    @pytest.mark.parametrize("top_k_per_retriever", [-1, 0])
+    def test_init_with_invalid_top_k_per_retriever_raises(self, top_k_per_retriever):
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="top_k_per_retriever must be greater than 0"):
+            MultiRetriever(retrievers=retrievers, top_k_per_retriever=top_k_per_retriever)
+
+    @pytest.mark.parametrize("top_k", [-1, -2])
+    def test_run_with_negative_top_k_raises(self, sample_documents, top_k):
+        # Regression: a negative top_k was used as a negative slice on the merged list, silently dropping the
+        # last documents instead of raising.
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            retriever.run(query="energy", top_k=top_k)
+
+    def test_run_with_negative_top_k_per_retriever_raises(self, sample_documents):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k_per_retriever must be greater than or equal to 0"):
+            retriever.run(query="energy", top_k_per_retriever=-1)
+
+    @pytest.mark.parametrize("run_kwargs", [{"top_k": 0}, {"top_k_per_retriever": 0}])
+    def test_run_with_zero_top_k_returns_empty_without_running_retrievers(self, run_kwargs):
+        # FailingRetriever raises if called, so an empty result proves the retrievers were skipped
+        retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
+        assert retriever.run(query="energy", **run_kwargs) == {"documents": []}
+
     def test_run_top_k_truncates_merged_results(self, sample_documents):
         retriever = MultiRetriever(
             retrievers={
@@ -220,8 +263,10 @@ class TestMultiRetriever:
         )
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
-        scores = [doc.score for doc in result["documents"]]
-        assert all(score is not None for score in scores)
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     def test_run_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
@@ -276,13 +321,14 @@ class TestMultiRetriever:
                             "document_store": {
                                 "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                                 "init_parameters": {
-                                    "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                                    "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                                     "bm25_algorithm": "BM25L",
                                     "bm25_parameters": {},
                                     "embedding_similarity_function": "dot_product",
                                     "index": ANY,
                                     "shared": True,
                                     "return_embedding": True,
+                                    "strict_datetime_comparison": False,
                                 },
                             },
                             "filters": None,
@@ -318,6 +364,7 @@ class TestMultiRetriever:
                                     "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
                                     "shared": True,
                                     "return_embedding": True,
+                                    "strict_datetime_comparison": False,
                                 },
                             },
                             "filters": None,
@@ -433,8 +480,10 @@ class TestMultiRetrieverAsync:
             retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
         )
         result = await retriever.run_async(query="energy")
-        assert all(doc.score is not None for doc in result["documents"])
-        scores = [doc.score for doc in result["documents"]]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
         ids = [doc.id for doc in result["documents"]]
         assert ids.index("doc1") < ids.index("doc3")
@@ -446,7 +495,9 @@ class TestMultiRetrieverAsync:
         @component
         class CapturingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 received["filters"] = filters
                 received["top_k"] = top_k
                 return {"documents": []}
@@ -471,7 +522,9 @@ class TestMultiRetrieverAsync:
         @component
         class CapturingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 received["top_k"] = top_k
                 return {"documents": []}
 
@@ -496,8 +549,10 @@ class TestMultiRetrieverAsync:
         )
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
-        scores = [doc.score for doc in result["documents"]]
-        assert all(score is not None for score in scores)
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
@@ -513,6 +568,24 @@ class TestMultiRetrieverAsync:
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
         assert all(doc.score is not None for doc in result["documents"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_negative_top_k_raises(self, sample_documents):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await retriever.run_async(query="energy", top_k=-1)
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_negative_top_k_per_retriever_raises(self, sample_documents):
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(documents=sample_documents)})
+        with pytest.raises(ValueError, match="top_k_per_retriever must be greater than or equal to 0"):
+            await retriever.run_async(query="energy", top_k_per_retriever=-1)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("run_kwargs", [{"top_k": 0}, {"top_k_per_retriever": 0}])
+    async def test_run_async_with_zero_top_k_returns_empty_without_running_retrievers(self, run_kwargs):
+        retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
+        assert await retriever.run_async(query="energy", **run_kwargs) == {"documents": []}
 
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers(self, sample_documents):
@@ -543,11 +616,15 @@ class TestMultiRetrieverAsync:
         @component
         class SlowRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 nonlocal slow_cancelled
                 slow_started.set()
                 try:
@@ -560,11 +637,15 @@ class TestMultiRetrieverAsync:
         @component
         class FailingRetriever:
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 raise RuntimeError("boom")
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 await slow_started.wait()
                 raise RuntimeError("boom")
 
@@ -583,11 +664,15 @@ class TestMultiRetrieverAsync:
                 self.used_async = False
 
             @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 return {"documents": []}
 
             @component.output_types(documents=list[Document])
-            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
                 self.used_async = True
                 return {"documents": [Document(content="async result", id="async1")]}
 
@@ -597,6 +682,34 @@ class TestMultiRetrieverAsync:
         assert inner.used_async is True
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "async1"
+
+    @pytest.mark.asyncio
+    async def test_run_async_bounds_concurrency_to_max_workers(self):
+        state = {"current": 0, "peak": 0}
+
+        @component
+        class TrackingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                state["current"] += 1
+                state["peak"] = max(state["peak"], state["current"])
+                await asyncio.sleep(0.02)
+                state["current"] -= 1
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={f"r{i}": TrackingRetriever() for i in range(8)}, max_workers=2)
+        await retriever.run_async(query="energy")
+
+        assert state["peak"] <= 2
+        assert state["peak"] > 1  # the retrievers do overlap; they are not serialized
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration

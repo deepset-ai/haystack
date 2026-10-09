@@ -3,6 +3,7 @@ title: "TransformersZeroShotTextRouter"
 id: transformerszeroshottextrouter
 slug: "/transformerszeroshottextrouter"
 description: "Use this component to route text input to various output connections based on its user-defined categorization label."
+hep_available: true
 ---
 
 # TransformersZeroShotTextRouter
@@ -14,9 +15,9 @@ Use this component to route text input to various output connections based on it
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `labels`: A list of labels for classification |
 | **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
-| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
+| **Output variables** | `<label>`: The input text, on the output connection named after the label the model assigned to it. There's one output per label you define. |
 | **API reference** | [Transformers](/reference/integrations-transformers) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/transformers |
 | **Package name** | `transformers-haystack` |
@@ -30,6 +31,8 @@ Use this component to route text input to various output connections based on it
 `TransformersZeroShotTextRouter` uses the `MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33` zero-shot text classification model by default. You can set another model of your choosing with the `model` parameter.
 
 To use `TransformersZeroShotTextRouter`, you need to provide the mandatory `labels` parameter – a list of strings of possible class labels to classify each sequence into.
+
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
 
 To see the full list of parameters, check out our [API reference](/reference/integrations-transformers#transformerszeroshottextrouter).
 
@@ -55,7 +58,7 @@ We then create a retrieving pipeline with the `TransformersZeroShotTextRouter` t
 
 Finally, the pipeline is executed with a sample text: "What is the capital of Germany?” which categorizes this input text as “query” and routes it to Query Embedder and subsequently Query Retriever to return the relevant results.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack
@@ -65,8 +68,13 @@ pip install sentence-transformers-haystack
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.core.pipeline import Pipeline
-from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.routers.transformers import (
+    TransformersZeroShotTextRouter,
+)
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
@@ -74,36 +82,43 @@ doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
 docs = [
     Document(
         content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
-                "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
-                "is Frankfurt; the largest urban area is the Ruhr."
+        "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
+        "is Frankfurt; the largest urban area is the Ruhr."
     ),
     Document(
         content="France, officially the French Republic, is a country located primarily in Western Europe. "
-                "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
-                "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
-                "Lille, Bordeaux, Strasbourg, Nantes and Nice."
-    )
+        "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
+        "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
+        "Lille, Bordeaux, Strasbourg, Nantes and Nice."
+    ),
 ]
 docs_with_embeddings = doc_embedder.run(docs)
 document_store.write_documents(docs_with_embeddings["documents"])
 
 p = Pipeline()
-p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
 p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
-    name="passage_embedder"
+    instance=TransformersZeroShotTextRouter(labels=["passage", "query"]),
+    name="text_router",
 )
 p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
-    name="query_embedder"
+    instance=SentenceTransformersTextEmbedder(
+        model="intfloat/e5-base-v2", prefix="passage: "
+    ),
+    name="passage_embedder",
+)
+p.add_component(
+    instance=SentenceTransformersTextEmbedder(
+        model="intfloat/e5-base-v2", prefix="query: "
+    ),
+    name="query_embedder",
 )
 p.add_component(
     instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="query_retriever"
+    name="query_retriever",
 )
 p.add_component(
     instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="passage_retriever"
+    name="passage_retriever",
 )
 
 p.connect("text_router.passage", "passage_embedder.text")
@@ -114,13 +129,11 @@ p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 # Query Example
 result = p.run({"text_router": {"text": "What is the capital of Germany?"}})
 print(result)
-
->>{'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
-content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
-score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
-content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',
-score: 0.7637571978602222)]}}
-
+# >> {'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
+# >> content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
+# >> score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
+# >> content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',
+# >> score: 0.7637571978602222)]}}
 ```
 
 ## Additional References

@@ -1,0 +1,4 @@
+fixes:
+  - |
+    Fixed ``FilterRetriever`` so that an empty runtime ``filters`` dictionary clears filters provided at initialization
+    during synchronous and asynchronous execution.

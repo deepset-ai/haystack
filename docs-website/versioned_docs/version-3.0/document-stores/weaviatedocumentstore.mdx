@@ -46,7 +46,6 @@ You can use `WeaviateDocumentStore` in a local Docker container. This is what a 
 
 ```yaml
 ---
-version: '3.4'
 services:
   weaviate:
     command:
@@ -56,7 +55,7 @@ services:
     - '8080'
     - --scheme
     - http
-    image: semitechnologies/weaviate:1.30.17
+    image: semitechnologies/weaviate:1.36.2
     ports:
     - 8080:8080
     - 50051:50051

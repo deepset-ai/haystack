@@ -5,6 +5,7 @@
 import csv
 import io
 import os
+import re
 from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
@@ -12,16 +13,29 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_MARKUP_COMPATIBILITY_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+# A text box keeps its paragraphs here, nested under the drawing inside a run.
+_TEXT_BOX_CONTENT_TAG = f"{{{_WORD_NS}}}txbxContent"
+# Word writes a text box twice inside `mc:AlternateContent`: a `wps:txbx` under
+# `mc:Choice` and the same text as a VML text box under `mc:Fallback`.
+_FALLBACK_TAG = f"{{{_MARKUP_COMPATIBILITY_NS}}}Fallback"
+
+# A Markdown table row ends at a line break and its columns are separated by pipes, so
+# neither can survive inside a cell.
+_MARKDOWN_CELL_BREAK_PATTERN = re.compile(r"\s*(?:\r\n|\r|\n)\s*")
+_MARKDOWN_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
+
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
-    from docx.table import Table
+    from docx.table import Table, _Cell
     from docx.text.hyperlink import Hyperlink
     from docx.text.paragraph import Paragraph
     from docx.text.run import Run
@@ -91,29 +105,7 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
-class DOCXLinkFormat(Enum):
-    """
-    Supported formats for storing DOCX link information in a Document.
-    """
-
-    MARKDOWN = "markdown"
-    PLAIN = "plain"
-    NONE = "none"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @staticmethod
-    def from_str(string: str) -> "DOCXLinkFormat":
-        """
-        Convert a string to a DOCXLinkFormat enum.
-        """
-        enum_map = {e.value: e for e in DOCXLinkFormat}
-        link_format = enum_map.get(string.lower())
-        if link_format is None:
-            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
-            raise ValueError(msg)
-        return link_format
+DOCXLinkFormat = LinkFormat
 
 
 @component
@@ -267,6 +259,7 @@ class DOCXToDocument:
                 else:
                     para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
+                elements.extend(self._extract_text_boxes(element, document))
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
                 table_str = (
@@ -276,6 +269,34 @@ class DOCXToDocument:
                 )
                 elements.append(table_str)
 
+        return elements
+
+    def _extract_text_boxes(self, element: Any, document: "DocxDocument") -> list[str]:
+        """
+        Extracts the text of any text box anchored to a paragraph.
+
+        A text box holds its own paragraphs and tables under `w:txbxContent`, nested in
+        the drawing inside a run, so the anchoring paragraph's text never reaches them.
+
+        :param element: The `w:p` element to look under.
+        :param document: The DOCX Document object.
+        :returns: List of strings, one per paragraph or table found inside a text box.
+        """
+        elements = []
+        for text_box in element.iter(_TEXT_BOX_CONTENT_TAG):
+            # Skip the `mc:Fallback` copy, or the same text is emitted twice.
+            if any(ancestor.tag == _FALLBACK_TAG for ancestor in text_box.iterancestors()):
+                continue
+            for child in text_box:
+                if child.tag.endswith("p"):
+                    elements.append(self._process_links_in_paragraph(Paragraph(child, document)))
+                elif child.tag.endswith("tbl"):
+                    table = docx.table.Table(child, document)
+                    elements.append(
+                        self._table_to_markdown(table)
+                        if self.table_format == DOCXTableFormat.MARKDOWN
+                        else self._table_to_csv(table)
+                    )
         return elements
 
     def _process_paragraph_with_page_breaks(self, paragraph: "Paragraph") -> str:
@@ -327,6 +348,31 @@ class DOCXToDocument:
 
         return text
 
+    @staticmethod
+    def _escape_markdown_cell(text: str) -> str:
+        """
+        Makes a cell's text safe to put between the pipes of a Markdown table row.
+
+        A cell spanning several paragraphs arrives with newlines in it, which would end
+        the row in the middle, and a pipe in a cell would be read as a column separator.
+
+        :param text: The cell text.
+        :returns: The text with line breaks collapsed and pipes escaped.
+        """
+        text = _MARKDOWN_CELL_BREAK_PATTERN.sub(" ", text)
+        # The backslash run in front of the pipe is doubled first, so a backslash the
+        # cell already contains cannot consume the escape.
+        return _MARKDOWN_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", text)
+
+    def _cell_text(self, cell: "_Cell") -> str:
+        """
+        Returns a table cell's text with links formatted like links in body paragraphs.
+
+        :param cell: The DOCX table cell.
+        :returns: The cell's paragraphs joined by newlines, as `cell.text` joins them.
+        """
+        return "\n".join(self._process_links_in_paragraph(paragraph) for paragraph in cell.paragraphs)
+
     def _table_to_markdown(self, table: "Table") -> str:
         """
         Converts a DOCX table to a Markdown string.
@@ -337,10 +383,10 @@ class DOCXToDocument:
         markdown: list[str] = []
         max_col_widths: list[int] = []
 
-        # Calculate max width for each column
+        # Calculate max width for each column, on the escaped text that is written out
         for row in table.rows:
             for i, cell in enumerate(row.cells):
-                cell_text = cell.text.strip()
+                cell_text = self._escape_markdown_cell(self._cell_text(cell).strip())
                 if i >= len(max_col_widths):
                     max_col_widths.append(len(cell_text))
                 else:
@@ -348,7 +394,10 @@ class DOCXToDocument:
 
         # Process rows
         for i, row in enumerate(table.rows):
-            md_row = [cell.text.strip().ljust(max_col_widths[j]) for j, cell in enumerate(row.cells)]
+            md_row = [
+                self._escape_markdown_cell(self._cell_text(cell).strip()).ljust(max_col_widths[j])
+                for j, cell in enumerate(row.cells)
+            ]
             markdown.append("| " + " | ".join(md_row) + " |")
 
             # Add separator after header row
@@ -370,7 +419,7 @@ class DOCXToDocument:
 
         # Process rows
         for row in table.rows:
-            csv_row = [cell.text.strip() for cell in row.cells]
+            csv_row = [self._cell_text(cell).strip() for cell in row.cells]
             csv_writer.writerow(csv_row)
 
         # Get the CSV as a string and strip any trailing newlines

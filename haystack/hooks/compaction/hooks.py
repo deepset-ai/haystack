@@ -4,13 +4,18 @@
 
 from typing import Any
 
-from haystack import logging
+from haystack import logging, tracing
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
+from haystack.hooks.compaction.utils import _last_assistant_index
 from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -19,8 +24,34 @@ from haystack.utils.experimental import _experimental
 logger = logging.getLogger(__name__)
 
 
+def _estimated_context_tokens(
+    messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
+) -> int:
+    """
+    Estimate the size of the whole conversation.
+
+    :param messages: The conversation, oldest to newest.
+    :param context_tokens: The `context_tokens` state key, anchored on the provider's own token counting. It accounts
+        for the conversation through the last assistant message, or for the whole conversation when there is none.
+    :param token_counter: The counter to measure the unaccounted messages with.
+    :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
+    :returns: The estimated total token count.
+    """
+    # Nothing sent yet, or a generator that reports no usage, so count everything.
+    if context_tokens == 0:
+        return token_counter.count(messages=messages, tools=tools)
+    # `context_tokens` accounts for the conversation through the last assistant message, so only the tool result
+    # messages after it still need estimating. If there is no assistant message, `context_tokens` accounts for the
+    # whole conversation, so nothing more needs counting.
+    last_assistant_index = _last_assistant_index(messages=messages)
+    if last_assistant_index < 0:
+        return context_tokens
+    tool_result_messages = messages[last_assistant_index + 1 :]
+    return context_tokens + token_counter.count(messages=tool_result_messages)
+
+
 @_experimental
-class ContextCompactionHook:
+class CompactionHook:
     """
     Compacts an Agent's conversation once it fills too much of the model's context window.
 
@@ -28,12 +59,13 @@ class ContextCompactionHook:
     reaches `compact_at` of the window, hands it to a `Compactor` to bring back down to `compact_to`. Register it on an
     `Agent` under the `before_llm` hook point:
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-    from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+    from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-    hook = ContextCompactionHook(
+    hook = CompactionHook(
         compactor=SlidingWindowCompactor(),
         context_window=400_000,
         compact_at=0.7,
@@ -161,12 +193,27 @@ class ContextCompactionHook:
         :returns: The target token amount the messages should be compacted to and the estimated non-message overhead,
             or None when the conversation is not yet large enough to compact.
         """
+        # Estimate the total context size, including the provider's own count of the conversation through the last
+        # assistant message and the tool schemas.
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=context_tokens, token_counter=self.token_counter, tools=tools
         )
-        if estimated < self.context_window * self.compact_at:
-            # The conversation is not yet large enough to compact, so leave it alone.
+        triggered = estimated >= self.context_window * self.compact_at
+
+        span = tracing.tracer.current_span()
+        if span is not None:
+            span.set_tags(
+                tags={
+                    "haystack.agent.hook.compaction.strategy": generate_qualified_class_name(cls=type(self.compactor)),
+                    "haystack.agent.hook.compaction.estimated_context_tokens": estimated,
+                    "haystack.agent.hook.compaction.triggered": triggered,
+                }
+            )
+
+        # The conversation is not yet large enough to compact, so leave it alone.
+        if not triggered:
             return None
+
         # Calculate the non-message overhead, such as tool schemas and the provider's chat-template overhead.
         message_tokens = self.token_counter.count(messages=messages)
         overhead = estimated - message_tokens
@@ -178,9 +225,14 @@ class ContextCompactionHook:
                 message_tokens=message_tokens,
                 estimated=estimated,
             )
+        target_tokens = max(int(self.context_window * self.compact_to) - overhead, 0)
+
+        if span is not None:
+            span.set_tag(key="haystack.agent.hook.compaction.target_tokens", value=target_tokens)
+
         # Return the target token amount the messages should be compacted to and the overhead needed to re-estimate the
         # context size after compaction.
-        return max(int(self.context_window * self.compact_to) - overhead, 0), overhead
+        return target_tokens, overhead
 
     def _apply(
         self,
@@ -201,18 +253,23 @@ class ContextCompactionHook:
         :param original_context_tokens: The provider-reported context count before compaction, or 0 when unavailable.
         :param estimated_overhead: The estimated non-message overhead to include in the updated context count.
         """
+        span = tracing.tracer.current_span()
+        if span is not None:
+            span.set_tag(key="haystack.agent.hook.compaction.compacted", value=compacted is not None)
+
+        # If the compactor returned None, it declined to compact. Leave the conversation alone.
         if compacted is None:
             return
+
         state.set("messages", compacted, handler_override=replace_values)
         # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
         if original_context_tokens != 0:
             # Re-estimate the provider-accounted context through the last assistant message, including overhead. If we
-            # added the trailing tool results, a second registered hook could double count them.
-            state.set(
-                "context_tokens",
-                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1])
-                + estimated_overhead,
-            )
+            # added the trailing tool results, a second registered hook could double count them. If there is no
+            # assistant message, count everything.
+            last_assistant_index = _last_assistant_index(messages=compacted)
+            accounted = compacted if last_assistant_index < 0 else compacted[: last_assistant_index + 1]
+            state.set("context_tokens", self.token_counter.count(messages=accounted) + estimated_overhead)
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",
@@ -233,24 +290,24 @@ class ContextCompactionHook:
         """Warm up the token counter and the compactor on the serving event loop."""
         if hasattr(self.token_counter, "warm_up"):
             self.token_counter.warm_up()
-        warm_up_async = getattr(self.compactor, "warm_up_async", None)
-        if warm_up_async is not None:
-            await warm_up_async()
+        if hasattr(self.compactor, "warm_up_async"):
+            await self.compactor.warm_up_async()
         elif hasattr(self.compactor, "warm_up"):
             self.compactor.warm_up()
 
     def close(self) -> None:
-        """Release the compactor's resources."""
-        if hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's resources."""
+        for resource in (self.token_counter, self.compactor):
+            if hasattr(resource, "close"):
+                resource.close()
 
     async def close_async(self) -> None:
-        """Release the compactor's async resources."""
-        close_async = getattr(self.compactor, "close_async", None)
-        if close_async is not None:
-            await close_async()
-        elif hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's async resources."""
+        for resource in (self.token_counter, self.compactor):
+            if hasattr(resource, "close_async"):
+                await resource.close_async()
+            elif hasattr(resource, "close"):
+                resource.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -268,12 +325,12 @@ class ContextCompactionHook:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ContextCompactionHook":
+    def from_dict(cls, data: dict[str, Any]) -> "CompactionHook":
         """
         Deserialize the hook, reconstructing its compactor and token counter.
 
         :param data: A dictionary representation produced by `to_dict`.
-        :returns: The deserialized `ContextCompactionHook`.
+        :returns: The deserialized `CompactionHook`.
         """
         init_params = data.get("init_parameters", {})
         for key in ("compactor", "token_counter"):

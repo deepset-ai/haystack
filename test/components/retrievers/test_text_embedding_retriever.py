@@ -13,6 +13,7 @@ from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedd
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.document_stores.types import DuplicatePolicy
 
 
@@ -70,7 +71,11 @@ class TestTextEmbeddingRetriever:
         retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
         result = retriever.run(query="energy")
 
-        scores = [doc.score for doc in result["documents"]]
+        docs = result["documents"]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     def test_to_dict(self):
@@ -88,13 +93,14 @@ class TestTextEmbeddingRetriever:
                         "document_store": {
                             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                             "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                                 "bm25_algorithm": "BM25L",
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
                                 "shared": True,
                                 "return_embedding": True,
+                                "strict_datetime_comparison": False,
                             },
                         },
                         "filters": None,
@@ -137,6 +143,7 @@ class TestTextEmbeddingRetriever:
                                 "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
                                 "shared": True,
                                 "return_embedding": True,
+                                "strict_datetime_comparison": False,
                             },
                         },
                         "filters": None,

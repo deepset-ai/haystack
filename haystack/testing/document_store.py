@@ -1205,8 +1205,8 @@ class GetMetadataFieldUniqueValuesTest:
     Tests for Document Store get_metadata_field_unique_values().
 
     Only mix in for stores that implement get_metadata_field_unique_values() with the standardized
-    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10)
-        returns (values, total_count).
+    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10,
+        filters=None) returns (values, total_count).
     """
 
     @staticmethod
@@ -1358,6 +1358,24 @@ class GetMetadataFieldUniqueValuesTest:
         assert values_by_type[str] == "1"
         assert values_by_type[float] == 1.0
         assert values_by_type[bool] is True
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_with_filters(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() restricts documents using the filters param."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
+        ]
+        document_store.write_documents(docs)
+
+        filters = {"field": "meta.status", "operator": "==", "value": "active"}
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category", filters=filters
+        )
+
+        assert set(values) == {"A", "B"}
+        assert total_count == 2
 
 
 class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):

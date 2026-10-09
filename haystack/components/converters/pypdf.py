@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -83,6 +83,7 @@ class PyPDFToDocument:
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
         store_full_path: bool = False,
+        link_format: str | LinkFormat = LinkFormat.NONE,
     ) -> None:
         """
         Create an PyPDFToDocument component.
@@ -112,6 +113,13 @@ class PyPDFToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param link_format:
+            The format used for the hyperlinks found in the PDF link annotations.
+            The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+            carry no anchor text, so the address is used as the link text as well. Can be either:
+            `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+            `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
+            `LinkFormat.NONE` or `"none"` to get text without links.
         """
         pypdf_import.check()
 
@@ -126,6 +134,7 @@ class PyPDFToDocument:
         self.layout_mode_scale_weight = layout_mode_scale_weight
         self.layout_mode_strip_rotated = layout_mode_strip_rotated
         self.layout_mode_font_height_weight = layout_mode_font_height_weight
+        self.link_format = LinkFormat.from_str(link_format) if isinstance(link_format, str) else link_format
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -144,6 +153,7 @@ class PyPDFToDocument:
             layout_mode_strip_rotated=self.layout_mode_strip_rotated,
             layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             store_full_path=self.store_full_path,
+            link_format=str(self.link_format),
         )
 
     @classmethod
@@ -157,11 +167,53 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
+        if "link_format" in data.get("init_parameters", {}):
+            data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
+
+    def _extract_links(self, page: Any, page_number: int) -> list[str]:
+        """
+        Extracts the hyperlinks from the link annotations of a single page.
+
+        Annotations that cannot be read are skipped, so that a single malformed annotation does not
+        prevent the page - and with it the whole document - from being converted.
+
+        :param page:
+            The page to extract the links from.
+        :param page_number:
+            The 1-based number of the page, only used for logging.
+
+        :returns:
+            The formatted links found on the page.
+        """
+        page_links: list[str] = []
+        try:
+            if "/Annots" not in page:
+                return page_links
+            # Indexing the page resolves indirect references to the annotation array, `get` would not.
+            for annot in page["/Annots"] or []:
+                try:
+                    annot_obj = annot.get_object()
+                    if annot_obj.get("/Subtype") == "/Link":
+                        a = annot_obj.get("/A")
+                        if a and a.get("/S") == "/URI":
+                            uri = a.get("/URI")
+                            if uri:
+                                uri_str = uri.decode("utf-8") if isinstance(uri, bytes) else str(uri)
+                                if self.link_format == LinkFormat.MARKDOWN:
+                                    page_links.append(f"[{uri_str}]({uri_str})")
+                                else:  # PLAIN
+                                    page_links.append(f"{uri_str} ({uri_str})")
+                except Exception:
+                    logger.debug("Skipping malformed annotation in page {page}", page=page_number)
+        except Exception:
+            # For example when /Annots is an unresolvable reference: keep the page text instead of losing it.
+            logger.debug("Could not read the annotations of page {page}. Skipping its links.", page=page_number)
+        return page_links
 
     def _default_convert(self, reader: "PdfReader") -> str:
         texts = []
-        for page in reader.pages:
+        for page_number, page in enumerate(reader.pages, start=1):
             extracted_text = page.extract_text(
                 orientations=self.plain_mode_orientations,
                 extraction_mode=self.extraction_mode.value,
@@ -171,6 +223,12 @@ class PyPDFToDocument:
                 layout_mode_strip_rotated=self.layout_mode_strip_rotated,
                 layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
+
+            if self.link_format != LinkFormat.NONE:
+                page_links = self._extract_links(page, page_number)
+                if page_links:
+                    extracted_text += "\n\n" + "\n".join(page_links)
+
             texts.append(extracted_text)
         return "\f".join(texts)
 

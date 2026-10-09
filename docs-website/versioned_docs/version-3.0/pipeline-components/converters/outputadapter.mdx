@@ -3,6 +3,7 @@ title: "OutputAdapter"
 id: outputadapter
 slug: "/outputadapter"
 description: "This component helps the output of one component fit smoothly into the input of another. It uses Jinja expressions to define how this adaptation occurs."
+hep_available: true
 ---
 
 # OutputAdapter
@@ -101,7 +102,6 @@ assert result["output_adapter"]["output"] == "Haystack"
 You can also define your own custom filters, which can then be added to an `OutputAdapter` instance through its init method and used in templates. Here’s an example of this approach:
 
 ```python
-
 from haystack import Pipeline, component, Document
 from haystack.components.converters import OutputAdapter
 

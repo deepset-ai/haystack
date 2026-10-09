@@ -3,6 +3,7 @@ title: "PyversityRanker"
 id: pyversityranker
 slug: "/pyversityranker"
 description: "Use this component to rerank documents by balancing relevance and diversity using pyversity's diversification algorithms."
+hep_available: true
 ---
 
 # PyversityRanker
@@ -96,7 +97,7 @@ Below is an example of a pipeline that embeds documents and stores them in an `I
 
 Note that the retriever must be configured with `return_embedding=True` so that documents have embeddings available for the ranker.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

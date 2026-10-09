@@ -17,7 +17,7 @@ from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.parameters_schema_utils import _unwrap_optional
+from haystack.tools.parameters_schema_utils import _is_state_annotation
 from haystack.tracing.utils import _serializable_value
 
 logger = logging.getLogger(__name__)
@@ -178,9 +178,9 @@ def _create_tool_result_streaming_chunk(tool_message: ChatMessage, tool_call: To
     )
 
 
-def _create_tool_span(tool: Tool, tool_call: ToolCall) -> Any:
+def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span | None) -> Any:
     """
-    Create one tracing span for a single tool call, nested under the currently active span.
+    Create one tracing span for a single tool call, nested under `parent_span`.
 
     The established standard for tracing agents is one span per tool call, so each call gets its own span rather than
     grouping all of a step's calls together. The OpenTelemetry GenAI semantic conventions codify this with a dedicated
@@ -188,26 +188,32 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall) -> Any:
     (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span),
     and tracing backends such as Langfuse follow the same model. The span is tagged with the tool's identity; the caller
     adds the call arguments and result as content tags.
+
+    The parent is passed in rather than read from the tracer here: the calls of a step run concurrently, so a tracer
+    that tracks the active span globally would report a sibling tool span as current and the spans would end up chained
+    instead of side by side.
     """
     return tracing.tracer.trace(
         "haystack.agent.step.tool",
         tags={"haystack.tool.name": tool_call.tool_name, "haystack.tool.description": tool.description},
-        parent_span=tracing.tracer.current_span(),
+        parent_span=parent_span,
     )
 
 
-def _make_context_bound_invoke(tool: Tool, args: dict[str, Any], tool_call: ToolCall) -> Callable[[], Any]:
+def _make_context_bound_invoke(
+    tool: Tool, args: dict[str, Any], tool_call: ToolCall, parent_span: tracing.Span | None
+) -> Callable[[], Any]:
     """
     Return a zero-arg callable that runs `tool.invoke(**args)` under the current contextvars snapshot.
 
-    This preserves tracing spans and other context-local state across thread-pool boundaries, so the per-call span
-    created inside the worker nests correctly under the step span. The callable returns a ToolInvocationError instead
-    of raising so that parallel executions can collect failures without aborting the whole batch.
+    This preserves tracing spans and other context-local state across thread-pool boundaries, so spans opened by the
+    tool itself stay attached to the calling trace. The callable returns a ToolInvocationError instead of raising so
+    that parallel executions can collect failures without aborting the whole batch.
     """
     ctx = contextvars.copy_context()
 
     def _invoke() -> Any:
-        with _create_tool_span(tool, tool_call) as span:
+        with _create_tool_span(tool, tool_call, parent_span) as span:
             span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
             try:
                 result = tool.invoke(**args)
@@ -224,15 +230,19 @@ def _make_context_bound_invoke(tool: Tool, args: dict[str, Any], tool_call: Tool
 
 
 def _make_bounded_invoke_async(
-    tool: Tool, args: dict[str, Any], semaphore: asyncio.Semaphore, tool_call: ToolCall
+    tool: Tool,
+    args: dict[str, Any],
+    semaphore: asyncio.Semaphore,
+    tool_call: ToolCall,
+    parent_span: tracing.Span | None,
 ) -> Callable[[], Any]:
     """
     Return a zero-arg async callable that awaits `tool.invoke_async(**args)` while holding `semaphore`.
 
     Concurrency is bounded uniformly across native-async tools and sync-fallback tools (which dispatch
     to a worker thread inside `Tool.invoke_async`). ContextVars naturally inherit into child tasks for
-    the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch, so the per-call
-    span nests correctly under the step span.
+    the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch, so spans opened by
+    the tool itself stay attached to the calling trace.
 
     Returns a `ToolInvocationError` instead of raising so that gathered executions can collect failures
     without aborting the whole batch.
@@ -240,7 +250,7 @@ def _make_bounded_invoke_async(
 
     async def _runner() -> Any:
         async with semaphore:
-            with _create_tool_span(tool, tool_call) as span:
+            with _create_tool_span(tool, tool_call, parent_span) as span:
                 span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
                 try:
                     result = await tool.invoke_async(**args)
@@ -297,7 +307,7 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
 
     # We also inject the full State object for any parameter annotated as State
     for param_name, param_type in func_params.items():
-        if _unwrap_optional(param_type) is State:
+        if _is_state_annotation(param_type):
             final_args[param_name] = state
 
     return final_args
@@ -414,7 +424,7 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
     """
     func_params = _get_func_params(tool)
     # Check if State is in func_params
-    if any(_unwrap_optional(param_type) is State for param_type in func_params.values()):
+    if any(_is_state_annotation(param_type) for param_type in func_params.values()):
         return _ALL_STATE_KEYS, _ALL_STATE_KEYS
 
     # Calculate reads
@@ -439,8 +449,9 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
     once — cannot be ordered by the read-after-write rule alone, so they are broken deterministically by call order
     (the lowest-index remaining call runs next, on its own).
 
-    Pure write-write overlaps create no dependency: nobody reads the contended key, and outputs are merged into State
-    sequentially in call order afterward, so the result stays deterministic without serializing execution.
+    Write-write overlaps alone create no dependency. Outputs are merged into State after each batch, in the
+    LLM's requested order within that batch, so subsequent batches see the updated values. This keeps merging
+    deterministic, but does not guarantee that writes follow the LLM's requested order across batches.
 
     :param tool_calls: The tool calls to schedule, in call order.
     :param tools: The resolved Tool for each entry in `tool_calls` (parallel list).
@@ -488,8 +499,7 @@ def _finalize_tool_result(
     Turn a single tool invocation result into a tool-result ChatMessage, merging outputs into State.
 
     On a `ToolInvocationError`, either re-raise (when `raise_on_failure`) or return an error message. Otherwise
-    merge the tool's outputs into State (in call order, so write-write merges stay deterministic) and build the
-    result message.
+    merge the tool's outputs into State and build the result message.
     """
     if isinstance(result, ToolInvocationError):
         if raise_on_failure:
@@ -543,6 +553,9 @@ def _run_tool(
     results: list[ChatMessage | None] = [None] * len(tool_calls)
     stream_index = 0
 
+    # Resolved once, before any tool runs, so all per-call spans of this step become siblings under the same parent.
+    parent_span = tracing.tracer.current_span()
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for batch in batches:
             # Prepare args at the start of each batch so tools that read from State observe writes merged by earlier
@@ -556,7 +569,11 @@ def _run_tool(
                     streaming_callback=streaming_callback,
                     enable_streaming_passthrough=enable_streaming_callback_passthrough,
                 )
-                futures[idx] = executor.submit(_make_context_bound_invoke(resolved_tools[idx], args, tool_calls[idx]))
+                futures[idx] = executor.submit(
+                    _make_context_bound_invoke(
+                        tool=resolved_tools[idx], args=args, tool_call=tool_calls[idx], parent_span=parent_span
+                    )
+                )
 
             # Merge results in call order within the batch so write-write merges stay deterministic.
             for idx in batch:
@@ -629,6 +646,9 @@ async def _run_tool_async(
     # and sync tools are dispatched to a worker thread inside `Tool.invoke_async`.
     semaphore = asyncio.Semaphore(max_workers)
 
+    # Resolved once, before any tool runs, so all per-call spans of this step become siblings under the same parent.
+    parent_span = tracing.tracer.current_span()
+
     for batch in batches:
         # Prepare args at the start of each batch so readers observe writes merged by earlier batches.
         tasks = {}
@@ -640,7 +660,13 @@ async def _run_tool_async(
                 streaming_callback=streaming_callback,
                 enable_streaming_passthrough=enable_streaming_callback_passthrough,
             )
-            tasks[idx] = _make_bounded_invoke_async(resolved_tools[idx], args, semaphore, tool_calls[idx])()
+            tasks[idx] = _make_bounded_invoke_async(
+                tool=resolved_tools[idx],
+                args=args,
+                semaphore=semaphore,
+                tool_call=tool_calls[idx],
+                parent_span=parent_span,
+            )()
         batch_results = await asyncio.gather(*tasks.values())
 
         # Merge results in call order within the batch so write-write merges stay deterministic.

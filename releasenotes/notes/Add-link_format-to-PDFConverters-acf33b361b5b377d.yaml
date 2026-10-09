@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Added a ``link_format`` parameter to both ``PyPDFToDocument`` and ``PDFMinerToDocument`` components, matching the existing functionality in ``DOCXToDocument``.
+    Links are parsed from PDF annotations and appended at the bottom of the page content.
+enhancements:
+  - |
+    Extracted ``DOCXLinkFormat`` to a reusable ``LinkFormat`` Enum in ``haystack/components/converters/utils.py``.
+    ``DOCXLinkFormat`` is now an alias for backward compatibility.
+fixes:
+  - |
+    Fixed the serialization of ``PDFMinerToDocument``. The component did not define ``to_dict``, so the default
+    serialization fell back to reading the init parameters from same-named attributes. Since the layout parameters are
+    stored in ``self.layout_params``, they were silently serialized with their default values, for example a component
+    created with ``char_margin=0.5`` was serialized with ``char_margin=2.0``. Custom layout parameters are now
+    preserved when a pipeline is serialized and loaded again.

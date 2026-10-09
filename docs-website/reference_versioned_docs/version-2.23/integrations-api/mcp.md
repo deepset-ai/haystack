@@ -716,7 +716,7 @@ Asynchronous tool invocation.
 warm_up() -> None
 ```
 
-Connect and fetch the tool schema if eager_connect is turned off.
+Connect and fetch the tool schema unless already connected.
 
 #### to_dict
 
@@ -924,7 +924,7 @@ Initialize the MCP toolset.
 warm_up() -> None
 ```
 
-Connect and load tools when eager_connect is turned off.
+Connect and load tools unless already connected.
 
 This method is automatically called by `Agent.warm_up()` and `Pipeline.warm_up()`.
 You can also call it directly before using the toolset to ensure all tool schemas

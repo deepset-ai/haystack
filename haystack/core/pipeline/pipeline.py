@@ -26,6 +26,7 @@ from haystack.core.pipeline.breakpoint import (
     _validate_pipeline_snapshot_against_pipeline,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.core.serialization_security import mark_deserialization_internal
 from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
@@ -141,6 +142,8 @@ class Pipeline(PipelineBase):
         :param component_visits: Current state of component visits.
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
+        :param break_point: An optional breakpoint. If it targets this component and its visit
+            count matches the current one, a `BreakpointException` is raised before the Component runs.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
@@ -193,6 +196,7 @@ class Pipeline(PipelineBase):
 
             return component_output
 
+    @mark_deserialization_internal
     def run(  # noqa: PLR0915, PLR0912, C901
         self,
         data: dict[str, Any],
@@ -213,7 +217,7 @@ class Pipeline(PipelineBase):
         from haystack import Pipeline, Document
         from haystack.components.builders.answer_builder import AnswerBuilder
         from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
         from haystack.dataclasses import ChatMessage
         from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -246,7 +250,7 @@ class Pipeline(PipelineBase):
             variables=["question", "documents"]
         )
 
-        llm = OpenAIChatGenerator()
+        llm = OpenAIResponsesChatGenerator()
         rag_pipeline = Pipeline()
         rag_pipeline.add_component("retriever", retriever)
         rag_pipeline.add_component("prompt_builder", prompt_builder)
@@ -321,8 +325,6 @@ class Pipeline(PipelineBase):
         :raises PipelineBreakpointException:
             When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
         """
-        pipeline_running(self)  # telemetry
-
         if (
             break_point
             and pipeline_snapshot
@@ -342,6 +344,9 @@ class Pipeline(PipelineBase):
 
         # warm up the pipeline by running each component's warm_up method
         self.warm_up()
+
+        # after warm-up, so toolsets that load their tools in warm_up() report them
+        pipeline_running(self)  # telemetry
 
         if include_outputs_from is None:
             include_outputs_from = set()
@@ -578,6 +583,18 @@ class Pipeline(PipelineBase):
                 # For sync-only components, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving e.g. the active tracing span.
                 outputs = await _execute_component_async(instance, **component_inputs_copy)
+            except BreakpointException as error:
+                # Re-raise BreakpointException to preserve the original exception context, matching
+                # the sync _run_component: a breakpoint triggered by a nested component (e.g. an Agent)
+                # must bubble up to the main pipeline instead of being wrapped.
+                raise error
+
+            # A component that internally uses Pipeline._run_component_async could raise a PipelineRuntimeError
+            # carrying additional context (e.g. an agent snapshot); re-raise it instead of wrapping it in
+            # another PipelineRuntimeError, matching the sync _run_component.
+            except PipelineRuntimeError as runtime_error:
+                raise runtime_error
+
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
@@ -786,6 +803,7 @@ class Pipeline(PipelineBase):
         task = asyncio.create_task(_runner())
         running_tasks[task] = component_name
 
+    @mark_deserialization_internal
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncGenerator[dict[str, Any], None]:
@@ -800,7 +818,7 @@ class Pipeline(PipelineBase):
         from haystack.utils import Secret
         from haystack.document_stores.in_memory import InMemoryDocumentStore
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.components.builders.prompt_builder import PromptBuilder
         from haystack import Pipeline
         import asyncio
@@ -829,7 +847,7 @@ class Pipeline(PipelineBase):
         # Create and connect pipeline components
         retriever = InMemoryBM25Retriever(document_store=document_store)
         prompt_builder = ChatPromptBuilder(template=prompt_template)
-        llm = OpenAIChatGenerator()
+        llm = OpenAIResponsesChatGenerator()
 
         rag_pipeline = Pipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -883,10 +901,11 @@ class Pipeline(PipelineBase):
         if concurrency_limit < 1:
             raise ValueError("concurrency_limit must be greater than or equal to 1.")
 
-        pipeline_running(self)  # telemetry
-
         # warm up the pipeline by running each component's warm_up_async (or warm_up) method
         await self.warm_up_async()
+
+        # after warm-up, so toolsets that load their tools in warm_up() report them
+        pipeline_running(self)  # telemetry
 
         if include_outputs_from is None:
             include_outputs_from = set()
@@ -1075,6 +1094,7 @@ class Pipeline(PipelineBase):
                 # This is a no-op on normal completion and on a component error, since no tasks are left running by then
                 await self._cancel_in_flight_tasks(running_tasks, scheduled_components)
 
+    @mark_deserialization_internal
     async def run_async(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
@@ -1090,7 +1110,7 @@ class Pipeline(PipelineBase):
 
         from haystack import Document
         from haystack.components.builders import ChatPromptBuilder
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
         from haystack import Pipeline
         from haystack.dataclasses import ChatMessage
@@ -1119,7 +1139,7 @@ class Pipeline(PipelineBase):
 
         retriever = InMemoryBM25Retriever(document_store=document_store)
         prompt_builder = ChatPromptBuilder(template=prompt_template)
-        llm = OpenAIChatGenerator()
+        llm = OpenAIResponsesChatGenerator()
 
         rag_pipeline = Pipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -1141,13 +1161,8 @@ class Pipeline(PipelineBase):
 
         results = asyncio.run(run_inner(data, include_outputs_from={"retriever", "llm"}))
 
-        print(results["llm"]["replies"])
-        # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
-        # _name=None, _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage':
-        # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75,
-        # 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0,
-        # audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details':
-        # PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]
+        print(results["llm"]["replies"][0].text)
+        # >> Jean lives in Paris.
         ```
 
         :param data:
@@ -1192,6 +1207,7 @@ class Pipeline(PipelineBase):
             final = partial
         return final or {}
 
+    @mark_deserialization_internal
     def stream(
         self,
         data: dict[str, Any],
@@ -1219,7 +1235,7 @@ class Pipeline(PipelineBase):
         import asyncio
 
         from haystack.components.builders import ChatPromptBuilder
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack import Pipeline
         from haystack.dataclasses import ChatMessage
 
@@ -1228,7 +1244,7 @@ class Pipeline(PipelineBase):
             "prompt_builder",
             ChatPromptBuilder(template=[ChatMessage.from_user("Tell me about {{topic}}")]),
         )
-        pipe.add_component("llm", OpenAIChatGenerator())
+        pipe.add_component("llm", OpenAIResponsesChatGenerator())
         pipe.connect("prompt_builder.prompt", "llm.messages")
 
         async def main():

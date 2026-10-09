@@ -12,6 +12,7 @@ import numpy as np
 
 from haystack import Document, component, logging
 from haystack.components.embedders.types import DocumentEmbedder
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.utils.async_utils import _execute_component_async
@@ -179,7 +180,8 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
                 - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
@@ -220,7 +222,8 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
                 - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
@@ -276,7 +279,7 @@ class EmbeddingBasedDocumentSplitter:
         merged_splits = self._merge_small_splits(splits=splits)
 
         # Recursively split splits larger than max_length
-        final_splits = self._split_large_splits(splits=merged_splits)
+        final_splits = await self._split_large_splits_async(splits=merged_splits)
 
         # Create Document objects from the final splits
         return EmbeddingBasedDocumentSplitter._create_documents_from_splits(splits=final_splits, original_doc=doc)
@@ -445,6 +448,16 @@ class EmbeddingBasedDocumentSplitter:
         # Don't forget the last split
         merged.append(current_split)
 
+        # The loop only merges forward, so the final split can still be below min_length. Merge it backwards,
+        # subject to the same max_length limit as forward merges.
+        if (
+            len(merged) > 1
+            and len(merged[-1]) < self.min_length
+            and len(merged[-2]) + len(merged[-1]) < self.max_length
+        ):
+            trailing_split = merged.pop()
+            merged[-1] += trailing_split
+
         return merged
 
     def _split_large_splits(self, splits: list[str]) -> list[str]:
@@ -456,6 +469,8 @@ class EmbeddingBasedDocumentSplitter:
         further splitting is possible.
 
         This works because the threshold for splits is calculated dynamically based on the provided of embeddings.
+
+        Keep in sync with `_split_large_splits_async`.
         """
         final_splits = []
 
@@ -482,6 +497,41 @@ class EmbeddingBasedDocumentSplitter:
 
         return final_splits
 
+    async def _split_large_splits_async(self, splits: list[str]) -> list[str]:
+        """
+        Asynchronously and recursively split splits that are above max_length.
+
+        Mirrors `_split_large_splits`, but embeds through the async path so that the recursion does not block the
+        event loop with synchronous embedder calls.
+
+        Keep in sync with `_split_large_splits`, which also documents why re-running the splitter on an oversized
+        chunk can split it further.
+        """
+        final_splits = []
+
+        for split in splits:
+            if len(split) <= self.max_length:
+                final_splits.append(split)
+            else:
+                # Recursively split large splits
+                # We can reuse the same _split_text_async method to split the text into smaller chunks because the
+                # threshold for splits is calculated dynamically based on embeddings from `split`.
+                sub_splits = await self._split_text_async(text=split)
+
+                # Stop splitting if no further split is possible or continue with recursion
+                if len(sub_splits) == 1:
+                    logger.warning(
+                        "Could not split a chunk further below max_length={max_length}. "
+                        "Returning chunk of length {length}.",
+                        max_length=self.max_length,
+                        length=len(split),
+                    )
+                    final_splits.append(split)
+                else:
+                    final_splits.extend(await self._split_large_splits_async(splits=sub_splits))
+
+        return final_splits
+
     @staticmethod
     def _create_documents_from_splits(splits: list[str], original_doc: Document) -> list[Document]:
         """
@@ -502,12 +552,11 @@ class EmbeddingBasedDocumentSplitter:
             split_meta["split_id"] = i
             split_meta["split_idx_start"] = current_char_pos
 
-            # Calculate page number for this split
-            # Count page breaks in the split itself
             page_breaks_in_split = split_text.count("\f")
 
-            # Calculate the page number for this split
-            split_meta["page_number"] = current_page
+            # current_page is the page this split's first character is on; a split that opens with page
+            # breaks starts its text on a later page.
+            split_meta["page_number"] = current_page + _leading_page_breaks(split_text)
 
             doc = Document(content=split_text, meta=split_meta)
             documents.append(doc)

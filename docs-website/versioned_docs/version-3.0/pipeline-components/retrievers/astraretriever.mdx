@@ -3,6 +3,7 @@ title: "AstraEmbeddingRetriever"
 id: astraretriever
 slug: "/astraretriever"
 description: "This is an embedding-based Retriever compatible with the Astra Document Store."
+hep_available: true
 ---
 
 # AstraEmbeddingRetriever
@@ -59,6 +60,7 @@ Use this Retriever in a query pipeline like this:
 
 ```python
 from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
@@ -108,7 +110,7 @@ print(result["retriever"]["documents"][0])
 
 The example output would be:
 
-```python
+```text
 Document(id=cfe93bc1c274908801e6670440bf2bbba54fad792770d57421f85ffa2a4fcc94, content: 'There are over 7,000 languages spoken around the world today.', score: 0.8929937, embedding: vector of size 768)
 ```
 

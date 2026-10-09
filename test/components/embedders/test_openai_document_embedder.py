@@ -20,7 +20,7 @@ class TestOpenAIDocumentEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
         assert embedder.api_key.resolve_value() == "fake-api-key"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -100,7 +100,7 @@ class TestOpenAIDocumentEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api_base_url": None,
-                "model": "text-embedding-ada-002",
+                "model": "text-embedding-3-small",
                 "dimensions": None,
                 "organization": None,
                 "http_client_kwargs": None,
@@ -271,6 +271,46 @@ class TestOpenAIDocumentEmbedder:
         ):
             with pytest.raises(APIError, match="Mocked error"):
                 embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
+
+    def test_embed_batch_requests_float_encoding_format(self):
+        # Must pin encoding_format="float"; the OpenAI SDK otherwise negotiates base64,
+        # which some OpenAI-compatible endpoints do not support (see #9655).
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        embedder.warm_up()
+        assert embedder.client is not None
+
+        response = Mock()
+        response.data = [Mock(embedding=[0.1, 0.2, 0.3]), Mock(embedding=[0.4, 0.5, 0.6])]
+        response.model = "text-embedding-ada-002"
+        response.usage = {"prompt_tokens": 4, "total_tokens": 4}
+        texts = {"1": "text1", "2": "text2"}
+
+        with patch.object(embedder.client.embeddings, "create", return_value=response) as mock_create:
+            embedder._embed_batch(texts_to_embed=texts, batch_size=10)
+
+        assert mock_create.call_count == 1
+        assert mock_create.call_args.kwargs["encoding_format"] == "float"
+
+    @pytest.mark.asyncio
+    async def test_embed_batch_requests_float_encoding_format_async(self):
+        # Same requirement as the sync path above, but this one was missing it (see #12663).
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        await embedder.warm_up_async()
+        assert embedder.async_client is not None
+
+        response = Mock()
+        response.data = [Mock(embedding=[0.1, 0.2, 0.3]), Mock(embedding=[0.4, 0.5, 0.6])]
+        response.model = "text-embedding-ada-002"
+        response.usage = {"prompt_tokens": 4, "total_tokens": 4}
+        texts = {"1": "text1", "2": "text2"}
+
+        with patch.object(
+            embedder.async_client.embeddings, "create", new=AsyncMock(return_value=response)
+        ) as mock_create:
+            await embedder._embed_batch_async(texts_to_embed=texts, batch_size=10)
+
+        assert mock_create.call_count == 1
+        assert mock_create.call_args.kwargs["encoding_format"] == "float"
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration

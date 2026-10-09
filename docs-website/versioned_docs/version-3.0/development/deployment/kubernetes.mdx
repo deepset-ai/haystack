@@ -28,7 +28,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v1.16.0
+    - image: deepset/hayhooks:v1.23.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       resources:
@@ -128,7 +128,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v1.16.0
+    - image: deepset/hayhooks:v1.23.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "-c"]
@@ -225,7 +225,7 @@ spec:
               memory: "128Mi"
               cpu: "250m"
       containers:
-        - image: deepset/hayhooks:v1.16.0
+        - image: deepset/hayhooks:v1.23.0
           name: hayhooks
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c"]

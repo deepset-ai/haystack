@@ -66,15 +66,17 @@ result = generator.run(messages)
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "claude-fable-5-1",
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
     "claude-opus-4-6",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5-20251001",
-    "claude-sonnet-4-5-20250929",
     "claude-opus-4-5-20251101",
-    "claude-opus-4-1-20250805",
-    "claude-sonnet-4-20250514",
-    "claude-opus-4-20250514",
-    "claude-3-haiku-20240307",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5-20250929",
+    "claude-haiku-4-5-20251001",
 ]
 
 ```
@@ -114,8 +116,12 @@ Creates an instance of AnthropicChatGenerator.
 Supported generation_kwargs parameters are:
 
 - `system`: The system message to be passed to the model.
-- `max_tokens`: The maximum number of tokens to generate.
+- `max_tokens`: The maximum number of tokens to generate. Defaults to 8192. A response that hits
+  this limit is cut off; if the model was writing a tool call at the time, that call is dropped
+  and the reply carries a `length` finish reason.
 - `metadata`: A dictionary of metadata to be passed to the model.
+- `service_tier`: Whether the request may use priority capacity (`auto`) or standard capacity only
+  (`standard_only`). See [service tiers](https://platform.claude.com/docs/en/api/service-tiers).
 - `stop_sequences`: A list of strings that the model should stop generating at.
 - `temperature`: The temperature to use for sampling.
 - `top_p`: The top_p value to use for nucleus sampling.
@@ -140,6 +146,38 @@ Supported generation_kwargs parameters are:
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Anthropic client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Anthropic client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Anthropic client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Anthropic client.
 
 #### to_dict
 
@@ -187,7 +225,9 @@ Invokes the Anthropic API with the given messages and generation kwargs.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
@@ -215,7 +255,9 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
@@ -278,11 +320,16 @@ For more details on supported models and their capabilities, refer to the Anthro
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "claude-fable-5-1",
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
     "claude-opus-4-6",
+    "claude-opus-4-5",
+    "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5",
-    "claude-opus-4-5",
-    "claude-opus-4-1",
     "claude-haiku-4-5",
 ]
 
@@ -333,8 +380,12 @@ Creates an instance of AnthropicFoundryChatGenerator.
   for more details.
   Supported generation_kwargs parameters are:
 - `system`: The system message to be passed to the model.
-- `max_tokens`: The maximum number of tokens to generate.
+- `max_tokens`: The maximum number of tokens to generate. Defaults to 8192. A response that hits
+  this limit is cut off; if the model was writing a tool call at the time, that call is dropped
+  and the reply carries a `length` finish reason.
 - `metadata`: A dictionary of metadata to be passed to the model.
+- `service_tier`: Whether the request may use priority capacity (`auto`) or standard capacity only
+  (`standard_only`). See [service tiers](https://platform.claude.com/docs/en/api/service-tiers).
 - `stop_sequences`: A list of strings that the model should stop generating at.
 - `temperature`: The temperature to use for sampling.
 - `top_p`: The top_p value to use for nucleus sampling.
@@ -366,65 +417,15 @@ Creates an instance of AnthropicFoundryChatGenerator.
 warm_up() -> None
 ```
 
-Create the AnthropicFoundry clients.
+Create the synchronous Anthropic Foundry client.
 
-This method is idempotent — it only creates clients once.
-
-#### run
+#### warm_up_async
 
 ```python
-run(
-    messages: list[ChatMessage] | str,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    tools: ToolsType | None = None,
-) -> dict[str, list[ChatMessage]]
+warm_up_async() -> None
 ```
 
-Invokes the AnthropicFoundry API with the given messages and generation kwargs.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
-  If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
-  initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
-- `replies`: The responses from the model
-
-#### run_async
-
-```python
-run_async(
-    messages: list[ChatMessage] | str,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    tools: ToolsType | None = None,
-) -> dict[str, list[ChatMessage]]
-```
-
-Async version of the run method. Invokes the AnthropicFoundry API with the given messages and generation kwargs.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
-  If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
-  initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
-- `replies`: The responses from the model
+Create the asynchronous Anthropic Foundry client.
 
 #### to_dict
 
@@ -482,7 +483,7 @@ from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AnthropicVertexChatGenerator(
-            model="claude-sonnet-4@20250514",
+            model="claude-sonnet-4-5@20250929",
             project_id="your-project-id", region="your-region"
         )
 response = client.run(messages)
@@ -493,7 +494,7 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4@20250514', 'index': 0, 'finish_reason': 'end_turn',
+>> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'end_turn',
 >> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
 ```
 
@@ -507,13 +508,16 @@ For a list of available model IDs when using Claude on Vertex AI, see
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "claude-fable-5-1",
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
     "claude-opus-4-6",
+    "claude-opus-4-5@20251101",
+    "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5@20250929",
-    "claude-sonnet-4@20250514",
-    "claude-opus-4-5@20251101",
-    "claude-opus-4-1@20250805",
-    "claude-opus-4@20250514",
     "claude-haiku-4-5@20251001",
 ]
 
@@ -528,7 +532,7 @@ https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-
 __init__(
     region: str,
     project_id: str,
-    model: str = "claude-sonnet-4@20250514",
+    model: str = "claude-sonnet-4-5@20250929",
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
@@ -556,8 +560,12 @@ Creates an instance of AnthropicVertexChatGenerator.
 Supported generation_kwargs parameters are:
 
 - `system`: The system message to be passed to the model.
-- `max_tokens`: The maximum number of tokens to generate.
+- `max_tokens`: The maximum number of tokens to generate. Defaults to 8192. A response that hits
+  this limit is cut off; if the model was writing a tool call at the time, that call is dropped
+  and the reply carries a `length` finish reason.
 - `metadata`: A dictionary of metadata to be passed to the model.
+- `service_tier`: Whether the request may use priority capacity (`auto`) or standard capacity only
+  (`standard_only`). See [service tiers](https://platform.claude.com/docs/en/api/service-tiers).
 - `stop_sequences`: A list of strings that the model should stop generating at.
 - `temperature`: The temperature to use for sampling.
 - `top_p`: The top_p value to use for nucleus sampling.
@@ -578,6 +586,22 @@ Supported generation_kwargs parameters are:
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous Anthropic Vertex client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous Anthropic Vertex client.
 
 #### to_dict
 
@@ -607,52 +631,85 @@ Deserialize this component from a dictionary.
 
 - <code>AnthropicVertexChatGenerator</code> – The deserialized component instance.
 
-## haystack_integrations.components.generators.anthropic.generator
+## haystack_integrations.token_counters.anthropic.token_counter
 
-### AnthropicGenerator
+### AnthropicTokenCounter
 
-Enables text generation using Anthropic large language models (LLMs). It supports the Claude family of models.
+Counts input tokens for Anthropic models using the Anthropic token counting API.
 
-Although Anthropic natively supports a much richer messaging API, we have intentionally simplified it in this
-component so that the main input/output interface is string-based.
-For more complete support, consider using the AnthropicChatGenerator.
+Uses the `POST /v1/messages/count_tokens` endpoint, which returns an exact token
+count without generating a response or incurring generation costs.
+
+Usage example:
 
 ```python
-from haystack_integrations.components.generators.anthropic import AnthropicGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.anthropic import AnthropicTokenCounter
 
-client = AnthropicGenerator(model="claude-sonnet-4-20250514")
-response = client.run("What's Natural Language Processing? Be brief.")
-print(response)
->>{'replies': ['Natural language processing (NLP) is a branch of artificial intelligence focused on enabling
->>computers to understand, interpret, and manipulate human language. The goal of NLP is to read, decipher,
->> understand, and make sense of the human languages in a manner that is valuable.'], 'meta': {'model':
->> 'claude-2.1', 'index': 0, 'finish_reason': 'end_turn', 'usage': {'input_tokens': 18, 'output_tokens': 58}}}
+counter = AnthropicTokenCounter(model="claude-sonnet-4-5")
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("How many tokens is this?"),
+]
+token_count = counter.count(messages)
+print(token_count)
 ```
 
 #### __init__
 
 ```python
 __init__(
-    api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-    model: str = "claude-sonnet-4-5",
-    streaming_callback: Callable[[StreamingChunk], None] | None = None,
-    system_prompt: str | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
+    model: str,
     *,
+    api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
     timeout: float | None = None,
     max_retries: int | None = None
 ) -> None
 ```
 
-Initialize the AnthropicGenerator.
+Create an AnthropicTokenCounter.
 
 **Parameters:**
 
-- **api_key** (<code>Secret</code>) – The Anthropic API key.
-- **model** (<code>str</code>) – The name of the Anthropic model to use.
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – An optional callback function to handle streaming chunks.
-- **system_prompt** (<code>str | None</code>) – An optional system prompt to use for generation.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for generation.
+- **model** (<code>str</code>) – The Anthropic model to use for tokenization. Token counts are
+  model-specific; always count against the model you intend to use.
+- **api_key** (<code>Secret</code>) – The Anthropic API key. Defaults to the `ANTHROPIC_API_KEY`
+  environment variable.
+- **timeout** (<code>float | None</code>) – HTTP timeout in seconds for the Anthropic client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for failed requests.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Anthropic client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Anthropic client and release its underlying HTTP resources.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Count the tokens for the given messages and optional tools.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The list of ChatMessages to count tokens for.
+- **tools** (<code>ToolsType | None</code>) – Optional list of Tools whose schemas are included in the count.
+
+**Returns:**
+
+- <code>int</code> – The number of input tokens, or `0` when there is nothing to measure.
 
 #### to_dict
 
@@ -660,48 +717,24 @@ Initialize the AnthropicGenerator.
 to_dict() -> dict[str, Any]
 ```
 
-Serialize this component to a dictionary.
+Serialize this token counter to a dictionary.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized token counter.
 
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> AnthropicGenerator
+from_dict(data: dict[str, Any]) -> AnthropicTokenCounter
 ```
 
-Deserialize this component from a dictionary.
+Deserialize a token counter from a dictionary.
 
 **Parameters:**
 
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
 **Returns:**
 
-- <code>AnthropicGenerator</code> – The deserialized component instance.
-
-#### run
-
-```python
-run(
-    prompt: str,
-    generation_kwargs: dict[str, Any] | None = None,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None,
-) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Generate replies using the Anthropic API.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The input prompt for generation.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for generation.
-- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – An optional callback function to handle streaming chunks.
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary containing:
-- `replies`: A list of generated replies.
-- `meta`: A list of metadata dictionaries for each reply.
+- <code>AnthropicTokenCounter</code> – The deserialized token counter.

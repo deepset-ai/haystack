@@ -3,6 +3,7 @@ title: "ElasticsearchHybridRetriever"
 id: elasticsearchhybridretriever
 slug: "/elasticsearchhybridretriever"
 description: "This is a SuperComponent that implements a Hybrid Retriever in a single component, relying on Elasticsearch as the backend Document Store."
+hep_available: true
 ---
 
 # ElasticsearchHybridRetriever
@@ -45,8 +46,8 @@ The component automatically handles:
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```shell
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.19.7
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.19.7
 ```
 
 As an alternative, you can go to the [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:

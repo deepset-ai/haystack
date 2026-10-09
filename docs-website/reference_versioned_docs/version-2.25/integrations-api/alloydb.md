@@ -597,17 +597,27 @@ using the `"C"` collation.
 
 ```python
 get_metadata_field_unique_values(
-    field: str, filters: dict[str, Any] | None = None
-) -> list[Any]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Returns a list of unique values for a metadata field.
+Returns unique values for a given metadata field, optionally restricted by filters and/or a search term.
 
 **Parameters:**
 
-- **field** (<code>str</code>) – The metadata field name (with or without the "meta." prefix).
+- **metadata_field** (<code>str</code>) – The metadata field name (with or without the "meta." prefix).
+- **search_term** (<code>str | None</code>) – Optional search term to filter unique values by a case-insensitive substring
+  match against the metadata field's own value. If None, all values are considered.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – The number of unique values to return.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the given field.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing:
+- A list of unique values in their original type
+- The total count of unique values

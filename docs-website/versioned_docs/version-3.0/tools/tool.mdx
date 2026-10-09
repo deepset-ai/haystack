@@ -28,7 +28,7 @@ The `Tool` class is used in Chat Generators and provides a consistent experience
 class Tool:
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
@@ -205,11 +205,16 @@ Use them to format structured outputs for the LLM while keeping raw data availab
 ```python
 from haystack.tools import Tool
 
+
 def format_documents(documents):
-    return "\n".join(f"{i+1}. Document: {doc.content}" for i, doc in enumerate(documents))
+    return "\n".join(
+        f"{i + 1}. Document: {doc.content}" for i, doc in enumerate(documents)
+    )
+
 
 def format_summary(metadata):
     return f"Found {metadata['count']} results"
+
 
 tool = Tool(
     name="search",
@@ -218,9 +223,11 @@ tool = Tool(
     function=search_func,  # Returns {"documents": [Document(...)], "metadata": {"count": 5}, "debug_info": {...}}
     outputs_to_string={
         "formatted_docs": {"source": "documents", "handler": format_documents},
-        "summary": {"source": "metadata", "handler": format_summary}
-    }
-    outputs_to_state={"documents": {"source": "documents"}}, # Save Documents into Agent's state
+        "summary": {"source": "metadata", "handler": format_summary},
+    },
+    outputs_to_state={
+        "documents": {"source": "documents"}
+    },  # Save Documents into Agent's state
 )
 
 # After the tool invocation, the tool result includes:
@@ -238,9 +245,7 @@ By default, a tool's return value is converted to a string using a default handl
 You can use `outputs_to_string` to customize this behavior using one of two formats:
 1. **Single output format**: Use `source`, `handler`, and/or `raw_result` at the root level.
     ```python
-    {
-        "source": "docs", "handler": format_documents, "raw_result": False
-    }
+    {"source": "docs", "handler": format_documents, "raw_result": False}
     ```
     - `source`: (Optional) Specifies the key to extract from the tool's output dictionary. If omitted, the entire result is passed to the handler.
     - `handler`: (Optional) A function that takes the output (or the extracted source value) and returns the final result.
@@ -252,7 +257,7 @@ You can use `outputs_to_string` to customize this behavior using one of two form
     ```python
     {
         "formatted_docs": {"source": "docs", "handler": format_documents},
-        "summary": {"source": "summary_text", "handler": str.upper}
+        "summary": {"source": "summary_text", "handler": str.upper},
     }
     ```
     Each entry defines a `source` key and can optionally include a `handler`. The individual outputs are processed,

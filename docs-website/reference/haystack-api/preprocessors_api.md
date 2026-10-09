@@ -182,6 +182,7 @@ __init__(
     ascii_only: bool = False,
     strip_whitespaces: bool = False,
     replace_regexes: dict[str, str] | None = None,
+    min_content_length: int = 0,
 ) -> None
 ```
 
@@ -209,6 +210,8 @@ Initialize DocumentCleaner.
 - **replace_regexes** (<code>dict\[str, str\] | None</code>) – A dictionary mapping regex patterns to their replacement strings.
   For example, `{r'\n\n+': '\n'}` replaces multiple consecutive newlines with a single newline.
   This is applied after `remove_regex` and allows custom replacements instead of just removal.
+- **min_content_length** (<code>int</code>) – Minimum length of the cleaned document content after stripping leading and trailing
+  whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
 
 #### run
 
@@ -258,7 +261,14 @@ print(result["documents"])
 __init__(
     *,
     split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
+        "function",
+        "page",
+        "passage",
+        "period",
+        "word",
+        "line",
+        "sentence",
+        "token",
     ] = "word",
     split_length: int = 250,
     split_overlap: int = 0,
@@ -268,6 +278,7 @@ __init__(
     language: Language = "en",
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
+    tokenizer_encoding: str = "o200k_base",
     remove_empty_lines: bool = True,
     remove_extra_whitespaces: bool = True,
     remove_repeated_substrings: bool = False,
@@ -285,7 +296,8 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
 **Parameters:**
 
-- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence']</code>) – The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
+- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence', 'token']</code>) – The unit of splitting: "function", "page", "passage", "period", "word", "line",
+  "sentence", or "token".
 - **split_length** (<code>int</code>) – The maximum number of units (words, lines, pages, and so on) in each split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units between consecutive splits.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split is smaller than this, it's merged
@@ -297,6 +309,8 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 - **use_split_rules** (<code>bool</code>) – Whether to apply additional splitting heuristics for the sentence splitter.
 - **extend_abbreviations** (<code>bool</code>) – Whether to extend the sentence splitter with curated abbreviations for certain
   languages.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
 
 **Cleaner Parameters**:
 
@@ -376,7 +390,14 @@ result = splitter.run(documents=[doc])
 ```python
 __init__(
     split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
+        "function",
+        "page",
+        "passage",
+        "period",
+        "word",
+        "line",
+        "sentence",
+        "token",
     ] = "word",
     split_length: int = 200,
     split_overlap: int = 0,
@@ -387,7 +408,8 @@ __init__(
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
     *,
-    skip_empty_documents: bool = True
+    skip_empty_documents: bool = True,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -395,13 +417,14 @@ Initialize DocumentSplitter.
 
 **Parameters:**
 
-- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence']</code>) – The unit for splitting your documents. Choose from:
+- **split_by** (<code>Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence', 'token']</code>) – The unit for splitting your documents. Choose from:
 - `word` for splitting by spaces (" ")
 - `period` for splitting by periods (".")
 - `page` for splitting by form feed ("\\f")
 - `passage` for splitting by double line breaks ("\\n\\n")
 - `line` for splitting each line ("\\n")
 - `sentence` for splitting by NLTK sentence tokenizer
+- `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
 - **split_length** (<code>int</code>) – The maximum number of units in each split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split has fewer units
@@ -418,6 +441,9 @@ Initialize DocumentSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Choose whether to skip documents with empty content. Default is True.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+  Special-token strings in document content are encoded as ordinary text.
 
 #### warm_up
 
@@ -425,7 +451,7 @@ Initialize DocumentSplitter.
 warm_up() -> None
 ```
 
-Warm up the DocumentSplitter by loading the sentence tokenizer.
+Warm up the DocumentSplitter by loading the sentence tokenizer or tiktoken encoder.
 
 #### run
 
@@ -447,7 +473,8 @@ and an overlap of `split_overlap`.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -604,7 +631,8 @@ Split documents based on embedding similarity.
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -634,7 +662,8 @@ This is the asynchronous version of the `run` method with the same parameters an
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -858,7 +887,8 @@ Run the markdown header splitter with optional secondary splitting.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting
+    `page_break_character` occurrences in the original document.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
@@ -927,9 +957,11 @@ Initializes a RecursiveDocumentSplitter.
 
 - **split_length** (<code>int</code>) – The maximum length of each chunk by default in words, but can be in characters or tokens.
   See the `split_units` parameter.
-- **split_overlap** (<code>int</code>) – The number of characters to overlap between consecutive chunks.
+- **split_overlap** (<code>int</code>) – The number of overlapping units (words, characters, or tokens, per
+  `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
   If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
   text will be split into sentences using a custom sentence tokenizer based on NLTK.
@@ -937,6 +969,8 @@ Initializes a RecursiveDocumentSplitter.
   If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
 - **sentence_splitter_params** (<code>dict\[str, Any\] | None</code>) – Optional parameters to pass to the sentence tokenizer.
   See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
+  The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
+  changes the rules the tokenizer uses to decide where a sentence ends.
 
 **Raises:**
 
@@ -950,6 +984,18 @@ warm_up() -> None
 ```
 
 Warm up the sentence tokenizer and tiktoken tokenizer if needed.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
 #### run
 
@@ -966,7 +1012,8 @@ Split a list of documents into documents with smaller chunks of text.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
-  to the input documents.
+  to the input documents. Each chunk carries a metadata field `page_number` with the page the chunk
+  starts on, counting form feed ("") characters in the original document.
 
 ## text_cleaner
 
@@ -1009,6 +1056,18 @@ Initializes the TextCleaner component.
 - **remove_punctuation** (<code>bool</code>) – If `True`, removes punctuation from the text.
 - **remove_numbers** (<code>bool</code>) – If `True`, removes numerical digits from the text.
 
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
 #### run
 
 ```python
@@ -1025,3 +1084,7 @@ Cleans up the given list of strings.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following key:
 - `texts`: the cleaned list of strings.
+
+**Raises:**
+
+- <code>TypeError</code> – If `texts` is not a list or any element is not a string.

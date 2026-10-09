@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
+from typing import Any
 
 import pytest
 
@@ -29,6 +30,11 @@ def documents_with_score() -> list[Document]:
 
 
 class TestTopPSampler:
+    @pytest.mark.parametrize("min_top_k", [-1, -10, 1.5, 2.0, "2", True, False])
+    def test_init_invalid_min_top_k(self, min_top_k: Any) -> None:
+        with pytest.raises(ValueError, match="min_top_k must be a non-negative integer or None"):
+            TopPSampler(min_top_k=min_top_k)
+
     def test_init_raises_value_error(self) -> None:
         with pytest.raises(ValueError):
             TopPSampler(top_p=2.0)
@@ -65,7 +71,10 @@ class TestTopPSampler:
         sampler = TopPSampler(top_p=0.99)
         docs = documents_with_score
         random.shuffle(docs)
-        sorted_scores = sorted([doc.score for doc in docs], reverse=True)
+        sorted_scores = sorted([doc.score for doc in docs if doc.score is not None], reverse=True)
+        # The filter narrows `float | None` for mypy. This guard keeps the test sensitive to a
+        # document losing its score, which the unfiltered `sorted()` used to catch via TypeError.
+        assert len(sorted_scores) == len(docs)
 
         # top_p = 0.99 will get the top 1 document
         output = sampler.run(documents=docs)
@@ -84,7 +93,9 @@ class TestTopPSampler:
         docs_filtered = output["documents"]
         assert len(docs_filtered) == len(docs)
         assert docs_filtered[0].content == "Sarajevo"
-        assert [doc.score for doc in docs_filtered] == sorted([doc.score for doc in docs], reverse=True)
+        assert [doc.score for doc in docs_filtered] == sorted(
+            [doc.score for doc in docs if doc.score is not None], reverse=True
+        )
 
     def test_run_top_p_0(self, caplog: pytest.LogCaptureFixture, documents_with_score: list[Document]) -> None:
         sampler = TopPSampler(top_p=0.0)
@@ -155,11 +166,15 @@ class TestTopPSampler:
         assert docs[0].content == "Sarajevo"
         assert "Ensure all documents have a valid score value" in caplog.text
 
-    def test_run_min_top_k(self, documents_with_score: list[Document]) -> None:
-        sampler = TopPSampler(min_top_k=2, top_p=0.2)
-        docs = documents_with_score
-        output = sampler.run(documents=docs)
-        docs = output["documents"]
-        assert len(docs) == 2
-        assert docs[0].content == "Sarajevo"
-        assert docs[1].content == "Belgrade"
+    @pytest.mark.parametrize("min_top_k, expected_count", [(None, 1), (0, 1), (1, 1), (2, 2), (3, 3), (10, 3)])
+    def test_run_min_top_k(
+        self, documents_with_score: list[Document], min_top_k: int | None, expected_count: int
+    ) -> None:
+        sampler = TopPSampler(min_top_k=min_top_k, top_p=0.2)
+        output = sampler.run(documents=list(reversed(documents_with_score)))
+        assert output["documents"] == documents_with_score[:expected_count]
+
+    def test_run_min_top_k_does_not_limit_selection(self, documents_with_score: list[Document]) -> None:
+        sampler = TopPSampler(min_top_k=1, top_p=0.99)
+        output = sampler.run(documents=documents_with_score)
+        assert output["documents"] == documents_with_score[:2]

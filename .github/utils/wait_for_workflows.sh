@@ -41,10 +41,10 @@ wait_for_workflow() {
     echo "⏳ Waiting for: $name"
 
     for ((i=1; i<=MAX_ATTEMPTS; i++)); do
-        jq_filter="[.workflow_runs[] | select(.head_sha == \"${TAG_SHA}\" and .name == \"${name}\")]
+        jq_filter="[.workflow_runs[] | select(.name == \"${name}\")]
             | sort_by(.created_at) | last"
 
-        result=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs" \
+        result=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${TAG_SHA}" \
             --jq "$jq_filter" 2>/dev/null || echo "")
 
         if [[ -z "$result" ]]; then

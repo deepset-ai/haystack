@@ -34,7 +34,7 @@ class TestLLMEvaluator:
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-        assert set(component.__haystack_output__._sockets_dict) == {"results", "meta"}
+        assert set(component.__haystack_output__._sockets_dict) == {"results", "meta"}  # type: ignore[attr-defined]
 
     def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -71,7 +71,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs={("predicted_answers", list[str])},
+                inputs={("predicted_answers", list[str])},  # type: ignore[arg-type]
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -80,7 +80,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[(list[str], "predicted_answers")],
+                inputs=[(list[str], "predicted_answers")],  # type: ignore[list-item]
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -89,7 +89,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[list[str]],
+                inputs=[list[str]],  # type: ignore[list-item]
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -98,7 +98,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs={("predicted_answers", str)},
+                inputs={("predicted_answers", str)},  # type: ignore[arg-type]
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -110,7 +110,7 @@ class TestLLMEvaluator:
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("predicted_answers", list[str])],
-                outputs="score",
+                outputs="score",  # type: ignore[arg-type]
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
@@ -119,7 +119,7 @@ class TestLLMEvaluator:
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("predicted_answers", list[str])],
-                outputs=[["score"]],
+                outputs=[["score"]],  # type: ignore[list-item]
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
@@ -131,7 +131,7 @@ class TestLLMEvaluator:
                 instructions="test-instruction",
                 inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
-                examples={
+                examples={  # type: ignore[arg-type]
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
                     "outputs": {"custom_score": 1},
                 },
@@ -142,7 +142,7 @@ class TestLLMEvaluator:
                 inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[
-                    [
+                    [  # type: ignore[list-item]
                         {
                             "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
                             "outputs": {"custom_score": 1},

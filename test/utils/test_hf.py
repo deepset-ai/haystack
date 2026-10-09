@@ -49,8 +49,22 @@ def test_convert_message_to_hf_format():
     assert convert_message_to_hf_format(message) == {"role": "tool", "content": tool_result}
 
 
+def test_convert_contentless_assistant_message_to_hf_format():
+    # A Chat Generator that discards a malformed tool call returns a reply with no content parts. This format always
+    # carries a content field, so the reply is sent with it empty.
+    message = ChatMessage.from_assistant(text=None)
+    assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
+
+
+def test_convert_reasoning_only_assistant_message_to_hf_format():
+    # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the same
+    # as a reply carrying reasoning alongside text.
+    message = ChatMessage.from_assistant(reasoning="only reasoning")
+    assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
+
+
 def test_convert_message_to_hf_invalid():
-    message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+    message = ChatMessage(_role=ChatRole.USER, _content=[])
     with pytest.raises(ValueError):
         convert_message_to_hf_format(message)
 

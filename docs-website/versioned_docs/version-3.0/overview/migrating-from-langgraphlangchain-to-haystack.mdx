@@ -418,7 +418,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 
-# ChatPromptBuilder expects a List[ChatMessage] as template
+# ChatPromptBuilder expects a list[ChatMessage] as template
 template = [ChatMessage.from_user("""
 Given the following documents, answer the question.
 {% for doc in documents %}{{ doc.content }}{% endfor %}

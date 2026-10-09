@@ -8,9 +8,11 @@ from enum import Enum
 from math import inf
 from typing import Any
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
+
+logger = logging.getLogger(__name__)
 
 AnswerType = GeneratedAnswer | ExtractedAnswer
 
@@ -57,7 +59,7 @@ class AnswerJoiner:
 
     from haystack.core.pipeline import Pipeline
 
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
 
 
@@ -66,8 +68,8 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("llm_1", OpenAIChatGenerator())
-    pipe.add_component("llm_2", OpenAIChatGenerator())
+    pipe.add_component("llm_1", OpenAIResponsesChatGenerator())
+    pipe.add_component("llm_2", OpenAIResponsesChatGenerator())
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())
@@ -94,11 +96,16 @@ class AnswerJoiner:
             Specifies the join mode to use. Available modes:
             - `concatenate`: Concatenates multiple lists of Answers into a single list.
         :param top_k:
-            The maximum number of Answers to return.
+            The maximum number of Answers to return. Must be `None` or greater than 0.
         :param sort_by_score:
-            If `True`, sorts the documents by score in descending order.
-            If a document has no score, it is handled as if its score is -infinity.
+            If `True`, sorts the answers by score in descending order.
+            If an answer has no score, it is handled as if its score is -infinity.
+
+        :raises ValueError:
+            If `top_k` is not `None` and is less than or equal to 0.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k must be greater than 0.")
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions: dict[JoinMode, Callable[[list[list[AnswerType]]], list[AnswerType]]] = {
@@ -114,15 +121,24 @@ class AnswerJoiner:
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
+        If the instance was created with `sort_by_score=True`, the merged Answers are sorted by
+        score in descending order before `top_k` is applied; Answers without a score are handled
+        as if their score were -infinity. Otherwise, the input order is preserved.
+
         :param answers:
             Nested list of Answers to be merged.
 
         :param top_k:
             The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
+            A value of 0 returns no answers. Must not be negative.
 
         :returns:
             A dictionary with the following keys:
-            - `answers`: Merged list of Answers
+            - `answers`: Merged list of Answers, sorted by score if `sort_by_score` was set to
+              `True` on the instance, otherwise in input order
+
+        :raises ValueError:
+            If `top_k` is negative.
         """
         answers_list = list(answers)
         join_function = self.join_mode_function
@@ -134,15 +150,23 @@ class AnswerJoiner:
                 key=lambda answer: score if (score := getattr(answer, "score", None)) is not None else -inf,
                 reverse=True,
             )
+            if any(getattr(answer, "score", None) is None for answer in output_answers):
+                logger.info(
+                    "Some of the Answers AnswerJoiner got have score=None. It was configured to sort Answers by "
+                    "score, so those with score=None were sorted as if they had a score of -infinity."
+                )
 
-        top_k = top_k or self.top_k
-        if top_k:
+        if top_k is not None:
+            if top_k < 0:
+                raise ValueError("top_k must not be negative.")
             output_answers = output_answers[:top_k]
+        elif self.top_k is not None:
+            output_answers = output_answers[: self.top_k]
         return {"answers": output_answers}
 
     def _concatenate(self, answer_lists: list[list[AnswerType]]) -> list[AnswerType]:
         """
-        Concatenate multiple lists of Answers, flattening them into a single list and sorting by score.
+        Concatenate multiple lists of Answers, flattening them into a single list.
 
         :param answer_lists: List of lists of Answers to be flattened.
         """

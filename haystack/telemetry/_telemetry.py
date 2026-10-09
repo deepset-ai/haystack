@@ -89,7 +89,7 @@ class Telemetry:
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
             try:
-                with open(CONFIG_PATH, "w") as outfile:
+                with open(CONFIG_PATH, "w", encoding="utf-8") as outfile:
                     yaml.dump({"user_id": self.user_id}, outfile, default_flow_style=False)
             except Exception as e:
                 logger.debug(
@@ -170,7 +170,7 @@ def pipeline_running(pipeline: "Pipeline") -> tuple[str, dict[str, Any]] | None:
             components[component_qualified_class_name].append({"name": component_name})
 
     # Data sent to Posthog
-    return "Pipeline run (2.x)", {
+    return "Pipeline run (3.x)", {
         "pipeline_id": str(id(pipeline)),
         "pipeline_type": generate_qualified_class_name(type(pipeline)),
         "runs": pipeline._telemetry_runs,

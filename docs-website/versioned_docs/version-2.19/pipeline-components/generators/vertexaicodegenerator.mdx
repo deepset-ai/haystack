@@ -41,7 +41,9 @@ pip install google-vertex-haystack
 Basic usage:
 
 ````python
-from haystack_integrations.components.generators.google_vertex import VertexAICodeGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAICodeGenerator,
+)
 
 generator = VertexAICodeGenerator()
 
@@ -49,7 +51,6 @@ result = generator.run(prefix="def to_json(data):")
 
 for answer in result["replies"]:
     print(answer)
-
 ````
 
 You can also set other parameters like the number of output tokens, temperature, stop sequences, and the number of candidates.

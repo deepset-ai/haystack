@@ -3,6 +3,7 @@ title: "LlamaStackChatGenerator"
 id: llamastackchatgenerator
 slug: "/llamastackchatgenerator"
 description: "This component enables chat completions using any model made available by inference providers on a Llama Stack server."
+hep_available: true
 ---
 
 # LlamaStackChatGenerator
@@ -25,9 +26,9 @@ This component enables chat completions using any model made available by infere
 
 ## Overview
 
-[Llama Stack](https://llama-stack.readthedocs.io/en/latest/index.html) provides building blocks and unified APIs to streamline the development of AI applications across various environments.
+[Llama Stack](https://ogx-ai.github.io/docs) provides building blocks and unified APIs to streamline the development of AI applications across various environments.
 
-The `LlamaStackChatGenerator` enables you to access any LLMs exposed by inference providers hosted on a Llama Stack server. It abstracts away the underlying provider details, allowing you to reuse the same client-side code regardless of the inference backend. For a list of supported providers and configuration options, refer to the [Llama Stack documentation](https://llama-stack.readthedocs.io/en/latest/providers/inference/index.html).
+The `LlamaStackChatGenerator` enables you to access any LLMs exposed by inference providers hosted on a Llama Stack server. It abstracts away the underlying provider details, allowing you to reuse the same client-side code regardless of the inference backend. For a list of supported providers and configuration options, refer to the [Llama Stack documentation](https://ogx-ai.github.io/docs/providers/inference).
 
 This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
@@ -43,11 +44,17 @@ This allows you to organize related tools into logical groups while also includi
 
 ```python
 from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+from haystack_integrations.components.generators.llama_stack import (
+    LlamaStackChatGenerator,
+)
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -55,7 +62,7 @@ math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
 # Pass mixed tools and toolsets to the generator
 generator = LlamaStackChatGenerator(
     model="ollama/llama3.2:3b",
-    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+    tools=[math_toolset, weather_tool, news_tool],  # Mix of Toolset and Tool objects
 )
 ```
 

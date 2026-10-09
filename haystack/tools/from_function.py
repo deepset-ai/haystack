@@ -8,10 +8,10 @@ from typing import Any, overload
 
 from pydantic import create_model
 
-from haystack.components.agents.state.state import State
+from haystack.core.type_utils import _resolve_parameter_types
 
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
+from .parameters_schema_utils import _contains_callable_type, _is_state_annotation
 from .tool import Tool
 
 
@@ -133,34 +133,38 @@ def create_tool_from_function(
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
+    # resolve postponed annotations (`from __future__ import annotations`), keeping `Annotated` descriptions
+    param_types = _resolve_parameter_types(function, include_extras=True)
 
     # collect fields (types and defaults) and descriptions from function parameters
     fields: dict[str, Any] = {}
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
+        annotation = param_types[param_name]
+
         # Skip adding parameter names that will be passed to the tool from State
         if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
         # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
-        if _unwrap_optional(param.annotation) is State:
+        if _is_state_annotation(annotation):
             continue
 
-        if param.annotation is param.empty:
+        if annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
 
         # Skip Callable types since Pydantic cannot generate JSON schemas for them
-        if _contains_callable_type(param.annotation):
+        if _contains_callable_type(annotation):
             continue
 
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
         default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (param.annotation, default)
+        fields[param_name] = (annotation, default)
 
-        if hasattr(param.annotation, "__metadata__"):
-            descriptions[param_name] = param.annotation.__metadata__[0]
+        if hasattr(annotation, "__metadata__"):
+            descriptions[param_name] = annotation.__metadata__[0]
 
     # create Pydantic model and generate JSON schema
     try:
@@ -336,6 +340,19 @@ def tool(
     return decorator(function)
 
 
+# Keywords whose value is a mapping keyed by *names chosen by the user* — property
+# names, definition names, regexes — rather than by JSON Schema keywords. Their keys
+# must survive even when they spell 'title', so we recurse into the values only.
+# Deleting a key here would drop a declared property or leave a '$ref' dangling.
+_NAME_KEYED_SCHEMA_MAPS = frozenset(
+    {"properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependentRequired"}
+)
+
+# Keywords whose value is instance *data*, not a sub-schema. A 'title' key inside a
+# default value is part of that value, so removing it would change the tool's contract.
+_DATA_SCHEMA_KEYWORDS = frozenset({"default", "const", "enum", "examples", "example"})
+
+
 def _remove_title_from_schema(schema: dict[str, Any]) -> None:
     """
     Remove the 'title' keyword from JSON schema and contained property schemas.
@@ -344,14 +361,16 @@ def _remove_title_from_schema(schema: dict[str, Any]) -> None:
         The JSON schema to remove the 'title' keyword from.
     """
     for key, value in list(schema.items()):
-        # Keys of a 'properties' mapping are property names, not schema keywords.
-        # Recurse only into the property sub-schemas so that parameters named
+        # Keys of a name-keyed mapping are property or definition names, not schema
+        # keywords. Recurse only into the sub-schemas so that parameters named
         # 'title' (or any other keyword, e.g. 'properties') are never removed or
         # misinterpreted as schema keywords.
-        if key == "properties" and isinstance(value, dict):
+        if key in _NAME_KEYED_SCHEMA_MAPS and isinstance(value, dict):
             for sub_schema in value.values():
                 if isinstance(sub_schema, dict):
                     _remove_title_from_schema(sub_schema)
+        elif key in _DATA_SCHEMA_KEYWORDS:
+            continue
         elif key == "title":
             del schema[key]
         elif isinstance(value, dict):

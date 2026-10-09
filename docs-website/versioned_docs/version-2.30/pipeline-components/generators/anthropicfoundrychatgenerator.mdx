@@ -80,7 +80,9 @@ You can stream output as it's generated. Pass a callback to `streaming_callback`
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack_integrations.components.generators.anthropic import (
+    AnthropicFoundryChatGenerator,
+)
 
 generator = AnthropicFoundryChatGenerator(
     resource="my-resource",
@@ -102,12 +104,16 @@ See [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#st
 ```python
 import asyncio
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack_integrations.components.generators.anthropic import (
+    AnthropicFoundryChatGenerator,
+)
+
 
 async def main():
     generator = AnthropicFoundryChatGenerator(resource="my-resource")
     result = await generator.run_async([ChatMessage.from_user("Hello!")])
     print(result["replies"][0].text)
+
 
 asyncio.run(main())
 ```
@@ -125,7 +131,9 @@ pip install anthropic-haystack
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
-from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack_integrations.components.generators.anthropic import (
+    AnthropicFoundryChatGenerator,
+)
 
 generator = AnthropicFoundryChatGenerator(
     model="claude-sonnet-4-5",
@@ -143,7 +151,9 @@ print(response)
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack_integrations.components.generators.anthropic import (
+    AnthropicFoundryChatGenerator,
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())

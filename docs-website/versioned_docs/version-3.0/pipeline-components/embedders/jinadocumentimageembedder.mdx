@@ -3,6 +3,7 @@ title: "JinaDocumentImageEmbedder"
 id: jinadocumentimageembedder
 slug: "/jinadocumentimageembedder"
 description: "`JinaDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina embedding models with the ability to embed text and images into the same vector space."
+hep_available: true
 ---
 
 # JinaDocumentImageEmbedder
@@ -18,7 +19,7 @@ description: "`JinaDocumentImageEmbedder` computes the image embeddings of a lis
 | **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path                                                                                              |
 | **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                                                                    |
 | **API reference**                      | [Jina](/reference/integrations-jina)                                                                                                                                                  |
-| **GitHub link**                        | [https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
 | **Package name** | `jina-haystack` |
 
 </div>
@@ -53,7 +54,7 @@ The component uses a `JINA_API_KEY` environment variable by default. Otherwise
 embedder = JinaDocumentImageEmbedder(api_key=Secret.from_token("<your-api-key>"))
 ```
 
-To get a Cohere API key, head over to https://jina.ai/embeddings/.
+To get a Jina API key, head over to https://jina.ai/embeddings/.
 
 ## Usage
 

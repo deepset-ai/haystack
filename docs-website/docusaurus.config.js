@@ -7,14 +7,16 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import versions from './versions.json' with { type: 'json' };
 
-// Only build the current version (docs/) plus the 5 most recent stable versions (e.g. 2.x) and the unstable
-// versioned docs (e.g. 2.x-unstable; only present during the release process).
-const MAX_STABLE_VERSIONS = 5;
+// Keep the total number of built versions constant to keep memory/build time reasonable
+// Build the current version (docs/), the unstable version (e.g. 3.x-unstable, only present during the release process)
+// and fill the remaining slots with the most recent stable versions (e.g. 3.x)
+const MAX_TOTAL_VERSIONS = 6;
+const unstableVersions = versions.filter(v => v.endsWith('-unstable'));
 const activeVersions = [
   'current',
-  ...versions.filter(v => v.endsWith('-unstable')),
-  ...versions.filter(v => !v.endsWith('-unstable')).slice(0, MAX_STABLE_VERSIONS),
-];
+  ...unstableVersions,
+  ...versions.filter(v => !v.endsWith('-unstable')),
+].slice(0, MAX_TOTAL_VERSIONS);
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -54,6 +56,15 @@ const config = {
   headTags: [
     {
       tagName: "script",
+      attributes: {
+        id: "usercentrics-cmp",
+        src: "https://web.cmp.usercentrics.eu/ui/loader.js",
+        "data-ruleset-id": "LxbKaInvO8Ncwr",
+        async: "true",
+      },
+    },
+    {
+      tagName: "script",
       attributes: {},
       innerHTML: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -79,12 +90,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.1-unstable',
+              label: '3.4-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.0',
+          lastVersion: '3.3',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -132,12 +143,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.1-unstable',
+            label: '3.4-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.0',
+        lastVersion: '3.3',
       },
     ],
     [
@@ -205,6 +216,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/generators-vs-chat-generators',
             to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
           },
+          {
+            from: '/docs/sentencewindowretrieval',
+            to: '/docs/sentencewindowretriever',
+          },
           // Components removed or renamed in Haystack 3.0
           {
             from: '/docs/openaigenerator',
@@ -254,7 +269,45 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
+          {
+            from: '/docs/fastembedcolbertranker',
+            to: '/docs/fastembedlateinteractionranker',
+          },
+          {
+            from: '/docs/pipeline-templates',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/external-integrations-converters',
+            to: '/docs/converters',
+          },
+          // Redirects after docs sidebar reorganization
+          {
+            from: '/docs/next/external-integrations-development',
+            to: '/docs/next/production-usage',
+          },
+          {
+            from: '/docs/external-integrations-development',
+            to: '/docs/production-usage',
+          },
         ],
+        // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
+        // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
+        createRedirects(existingPath) {
+          const match = existingPath.match(
+            /^(\/docs\/(?:[\w.-]+\/)?)(amazonbedrock|anthropic|cohere|llamacpp|nvidia|ollama|togetherai|watsonx)chatgenerator$/,
+          );
+          if (match) {
+            return [`${match[1]}${match[2]}generator`];
+          }
+          return undefined;
+        },
+      },
+    ],
+    [
+      '@docusaurus/plugin-vercel-analytics',
+      {
+        mode: 'auto',
       },
     ],
   ],
@@ -308,6 +361,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: 'left',
           },
           {
+            href: 'https://www.deepset.ai/haystack-platform',
+            label: 'Haystack Enterprise Platform',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/deepset-ai/haystack/blob/main/docs-website/CONTRIBUTING.md',
             label: 'Contribute',
             position: 'right',
@@ -326,7 +384,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             title: 'Community',
             items: [
               {
-                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/company/deepset-ai/" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
+                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/xYvH6drSmA" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/showcase/haystack-ai-framework" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
               },
             ],
           },
@@ -335,14 +393,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             items: [
               { label: 'Tutorials',   href: 'https://haystack.deepset.ai/tutorials' },
               { label: 'Cookbooks', href: 'https://haystack.deepset.ai/cookbook' },
+              { label: 'Articles', href: 'https://haystack.deepset.ai/blog' },
             ],
           },
           {
             title: 'More',
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
-              { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
-              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Haystack Enterprise Platform', href: 'https://www.deepset.ai/haystack-platform' },
+              { label: 'Enterprise Support', href: 'https://www.deepset.ai/products-and-services/haystack-enterprise-starter' },
             ],
           },
           {

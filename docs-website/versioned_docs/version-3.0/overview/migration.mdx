@@ -285,7 +285,7 @@ agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
 After (v3.0):
 
 ```python
-from haystack.human_in_the_loop import ConfirmationHook
+from haystack.hooks.human_in_the_loop import ConfirmationHook
 
 confirmation_hook = ConfirmationHook(
     confirmation_strategies={"my_tool": BlockingConfirmationStrategy(...)},

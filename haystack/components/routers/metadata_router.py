@@ -56,12 +56,14 @@ class MetadataRouter:
     ```
     """
 
-    def __init__(self, rules: dict[str, dict], output_type: type = list[Document]) -> None:
+    def __init__(
+        self, rules: dict[str, dict], output_type: type = list[Document], *, strict_datetime_comparison: bool = False
+    ) -> None:
         """
         Initializes the MetadataRouter component.
 
         :param rules: A dictionary defining how to route documents or byte streams to output connections based on their
-            metadata. Keys are output connection names, and values are dictionaries of
+            metadata. Keys are output connection names (`"unmatched"` is reserved), and values are dictionaries of
             [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
             For example:
             ```python
@@ -96,10 +98,19 @@ class MetadataRouter:
             },
             }
             ```
-            :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+        :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+        :param strict_datetime_comparison:
+            If `True`, timezone-naive and timezone-aware datetimes never match each other.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
+        :raises ValueError:
+            If `rules` contains the reserved output name `"unmatched"` or an invalid filter.
         """
+        if "unmatched" in rules:
+            raise ValueError("The rule name 'unmatched' is reserved for documents that do not match any rule.")
+
         self.rules = rules
         self.output_type = output_type
+        self.strict_datetime_comparison = strict_datetime_comparison
         for rule in self.rules.values():
             if "operator" not in rule:
                 raise ValueError(
@@ -125,7 +136,9 @@ class MetadataRouter:
         for doc_or_bytestream in documents:
             current_obj_matched = False
             for edge, rule in self.rules.items():
-                if document_matches_filter(filters=rule, document=doc_or_bytestream):
+                if document_matches_filter(
+                    filters=rule, document=doc_or_bytestream, strict_datetime_comparison=self.strict_datetime_comparison
+                ):
                     # we need to ignore the arg-type here because the underlying
                     # filter methods use type Union[Document, ByteStream]
                     output[edge].append(doc_or_bytestream)  # type: ignore[arg-type]
@@ -144,7 +157,12 @@ class MetadataRouter:
         :returns:
             The serialized component as a dictionary.
         """
-        return default_to_dict(self, rules=self.rules, output_type=serialize_type(self.output_type))
+        return default_to_dict(
+            self,
+            rules=self.rules,
+            output_type=serialize_type(self.output_type),
+            strict_datetime_comparison=self.strict_datetime_comparison,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MetadataRouter":

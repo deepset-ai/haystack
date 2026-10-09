@@ -12,7 +12,8 @@ slug: "/converters-api"
 
 Converts CSV files to Documents.
 
-By default, it uses UTF-8 encoding when converting files but
+By default, it uses UTF-8 encoding (`utf-8-sig`, which also strips a byte order mark if
+present) when converting files but
 you can also set a custom encoding.
 It can attach metadata to the resulting documents.
 
@@ -36,7 +37,7 @@ print(documents[0].content)
 
 ```python
 __init__(
-    encoding: str = "utf-8",
+    encoding: str = "utf-8-sig",
     store_full_path: bool = False,
     *,
     conversion_mode: Literal["file", "row"] = "file",
@@ -127,20 +128,6 @@ from_str(string: str) -> DOCXTableFormat
 ```
 
 Convert a string to a DOCXTableFormat enum.
-
-### DOCXLinkFormat
-
-Bases: <code>Enum</code>
-
-Supported formats for storing DOCX link information in a Document.
-
-#### from_str
-
-```python
-from_str(string: str) -> DOCXLinkFormat
-```
-
-Convert a string to a DOCXLinkFormat enum.
 
 ### DOCXToDocument
 
@@ -317,7 +304,7 @@ print(documents[0].content)
 __init__(
     extraction_kwargs: dict[str, Any] | None = None,
     store_full_path: bool = False,
-    encoding: str = "utf-8",
+    encoding: str | None = None,
 ) -> None
 ```
 
@@ -330,8 +317,9 @@ Create an HTMLToDocument component.
   the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
-- **encoding** (<code>str</code>) – The default encoding to use when converting HTML files. If the encoding is specified in the metadata of a
-  source ByteStream, it overrides this value.
+- **encoding** (<code>str | None</code>) – The encoding to use when decoding HTML files. If None (the default), Trafilatura detects the encoding.
+  If detection produces incorrect characters, install `trafilatura[all]` for additional encoding detection
+  support, or set this parameter if you know the encoding.
 
 #### to_dict
 
@@ -487,12 +475,9 @@ into ImageContent objects.
 
 - <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
 - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-  data and metadata. The order corresponds to order of input documents.
-
-**Raises:**
-
-- <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-  MIME type. The error message will specify which document and what information is missing or incorrect.
+  data and metadata. The order corresponds to the order of the input documents. A document that is
+  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
+  to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
 
 ## image/file_to_document
 
@@ -939,7 +924,7 @@ __init__(
     table_to_single_line: bool = False,
     progress_bar: bool = True,
     store_full_path: bool = False,
-    encoding: str = "utf-8",
+    encoding: str = "utf-8-sig",
     *,
     extract_frontmatter: bool = False
 ) -> None
@@ -1068,7 +1053,7 @@ The MultiFileConverter handles the following file types:
 Usage example:
 
 ```
-from haystack.super_components.converters import MultiFileConverter
+from haystack.components.converters import MultiFileConverter
 
 converter = MultiFileConverter()
 converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sample_pdf_1.pdf"], meta={})
@@ -1077,7 +1062,9 @@ converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sam
 #### __init__
 
 ```python
-__init__(encoding: str = 'utf-8', json_content_key: str = 'content') -> None
+__init__(
+    encoding: str = "utf-8-sig", json_content_key: str = "content"
+) -> None
 ```
 
 Initialize the MultiFileConverter.
@@ -1227,6 +1214,7 @@ __init__(
     detect_vertical: bool = True,
     all_texts: bool = False,
     store_full_path: bool = False,
+    link_format: str | LinkFormat = LinkFormat.NONE,
 ) -> None
 ```
 
@@ -1257,6 +1245,40 @@ Create a PDFMinerToDocument component.
 - **all_texts** (<code>bool</code>) – If layout analysis should be performed on text in figures.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **link_format** (<code>str | LinkFormat</code>) – The format used for the hyperlinks found in the PDF link annotations.
+  The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+  carry no anchor text, so the address is used as the link text as well. Can be either:
+  `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+  `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
+  `LinkFormat.NONE` or `"none"` to get text without links.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> PDFMinerToDocument
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with serialized data.
+
+**Returns:**
+
+- <code>PDFMinerToDocument</code> – Deserialized component.
 
 #### detect_undecoded_cid_characters
 
@@ -1441,7 +1463,8 @@ __init__(
     layout_mode_scale_weight: float = 1.25,
     layout_mode_strip_rotated: bool = True,
     layout_mode_font_height_weight: float = 1.0,
-    store_full_path: bool = False
+    store_full_path: bool = False,
+    link_format: str | LinkFormat = LinkFormat.NONE
 ) -> None
 ```
 
@@ -1466,6 +1489,12 @@ Create an PyPDFToDocument component.
   Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **link_format** (<code>str | LinkFormat</code>) – The format used for the hyperlinks found in the PDF link annotations.
+  The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+  carry no anchor text, so the address is used as the link text as well. Can be either:
+  `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+  `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
+  `LinkFormat.NONE` or `"none"` to get text without links.
 
 #### to_dict
 
@@ -1526,7 +1555,8 @@ Converts PDF files to documents.
 
 Converts text files to documents your pipeline can query.
 
-By default, it uses UTF-8 encoding when converting files but
+By default, it uses UTF-8 encoding (`utf-8-sig`, which also strips a byte order mark if
+present) when converting files but
 you can also set custom encoding.
 It can attach metadata to the resulting documents.
 
@@ -1546,7 +1576,7 @@ print(documents[0].content)
 #### __init__
 
 ```python
-__init__(encoding: str = 'utf-8', store_full_path: bool = False) -> None
+__init__(encoding: str = 'utf-8-sig', store_full_path: bool = False) -> None
 ```
 
 Creates a TextFileToDocument component.

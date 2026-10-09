@@ -3,6 +3,7 @@ title: "LocalWhisperTranscriber"
 id: localwhispertranscriber
 slug: "/localwhispertranscriber"
 description: "Use `LocalWhisperTranscriber` to transcribe audio files using OpenAI's Whisper model using your local installation of Whisper."
+hep_available: true
 ---
 
 # LocalWhisperTranscriber
@@ -32,7 +33,7 @@ See the [Whisper API documentation](https://platform.openai.com/docs/guides/spee
 
 The `LocalWhisperTranscriber` is part of the `whisper-haystack` integration package. To work with it, install the package along with [Whisper](https://github.com/openai/whisper) (which also pulls in torch) using the following commands:
 
-```python
+```shell
 pip install whisper-haystack
 pip install -U openai-whisper
 ```

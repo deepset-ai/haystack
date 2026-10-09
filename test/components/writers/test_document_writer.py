@@ -124,7 +124,7 @@ class TestDocumentWriter:
     async def test_run_async_invalid_docstore(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
 
-        writer = DocumentWriter(mocked_docstore_class)
+        writer = DocumentWriter(mocked_docstore_class())
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),

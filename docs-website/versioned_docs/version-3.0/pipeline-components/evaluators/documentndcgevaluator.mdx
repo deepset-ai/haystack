@@ -3,6 +3,7 @@ title: "DocumentNDCGEvaluator"
 id: documentndcgevaluator
 slug: "/documentndcgevaluator"
 description: "The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called normalized discounted cumulative gain (NDCG)."
+hep_available: false
 ---
 
 # DocumentNDCGEvaluator
@@ -54,9 +55,9 @@ result = evaluator.run(
     ],
 )
 print(result["individual_scores"])
-# [0.8869]
+# [0.9502344167898356]
 print(result["score"])
-# 0.8869
+# 0.9502344167898356
 ```
 
 ### In a pipeline
@@ -97,6 +98,6 @@ result = pipeline.run(
 
 for evaluator in result:
     print(result[evaluator]["score"])
-# 0.9502
 # 1.0
+# 0.9502344167898356
 ```

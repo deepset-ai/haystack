@@ -35,7 +35,9 @@ class Hook(Protocol):
 
     A hook may also implement the optional lifecycle methods `warm_up` / `warm_up_async` and `close` / `close_async`.
     The Agent calls them from its own `warm_up` / `warm_up_async` and `close` / `close_async`, so a hook can defer
-    opening clients or reading credentials until warm-up and release them on close.
+    opening clients or reading credentials until warm-up and release them on close. Because warm-up runs before every
+    Agent run, hooks should avoid repeating expensive initialization, for example by returning early if a client has
+    already been initialized.
     """
 
     def run(self, state: State) -> None:
