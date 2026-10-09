@@ -5,7 +5,7 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Annotated, Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -504,7 +504,8 @@ class TestComponentTool:
         assert "streaming_callback" not in param_names
         assert "messages" in param_names
 
-    def test_from_component_with_state_param_excluded_from_schema(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_from_component_with_state_param_excluded_from_schema(self, state_annotation: Any) -> None:
         @component
         class ComponentWithState:
             """A component that takes State as a direct input."""
@@ -512,6 +513,8 @@ class TestComponentTool:
             @component.output_types(result=str)
             def run(self, query: str, state: State) -> dict:
                 return {"result": query}
+
+            run.__annotations__["state"] = state_annotation
 
         tool = ComponentTool(component=ComponentWithState(), name="state_comp", description="test")
 
