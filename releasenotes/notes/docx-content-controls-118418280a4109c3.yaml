@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``DOCXToDocument`` now reads the paragraphs and tables inside block-level content controls (``w:sdt``),
+    including nested ones. Word uses them for cover pages, tables of contents and template fields, and their
+    content was dropped from the Document without any error.

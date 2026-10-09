@@ -26,6 +26,10 @@ _TEXT_BOX_CONTENT_TAG = f"{{{_WORD_NS}}}txbxContent"
 # Word writes a text box twice inside `mc:AlternateContent`: a `wps:txbx` under
 # `mc:Choice` and the same text as a VML text box under `mc:Fallback`.
 _FALLBACK_TAG = f"{{{_MARKUP_COMPATIBILITY_NS}}}Fallback"
+# A block-level content control keeps its paragraphs and tables in `w:sdtContent`.
+# Word uses them for cover pages, tables of contents and template fields.
+_CONTENT_CONTROL_TAG = f"{{{_WORD_NS}}}sdt"
+_CONTENT_CONTROL_CONTENT_TAG = f"{{{_WORD_NS}}}sdtContent"
 
 # A Markdown table row ends at a line break and its columns are separated by pipes, so
 # neither can survive inside a cell.
@@ -249,7 +253,7 @@ class DOCXToDocument:
         :returns: List of strings (paragraph texts and table representations) with page breaks added as '\f' characters.
         """
         elements = []
-        for element in document.element.body:
+        for element in self._block_elements(document.element.body):
             if isinstance(element, _Comment):
                 continue
             if element.tag.endswith("p"):
@@ -269,6 +273,23 @@ class DOCXToDocument:
                 )
                 elements.append(table_str)
 
+        return elements
+
+    def _block_elements(self, parent: Any) -> list[Any]:
+        """
+        Lists the block-level children of an element, replacing each content control with the elements it holds.
+
+        :param parent: The element to list the children of, such as the document body.
+        :returns: List of child elements in reading order, with nested content controls expanded.
+        """
+        elements = []
+        for element in parent:
+            if element.tag == _CONTENT_CONTROL_TAG:
+                content = element.find(_CONTENT_CONTROL_CONTENT_TAG)
+                if content is not None:
+                    elements.extend(self._block_elements(content))
+            else:
+                elements.append(element)
         return elements
 
     def _extract_text_boxes(self, element: Any, document: "DocxDocument") -> list[str]:

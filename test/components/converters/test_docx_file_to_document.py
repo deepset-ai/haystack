@@ -65,9 +65,18 @@ _TEXT_BOX_WITH_VML_FALLBACK = """
 """
 
 
-def _docx_with_text_box(template: str, content: str, link_url: str | None = None) -> bytes:
+# A block-level content control, as Word writes for a cover page, a table of contents or a template field.
+_BLOCK_CONTENT_CONTROL = """
+<w:sdt {ns}>
+  <w:sdtPr><w:alias w:val="Summary"/></w:sdtPr>
+  <w:sdtContent>{content}</w:sdtContent>
+</w:sdt>
+"""
+
+
+def _docx_with_block(template: str, content: str, link_url: str | None = None) -> bytes:
     """
-    Build a DOCX whose body is BEFORE, a text box holding `content`, then AFTER.
+    Build a DOCX whose body is BEFORE, the block from `template` holding `content`, then AFTER.
 
     With `link_url`, `{rid}` in `content` becomes the id of an external hyperlink relationship to it.
     """
@@ -557,7 +566,7 @@ class TestDOCXToDocument:
     def test_run_reads_text_inside_a_text_box(self):
         """A text box keeps its paragraphs in `w:txbxContent`, which the anchoring
         paragraph's own text never reaches."""
-        docx_bytes = _docx_with_text_box(_MODERN_TEXT_BOX, "<w:p><w:r><w:t>TEXT INSIDE A TEXT BOX</w:t></w:r></w:p>")
+        docx_bytes = _docx_with_block(_MODERN_TEXT_BOX, "<w:p><w:r><w:t>TEXT INSIDE A TEXT BOX</w:t></w:r></w:p>")
 
         output = DOCXToDocument().run(sources=[ByteStream(data=docx_bytes)])
 
@@ -568,7 +577,7 @@ class TestDOCXToDocument:
 
     def test_run_does_not_repeat_a_text_box_that_has_a_vml_fallback(self):
         """Word writes the same text under `mc:Choice` and again under `mc:Fallback`."""
-        docx_bytes = _docx_with_text_box(_TEXT_BOX_WITH_VML_FALLBACK, "<w:p><w:r><w:t>CALLOUT TEXT</w:t></w:r></w:p>")
+        docx_bytes = _docx_with_block(_TEXT_BOX_WITH_VML_FALLBACK, "<w:p><w:r><w:t>CALLOUT TEXT</w:t></w:r></w:p>")
 
         output = DOCXToDocument().run(sources=[ByteStream(data=docx_bytes)])
 
@@ -581,7 +590,7 @@ class TestDOCXToDocument:
             "<w:tc><w:p><w:r><w:t>CELL B</w:t></w:r></w:p></w:tc>"
             "</w:tr></w:tbl>"
         )
-        docx_bytes = _docx_with_text_box(_MODERN_TEXT_BOX, table_xml)
+        docx_bytes = _docx_with_block(_MODERN_TEXT_BOX, table_xml)
 
         output = DOCXToDocument(table_format=DOCXTableFormat.CSV).run(sources=[ByteStream(data=docx_bytes)])
 
@@ -589,7 +598,7 @@ class TestDOCXToDocument:
 
     def test_run_formats_links_inside_a_text_box(self):
         """`link_format` has to reach a text box too."""
-        docx_bytes = _docx_with_text_box(
+        docx_bytes = _docx_with_block(
             _MODERN_TEXT_BOX,
             '<w:p><w:hyperlink r:id="{rid}"><w:r><w:t>LINK</w:t></w:r></w:hyperlink></w:p>',
             link_url="https://example.com",
@@ -598,6 +607,33 @@ class TestDOCXToDocument:
         output = DOCXToDocument(link_format=DOCXLinkFormat.MARKDOWN).run(sources=[ByteStream(data=docx_bytes)])
 
         assert "[LINK](https://example.com)" in output["documents"][0].content
+
+    def test_run_reads_text_inside_a_content_control(self):
+        """A block-level content control keeps its paragraphs in `w:sdtContent`, also when it is nested."""
+        docx_bytes = _docx_with_block(
+            _BLOCK_CONTENT_CONTROL,
+            "<w:p><w:r><w:t>COVER TITLE</w:t></w:r></w:p>"
+            "<w:sdt><w:sdtContent><w:p><w:r><w:t>NESTED FIELD</w:t></w:r></w:p></w:sdtContent></w:sdt>",
+        )
+
+        output = DOCXToDocument().run(sources=[ByteStream(data=docx_bytes)])
+
+        content = output["documents"][0].content
+        assert content.index("BEFORE") < content.index("COVER TITLE") < content.index("NESTED FIELD")
+        assert content.index("NESTED FIELD") < content.index("AFTER")
+
+    def test_run_reads_a_table_inside_a_content_control(self):
+        table_xml = (
+            "<w:tbl><w:tr>"
+            "<w:tc><w:p><w:r><w:t>CELL A</w:t></w:r></w:p></w:tc>"
+            "<w:tc><w:p><w:r><w:t>CELL B</w:t></w:r></w:p></w:tc>"
+            "</w:tr></w:tbl>"
+        )
+        docx_bytes = _docx_with_block(_BLOCK_CONTENT_CONTROL, table_xml)
+
+        output = DOCXToDocument(table_format=DOCXTableFormat.CSV).run(sources=[ByteStream(data=docx_bytes)])
+
+        assert "CELL A,CELL B" in output["documents"][0].content
 
     @pytest.mark.parametrize("table_format", ["markdown", "csv"])
     @pytest.mark.parametrize(
