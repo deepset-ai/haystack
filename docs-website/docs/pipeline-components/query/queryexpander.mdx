@@ -29,20 +29,38 @@ QueryExpander uses an LLM to generate semantically similar queries to improve re
 
 The component uses a chat-based LLM to generate expanded queries. By default, it uses OpenAI's `gpt-4.1-mini` model through `OpenAIResponsesChatGenerator` with `store` set to `False`, but you can pass any preferred Chat Generator component (such as `AnthropicChatGenerator` or `AzureOpenAIChatGenerator`) to the `chat_generator` parameter.
 
-The example below uses `AnthropicChatGenerator`, which lives in the `anthropic-haystack` package:
-
-```shell
-pip install anthropic-haystack
-```
+The example below uses `OpenAIResponsesChatGenerator` with structured output, so the model always returns the `{"queries": [...]}` JSON that `QueryExpander` expects. It requires the `OPENAI_API_KEY` environment variable to be set.
 
 ```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.query import QueryExpander
-from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 
-expander = QueryExpander(
-    chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"),
-    n_expansions=3,
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
+    generation_kwargs={
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "query_expansion",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "queries": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["queries"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+    },
 )
+
+expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
+
+result = expander.run(query="green energy sources")
+print(result["queries"])
+# >> ['renewable energy options', 'sustainable power sources', 'clean energy alternatives', 'green energy sources']
 ```
 
 The generated queries:
