@@ -16,8 +16,9 @@ This component checks for the presence of documents in a Document Store based on
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
 | **Mandatory init variables** | `document_store`: A Document Store instance  <br /> <br />`cache_field`: Name of the document's metadata field |
+| **Optional init variables** | `ttl`: Time-to-live for cache entries. Can be a `timedelta` or a number of seconds. Defaults to `None`, meaning cache entries never expire  <br /> <br />`time_field`: Name of the document's metadata field holding the cache timestamp, used only when `ttl` is set. Defaults to `"cached_at"` |
 | **Mandatory run variables** | `items`: A list of values associated with the `cache_field` in documents |
-| **Output variables** | `hits`: A list of documents that were found with the specified value in cache  <br /> <br />`misses`: A list of values that could not be found |
+| **Output variables** | `hits`: A list of documents that were found with the specified value in cache and, if a `ttl` is configured, are still within it  <br /> <br />`misses`: A list of values that could not be found, or whose only matches had expired |
 | **API reference** | [Caching](/reference/caching-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/caching/cache_checker.py |
 | **Package name** | `haystack-ai` |
@@ -63,6 +64,54 @@ print(
     cache_check_results["misses"],
 )  # Values that were not found in the cache, like: ["ABCDE"]
 ```
+
+### Expiring cache entries with a TTL
+
+`CacheChecker` treats a cache entry as valid forever unless you tell it otherwise. For data that goes stale — like a periodically re-crawled URL or a document whose source changes over time — pass a `ttl` so old entries stop counting as hits.
+
+`CacheChecker` doesn't stamp documents itself; it only reads a timestamp that was already written. Set that timestamp yourself wherever you write documents into the store:
+
+```python
+from datetime import datetime, timezone
+from haystack import Document
+
+document = Document(
+    content="doc1",
+    meta={
+        "url": "https://example.com/resource",
+        "cached_at": datetime.now(timezone.utc),
+    },
+)
+my_doc_store.write_documents([document])
+```
+
+Then configure `CacheChecker` with a `ttl` so it knows how far back to look:
+
+```python
+from datetime import timedelta
+from haystack.components.caching import CacheChecker
+
+cache_checker = CacheChecker(
+    document_store=my_doc_store,
+    cache_field="url",
+    ttl=timedelta(hours=24),
+)
+```
+
+With this configuration, `checker.run(items=["https://example.com/resource"])` only reports a hit if `cached_at` is less than 24 hours old. Anything older — or a document that never got a `cached_at` value in the first place — comes back in `misses`, exactly as if it had never been cached at all.
+
+The timestamp field name is configurable via `time_field` (it defaults to `"cached_at"`), which is useful if your metadata already tracks time under a different key, such as `created_at` or `last_indexed`:
+
+```python
+cache_checker = CacheChecker(
+    document_store=my_doc_store,
+    cache_field="url",
+    ttl=timedelta(hours=24),
+    time_field="last_indexed",
+)
+```
+
+Leaving `ttl` unset keeps the component's original behavior: cache entries never expire, and `time_field` is ignored entirely.
 
 ### In a pipeline
 
