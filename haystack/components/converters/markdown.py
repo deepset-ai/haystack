@@ -15,6 +15,7 @@ from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils.progress import _get_progress_bar_setting
 
 with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
     from markdown_it import MarkdownIt
@@ -63,6 +64,7 @@ class MarkdownToDocument:
             If True converts table contents into a single line.
         :param progress_bar:
             If True shows a progress bar when running.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
@@ -113,7 +115,7 @@ class MarkdownToDocument:
             zip(sources, meta_list, strict=True),
             total=len(sources),
             desc="Converting markdown files to Documents",
-            disable=not self.progress_bar,
+            disable=not _get_progress_bar_setting(self.progress_bar),
         ):
             try:
                 bytestream = get_bytestream_from_source(source)

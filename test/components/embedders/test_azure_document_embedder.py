@@ -9,6 +9,7 @@ import pytest
 from openai import APIError, OpenAIError
 
 import haystack.components.embedders.azure_document_embedder as azure_document_embedder_module
+import haystack.components.embedders.openai_document_embedder as openai_document_embedder_module
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
@@ -16,6 +17,32 @@ from haystack.utils.azure import default_azure_ad_token_provider
 
 
 class TestAzureOpenAIDocumentEmbedder:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("run_async", [False, True])
+    async def test_inherited_progress_bar_override(self, monkeypatch, mock_azure_clients, run_async):
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", "false")
+        sync_cls, async_cls = mock_azure_clients
+        response = Mock(
+            data=[Mock(embedding=[0.1, 0.2, 0.3])],
+            model="text-embedding-3-small",
+            usage={"prompt_tokens": 1, "total_tokens": 1},
+        )
+        sync_cls.return_value.embeddings.create.return_value = response
+        async_cls.return_value.embeddings.create = AsyncMock(return_value=response)
+        progress = Mock(side_effect=lambda iterable, **kwargs: iterable)
+        monkeypatch.setattr(openai_document_embedder_module, "async_tqdm" if run_async else "tqdm", progress)
+
+        documents = [Document(content="test document")]
+        result = await embedder.run_async(documents=documents) if run_async else embedder.run(documents=documents)
+
+        assert result["documents"][0].embedding == [0.1, 0.2, 0.3]
+        if run_async:
+            progress.assert_not_called()
+        else:
+            assert progress.call_args.kwargs["disable"] is True
+        assert embedder.progress_bar is True
+
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
