@@ -1,0 +1,14 @@
+fixes:
+  - |
+    Preserve tool content when saving and restoring chat histories with
+    ``ChatMessage.to_dict()`` and ``ChatMessage.from_dict()``. Tool results
+    containing tuples or other sequences of ``TextContent``, ``ImageContent``,
+    and ``FileContent`` now serialize as lists and restore their content objects.
+    Previously saved tuple dictionaries are also supported. String tool results
+    keep their existing representation.
+upgrade:
+  - |
+    Serialized tool content sequences now use a list representation, including
+    results supplied as tuples. Consumers of saved chat dictionaries should
+    accept lists rather than depend on the original sequence container type.
+    Existing tuple dictionaries remain readable.
