@@ -234,6 +234,14 @@ class TestMultiRetriever:
         with pytest.raises(ValueError, match="top_k_per_retriever must be greater than 0"):
             MultiRetriever(retrievers=retrievers, top_k_per_retriever=top_k_per_retriever)
 
+    @pytest.mark.parametrize("join_mode", ["Concatenate", "reciprocal-rank-fusion", "reciprocal_rank_fusion ", "rrf"])
+    def test_init_with_invalid_join_mode_raises(self, join_mode):
+        # Regression: an unknown join_mode was accepted and fell through to the concatenate branch of
+        # _merge_results, so a typo silently changed document scores and result order instead of being rejected.
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="The value of parameter <join_mode> must be 'concatenate'"):
+            MultiRetriever(retrievers=retrievers, join_mode=join_mode)
+
     @pytest.mark.parametrize("top_k", [-1, -2])
     def test_run_with_negative_top_k_raises(self, sample_documents, top_k):
         # Regression: a negative top_k was used as a negative slice on the merged list, silently dropping the
