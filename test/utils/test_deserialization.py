@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import re
+
 import pytest
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -42,6 +44,16 @@ class TestDeserializeComponentInplace:
     def test_class_not_correctly_imported(self):
         data = {"chat_generator": {"type": "invalid.module.InvalidClass"}}
         with pytest.raises(DeserializationError):
+            deserialize_component_inplace(data)
+
+    def test_class_with_wrong_path_suggests_correct_path(self):
+        data = {"chat_generator": {"type": "haystack.components.generators.chat.openai.OpenAIResponsesChatGenerator"}}
+        with pytest.raises(
+            DeserializationError,
+            match=re.escape(
+                "Did you mean 'haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator'?"
+            ),
+        ):
             deserialize_component_inplace(data)
 
     def test_component_no_from_dict_method(self):

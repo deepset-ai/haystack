@@ -256,6 +256,7 @@ class PipelineBase:  # noqa: PLW1641
                         raise PipelineError(
                             f"Component '{component_type}' (name: '{name}') not imported. Please "
                             f"check that the package is installed and the component path is correct."
+                            f"{type_serialization._class_path_hint(component_type)}"
                         ) from e
 
                 # Create a new one
