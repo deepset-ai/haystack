@@ -520,6 +520,30 @@ class TestInFlightTaskCleanupOnError:
 
 
 @pytest.mark.asyncio
+async def test_wait_for_tasks_yields_tasks_finished_together_in_scheduling_order():
+    """
+    Tasks that finish in the same batch must be yielded in the order they were scheduled, not in the arbitrary
+    iteration order of the set returned by asyncio.wait, so that variadic sockets receive their inputs in a stable
+    order.
+    """
+
+    async def _output(value: int) -> dict[str, int]:
+        return {"value": value}
+
+    names = [f"component_{i}" for i in range(32)]
+    running_tasks = {asyncio.create_task(_output(i)): name for i, name in enumerate(names)}
+    await asyncio.wait(running_tasks.keys())
+
+    yielded = [
+        name
+        async for partial in Pipeline._wait_for_tasks(running_tasks, set(names), return_when=asyncio.FIRST_COMPLETED)
+        for name in partial
+    ]
+
+    assert yielded == names
+
+
+@pytest.mark.asyncio
 async def test_sync_component_run_in_thread_receives_contextvars():
     """
     Regression test: contextvars set in the calling async context (e.g. the active tracing span) must propagate
