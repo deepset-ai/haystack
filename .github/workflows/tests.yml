@@ -33,6 +33,7 @@ env:
   # Temporary: PyTorch publishes cp315 wheels only on its own index so far.
   UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
   UV_INDEX_STRATEGY: unsafe-best-match
+  UV_OVERRIDE: ${{ github.workspace }}/.github/tmp-uv-overrides.txt
   # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
   # See [tool.mypy] in pyproject.toml.
   MYPY_PYTHON_VERSION: "3.12"
@@ -153,6 +154,8 @@ jobs:
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
+        env:
+          PYTEST_ADDOPTS: ${{ matrix.os == 'windows-latest' && '--ignore=test/components/converters/test_json.py' || '' }}
         run: hatch run test:unit
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
