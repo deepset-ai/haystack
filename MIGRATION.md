@@ -1028,6 +1028,7 @@ from haystack.dataclasses import Document
 # these two documents could end up with different IDs.
 doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
 doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+```
 
 After (v3.0):
 ```python

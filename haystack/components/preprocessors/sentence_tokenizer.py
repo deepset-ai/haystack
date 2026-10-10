@@ -103,7 +103,7 @@ if nltk_imports.is_successful():
             """
             try:
                 return self._re_period_context  # type: ignore
-            except:  # noqa: E722
+            except AttributeError:
                 self._re_period_context = re.compile(
                     self._period_context_fmt
                     % {
@@ -253,4 +253,4 @@ class SentenceSplitter:
             logger.warning("No abbreviations file found for {language}. Using default abbreviations.", language=lang)
             return []
 
-        return abbreviations_file.read_text().split("\n")
+        return abbreviations_file.read_text(encoding="utf-8").split("\n")

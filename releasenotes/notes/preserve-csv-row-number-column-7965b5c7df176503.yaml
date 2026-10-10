@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``CSVToDocument`` in row mode now preserves values from a CSV column named
+    ``row_number`` as ``csv_row_number`` in metadata (with a suffix on collision),
+    instead of overwriting them with the generated row index.

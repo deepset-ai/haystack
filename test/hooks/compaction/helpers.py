@@ -54,6 +54,15 @@ def tool_result(result: str, *, call_id: str = "c1", name: str = "search", error
     )
 
 
+def conversation(*results: str) -> list[ChatMessage]:
+    """A user task followed by one Agent step per given result."""
+    messages = [ChatMessage.from_user("task")]
+    for index, result in enumerate(results):
+        call_id = f"c{index}"
+        messages.extend([tool_call(call_id), tool_result(result, call_id=call_id)])
+    return messages
+
+
 def make_state(messages: list[ChatMessage], **data: Any) -> State:
     """A State shaped like the Agent's, holding `messages` and whatever run metadata a test overrides."""
     base = {

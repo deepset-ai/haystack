@@ -4,12 +4,17 @@
 
 import time
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from pytest import LogCaptureFixture
 
-from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE, SentenceSplitter
+from haystack.components.preprocessors.sentence_tokenizer import (
+    QUOTE_SPANS_RE,
+    CustomPunktLanguageVars,
+    SentenceSplitter,
+)
 
 
 def test_apply_split_rules_no_join() -> None:
@@ -70,6 +75,19 @@ def test_read_abbreviations_missing_file(caplog: LogCaptureFixture) -> None:
         result = SentenceSplitter._read_abbreviations("pt")
         assert result == []
         assert "No abbreviations file found for pt. Using default abbreviations." in caplog.text
+
+
+def test_read_abbreviations_decodes_utf8_regardless_of_locale() -> None:
+    # simulate a Windows locale: without an explicit encoding, the file would be decoded as cp1252
+    original_read_text = Path.read_text
+
+    def read_text_with_cp1252_default(self, encoding=None, *args, **kwargs):
+        return original_read_text(self, encoding or "cp1252", *args, **kwargs)
+
+    with patch.object(Path, "read_text", read_text_with_cp1252_default):
+        abbreviations = SentenceSplitter._read_abbreviations("de")
+
+    assert "ggü" in abbreviations
 
 
 def test_quote_spans_regex():
@@ -174,3 +192,14 @@ def test_split_sentences_performance() -> None:
     end = time.time()
 
     assert end - start < 2, f"Execution time exceeded 2 seconds: {end - start:.2f} seconds"
+
+
+def test_period_context_re_does_not_swallow_unexpected_errors() -> None:
+    class FailingLanguageVars(CustomPunktLanguageVars):
+        def __getattr__(self, name: str) -> Any:
+            if name == "_re_period_context":
+                raise RuntimeError("unexpected")
+            raise AttributeError(name)
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        FailingLanguageVars().period_context_re()

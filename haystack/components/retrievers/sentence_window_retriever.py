@@ -192,9 +192,11 @@ class SentenceWindowRetriever:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
-                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
-                                      document surrounding them. The documents are sorted by the `split_idx_start`
-                                      meta field.
+                - `context_documents`: A list of `Document` objects, containing the retrieved documents plus the
+                                      context documents surrounding them, grouped by window in the order of
+                                      `retrieved_documents`. Within each window, the documents are sorted by the
+                                      meta field set in `split_id_meta_field`. Documents shared by overlapping
+                                      windows appear once per window.
 
         """
         window_size = self.window_size if window_size is None else window_size
@@ -223,9 +225,11 @@ class SentenceWindowRetriever:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
-                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
-                                      document surrounding them. The documents are sorted by the `split_idx_start`
-                                      meta field.
+                - `context_documents`: A list of `Document` objects, containing the retrieved documents plus the
+                                      context documents surrounding them, grouped by window in the order of
+                                      `retrieved_documents`. Within each window, the documents are sorted by the
+                                      meta field set in `split_id_meta_field`. Documents shared by overlapping
+                                      windows appear once per window.
 
         """
         window_size = self.window_size if window_size is None else window_size
@@ -322,8 +326,9 @@ class SentenceWindowRetriever:
                 for fetched in fetched_documents
                 if self._is_in_window(fetched, source_ids, split_id - window_size, split_id + window_size)
             ]
-            context_text.append(self.merge_documents_text(context_docs))
-            context_documents.extend(sorted(context_docs, key=lambda d: d.meta[self.split_id_meta_field]))
+            context_docs_sorted = sorted(context_docs, key=lambda d: d.meta[self.split_id_meta_field])
+            context_text.append(self.merge_documents_text(context_docs_sorted))
+            context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}
 
