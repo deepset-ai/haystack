@@ -151,6 +151,9 @@ def _prepare_ordering_comparison(
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    if isinstance(value, datetime) != isinstance(filter_value, datetime):
+        msg = "Can't compare a datetime with a non-datetime value using operators '>', '>=', '<', '<='"
+        raise FilterError(msg)
     return value, filter_value, True
 
 
