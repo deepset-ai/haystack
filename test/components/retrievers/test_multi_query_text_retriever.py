@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, component
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 from haystack.components.retrievers import InMemoryBM25Retriever, MultiQueryTextRetriever
@@ -149,6 +150,28 @@ class TestMultiQueryTextRetriever:
         assert all(isinstance(doc, Document) for doc in result["documents"])
         scores = [doc.score for doc in result["documents"] if doc.score is not None]
         assert scores == sorted(scores, reverse=True)
+
+    def test_run_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = MultiQueryTextRetriever(retriever=MockRetriever(), max_workers=1)
+
+        result = retriever.run(queries=["query"])
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
 
     @pytest.mark.integration
     def test_run_with_filters(self, document_store_with_docs):
