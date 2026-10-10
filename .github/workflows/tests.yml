@@ -29,7 +29,10 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.15"
+  # Temporary: PyTorch publishes cp315 wheels only on its own index so far.
+  UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+  UV_INDEX_STRATEGY: unsafe-best-match
   # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
   # See [tool.mypy] in pyproject.toml.
   MYPY_PYTHON_VERSION: "3.12"
@@ -82,6 +85,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         run: |
@@ -105,6 +109,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         run: |
@@ -137,6 +142,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         id: hatch
@@ -228,6 +234,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         id: hatch
@@ -256,6 +263,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         id: hatch
@@ -290,6 +298,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+          allow-prereleases: true
 
       - name: Install Hatch
         id: hatch
