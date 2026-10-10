@@ -102,7 +102,7 @@ dependencies = [
 
 
   # Converters
-  "pypdf",                            # PyPDFToDocument
+  "pypdf>=6.20",                      # PyPDFToDocument; 6.20 changed the extracted text that tests expect
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument
