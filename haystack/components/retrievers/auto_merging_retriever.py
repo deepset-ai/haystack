@@ -118,7 +118,8 @@ class AutoMergingRetriever:
         Run the AutoMergingRetriever.
 
         Recursively groups documents by their parents and merges them if they meet the threshold,
-        continuing up the hierarchy until no more merges are possible.
+        continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+        first so leaves at different depths can merge with their promoted siblings.
 
         :param documents: List of leaf documents that were matched by a retriever
         :returns:
@@ -140,9 +141,14 @@ class AutoMergingRetriever:
 
         def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
             parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
+            deepest_level = max((doc.meta["__level"] for doc in docs_to_merge), default=0)
+            pending_docs = []
 
             for doc in docs_to_merge:
-                if doc.meta.get("__parent_id"):  # only docs that have parents
+                # Shorter branches can have shallower leaves whose siblings have not been merged yet.
+                if doc.meta["__level"] < deepest_level:
+                    pending_docs.append(doc)
+                elif doc.meta.get("__parent_id"):  # only docs that have parents
                     parent_doc_id_to_child_docs[doc.meta["__parent_id"]].append(doc)
                 else:
                     docs_to_return.append(doc)  # keep docs that have no parents
@@ -159,12 +165,11 @@ class AutoMergingRetriever:
                 else:
                     docs_to_return.extend(child_docs)  # Keep children separate
 
-            # if no new merges were made, we're done
-            if not merged_docs:
-                return merged_docs + docs_to_return
+            if not merged_docs and not pending_docs:
+                return docs_to_return
 
             # Recursively try to merge the next level
-            return _try_merge_level(merged_docs, docs_to_return)
+            return _try_merge_level(pending_docs + merged_docs, docs_to_return)
 
         return {"documents": _try_merge_level(documents, [])}
 
@@ -174,7 +179,8 @@ class AutoMergingRetriever:
         Asynchronously run the AutoMergingRetriever.
 
         Recursively groups documents by their parents and merges them if they meet the threshold,
-        continuing up the hierarchy until no more merges are possible.
+        continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+        first so leaves at different depths can merge with their promoted siblings.
 
         :param documents: List of leaf documents that were matched by a retriever
         :returns:
@@ -199,9 +205,14 @@ class AutoMergingRetriever:
 
         async def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
             parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
+            deepest_level = max((doc.meta["__level"] for doc in docs_to_merge), default=0)
+            pending_docs = []
 
             for doc in docs_to_merge:
-                if doc.meta.get("__parent_id"):  # only docs that have parents
+                # Shorter branches can have shallower leaves whose siblings have not been merged yet.
+                if doc.meta["__level"] < deepest_level:
+                    pending_docs.append(doc)
+                elif doc.meta.get("__parent_id"):  # only docs that have parents
                     parent_doc_id_to_child_docs[doc.meta["__parent_id"]].append(doc)
                 else:
                     docs_to_return.append(doc)  # keep docs that have no parents
@@ -218,12 +229,11 @@ class AutoMergingRetriever:
                 else:
                     docs_to_return.extend(child_docs)  # Keep children separate
 
-            # if no new merges were made, we're done
-            if not merged_docs:
-                return merged_docs + docs_to_return
+            if not merged_docs and not pending_docs:
+                return docs_to_return
 
             # Recursively try to merge the next level
-            return await _try_merge_level(merged_docs, docs_to_return)
+            return await _try_merge_level(pending_docs + merged_docs, docs_to_return)
 
         return {"documents": await _try_merge_level(documents, [])}
 
