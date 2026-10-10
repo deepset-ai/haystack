@@ -80,14 +80,6 @@ class TestLinkContentFetcher:
         assert "verify" in fetcher.client_kwargs
         assert fetcher.client_kwargs["verify"] is False
 
-    @pytest.mark.parametrize("content_type", ["font/woff", "multipart/form-data", ""])
-    def test_resolve_handler_falls_back_to_text_handler_without_mutating_handlers(self, content_type):
-        fetcher = LinkContentFetcher()
-        registered = dict(fetcher.handlers)
-
-        assert fetcher._resolve_handler(content_type) is _text_content_handler
-        assert fetcher.handlers == registered
-
     def test_run_text(self):
         """Test fetching text content"""
         correct_response = b"Example test response"
@@ -247,6 +239,14 @@ class TestLinkContentFetcher:
 
         # Each URL failed once and succeeded on its first retry, so each one sends the second user agent.
         assert user_agent_on_success == dict.fromkeys(urls, user_agents[1])
+
+    @pytest.mark.parametrize("content_type", ["font/woff", "multipart/form-data", ""])
+    def test_resolve_handler_falls_back_to_text_handler_without_mutating_handlers(self, content_type):
+        fetcher = LinkContentFetcher()
+        registered = dict(fetcher.handlers)
+
+        assert fetcher._resolve_handler(content_type) is _text_content_handler
+        assert fetcher.handlers == registered
 
 
 class TestComponentLifecycle:
