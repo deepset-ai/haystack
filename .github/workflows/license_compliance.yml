@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
 
 permissions:
   contents: read
@@ -47,9 +47,7 @@ jobs:
           fail: "Copyleft,Other,Error"
           # Exclusions in the vanilla distribution must be explicitly motivated
           # - tqdm is MLP but there are no better alternatives
-          # - typing_extensions>=4.13.0 has a Python Software Foundation License 2.0 but pip-license-checker does not recognize it
-          #   (https://github.com/pilosus/pip-license-checker/issues/143)
-          exclude: "(?i)^(tqdm|typing_extensions).*"
+          exclude: "(?i)^(tqdm).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa

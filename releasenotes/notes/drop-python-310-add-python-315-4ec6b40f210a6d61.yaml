@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    Dropped support for Python 3.10 since it reaches End of Life (EOL) in October 2026.
+    The minimum supported Python version is now 3.11.
+    If you are on Python 3.10, upgrade your Python version before upgrading Haystack.
+enhancements:
+  - |
+    Haystack now officially supports Python 3.15.

@@ -62,9 +62,8 @@ def _resolve_parameter_types(target: Callable, *, include_extras: bool = False) 
             # TypeError is raised for objects that cannot carry annotations, NameError for names that are not
             # importable at runtime. Either way we fall back to the unresolved annotations.
             hints = {}
-        # Non-string annotations are kept as they are written: on Python 3.10 `get_type_hints` widens the annotation
-        # of a parameter defaulting to `None` into an optional. This was changed in Python 3.11, see
-        # https://docs.python.org/3/whatsnew/3.11.html#typing.
+        # Non-string annotations are kept as they are written: with `include_extras=False`, `get_type_hints` strips
+        # `Annotated` metadata, which would drop markers such as `Variadic` from annotations that need no resolving.
         return {
             name: hints.get(name, param.annotation) if isinstance(param.annotation, str) else param.annotation
             for name, param in parameters.items()

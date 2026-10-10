@@ -10,10 +10,9 @@ from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar, Union, get_args
+from typing import Any, Self, TextIO, TypeVar, Union, get_args
 
 import networkx
-from typing_extensions import Self
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
