@@ -774,6 +774,15 @@ def test_document_matches_filter_unknown_operator_error_message(filters, expecte
         document_matches_filter(filters, Document(meta={"page": 10}))
 
 
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+@pytest.mark.parametrize("filter_value", [2025, 2025.0])
+def test_document_matches_filter_raises_filter_error_for_datetime_and_numeric_value(operator, filter_value):
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    with pytest.raises(FilterError, match="Can't compare a datetime with a non-datetime value using operators"):
+        document_matches_filter(filters, Document(meta={"date": datetime(2025, 1, 1)}))
+
+
 def test_dotted_field_with_unknown_root_is_treated_as_missing():
     # A dotted field whose root is not a Document attribute must be treated as a missing field
     # (matching the documented "treat it as None" behavior and non-dotted unknown fields),
