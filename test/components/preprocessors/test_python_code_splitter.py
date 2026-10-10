@@ -689,11 +689,7 @@ class TestDocstringStripping:
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
 
     @pytest.mark.parametrize(
-        "source",
-        [
-            'def only_docstring():\n    """Function docs."""\n',
-            'class OnlyDocstring:\n    """Class docs."""\n',
-        ],
+        "source", ['def only_docstring():\n    """Function docs."""\n', 'class OnlyDocstring:\n    """Class docs."""\n']
     )
     def test_strip_docstrings_keeps_docstring_only_units_valid(self, source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
