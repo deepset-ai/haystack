@@ -7,10 +7,3 @@ upgrade:
 enhancements:
   - |
     Haystack now officially supports Python 3.15.
-fixes:
-  - |
-    ``Pipeline.run_async()`` and ``Pipeline.run_async_generator()`` now pass the outputs of components that finish at
-    the same time to a variadic input, such as the ``documents`` input of ``DocumentJoiner``, in the order the
-    components were scheduled.
-    Previously, the order could differ between runs and platforms, which changed the order of joined lists.
-    The changed order showed up on Python 3.15 on Linux.

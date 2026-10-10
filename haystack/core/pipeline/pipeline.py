@@ -629,9 +629,7 @@ class Pipeline(PipelineBase):
             return
 
         done, _pending = await asyncio.wait(running_tasks.keys(), return_when=return_when)
-        # `done` is a set whose iteration order varies between runs and platforms. Following the scheduling order
-        # keeps the order in which variadic sockets receive the outputs of components that finished together stable.
-        for finished in [task for task in running_tasks if task in done]:
+        for finished in done:
             finished_component_name = running_tasks.pop(finished)
             try:
                 partial_result = finished.result()
