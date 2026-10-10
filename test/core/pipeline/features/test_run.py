@@ -1089,7 +1089,7 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
                     ("add_one_again", 1): {"add": None, "value": 7},
                     ("double", 1): {"value": 3},
                     ("parity", 1): {"value": 3},
-                    ("sum", 1): {"values": [3, 6, 8]},
+                    ("sum", 1): {"values": AnyOrder([3, 6, 8])},
                 },
             ),
         ],
@@ -1751,16 +1751,22 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                     "text_embedder": {
                         "meta": {"model": "mock-model", "usage": {"prompt_tokens": 4, "total_tokens": 4}}
                     },
-                    "joinerfinal": {"documents": [doc1, doc2]},
+                    "joinerfinal": {"documents": AnyOrder([doc1, doc2], key=lambda d: d.id)},
                 },
                 expected_component_calls={
                     ("router", 1): {"query": "I'm a legit question"},
                     ("text_embedder", 1): {"text": "I'm a legit question"},
                     ("bm25retriever", 1): {"query": "I'm a legit question"},
                     ("retriever", 1): {"query_embedding": [1.0, 2.0, 3.0]},
-                    ("joinerhybrid", 1): {"documents": [[doc1], [doc2]], "top_k": None},
-                    ("ranker", 1): {"query": "I'm a legit question", "documents": [doc1, doc2]},
-                    ("joinerfinal", 1): {"documents": [[doc1, doc2]], "top_k": None},
+                    ("joinerhybrid", 1): {
+                        "documents": AnyOrder([[doc1], [doc2]], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
+                    ("ranker", 1): {
+                        "query": "I'm a legit question",
+                        "documents": AnyOrder([doc1, doc2], key=lambda d: d.id),
+                    },
+                    ("joinerfinal", 1): {"documents": [AnyOrder([doc1, doc2], key=lambda d: d.id)], "top_k": None},
                 },
             ),
             PipelineRunData(
@@ -2260,9 +2266,15 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
         [
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
-                expected_outputs={"second_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc3]}},
+                expected_outputs={
+                    "second_creator": {"noop": None},
+                    "documents_joiner": {"documents": AnyOrder([doc1, doc3], key=lambda d: d.id)},
+                },
                 expected_component_calls={
-                    ("documents_joiner", 1): {"documents": [[doc1], [doc3]], "top_k": None},
+                    ("documents_joiner", 1): {
+                        "documents": AnyOrder([[doc1], [doc3]], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
@@ -2270,9 +2282,15 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
-                expected_outputs={"third_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc2]}},
+                expected_outputs={
+                    "third_creator": {"noop": None},
+                    "documents_joiner": {"documents": AnyOrder([doc1, doc2], key=lambda d: d.id)},
+                },
                 expected_component_calls={
-                    ("documents_joiner", 1): {"documents": [[doc1], [doc2]], "top_k": None},
+                    ("documents_joiner", 1): {
+                        "documents": AnyOrder([[doc1], [doc2]], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
@@ -2317,9 +2335,15 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
         [
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
-                expected_outputs={"second_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc3]}},
+                expected_outputs={
+                    "second_creator": {"noop": None},
+                    "documents_joiner": {"documents": AnyOrder([doc1, doc3], key=lambda d: d.id)},
+                },
                 expected_component_calls={
-                    ("documents_joiner", 1): {"documents": [[doc1], [doc3]], "top_k": None},
+                    ("documents_joiner", 1): {
+                        "documents": AnyOrder([[doc1], [doc3]], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
@@ -2327,9 +2351,15 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
-                expected_outputs={"third_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc2]}},
+                expected_outputs={
+                    "third_creator": {"noop": None},
+                    "documents_joiner": {"documents": AnyOrder([doc1, doc2], key=lambda d: d.id)},
+                },
                 expected_component_calls={
-                    ("documents_joiner", 1): {"documents": [[doc1], [doc2]], "top_k": None},
+                    ("documents_joiner", 1): {
+                        "documents": AnyOrder([[doc1], [doc2]], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
@@ -2352,6 +2382,8 @@ def that_has_an_answer_joiner_variadic_component():
     query = "What's Natural Language Processing?"
     reply1 = "This is a test answer"
     reply2 = "This is a second test answer"
+    answer1 = GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]})
+    answer2 = GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]})
 
     return (
         pipeline,
@@ -2361,14 +2393,7 @@ def that_has_an_answer_joiner_variadic_component():
                     "answer_builder_1": {"query": query, "replies": [reply1]},
                     "answer_builder_2": {"query": query, "replies": [reply2]},
                 },
-                expected_outputs={
-                    "answer_joiner": {
-                        "answers": [
-                            GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]}),
-                            GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]}),
-                        ]
-                    }
-                },
+                expected_outputs={"answer_joiner": {"answers": AnyOrder([answer1, answer2], key=lambda a: a.data)}},
                 expected_component_calls={
                     ("answer_builder_1", 1): {
                         "documents": None,
@@ -2389,10 +2414,7 @@ def that_has_an_answer_joiner_variadic_component():
                         "replies": [reply2],
                     },
                     ("answer_joiner", 1): {
-                        "answers": [
-                            [GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]})],
-                            [GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]})],
-                        ],
+                        "answers": AnyOrder([[answer1], [answer2]], key=lambda a: a[0].data),
                         "top_k": None,
                     },
                 },
@@ -2844,6 +2866,10 @@ class AnyOrder:  # noqa: PLW1641 # Object does not implement `__hash__` method b
 
     def __eq__(self, other):
         return isinstance(other, list) and sorted(self.items, key=self.key) == sorted(other, key=self.key)
+
+    def __iter__(self):
+        # Lets an AnyOrder be an item of another AnyOrder whose key iterates over its items.
+        return iter(self.items)
 
 
 @given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
@@ -4410,7 +4436,9 @@ some,header,row
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
-                expected_outputs={"a_joiner": {"documents": expected_csv_docs + expected_splits_docs}},
+                expected_outputs={
+                    "a_joiner": {"documents": AnyOrder(expected_csv_docs + expected_splits_docs, key=lambda d: d.id)}
+                },
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
                     ("csv_converter", 1): {"sources": [sources[0]], "meta": None, "content_column": None},
@@ -4422,9 +4450,12 @@ some,header,row
                         ),
                         "top_k": None,
                     },
-                    ("splitter", 1): {"documents": expected_pre_split_docs},
+                    ("splitter", 1): {"documents": AnyOrder(expected_pre_split_docs, key=lambda d: d.id)},
                     ("a_joiner", 1): {
-                        "documents": AnyOrder([expected_csv_docs, expected_splits_docs], key=lambda d: d[0].id),
+                        "documents": AnyOrder(
+                            [expected_csv_docs, AnyOrder(expected_splits_docs, key=lambda d: d.id)],
+                            key=lambda docs: min(d.id for d in docs),
+                        ),
                         "top_k": None,
                     },
                 },
