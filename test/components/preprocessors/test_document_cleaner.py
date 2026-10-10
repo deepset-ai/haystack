@@ -188,6 +188,28 @@ class TestDocumentCleaner:
         result = cleaner.run(documents=[Document(content=text)])
         assert result["documents"][0].content == expected
 
+    def test_remove_repeated_substrings_header_below_page_number(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        bodies = ["Revenue rose.", "Costs fell after the merger.", "Hiring paused.", "New office.", "Outlook."]
+        text = "\f".join(f"{i}\nACME Corp Quarterly Report\n{b}" for i, b in enumerate(bodies, start=1))
+        content = cleaner.run(documents=[Document(content=text)])["documents"][0].content
+        assert "ACME Corp Quarterly Report" not in content
+        for i, (page, body) in enumerate(zip(content.split("\f"), bodies, strict=True), start=1):
+            assert page.split() == [str(i), *body.split()]
+
+    def test_remove_repeated_substrings_footer_above_page_number(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        bodies = ["Revenue rose.", "Costs fell after the merger.", "Hiring paused.", "New office.", "Outlook."]
+        text = "\f".join(f"{b}\nACME Corp confidential do not distribute\n{i}" for i, b in enumerate(bodies, start=1))
+        content = cleaner.run(documents=[Document(content=text)])["documents"][0].content
+        assert "ACME Corp confidential" not in content
+        for i, (page, body) in enumerate(zip(content.split("\f"), bodies, strict=True), start=1):
+            assert page.split() == [*body.split(), str(i)]
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [

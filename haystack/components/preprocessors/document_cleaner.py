@@ -14,6 +14,10 @@ from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
 
+# a digits-only token (e.g. a page number) at the very start or end of a page
+_LEADING_PAGE_NUMBER = re.compile(r"\A\s*\d+\s+")
+_TRAILING_PAGE_NUMBER = re.compile(r"\s+\d+\s*\Z")
+
 
 @component
 class DocumentCleaner:
@@ -317,26 +321,66 @@ class DocumentCleaner:
         return "\f".join(pages)
 
     @staticmethod
+    def _starts_with(page: str, header: str) -> bool:
+        """
+        Check if `page` starts with `header`, ignoring leading whitespace and a leading page number.
+        """
+        header = header.lstrip()
+        rest = DocumentCleaner._split_page_number(page, position="start")[1]
+        return page.lstrip().startswith(header) or rest.lstrip().startswith(header)
+
+    @staticmethod
+    def _ends_with(page: str, footer: str) -> bool:
+        """
+        Check if `page` ends with `footer`, ignoring trailing whitespace and a trailing page number.
+        """
+        footer = footer.rstrip()
+        rest = DocumentCleaner._split_page_number(page, position="end")[1]
+        return page.rstrip().endswith(footer) or rest.rstrip().endswith(footer)
+
+    @staticmethod
     def _remove_prefix(page: str, header: str) -> str:
         """
         Remove `header` from the start of `page` (ignoring leading whitespace), leaving the rest of the page untouched.
         """
-        stripped = page.lstrip()
         header = header.lstrip()
+        page_number, rest = "", page
+        if not page.lstrip().startswith(header):
+            page_number, rest = DocumentCleaner._split_page_number(page, position="start")
+        stripped = rest.lstrip()
         if not stripped.startswith(header):
             return page
-        return page[: len(page) - len(stripped)] + stripped[len(header) :]
+        return page_number + rest[: len(rest) - len(stripped)] + stripped[len(header) :]
 
     @staticmethod
     def _remove_suffix(page: str, footer: str) -> str:
         """
         Remove `footer` from the end of `page` (ignoring trailing whitespace), leaving the rest of the page untouched.
         """
-        stripped = page.rstrip()
         footer = footer.rstrip()
+        page_number, rest = "", page
+        if not page.rstrip().endswith(footer):
+            page_number, rest = DocumentCleaner._split_page_number(page, position="end")
+        stripped = rest.rstrip()
         if not stripped.endswith(footer):
             return page
-        return stripped[: len(stripped) - len(footer)] + page[len(stripped) :]
+        return stripped[: len(stripped) - len(footer)] + rest[len(stripped) :] + page_number
+
+    @staticmethod
+    def _split_page_number(page: str, position: Literal["start", "end"]) -> tuple[str, str]:
+        """
+        Split off a leading (`position="start"`) or trailing (`position="end"`) digits-only token, e.g. a page number.
+
+        :returns: A tuple of (page number part including its surrounding whitespace, rest of the page). The page
+            number part is an empty string if there is none.
+        """
+        pattern = _LEADING_PAGE_NUMBER if position == "start" else _TRAILING_PAGE_NUMBER
+        match = pattern.search(page)
+        if not match:
+            return "", page
+        if position == "start":
+            return match.group(0), page[match.end() :]
+        return match.group(0), page[: match.start()]
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
@@ -387,7 +431,8 @@ class DocumentCleaner:
         :param max_ngram: The maximum length of ngram to consider.
         :param min_ngram: The minimum length of ngram to consider.
         :param position: If "start", only consider ngrams that every sequence starts with (headers); if "end", only
-            consider ngrams that every sequence ends with (footers). Leading/trailing whitespace is ignored.
+            consider ngrams that every sequence ends with (footers). Leading/trailing whitespace and a leading/trailing
+            digits-only token (such as a page number) are ignored.
         :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
@@ -398,9 +443,9 @@ class DocumentCleaner:
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
         if position == "start":
-            intersection = {ng for ng in intersection if all(s.lstrip().startswith(ng.lstrip()) for s in sequences)}
+            intersection = {ng for ng in intersection if all(self._starts_with(s, ng) for s in sequences)}
         elif position == "end":
-            intersection = {ng for ng in intersection if all(s.rstrip().endswith(ng.rstrip()) for s in sequences)}
+            intersection = {ng for ng in intersection if all(self._ends_with(s, ng) for s in sequences)}
 
         longest = max(intersection, key=len, default="")
         return longest if longest.strip() else ""
