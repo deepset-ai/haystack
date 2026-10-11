@@ -1917,6 +1917,73 @@ class TestChatCompletionChunkConversion:
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
+    def test_handle_stream_response_tool_calls_without_index(self) -> None:
+        # Gemini's OpenAI-compatible API omits `index` and sends each tool call whole in one delta
+        def chunk(*calls: tuple[str, str]) -> ChatCompletionChunk:
+            tool_calls = [
+                ChoiceDeltaToolCall.model_construct(
+                    id="", type="function", function=ChoiceDeltaToolCallFunction(name=name, arguments=args)
+                )
+                for name, args in calls
+            ]
+            return ChatCompletionChunk(
+                id="chunk",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(role="assistant", tool_calls=tool_calls), index=0, finish_reason=None
+                    )
+                ],
+                created=1742207200,
+                model="gemini-2.5-flash",
+                object="chat.completion.chunk",
+            )
+
+        openai_chunks = [
+            chunk(("weather", '{"city": "Paris"}'), ("time", '{"tz": "CET"}')),
+            chunk(("weather", '{"city": "Berlin"}')),
+        ]
+        comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore[arg-type]
+
+        assert [(tc.tool_name, tc.arguments) for tc in result.tool_calls] == [
+            ("weather", {"city": "Paris"}),
+            ("time", {"tz": "CET"}),
+            ("weather", {"city": "Berlin"}),
+        ]
+
+    def test_handle_stream_response_fragmented_tool_calls_without_index(self) -> None:
+        # A server that omits `index` and streams arguments in fragments: a fragment with no id and no name
+        # continues the tool call before it
+        def chunk(tool_id: str | None, name: str | None, args: str) -> ChatCompletionChunk:
+            tool_call = ChoiceDeltaToolCall.model_construct(
+                id=tool_id, type="function", function=ChoiceDeltaToolCallFunction(name=name, arguments=args)
+            )
+            return ChatCompletionChunk(
+                id="chunk",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(role="assistant", tool_calls=[tool_call]), index=0, finish_reason=None
+                    )
+                ],
+                created=1742207200,
+                model="some-model",
+                object="chat.completion.chunk",
+            )
+
+        openai_chunks = [
+            chunk("call_1", "weather", '{"city": '),
+            chunk(None, None, '"Paris"}'),
+            chunk("call_2", "time", '{"tz": '),
+            chunk(None, None, '"CET"}'),
+        ]
+        comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore[arg-type]
+
+        assert [(tc.id, tc.tool_name, tc.arguments) for tc in result.tool_calls] == [
+            ("call_1", "weather", {"city": "Paris"}),
+            ("call_2", "time", {"tz": "CET"}),
+        ]
+
     def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none: MagicMock) -> None:
         """
         Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.

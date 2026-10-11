@@ -727,11 +727,22 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     # create a list of ToolCallDelta objects from the tool calls
     if choice.delta and choice.delta.tool_calls:
         tool_calls_deltas = []
+        # Some OpenAI-compatible APIs (e.g. Gemini) omit `index`. An index-less delta that carries a name or an id
+        # starts a new tool call at the next free index; one with neither continues the last tool call.
+        seen_indices = [tc.index for c in previous_chunks for tc in c.tool_calls or [] if tc.index is not None]
+        last_index = seen_indices[-1] if seen_indices else None
+        next_index = max(seen_indices) + 1 if seen_indices else 0
         for tool_call in choice.delta.tool_calls:
             function = tool_call.function
+            index = tool_call.index
+            if index is None:
+                starts_call = bool(tool_call.id) or bool(function and function.name)
+                index = last_index if not starts_call and last_index is not None else next_index
+            last_index = index
+            next_index = max(next_index, index + 1)
             tool_calls_deltas.append(
                 ToolCallDelta(
-                    index=tool_call.index,
+                    index=index,
                     id=tool_call.id,
                     tool_name=function.name if function else None,
                     arguments=function.arguments if function and function.arguments else None,

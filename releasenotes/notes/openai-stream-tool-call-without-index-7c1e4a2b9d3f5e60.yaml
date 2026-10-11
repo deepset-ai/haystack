@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``OpenAIChatGenerator`` no longer raises a ``ValueError`` when an OpenAI-compatible API streams tool calls without an
+    ``index``, as Gemini's OpenAI-compatible endpoint does. An index-less tool call that carries a name or an id gets
+    the next free index, and an index-less fragment with neither continues the previous tool call.
