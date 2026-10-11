@@ -138,9 +138,9 @@ def _prepare_ordering_comparison(
         the other is timezone-aware; otherwise it is `True`.
     """
     if isinstance(value, str) or isinstance(filter_value, str):
-        if not isinstance(value, datetime):
+        if not isinstance(value, datetime) and _looks_like_iso_date(value):
             value = _parse_date(value)
-        if not isinstance(filter_value, datetime):
+        if not isinstance(filter_value, datetime) and _looks_like_iso_date(filter_value):
             filter_value = _parse_date(filter_value)
 
     if isinstance(value, datetime) and isinstance(filter_value, datetime):
