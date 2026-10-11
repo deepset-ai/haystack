@@ -1,0 +1,5 @@
+fixes:
+  - |
+    ``DocumentSplitter`` now honors ``skip_empty_documents=True`` when token boundaries
+    inside a Unicode character produce empty text slices. Character offsets, overlap
+    metadata, and the behavior of ``skip_empty_documents=False`` are preserved.
