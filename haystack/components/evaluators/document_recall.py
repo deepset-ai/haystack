@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import component, default_to_dict, logging
 from haystack.dataclasses import Document
+from haystack.utils.misc import _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,7 @@ class DocumentRecallEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
         """
         if isinstance(mode, str):
             mode = RecallMode.from_str(mode)
@@ -116,7 +118,11 @@ class DocumentRecallEvaluator:
         """
         Collect the unique comparison values of the documents, ignoring missing or empty ones.
         """
-        return {value for doc in documents if (value := self._get_comparison_value(doc)) not in ("", None)}
+        return {
+            _make_metadata_value_hashable(value)
+            for doc in documents
+            if (value := self._get_comparison_value(doc)) not in ("", None)
+        }
 
     def _comparison_sets(
         self, ground_truth_documents: list[Document], retrieved_documents: list[Document]

@@ -6,6 +6,7 @@ from math import log2
 from typing import Any
 
 from haystack import Document, component, default_to_dict
+from haystack.utils.misc import _make_metadata_value_hashable
 
 
 @component
@@ -45,6 +46,7 @@ class DocumentNDCGEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
         """
         self.document_comparison_field = document_comparison_field
 
@@ -84,6 +86,7 @@ class DocumentNDCGEvaluator:
             value = self._get_comparison_value(doc)
             if value is None:
                 continue
+            value = _make_metadata_value_hashable(value)
             relevance = doc.score if doc.score is not None else 1.0
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
         return relevant_value_to_score
@@ -177,7 +180,7 @@ class DocumentNDCGEvaluator:
         # retrieval of the same document then finds nothing, so it cannot inflate DCG past IDCG.
         for i, doc in enumerate(ret_docs):
             value = self._get_comparison_value(doc)
-            if value is not None and value in relevant_value_to_score:
+            if value is not None and (value := _make_metadata_value_hashable(value)) in relevant_value_to_score:
                 dcg += relevant_value_to_score.pop(value) / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
