@@ -287,6 +287,31 @@ def test_run_with_nested_meta_comparison():
     assert result["score"] == 1.0
 
 
+def test_run_with_list_valued_meta_comparison():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.source_ids")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="x", meta={"source_ids": ["wiki-1", "wiki-2"]})]],
+        retrieved_documents=[
+            [
+                Document(content="irrelevant", meta={"source_ids": ["wiki-9"]}),
+                Document(content="z", meta={"source_ids": ["wiki-1", "wiki-2"]}),
+            ]
+        ],
+    )
+    assert result["individual_scores"][0] == pytest.approx(0.6309, abs=1e-4)
+    assert result["score"] == pytest.approx(0.6309, abs=1e-4)
+
+
+def test_run_with_dict_valued_meta_comparison():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.source")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="x", meta={"source": {"url": "https://a.com", "page": 1}})]],
+        retrieved_documents=[[Document(content="z", meta={"source": {"page": 1, "url": "https://a.com"}})]],
+    )
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0
+
+
 def test_run_with_meta_missing_key_treated_as_no_match():
     # Documents missing the meta key should not match anything
     evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.file_id")

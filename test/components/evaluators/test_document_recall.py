@@ -68,6 +68,34 @@ def test_run_with_nested_meta_comparison():
     assert result == {"individual_scores": [0.5], "score": 0.5}
 
 
+def test_run_with_list_valued_meta_comparison():
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.source_ids")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [
+                Document(content="x", meta={"source_ids": ["wiki-1", "wiki-2"]}),
+                Document(content="y", meta={"source_ids": ["wiki-3"]}),
+            ]
+        ],
+        retrieved_documents=[
+            [
+                Document(content="z", meta={"source_ids": ["wiki-1", "wiki-2"]}),
+                Document(content="w", meta={"source_ids": ["wiki-4"]}),
+            ]
+        ],
+    )
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
+def test_run_with_dict_valued_meta_comparison():
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT, document_comparison_field="meta.source")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="x", meta={"source": {"url": "https://a.com", "page": 1}})]],
+        retrieved_documents=[[Document(content="z", meta={"source": {"page": 1, "url": "https://a.com"}})]],
+    )
+    assert result == {"individual_scores": [1.0], "score": 1.0}
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):

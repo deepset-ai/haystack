@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentRecallEvaluator`` and ``DocumentNDCGEvaluator`` crashing with
+    ``TypeError: unhashable type`` when ``document_comparison_field`` points to a
+    ``meta`` key whose value is a list or dict (for example ``meta.source_ids`` or
+    tags written by ``DocumentSplitter``). Such values are now compared by value,
+    like ``DocumentMRREvaluator`` and ``DocumentMAPEvaluator`` already did, instead
+    of raising an error.

@@ -8,6 +8,21 @@ from typing import Any
 from haystack import Document, component, default_to_dict
 
 
+def _make_hashable(value: Any) -> Any:
+    """
+    Convert a value into a hashable equivalent while preserving equality semantics.
+
+    Lists and tuples become tuples (order-sensitive), dicts and sets become frozensets.
+    """
+    if isinstance(value, dict):
+        return frozenset((key, _make_hashable(item)) for key, item in value.items())
+    if isinstance(value, (list, tuple)):
+        return tuple(_make_hashable(item) for item in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_make_hashable(item) for item in value)
+    return value
+
+
 @component
 class DocumentNDCGEvaluator:
     """
@@ -45,17 +60,21 @@ class DocumentNDCGEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              List and dict values are compared by value (e.g. `"meta.source_ids"`).
         """
         self.document_comparison_field = document_comparison_field
 
     def _get_comparison_value(self, doc: Document) -> Any:
         """
         Extract the comparison value from a document based on the configured field.
+
+        Values that are not hashable (lists, dicts) are converted to hashable equivalents with
+        unchanged equality semantics, so they can be used as dict keys.
         """
         if self.document_comparison_field == "content":
-            return doc.content
+            return _make_hashable(doc.content)
         if self.document_comparison_field == "id":
-            return doc.id
+            return _make_hashable(doc.id)
         if self.document_comparison_field.startswith("meta."):
             parts = self.document_comparison_field[5:].split(".")
             value = doc.meta
@@ -63,7 +82,7 @@ class DocumentNDCGEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
