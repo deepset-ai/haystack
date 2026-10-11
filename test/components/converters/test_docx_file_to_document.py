@@ -15,10 +15,10 @@ import pytest
 from docx.opc.constants import RELATIONSHIP_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
+from haystack.dataclasses import ByteStream
 
 from haystack import Document, Pipeline
 from haystack.components.converters.docx import DOCXLinkFormat, DOCXMetadata, DOCXTableFormat, DOCXToDocument
-from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture
@@ -626,3 +626,43 @@ class TestDOCXToDocument:
         content = converter.run(sources=[path])["documents"][0].content
 
         assert expected_link in content
+
+
+class TestDOCXLinkFragment:
+    """Word can store the fragment of a hyperlink URL in `w:anchor` instead of the
+    relationship address. See https://github.com/deepset-ai/haystack/issues/13199."""
+
+    @staticmethod
+    def _docx_with_anchor_link(tmp_path: Path) -> Path:
+        doc = docx.Document()
+        doc.add_paragraph("before")
+        paragraph = doc.add_paragraph()
+        paragraph.add_run("see ")
+        relationship_id = doc.part.relate_to(
+            "https://example.org/manual", RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+        )
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), relationship_id)
+        hyperlink.set(qn("w:anchor"), "refund-policy")
+        run = OxmlElement("w:r")
+        text = OxmlElement("w:t")
+        text.text = "refund policy"
+        run.append(text)
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
+        path = tmp_path / "anchor_link.docx"
+        doc.save(str(path))
+        return path
+
+    @pytest.mark.parametrize(
+        ("link_format", "expected"),
+        [
+            ("markdown", "[refund policy](https://example.org/manual#refund-policy)"),
+            ("plain", "refund policy (https://example.org/manual#refund-policy)"),
+        ],
+    )
+    def test_link_fragment_in_w_anchor_is_preserved(self, tmp_path, link_format, expected):
+        path = self._docx_with_anchor_link(tmp_path)
+        converter = DOCXToDocument(link_format=link_format)
+        content = converter.run(sources=[path])["documents"][0].content
+        assert expected in content
