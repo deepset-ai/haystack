@@ -173,6 +173,27 @@ class TestComponentTool:
         assert "reply" in result
         assert result["reply"] == "Hello, world!"
 
+    def test_custom_parameters_reject_unknown_component_input(self):
+        parameters = {"type": "object", "properties": {"unknown": {"type": "string"}}}
+
+        with pytest.raises(ValueError, match="unknown component input parameter.*unknown"):
+            ComponentTool(component=SimpleComponent(), parameters=parameters)
+
+    @pytest.mark.parametrize("parameters", [{}, {"type": "object"}, {"type": "object", "properties": {}}])
+    def test_custom_parameters_allow_implicit_inputs(self, parameters):
+        tool = ComponentTool(component=SimpleComponent(), parameters=parameters)
+
+        assert tool.invoke(text="world") == {"reply": "Hello, world!"}
+
+    def test_custom_parameters_allow_mandatory_input_from_state(self):
+        parameters = {"type": "object", "properties": {}}
+
+        tool = ComponentTool(
+            component=SimpleComponent(), parameters=parameters, inputs_from_state={"user_text": "text"}
+        )
+
+        assert tool.parameters == parameters
+
     def test_from_component_long_description(self):
         tool = ComponentTool(component=SimpleComponent(), description="".join(["A"] * 1024))
         assert len(tool.description) == 1024
