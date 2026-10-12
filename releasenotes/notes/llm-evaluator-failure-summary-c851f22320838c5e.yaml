@@ -6,6 +6,6 @@ fixes:
     This also affects ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator``.
 enhancements:
   - |
-    ``LLMEvaluator`` fallback warnings now name the component and say that the result for a failed input is set to
-    ``None``. A response that isn't valid JSON or is missing the expected keys now gets its own ``LLMEvaluator``
-    warning with the response and the parsing error.
+    ``LLMEvaluator`` fallback warnings now name the component class, for example ``FaithfulnessEvaluator``, and say
+    that the result for a failed input is set to ``None``. A response that isn't valid JSON or is missing the expected
+    keys now gets its own warning with the response and the parsing error.

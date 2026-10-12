@@ -214,8 +214,9 @@ class LLMEvaluator:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMEvaluator failed to parse the ChatGenerator response: {response}. Setting the result for this "
+                "{component} failed to parse the ChatGenerator response: {response}. Setting the result for this "
                 "input to None. Error: {error}",
+                component=type(self).__name__,
                 response=reply_text,
                 error=e,
             )
@@ -262,8 +263,9 @@ class LLMEvaluator:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning(
-                    "LLMEvaluator failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "{component} failed during chat generation for prompt: {prompt}. Setting the result for this "
                     "input to None. Error: {e}",
+                    component=type(self).__name__,
                     prompt=prompt,
                     e=e,
                 )
@@ -283,7 +285,8 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLMEvaluator failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                "{component} failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                component=type(self).__name__,
                 errors=errors,
                 total=len(list_of_input_names_to_values),
             )
@@ -344,8 +347,9 @@ class LLMEvaluator:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning(
-                    "LLMEvaluator failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "{component} failed during chat generation for prompt: {prompt}. Setting the result for this "
                     "input to None. Error: {e}",
+                    component=type(self).__name__,
                     prompt=prompt,
                     e=e,
                 )
@@ -365,7 +369,8 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLMEvaluator failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                "{component} failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                component=type(self).__name__,
                 errors=errors,
                 total=len(list_of_input_names_to_values),
             )
