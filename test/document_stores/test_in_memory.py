@@ -19,6 +19,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.in_memory import document_store as in_memory_module
 from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -973,6 +974,44 @@ class TestMemoryDocumentStore(
         reused_scores = {doc.id: doc.score for doc in reused_store.bm25_retrieval(query="common", top_k=3)}
 
         assert reused_scores == pytest.approx(fresh_scores)
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_scores_do_not_depend_on_documents_without_content(self, bm25_algorithm):
+        text_documents = [
+            Document(id="short", content="python tips for beginners"),
+            Document(id="long", content="python python guide covering advanced topics in depth today"),
+            Document(id="other", content="cooking pasta at home"),
+        ]
+        text_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+        mixed_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+
+        text_store.write_documents(text_documents)
+        mixed_store.write_documents(text_documents)
+        mixed_store.write_documents([Document(id=f"image_{i}", embedding=[0.1, 0.2]) for i in range(20)])
+
+        text_scores = {doc.id: doc.score for doc in text_store.bm25_retrieval(query="python", top_k=3)}
+        mixed_scores = {doc.id: doc.score for doc in mixed_store.bm25_retrieval(query="python", top_k=3)}
+
+        assert mixed_scores == pytest.approx(text_scores)
+        assert mixed_store._avg_doc_len == pytest.approx(text_store._avg_doc_len)
+
+    def test_bm25_avg_doc_len_with_documents_without_content(self):
+        store = InMemoryDocumentStore(shared=False)
+        store.write_documents(
+            [
+                Document(id="d1", content="hello world"),  # 2 tokens
+                Document(id="d2", content="foo bar baz"),  # 3 tokens
+                Document(id="image", embedding=[0.1, 0.2]),
+            ]
+        )
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        store.delete_documents(["image"])
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        # Overwriting a text document with one without content removes it from the statistics
+        store.write_documents([Document(id="d1", embedding=[0.1, 0.2])], policy=DuplicatePolicy.OVERWRITE)
+        assert store._avg_doc_len == pytest.approx(3.0)
 
 
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
