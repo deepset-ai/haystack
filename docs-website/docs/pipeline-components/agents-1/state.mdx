@@ -255,7 +255,7 @@ print(f"Result count: {result['result_count']}")
 print(f"Last query: {result['last_query']}")
 ```
 
-[Hooks](./hooks.mdx) can read these keys with `state.data.get(...)`, for example to check that the Agent did some work before it finishes. See [Requiring work before the Agent finishes](./hooks.mdx#requiring-work-before-the-agent-finishes).
+[Hooks](./hooks.mdx) can read these keys with `state.data.get(...)`.
 
 If you omit `source`, the entire tool result dict is stored under the state key:
 
