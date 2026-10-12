@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` with ``missing_meta="drop"`` no longer returns Documents that are missing the meta field
+    when the other meta values can't be sorted together, for example ``1`` and ``"x"``. Previously, it returned
+    all Documents in their original order in this case.

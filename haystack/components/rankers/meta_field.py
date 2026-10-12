@@ -312,7 +312,8 @@ class MetaFieldRanker:
                 document_ids=",".join([doc.id for doc in docs_with_meta_field]),
                 error=error,
             )
-            return {"documents": deduplicated_documents[:top_k]}
+            fallback_documents = docs_with_meta_field if missing_meta == "drop" else deduplicated_documents
+            return {"documents": fallback_documents[:top_k]}
 
         # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
