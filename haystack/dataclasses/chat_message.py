@@ -152,13 +152,13 @@ class ToolCallResult:
         """
         Converts ToolCallResult into a dictionary.
 
-        :returns: A dictionary with keys 'result', 'origin', and 'error'.
+        :returns: A dictionary with keys 'result', 'origin', and 'error'. Content sequences are serialized as lists.
         """
         serialized = asdict(self)
-        if isinstance(self.result, list):
+        if isinstance(self.result, Sequence) and not isinstance(self.result, str):
             if not all(isinstance(part, (TextContent, ImageContent, FileContent)) for part in self.result):
                 raise ValueError(
-                    "ToolCallResult result must be a string or a list of TextContent, ImageContent, or FileContent"
+                    "ToolCallResult result must be a string or a sequence of TextContent, ImageContent, or FileContent"
                 )
             serialized["result"] = [_serialize_content_part(part) for part in self.result]
         return serialized
@@ -180,7 +180,7 @@ class ToolCallResult:
             )
 
         result = data["result"]
-        if isinstance(result, list):
+        if isinstance(result, Sequence) and not isinstance(result, str):
             result = [_deserialize_content_part(part) for part in result]
 
         return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])

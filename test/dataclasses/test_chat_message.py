@@ -5,7 +5,9 @@
 import json
 import logging
 import warnings
+from collections import UserList
 from collections.abc import Sequence
+from dataclasses import asdict
 from typing import Any
 
 import pytest
@@ -165,6 +167,69 @@ class TestContentParts:
         assert result.result[1].base64_image == base64_image_string
         assert result.result[2].base64_data == base64_pdf_string
         assert result.result[2].filename == "guide.pdf"
+
+    @pytest.mark.parametrize("container", [list, tuple, UserList])
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_tool_message_sequence_roundtrip(self, container, empty, base64_image_string, base64_pdf_string):
+        parts: list[TextContent | ImageContent | FileContent] = (
+            []
+            if empty
+            else [
+                TextContent(text="Tool report"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="report.pdf"),
+            ]
+        )
+        origin = ToolCall(tool_name="lookup", arguments={}, id="call_1")
+        message = ChatMessage.from_tool(tool_result=container(parts), origin=origin)
+        serialized = message.to_dict()
+        restored = ChatMessage.from_dict(serialized)
+
+        assert isinstance(serialized["content"][0]["tool_call_result"]["result"], list)
+        assert restored.tool_call_result is not None
+        assert restored.tool_call_result.result == parts
+        assert restored.tool_call_result.origin == origin
+
+    def test_tool_result_legacy_tuple_roundtrip(self, base64_image_string, base64_pdf_string):
+        parts: list[TextContent | ImageContent | FileContent] = [
+            TextContent(text="Saved report"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+            FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="report.pdf"),
+        ]
+        result = ToolCallResult(result=tuple(parts), origin=ToolCall(tool_name="lookup", arguments={}), error=False)
+        # Previous versions emitted an unwrapped tuple of dictionaries via dataclasses.asdict().
+        restored = ToolCallResult.from_dict(asdict(result))
+        assert restored.result == parts
+        assert restored.origin == result.origin
+        assert restored.error is False
+
+    @pytest.mark.parametrize("result", ["result", ""])
+    def test_tool_message_string_roundtrip(self, result):
+        message = ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name="lookup", arguments={}))
+        assert ChatMessage.from_dict(message.to_dict()) == message
+
+    def test_tool_message_text_tuple_replay(self):
+        message = ChatMessage.from_tool(
+            tool_result=(TextContent(text="Saved record"),),
+            origin=ToolCall(tool_name="lookup", arguments={}, id="call_1"),
+        )
+        restored = ChatMessage.from_dict(message.to_dict())
+        assert restored.to_openai_dict_format() == {
+            "role": "tool",
+            "content": [{"type": "text", "text": "Saved record"}],
+            "tool_call_id": "call_1",
+        }
+
+    @pytest.mark.parametrize("container", [list, tuple, UserList])
+    def test_tool_result_sequence_rejects_invalid_content(self, container):
+        result = ToolCallResult(
+            result=container(["not a content part"]), origin=ToolCall(tool_name="lookup", arguments={}), error=False
+        )
+        with pytest.raises(
+            ValueError,
+            match="ToolCallResult result must be a string or a sequence of TextContent, ImageContent, or FileContent",
+        ):
+            result.to_dict()
 
     def test_text_content_init(self):
         tc = TextContent(text="Hello")
