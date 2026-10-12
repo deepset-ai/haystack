@@ -208,7 +208,21 @@ A common setup is an Agent that should finish by calling a tool, such as one tha
 An `on_exit` hook catches this: when `exit_reason` is `"text"`, it asks the model to call the tool and keeps the Agent running. When the model calls the tool, the tool has already run by the time `on_exit` runs, and `exit_reason` holds the tool's name, so the hook lets the Agent finish. A counter in `state_schema` caps how many times the hook sends the Agent back, so a model that never calls the tool still stops.
 
 ```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web."""
+    # Placeholder: would call a real search API
+    return "Fusion startups reported net-energy-gain milestones this year."
 
 
 @tool(outputs_to_state={"report": {"source": "report"}})
