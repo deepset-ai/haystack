@@ -301,7 +301,7 @@ class DocumentSplitter:
             if chunk_token_count < self.split_threshold and len(text_splits) > 0:
                 overlap_start = offsets[min(i + self.split_overlap, len(tokens))]
                 text_splits[-1] += full_text[overlap_start:chunk_end]
-            else:
+            elif not self.skip_empty_documents or chunk_start < chunk_end:
                 text_splits.append(full_text[chunk_start:chunk_end])
                 splits_pages.append(cur_page)
                 splits_start_idxs.append(chunk_start)

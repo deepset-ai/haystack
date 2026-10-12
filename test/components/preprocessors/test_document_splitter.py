@@ -1065,6 +1065,48 @@ def mock_tiktoken_tokenizer():
 class TestSplittingByToken:
     """Unit tests for split_by="token" mode that do not require external network access."""
 
+    @pytest.mark.parametrize("skip_empty_documents", [True, False])
+    @pytest.mark.parametrize("split_overlap", [0, 1])
+    def test_empty_unicode_token_slices(self, skip_empty_documents, split_overlap):
+        text = "🍕\f🍣"
+        tokenizer = Mock()
+        tokenizer.encode_ordinary.return_value = [1, 2, 3, 4, 5, 6, 7]
+        tokenizer.decode_with_offsets.return_value = (text, [0, 0, 0, 1, 2, 2, 2])
+        splitter = DocumentSplitter(
+            split_by="token",
+            split_length=1 + split_overlap,
+            split_overlap=split_overlap,
+            skip_empty_documents=skip_empty_documents,
+        )
+        splitter._tiktoken_tokenizer = tokenizer
+        source = Document(content=text)
+
+        chunks = splitter.run(documents=[source])["documents"]
+
+        if skip_empty_documents:
+            assert [chunk.content for chunk in chunks] == (
+                ["🍕", "\f", "🍣"] if split_overlap == 0 else ["🍕", "🍕\f", "\f", "🍣"]
+            )
+        else:
+            assert any(chunk.content == "" for chunk in chunks)
+        assert merge_documents(chunks) == text
+        for split_id, chunk in enumerate(chunks):
+            assert chunk.content is not None
+            start = chunk.meta["split_idx_start"]
+            assert text[start : start + len(chunk.content)] == chunk.content
+            assert chunk.meta["split_id"] == split_id
+            assert chunk.meta["source_id"] == source.id
+            assert chunk.meta["page_number"] == 1 + text[:start].count("\f")
+            for overlap in chunk.meta.get("_split_overlap", []):
+                other = next(item for item in chunks if item.id == overlap["doc_id"])
+                start_overlap, end_overlap = overlap["range"]
+                assert other.content is not None
+                offset = other.meta["split_idx_start"] - start
+                assert (
+                    other.content[start_overlap:end_overlap]
+                    == chunk.content[offset + start_overlap : offset + end_overlap]
+                )
+
     def test_init(self):
         splitter = DocumentSplitter(
             split_by="token", split_length=50, split_overlap=10, tokenizer_encoding="cl100k_base"
