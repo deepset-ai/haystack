@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``expit`` score scaling to avoid exponential overflow for large negative
+    inputs and return the correct sigmoid value for minimum signed integers.

@@ -11,7 +11,7 @@ from math import inf
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-from numpy import exp, ndarray
+from numpy import exp, maximum, minimum, ndarray
 
 from haystack import logging
 
@@ -83,11 +83,12 @@ def expit(x: float) -> float: ...
 def expit(x: ndarray[Any, Any]) -> ndarray[Any, Any]: ...
 def expit(x: float | ndarray[Any, Any]) -> float | ndarray[Any, Any]:
     """
-    Compute logistic sigmoid function. Maps input values to a range between 0 and 1
+    Compute the logistic sigmoid function, avoiding overflow for large input values.
 
     :param x: input value. Can be a scalar or a numpy array.
     """
-    return 1 / (1 + exp(-x))
+    numerator = exp(minimum(x, 0))
+    return numerator / (numerator + exp(-maximum(x, 0)))
 
 
 def _guess_mime_type(path: Path) -> str | None:
