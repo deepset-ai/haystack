@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                  |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                       |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                       |      397 |        2 |     99% |  208, 809 |
+| haystack/components/agents/agent.py                                       |      397 |        2 |     99% |  208, 810 |
 | haystack/components/agents/state/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                 |       77 |        2 |     97% |    76, 80 |
 | haystack/components/agents/state/state\_utils.py                          |       18 |        0 |    100% |           |
