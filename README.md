@@ -59,7 +59,7 @@
 | haystack/components/evaluators/document\_ndcg.py                          |       70 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                        |       73 |        2 |     97% |   109-113 |
 | haystack/components/evaluators/faithfulness.py                            |       50 |        0 |    100% |           |
-| haystack/components/evaluators/llm\_evaluator.py                          |      160 |        1 |     99% |       241 |
+| haystack/components/evaluators/llm\_evaluator.py                          |      168 |        1 |     99% |       264 |
 | haystack/components/evaluators/sas\_evaluator.py                          |       57 |       25 |     56% |111-125, 153-188 |
 | haystack/components/extractors/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
@@ -269,7 +269,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17646** |  **709** | **96%** |           |
+| **TOTAL**                                                                 | **17654** |  **709** | **96%** |           |
 
 
 ## Setup coverage badge
