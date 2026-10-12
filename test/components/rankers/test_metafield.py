@@ -154,14 +154,14 @@ class TestMetaFieldRanker:
             assert "Tried to sort Documents with IDs 1,2,3, but got TypeError with the message:" in caplog.text
 
     @pytest.mark.parametrize(
-        ("missing_meta", "expected_ids"), [("drop", ["1", "2"]), ("top", ["1", "2", "3"]), ("bottom", ["1", "2", "3"])]
+        ("missing_meta", "expected_ids"), [("drop", ["1", "3"]), ("top", ["2", "1", "3"]), ("bottom", ["1", "3", "2"])]
     )
     def test_missing_meta_with_unsortable_values(self, missing_meta, expected_ids):
         ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
         docs = [
             Document(id="1", content="abc", meta={"rating": 1}),
-            Document(id="2", content="abc", meta={"rating": "x"}),
-            Document(id="3", content="abc"),
+            Document(id="2", content="abc"),
+            Document(id="3", content="abc", meta={"rating": "x"}),
         ]
 
         output = ranker.run(documents=docs)
