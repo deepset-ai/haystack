@@ -557,6 +557,28 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
+    def test_exception_logs_traceback(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened")
+
+        record = caplog.records[0]
+        assert record.exc_info is not None
+        assert record.exc_info[0] is ZeroDivisionError
+
+    def test_exception_respects_explicit_exc_info(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened", exc_info=False)
+
+        assert not caplog.records[0].exc_info
+
     def test_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
@@ -641,7 +663,7 @@ class TestCompositeLogger:
         logger = haystack_logging.getLogger("haystack.test_logging")
         logger.setLevel(logging.DEBUG)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=rf"Logger\.{method}\(\) takes 1 positional argument"):
             getattr(logger, method)("Hello, structured logging %s!", "logging")
 
     @pytest.mark.parametrize(

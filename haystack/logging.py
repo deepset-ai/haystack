@@ -116,7 +116,7 @@ class PatchedLogger(typing.Protocol):
         msg: str,
         *,
         _: Any = None,
-        exc_info: Any = None,
+        exc_info: Any = True,
         stack_info: Any = False,
         stacklevel: int = 1,
         **kwargs: Any,
@@ -152,12 +152,23 @@ class PatchedLogger(typing.Protocol):
         """Set the logging level."""
 
 
-def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
-    """A decorator to make sure that a function is only called with keyword arguments."""
+def patch_log_method_to_kwargs_only(func: typing.Callable, *, default_exc_info: Any = None) -> typing.Callable:
+    """
+    A decorator to make sure that a function is only called with keyword arguments.
+
+    :param func: The log method to wrap.
+    :param default_exc_info: The `exc_info` to pass when the caller omits it. Use `True` for `exception`.
+    """
 
     @functools.wraps(func)
     def _log_only_with_kwargs(
-        msg: str, *, _: Any = None, exc_info: Any = None, stack_info: Any = False, stacklevel: int = 1, **kwargs: Any
+        msg: str,
+        *,
+        _: Any = None,
+        exc_info: Any = default_exc_info,
+        stack_info: Any = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
     ) -> typing.Callable:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
         return func(
@@ -273,7 +284,7 @@ def getLogger(name: str) -> PatchedLogger:
     logger.warning = patch_log_method_to_kwargs_only(logger.warning)  # type: ignore
     logger.error = patch_log_method_to_kwargs_only(logger.error)  # type: ignore
     logger.critical = patch_log_method_to_kwargs_only(logger.critical)  # type: ignore
-    logger.exception = patch_log_method_to_kwargs_only(logger.exception)  # type: ignore
+    logger.exception = patch_log_method_to_kwargs_only(logger.exception, default_exc_info=True)  # type: ignore
     logger.fatal = patch_log_method_to_kwargs_only(logger.fatal)  # type: ignore
     logger.log = patch_log_with_level_method_to_kwargs_only(logger.log)  # type: ignore
 
