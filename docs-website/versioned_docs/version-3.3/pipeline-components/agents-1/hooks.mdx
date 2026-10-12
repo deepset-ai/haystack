@@ -104,7 +104,7 @@ def audit_tool_calls(state: State) -> None:
 def require_search(state: State) -> None:
     # on_exit: keep going until the agent has actually searched.
     if state.get("tool_call_counts", {}).get("search", 0) == 0:
-        state.set("messages", [ChatMessage.from_system("Search before answering.")])
+        state.set("messages", [ChatMessage.from_user("Search before answering.")])
         state.set("continue_run", True)
 
 

@@ -104,7 +104,7 @@ def audit_tool_calls(state: State) -> None:
 def require_search(state: State) -> None:
     # on_exit: keep going until the agent has actually searched.
     if state.get("tool_call_counts", {}).get("search", 0) == 0:
-        state.set("messages", [ChatMessage.from_system("Search before answering.")])
+        state.set("messages", [ChatMessage.from_user("Search before answering.")])
         state.set("continue_run", True)
 
 
@@ -125,6 +125,8 @@ result = agent.run(
 )
 print(result["last_message"].text)
 ```
+
+Add mid-run nudges like this one as user messages. Some chat generators, such as `AnthropicChatGenerator`, move every system message into the request's system prompt, so a system message added mid-run doesn't stay where it was added in the conversation, and changing the system prompt makes cached prompt prefixes miss.
 
 ### Class-based hooks
 
@@ -197,6 +199,80 @@ agent = Agent(
 )
 result = agent.run(messages=[ChatMessage.from_user("Explain how vaccines work.")])
 print(result["last_message"].text)
+```
+
+## Requiring work before the Agent finishes
+
+When the Agent exits on a tool (`exit_conditions=["finish_triage"]`), use an `on_exit` hook to stop it from finishing before the required work is done:
+
+- With a tool exit condition, `on_exit` runs after the exit tool has executed, and `exit_reason` holds the tool's name.
+- Tools record their work in state through `outputs_to_state`, and the hook reads it with `state.data.get(...)`.
+- A counter in `state_schema` caps how many times the hook sends the Agent back, so a model that can't finish the work still stops.
+
+Use this pattern instead of rejecting the exit tool in a `before_tool` hook. The hook reads the work from state instead of parsing it out of the messages, and it keeps the Agent running with a user message instead of hand-built tool results.
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+from haystack.tools import tool
+
+
+@tool(outputs_to_state={"assessments": {"source": "assessment"}})
+def assess_finding(
+    finding: Annotated[str, "The finding to assess"],
+    verdict: Annotated[str, "Whether the finding is valid or invalid"],
+) -> dict:
+    """Record the assessment of one finding."""
+    return {"assessment": {"finding": finding, "verdict": verdict}}
+
+
+@tool
+def finish_triage(summary: Annotated[str, "A summary of the triage"]) -> str:
+    """Finish the triage once every finding is assessed."""
+    return summary
+
+
+@hook
+def require_assessments(state: State) -> None:
+    if state.data.get("exit_reason") != "finish_triage":
+        return
+    expected = (state.data.get("hook_context") or {}).get("finding_count", 0)
+    assessed = len(state.data.get("assessments") or [])
+    nudges = state.data.get("finish_nudges") or 0
+    if assessed >= expected or nudges >= 2:
+        return
+    state.set("finish_nudges", nudges + 1)
+    state.set(
+        "messages",
+        [
+            ChatMessage.from_user(
+                f"{expected - assessed} finding(s) are still unassessed. "
+                "Call assess_finding for each, then finish_triage.",
+            ),
+        ],
+    )
+    state.set("continue_run", True)
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[assess_finding, finish_triage],
+    exit_conditions=["finish_triage"],
+    state_schema={"assessments": {"type": list}, "finish_nudges": {"type": int}},
+    hooks={"on_exit": [require_assessments]},
+)
+
+findings = ["SQL query built with string formatting", "Unused import in utils.py"]
+result = agent.run(
+    messages=[ChatMessage.from_user("Triage these findings:\n" + "\n".join(findings))],
+    hook_context={"finding_count": len(findings)},
+)
+print(result["assessments"])
 ```
 
 ## Ready-made hooks

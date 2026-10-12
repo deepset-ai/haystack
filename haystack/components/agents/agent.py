@@ -403,7 +403,7 @@ class Agent:
     @hook
     def require_save(state: State) -> None:
         if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
-            state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+            state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
             state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
@@ -483,8 +483,9 @@ class Agent:
               where no tools run.
             - "on_exit": Runs when the Agent is about to stop on an exit condition. An "on_exit" hook can keep the
               Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
-              alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
-              exit condition, but not when it stops because `max_agent_steps` is reached.
+              alongside a message telling the model what to do next. With a tool exit condition, the exit tool has
+              already run and `exit_reason` holds its name. "on_exit" hooks run when the Agent stops on an exit
+              condition, but not when it stops because `max_agent_steps` is reached.
             - "after_run": Runs once per run, after the step loop has ended and before the Agent builds its return
               value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was
               reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
