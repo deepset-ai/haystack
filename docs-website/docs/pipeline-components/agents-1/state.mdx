@@ -255,6 +255,8 @@ print(f"Result count: {result['result_count']}")
 print(f"Last query: {result['last_query']}")
 ```
 
+[Hooks](./hooks.mdx) can read these keys with `state.data.get(...)`.
+
 If you omit `source`, the entire tool result dict is stored under the state key:
 
 ```python
