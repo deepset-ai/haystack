@@ -15,10 +15,10 @@ import pytest
 from docx.opc.constants import RELATIONSHIP_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from haystack.dataclasses import ByteStream
 
 from haystack import Document, Pipeline
 from haystack.components.converters.docx import DOCXLinkFormat, DOCXMetadata, DOCXTableFormat, DOCXToDocument
+from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture
