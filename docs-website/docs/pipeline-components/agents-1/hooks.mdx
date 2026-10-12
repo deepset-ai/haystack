@@ -126,7 +126,7 @@ result = agent.run(
 print(result["last_message"].text)
 ```
 
-Add mid-run nudges like this one as user messages. Some chat generators, such as `AnthropicChatGenerator`, move every system message into the request's system prompt, so a system message added mid-run doesn't stay where it was added in the conversation, and changing the system prompt makes cached prompt prefixes miss.
+Add mid-run nudges like this one as user messages. Some chat generators, such as `AnthropicChatGenerator`, move every system message into the request's system prompt, so a system message added mid-run doesn't stay where it was added in the conversation.
 
 ### Class-based hooks
 
