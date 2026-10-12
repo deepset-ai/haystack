@@ -187,7 +187,7 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span
     "execute tool" span per invocation
     (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span),
     and tracing backends such as Langfuse follow the same model. The span is tagged with the tool's identity; the caller
-    adds the call arguments and result as content tags.
+    adds the call arguments and result as content tags, and sets `haystack.tool.error` to `True` when the call fails.
 
     The parent is passed in rather than read from the tracer here: the calls of a step run concurrently, so a tracer
     that tracks the active span globally would report a sibling tool span as current and the spans would end up chained
@@ -218,6 +218,7 @@ def _make_context_bound_invoke(
             try:
                 result = tool.invoke(**args)
             except ToolInvocationError as e:
+                span.set_tag("haystack.tool.error", True)
                 span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                 return e
             span.set_content_tag("haystack.agent.step.tool.output", result)
@@ -255,6 +256,7 @@ def _make_bounded_invoke_async(
                 try:
                     result = await tool.invoke_async(**args)
                 except ToolInvocationError as e:
+                    span.set_tag("haystack.tool.error", True)
                     span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                     return e
                 span.set_content_tag("haystack.agent.step.tool.output", result)

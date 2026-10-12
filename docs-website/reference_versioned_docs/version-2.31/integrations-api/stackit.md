@@ -191,7 +191,7 @@ Serializes the component to a dictionary.
 
 ### STACKITChatGenerator
 
-Bases: <code>OpenAIChatGenerator</code>
+Bases: <code>VLLMChatGenerator</code>
 
 Enables text generation using STACKIT generative models through their model serving service.
 
@@ -241,14 +241,13 @@ __init__(
     model: str,
     api_key: Secret = Secret.from_env_var("STACKIT_API_KEY"),
     streaming_callback: StreamingCallbackT | None = None,
-    api_base_url: (
-        str | None
-    ) = "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+    api_base_url: str = "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
     generation_kwargs: dict[str, Any] | None = None,
     *,
     timeout: float | None = None,
     max_retries: int | None = None,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None
 ) -> None
 ```
 
@@ -260,7 +259,7 @@ Creates an instance of STACKITChatGenerator class.
 - **api_key** (<code>Secret</code>) – The STACKIT API key.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   The callback function accepts StreamingChunk as an argument.
-- **api_base_url** (<code>str | None</code>) – The STACKIT API Base url.
+- **api_base_url** (<code>str</code>) – The STACKIT API Base url.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
   the STACKIT endpoint.
   Some of the supported parameters:
@@ -274,28 +273,29 @@ Creates an instance of STACKITChatGenerator class.
   events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
-- `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
-  If provided, the output will always be validated against this
-  format (unless the model returns a tool call).
-  For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-  Notes:
-  - For structured outputs with streaming,
-    the `response_format` must be a JSON schema and not a Pydantic model.
-- **timeout** (<code>float | None</code>) – Timeout for STACKIT client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
-  variable, or 30 seconds.
+- `response_format`: A response format dictionary containing a JSON schema.
+  For Pydantic models, use `model_json_schema()` to build the schema;
+  passing the model class directly is not supported.
+- **timeout** (<code>float | None</code>) – Timeout for STACKIT client calls. If not set, uses the OpenAI SDK default.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact STACKIT after an internal error.
-  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  If not set, uses the OpenAI SDK default.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  Each tool should have a unique name. Not all models support tools.
 
-#### to_dict
+#### from_dict
 
 ```python
-to_dict() -> dict[str, Any]
+from_dict(data: dict[str, Any]) -> STACKITChatGenerator
 ```
 
-Serialize this component to a dictionary.
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
+- <code>STACKITChatGenerator</code> – The deserialized component instance.
