@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    `HierarchicalDocumentSplitter` now sets `page_number` and `split_idx_start` relative to the original document
+    ``HierarchicalDocumentSplitter`` now sets ``page_number`` and ``split_idx_start`` relative to the original document
     for documents below the first level. Previously they were counted from the start of the parent block, so
     deeper leaves reported the wrong page.

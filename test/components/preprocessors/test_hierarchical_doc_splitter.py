@@ -277,12 +277,19 @@ class TestHierarchicalDocumentSplitter:
                     assert child.meta["__parent_id"] == doc.id
                     assert child.meta["__level"] == doc.meta["__level"] + 1
 
-    def test_page_number_and_split_idx_start_refer_to_original_document(self):
-        text = "\f".join(f"p{i}a p{i}b p{i}c p{i}d" for i in range(1, 5))
-        splitter = HierarchicalDocumentSplitter(block_sizes={8, 2}, split_overlap=0, split_by="word")
+    @pytest.mark.parametrize(
+        "split_by, block_sizes, split_overlap",
+        [("word", {8, 2}, 0), ("word", {8, 3}, 1), ("passage", {4, 2}, 0), ("passage", {4, 2}, 1), ("page", {2, 1}, 0)],
+    )
+    def test_page_number_and_split_idx_start_refer_to_original_document(self, split_by, block_sizes, split_overlap):
+        pages = ["\n\n".join(f"p{i}s{j}a p{i}s{j}b p{i}s{j}c p{i}s{j}d" for j in (1, 2)) for i in range(1, 5)]
+        text = "\n\n\f".join(pages)
+        splitter = HierarchicalDocumentSplitter(block_sizes=block_sizes, split_overlap=split_overlap, split_by=split_by)
         documents = splitter.run([Document(content=text)])["documents"]
 
+        assert any(doc.meta["__level"] == 2 for doc in documents)
         for doc in documents[1:]:
-            first_word = doc.content.strip("\f ").split()[0]
+            start = doc.meta["split_idx_start"]
+            assert text[start:].startswith(doc.content)
+            first_word = doc.content.strip("\f\n ").split()[0]
             assert doc.meta["page_number"] == int(first_word[1])
-            assert text[doc.meta["split_idx_start"] :].startswith(doc.content)
