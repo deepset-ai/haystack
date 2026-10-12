@@ -11,6 +11,7 @@ _import_structure = {
     "hooks": ["CompactionHook"],
     "sliding_window": ["SlidingWindowCompactor"],
     "summarization": ["SummarizationCompactor"],
+    "tool_result_offloading": ["ToolResultOffloadCompactor"],
     "tool_result_pruning": ["ToolResultPruningCompactor"],
     "types": ["Compactor"],
 }
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from .hooks import CompactionHook as CompactionHook
     from .sliding_window import SlidingWindowCompactor as SlidingWindowCompactor
     from .summarization import SummarizationCompactor as SummarizationCompactor
+    from .tool_result_offloading import ToolResultOffloadCompactor as ToolResultOffloadCompactor
     from .tool_result_pruning import ToolResultPruningCompactor as ToolResultPruningCompactor
     from .types import Compactor as Compactor
 else:
