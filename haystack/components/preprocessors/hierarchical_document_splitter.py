@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 
 
 @component
@@ -121,8 +122,14 @@ class HierarchicalDocumentSplitter:
                 if len(child_docs) == 1:
                     next_level_nodes.append(doc)
                     continue
+                # the splitter counts pages and offsets from the start of `doc`, not of the original document
+                is_root = doc.meta["__level"] == 0
+                page_offset = 0 if is_root else doc.meta["page_number"] - 1 - _leading_page_breaks(doc.content or "")
+                idx_offset = 0 if is_root else doc.meta["split_idx_start"]
                 for child_doc in child_docs:
                     child_doc = self._add_meta_data(child_doc)
+                    child_doc.meta["page_number"] += page_offset
+                    child_doc.meta["split_idx_start"] += idx_offset
                     child_doc.meta["__level"] = doc.meta["__level"] + 1
                     child_doc.meta["__block_size"] = block
                     child_doc.meta["__parent_id"] = doc.id

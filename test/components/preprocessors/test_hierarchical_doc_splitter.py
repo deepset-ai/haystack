@@ -276,3 +276,13 @@ class TestHierarchicalDocumentSplitter:
                 for child in children:
                     assert child.meta["__parent_id"] == doc.id
                     assert child.meta["__level"] == doc.meta["__level"] + 1
+
+    def test_page_number_and_split_idx_start_refer_to_original_document(self):
+        text = "\f".join(f"p{i}a p{i}b p{i}c p{i}d" for i in range(1, 5))
+        splitter = HierarchicalDocumentSplitter(block_sizes={8, 2}, split_overlap=0, split_by="word")
+        documents = splitter.run([Document(content=text)])["documents"]
+
+        for doc in documents[1:]:
+            first_word = doc.content.strip("\f ").split()[0]
+            assert doc.meta["page_number"] == int(first_word[1])
+            assert text[doc.meta["split_idx_start"] :].startswith(doc.content)
