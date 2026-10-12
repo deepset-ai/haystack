@@ -53,11 +53,13 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Generate platform components table
+        env:
+          SCHEMA_REPO_PATH: ${{ secrets.SCHEMA_REPO_PATH }}
         run: |
           python scripts/generate_platform_components_table.py \
             --haystack-src . \
             --integrations-src ./haystack-core-integrations \
-            --schema ./platform-repo/${{ secrets.SCHEMA_REPO_PATH }} \
+            --schema "./platform-repo/${SCHEMA_REPO_PATH}" \
             --output ./${{ env.OUTPUT_FILE }}
 
       - name: Compute PR body

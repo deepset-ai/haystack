@@ -2,6 +2,9 @@ name: Branch off
 
 on:
   workflow_call:
+    secrets:
+      HAYSTACK_BOT_TOKEN:
+        required: true
     outputs:
       bump_version_pr_url:
         description: 'URL of the bump version PR'
