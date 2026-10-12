@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from haystack.components.evaluators.sas_evaluator import SASEvaluator
@@ -53,6 +55,21 @@ class TestSASEvaluator:
         assert evaluator._device is not None
         assert evaluator._device.to_torch_str() == "cuda:0"
         assert evaluator._token.resolve_value() == "fake-token"
+
+    @patch("haystack.components.evaluators.sas_evaluator.SentenceTransformer")
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_passes_token_to_hf(
+        self, mock_auto_config, mock_cross_encoder, mock_sentence_transformer, monkeypatch
+    ):
+        monkeypatch.setenv("HF_API_TOKEN", "fake-token")
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertModel"])
+        evaluator = SASEvaluator(model="private/model", device=ComponentDevice.from_str("cpu"))
+        evaluator.warm_up()
+
+        mock_auto_config.from_pretrained.assert_called_once_with("private/model", token="fake-token")
+        mock_sentence_transformer.assert_called_once_with("private/model", device="cpu", token="fake-token")
+        mock_cross_encoder.assert_not_called()
 
     def test_run_with_empty_inputs(self):
         evaluator = SASEvaluator()

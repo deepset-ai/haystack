@@ -112,7 +112,7 @@ class SASEvaluator:
             return
 
         token = self._token.resolve_value() if self._token else None
-        config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
+        config = AutoConfig.from_pretrained(self._model, token=token)
         cross_encoder_used = False
         if config.architectures:
             cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``SASEvaluator.warm_up`` now passes the Hugging Face token to ``AutoConfig.from_pretrained`` via ``token``
+    instead of the removed ``use_auth_token`` argument. With ``transformers`` 5, ``use_auth_token`` is silently
+    ignored, so loading the config of a private or gated model failed even when a token was provided.
