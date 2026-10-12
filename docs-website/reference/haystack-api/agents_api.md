@@ -128,8 +128,8 @@ Hooks are callables that receive the live `State` and run at specific points in 
 - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
   running by setting `state.set("continue_run", True)`.
 
-Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
-required tool has been called.
+Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running when it
+stops with a text reply, until it finishes by calling `save_result`.
 
 ```python
 from haystack.components.agents import Agent
@@ -150,14 +150,15 @@ def save_result(content: Annotated[str, "The result to save"]) -> str:
 
 @hook
 def require_save(state: State) -> None:
-    if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
-        state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+    if state.data.get("exit_reason") == "text":
+        state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
         state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
 agent = Agent(
     chat_generator=OpenAIResponsesChatGenerator(),
     tools=[save_result],
+    exit_conditions=["save_result"],
     hooks={"on_exit": [require_save]},
 )
 ```
