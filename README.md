@@ -209,7 +209,7 @@
 | haystack/hooks/tool\_result\_offloading/utils.py                          |       58 |        0 |    100% |           |
 | haystack/hooks/utils.py                                                   |       47 |        0 |    100% |           |
 | haystack/lazy\_imports.py                                                 |       13 |        0 |    100% |           |
-| haystack/logging.py                                                       |      142 |        4 |     97% |251-252, 383-385 |
+| haystack/logging.py                                                       |      142 |        4 |     97% |262-263, 394-396 |
 | haystack/marshal/\_\_init\_\_.py                                          |        5 |        0 |    100% |           |
 | haystack/marshal/protocol.py                                              |        4 |        0 |    100% |           |
 | haystack/marshal/yaml.py                                                  |       21 |        1 |     95% |        42 |
