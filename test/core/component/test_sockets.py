@@ -49,7 +49,7 @@ class TestSockets:
         )
 
         with pytest.raises(AttributeError):
-            io.input_3
+            io.input_3  # type: ignore[attr-defined]
 
     def test_repr(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
