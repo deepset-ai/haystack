@@ -139,6 +139,16 @@ class TestCSVToDocument:
         assert docs[0].meta["row_number"] == 0
         assert os.path.basename(f) == docs[0].meta["file_path"]
 
+    def test_row_mode_cr_separated_input(self) -> None:
+        source = ByteStream(data=b"text,author\rNice app,Ada\rBuggy,Bob\r")
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 2
+        assert [d.content for d in documents] == ["Nice app", "Buggy"]
+        assert documents[0].meta["author"] == "Ada"
+
     def test_row_mode_row_number_as_content_column(self) -> None:
         source = ByteStream(data=b"row_number,author\nrecord-42,Ada\n")
         converter = CSVToDocument(conversion_mode="row")
