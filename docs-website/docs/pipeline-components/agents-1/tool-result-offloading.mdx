@@ -126,6 +126,7 @@ The hook only offloads **successful** tool results:
 - Error results — including rejections produced by a `before_tool` [Human-in-the-Loop](./human-in-the-loop.mdx) hook — are always left in context, so the model sees what went wrong.
 - Text, image, and file results are all offloaded. Each part of a result gets its own store entry, so every text, image, and file stays usable on its own.
 - Image and file content only goes to a store that declares `supports_binary_content`. With a text-only store, a result carrying an image or a file stays in context and a warning is logged.
+- If a write to the store fails, the result stays in context, a warning naming the tool and the store is logged, and the Agent keeps running. When one part of a multi-part result fails to write, the whole result stays in context.
 - The file extension of an image or file comes from its `filename` when it has one, and from its `mime_type` otherwise (falling back to `.bin` when neither yields an extension).
 - Policies see the result as the text and base64 payloads of all its parts joined together.
 - Each result is offloaded at most once, even though the hook runs on every tool step. This also means two offload hooks registered under `after_tool` won't offload each other's pointers.
