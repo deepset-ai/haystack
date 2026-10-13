@@ -37,6 +37,10 @@ def test_init():
     assert doc.sparse_embedding is None
 
 
+def test_empty_content_and_none_content_have_different_ids():
+    assert Document(content="").id != Document(content=None).id
+
+
 def test_init_with_wrong_parameters():
     with pytest.raises(TypeError):
         Document(text="")  # type: ignore[call-arg]

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Distinguishes empty-string document content from ``None`` when generating automatic document IDs.
