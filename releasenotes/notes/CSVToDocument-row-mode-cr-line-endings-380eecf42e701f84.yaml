@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fixed ``CSVToDocument`` crashing with ``_csv.Error`` on CSV files whose
+    records are separated by carriage returns (``\\r``) when using
+    ``conversion_mode="row"``. The converter now lets the ``csv`` module
+    handle line endings itself.
