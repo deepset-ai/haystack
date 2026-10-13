@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix ``TiktokenCounter`` failing on conversations or tool schemas containing
+    strings such as ``<|endoftext|>``. These strings are now counted as ordinary
+    text, consistent with the document splitters.

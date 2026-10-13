@@ -26,9 +26,14 @@ class _FakeEncoder:
 
     def __init__(self) -> None:
         self.encoded: list[str] = []
+        self.encoded_ordinary: list[str] = []
 
     def encode(self, text: str) -> list[int]:
         self.encoded.append(text)
+        return list(range(len(text.split())))
+
+    def encode_ordinary(self, text: str) -> list[int]:
+        self.encoded_ordinary.append(text)
         return list(range(len(text.split())))
 
 
@@ -90,12 +95,25 @@ class TestTiktokenCounter:
 
         TiktokenCounter().count(messages)
 
-        rendered = fake_encoder.encoded[0]
+        rendered = fake_encoder.encoded_ordinary[0]
         assert "[assistant] looking" in rendered
         assert '[assistant -> tool_call] search({"q": "x"})' in rendered
         assert "[tool:search] found it" in rendered
         assert "<image>" in rendered
         assert "<file: report.pdf>" in rendered
+
+    def test_special_token_strings_are_counted_as_literal_text(self, fake_encoder):
+        # Literal special-token markers in user text must not raise; they are
+        # counted as ordinary text, consistent with the document splitters.
+        counter = TiktokenCounter()
+
+        count = counter.count(
+            [ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]
+        )
+
+        assert count > 0
+        assert fake_encoder.encoded == []
+        assert len(fake_encoder.encoded_ordinary) == 1
 
     def test_serde_round_trip(self):
         data = TiktokenCounter(encoding="cl100k_base", tokens_per_image=200, tokens_per_file=3000).to_dict()
@@ -160,3 +178,14 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+    def test_special_token_strings_are_counted_as_literal_text(self):
+        # Exercises the real encoder: a literal "<|endoftext|>" must be counted
+        # as ordinary text rather than raising a ValueError.
+        counter = TiktokenCounter()
+
+        count = counter.count(
+            [ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]
+        )
+
+        assert count > 0
