@@ -15,7 +15,7 @@ features:
         from pydantic import BaseModel
 
         from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.dataclasses import ChatMessage
         from haystack.hooks.structured_output import StructuredOutputHook
 
@@ -26,7 +26,7 @@ features:
 
 
         agent = Agent(
-            chat_generator=OpenAIChatGenerator(generation_kwargs={"response_format": CityInfo}),
+            chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
             state_schema={"structured_output": {"type": dict}},
             hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
         )

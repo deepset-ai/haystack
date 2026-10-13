@@ -30,7 +30,7 @@ Structured output is one use of the Agent's general [hooks](./hooks.mdx) mechani
 - If the reply isn't valid JSON or doesn't match the schema, the hook can add a user message describing the error and keep the Agent running, so the model can correct its reply. `max_retries` sets how many times this happens. Retries count toward the Agent's `max_agent_steps`.
 - If no retries are left, or the Agent stopped for any other reason (for example, a reply cut off by the model's output token limit), the hook stores `None` and logs a warning.
 
-The hook works with any chat generator. When your chat generator supports native structured output, such as `response_format` on `OpenAIChatGenerator`, pass the same schema there too. The model is then constrained to produce valid JSON, and the hook turns it into an Agent output. Native structured output still lets the Agent call tools before it answers.
+The hook works with any chat generator. When your chat generator supports native structured output, such as `text_format` on `OpenAIResponsesChatGenerator`, pass the same schema there too. The model is then constrained to produce valid JSON, and the hook turns it into an Agent output. Native structured output still lets the Agent call tools before it answers.
 
 ## Usage
 
@@ -42,7 +42,7 @@ Declare the key the hook writes to in the Agent's `state_schema`. This makes it 
 from pydantic import BaseModel
 
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.structured_output import StructuredOutputHook
 
@@ -53,9 +53,8 @@ class CityInfo(BaseModel):
 
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(
-        model="gpt-5.4-nano",
-        generation_kwargs={"response_format": CityInfo},
+    chat_generator=OpenAIResponsesChatGenerator(
+        model="gpt-5.4-nano", generation_kwargs={"text_format": CityInfo}
     ),
     state_schema={"structured_output": {"type": dict}},
     hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
@@ -83,7 +82,7 @@ city_schema = {
 }
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
     system_prompt="Answer only with a JSON object with the keys `city` and `country`.",
     state_schema={"city_info": {"type": dict}},
     hooks={

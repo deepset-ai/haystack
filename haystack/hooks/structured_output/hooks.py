@@ -37,15 +37,15 @@ class StructuredOutputHook:
     `state_key` must be declared in the Agent's `state_schema`, which also makes it an output of the Agent.
 
     The hook works with any chat generator. When the chat generator supports native structured output (for example
-    `response_format` on `OpenAIChatGenerator`), pass the same schema there as well so the model is constrained to
-    valid JSON and retries are rarely needed.
+    `text_format` on `OpenAIResponsesChatGenerator`), pass the same schema there as well so the model is constrained
+    to valid JSON and retries are rarely needed.
 
     <!-- test-ignore -->
     ```python
     from pydantic import BaseModel
 
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.hooks.structured_output import StructuredOutputHook
 
@@ -56,7 +56,7 @@ class StructuredOutputHook:
 
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(generation_kwargs={"response_format": CityInfo}),
+        chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
         state_schema={"structured_output": {"type": dict}},
         hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
     )
