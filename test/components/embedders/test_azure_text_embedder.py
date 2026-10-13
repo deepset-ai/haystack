@@ -19,8 +19,8 @@ class TestAzureOpenAITextEmbedder:
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
 
         assert embedder.api_key.resolve_value() == "fake-api-key"
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -39,8 +39,8 @@ class TestAzureOpenAITextEmbedder:
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0)
 
         assert embedder.api_key.resolve_value() == "fake-api-key"
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -60,7 +60,7 @@ class TestAzureOpenAITextEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "azure_deployment": "text-embedding-ada-002",
+                "azure_deployment": "text-embedding-3-small",
                 "dimensions": None,
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
@@ -188,7 +188,7 @@ class TestAzureOpenAITextEmbedder:
         ),
     )
     def test_run(self):
-        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        # set the deployment explicitly instead of relying on the default
         embedder = AzureOpenAITextEmbedder(
             azure_deployment="text-embedding-ada-002", prefix="prefix ", suffix=" suffix", organization="HaystackCI"
         )

@@ -22,13 +22,29 @@ with the following structure:
 ### Usage example
 
 ```python
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.query import QueryExpander
 
-expander = QueryExpander(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
-    n_expansions=3
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
+    generation_kwargs={
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "query_expansion",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                    "required": ["queries"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+    },
 )
+
+expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
 
 result = expander.run(query="green energy sources")
 print(result["queries"])
@@ -58,7 +74,8 @@ Initialize the QueryExpander component.
 **Parameters:**
 
 - **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator component to use for query expansion.
-  If None, a default OpenAIChatGenerator with gpt-4.1-mini model is used.
+  If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model and `store` set to `False`
+  is used.
 - **prompt_template** (<code>str | None</code>) – Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
   template for query expansion. The template should instruct the LLM to return a JSON response with the
   structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and

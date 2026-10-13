@@ -448,9 +448,10 @@ Create a QdrantHybridRetriever component.
 - **return_embedding** (<code>bool</code>) – Whether to return the embeddings of the retrieved Documents.
 - **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
@@ -526,7 +527,7 @@ run(
 ) -> dict[str, list[Document]]
 ```
 
-Run the Sparse Embedding Retriever on the given input data.
+Run the Hybrid Retriever on the given input data.
 
 **Parameters:**
 
@@ -539,9 +540,10 @@ Run the Sparse Embedding Retriever on the given input data.
   groups to return.
 - **return_embedding** (<code>bool | None</code>) – Whether to return the embedding of the retrieved Documents.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
@@ -577,7 +579,7 @@ run_async(
 ) -> dict[str, list[Document]]
 ```
 
-Asynchronously run the Sparse Embedding Retriever on the given input data.
+Asynchronously run the Hybrid Retriever on the given input data.
 
 **Parameters:**
 
@@ -590,9 +592,10 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
   groups to return.
 - **return_embedding** (<code>bool | None</code>) – Whether to return the embedding of the retrieved Documents.
 - **score_threshold** (<code>float | None</code>) – A minimal score threshold for the result.
-  Score of the returned result might be higher or smaller than the threshold
-  depending on the Distance function used.
-  E.g. for cosine similarity only higher scores will be returned.
+  The threshold is applied to the fused Reciprocal Rank Fusion (RRF) scores, so only documents with a
+  higher fused score are returned. RRF scores are not comparable to dense or sparse similarity scores,
+  so thresholds tuned for those retrievers don't carry over. With `group_by`, groups with no surviving
+  hits are dropped.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.

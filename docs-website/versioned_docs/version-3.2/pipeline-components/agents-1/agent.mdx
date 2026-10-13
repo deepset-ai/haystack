@@ -3,6 +3,7 @@ title: "Agent"
 id: agent
 slug: "/agent"
 description: "The `Agent` component is a tool-using agent that interacts with chat-based LLMs and tools to solve complex queries iteratively. It can execute external tools, manage state across multiple LLM calls, and stop execution based on configurable `exit_conditions`."
+hep_available: true
 ---
 
 # Agent
@@ -66,7 +67,7 @@ The `exit_reason` output tells you why the agent stopped, which makes it easy to
 - `"text"`: the model returned a complete reply with no tool calls.
 - `"length"`: the model reached its output-token limit. `last_message` may contain a partial response.
 - `"content_filter"`: a content filter stopped the model response. `last_message` may contain a partial response.
-- the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
+- the name of the tool that satisfied a tool exit condition. Its result is the last tool-result `ChatMessage` in `messages` whose `tool_call_result.origin.tool_name` matches `exit_reason`; read it from `tool_call_result.result`. When the model calls several tools in one reply, this may not be `last_message`.
 - `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
 - a custom reason set by a hook through the `stop_run` state key, such as `"token_budget_exceeded"` from the [`TokenBudgetHook`](./token-budget.mdx).
 

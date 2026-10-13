@@ -55,6 +55,7 @@ dependencies = [
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
+  "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
@@ -101,7 +102,7 @@ dependencies = [
 
 
   # Converters
-  "pypdf",                            # PyPDFToDocument
+  "pypdf>=6.20",                      # PyPDFToDocument; 6.20 changed the extracted text that tests expect
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument

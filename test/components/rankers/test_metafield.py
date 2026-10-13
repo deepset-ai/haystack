@@ -338,3 +338,22 @@ class TestMetaFieldRanker:
         ]
         output = ranker.run(documents=docs_before)
         assert [doc.id for doc in output["documents"]] == expected_ids
+
+    @pytest.mark.parametrize(
+        ("meta", "init_missing_meta", "run_missing_meta", "expected_ids"),
+        [
+            ({}, "drop", None, []),
+            ({}, "top", None, ["a", "b"]),
+            ({}, "bottom", None, ["a", "b"]),
+            ({}, "bottom", "drop", []),
+            ({}, "drop", "top", ["a", "b"]),
+            ({"rating": None}, "drop", None, []),
+        ],
+    )
+    def test_missing_meta_when_all_values_are_missing(self, meta, init_missing_meta, run_missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=init_missing_meta)
+        docs = [Document(id="a", content="a", meta=meta), Document(id="b", content="b", meta=meta)]
+
+        output = ranker.run(documents=docs, missing_meta=run_missing_meta)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids

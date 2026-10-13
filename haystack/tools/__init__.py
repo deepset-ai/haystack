@@ -31,7 +31,7 @@ _import_structure = {
     "pipeline_tool": ["PipelineTool"],
     "agent_tool": ["AgentTool"],
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
-    "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
+    "utils": ["flatten_tools_or_toolsets", "warm_up_tools", "warm_up_tools_async", "close_tools", "close_tools_async"],
     "tool_types": ["ToolsType"],
 }
 
@@ -45,8 +45,11 @@ if TYPE_CHECKING:
     from haystack.tools.skills import SkillToolset as SkillToolset
     from haystack.tools.tool_types import ToolsType as ToolsType
     from haystack.tools.toolset import Toolset as Toolset
+    from haystack.tools.utils import close_tools as close_tools
+    from haystack.tools.utils import close_tools_async as close_tools_async
     from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets
     from haystack.tools.utils import warm_up_tools as warm_up_tools
+    from haystack.tools.utils import warm_up_tools_async as warm_up_tools_async
 else:
     sys.modules[__name__] = LazyImporter(
         name=__name__,

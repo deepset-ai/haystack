@@ -680,6 +680,10 @@ Deletes all documents that match the provided filters.
 
 - <code>int</code> – The number of documents deleted.
 
+**Raises:**
+
+- <code>FilterError</code> – If `filters` is empty. Use `delete_all_documents()` to delete everything.
+
 #### delete_by_filter_async
 
 ```python
@@ -696,6 +700,10 @@ Asynchronously deletes all documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>FilterError</code> – If `filters` is empty. Use `delete_all_documents_async()` to delete everything.
 
 #### update_by_filter
 

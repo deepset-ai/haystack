@@ -37,7 +37,7 @@ print(result['documents'][0].embedding)
 __init__(
     azure_endpoint: str | None = None,
     api_version: str | None = "2023-05-15",
-    azure_deployment: str = "text-embedding-ada-002",
+    azure_deployment: str = "text-embedding-3-small",
     dimensions: int | None = None,
     api_key: Secret | None = Secret.from_env_var(
         "AZURE_OPENAI_API_KEY", strict=False
@@ -68,7 +68,7 @@ Creates an AzureOpenAIDocumentEmbedder component.
 
 - **azure_endpoint** (<code>str | None</code>) – The endpoint of the model deployed on Azure.
 - **api_version** (<code>str | None</code>) – The version of the API to use.
-- **azure_deployment** (<code>str</code>) – The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+- **azure_deployment** (<code>str</code>) – The name of the model deployed on Azure. The default is `text-embedding-3-small`.
 - **dimensions** (<code>int | None</code>) – The number of dimensions of the resulting embeddings. Only supported in text-embedding-3
   and later models.
 - **api_key** (<code>Secret | None</code>) – The Azure OpenAI API key.
@@ -182,7 +182,7 @@ text_embedder = AzureOpenAITextEmbedder()
 print(text_embedder.run(text_to_embed))
 
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-# 'meta': {'model': 'text-embedding-ada-002-v2',
+# 'meta': {'model': 'text-embedding-3-small',
 #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
@@ -192,7 +192,7 @@ print(text_embedder.run(text_to_embed))
 __init__(
     azure_endpoint: str | None = None,
     api_version: str | None = "2023-05-15",
-    azure_deployment: str = "text-embedding-ada-002",
+    azure_deployment: str = "text-embedding-3-small",
     dimensions: int | None = None,
     api_key: Secret | None = Secret.from_env_var(
         "AZURE_OPENAI_API_KEY", strict=False
@@ -218,7 +218,7 @@ Creates an AzureOpenAITextEmbedder component.
 
 - **azure_endpoint** (<code>str | None</code>) – The endpoint of the model deployed on Azure.
 - **api_version** (<code>str | None</code>) – The version of the API to use.
-- **azure_deployment** (<code>str</code>) – The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+- **azure_deployment** (<code>str</code>) – The name of the model deployed on Azure. The default is `text-embedding-3-small`.
 - **dimensions** (<code>int | None</code>) – The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3
   and later models.
 - **api_key** (<code>Secret | None</code>) – The Azure OpenAI API key.
@@ -377,8 +377,8 @@ Creates an instance of MockDocumentEmbedder.
 
 **Raises:**
 
-- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-  if `embedding` is an empty list.
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+  or if neither is provided and `dimension` is not positive.
 - <code>TypeError</code> – If `embedding` is not a sequence of numbers.
 
 #### to_dict
@@ -511,8 +511,8 @@ Creates an instance of MockTextEmbedder.
 
 **Raises:**
 
-- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-  if `embedding` is an empty list.
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+  or if neither is provided and `dimension` is not positive.
 - <code>TypeError</code> – If `embedding` is not a sequence of numbers.
 
 #### to_dict
@@ -611,7 +611,7 @@ print(result['documents'][0].embedding)
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "text-embedding-ada-002",
+    model: str = "text-embedding-3-small",
     dimensions: int | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -641,7 +641,7 @@ in the OpenAI client.
   You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
   during initialization.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
-  The default model is `text-embedding-ada-002`.
+  The default model is `text-embedding-3-small`.
 - **dimensions** (<code>int | None</code>) – The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
   later models support this parameter.
 - **api_base_url** (<code>str | None</code>) – Overrides the default base URL for all HTTP requests.
@@ -780,7 +780,7 @@ text_embedder = OpenAITextEmbedder()
 print(text_embedder.run(text_to_embed))
 
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-# 'meta': {'model': 'text-embedding-ada-002-v2',
+# 'meta': {'model': 'text-embedding-3-small',
 #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
@@ -789,7 +789,7 @@ print(text_embedder.run(text_to_embed))
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "text-embedding-ada-002",
+    model: str = "text-embedding-3-small",
     dimensions: int | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -813,7 +813,7 @@ in the OpenAI client.
   You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
   during initialization.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
-  The default model is `text-embedding-ada-002`.
+  The default model is `text-embedding-3-small`.
 - **dimensions** (<code>int | None</code>) – The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
   later models support this parameter.
 - **api_base_url** (<code>str | None</code>) – Overrides default base URL for all HTTP requests.
