@@ -241,7 +241,12 @@ class SlidingWindowCompactor(Compactor):
         self.omission_note = omission_note
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> list[ChatMessage] | None:
         """
         Drop older history while preserving the task anchor and a complete recent conversation window.
@@ -249,6 +254,7 @@ class SlidingWindowCompactor(Compactor):
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the kept conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with.
+        :param run_context: Not used by this compactor.
         :returns: The conversation that survived, with an omission note if configured standing where the removed
             messages used to sit; or None when there is nothing to remove but an earlier note.
         """

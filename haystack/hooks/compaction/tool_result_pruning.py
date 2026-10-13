@@ -80,7 +80,12 @@ class ToolResultPruningCompactor(Compactor):
         self.skip_meta_keys = tuple(skip_meta_keys)
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> list[ChatMessage] | None:
         """
         Replace the content of prunable tool results with a placeholder.
@@ -94,6 +99,7 @@ class ToolResultPruningCompactor(Compactor):
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the compacted conversation should come in under.
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
+        :param run_context: Not used by this compactor.
         :returns: The conversation with older tool results replaced, or None when no result was prunable.
         """
         return _replace_tool_results_until_target(
