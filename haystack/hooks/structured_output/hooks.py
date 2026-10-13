@@ -13,7 +13,6 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.utils.experimental import _experimental
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 _CORRECTION_META_KEY = "structured_output_correction"
 
 
-@_experimental
 class StructuredOutputHook:
     """
     Parse the Agent's final text reply as JSON and store it in a `State` key.

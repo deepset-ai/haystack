@@ -13,8 +13,6 @@ from haystack.dataclasses import ChatMessage
 from haystack.hooks.structured_output import StructuredOutputHook
 from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY
 
-pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
-
 
 class CityInfo(BaseModel):
     city: str
