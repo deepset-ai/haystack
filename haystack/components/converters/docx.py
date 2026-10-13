@@ -340,10 +340,12 @@ class DOCXToDocument:
             if isinstance(content, Run):
                 text += content.text
             elif isinstance(content, Hyperlink):
+                # Use `.url` instead of `.address` so a URL fragment stored
+                # separately by Word (in `w:anchor`) is not dropped.
                 if self.link_format == DOCXLinkFormat.MARKDOWN:
-                    formatted_link = f"[{content.text}]({content.address})"
+                    formatted_link = f"[{content.text}]({content.url})"
                 else:  # PLAIN format
-                    formatted_link = f"{content.text} ({content.address})"
+                    formatted_link = f"{content.text} ({content.url})"
                 text += formatted_link
 
         return text
