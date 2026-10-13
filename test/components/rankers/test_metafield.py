@@ -141,17 +141,22 @@ class TestMetaFieldRanker:
                 "this meta key." in caplog.text
             )
 
-    def test_warning_if_unsortable_values(self, caplog):
-        ranker = MetaFieldRanker(meta_field="rating")
-        docs_before = [
-            Document(id="1", content="abc", meta={"rating": 1.3}),
-            Document(id="2", content="abc", meta={"rating": "1.2"}),
-            Document(id="3", content="abc", meta={"rating": 2.1}),
+    @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"), [("drop", ["1", "3"]), ("top", ["2", "1", "3"]), ("bottom", ["1", "3", "2"])]
+    )
+    def test_missing_meta_with_unsortable_values(self, missing_meta, expected_ids, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
+        docs = [
+            Document(id="1", content="abc", meta={"rating": 1}),
+            Document(id="2", content="abc"),
+            Document(id="3", content="abc", meta={"rating": "x"}),
         ]
+
         with caplog.at_level(logging.WARNING):
-            output = ranker.run(documents=docs_before)
-            assert len(output["documents"]) == 3
-            assert "Tried to sort Documents with IDs 1,2,3, but got TypeError with the message:" in caplog.text
+            output = ranker.run(documents=docs)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids
+        assert "Tried to sort Documents with IDs 1,3, but got TypeError with the message:" in caplog.text
 
     def test_warning_if_meta_value_parsing_error(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
