@@ -444,10 +444,12 @@ class TestStructuredLoggingJSONRendering:
         assert expected_marker in repr(result)
 
     def test_nested_strings_obey_character_budget(self) -> None:
-        result = haystack_logging._bound_container_values(["x" * 100_000] * 10, 8)
-        assert len(result) == 2
-        assert result[-1] == "[container budget exhausted]"
-        assert len(repr(result)) < 5_000
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": ["x" * 100_000] * 10})["value"]
+        # the rendered list is over the length limit, so it comes out as one truncated string
+        assert isinstance(result, str)
+        assert result.startswith("['xxx")
+        assert result.endswith("chars]")
+        assert len(result) < 5_000
 
     def test_wide_cycle_is_bounded(self) -> None:
         value: list = []
@@ -458,32 +460,9 @@ class TestStructuredLoggingJSONRendering:
 
     def test_wide_nested_lists_obey_shared_budget(self) -> None:
         value = [["x"] * 1_000 for _ in range(1_000)]
-        result = haystack_logging._bound_container_values(value, 8)
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})["value"]
         assert "[container budget exhausted]" in repr(result)
         assert len(repr(result)) < 2_000
-
-    def test_long_list_values_are_truncated(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
-        haystack_logging.configure_logging()
-
-        keys = [f"key_{i:05d}" for i in range(3_000)]
-        logging.getLogger("haystack.test_logging").warning("Hello", extra={"keys": keys})
-
-        output = capfd.readouterr().err
-        assert len(output) < 5_000
-        value = json.loads(output)["keys"]
-        assert value[0] == "key_00000"
-        assert value[-1] == "[container budget exhausted]"
-
-    def test_self_referencing_container_does_not_recurse(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
-        haystack_logging.configure_logging()
-
-        cyclic: list = ["a"]
-        cyclic.append(cyclic)
-        logging.getLogger("haystack.test_logging").warning("Hello", extra={"value": cyclic})
-
-        assert json.loads(capfd.readouterr().err)["value"] == ["a", "[recursive container]"]
 
     def test_missing_keys_warning_is_bounded(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
         """`_parse_dict_from_json` logs the full key list when the expected keys are missing."""

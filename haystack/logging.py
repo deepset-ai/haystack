@@ -26,6 +26,9 @@ MAX_LOG_VALUE_LENGTH = 4096
 # Limit nesting independently of the total traversal budget.
 _MAX_LOG_CONTAINER_DEPTH = 8
 
+# Limit how many items a single nested value may contribute to one log line.
+_MAX_LOG_CONTAINER_ITEMS = 256
+
 # Attribute set on a logger once we have patched its methods. `logging.getLogger` returns a shared singleton, so we
 # use this marker to patch each logger only once and avoid wrapping the already-wrapped methods on repeated calls.
 _PATCHED_MARKER = "_haystack_patched"
@@ -326,7 +329,7 @@ def _render_log_exception(value: BaseException) -> str:
 
 def _bound_container_values(value: Any, depth: int) -> Any:
     """Bound container traversal without calling repr on a cycle or an unvisited subtree."""
-    remaining_items = 256
+    remaining_items = _MAX_LOG_CONTAINER_ITEMS
     remaining_chars = MAX_LOG_VALUE_LENGTH
     active_containers: set[int] = set()
 
