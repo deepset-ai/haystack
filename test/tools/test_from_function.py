@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import subprocess
+import sys
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
@@ -625,3 +628,29 @@ class TestFromFunctionAsync:
         decorated = tool(async_function_with_docstring)
 
         assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+
+class TestToolDecoratorExport:
+    """`haystack.tools.tool` must be the decorator, although the package also has a `tool` submodule."""
+
+    def test_tool_is_bound_in_package_namespace(self):
+        # A fresh interpreter, since other tests may already have cached the attribute on the package.
+        code = (
+            "import haystack.tools\n"
+            "from haystack.tools.from_function import tool\n"
+            "assert vars(haystack.tools)['tool'] is tool, vars(haystack.tools).get('tool')\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.skipif(sys.version_info < (3, 15), reason="lazy imports (PEP 810) need Python 3.15")
+    @pytest.mark.parametrize("lazy_imports_mode", ["normal", "all"])
+    def test_lazy_import_resolves_to_decorator(self, lazy_imports_mode):
+        code = (
+            "lazy from haystack.tools import tool\n"
+            "from haystack.tools.from_function import tool as decorator\n"
+            "assert tool is decorator, tool\n"
+        )
+        env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
+        assert result.returncode == 0, result.stderr

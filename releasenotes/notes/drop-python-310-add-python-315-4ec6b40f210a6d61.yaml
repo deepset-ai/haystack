@@ -7,3 +7,8 @@ upgrade:
 enhancements:
   - |
     Haystack now officially supports Python 3.15.
+fixes:
+  - |
+    With Python 3.15 lazy imports, ``from haystack.tools import tool`` now returns the ``tool`` decorator.
+    Before, ``lazy from haystack.tools import tool`` and imports under ``PYTHON_LAZY_IMPORTS=all`` returned the
+    ``haystack.tools.tool`` module instead.
