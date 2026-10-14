@@ -118,10 +118,22 @@ def combine_two_logical_filters(
     """
     if init_logical_filter["operator"] == runtime_logical_filter["operator"]:
         if init_logical_filter["operator"] == "AND":
-            return {
-                "operator": "AND",
-                "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
-            }
+            # A field constrained by both sides must resolve the same way regardless of
+            # filter shape, so runtime conditions overwrite init conditions on the same
+            # field (the same rule the comparison-filter paths apply).
+            runtime_fields = {c.get("field") for c in runtime_logical_filter["conditions"] if is_comparison_filter(c)}
+            kept_init_conditions = []
+            for condition in init_logical_filter["conditions"]:
+                if is_comparison_filter(condition) and condition.get("field") in runtime_fields:
+                    logger.warning(
+                        "The init filter, {init_filter}, is ignored as the field is already present in the "
+                        "runtime filters, {runtime_filter}.",
+                        init_filter=condition,
+                        runtime_filter=runtime_logical_filter,
+                    )
+                else:
+                    kept_init_conditions.append(condition)
+            return {"operator": "AND", "conditions": kept_init_conditions + runtime_logical_filter["conditions"]}
         return {
             "operator": "AND",
             "conditions": [
