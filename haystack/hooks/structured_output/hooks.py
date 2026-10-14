@@ -172,6 +172,7 @@ class StructuredOutputHook:
         except json.JSONDecodeError as e:
             return None, f"The reply is not valid JSON: {e}"
 
+        # self._model is not None when the schema is a Pydantic model
         if self._model is not None:
             try:
                 model = self._model.model_validate(data)
@@ -179,6 +180,7 @@ class StructuredOutputHook:
                 return None, f"The reply does not match the schema: {e}"
             return model.model_dump(mode="json"), None
 
+        # self._validator is not None when the schema is a JSON schema dict
         if self._validator is not None and (validation_error := best_match(self._validator.iter_errors(data))):
             return None, f"The reply does not match the schema: {validation_error.message}"
         return data, None
@@ -214,9 +216,12 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
     the retries of the current one.
     """
     count = 0
+    # Walk back from the newest message
     for message in reversed(messages):
+        # Skip the model replies and tool results between corrections
         if not message.is_from(ChatRole.USER):
             continue
+        # An untagged user message started the current turn, so older corrections are never reached
         if not message.meta.get(_CORRECTION_META_KEY):
             break
         count += 1
