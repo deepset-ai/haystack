@@ -45,25 +45,39 @@ jobs:
               return;
             }
 
-            const result = await github.graphql(
-              `query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    closingIssuesReferences(first: 10) {
-                      nodes {
-                        id number body repository { nameWithOwner }
-                        assignees(first: 1) { totalCount }
-                        labels(first: 100) { nodes { name } }
+            async function fetchLinkedIssues() {
+              const result = await github.graphql(
+                `query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $number) {
+                      closingIssuesReferences(first: 10) {
+                        nodes {
+                          id number body repository { nameWithOwner }
+                          assignees(first: 1) { totalCount }
+                          labels(first: 100) { nodes { name } }
+                        }
                       }
                     }
                   }
-                }
-              }`,
-              { owner, repo, number: pr.number },
-            );
-            let issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
-              (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
-            );
+                }`,
+                { owner, repo, number: pr.number },
+              );
+              return result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+                (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
+              );
+            }
+
+            // GitHub links issues from closing keywords asynchronously, so right
+            // after a PR is opened the query can come back empty. Retry while the
+            // body contains a closing keyword.
+            const closingKeyword =
+              /\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?\s+(\S*#\d+|https:\/\/github\.com\/\S+\/issues\/\d+)/i;
+            let issues = await fetchLinkedIssues();
+            for (let attempt = 1; !issues.length && attempt <= 3 && closingKeyword.test(pr.body ?? ""); attempt++) {
+              core.info(`No linked issues yet but the PR body has a closing keyword, retrying (${attempt}/3).`);
+              await new Promise((resolve) => setTimeout(resolve, 10_000));
+              issues = await fetchLinkedIssues();
+            }
             if (!issues.length) {
               core.info("PR has no linked issues.");
               return;
