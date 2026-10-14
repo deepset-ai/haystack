@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_6d562fb38bfc5ee6_output_adapter_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-14 07:26 +0000
+            created at 2026-10-14 11:21 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -84,7 +84,7 @@
     <p class="pln"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t"><span class="com">#</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="com"># SPDX-License-Identifier: Apache-2.0</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">from</span> <span class="nam">enum</span> <span class="key">import</span> <span class="nam">Enum</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">from</span> <span class="nam">enum</span> <span class="key">import</span> <span class="nam">StrEnum</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t"><span class="key">from</span> <span class="nam">pathlib</span> <span class="key">import</span> <span class="nam">Path</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">TYPE_CHECKING</span><span class="op">,</span> <span class="nam">Any</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -104,7 +104,7 @@
     <p class="run"><span class="n"><a id="t22" href="#t22">22</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">dataclasses</span> <span class="key">import</span> <span class="nam">ByteStream</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t23" href="#t23">23</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t24" href="#t24">24</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t25" href="#t25">25</a></span><span class="t"><span class="key">class</span> <span class="nam">ConverterMimeType</span><span class="op">(</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Enum</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t25" href="#t25">25</a></span><span class="t"><span class="key">class</span> <span class="nam">ConverterMimeType</span><span class="op">(</span><span class="nam">StrEnum</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t26" href="#t26">26</a></span><span class="t">    <span class="nam">CSV</span> <span class="op">=</span> <span class="str">&quot;text/csv&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t">    <span class="nam">DOCX</span> <span class="op">=</span> <span class="str">&quot;application/vnd.openxmlformats-officedocument.wordprocessingml.document&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t">    <span class="nam">HTML</span> <span class="op">=</span> <span class="str">&quot;text/html&quot;</span>&nbsp;</span><span class="r"></span></p>
@@ -183,7 +183,7 @@
     <p class="run"><span class="n"><a id="t101" href="#t101">101</a></span><span class="t">        <span class="nam">pp</span><span class="op">.</span><span class="nam">add_component</span><span class="op">(</span><span class="str">&quot;csv&quot;</span><span class="op">,</span> <span class="nam">CSVToDocument</span><span class="op">(</span><span class="nam">encoding</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">encoding</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t102" href="#t102">102</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t103" href="#t103">103</a></span><span class="t">        <span class="key">for</span> <span class="nam">mime_type</span> <span class="key">in</span> <span class="nam">ConverterMimeType</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t104" href="#t104">104</a></span><span class="t">            <span class="nam">pp</span><span class="op">.</span><span class="nam">connect</span><span class="op">(</span><span class="fst">f&quot;</span><span class="fst">router.</span><span class="op">{</span><span class="nam">mime_type</span><span class="op">.</span><span class="nam">value</span><span class="op">}</span><span class="fst">&quot;</span><span class="op">,</span> <span class="nam">str</span><span class="op">(</span><span class="nam">mime_type</span><span class="op">)</span><span class="op">.</span><span class="nam">lower</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">rsplit</span><span class="op">(</span><span class="str">&quot;.&quot;</span><span class="op">,</span> <span class="nam">maxsplit</span><span class="op">=</span><span class="num">1</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="num">1</span><span class="op">]</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t104" href="#t104">104</a></span><span class="t">            <span class="nam">pp</span><span class="op">.</span><span class="nam">connect</span><span class="op">(</span><span class="fst">f&quot;</span><span class="fst">router.</span><span class="op">{</span><span class="nam">mime_type</span><span class="op">.</span><span class="nam">value</span><span class="op">}</span><span class="fst">&quot;</span><span class="op">,</span> <span class="nam">mime_type</span><span class="op">.</span><span class="nam">name</span><span class="op">.</span><span class="nam">lower</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t105" href="#t105">105</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t106" href="#t106">106</a></span><span class="t">        <span class="nam">pp</span><span class="op">.</span><span class="nam">connect</span><span class="op">(</span><span class="str">&quot;docx.documents&quot;</span><span class="op">,</span> <span class="str">&quot;joiner.documents&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t107" href="#t107">107</a></span><span class="t">        <span class="nam">pp</span><span class="op">.</span><span class="nam">connect</span><span class="op">(</span><span class="str">&quot;html.documents&quot;</span><span class="op">,</span> <span class="str">&quot;joiner.documents&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -222,7 +222,7 @@
             <a class="nav" href="z_6d562fb38bfc5ee6_output_adapter_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-14 07:26 +0000
+            created at 2026-10-14 11:21 +0000
         </p>
     </div>
 </footer>
