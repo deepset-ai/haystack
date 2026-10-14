@@ -653,13 +653,12 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     tool_calls = []
     reasoning = None
     logprobs: list[dict] = []
+    refusals: list[str] = []
     for output in responses.output:
-        if isinstance(output, ResponseOutputRefusal):
-            logger.warning("OpenAI returned a refusal output: {output}", output=output)
-            continue
-
         if output.type == "message":
             for content in output.content:
+                if isinstance(content, ResponseOutputRefusal):
+                    refusals.append(content.refusal)
                 if hasattr(content, "logprobs") and content.logprobs is not None:
                     logprobs.append(_serialize_object(content.logprobs))
 
@@ -701,6 +700,8 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     if logprobs:
         meta["logprobs"] = logprobs
+    if refusals:
+        meta["refusal"] = "\n".join(refusals)
 
     return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
@@ -775,6 +776,15 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
+    elif chunk.type == "response.refusal.delta":
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            start=not any(c.meta.get("refusal") for c in previous_chunks if c.index == chunk.output_index),
+            meta={**chunk.to_dict(), "refusal": chunk.delta, "received_at": datetime.now().isoformat()},
+        )
+
     elif chunk.type == "response.output_text.delta":
         # Start is determined by checking if this is the first text delta event of a new output_index
         # 1) Check if all previous chunks have different output_index
@@ -844,10 +854,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
-    logprobs = []
-    for chunk in chunks:
-        if chunk.meta.get("logprobs"):
-            logprobs.append(chunk.meta.get("logprobs"))
+    logprobs = [chunk.meta["logprobs"] for chunk in chunks if chunk.meta.get("logprobs")]
 
     # Gather reasoning information if present
     reasoning_id = None
@@ -907,6 +914,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     )
     final_response = (response_with_usage or responses[-1]).copy() if responses else {}
     final_response.pop("output", None)
+    refusals: dict[tuple[int | None, int], str] = {}
+    for chunk in (c for c in chunks if c.meta.get("type") == "response.refusal.delta"):
+        refusal_key = (chunk.index, chunk.meta["content_index"])
+        previous_refusal_text = refusals.get(refusal_key, "")
+        refusals[refusal_key] = previous_refusal_text + chunk.meta["refusal"]
+    if refusals:
+        final_response["refusal"] = "\n".join(refusals.values())
 
     # finish_reason can appear in different places so we look for the last one
     finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
@@ -970,11 +984,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
-    images = message.images
     reasonings = message.reasonings
-    files = message.files
 
-    has_content = any([text_contents, tool_calls, tool_call_results, images, reasonings, files])
+    has_content = any([text_contents, tool_calls, tool_call_results, message.images, reasonings, message.files])
     # We convert an assistant message with no content part into a message with empty content, which the API accepts
     if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
@@ -1054,8 +1066,15 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(formatted_tool_calls)
 
     # system and assistant messages
-    if text_contents or not formatted_messages:
-        openai_msg["content"] = " ".join(text_contents)
+    refusal = message.meta.get("refusal")
+    has_refusal = message.is_from(ChatRole.ASSISTANT) and isinstance(refusal, str) and bool(refusal)
+    if text_contents or has_refusal or not formatted_messages:
+        openai_msg["content"] = (
+            [{"type": "output_text", "text": text, "annotations": []} for text in text_contents]
+            + [{"type": "refusal", "refusal": refusal}]
+            if has_refusal
+            else " ".join(text_contents)
+        )
         formatted_messages.append(openai_msg)
 
     return formatted_messages
