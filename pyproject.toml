@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,11 +34,11 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
@@ -53,7 +53,6 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # DocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
   "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
   "numpy",
@@ -193,9 +192,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-# Deliberately above the 3.10 floor in `requires-python`: numpy's stubs use PEP 695 `type`
+# Deliberately above the 3.11 floor in `requires-python`: numpy's stubs use PEP 695 `type`
 # statements, which mypy rejects as a syntax error below 3.12. The floor stays covered by the
-# unit test matrix, which runs on 3.10.
+# unit test matrix, which runs on 3.11.
 python_version = "3.12"
 check_untyped_defs = true
 disallow_incomplete_defs = true
