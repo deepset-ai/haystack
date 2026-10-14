@@ -36,7 +36,7 @@ The hook works with any chat generator. When your chat generator supports native
 
 ### Basic setup
 
-Declare the key the hook writes to in the Agent's `state_schema`. This makes it an Agent output you can read from the result or connect to another component in a pipeline. The hook writes to `structured_output` by default:
+The key the hook writes to must be declared in the Agent's `state_schema`, otherwise the hook raises a `ValueError` when the Agent runs. Declaring it also makes it an Agent output you can read from the result or connect to another component in a pipeline. The hook writes to `structured_output` by default:
 
 ```python
 from pydantic import BaseModel
