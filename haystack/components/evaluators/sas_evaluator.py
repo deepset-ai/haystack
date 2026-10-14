@@ -66,6 +66,7 @@ class SASEvaluator:
         :param model:
             SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
             model.
+            Cross Encoder models must return exactly one score per pair.
         :param batch_size:
             Number of prediction-label pairs to encode at once.
         :param device:
@@ -141,6 +142,9 @@ class SASEvaluator:
             A dictionary with the following outputs:
                 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
                 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+        :raises ValueError:
+            If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
+            returns more than one score per pair.
         """
         if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
@@ -155,6 +159,16 @@ class SASEvaluator:
             self.warm_up()
 
         if isinstance(self._similarity_model, CrossEncoder):
+            # SAS needs one similarity score per pair, so multi-label models (for example NLI) are not supported
+            num_labels = self._similarity_model.num_labels
+            if num_labels != 1:
+                msg = (
+                    f"SASEvaluator requires a Cross Encoder with exactly one output score, but '{self._model}' "
+                    f"has {num_labels} labels. Use a single-score Cross Encoder or a Bi-Encoder "
+                    "(SentenceTransformer) model."
+                )
+                raise ValueError(msg)
+
             # For Cross Encoders we create a list of pairs of predictions and labels
             sentence_pairs = list(zip(predicted_answers, ground_truth_answers, strict=True))
             similarity_scores = self._similarity_model.predict(
