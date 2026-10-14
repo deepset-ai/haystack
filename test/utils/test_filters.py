@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -132,26 +132,26 @@ document_matches_filter_data = [
         id="> operator with smaller ISO 8601 datetime Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=UTC)},
         Document(meta={"date": "2024-01-01T00:00:00+00:00"}),
         True,
         id="> operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
         {"field": "meta.date", "operator": ">", "value": "2023-01-01T00:00:00+00:00"},
-        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=UTC)}),
         True,
         id="> operator with ISO 8601 string filter value and datetime Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=UTC)},
         Document(meta={"date": datetime(2024, 1, 1)}),
         True,
         id="> operator with aware datetime filter value and naive datetime Document value",
     ),
     pytest.param(
         {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1)},
-        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=UTC)}),
         True,
         id="> operator with naive datetime filter value and aware datetime Document value",
     ),
@@ -542,13 +542,13 @@ document_matches_filter_data = [
         id="== operator with equal datetime in different ISO 8601 format",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)},
         Document(meta={"date": "2025-02-03T12:45:46Z"}),
         True,
         id="== operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)},
         Document(meta={"date": datetime(2025, 2, 3, 12, 45, 46)}),
         True,
         id="== operator with aware datetime filter value and naive datetime Document value",
@@ -651,8 +651,8 @@ def test_document_matches_filter(filters, document, expected_result):
     [
         ("2025-02-03T12:45:46", "2025-02-03T12:45:46+00:00"),
         ("2025-02-03T12:45:46+00:00", "2025-02-03T12:45:46"),
-        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)),
-        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc), datetime(2025, 2, 3, 12, 45, 46)),
+        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)),
+        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC), datetime(2025, 2, 3, 12, 45, 46)),
     ],
 )
 def test_document_matches_filter_strict_datetime_comparison(operator, expected_result, document_value, filter_value):

@@ -29,7 +29,7 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
   # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
   # See [tool.mypy] in pyproject.toml.
   MYPY_PYTHON_VERSION: "3.12"

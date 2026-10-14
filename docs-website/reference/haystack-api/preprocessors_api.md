@@ -98,12 +98,14 @@ Initializes the CSVDocumentSplitter component.
 
 - **row_split_threshold** (<code>int | None</code>) – The minimum number of consecutive empty rows required to trigger a split.
 - **column_split_threshold** (<code>int | None</code>) – The minimum number of consecutive empty columns required to trigger a split.
-- **read_csv_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to `pandas.read_csv`.
-  By default, the component with options:
+- **read_csv_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments passed to `pandas.read_csv`.
+  These extend or override the following defaults:
 - `header=None`
 - `skip_blank_lines=False` to preserve blank lines
 - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
   See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
+  Customizing CSV parsing options may cause splitting errors or inaccurate position metadata.
+  Validate the split content and metadata on representative inputs when customizing these options.
 - **split_mode** (<code>SplitMode</code>) – If `threshold`, the component will split the document based on the number of
   consecutive empty rows or columns that exceed the `row_split_threshold` or `column_split_threshold`.
   If `row-wise`, the component will split each row into a separate sub-table.
