@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``DocumentMRREvaluator``, ``DocumentMAPEvaluator`` and ``DocumentNDCGEvaluator`` no longer count an empty
+    comparison value as a match. Previously, when the ``document_comparison_field`` was an empty string on both a
+    ground truth and a retrieved Document, for example ``meta.file_id=""``, unrelated Documents were scored as
+    relevant and could get a perfect score. ``DocumentRecallEvaluator`` already ignored empty values.

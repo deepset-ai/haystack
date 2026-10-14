@@ -119,7 +119,10 @@ class DocumentMRREvaluator:
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents, strict=True):
             reciprocal_rank = 0.0
 
-            ground_truth_values = [val for doc in ground_truth if (val := self._get_comparison_value(doc)) is not None]
+            # Missing or empty values can't identify a relevant document, so they never match
+            ground_truth_values = [
+                val for doc in ground_truth if (val := self._get_comparison_value(doc)) not in ("", None)
+            ]
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
