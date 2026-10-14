@@ -1050,31 +1050,26 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
 
-    if tool_calls:
-        formatted_tool_calls = []
-        for tc in tool_calls:
-            openai_tool_call = {
-                "type": "function_call",
-                # We disable ensure_ascii so special chars like emojis are not converted
-                "name": tc.tool_name,
-                "arguments": json.dumps(tc.arguments, ensure_ascii=False),
-                "id": tc.id,
-                "call_id": tc.extra.get("call_id") if tc.extra else "",
-            }
+    for tc in tool_calls:
+        openai_tool_call = {
+            "type": "function_call",
+            # We disable ensure_ascii so special chars like emojis are not converted
+            "name": tc.tool_name,
+            "arguments": json.dumps(tc.arguments, ensure_ascii=False),
+            "id": tc.id,
+            "call_id": tc.extra.get("call_id") if tc.extra else "",
+        }
 
-            formatted_tool_calls.append(openai_tool_call)
-        formatted_messages.extend(formatted_tool_calls)
+        formatted_messages.append(openai_tool_call)
 
     # system and assistant messages
     refusal = message.meta.get("refusal")
-    has_refusal = message.is_from(ChatRole.ASSISTANT) and isinstance(refusal, str) and bool(refusal)
-    if text_contents or has_refusal or not formatted_messages:
-        openai_msg["content"] = (
-            [{"type": "output_text", "text": text, "annotations": []} for text in text_contents]
-            + [{"type": "refusal", "refusal": refusal}]
-            if has_refusal
-            else " ".join(text_contents)
-        )
+    if message.is_from(ChatRole.ASSISTANT) and isinstance(refusal, str) and refusal:
+        openai_msg["content"] = [{"type": "output_text", "text": text, "annotations": []} for text in text_contents]
+        openai_msg["content"].append({"type": "refusal", "refusal": refusal})
+        formatted_messages.append(openai_msg)
+    elif text_contents or not formatted_messages:
+        openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)
 
     return formatted_messages
