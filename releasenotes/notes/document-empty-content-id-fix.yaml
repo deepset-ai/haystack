@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed Document auto-id collision between ``content=""`` and ``content=None``.
+    Empty string content is now hashed distinctly from missing content so the two
+    documents no longer share the same ID.

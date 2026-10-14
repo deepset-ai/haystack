@@ -423,3 +423,12 @@ def test_warn_on_inplace_mutation():
     doc = Document(content="test")
     with pytest.warns(Warning, match="dataclasses.replace"):
         doc.content = "other"
+
+
+def test_empty_string_content_has_distinct_id_from_none():
+    """Empty string content and None content are different documents and must have different auto ids."""
+    empty = Document(content="")
+    none_content = Document(content=None)
+    assert empty.id != none_content.id
+    # Ensure the none-content id remains stable (regression for the common case)
+    assert none_content.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
