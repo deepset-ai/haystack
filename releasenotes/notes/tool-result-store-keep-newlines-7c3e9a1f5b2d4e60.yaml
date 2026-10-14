@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``FileSystemToolResultStore`` now writes text results with their line endings unchanged. Previously, on Windows,
+    every ``\n`` was written as ``\r\n``, so ``read`` returned different text than was written, and a result that
+    already used ``\r\n`` came back with ``\r\r\n``.
