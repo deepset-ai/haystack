@@ -218,10 +218,10 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
     count = 0
     # Walk back from the newest message
     for message in reversed(messages):
-        # Skip the model replies and tool results between corrections
+        # Skip all non-user messages, including the assistant's reply and any tool results
         if not message.is_from(ChatRole.USER):
             continue
-        # An untagged user message started the current turn, so older corrections are never reached
+        # The first untagged user message is the start of the current turn, so stop counting
         if not message.meta.get(_CORRECTION_META_KEY):
             break
         count += 1
