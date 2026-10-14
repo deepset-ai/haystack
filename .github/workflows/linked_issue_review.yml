@@ -6,12 +6,16 @@ name: Linked issue review sync
 # issue signals other contributors (and their coding agents) that the issue is
 # taken, which prevents duplicate PRs.
 #
+# When such a PR is closed without being merged and no other open PR links the
+# issue, the assignees this workflow added are removed again and the issue moves
+# from the review column back to the backlog (or to new if it has no priority).
+#
 # Uses pull_request_target so it also has write permissions on fork PRs; this
 # is safe because the workflow never checks out or executes PR code.
 
 on:
   pull_request_target:
-    types: [opened, ready_for_review, review_requested]
+    types: [opened, ready_for_review, review_requested, closed]
 
 permissions:
   contents: read
@@ -27,10 +31,11 @@ jobs:
     runs-on: ubuntu-slim
     # Draft PRs (e.g. gated by the CLA draft gate) are handled once they become
     # ready for review.
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event.action == 'closed' || !github.event.pull_request.draft }}
     steps:
       - name: Assign reviewers to linked issues
         id: link
+        if: github.event.action != 'closed'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -42,6 +47,14 @@ jobs:
             if (!reviewers.length) {
               // CODEOWNERS assignment triggers a later review_requested event.
               core.info("No individual reviewers requested yet, nothing to do.");
+              return;
+            }
+
+            // The event payload can be stale when the PR was closed while this run
+            // was queued.
+            const { data: current } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+            if (current.state !== "open") {
+              core.info("PR is no longer open, nothing to do.");
               return;
             }
 
@@ -123,25 +136,96 @@ jobs:
               });
               core.info(`Assigned ${reviewers.join(", ")} to issue #${issue.number}`);
             }
-            core.setOutput("issue_node_ids", JSON.stringify(issues.map((issue) => issue.id)));
+            core.setOutput("moves", JSON.stringify(issues.map((issue) => ({ id: issue.id, to: "review" }))));
 
-      - name: Move linked issues to review in the project board
-        if: steps.link.outputs.issue_node_ids && steps.link.outputs.issue_node_ids != '[]'
+      - name: Release linked issues of a PR closed without merging
+        id: release
+        if: github.event.action == 'closed' && !github.event.pull_request.merged
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            // Actor of assignment events created with GITHUB_TOKEN.
+            const WORKFLOW_ACTOR = "github-actions";
+            const PRIORITIES = ["P0", "P1", "P2", "P3"];
+
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        id number state repository { nameWithOwner }
+                        assignees(first: 20) { nodes { login } }
+                        labels(first: 100) { nodes { name } }
+                        closedByPullRequestsReferences(first: 10, includeClosedPrs: false) {
+                          nodes { number }
+                        }
+                        timelineItems(itemTypes: [ASSIGNED_EVENT], last: 100) {
+                          nodes { ... on AssignedEvent { actor { login } assignee { ... on User { login } } } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { owner, repo, number: pr.number },
+            );
+            const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+              (issue) => issue.repository.nameWithOwner === `${owner}/${repo}` && issue.state === "OPEN",
+            );
+
+            const moves = [];
+            for (const issue of issues) {
+              // Another open PR still works on the issue.
+              if (issue.closedByPullRequestsReferences.nodes.some((other) => other.number !== pr.number)) {
+                core.info(`Issue #${issue.number} has another open linked PR, skipping.`);
+                continue;
+              }
+
+              // An assignee counts as added by this workflow if their most recent
+              // "assigned" event is ours. Assignees set by hand stay.
+              const assignedBy = new Map();
+              for (const event of issue.timelineItems.nodes) {
+                if (event.assignee?.login) assignedBy.set(event.assignee.login, event.actor?.login);
+              }
+              const assignees = issue.assignees.nodes.map((a) => a.login);
+              const toRemove = assignees.filter((login) => assignedBy.get(login) === WORKFLOW_ACTOR);
+              if (toRemove.length) {
+                await github.rest.issues.removeAssignees({
+                  owner, repo, issue_number: issue.number, assignees: toRemove,
+                });
+                core.info(`Unassigned ${toRemove.join(", ")} from issue #${issue.number}`);
+              }
+
+              // Somebody assigned by hand still owns the issue, so it stays in review.
+              if (toRemove.length < assignees.length) {
+                core.info(`Issue #${issue.number} still has an assignee, keeping its project status.`);
+                continue;
+              }
+              const hasPriority = issue.labels.nodes.some((l) => PRIORITIES.includes(l.name));
+              moves.push({ id: issue.id, to: hasPriority ? "backlog" : "new", from: "review" });
+            }
+            core.setOutput("moves", JSON.stringify(moves));
+
+      - name: Move linked issues in the project board
+        if: (steps.link.outputs.moves || steps.release.outputs.moves || '[]') != '[]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          ISSUE_NODE_IDS: ${{ steps.link.outputs.issue_node_ids }}
+          MOVES: ${{ steps.link.outputs.moves || steps.release.outputs.moves }}
           PROJECT_ORG: deepset-ai
           PROJECT_NUMBER: "5"
-          # Name of the Status option to move issues to; matched
+          # Names of the Status options issues move between; matched
           # case-insensitively, falling back to a substring match
-          # (the actual option is ":eyes: In review").
-          REVIEW_STATUS_NAME: In review
+          # (e.g. the actual review option is ":eyes: In review").
+          STATUS_NAMES: '{"review": "In review", "backlog": "Backlog", "new": "New"}'
         with:
           # The default GITHUB_TOKEN cannot access org-level projects.
           github-token: ${{ secrets.GH_PROJECT_PAT }}
           script: |
-            const issueIds = JSON.parse(process.env.ISSUE_NODE_IDS);
-            const statusName = process.env.REVIEW_STATUS_NAME;
+            const moves = JSON.parse(process.env.MOVES);
+            const statusNames = JSON.parse(process.env.STATUS_NAMES);
 
             const result = await github.graphql(
               `query($org: String!, $number: Int!) {
@@ -158,27 +242,52 @@ jobs:
             );
             const project = result.organization.projectV2;
             const field = project.field;
-            const option =
-              field.options.find((o) => o.name.toLowerCase() === statusName.toLowerCase()) ??
-              field.options.find((o) => o.name.toLowerCase().includes(statusName.toLowerCase()));
-            if (!option) {
-              core.warning(
-                `No Status option matching "${statusName}" in project ` +
-                  `${process.env.PROJECT_NUMBER}. Available: ${field.options.map((o) => o.name).join(", ")}`,
-              );
-              return;
+            function findOption(key) {
+              const name = statusNames[key].toLowerCase();
+              const option =
+                field.options.find((o) => o.name.toLowerCase() === name) ??
+                field.options.find((o) => o.name.toLowerCase().includes(name));
+              if (!option) {
+                core.warning(
+                  `No Status option matching "${statusNames[key]}" in project ` +
+                    `${process.env.PROJECT_NUMBER}. Available: ${field.options.map((o) => o.name).join(", ")}`,
+                );
+              }
+              return option;
             }
 
-            for (const issueId of issueIds) {
+            for (const move of moves) {
+              const option = findOption(move.to);
+              if (!option) continue;
+
               const node = await github.graphql(
                 `query($id: ID!) {
                   node(id: $id) {
-                    ... on Issue { projectItems(first: 50) { nodes { id project { id } } } }
+                    ... on Issue {
+                      projectItems(first: 50) {
+                        nodes {
+                          id project { id }
+                          status: fieldValueByName(name: "Status") {
+                            ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                          }
+                        }
+                      }
+                    }
                   }
                 }`,
-                { id: issueId },
+                { id: move.id },
               );
               let item = node.node.projectItems.nodes.find((n) => n.project.id === project.id);
+
+              // Only move issues out of the column they are expected in, so a status
+              // set by hand stays.
+              if (move.from) {
+                const from = findOption(move.from);
+                if (!from || item?.status?.optionId !== from.id) {
+                  core.info(`Issue ${move.id} is not in "${statusNames[move.from]}", leaving it.`);
+                  continue;
+                }
+              }
               if (!item) {
                 const added = await github.graphql(
                   `mutation($projectId: ID!, $contentId: ID!) {
@@ -186,7 +295,7 @@ jobs:
                       item { id }
                     }
                   }`,
-                  { projectId: project.id, contentId: issueId },
+                  { projectId: project.id, contentId: move.id },
                 );
                 item = added.addProjectV2ItemById.item;
               }
@@ -201,5 +310,5 @@ jobs:
                 }`,
                 { projectId: project.id, itemId: item.id, fieldId: field.id, optionId: option.id },
               );
-              core.info(`Moved issue ${issueId} to "${option.name}"`);
+              core.info(`Moved issue ${move.id} to "${option.name}"`);
             }
