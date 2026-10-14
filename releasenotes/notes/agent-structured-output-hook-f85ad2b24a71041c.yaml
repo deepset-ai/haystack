@@ -8,9 +8,8 @@ features:
     around the whole reply is removed before parsing.
 
     When a reply can't be parsed, the hook sends the validation error back to the model and keeps the Agent running
-    so it can correct its reply, up to ``max_retries`` times (2 by default). Retries count toward
-    ``max_agent_steps``. When the reply still can't be parsed, or the Agent stops without a text reply, ``None`` is
-    stored.
+    so it can correct its reply, up to ``max_retries`` times (2 by default). When the reply still can't be parsed,
+    or the Agent stops without a text reply, ``None`` is stored.
 
     .. code:: python
 
