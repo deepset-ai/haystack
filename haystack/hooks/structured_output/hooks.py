@@ -63,7 +63,7 @@ class StructuredOutputHook:
     agent = Agent(
         chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
         state_schema={"structured_output": {"type": dict}},
-        hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
+        hooks={"on_exit": [StructuredOutputHook(schema=CityInfo)]},
     )
 
     result = agent.run(messages=[ChatMessage.from_user("Which city is the Eiffel Tower in?")])
@@ -75,7 +75,7 @@ class StructuredOutputHook:
     allowed_hook_points = ("on_exit",)
 
     def __init__(
-        self, *, schema: type[BaseModel] | dict[str, Any], state_key: str = "structured_output", max_retries: int = 0
+        self, *, schema: type[BaseModel] | dict[str, Any], state_key: str = "structured_output", max_retries: int = 2
     ) -> None:
         """
         Create a structured output hook.
@@ -84,7 +84,7 @@ class StructuredOutputHook:
         :param state_key: The `State` key the parsed reply is stored under. It must be declared in the Agent's
             `state_schema`. Defaults to `"structured_output"`.
         :param max_retries: How many times the model is asked to correct a reply that is not valid JSON or does not
-            match the schema. Defaults to 0, which stores `None` on the first failure.
+            match the schema. Defaults to 2. Set it to 0 to store `None` on the first failure.
         :raises ValueError: If `schema` is not a valid JSON schema, or if `max_retries` is negative.
         :raises TypeError: If `schema` is neither a Pydantic model nor a dict.
         """

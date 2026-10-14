@@ -7,9 +7,10 @@ features:
     parsed reply as an Agent output, so no JSON parsing component is needed after the Agent. A markdown code fence
     around the whole reply is removed before parsing.
 
-    Set ``max_retries`` to have the hook send the validation error back to the model and keep the Agent running so it
-    can correct its reply. Retries count toward ``max_agent_steps``. When the reply still can't be parsed, or the
-    Agent stops without a text reply, ``None`` is stored.
+    When a reply can't be parsed, the hook sends the validation error back to the model and keeps the Agent running
+    so it can correct its reply, up to ``max_retries`` times (2 by default). Retries count toward
+    ``max_agent_steps``. When the reply still can't be parsed, or the Agent stops without a text reply, ``None`` is
+    stored.
 
     .. code:: python
 
@@ -29,7 +30,7 @@ features:
         agent = Agent(
             chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
             state_schema={"structured_output": {"type": dict}},
-            hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
+            hooks={"on_exit": [StructuredOutputHook(schema=CityInfo)]},
         )
 
         result = agent.run(messages=[ChatMessage.from_user("Which city is the Eiffel Tower in?")])

@@ -78,9 +78,11 @@ class TestStructuredOutputHook:
         assert expected_error in correction.text
         assert '"population"' in correction.text
 
-    @pytest.mark.parametrize("max_retries", [0, 2])
-    def test_stores_none_when_retries_are_exhausted(self, max_retries, caplog):
-        agent = _agent(responses=["not json"], hook=StructuredOutputHook(schema=CityInfo, max_retries=max_retries))
+    @pytest.mark.parametrize(
+        ("hook_kwargs", "max_retries"), [({"max_retries": 0}, 0), ({}, 2)], ids=["no-retries", "default"]
+    )
+    def test_stores_none_when_retries_are_exhausted(self, hook_kwargs, max_retries, caplog):
+        agent = _agent(responses=["not json"], hook=StructuredOutputHook(schema=CityInfo, **hook_kwargs))
         with caplog.at_level(logging.WARNING):
             result = agent.run(messages=[ChatMessage.from_user("Tell me about Paris")])
 
@@ -101,7 +103,7 @@ class TestStructuredOutputHook:
 
     def test_does_not_parse_a_truncated_reply(self, caplog):
         truncated = ChatMessage.from_assistant('{"city": "Par', meta={"finish_reason": "length"})
-        agent = _agent(responses=[truncated], hook=StructuredOutputHook(schema=CityInfo, max_retries=2))
+        agent = _agent(responses=[truncated], hook=StructuredOutputHook(schema=CityInfo))
         with caplog.at_level(logging.WARNING):
             result = agent.run(messages=[ChatMessage.from_user("Tell me about Paris")])
 
@@ -146,11 +148,11 @@ class TestStructuredOutputHook:
 
     @pytest.mark.parametrize("schema", [CityInfo, CITY_JSON_SCHEMA], ids=["pydantic", "json-schema"])
     def test_to_dict_from_dict_roundtrip(self, schema):
-        hook = StructuredOutputHook(schema=schema, state_key="city_info", max_retries=2)
+        hook = StructuredOutputHook(schema=schema, state_key="city_info", max_retries=3)
         restored = StructuredOutputHook.from_dict(hook.to_dict())
         assert restored.schema == schema
         assert restored.state_key == "city_info"
-        assert restored.max_retries == 2
+        assert restored.max_retries == 3
 
 
 class TestStructuredOutputHookAsync:

@@ -27,7 +27,7 @@ description: "Use StructuredOutputHook to parse an Agent's final reply into JSON
 Structured output is one use of the Agent's general [hooks](./hooks.mdx) mechanism. Registered under `on_exit`, `StructuredOutputHook` runs when the Agent is about to stop:
 
 - If the Agent stopped with a text reply (`exit_reason` is `"text"`), the hook parses the reply as JSON and validates it against the schema. A markdown code fence around the whole reply, such as ```` ```json ````, is removed first. On success, it stores the result in the configured [`State`](./state.mdx) key. With a Pydantic model, the stored value is the validated model dumped to a dict.
-- If the reply isn't valid JSON or doesn't match the schema and retries are left, the hook adds a user message describing the error and keeps the Agent running, so the model can correct its reply. `max_retries` sets how many retries are allowed and defaults to 0. Retries count toward the Agent's `max_agent_steps`.
+- If the reply isn't valid JSON or doesn't match the schema and retries are left, the hook adds a user message describing the error and keeps the Agent running, so the model can correct its reply. `max_retries` sets how many retries are allowed and defaults to 2. Retries count toward the Agent's `max_agent_steps`.
 - If no retries are left, or the Agent stopped for any other reason (for example, a reply cut off by the model's output token limit), the hook stores `None` and logs a warning.
 
 The hook works with any chat generator. When your chat generator supports native structured output, such as `text_format` on `OpenAIResponsesChatGenerator`, pass the same schema there too. The model is then constrained to produce valid JSON, and the hook turns it into an Agent output. Native structured output still lets the Agent call tools before it answers.
@@ -57,7 +57,7 @@ agent = Agent(
         model="gpt-5.4-nano", generation_kwargs={"text_format": CityInfo}
     ),
     state_schema={"structured_output": {"type": dict}},
-    hooks={"on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=2)]},
+    hooks={"on_exit": [StructuredOutputHook(schema=CityInfo)]},
 )
 
 result = agent.run(
@@ -86,11 +86,7 @@ agent = Agent(
     system_prompt="Answer only with a JSON object with the keys `city` and `country`.",
     state_schema={"city_info": {"type": dict}},
     hooks={
-        "on_exit": [
-            StructuredOutputHook(
-                schema=city_schema, state_key="city_info", max_retries=2
-            )
-        ]
+        "on_exit": [StructuredOutputHook(schema=city_schema, state_key="city_info")]
     },
 )
 ```
