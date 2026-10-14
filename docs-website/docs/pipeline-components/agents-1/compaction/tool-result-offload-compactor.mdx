@@ -77,7 +77,9 @@ The compactor processes tool results from oldest to newest:
 
 The replacement preserves the originating tool call, error flag, and existing message metadata. It also records `tool_result_offloaded` metadata holding the list of store references written, and `context_compaction` metadata holding the strategy name and the original tool-result message's token count.
 
-The target is a goal rather than a guarantee. Protected recent results and results that do not meet the offloading rules can leave the conversation above the requested target.
+If a write to the store fails, the result stays in the conversation, a warning naming the tool and the store is logged, and the Agent keeps running. When one part of a multi-part result fails to write, the whole result stays in the conversation.
+
+The target is a goal rather than a guarantee. Protected recent results, results that do not meet the offloading rules, and results whose store write fails can leave the conversation above the requested target.
 
 ### Text, image, and file results
 

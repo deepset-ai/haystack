@@ -214,6 +214,20 @@ class TestToolResultOffloadHookBehavior:
         assert (tmp_path / "request").exists()
         assert not (tmp_path / "default").exists()
 
+    def test_failed_write_leaves_result_in_context_and_offloads_the_rest(self, tmp_path, caplog):
+        # A call id with `..` makes the key resolve outside the store root, so that write raises.
+        store = FileSystemToolResultStore(root=tmp_path)
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        escaping = _tool_message("a", "E" * 50, call_id="../../../escape")
+        valid = _tool_message("b", "V" * 50, call_id="c2")
+        state = _state_with_messages([escaping, valid])
+        hook.run(state)
+        out = state.data["messages"]
+        assert out[0] == escaping
+        assert out[1].tool_call_result.result.startswith("Tool result offloaded")
+        assert store.read(out[1].meta["tool_result_offloaded"][0]) == "V" * 50
+        assert "Failed to offload the result of tool 'a' to FileSystemToolResultStore" in caplog.text
+
 
 class TestToolResultOffloadHookWithTextOnlyStore:
     def test_text_results_are_offloaded(self, caplog):

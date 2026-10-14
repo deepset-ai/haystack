@@ -540,12 +540,13 @@ class InMemoryDocumentStore:
             if document.id in self.storage.keys():
                 self.delete_documents([document.id])
 
-            tokens = []
-            if document.content is not None:
-                tokens = self._tokenize_bm25(document.content)
-
             self.storage[document.id] = document
 
+            # BM25 retrieval only searches documents with content, so only they count toward N and avgdl
+            if document.content is None:
+                continue
+
+            tokens = self._tokenize_bm25(document.content)
             self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
             self._freq_vocab_for_idf.update(set(tokens))
             # Update avg doc len based on the new document and the previous average
@@ -564,8 +565,10 @@ class InMemoryDocumentStore:
                 continue
             del self.storage[doc_id]
 
-            # Update statistics accordingly
-            doc_stats = self._bm25_attr.pop(doc_id)
+            # Update statistics accordingly; documents without content were never added to them
+            doc_stats = self._bm25_attr.pop(doc_id, None)
+            if doc_stats is None:
+                continue
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 

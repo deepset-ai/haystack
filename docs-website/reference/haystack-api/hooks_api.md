@@ -593,7 +593,8 @@ Initialize the compactor.
 **Parameters:**
 
 - **store** (<code>ToolResultStore</code>) – Where offloaded results are written. Image and file results are only written to a store that sets
-  `supports_binary_content`; otherwise they stay in the conversation.
+  `supports_binary_content`; otherwise they stay in the conversation. A result whose write fails also stays
+  in the conversation, and a warning is logged.
 - **min_keep_steps** (<code>int</code>) – Number of most recent tool-calling Agent steps whose results are never offloaded, even
   when the target is missed. Must be at least 1, so the model always sees the latest results.
 - **min_tokens** (<code>int</code>) – Only offload tool-result messages larger than this many tokens.
@@ -1571,7 +1572,8 @@ offloaded.
 Only successful tool output is offloaded; error results are always left in context. Each part of a result is
 written to its own store entry and the pointer says where each one went. Image and file content is only offloaded
 to a store that sets `supports_binary_content`; with a text-only store the result stays in context and a warning
-is logged. Each result is offloaded at most once, even though the hook runs on every tool step.
+is logged. If a write to the store fails, the result also stays in context, a warning is logged, and the Agent
+keeps running. Each result is offloaded at most once, even though the hook runs on every tool step.
 
 The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
 `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
