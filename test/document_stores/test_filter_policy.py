@@ -5,10 +5,10 @@
 from typing import Literal
 
 import pytest
+from haystack.utils.filters import document_matches_filter
 
 from haystack import Document
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
-from haystack.utils.filters import document_matches_filter
 
 
 def test_merge_two_comparison_filters():
@@ -290,3 +290,31 @@ def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersectio
         if document_matches_filter(init_filters, doc) and document_matches_filter(runtime_filters, doc)
     ]
     assert selected == intersection
+
+
+def _logical_and(*conditions):
+    return {"operator": "AND", "conditions": list(conditions)}
+
+
+class TestMergeTwoLogicalFiltersWithSameField:
+    """Under FilterPolicy.MERGE, a field constrained by both the init and the runtime
+    filters must resolve the same way regardless of how the filters are wrapped, with the
+    runtime condition overwriting the init condition (see issue #13208)."""
+
+    en = {"field": "meta.lang", "operator": "==", "value": "en"}
+    de = {"field": "meta.lang", "operator": "==", "value": "de"}
+
+    @pytest.mark.parametrize(
+        ("init_filters", "runtime_filters"),
+        [(en, de), (en, _logical_and(de)), (_logical_and(en), de), (_logical_and(en), _logical_and(de))],
+    )
+    def test_runtime_condition_overwrites_init_condition_on_same_field(self, init_filters, runtime_filters):
+        result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert document_matches_filter(result, Document(content="hello welt", meta={"lang": "de"}))
+        assert not document_matches_filter(result, Document(content="hello world", meta={"lang": "en"}))
+
+    def test_init_conditions_on_other_fields_are_kept(self):
+        init_filters = _logical_and(self.en, {"field": "meta.kind", "operator": "==", "value": "article"})
+        runtime_filters = _logical_and(self.de)
+        result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert result["conditions"] == [{"field": "meta.kind", "operator": "==", "value": "article"}, self.de]
