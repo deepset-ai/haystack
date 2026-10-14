@@ -90,7 +90,7 @@
 | haystack/components/preprocessors/\_\_init\_\_.py                         |        5 |        0 |    100% |           |
 | haystack/components/preprocessors/\_page\_numbers.py                      |        9 |        1 |     89% |        29 |
 | haystack/components/preprocessors/csv\_document\_cleaner.py               |       64 |        0 |    100% |           |
-| haystack/components/preprocessors/csv\_document\_splitter.py              |      108 |        4 |     96% |128, 131, 142-146 |
+| haystack/components/preprocessors/csv\_document\_splitter.py              |      108 |        4 |     96% |130, 133, 144-148 |
 | haystack/components/preprocessors/document\_cleaner.py                    |      125 |        1 |     99% |       107 |
 | haystack/components/preprocessors/document\_preprocessor.py               |       47 |        2 |     96% |  168, 204 |
 | haystack/components/preprocessors/document\_splitter.py                   |      280 |        2 |     99% |  213, 239 |
