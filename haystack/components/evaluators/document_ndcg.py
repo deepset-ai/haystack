@@ -65,7 +65,7 @@ class DocumentNDCGEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -86,7 +86,6 @@ class DocumentNDCGEvaluator:
             value = self._get_comparison_value(doc)
             if value is None:
                 continue
-            value = _make_metadata_value_hashable(value)
             relevance = doc.score if doc.score is not None else 1.0
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
         return relevant_value_to_score
@@ -180,7 +179,7 @@ class DocumentNDCGEvaluator:
         # retrieval of the same document then finds nothing, so it cannot inflate DCG past IDCG.
         for i, doc in enumerate(ret_docs):
             value = self._get_comparison_value(doc)
-            if value is not None and (value := _make_metadata_value_hashable(value)) in relevant_value_to_score:
+            if value is not None and value in relevant_value_to_score:
                 dcg += relevant_value_to_score.pop(value) / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 

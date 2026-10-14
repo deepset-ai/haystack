@@ -107,7 +107,7 @@ class DocumentRecallEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -118,11 +118,7 @@ class DocumentRecallEvaluator:
         """
         Collect the unique comparison values of the documents, ignoring missing or empty ones.
         """
-        return {
-            _make_metadata_value_hashable(value)
-            for doc in documents
-            if (value := self._get_comparison_value(doc)) not in ("", None)
-        }
+        return {value for doc in documents if (value := self._get_comparison_value(doc)) not in ("", None)}
 
     def _comparison_sets(
         self, ground_truth_documents: list[Document], retrieved_documents: list[Document]
