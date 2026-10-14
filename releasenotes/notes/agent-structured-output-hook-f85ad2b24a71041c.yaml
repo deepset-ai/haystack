@@ -1,11 +1,10 @@
 ---
 features:
   - |
-    Added ``StructuredOutputHook`` to ``haystack.hooks.structured_output``. Registered under the ``on_exit`` hook
-    point, it parses the Agent's final text reply as JSON, validates it against a Pydantic model or a JSON schema,
-    and stores the result as a dict in a ``State`` key. Declare that key in the Agent's ``state_schema`` to get the
-    parsed reply as an Agent output, so no JSON parsing component is needed after the Agent. A markdown code fence
-    around the whole reply is removed before parsing.
+    Added ``StructuredOutputHook`` to ``haystack.hooks.structured_output``. Registered under ``on_exit``, it parses
+    the Agent's final reply as JSON, validates it against a Pydantic model or a JSON schema, and stores the result
+    as a dict under the ``structured_output`` key by default. Add that key to the Agent's ``state_schema`` to get
+    the parsed reply as an Agent output.
 
     When a reply can't be parsed, the hook sends the validation error back to the model and keeps the Agent running
     so it can correct its reply, up to ``max_retries`` times (2 by default). When the reply still can't be parsed,
