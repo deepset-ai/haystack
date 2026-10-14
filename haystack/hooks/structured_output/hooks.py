@@ -34,7 +34,7 @@ class StructuredOutputHook:
     A markdown code fence around the whole reply (for example ```` ```json ````) is removed before parsing.
     With a Pydantic model as `schema`, the stored value is the validated model dumped to a dict.
 
-    When the reply is not valid JSON or does not match the schema, and `max_retries` allows it, the hook adds a user
+    When the reply is not valid JSON or does not match the schema, and retries are left, the hook adds a user
     message describing the error and keeps the Agent running so the model can correct its reply. Retries count
     toward `max_agent_steps`. When no retries are left, or the Agent stops for any reason other than a text reply,
     `None` is stored under `state_key`.
