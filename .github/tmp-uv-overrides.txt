@@ -1,0 +1,2 @@
+# Temporary: jq has no cp315 Windows wheel and its sdist does not build on Windows.
+jq; sys_platform != "win32"
