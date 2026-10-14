@@ -58,8 +58,7 @@ class FileSystemToolResultStore(ToolResultStore):
         """
         Write `content` to `<root>/<key>`, creating parent directories, and return the file path.
 
-        Text is written UTF-8 encoded with its line endings unchanged; bytes (an offloaded image or file) are written
-        verbatim.
+        Text is written UTF-8 encoded; bytes (an offloaded image or file) are written verbatim.
 
         The resolved target must stay within the root directory: a `key` that escapes it (e.g. containing `../` or an
         absolute path) is rejected, so a tool-provided key cannot write outside the store.
