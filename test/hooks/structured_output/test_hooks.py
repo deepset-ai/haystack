@@ -40,9 +40,19 @@ def _agent(responses: list[str | ChatMessage], hook: StructuredOutputHook, max_a
 
 
 class TestStructuredOutputHook:
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            VALID_REPLY,
+            f"```json\n{VALID_REPLY}\n```",
+            f"```\n{VALID_REPLY}\n```",
+            f"\n  ```JSON\n{VALID_REPLY}\n```  \n",
+        ],
+        ids=["plain", "json-fence", "bare-fence", "padded-fence"],
+    )
     @pytest.mark.parametrize("schema", [CityInfo, CITY_JSON_SCHEMA], ids=["pydantic", "json-schema"])
-    def test_stores_the_parsed_reply(self, schema):
-        agent = _agent(responses=[VALID_REPLY], hook=StructuredOutputHook(schema=schema, state_key="city_info"))
+    def test_stores_the_parsed_reply(self, schema, reply):
+        agent = _agent(responses=[reply], hook=StructuredOutputHook(schema=schema, state_key="city_info"))
         result = agent.run(messages=[ChatMessage.from_user("Tell me about Paris")])
         assert result["city_info"] == {"city": "Paris", "population": 2100000}
         assert result["step_count"] == 1
@@ -52,8 +62,9 @@ class TestStructuredOutputHook:
         [
             ("Paris has about 2.1 million people.", "The reply is not valid JSON"),
             ('{"city": "Paris"}', "The reply does not match the schema"),
+            (f"Here it is:\n```json\n{VALID_REPLY}\n```", "The reply is not valid JSON"),
         ],
-        ids=["invalid-json", "schema-mismatch"],
+        ids=["invalid-json", "schema-mismatch", "text-before-fence"],
     )
     @pytest.mark.parametrize("schema", [CityInfo, CITY_JSON_SCHEMA], ids=["pydantic", "json-schema"])
     def test_retries_with_a_correction_message(self, schema, bad_reply, expected_error):

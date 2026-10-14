@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import re
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 # Meta key marking the correction messages the hook adds to the conversation.
 _CORRECTION_META_KEY = "structured_output_correction"
 
+# A markdown code fence wrapping the whole reply, with an optional language tag such as `json`.
+_CODE_FENCE_PATTERN = re.compile(r"^```[\w-]*[ \t]*\n(.*?)\n?[ \t]*```$", re.DOTALL)
+
 
 class StructuredOutputHook:
     """
@@ -27,6 +31,7 @@ class StructuredOutputHook:
 
     The hook runs at the `on_exit` hook point. When the Agent stops with a text reply (`exit_reason` is `"text"`),
     the hook parses the reply as JSON, validates it against `schema`, and stores the result under `state_key`.
+    A markdown code fence around the whole reply (for example ```` ```json ````) is removed before parsing.
     With a Pydantic model as `schema`, the stored value is the validated model dumped to a dict.
 
     When the reply is not valid JSON or does not match the schema, and `max_retries` allows it, the hook adds a user
@@ -163,7 +168,7 @@ class StructuredOutputHook:
         if not text:
             return None, "The reply has no text."
         try:
-            data = json.loads(text)
+            data = json.loads(_strip_code_fence(text=text))
         except json.JSONDecodeError as e:
             return None, f"The reply is not valid JSON: {e}"
 
@@ -216,3 +221,13 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
             break
         count += 1
     return count
+
+
+def _strip_code_fence(text: str) -> str:
+    """
+    Remove a markdown code fence that wraps the whole reply.
+
+    Text with anything before or after the fence is returned unchanged.
+    """
+    match = _CODE_FENCE_PATTERN.match(text.strip())
+    return match.group(1) if match else text
