@@ -10,12 +10,19 @@ name: Linked issue review sync
 # issue, the assignees this workflow added are removed again and the issue moves
 # from the review column back to the backlog (or to new if it has no priority).
 #
+# A daily sweep applies both rules to all open PRs and issues. It catches events
+# that never trigger this workflow, e.g. PRs closed by other workflows with
+# GITHUB_TOKEN or links GitHub resolved after the PR events ran.
+#
 # Uses pull_request_target so it also has write permissions on fork PRs; this
 # is safe because the workflow never checks out or executes PR code.
 
 on:
   pull_request_target:
     types: [opened, ready_for_review, review_requested, closed]
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,7 +30,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: linked-issue-review-${{ github.event.pull_request.number }}
+  group: linked-issue-review-${{ github.event.pull_request.number || 'sweep' }}
   cancel-in-progress: false
 
 jobs:
@@ -31,159 +38,98 @@ jobs:
     runs-on: ubuntu-slim
     # Draft PRs (e.g. gated by the CLA draft gate) are handled once they become
     # ready for review.
-    if: ${{ github.event.action == 'closed' || !github.event.pull_request.draft }}
+    if: >-
+      ${{ github.event_name != 'pull_request_target' || github.event.action == 'closed' ||
+      !github.event.pull_request.draft }}
     steps:
-      - name: Assign reviewers to linked issues
-        id: link
-        if: github.event.action != 'closed'
+      - name: Sync assignees of linked issues
+        id: sync
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { owner, repo } = context.repo;
-            const pr = context.payload.pull_request;
+            // Actor of assignment events created with GITHUB_TOKEN.
+            const WORKFLOW_ACTOR = "github-actions";
+            const PRIORITIES = ["P0", "P1", "P2", "P3"];
+            const ISSUE_FIELDS = `
+              id number state body repository { nameWithOwner }
+              assignees(first: 20) { nodes { login } }
+              labels(first: 100) { nodes { name } }
+              closedByPullRequestsReferences(first: 10, includeClosedPrs: false) { nodes { number } }
+              timelineItems(itemTypes: [ASSIGNED_EVENT], last: 100) {
+                nodes { ... on AssignedEvent { actor { login } assignee { ... on User { login } } } }
+              }`;
+            // Project board moves for the next step.
+            const moves = [];
 
-            if (pr.user?.type === "Bot") return;
-            const reviewers = (pr.requested_reviewers ?? []).map((u) => u.login);
-            if (!reviewers.length) {
-              // CODEOWNERS assignment triggers a later review_requested event.
-              core.info("No individual reviewers requested yet, nothing to do.");
-              return;
-            }
+            const openIssuesInRepo = (issues) =>
+              issues.filter(
+                (issue) => issue.repository.nameWithOwner === `${owner}/${repo}` && issue.state === "OPEN",
+              );
 
-            // The event payload can be stale when the PR was closed while this run
-            // was queued.
-            const { data: current } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
-            if (current.state !== "open") {
-              core.info("PR is no longer open, nothing to do.");
-              return;
-            }
-
-            async function fetchLinkedIssues() {
+            async function fetchLinkedIssues(number) {
               const result = await github.graphql(
                 `query($owner: String!, $repo: String!, $number: Int!) {
                   repository(owner: $owner, name: $repo) {
                     pullRequest(number: $number) {
-                      closingIssuesReferences(first: 10) {
-                        nodes {
-                          id number body repository { nameWithOwner }
-                          assignees(first: 1) { totalCount }
-                          labels(first: 100) { nodes { name } }
-                        }
-                      }
+                      closingIssuesReferences(first: 10) { nodes { ${ISSUE_FIELDS} } }
                     }
                   }
                 }`,
-                { owner, repo, number: pr.number },
+                { owner, repo, number },
               );
-              return result.repository.pullRequest.closingIssuesReferences.nodes.filter(
-                (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
-              );
-            }
-
-            // GitHub links issues from closing keywords asynchronously, so right
-            // after a PR is opened the query can come back empty. Retry while the
-            // body contains a closing keyword.
-            const closingKeyword =
-              /\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?\s+(\S*#\d+|https:\/\/github\.com\/\S+\/issues\/\d+)/i;
-            let issues = await fetchLinkedIssues();
-            for (let attempt = 1; !issues.length && attempt <= 3 && closingKeyword.test(pr.body ?? ""); attempt++) {
-              core.info(`No linked issues yet but the PR body has a closing keyword, retrying (${attempt}/3).`);
-              await new Promise((resolve) => setTimeout(resolve, 10_000));
-              issues = await fetchLinkedIssues();
-            }
-            if (!issues.length) {
-              core.info("PR has no linked issues.");
-              return;
+              return openIssuesInRepo(result.repository.pullRequest.closingIssuesReferences.nodes);
             }
 
             // handled_internally_pr_guard.yml closes community PRs for issues the
             // team handles internally, so don't claim those issues for such a PR.
             // author_association is unreliable for team membership (private org
             // members appear as CONTRIBUTOR/NONE), hence the permission fallback.
+            const teamMembers = new Map();
             async function isTeamMember(login) {
-              try {
-                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
-                  owner, repo, username: login,
-                });
-                return ["admin", "write"].includes(data.permission);
-              } catch {
-                return false;
+              if (!teamMembers.has(login)) {
+                let member = false;
+                try {
+                  const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                    owner, repo, username: login,
+                  });
+                  member = ["admin", "write"].includes(data.permission);
+                } catch {}
+                teamMembers.set(login, member);
               }
+              return teamMembers.get(login);
             }
             const isInternal = (issue) =>
               issue.labels.nodes.some((l) => l.name === "handled internally") ||
               (issue.body ?? "").includes("isn't open for external contributions");
-            if (
-              issues.some(isInternal) &&
-              !["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association) &&
-              !(await isTeamMember(pr.user.login))
-            ) {
-              issues = issues.filter((issue) => !isInternal(issue));
-              if (!issues.length) {
-                core.info("PR only links issues handled internally, nothing to do.");
-                return;
+
+            // Assigns the PR's reviewers to the issues nobody is assigned to and
+            // queues every issue for the review column.
+            async function claim(pr, issues) {
+              if (
+                issues.some(isInternal) &&
+                !["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.authorAssociation) &&
+                !(await isTeamMember(pr.author))
+              ) {
+                issues = issues.filter((issue) => !isInternal(issue));
               }
-            }
-
-            for (const issue of issues) {
-              // Don't touch issues somebody is already assigned to.
-              if (issue.assignees.totalCount > 0) {
-                core.info(`Issue #${issue.number} already has an assignee, skipping assignment.`);
-                continue;
-              }
-              await github.rest.issues.addAssignees({
-                owner, repo, issue_number: issue.number, assignees: reviewers,
-              });
-              core.info(`Assigned ${reviewers.join(", ")} to issue #${issue.number}`);
-            }
-            core.setOutput("moves", JSON.stringify(issues.map((issue) => ({ id: issue.id, to: "review" }))));
-
-      - name: Release linked issues of a PR closed without merging
-        id: release
-        if: github.event.action == 'closed' && !github.event.pull_request.merged
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const pr = context.payload.pull_request;
-            // Actor of assignment events created with GITHUB_TOKEN.
-            const WORKFLOW_ACTOR = "github-actions";
-            const PRIORITIES = ["P0", "P1", "P2", "P3"];
-
-            const result = await github.graphql(
-              `query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    closingIssuesReferences(first: 10) {
-                      nodes {
-                        id number state repository { nameWithOwner }
-                        assignees(first: 20) { nodes { login } }
-                        labels(first: 100) { nodes { name } }
-                        closedByPullRequestsReferences(first: 10, includeClosedPrs: false) {
-                          nodes { number }
-                        }
-                        timelineItems(itemTypes: [ASSIGNED_EVENT], last: 100) {
-                          nodes { ... on AssignedEvent { actor { login } assignee { ... on User { login } } } }
-                        }
-                      }
-                    }
-                  }
+              for (const issue of issues) {
+                if (issue.assignees.nodes.length) {
+                  core.info(`Issue #${issue.number} already has an assignee, skipping assignment.`);
+                } else {
+                  await github.rest.issues.addAssignees({
+                    owner, repo, issue_number: issue.number, assignees: pr.reviewers,
+                  });
+                  core.info(`Assigned ${pr.reviewers.join(", ")} to issue #${issue.number} (PR #${pr.number})`);
                 }
-              }`,
-              { owner, repo, number: pr.number },
-            );
-            const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
-              (issue) => issue.repository.nameWithOwner === `${owner}/${repo}` && issue.state === "OPEN",
-            );
-
-            const moves = [];
-            for (const issue of issues) {
-              // Another open PR still works on the issue.
-              if (issue.closedByPullRequestsReferences.nodes.some((other) => other.number !== pr.number)) {
-                core.info(`Issue #${issue.number} has another open linked PR, skipping.`);
-                continue;
+                moves.push({ id: issue.id, to: "review" });
               }
+            }
 
+            // Removes the assignees this workflow added once no open PR links the
+            // issue, ignoring `closedPr`, and queues the issue to leave the review
+            // column if nobody is left assigned.
+            async function release(issue, closedPr) {
               // An assignee counts as added by this workflow if their most recent
               // "assigned" event is ours. Assignees set by hand stay.
               const assignedBy = new Map();
@@ -192,6 +138,13 @@ jobs:
               }
               const assignees = issue.assignees.nodes.map((a) => a.login);
               const toRemove = assignees.filter((login) => assignedBy.get(login) === WORKFLOW_ACTOR);
+              // The sweep only cleans up what this workflow claimed.
+              if (closedPr === undefined && !toRemove.length) return;
+
+              if (issue.closedByPullRequestsReferences.nodes.some((pr) => pr.number !== closedPr)) {
+                core.info(`Issue #${issue.number} has an open linked PR, skipping.`);
+                return;
+              }
               if (toRemove.length) {
                 await github.rest.issues.removeAssignees({
                   owner, repo, issue_number: issue.number, assignees: toRemove,
@@ -202,18 +155,139 @@ jobs:
               // Somebody assigned by hand still owns the issue, so it stays in review.
               if (toRemove.length < assignees.length) {
                 core.info(`Issue #${issue.number} still has an assignee, keeping its project status.`);
-                continue;
+                return;
               }
               const hasPriority = issue.labels.nodes.some((l) => PRIORITIES.includes(l.name));
               moves.push({ id: issue.id, to: hasPriority ? "backlog" : "new", from: "review" });
             }
+
+            async function onPrClaimed(pr) {
+              if (pr.user?.type === "Bot") return;
+              const reviewers = (pr.requested_reviewers ?? []).map((u) => u.login);
+              if (!reviewers.length) {
+                // CODEOWNERS assignment triggers a later review_requested event.
+                core.info("No individual reviewers requested yet, nothing to do.");
+                return;
+              }
+
+              // The event payload can be stale when the PR was closed while this run
+              // was queued.
+              const { data: current } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+              if (current.state !== "open") {
+                core.info("PR is no longer open, nothing to do.");
+                return;
+              }
+
+              // GitHub links issues from closing keywords asynchronously, so right
+              // after a PR is opened the query can come back empty. Retry while the
+              // body contains a closing keyword.
+              const closingKeyword =
+                /\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?\s+(\S*#\d+|https:\/\/github\.com\/\S+\/issues\/\d+)/i;
+              let issues = await fetchLinkedIssues(pr.number);
+              for (let attempt = 1; !issues.length && attempt <= 3 && closingKeyword.test(pr.body ?? ""); attempt++) {
+                core.info(`No linked issues yet but the PR body has a closing keyword, retrying (${attempt}/3).`);
+                await new Promise((resolve) => setTimeout(resolve, 10_000));
+                issues = await fetchLinkedIssues(pr.number);
+              }
+              if (!issues.length) {
+                core.info("PR has no linked issues.");
+                return;
+              }
+              await claim(
+                { number: pr.number, author: pr.user.login, authorAssociation: pr.author_association, reviewers },
+                issues,
+              );
+            }
+
+            async function onPrClosed(pr) {
+              // Merged PRs close their linked issues.
+              if (pr.merged) return;
+              for (const issue of await fetchLinkedIssues(pr.number)) await release(issue, pr.number);
+            }
+
+            // Runs `handle` on every node of a paginated connection, logging failures
+            // so the remaining nodes still get synced. Returns the failed labels.
+            async function forEachPage(query, connection, handle) {
+              const failed = [];
+              let cursor = null;
+              do {
+                const result = await github.graphql(query, { owner, repo, cursor });
+                const page = result.repository[connection];
+                for (const node of page.nodes) {
+                  try {
+                    await handle(node);
+                  } catch (error) {
+                    core.error(`Failed to sync #${node.number}: ${error.message}`);
+                    failed.push(`#${node.number}`);
+                  }
+                }
+                cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+              } while (cursor);
+              return failed;
+            }
+
+            async function sweep() {
+              // Claim unassigned issues of open, ready PRs with requested reviewers.
+              const failed = await forEachPage(
+                `query($owner: String!, $repo: String!, $cursor: String) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequests(states: OPEN, first: 25, after: $cursor) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes {
+                        number isDraft authorAssociation author { __typename login }
+                        reviewRequests(first: 10) { nodes { requestedReviewer { ... on User { login } } } }
+                        closingIssuesReferences(first: 10) { nodes { ${ISSUE_FIELDS} } }
+                      }
+                    }
+                  }
+                }`,
+                "pullRequests",
+                async (pr) => {
+                  if (pr.isDraft || pr.author?.__typename === "Bot") return;
+                  const reviewers = pr.reviewRequests.nodes.map((r) => r.requestedReviewer?.login).filter(Boolean);
+                  const issues = openIssuesInRepo(pr.closingIssuesReferences.nodes).filter(
+                    (issue) => !issue.assignees.nodes.length,
+                  );
+                  if (!reviewers.length || !issues.length) return;
+                  await claim(
+                    { number: pr.number, author: pr.author?.login, authorAssociation: pr.authorAssociation, reviewers },
+                    issues,
+                  );
+                },
+              );
+
+              // Release assigned issues whose linked PRs were all closed.
+              failed.push(
+                ...(await forEachPage(
+                  `query($owner: String!, $repo: String!, $cursor: String) {
+                    repository(owner: $owner, name: $repo) {
+                      issues(states: OPEN, filterBy: { assignee: "*" }, first: 50, after: $cursor) {
+                        pageInfo { hasNextPage endCursor }
+                        nodes { ${ISSUE_FIELDS} }
+                      }
+                    }
+                  }`,
+                  "issues",
+                  (issue) => release(issue),
+                )),
+              );
+              if (failed.length) core.setFailed(`Failed to sync: ${failed.join(", ")}`);
+            }
+
+            if (context.eventName !== "pull_request_target") {
+              await sweep();
+            } else if (context.payload.action === "closed") {
+              await onPrClosed(context.payload.pull_request);
+            } else {
+              await onPrClaimed(context.payload.pull_request);
+            }
             core.setOutput("moves", JSON.stringify(moves));
 
       - name: Move linked issues in the project board
-        if: (steps.link.outputs.moves || steps.release.outputs.moves || '[]') != '[]'
+        if: always() && steps.sync.outputs.moves && steps.sync.outputs.moves != '[]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          MOVES: ${{ steps.link.outputs.moves || steps.release.outputs.moves }}
+          MOVES: ${{ steps.sync.outputs.moves }}
           PROJECT_ORG: deepset-ai
           PROJECT_NUMBER: "5"
           # Names of the Status options issues move between; matched
