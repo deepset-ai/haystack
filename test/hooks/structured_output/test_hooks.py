@@ -8,8 +8,10 @@ import pytest
 from pydantic import BaseModel
 
 from haystack.components.agents import Agent
+from haystack.components.agents.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
 from haystack.hooks.structured_output import StructuredOutputHook
 from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY
 
@@ -26,6 +28,13 @@ CITY_JSON_SCHEMA = {
 }
 
 VALID_REPLY = '{"city": "Paris", "population": 2100000}'
+
+
+@hook
+def _ask_for_sources_once(state: State) -> None:
+    if len(state.data["messages"]) <= 2:
+        state.set("messages", [ChatMessage.from_user("Add your sources.")])
+        state.set("continue_run", True)
 
 
 def _agent(responses: list[str | ChatMessage], hook: StructuredOutputHook, max_agent_steps: int = 100) -> Agent:
@@ -123,6 +132,21 @@ class TestStructuredOutputHook:
         result = agent.run(messages=[*earlier_turn, ChatMessage.from_user("Now tell me about Paris again")])
 
         assert result["structured_output"] == {"city": "Paris", "population": 2100000}
+
+    def test_skips_parsing_while_another_hook_keeps_the_agent_running(self, caplog):
+        hook = StructuredOutputHook(schema=CityInfo, max_retries=0)
+        agent = Agent(
+            chat_generator=MockChatGenerator(responses=[VALID_REPLY]),
+            state_schema={"structured_output": {"type": dict}},
+            hooks={"on_exit": [_ask_for_sources_once, hook]},
+        )
+        agent.warm_up()
+        with caplog.at_level(logging.WARNING):
+            result = agent.run(messages=[ChatMessage.from_user("Tell me about Paris")])
+
+        assert result["structured_output"] == {"city": "Paris", "population": 2100000}
+        assert result["step_count"] == 2
+        assert "could not be parsed" not in caplog.text
 
     def test_missing_state_key_raises(self):
         agent = Agent(

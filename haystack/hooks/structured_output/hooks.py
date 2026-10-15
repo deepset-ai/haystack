@@ -36,8 +36,15 @@ class StructuredOutputHook:
 
     When the reply is not valid JSON or does not match the schema, and retries are left, the hook adds a user
     message describing the error and keeps the Agent running so the model can correct its reply. Retries count
-    toward `max_agent_steps`. When no retries are left, or the Agent stops for any reason other than a text reply,
-    `None` is stored under `state_key`.
+    toward `max_agent_steps`. When no retries are left, or the Agent stops on an exit condition other than a text
+    reply, `None` is stored under `state_key`.
+
+    When an earlier `on_exit` hook has already set `continue_run`, the hook skips parsing and parses the reply at
+    the next exit instead.
+
+    `on_exit` hooks don't run when the Agent stops because `max_agent_steps` is reached or a hook sets `stop_run`.
+    If the hook never ran during the run, `state_key` is missing from the Agent's result, so read it with
+    `result.get("structured_output")`.
 
     `state_key` must be declared in the Agent's `state_schema`, which also makes it an output of the Agent.
 
@@ -122,6 +129,10 @@ class StructuredOutputHook:
                 f"StructuredOutputHook stores its result under '{self.state_key}', which is not in the Agent's "
                 f"`state_schema`. Add it, for example `state_schema={{'{self.state_key}': {{'type': dict}}}}`."
             )
+
+        # Another on_exit hook keeps the Agent running, so parse the reply at the next exit
+        if state.data.get("continue_run"):
+            return
 
         exit_reason = state.data.get("exit_reason")
         if exit_reason != "text":
