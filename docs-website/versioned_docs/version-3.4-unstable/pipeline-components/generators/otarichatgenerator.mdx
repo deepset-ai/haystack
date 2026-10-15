@@ -56,6 +56,12 @@ When the gateway prices a request, the `usage` entry in the meta of each reply c
 
 When streaming, the gateway reports usage only if you ask for it with `generation_kwargs={"stream_options": {"include_usage": True}}`.
 
+### Reasoning
+
+Models that reason, such as Claude or Cohere's reasoning models, return their reasoning through the gateway. You find it in the `reasoning` property of the reply, a [`ReasoningContent`](../../concepts/data-classes/chatmessage.mdx#types-of-content), and when streaming, in the `reasoning` of the streamed chunks. Set how much the model reasons with `reasoning_effort`, for example `generation_kwargs={"reasoning_effort": "low"}`.
+
+If the gateway adds provider data that the next request needs, such as Anthropic's thinking signature, the component sends the reasoning back with the reply in later requests. Anthropic models need this to keep reasoning across tool calls.
+
 ### Streaming
 
 You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
