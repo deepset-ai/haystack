@@ -161,8 +161,7 @@ class SASEvaluator:
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
 
-            # Cross Encoders with an Identity activation return raw logits, so we normalize them.
-            # This depends on the model, not on the scores, so a pair gets the same score in every batch.
+            # Cross Encoders with an Identity activation return raw logits, so we apply a sigmoid to map them to [0, 1]
             if isinstance(self._similarity_model.activation_fn, Identity):
                 similarity_scores = expit(similarity_scores)
 
