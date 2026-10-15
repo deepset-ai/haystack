@@ -500,5 +500,5 @@ class LinkContentFetcher:
             if fnmatch(content_type, pattern):
                 return handler
 
-        # no match: fall back to the text handler without indexing the defaultdict, which would insert a key
+        # default handler
         return _text_content_handler
