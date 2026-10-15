@@ -309,6 +309,7 @@ class TestFaithfulnessEvaluator:
         assert results["results"][1]["status"] == "error"
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+        assert "FaithfulnessEvaluator failed for 1 out of 2 inputs." in caplog.text
 
     def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

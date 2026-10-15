@@ -89,8 +89,10 @@ raw_responses = result["raw_mistral_response"]
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "mistral-ocr-2512",
+    "mistral-ocr-3",
     "mistral-ocr-3-0",
-    "mistral-ocr-4-0",
+    "mistral-ocr-4",
     "mistral-ocr-4-1",
     "mistral-ocr-latest",
 ]
@@ -422,7 +424,7 @@ Key Features and Compatibility:
 - **Streaming Support**: Supports streaming responses from the Mistral API Chat Completion endpoint.
 - **Customizability**: Supports all parameters supported by the Mistral API Chat Completion endpoint.
 - **Reasoning Support**: Extracts reasoning/thinking content from models that support it
-  (e.g., mistral-small with `reasoning_effort`, magistral models) and stores it in the
+  (e.g., Mistral Small 4 with `reasoning_effort`, Mistral Medium 3.5, Mistral Large 4) and stores it in the
   `ReasoningContent` field on `ChatMessage`.
 
 This component uses the ChatMessage format for structuring both input and output,
@@ -474,49 +476,35 @@ print(response["replies"][0].text)       # Access final answer
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "mistral-medium-2505",
-    "mistral-medium-2508",
     "mistral-medium-latest",
     "mistral-medium",
+    "mistral-medium-2604",
+    "mistral-medium-3",
+    "mistral-medium-3-5",
+    "mistral-medium-3.5",
     "mistral-vibe-cli-with-tools",
-    "open-mistral-nemo",
-    "open-mistral-nemo-2407",
-    "mistral-tiny-2407",
-    "mistral-tiny-latest",
     "codestral-2508",
     "codestral-latest",
-    "devstral-2512",
+    "mistral-code-latest",
+    "mistral-code-fim-latest",
     "mistral-vibe-cli-latest",
-    "devstral-medium-latest",
-    "devstral-latest",
-    "mistral-small-2506",
     "mistral-small-latest",
-    "labs-mistral-small-creative",
-    "magistral-medium-2509",
+    "mistral-small-2603",
+    "mistral-vibe-cli-fast",
     "magistral-medium-latest",
-    "magistral-small-2509",
     "magistral-small-latest",
     "voxtral-small-2507",
     "voxtral-small-latest",
     "mistral-large-2512",
     "mistral-large-latest",
+    "mistral-large-4",
+    "mistral-large-4-0",
     "ministral-3b-2512",
     "ministral-3b-latest",
     "ministral-8b-2512",
     "ministral-8b-latest",
     "ministral-14b-2512",
     "ministral-14b-latest",
-    "mistral-large-2411",
-    "pixtral-large-2411",
-    "pixtral-large-latest",
-    "mistral-large-pixtral-2411",
-    "devstral-small-2507",
-    "devstral-medium-2507",
-    "labs-devstral-small-2512",
-    "devstral-small-latest",
-    "voxtral-mini-2507",
-    "voxtral-mini-latest",
-    "voxtral-mini-2602",
 ]
 
 ```

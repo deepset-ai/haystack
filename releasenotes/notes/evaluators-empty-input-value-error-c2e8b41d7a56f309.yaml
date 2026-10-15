@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``AnswerExactMatchEvaluator``, ``DocumentMAPEvaluator``, ``DocumentMRREvaluator`` and
+    ``DocumentRecallEvaluator`` now raise a descriptive ``ValueError`` when called with
+    empty input lists, instead of failing with an opaque ``ZeroDivisionError``. This
+    matches the existing behavior of ``DocumentNDCGEvaluator``.

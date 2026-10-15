@@ -8,11 +8,10 @@ from typing import Any, overload
 
 from pydantic import create_model
 
-from haystack.components.agents.state.state import State
 from haystack.core.type_utils import _resolve_parameter_types
 
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
+from .parameters_schema_utils import _contains_callable_type, _is_state_annotation
 from .tool import Tool
 
 
@@ -149,7 +148,7 @@ def create_tool_from_function(
             continue
 
         # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
-        if _unwrap_optional(annotation) is State:
+        if _is_state_annotation(annotation):
             continue
 
         if annotation is param.empty:

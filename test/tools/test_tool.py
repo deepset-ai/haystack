@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+import threading
 from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -139,12 +141,17 @@ class TestTool:
 
         assert tool.tool_spec == {"name": "weather", "description": "Get weather report", "parameters": parameters}
 
-    def test_invoke(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
-        )
+    def test_invoke(self, monkeypatch):
+        calls = []
 
+        def invoke(city):
+            calls.append("invoke")
+            return get_weather_report(city)
+
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, function=invoke)
+        monkeypatch.setattr(tool, "warm_up", lambda: calls.append("warm_up"), raising=False)
         assert tool.invoke(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert calls == ["warm_up", "invoke"]
 
     def test_invoke_fail(self):
         tool = Tool(
@@ -376,19 +383,33 @@ def sync_tool():
 
 class TestToolAsync:
     @pytest.mark.asyncio
-    async def test_invoke_async_awaits_async_function(self, async_tool):
+    async def test_invoke_async_awaits_async_function(self, async_tool, monkeypatch):
+        warm_up_async = AsyncMock()
+        monkeypatch.setattr(async_tool, "warm_up", Mock(side_effect=AssertionError), raising=False)
+        monkeypatch.setattr(async_tool, "warm_up_async", warm_up_async, raising=False)
         assert async_tool.function is None
         assert async_tool.async_function is async_get_weather
         assert await async_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        warm_up_async.assert_awaited_once_with()
+
+    async def test_async_invocation_falls_back_to_sync_warm_up(self, async_tool, monkeypatch):
+        warm_up = Mock()
+        monkeypatch.setattr(async_tool, "warm_up", warm_up, raising=False)
+        await async_tool.invoke_async(city="Berlin")
+        warm_up.assert_called_once_with()
 
     def test_invoke_on_async_only_tool_raises(self, async_tool):
         with pytest.raises(ToolInvocationError, match=re.escape("has no sync `function`")):
             async_tool.invoke(city="Berlin")
 
     @pytest.mark.asyncio
-    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool):
+    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool, monkeypatch):
+        threads = []
+        monkeypatch.setattr(sync_tool, "warm_up", lambda: threads.append(threading.get_ident()), raising=False)
         # Sync-only tool: invoke_async dispatches to a worker thread via asyncio.to_thread.
         assert await sync_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert len(threads) == 1
+        assert threads[0] != threading.get_ident()
 
     @pytest.mark.asyncio
     async def test_async_function_is_preferred_when_both_set(self):
@@ -418,6 +439,11 @@ class TestToolAsync:
 
         with pytest.raises(ToolInvocationError, match="kaboom"):
             await tool.invoke_async(city="Berlin")
+
+    async def test_warm_up_error_is_wrapped(self, sync_tool, monkeypatch):
+        monkeypatch.setattr(sync_tool, "warm_up", Mock(side_effect=ValueError("setup failed")), raising=False)
+        with pytest.raises(ToolInvocationError, match="setup failed"):
+            await sync_tool.invoke_async(city="Berlin")
 
     @pytest.mark.parametrize(
         "kwargs, expected_function, expected_async_function",
