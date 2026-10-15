@@ -14,7 +14,7 @@ from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(name=__name__)
 
 # Shows OpenAI content parts in error messages without their base64 payloads. The string limit matches the reprs of
 # ImageContent and FileContent.
@@ -67,7 +67,7 @@ class TextContent:
         """
         Convert TextContent into a dictionary.
         """
-        return asdict(self)
+        return asdict(obj=self)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TextContent":
@@ -101,7 +101,7 @@ class ToolCall:
 
         :returns: A dictionary with keys 'tool_name', 'arguments', 'id', and 'extra'.
         """
-        return asdict(self)
+        return asdict(obj=self)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolCall":
@@ -138,7 +138,7 @@ class ToolCallResult:
         """
         Converts ToolCallResult into a dictionary.
 
-        :returns: A dictionary with keys 'result', 'origin', and 'error'. Content sequences are serialized as lists.
+        :returns: A dictionary with keys 'result', 'origin', and 'error'.
         """
         return self._to_dict()
 
@@ -161,7 +161,7 @@ class ToolCallResult:
                 raise ValueError(
                     "ToolCallResult result must be a string or a sequence of TextContent, ImageContent, or FileContent"
                 )
-            result = [_serialize_content_part(part, for_trace=for_trace) for part in result]
+            result = [_serialize_content_part(part=part, for_trace=for_trace) for part in result]
         return {"result": result, "origin": self.origin.to_dict(), "error": self.error}
 
     @classmethod
@@ -182,9 +182,9 @@ class ToolCallResult:
 
         result = data["result"]
         if isinstance(result, list):
-            result = [_deserialize_content_part(part) for part in result]
+            result = [_deserialize_content_part(part=part) for part in result]
 
-        return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
+        return ToolCallResult(result=result, origin=ToolCall.from_dict(data=data["origin"]), error=data["error"])
 
 
 @_warn_on_inplace_mutation
@@ -207,7 +207,7 @@ class ReasoningContent:
 
         :returns: A dictionary with keys 'reasoning_text', and 'extra'.
         """
-        return asdict(self)
+        return asdict(obj=self)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ReasoningContent":
@@ -270,23 +270,23 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     """
     # handle flat text format separately
     if "text" in part:
-        return TextContent.from_dict(part)
+        return TextContent.from_dict(data=part)
 
     for cls, serialization_key in _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.items():
         if serialization_key in part:
-            return cls.from_dict(part[serialization_key])
+            return cls.from_dict(data=part[serialization_key])
 
     # Support for Pydantic's model_dump() output, which produces a flat dictionary without wrapping keys.
     if "tool_name" in part and "arguments" in part:
-        return ToolCall.from_dict(part)
+        return ToolCall.from_dict(data=part)
     if "result" in part and "origin" in part:
-        return ToolCallResult.from_dict(part)
+        return ToolCallResult.from_dict(data=part)
     if "reasoning_text" in part:
-        return ReasoningContent.from_dict(part)
+        return ReasoningContent.from_dict(data=part)
     if "base64_image" in part:
-        return ImageContent.from_dict(part)
+        return ImageContent.from_dict(data=part)
     if "base64_data" in part:
-        return FileContent.from_dict(part)
+        return FileContent.from_dict(data=part)
 
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
@@ -443,7 +443,7 @@ class ChatMessage:
         :returns: True if the message is from the specified role, False otherwise.
         """
         if isinstance(role, str):
-            role = ChatRole.from_str(role)
+            role = ChatRole.from_str(string=role)
         return self._role == role
 
     @classmethod
@@ -466,24 +466,27 @@ class ChatMessage:
         :raises ValueError: If neither or both of text and content_parts are provided, or if content_parts is empty.
         :raises TypeError: If a content part is not a str, TextContent, ImageContent, or FileContent.
         """
-        if content_parts is None:
-            if text is None:
-                raise ValueError("Either text or content_parts must be provided.")
-            content_parts = [text]
-        elif text is not None:
+        if text is None and content_parts is None:
+            raise ValueError("Either text or content_parts must be provided.")
+        if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
         content: list[TextContent | ImageContent | FileContent] = []
-        for part in content_parts:
-            if isinstance(part, str):
-                part = TextContent(text=part)
-            if not isinstance(part, (TextContent, ImageContent, FileContent)):
-                raise TypeError(
-                    f"The user message must contain only text, image, or file parts. Unsupported part: {part}"
-                )
-            content.append(part)
-        if not content:
-            raise ValueError("The user message must contain at least one content part (text, image, file).")
+
+        if text is not None:
+            content = [TextContent(text=text)]
+        elif content_parts is not None:
+            for part in content_parts:
+                if isinstance(part, str):
+                    content.append(TextContent(text=part))
+                elif isinstance(part, (TextContent, ImageContent, FileContent)):
+                    content.append(part)
+                else:
+                    raise TypeError(
+                        f"The user message must contain only text, image, or file parts. Unsupported part: {part}"
+                    )
+            if len(content) == 0:
+                raise ValueError("The user message must contain at least one content part (text, image, file).")
 
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
@@ -586,7 +589,7 @@ class ChatMessage:
             "role": self._role.value,
             "meta": self._meta,
             "name": self._name,
-            "content": [_serialize_content_part(part, for_trace=for_trace) for part in self._content],
+            "content": [_serialize_content_part(part=part, for_trace=for_trace) for part in self._content],
         }
 
     @classmethod
@@ -622,7 +625,7 @@ class ChatMessage:
         if isinstance(content, str):
             content = [TextContent(text=content)]  # pre-2.9 format
         elif isinstance(content, Sequence):
-            content = [_deserialize_content_part(part) for part in content]
+            content = [_deserialize_content_part(part=part) for part in content]
         else:
             raise TypeError(f"Unsupported content type in serialized ChatMessage: `{content}`")
 
@@ -650,46 +653,48 @@ class ChatMessage:
 
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
         # We convert an assistant message with no content part into a message with empty content, which the API accepts
-        if not has_content and not self.is_from(ChatRole.ASSISTANT):
+        if not has_content and not self.is_from(role=ChatRole.ASSISTANT):
             raise ValueError(
                 f"A `ChatMessage` from `{self._role.value}` must contain at least one `TextContent`, `ToolCall`, "
                 "`ToolCallResult`, `ImageContent`, or `FileContent`. Only assistant messages can be empty."
             )
-        if self.tool_call_results and len(self._content) > 1:
+        if len(self.tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
                 "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
             )
 
-        if self.tool_calls and not self.is_from(ChatRole.ASSISTANT):
+        if self.tool_calls and not self.is_from(role=ChatRole.ASSISTANT):
             raise ValueError("Tool calls are only supported in assistant messages.")
 
         openai_msg: dict[str, Any] = {"role": self._role.value}
         if self._name is not None:
             openai_msg["name"] = self._name
 
-        if self.is_from(ChatRole.USER):
-            openai_msg.update(self._to_openai_user_fields())
+        if self.is_from(role=ChatRole.USER):
+            openai_msg.update(self._build_openai_user_message_fields())
         elif self.tool_call_results:
-            openai_msg.update(self._to_openai_tool_result_fields(require_tool_call_ids=require_tool_call_ids))
-        elif self.is_from(ChatRole.ASSISTANT):
-            openai_msg.update(self._to_openai_assistant_fields(require_tool_call_ids=require_tool_call_ids))
+            openai_msg.update(
+                self._build_openai_tool_result_message_fields(require_tool_call_ids=require_tool_call_ids)
+            )
+        elif self.is_from(role=ChatRole.ASSISTANT):
+            openai_msg.update(self._build_openai_assistant_message_fields(require_tool_call_ids=require_tool_call_ids))
         else:
             openai_msg["content"] = self.text or ""
         return openai_msg
 
-    def _to_openai_user_fields(self) -> dict[str, Any]:
+    def _build_openai_user_message_fields(self) -> dict[str, Any]:
         """Build the OpenAI-specific fields for a user message."""
         if len(self._content) == 1 and isinstance(self._content[0], TextContent):
             return {"content": self.text}
         return {
             "content": [
-                _content_part_to_openai(part)
+                _content_part_to_openai_dict(part=part)
                 for part in self._content
                 if isinstance(part, (TextContent, ImageContent, FileContent))
             ]
         }
 
-    def _to_openai_tool_result_fields(self, require_tool_call_ids: bool) -> dict[str, Any]:
+    def _build_openai_tool_result_message_fields(self, require_tool_call_ids: bool) -> dict[str, Any]:
         """Build the OpenAI-specific fields for a tool result message."""
         result = self.tool_call_results[0]
         openai_msg: dict[str, Any] = {}
@@ -697,7 +702,7 @@ class ChatMessage:
             openai_msg["content"] = result.result
         # OpenAI Chat Completions API does not support multimodal tool results
         elif isinstance(result.result, list) and all(isinstance(part, TextContent) for part in result.result):
-            openai_msg["content"] = [_content_part_to_openai(part) for part in result.result]
+            openai_msg["content"] = [{"type": "text", "text": part.text} for part in result.result]
         else:
             raise ValueError(
                 f"Unsupported tool result: {result}. If you need to pass images in tool results, "
@@ -711,7 +716,7 @@ class ChatMessage:
         # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
         return openai_msg
 
-    def _to_openai_assistant_fields(self, require_tool_call_ids: bool) -> dict[str, Any]:
+    def _build_openai_assistant_message_fields(self, require_tool_call_ids: bool) -> dict[str, Any]:
         """Build the OpenAI-specific fields for an assistant message."""
         openai_msg: dict[str, Any] = {}
         text = self.text
@@ -722,8 +727,10 @@ class ChatMessage:
         if tool_calls:
             if require_tool_call_ids and any(call.id is None for call in tool_calls):
                 raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-            openai_msg["tool_calls"] = [_tool_call_to_openai(call) for call in tool_calls]
+            openai_msg["tool_calls"] = [_tool_call_to_openai_dict(call=call) for call in tool_calls]
         refusal = self._meta.get("refusal")
+        # OpenAI's content array holds either text parts or exactly one refusal part, so a refusal next to text goes
+        # into the `refusal` field.
         if isinstance(refusal, str) and refusal:
             if tool_calls:
                 logger.warning(
@@ -769,7 +776,7 @@ class ChatMessage:
         if "role" not in message:
             raise ValueError("The `role` field is required in the message dictionary.")
         role = message["role"]
-        if role not in ("user", "system", "developer", "assistant", "tool"):
+        if role not in ["assistant", "user", "system", "developer", "tool"]:
             raise ValueError(f"Unsupported role: {role}")
         content = message.get("content")
         name = message.get("name")
@@ -783,11 +790,13 @@ class ChatMessage:
             tool_calls = message.get("tool_calls")
             if refusal is not None and not isinstance(refusal, str):
                 raise ValueError(f"The `refusal` field must be a string, got {type(refusal).__name__}.")
+            # An empty string is valid content for an assistant message: that is how a reply with nothing to send
+            # is serialized. Other falsy content requires tool calls or a refusal.
             if not content and content != "" and not tool_calls and not refusal:
                 raise ValueError(
                     "For assistant messages, either `content`, `tool_calls`, or `refusal` must be present."
                 )
-            parts = _join_openai_text_parts(content=content, role=role)
+            parts = _parse_openai_text_and_refusal_content(content=content, role=role)
             refusals = [refusal] if refusal else []
             if "refusal" in parts:
                 refusals.append(parts["refusal"])
@@ -797,7 +806,7 @@ class ChatMessage:
                 text=parts.get("text"),
                 name=name,
                 meta=meta,
-                tool_calls=[_tool_call_from_openai(call) for call in tool_calls or []],
+                tool_calls=[_tool_call_from_openai_dict(data=call) for call in tool_calls or []],
             )
 
         if not content:
@@ -805,7 +814,9 @@ class ChatMessage:
         if role == "user":
             if isinstance(content, str):
                 return cls.from_user(text=content, name=name)
-            return cls.from_user(content_parts=[_content_part_from_openai(part) for part in content], name=name)
+            return cls.from_user(
+                content_parts=[_content_part_from_openai_dict(part=part) for part in content], name=name
+            )
         if role == "tool":
             if isinstance(content, list):
                 if not all(isinstance(part, dict) and "text" in part for part in content):
@@ -815,11 +826,11 @@ class ChatMessage:
                 tool_result=content, origin=ToolCall(id=message.get("tool_call_id"), tool_name="", arguments={})
             )
 
-        text = _join_openai_text_parts(content=content, role=role)["text"]
+        text = _parse_openai_text_and_refusal_content(content=content, role=role)["text"]
         return cls.from_system(text=text, name=name)
 
 
-def _content_part_to_openai(part: TextContent | ImageContent | FileContent) -> dict[str, Any]:
+def _content_part_to_openai_dict(part: TextContent | ImageContent | FileContent) -> dict[str, Any]:
     """Convert a text, image, or file part to OpenAI Chat Completions format."""
     if isinstance(part, TextContent):
         return {"type": "text", "text": part.text}
@@ -841,7 +852,7 @@ def _content_part_to_openai(part: TextContent | ImageContent | FileContent) -> d
     }
 
 
-def _content_part_from_openai(part: Any) -> TextContent | ImageContent | FileContent:
+def _content_part_from_openai_dict(part: Any) -> TextContent | ImageContent | FileContent:
     """
     Convert a single content part in OpenAI format into a Haystack content part.
 
@@ -864,29 +875,30 @@ def _content_part_from_openai(part: Any) -> TextContent | ImageContent | FileCon
                 f"Unsupported image content part: {_CONTENT_PART_REPR.repr(part)}. "
                 "Image parts must contain an `image_url` object."
             )
-        mime_type, base64_image = _parse_openai_data_url(image_url.get("url"))
+        mime_type, base64_image = _parse_openai_base64_data_url(data_url=image_url.get("url"))
         return ImageContent(base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail"))
     if part_type == "file":
-        file_data = part.get("file")
-        if not isinstance(file_data, dict):
+        file = part.get("file")
+        if not isinstance(file, dict):
             raise ValueError(
                 f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. "
                 "File parts must contain a `file` object."
             )
-        if not file_data.get("file_data"):
+        file_data = file.get("file_data")
+        if not file_data:
             raise ValueError(
                 f"Unsupported file content part: {_CONTENT_PART_REPR.repr(part)}. Only files with inline "
                 "base64 `file_data` are supported: files referenced by `file_id` cannot be converted."
             )
-        mime_type, base64_data = _parse_openai_data_url(file_data["file_data"])
-        return FileContent(base64_data=base64_data, mime_type=mime_type, filename=file_data.get("filename"))
+        mime_type, base64_data = _parse_openai_base64_data_url(data_url=file_data)
+        return FileContent(base64_data=base64_data, mime_type=mime_type, filename=file.get("filename"))
     raise ValueError(
         f"Unsupported content part: {_CONTENT_PART_REPR.repr(part)}. "
         "Supported part types are `text`, `image_url`, and `file`."
     )
 
 
-def _parse_openai_data_url(data_url: Any) -> tuple[str | None, str]:
+def _parse_openai_base64_data_url(data_url: Any) -> tuple[str | None, str]:
     """
     Split a base64 data URL in OpenAI format into its MIME type and base64 payload.
 
@@ -903,25 +915,25 @@ def _parse_openai_data_url(data_url: Any) -> tuple[str | None, str]:
     return header[len("data:") :] or None, base64_data
 
 
-def _tool_call_to_openai(call: ToolCall) -> dict[str, Any]:
+def _tool_call_to_openai_dict(call: ToolCall) -> dict[str, Any]:
     """Convert a tool call to OpenAI format, encoding its arguments as JSON."""
     data: dict[str, Any] = {
         "type": "function",
-        "function": {"name": call.tool_name, "arguments": json.dumps(call.arguments, ensure_ascii=False)},
+        "function": {"name": call.tool_name, "arguments": json.dumps(obj=call.arguments, ensure_ascii=False)},
     }
     if call.id is not None:
         data["id"] = call.id
     return data
 
 
-def _tool_call_from_openai(data: dict[str, Any]) -> ToolCall:
+def _tool_call_from_openai_dict(data: dict[str, Any]) -> ToolCall:
     """Build a ToolCall from an OpenAI function call, parsing its arguments."""
     if "function" not in data:
         raise ValueError("Tool calls must contain the `function` field")
     return ToolCall(
         id=data.get("id"),
         tool_name=data["function"]["name"],
-        arguments=_parse_openai_tool_call_arguments(data["function"].get("arguments")),
+        arguments=_parse_openai_tool_call_arguments(raw_arguments=data["function"].get("arguments")),
     )
 
 
@@ -936,10 +948,10 @@ def _parse_openai_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
     """
     if isinstance(raw_arguments, dict):
         return raw_arguments
-    return json.loads(raw_arguments) if raw_arguments else {}
+    return json.loads(s=raw_arguments) if raw_arguments else {}
 
 
-def _join_openai_text_parts(content: str | list[Any] | None, *, role: str) -> dict[str, str]:
+def _parse_openai_text_and_refusal_content(content: str | list[Any] | None, *, role: str) -> dict[str, str]:
     """
     Join the text and refusal content parts of a system, developer, or assistant message in OpenAI format.
 
