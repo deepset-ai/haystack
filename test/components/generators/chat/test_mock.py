@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import logging
 from collections.abc import Callable
+from functools import partial
 
 import pytest
 
@@ -235,6 +237,42 @@ class TestMockChatGenerator:
         await MockChatGenerator("hello world").run_async([ChatMessage.from_user("hi")], streaming_callback=callback)
         assert "".join(chunk.content for chunk in chunks) == "hello world"
         assert chunks[-1].finish_reason == "stop"
+
+    @pytest.mark.parametrize("wrap_in_partial", [False, True])
+    async def test_async_callable_streams_without_sync_warning(
+        self, caplog: pytest.LogCaptureFixture, wrap_in_partial: bool
+    ) -> None:
+        chunks: list[StreamingChunk] = []
+        labels: list[str] = []
+
+        class AsyncCallback:
+            async def __call__(self, chunk: StreamingChunk, *, label: str = "default") -> None:
+                chunks.append(chunk)
+                labels.append(label)
+
+        callback = partial(AsyncCallback(), label="bound") if wrap_in_partial else AsyncCallback()
+        with caplog.at_level(logging.WARNING):
+            result = await MockChatGenerator("hello world").run_async(
+                [ChatMessage.from_user("hi")], streaming_callback=callback
+            )
+
+        assert result == {
+            "replies": [
+                ChatMessage.from_assistant(
+                    "hello world",
+                    meta={
+                        "model": "mock-model",
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+                    },
+                )
+            ]
+        }
+        assert "".join(chunk.content for chunk in chunks) == "hello world"
+        assert chunks[-1].finish_reason == "stop"
+        assert labels == ["bound" if wrap_in_partial else "default"] * len(chunks)
+        assert "sync streaming callback" not in caplog.text
 
     def test_streaming_empty_reply(self) -> None:
 

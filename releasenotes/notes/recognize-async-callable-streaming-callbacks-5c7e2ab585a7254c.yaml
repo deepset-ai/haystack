@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    Streaming callbacks implemented with ``async def __call__``, including
+    ``functools.partial`` wrappers, now raise ``ValueError`` when passed to
+    synchronous ``run`` methods instead of leaving their coroutine unawaited.
+    Use ``run_async`` with these callbacks.
+fixes:
+  - |
+    Async callable objects used as streaming callbacks no longer trigger the
+    warning about synchronous callbacks blocking the event loop in ``run_async``.
+    Their original callable and any bound arguments are preserved.
