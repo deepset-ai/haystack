@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import haystack.components.generators.chat.azure as azure_chat_module
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -78,12 +78,6 @@ def tools():
 
 
 class TestAzureOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert (
-            AzureOpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-            is OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-        )
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIChatGenerator.SUPPORTED_MODELS
@@ -335,8 +329,22 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "rf",
+        [
+            {"type": "json_object"},
+            {"type": "json_schema", "json_schema": {"name": "MySchema", "strict": True, "schema": {}}},
+        ],
+    )
+    def test_to_dict_with_dict_response_format(self, monkeypatch: pytest.MonkeyPatch, rf: dict[str, Any]) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint="some-non-existing-endpoint", generation_kwargs={"response_format": rf}
+        )
+        data = component.to_dict()
+        assert data["init_parameters"]["generation_kwargs"]["response_format"] == rf
 
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
         data = {
@@ -699,42 +707,6 @@ class TestComponentLifecycle:
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         with pytest.raises(OpenAIError):
             generator.warm_up()
-
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = AzureOpenAIChatGenerator(
-            azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
-        )
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
-        generator.warm_up()
-        assert generator._tools_warmed_up
 
     def test_sync_lifecycle(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 

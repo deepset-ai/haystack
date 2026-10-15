@@ -46,9 +46,9 @@ The ID field is mandatory, so if you don’t choose a specific ID yourself, Hays
 document_store = ChromaDocumentStore()
 documents = [
     Document(
-        meta={"name": DOCUMENT_NAME, ...}, id="document_unique_id", content="this is content"
+        meta={"name": DOCUMENT_NAME}, id="document_unique_id", content="this is content"
     ),
-  	...
+    ...,
 ]
 document_store.write_documents(documents)
 ```

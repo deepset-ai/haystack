@@ -27,7 +27,7 @@ are read lazily when the agent calls the corresponding tool.
 #### __init__
 
 ```python
-__init__(skills_dir: str | Path) -> None
+__init__(skills_dir: str | Path | Secret) -> None
 ```
 
 Initialize the store with the root directory to scan.
@@ -37,7 +37,9 @@ can be constructed cheaply.
 
 **Parameters:**
 
-- **skills_dir** (<code>str | Path</code>) – Root directory that contains one sub-directory per skill.
+- **skills_dir** (<code>str | Path | Secret</code>) – Root directory that contains one sub-directory per skill. Can also be a `Secret`
+  (e.g. `Secret.from_env_var("SKILLS_DIR")`) to source the path from an environment variable rather than
+  hard-coding it.
 
 #### warm_up
 

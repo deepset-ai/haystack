@@ -3,6 +3,7 @@ title: "AnthropicFoundryChatGenerator"
 id: anthropicfoundrychatgenerator
 slug: "/anthropicfoundrychatgenerator"
 description: "This component enables chat completions using Anthropic models served through Azure Foundry."
+hep_available: true
 ---
 
 # AnthropicFoundryChatGenerator
@@ -60,9 +61,13 @@ The component takes a list of `ChatMessage` objects. `ChatMessage` is a data cla
 
 ```python
 from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack_integrations.components.generators.anthropic import (
+    AnthropicFoundryChatGenerator,
+)
 
-weather_tool = Tool(name="weather", description="Get weather info", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
 
 generator = AnthropicFoundryChatGenerator(

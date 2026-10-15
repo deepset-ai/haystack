@@ -16,7 +16,10 @@ from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import (
     _check_builtin_is_type,
     _check_module_allowed,
+    _check_not_deserialization_internal,
     _check_resolved_module_allowed,
+    _check_traversable_attribute,
+    mark_deserialization_internal,
 )
 
 logger = logging.getLogger(__name__)
@@ -202,6 +205,7 @@ def _deserialize_type_arg(arg_str: str) -> Any:
     return deserialize_type(arg_str)
 
 
+@mark_deserialization_internal
 def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
@@ -295,6 +299,7 @@ def thread_safe_import(module_name: str) -> ModuleType:
         return importlib.import_module(module_name)
 
 
+@mark_deserialization_internal
 def _import_class_by_name(fully_qualified_name: str) -> Any:
     """
     Imports an attribute (typically a class) given its fully qualified name.
@@ -311,6 +316,9 @@ def _import_class_by_name(fully_qualified_name: str) -> Any:
     """
     module_path, attr_name = fully_qualified_name.rsplit(".", 1)
     _check_module_allowed(module_path)
+    # A class reference names a public attribute of a module, never an object-internals attribute
+    # (`__dict__`, `__globals__`, ...) that would expose a module namespace or escape gadget.
+    _check_traversable_attribute(attr_name, fully_qualified_name)
     try:
         logger.debug(
             "Attempting to import '{attr_name}' from module '{module_path}'",
@@ -326,6 +334,10 @@ def _import_class_by_name(fully_qualified_name: str) -> Any:
         # is the allowlisted module it was resolved from, so a private C accelerator backing it
         # (e.g. `io.StringIO` -> `_io`) is still accepted.
         _check_resolved_module_allowed(resolved, declared_module=module_path)
+        # Refuse the deserializer's own machinery (the allowlist-administration function and the
+        # resolution helpers) on the class-resolution path too, so it cannot be reached as a
+        # component `type` or nested class reference. See `mark_deserialization_internal`.
+        _check_not_deserialization_internal(resolved, fully_qualified_name)
         if module_path == "builtins":
             _check_builtin_is_type(resolved, fully_qualified_name)
         return resolved

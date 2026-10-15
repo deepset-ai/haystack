@@ -10,7 +10,7 @@ from urllib.error import HTTPError as URLLibHTTPError
 
 import pytest
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import Pipeline, component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
 from haystack.core.errors import SerializationError
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
@@ -431,6 +431,74 @@ async def test_failover_trigger_401_authentication_async():
     assert replies[0].text == "success_after_auth"
     assert meta["successful_chat_generator_index"] == 1
     assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+class TestTracing:
+    def test_pipeline_traces_output_only_on_fallback_component_span(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        fallback = FallbackChatGenerator(chat_generators=[_DummySuccessGen()])
+        pipeline = Pipeline()
+        pipeline.add_component(name="fallback", instance=fallback)
+
+        pipeline.run(data={"fallback": {"messages": messages}})
+
+        fallback_spans = [
+            span
+            for span in spying_tracer.spans
+            if span.operation_name == "haystack.component.run"
+            and span.tags["haystack.component.type"] == "FallbackChatGenerator"
+        ]
+        generator_spans = [span for span in spying_tracer.spans if span.operation_name == "haystack.chat_generator.run"]
+
+        assert len(fallback_spans) == 1
+        assert fallback_spans[0].tags["haystack.component.output"]["replies"][0].text == "ok"
+        assert len(generator_spans) == 1
+        assert "haystack.component.output" not in generator_spans[0].tags
+
+    def test_run_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            fallback.run(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert all("haystack.component.output" not in span.tags for span in generator_spans)
+
+    @pytest.mark.asyncio
+    async def test_run_async_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            await fallback.run_async(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert all("haystack.component.output" not in span.tags for span in generator_spans)
 
 
 class TestComponentLifecycle:

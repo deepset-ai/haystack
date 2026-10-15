@@ -4,7 +4,7 @@
 
 import random
 import re
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -176,6 +176,10 @@ class TestSentenceWindowRetrieverAsync:
         # run the retriever with a document whose content = "Sentence 4."
         result = await retriever.run_async(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
         assert len(result["context_documents"]) == 7
+        assert [doc.meta["split_id_test"] for doc in result["context_documents"]] == [1, 2, 3, 4, 5, 6, 7]
+        assert result["context_windows"] == [
+            "Sentence 1.Sentence 2.Sentence 3.Sentence 4.Sentence 5.Sentence 6.Sentence 7."
+        ]
 
     @pytest.mark.asyncio
     async def test_run_async_with_multiple_source_ids(self, in_memory_doc_store):
@@ -203,6 +207,71 @@ class TestSentenceWindowRetrieverAsync:
         assert len(result["context_windows"]) == 1
         assert len(result["context_documents"]) == 3
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_queries_document_store_once_for_all_retrieved_documents(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{source}{split_id}.", meta={"source_id": source, "split_id": split_id})
+            for source in ("a", "b")
+            for split_id in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents_async", wraps=in_memory_doc_store.filter_documents_async
+        ) as filter_documents_async:
+            # docs[2] is a2 and docs[15] is b5; the duplicate a2 must not add a second condition to the filter
+            result = await retriever.run_async(retrieved_documents=[docs[2], docs[15], docs[2]])
+
+        filter_documents_async.assert_awaited_once()
+        assert len(filter_documents_async.call_args.args[0]["conditions"]) == 2
+        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert [doc.content for doc in result["context_documents"]] == [
+            "a1.",
+            "a2.",
+            "a3.",
+            "b4.",
+            "b5.",
+            "b6.",
+            "a1.",
+            "a2.",
+            "a3.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_documents_missing_metadata_queries_document_store_once(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"{split_id}.", meta={"source_id": "a", "split_id": split_id}) for split_id in range(5)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(
+            document_store=in_memory_doc_store, window_size=1, raise_on_missing_meta_fields=False
+        )
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents_async", wraps=in_memory_doc_store.filter_documents_async
+        ) as filter_documents_async:
+            result = await retriever.run_async(retrieved_documents=[doc_without_meta, docs[2]])
+
+        filter_documents_async.assert_awaited_once()
+        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_does_not_query_document_store_without_documents_to_expand(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, raise_on_missing_meta_fields=False)
+        doc_without_meta = Document(content="No metadata.")
+
+        with patch.object(in_memory_doc_store, "filter_documents_async") as filter_documents_async:
+            assert await retriever.run_async(retrieved_documents=[]) == {"context_windows": [], "context_documents": []}
+            assert await retriever.run_async(retrieved_documents=[doc_without_meta]) == {
+                "context_windows": ["No metadata."],
+                "context_documents": [doc_without_meta],
+            }
+
+        filter_documents_async.assert_not_awaited()
 
     @pytest.mark.asyncio
     @pytest.mark.integration

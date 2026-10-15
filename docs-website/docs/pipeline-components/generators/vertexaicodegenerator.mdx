@@ -41,8 +41,10 @@ pip install google-vertex-haystack
 
 Basic usage:
 
-````python
-from haystack_integrations.components.generators.google_vertex import VertexAICodeGenerator
+```python
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAICodeGenerator,
+)
 
 generator = VertexAICodeGenerator()
 
@@ -50,51 +52,47 @@ result = generator.run(prefix="def to_json(data):")
 
 for answer in result["replies"]:
     print(answer)
-
->>> ```python
->>> import json
->>>
->>> def to_json(data):
->>>   """Converts a Python object to a JSON string.
->>>
->>>   Args:
->>>     data: The Python object to convert.
->>>
->>>   Returns:
->>>     A JSON string representing the Python object.
->>>   """
->>>
->>>   return json.dumps(data)
->>> ```
-````
+# >> ```python
+# >> import json
+# >>
+# >> def to_json(data):
+# >>   """Converts a Python object to a JSON string.
+# >>
+# >>   Args:
+# >>     data: The Python object to convert.
+# >>
+# >>   Returns:
+# >>     A JSON string representing the Python object.
+# >>   """
+# >>
+# >>   return json.dumps(data)
+# >> ```
+```
 
 You can also set other parameters like the number of output tokens, temperature, stop sequences, and the number of candidates.
 
 Let’s try a different model:
 
 ```python
-from haystack_integrations.components.generators.google_vertex import VertexAICodeGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAICodeGenerator,
+)
 
 generator = VertexAICodeGenerator(
-	model="code-gecko",
-	temperature=0.8,
-	candidate_count=3
+    model="code-gecko", temperature=0.8, candidate_count=3
 )
 
 result = generator.run(prefix="def convert_temperature(degrees):")
 
 for answer in result["replies"]:
     print(answer)
-
->>>
->>>     return degrees * (9/5) + 32
-
->>>
->>>     return round(degrees * (9.0 / 5.0) + 32, 1)
-
->>>
->>>     return 5 * (degrees - 32) /9
->>>
->>> def convert_temperature_back(degrees):
->>>     return 9 * (degrees / 5) + 32
+# >>
+# >>     return degrees * (9/5) + 32
+# >>
+# >>     return round(degrees * (9.0 / 5.0) + 32, 1)
+# >>
+# >>     return 5 * (degrees - 32) /9
+# >>
+# >> def convert_temperature_back(degrees):
+# >>     return 9 * (degrees / 5) + 32
 ```

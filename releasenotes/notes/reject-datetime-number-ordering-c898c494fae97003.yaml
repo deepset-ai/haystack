@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Raise ``FilterError`` instead of leaking a Python ``TypeError`` when an
+    ordering metadata filter compares a ``datetime`` with a non-datetime value.

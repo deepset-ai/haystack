@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from openai import AsyncOpenAI, AsyncStream, OpenAIError
 from openai.types.chat import (
@@ -110,6 +111,38 @@ class TestOpenAIChatGeneratorAsync:
         assert component.async_client.timeout == 30
         assert component.async_client.max_retries == 5
 
+    async def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        requests: list[httpx.Request] = []
+        # trimmed capture of a real /chat/completions response
+        completion = {
+            "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion)
+
+        component = OpenAIChatGenerator(
+            http_client_kwargs={
+                "transport": httpx.MockTransport(handler),
+                "cookies": {"session": "abc"},
+                "follow_redirects": False,
+            }
+        )
+        result = await component.run_async("What's the capital of France?")
+
+        assert len(requests) == 1
+        assert requests[0].headers["cookie"] == "session=abc"
+        assert result["replies"][0].text == "Paris"
+        assert component.async_client is not None
+        assert component.async_client._client.follow_redirects is False
+
     @pytest.mark.asyncio
     async def test_run_async(
         self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion: MagicMock
@@ -162,6 +195,21 @@ class TestOpenAIChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.asyncio
+    async def test_run_with_generation_kwargs_async(
+        self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion: MagicMock
+    ) -> None:
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        await component.run_async(chat_messages, generation_kwargs={"temperature": 0.9})
+
+        _, kwargs = openai_mock_async_chat_completion.call_args
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_completion_tokens"] == 10
 
     @pytest.mark.asyncio
     async def test_run_with_params_streaming_async(

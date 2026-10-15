@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    ``State.to_dict`` now accepts a ``skip_keys`` parameter to exclude specific keys from the output.

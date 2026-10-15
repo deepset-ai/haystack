@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
@@ -19,13 +19,14 @@ logger = logging.getLogger(__name__)
 
 
 def _default_openai_chat_generator() -> ChatGenerator:
-    return OpenAIChatGenerator(
+    return OpenAIResponsesChatGenerator(
         model="gpt-4.1-mini",
         generation_kwargs={
             "temperature": 0.0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "store": False,
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "document_ranking",
                     "schema": {
                         "type": "object",
@@ -43,7 +44,7 @@ def _default_openai_chat_generator() -> ChatGenerator:
                         "required": ["documents"],
                         "additionalProperties": False,
                     },
-                },
+                }
             },
         },
     )
@@ -85,23 +86,28 @@ class LLMRanker:
     """
     Ranks documents for a query using a Large Language Model.
 
-    The LLM is expected to return a JSON object containing ranked document indices.
+    The LLM is expected to return a JSON object containing ranked document indices. Only the documents the LLM returns
+    are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
+
+    If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
+    to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
+    cutting off unranked documents could drop relevant ones.
 
     Usage example:
 
     ```python
     from haystack import Document
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.rankers import LLMRanker
 
-    chat_generator = OpenAIChatGenerator(
-        model="gpt-4.1-mini",
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5.6-luna",
         generation_kwargs={
-            "temperature": 0.0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "document_ranking",
+                    "strict": True,
                     "schema": {
                         "type": "object",
                         "properties": {
@@ -118,8 +124,8 @@ class LLMRanker:
                         "required": ["documents"],
                         "additionalProperties": False,
                     },
-                },
-            },
+                }
+            }
         },
     )
 
@@ -147,16 +153,20 @@ class LLMRanker:
         Initialize the LLMRanker component.
 
         :param chat_generator:
-            The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-            output is used.
+            The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+            JSON output and with `store` set to `False` is used.
         :param prompt:
             Custom prompt template for reranking. The prompt must include exactly the variables `query` and
             `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
         :param top_k:
-            The maximum number of documents to return.
+            The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
+            documents.
         :param raise_on_failure:
-            If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
-            input documents in fallback order.
+            If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
+            deduplicated input documents unranked, in their original order, without applying `top_k`.
+        :raises ValueError:
+            If `top_k` is not greater than 0 or if `prompt` doesn't include exactly the variables `query` and
+            `documents`.
         """
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -235,13 +245,19 @@ class LLMRanker:
         Before ranking, duplicate documents are removed.
 
         :param query:
-            The query used for reranking.
+            The query used for reranking. If empty, the documents are returned without ranking.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
-            The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+            The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+            applied when the ranker falls back to the input documents.
         :returns:
-            A dictionary with the ranked documents under the `documents` key.
+            A dictionary with the following key:
+            - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+              `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+              input documents unranked, in their original order.
+        :raises ValueError:
+            If `top_k` is not greater than 0.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -253,8 +269,8 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
-            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+        if not isinstance(query, str) or not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning the deduplicated input documents unranked.")
             return {"documents": fallback_documents}
 
         self.warm_up()
@@ -270,7 +286,9 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+                "LLMRanker failed during chat generation. Returning the deduplicated input documents unranked. "
+                "Error: {error}",
+                error=exc,
             )
             return {"documents": fallback_documents}
 
@@ -281,7 +299,8 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                "LLMRanker failed while processing the chat response. Returning the deduplicated input documents "
+                "unranked. Error: {error}",
                 error=exc,
             )
             return {"documents": fallback_documents}
@@ -302,13 +321,19 @@ class LLMRanker:
         `run` method, it is executed in a thread to avoid blocking the event loop.
 
         :param query:
-            The query used for reranking.
+            The query used for reranking. If empty, the documents are returned without ranking.
         :param documents:
             Candidate documents to rerank.
         :param top_k:
-            The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+            The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+            applied when the ranker falls back to the input documents.
         :returns:
-            A dictionary with the ranked documents under the `documents` key.
+            A dictionary with the following key:
+            - `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+              `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+              input documents unranked, in their original order.
+        :raises ValueError:
+            If `top_k` is not greater than 0.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -320,8 +345,8 @@ class LLMRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         fallback_documents = deduplicated_documents
 
-        if not query.strip():
-            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+        if not isinstance(query, str) or not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning the deduplicated input documents unranked.")
             return {"documents": fallback_documents}
 
         await self.warm_up_async()
@@ -337,7 +362,9 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+                "LLMRanker failed during chat generation. Returning the deduplicated input documents unranked. "
+                "Error: {error}",
+                error=exc,
             )
             return {"documents": fallback_documents}
 
@@ -348,7 +375,8 @@ class LLMRanker:
             if self.raise_on_failure:
                 raise
             logger.warning(
-                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                "LLMRanker failed while processing the chat response. Returning the deduplicated input documents "
+                "unranked. Error: {error}",
                 error=exc,
             )
             return {"documents": fallback_documents}

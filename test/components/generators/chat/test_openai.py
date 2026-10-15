@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from openai import OpenAIError
 from openai.types.chat import (
@@ -36,6 +37,7 @@ from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_to_chat_message,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -189,11 +191,6 @@ def tools():
 
 
 class TestOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS == {
-            "max_output_tokens": "max_completion_tokens"
-        }
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIChatGenerator.SUPPORTED_MODELS
@@ -505,6 +502,27 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    def test_run_with_empty_tools_override(self, tools: list[Tool], openai_mock_chat_completion: MagicMock) -> None:
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
+
+        assert "tools" not in openai_mock_chat_completion.call_args.kwargs
+
+    def test_run_with_generation_kwargs(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        component.run(chat_messages, generation_kwargs={"temperature": 0.9})
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_completion_tokens"] == 10
 
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
@@ -879,8 +897,9 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run(self) -> None:
-
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -897,7 +916,6 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
-
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -1290,6 +1308,22 @@ class TestOpenAIChatGenerator:
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
 
+# The OpenAI SDK regularly adds fields to its usage models and `_serialize_object` picks up all of them,
+# so hardcoded expected dicts go stale on every additive release. Deriving them from the same model the
+# fixtures stream keeps the assertions exact without needing an update each time.
+STREAMED_USAGE = CompletionUsage(
+    completion_tokens=42,
+    prompt_tokens=282,
+    total_tokens=324,
+    completion_tokens_details=CompletionTokensDetails(
+        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0, text_tokens=42
+    ),
+    prompt_tokens_details=PromptTokensDetails(
+        audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+    ),
+)
+
+
 @pytest.fixture
 def chat_completion_chunks():
     return [
@@ -1505,15 +1539,7 @@ def chat_completion_chunks():
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
-            usage=CompletionUsage(
-                completion_tokens=42,
-                prompt_tokens=282,
-                total_tokens=324,
-                completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
-                ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
-            ),
+            usage=STREAMED_USAGE,
         ),
     ]
 
@@ -1705,23 +1731,7 @@ def streaming_chunks():
             finish_reason="tool_calls",
         ),
         StreamingChunk(
-            content="",
-            meta={
-                "model": "gpt-5-mini",
-                "received_at": ANY,
-                "usage": {
-                    "completion_tokens": 42,
-                    "prompt_tokens": 282,
-                    "total_tokens": 324,
-                    "completion_tokens_details": {
-                        "accepted_prediction_tokens": 0,
-                        "audio_tokens": 0,
-                        "reasoning_tokens": 0,
-                        "rejected_prediction_tokens": 0,
-                    },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-                },
-            },
+            content="", meta={"model": "gpt-5-mini", "received_at": ANY, "usage": STREAMED_USAGE.model_dump()}
         ),
     ]
 
@@ -1781,40 +1791,6 @@ class TestComponentLifecycle:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = OpenAIChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIChatGenerator()
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_openai_clients
@@ -1867,6 +1843,38 @@ class TestComponentLifecycle:
 
         await generator.close_async()
         assert generator.async_client is None
+
+    def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        requests: list[httpx.Request] = []
+        # trimmed capture of a real /chat/completions response
+        completion = {
+            "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion)
+
+        generator = OpenAIChatGenerator(
+            http_client_kwargs={
+                "transport": httpx.MockTransport(handler),
+                "cookies": {"session": "abc"},
+                "follow_redirects": False,
+            }
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert len(requests) == 1
+        assert requests[0].headers["cookie"] == "session=abc"
+        assert result["replies"][0].text == "Paris"
+        assert generator.client is not None
+        assert generator.client._client.follow_redirects is False
 
 
 class TestChatCompletionChunkConversion:
@@ -1960,18 +1968,26 @@ class TestChatCompletionChunkConversion:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
-        assert result.meta["usage"] == {
-            "completion_tokens": 42,
-            "prompt_tokens": 282,
-            "total_tokens": 324,
-            "completion_tokens_details": {
-                "accepted_prediction_tokens": 0,
-                "audio_tokens": 0,
-                "reasoning_tokens": 0,
-                "rejected_prediction_tokens": 0,
-            },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-        }
+        assert result.meta["usage"] == STREAMED_USAGE.model_dump()
+
+    def test_streaming_preserves_refusal(self) -> None:
+        events = [
+            ChatCompletionChunk(id="test", created=0, model="test", object="chat.completion.chunk", choices=[choice])
+            for choice in [
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(role="assistant", content="")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(refusal="I cannot ")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(refusal="help with that.")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(), finish_reason="stop"),
+            ]
+        ]
+        stream = MagicMock()
+        stream.__iter__.return_value = iter(events)
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        message = generator._handle_stream_response(chat_completion=stream, callback=lambda _: None)[0]
+
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help with that."
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 
@@ -2000,6 +2016,46 @@ class TestChatCompletionChunkConversion:
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
+
+    def test_convert_chat_completion_with_refusal(self) -> None:
+        refusal = "I cannot help with that."
+        choice = Choice(
+            index=0,
+            finish_reason="stop",
+            message=ChatCompletionMessage(role="assistant", content=None, refusal=refusal),
+        )
+        completion = ChatCompletion(id="test", created=0, model="test", object="chat.completion", choices=[choice])
+        message = _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
+        assert message.text is None
+        assert message.meta == {"model": "test", "index": 0, "finish_reason": "stop", "usage": None, "refusal": refusal}
+
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_chat_completion_with_zero_argument_tool_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        completion = ChatCompletion(
+            id="1",
+            model="gpt-5-mini",
+            object="chat.completion",
+            created=1234567890,
+            choices=[
+                Choice(
+                    finish_reason="tool_calls",
+                    index=0,
+                    message=ChatCompletionMessage(
+                        role="assistant",
+                        tool_calls=[
+                            ChatCompletionMessageFunctionToolCall(
+                                id="1",
+                                type="function",
+                                function=Function.model_construct(name="get_time", arguments=arguments),
+                            )
+                        ],
+                    ),
+                )
+            ],
+        )
+        message = _convert_chat_completion_to_chat_message(completion, completion.choices[0])
+        assert message.tool_calls == [ToolCall(id="1", tool_name="get_time", arguments={})]
 
 
 class TestMakeSchemaStrict:

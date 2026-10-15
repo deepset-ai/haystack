@@ -160,7 +160,10 @@ class _SuperComponent:
         # `is not`, not `!=`: numpy/pandas/torch override `__ne__` element-wise and would crash here.
         filtered_inputs = {param: value for param, value in kwargs.items() if value is not _delegate_default}
         pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
-        pipeline_outputs = await self.pipeline.run_async(data=pipeline_inputs)
+        include_outputs_from = self._get_include_outputs_from()
+        pipeline_outputs = await self.pipeline.run_async(
+            data=pipeline_inputs, include_outputs_from=include_outputs_from
+        )
         return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
 
     @staticmethod
@@ -418,7 +421,7 @@ class SuperComponent(_SuperComponent):
 
     ```python
     from haystack import Pipeline, SuperComponent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.builders import ChatPromptBuilder
     from haystack.components.retrievers import InMemoryBM25Retriever
     from haystack.dataclasses.chat_message import ChatMessage
@@ -450,7 +453,7 @@ class SuperComponent(_SuperComponent):
     pipeline = Pipeline()
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", prompt_builder)
-    pipeline.add_component("llm", OpenAIChatGenerator())
+    pipeline.add_component("llm", OpenAIResponsesChatGenerator())
     pipeline.connect("retriever.documents", "prompt_builder.documents")
     pipeline.connect("prompt_builder.prompt", "llm.messages")
 

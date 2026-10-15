@@ -54,8 +54,7 @@ image = ByteStream.from_file_path("dog.jpg")
 res = qa.run(image=image, question="What color is this dog")
 
 print(res["replies"][0])
-
->>> white
+# >> white
 ```
 
 You can also set the number of answers generated:
@@ -73,8 +72,7 @@ res = qa.run(image=image, question="Tell me something about this dog")
 
 for answer in res["replies"]:
     print(answer)
-
->>> pomeranian
->>> white
->>> pomeranian puppy
+# >> pomeranian
+# >> white
+# >> pomeranian puppy
 ```

@@ -3,6 +3,7 @@ title: "LLMMessagesRouter"
 id: llmmessagesrouter
 slug: "/llmmessagesrouter"
 description: "Use this component to route Chat Messages to various output connections using a generative Language Model to perform classification."
+hep_available: true
 ---
 
 # LLMMessagesRouter
@@ -210,13 +211,12 @@ results = pipe.run(
     },
 )
 print(results)
-# Output:
-# {
-# 'moderation_router': {
-# 'chat_generator_text': 'unsafe\nS2',
-# 'unsafe': [ChatMessage(...)]
-# }
-# }
+# >> {
+# >> 'moderation_router': {
+# >> 'chat_generator_text': 'unsafe\nS2',
+# >> 'unsafe': [ChatMessage(...)]
+# >> }
+# >> }
 ```
 
 ## Additional References

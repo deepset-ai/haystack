@@ -2,12 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import subprocess
+import sys
 from collections.abc import Callable
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import jsonschema
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from haystack.components.agents.state import State
 from haystack.tools.errors import SchemaGenerationError
@@ -102,6 +105,32 @@ def test_from_function_annotated():
     }
 
 
+def test_from_function_with_postponed_annotations():
+    # String annotations are what `from __future__ import annotations` turns every annotation into.
+    def function_with_postponed_annotations(
+        city: "Annotated[str, 'the city for which to get the weather']" = "Munich",
+        unit: "Annotated[Literal['Celsius', 'Fahrenheit'], 'the unit for the temperature']" = "Celsius",
+        state: "State | None" = None,
+    ) -> str:
+        """A simple function to get the current weather for a location."""
+        return f"Weather report for {city}: 20 {unit}, sunny"
+
+    tool = create_tool_from_function(function=function_with_postponed_annotations)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "the city for which to get the weather", "default": "Munich"},
+            "unit": {
+                "type": "string",
+                "enum": ["Celsius", "Fahrenheit"],
+                "description": "the unit for the temperature",
+                "default": "Celsius",
+            },
+        },
+    }
+
+
 def test_from_function_missing_type_hint():
     def function_missing_type_hint(city) -> str:  # type: ignore[no-untyped-def]
         return f"Weather report for {city}: 20°C, sunny"
@@ -131,11 +160,13 @@ def test_from_function_with_callable_params_skipped():
     assert "query" in param_names
 
 
-def test_from_function_state_param_excluded_from_schema():
+@pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+def test_from_function_state_param_excluded_from_schema(state_annotation: Any) -> None:
     def function_with_state(city: str, state: State) -> str:
         """Get weather for a city, with access to agent state."""
         return f"Weather in {city}: sunny"
 
+    function_with_state.__annotations__["state"] = state_annotation
     tool = create_tool_from_function(function=function_with_state)
 
     assert tool.name == "function_with_state"
@@ -424,13 +455,22 @@ def test_remove_title_from_schema_definition_named_title_draft_07_spelling():
 
 
 def test_remove_title_from_schema_keeps_instance_data():
-    """Test that 'title' keys inside instance data are left untouched."""
+    """Test that 'title' keys inside instance data are left untouched.
+
+    Covers JSON Schema ``default``/``const``/``enum``/``examples`` and the OpenAPI 3.0
+    singular ``example`` spelling (Pydantic ``json_schema_extra={"example": ...}``).
+    """
     schema = {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}, "title": "Cfg"},
             "mode": {"const": {"title": "fast", "workers": 2}, "title": "Mode"},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}], "title": "Choice"},
-            "example": {"examples": [{"title": "Example", "id": 1}], "title": "Example"},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+                "title": "Sample",
+            },
         },
         "title": "configure",
         "type": "object",
@@ -438,14 +478,18 @@ def test_remove_title_from_schema_keeps_instance_data():
 
     _remove_title_from_schema(schema)
 
-    # A 'title' key in a default/const/enum/examples is part of the *value*, not a schema keyword:
-    # removing it would silently change the tool's contract.
+    # A 'title' key in a default/const/enum/examples/example is part of the *value*, not a
+    # schema keyword: removing it would silently change the tool's contract.
     assert schema == {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}},
             "mode": {"const": {"title": "fast", "workers": 2}},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}]},
-            "example": {"examples": [{"title": "Example", "id": 1}]},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+            },
         },
         "type": "object",
     }
@@ -521,6 +565,22 @@ def test_from_function_with_default_containing_title_key():
     assert tool.parameters["properties"]["options"]["default"] == {"title": "Untitled", "width": 80}
 
 
+def test_from_function_with_openapi_example_containing_title_key():
+    """OpenAPI 3.0 singular ``example`` values must keep nested ``title`` keys."""
+
+    def render(
+        options: Annotated[dict, "rendering options"] = Field(  # noqa: B008
+            default={}, json_schema_extra={"example": {"title": "Untitled", "width": "80"}}
+        ),
+    ) -> str:
+        """Render a document."""
+        return ""
+
+    tool = create_tool_from_function(function=render)
+
+    assert tool.parameters["properties"]["options"]["example"] == {"title": "Untitled", "width": "80"}
+
+
 def test_remove_title_from_schema_handle_no_title_in_top_level():
     schema = {
         "properties": {
@@ -568,3 +628,29 @@ class TestFromFunctionAsync:
         decorated = tool(async_function_with_docstring)
 
         assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+
+class TestToolDecoratorExport:
+    """`haystack.tools.tool` must be the decorator, although the package also has a `tool` submodule."""
+
+    def test_tool_is_bound_in_package_namespace(self):
+        # A fresh interpreter, since other tests may already have cached the attribute on the package.
+        code = (
+            "import haystack.tools\n"
+            "from haystack.tools.from_function import tool\n"
+            "assert vars(haystack.tools)['tool'] is tool, vars(haystack.tools).get('tool')\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.skipif(sys.version_info < (3, 15), reason="lazy imports (PEP 810) need Python 3.15")
+    @pytest.mark.parametrize("lazy_imports_mode", ["normal", "all"])
+    def test_lazy_import_resolves_to_decorator(self, lazy_imports_mode):
+        code = (
+            "lazy from haystack.tools import tool\n"
+            "from haystack.tools.from_function import tool as decorator\n"
+            "assert tool is decorator, tool\n"
+        )
+        env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
+        assert result.returncode == 0, result.stderr

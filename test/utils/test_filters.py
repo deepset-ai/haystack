@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -132,26 +132,26 @@ document_matches_filter_data = [
         id="> operator with smaller ISO 8601 datetime Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=UTC)},
         Document(meta={"date": "2024-01-01T00:00:00+00:00"}),
         True,
         id="> operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
         {"field": "meta.date", "operator": ">", "value": "2023-01-01T00:00:00+00:00"},
-        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=UTC)}),
         True,
         id="> operator with ISO 8601 string filter value and datetime Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=UTC)},
         Document(meta={"date": datetime(2024, 1, 1)}),
         True,
         id="> operator with aware datetime filter value and naive datetime Document value",
     ),
     pytest.param(
         {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1)},
-        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=UTC)}),
         True,
         id="> operator with naive datetime filter value and aware datetime Document value",
     ),
@@ -542,13 +542,13 @@ document_matches_filter_data = [
         id="== operator with equal datetime in different ISO 8601 format",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)},
         Document(meta={"date": "2025-02-03T12:45:46Z"}),
         True,
         id="== operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)},
         Document(meta={"date": datetime(2025, 2, 3, 12, 45, 46)}),
         True,
         id="== operator with aware datetime filter value and naive datetime Document value",
@@ -651,8 +651,8 @@ def test_document_matches_filter(filters, document, expected_result):
     [
         ("2025-02-03T12:45:46", "2025-02-03T12:45:46+00:00"),
         ("2025-02-03T12:45:46+00:00", "2025-02-03T12:45:46"),
-        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)),
-        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc), datetime(2025, 2, 3, 12, 45, 46)),
+        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC)),
+        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=UTC), datetime(2025, 2, 3, 12, 45, 46)),
     ],
 )
 def test_document_matches_filter_strict_datetime_comparison(operator, expected_result, document_value, filter_value):
@@ -772,3 +772,23 @@ def test_document_matches_filter_raises_error(filters):
 def test_document_matches_filter_unknown_operator_error_message(filters, expected_message):
     with pytest.raises(FilterError, match=expected_message):
         document_matches_filter(filters, Document(meta={"page": 10}))
+
+
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+@pytest.mark.parametrize("filter_value", [2025, 2025.0])
+def test_document_matches_filter_raises_filter_error_for_datetime_and_numeric_value(operator, filter_value):
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    with pytest.raises(FilterError, match="Can't compare a datetime with a non-datetime value using operators"):
+        document_matches_filter(filters, Document(meta={"date": datetime(2025, 1, 1)}))
+
+
+def test_dotted_field_with_unknown_root_is_treated_as_missing():
+    # A dotted field whose root is not a Document attribute must be treated as a missing field
+    # (matching the documented "treat it as None" behavior and non-dotted unknown fields),
+    # not raise AttributeError.
+    document = Document(content="test", meta={"name": "test"})
+    assert document_matches_filter({"field": "typo.x", "operator": "==", "value": 1}, document) is False
+    assert document_matches_filter({"field": "typo.x", "operator": "!=", "value": 1}, document) is True
+    not_filter = {"operator": "NOT", "conditions": [{"field": "typo.x", "operator": "==", "value": 1}]}
+    assert document_matches_filter(not_filter, document) is True

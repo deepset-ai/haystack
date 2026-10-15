@@ -52,7 +52,7 @@ class TestMergeLists:
     def test_merge_two_lists(self):
         current = [1, 2, 3]
         new = [4, 5, 6]
-        result = merge_lists(current, new)
+        result: list[int] = merge_lists(current, new)
         assert result == [1, 2, 3, 4, 5, 6]
         # Ensure original lists weren't modified
         assert current == [1, 2, 3]
@@ -421,6 +421,30 @@ class TestState:
                 "numbers": 1,
                 "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
                 "dict_of_lists": {"numbers": [1, 2, 3]},
+            },
+        }
+
+    def test_state_to_dict_skip_keys(self):
+        state_schema = {"numbers": {"type": int}, "messages": {"type": list[ChatMessage]}}
+
+        data = {"numbers": 1, "messages": [ChatMessage.from_user(text="Hello, world!")]}
+        state = State(state_schema, data)
+        state_dict = state.to_dict(skip_keys=["numbers"])
+        assert state_dict["schema"] == {
+            "messages": {
+                "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                "handler": "haystack.components.agents.state.state_utils.merge_lists",
+            }
+        }
+        assert state_dict["data"] == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}}
+                },
+            },
+            "serialized_data": {
+                "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}]
             },
         }
 

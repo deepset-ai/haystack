@@ -21,12 +21,7 @@ create_advanced_rag_agent(
     backup_answer_llm: ChatGenerator | None = None,
     system_prompt: str | None = None,
     max_agent_steps: int = 20,
-    max_fetched_docs: int = 10,
-    extra_tools: ToolsType | None = None,
-    state_schema: dict[str, Any] | None = None,
-    hooks: dict[HookPoint, list[Hook]] | None = None,
-    raise_on_tool_invocation_failure: bool = False,
-    tool_concurrency_limit: int = 4
+    max_fetched_docs: int = 10
 ) -> Agent
 ```
 
@@ -40,6 +35,9 @@ answer cites the retrieved documents.
 The required `retriever` becomes the `search_documents` tool; `document_store` additionally feeds the three
 metadata inspection tools and must implement the metadata introspection methods (`get_metadata_fields_info`,
 `get_metadata_field_unique_values`, `get_metadata_field_min_max`).
+
+To customize the returned agent further (e.g. add tools or hooks), use `Agent.clone`:
+`agent = agent.clone(tools=[*agent.tools, my_tool])`.
 
 **Parameters:**
 
@@ -68,15 +66,6 @@ metadata inspection tools and must implement the metadata introspection methods 
 - **max_fetched_docs** (<code>int</code>) – Maximum number of documents `fetch_documents_by_filter` shows per fetch. A filter fetch is
   not bounded by a retriever's `top_k`, so this caps the tool result instead; the scored `search_documents` tool
   is bounded by the `top_k` configured on your retrieval components.
-- **extra_tools** (<code>ToolsType | None</code>) – Additional tools (or toolsets) for the agent, appended after the built-in document-store
-  toolset and the retrieval tool.
-- **state_schema** (<code>dict\[str, Any\] | None</code>) – Additional entries merged into the agent's state schema. The built-in `documents` entry
-  (the accumulated retrieved documents) always takes precedence.
-- **hooks** (<code>dict\[HookPoint, list\[Hook\]\] | None</code>) – Additional hooks per hook point, merged with the built-in hooks. For `after_run`, the built-in
-  backup-answer hook runs first, so custom hooks see the final answer.
-- **raise_on_tool_invocation_failure** (<code>bool</code>) – If True, a failing tool call raises instead of being returned to the LLM
-  as an error message it can recover from (the default).
-- **tool_concurrency_limit** (<code>int</code>) – Maximum number of tool calls executed in parallel within one agent step.
 
 **Returns:**
 
@@ -419,40 +408,47 @@ Deserialize the toolset from a dictionary.
 ```python
 create_deep_research_agent(
     *,
-    scope_llm: ChatGenerator | None = None,
-    orchestrator_llm: ChatGenerator | None = None,
+    llm: ChatGenerator | None = None,
+    system_prompt: str | None = None,
+    max_agent_steps: int = 8,
+    brief_llm: ChatGenerator | None = None,
     researcher_llm: ChatGenerator | None = None,
-    summarizer_llm: ChatGenerator | None = None,
-    writer_llm: ChatGenerator | None = None,
-    max_subtopics: int = 5,
-    max_concurrent_researchers: int = 5,
-    max_orchestrator_steps: int = 8,
+    search_tool: Tool | None = None,
+    page_summary_llm: ChatGenerator | None = None,
+    report_llm: ChatGenerator | None = None,
     max_researcher_steps: int = 20,
-    max_search_results: int = 10,
-    max_content_length: int = 50000
+    max_concurrent_researchers: int = 5,
+    max_subtopics: int = 5,
+    max_page_chars: int = 50000
 ) -> Agent
 ```
 
 Create the deep research agent.
 
+To customize the returned agent further (e.g. add tools or hooks), use `Agent.clone`:
+`agent = agent.clone(tools=[*agent.tools, my_tool])`.
+
 **Parameters:**
 
-- **scope_llm** (<code>ChatGenerator | None</code>) – LLM that rewrites the user query into a focused research brief.
+- **llm** (<code>ChatGenerator | None</code>) – LLM that plans the investigation and delegates the sub-questions.
   Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
-- **orchestrator_llm** (<code>ChatGenerator | None</code>) – LLM that plans the investigation and delegates the sub-questions.
+- **system_prompt** (<code>str | None</code>) – Overrides the pre-made system prompt. `{{ max_subtopics }}` is replaced with the value of
+  `max_subtopics`.
+- **max_agent_steps** (<code>int</code>) – Maximum steps for the agent loop (reflect -> delegate rounds).
+- **brief_llm** (<code>ChatGenerator | None</code>) – LLM that rewrites the user query into a focused research brief.
   Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
 - **researcher_llm** (<code>ChatGenerator | None</code>) – LLM that drives each sub-researcher's search/read/think loop.
   Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
-- **summarizer_llm** (<code>ChatGenerator | None</code>) – LLM used inside the `read_url` tool to summarize a fetched page toward
+- **search_tool** (<code>Tool | None</code>) – Web search tool used by each sub-researcher. Defaults to `TavilyWebSearchTool(top_k=10)`,
+  which requires `tavily-haystack`. The pre-made researcher prompt refers to the tool as `web_search`.
+- **page_summary_llm** (<code>ChatGenerator | None</code>) – LLM used inside the `read_url` tool to summarize a fetched page toward
   the question. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
-- **writer_llm** (<code>ChatGenerator | None</code>) – LLM that turns the brief plus collected notes into the final report.
+- **report_llm** (<code>ChatGenerator | None</code>) – LLM that turns the brief plus collected notes into the final report.
   Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
-- **max_subtopics** (<code>int</code>) – Maximum number of sub-questions the orchestrator may delegate (breadth).
-- **max_concurrent_researchers** (<code>int</code>) – Maximum number of sub-researchers that run at the same time.
-- **max_orchestrator_steps** (<code>int</code>) – Maximum steps for the orchestrator's agent loop (reflect -> delegate rounds).
 - **max_researcher_steps** (<code>int</code>) – Maximum steps for each sub-researcher's agent loop.
-- **max_search_results** (<code>int</code>) – Number of results returned per `web_search` call.
-- **max_content_length** (<code>int</code>) – Maximum raw page characters fed to the summarizer, before summarization.
+- **max_concurrent_researchers** (<code>int</code>) – Maximum number of sub-researchers that run at the same time.
+- **max_subtopics** (<code>int</code>) – Maximum number of sub-questions the agent may delegate (breadth).
+- **max_page_chars** (<code>int</code>) – Maximum raw page characters fed to the summarizer, before summarization.
 
 **Returns:**
 

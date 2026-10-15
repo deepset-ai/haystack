@@ -892,7 +892,8 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Return unique metadata field values, optionally filtered by a search term, with pagination.
@@ -905,10 +906,11 @@ Return unique metadata field values, optionally filtered by a search term, with 
   case-insensitive substring against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing list of unique values and total count of unique values.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing list of unique values (in their original type) and total count of unique values.
 
 #### get_metadata_field_unique_values_async
 
@@ -918,7 +920,8 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously return unique metadata field values, optionally filtered by a search term, with pagination.
@@ -933,10 +936,11 @@ Asynchronous methods are only supported for HTTP connections.
   case-insensitive substring against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing list of unique values and total count of unique values.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing list of unique values (in their original type) and total count of unique values.
 
 #### from_dict
 

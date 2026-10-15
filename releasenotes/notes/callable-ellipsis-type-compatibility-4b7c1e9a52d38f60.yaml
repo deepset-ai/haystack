@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``Pipeline.connect()`` raising ``TypeError: object of type 'ellipsis' has no len()`` when one of
+    the sockets is annotated with ``Callable[..., T]``. A ``Callable[..., T]`` now matches callables with
+    any parameters, in both directions, as long as the return types are compatible.

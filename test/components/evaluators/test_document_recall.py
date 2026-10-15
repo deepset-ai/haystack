@@ -68,6 +68,15 @@ def test_run_with_nested_meta_comparison():
     assert result == {"individual_scores": [0.5], "score": 0.5}
 
 
+def test_run_with_empty_inputs():
+    evaluator = DocumentRecallEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):
@@ -153,14 +162,14 @@ class TestDocumentRecallEvaluatorSingleHit:
         assert new_evaluator.mode == RecallMode.SINGLE_HIT
 
     def test_empty_ground_truth_documents(self, evaluator):
-        ground_truth_documents = [[]]
+        ground_truth_documents: list[list[Document]] = [[]]
         retrieved_documents = [[Document(content="test")]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 
     def test_empty_retrieved_documents(self, evaluator):
         ground_truth_documents = [[Document(content="test")]]
-        retrieved_documents = [[]]
+        retrieved_documents: list[list[Document]] = [[]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 
@@ -283,14 +292,14 @@ class TestDocumentRecallEvaluatorMultiHit:
         assert new_evaluator.mode == RecallMode.MULTI_HIT
 
     def test_empty_ground_truth_documents(self, evaluator):
-        ground_truth_documents = [[]]
+        ground_truth_documents: list[list[Document]] = [[]]
         retrieved_documents = [[Document(content="test")]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 
     def test_empty_retrieved_documents(self, evaluator):
         ground_truth_documents = [[Document(content="test")]]
-        retrieved_documents = [[]]
+        retrieved_documents: list[list[Document]] = [[]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 

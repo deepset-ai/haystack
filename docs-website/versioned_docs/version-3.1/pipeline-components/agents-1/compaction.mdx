@@ -1,0 +1,162 @@
+---
+title: "Context Compaction"
+id: compaction
+slug: "/compaction"
+description: "Context compaction shortens an Agent's conversation so long runs do not exhaust the model's context window."
+---
+
+# Context Compaction
+
+Context compaction shortens an Agent's conversation so long runs do not exhaust the model's context window. It rewrites older history into a smaller representation while preserving the context the Agent needs to continue working.
+
+Compaction is lossy. After it runs, the Agent works from a shorter record of the conversation. What survives and what is discarded depends on the compaction strategy.
+
+## How context compaction works
+
+Context compaction separates three responsibilities:
+
+| Responsibility | Abstraction | Purpose |
+| --- | --- | --- |
+| Decide when to compact | [`CompactionHook`](compaction/compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
+| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
+| Measure the conversation | [`TokenCounter`](../../token-counters.mdx) protocol | Estimates the size of messages and tool schemas before they are sent to a model. |
+
+This separation lets you combine a standard trigger with different compaction strategies and token counters. For example, a local sliding window can remove old history without making an additional model call, while a custom compactor could summarize the same history with an LLM.
+
+## Basic setup
+
+The following example registers a `CompactionHook` under the Agent's `before_llm` [hook point](./hooks.mdx). It starts compacting at 70% of the model's context window and asks the compactor to reduce the context to approximately 40%.
+
+<!-- test-concept -->
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+from haystack.tools import tool
+
+
+@tool
+def fetch_page(url: Annotated[str, "The URL to fetch"]) -> str:
+    """Fetch a web page and return its text."""
+    return "Fusion startups reported net-energy-gain milestones this year. " * 500
+
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=400_000,  # gpt-5.4-nano's context window
+    compact_at=0.7,
+    compact_to=0.4,
+)
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[fetch_page],
+    system_prompt="You are a research assistant. Fetch pages as needed and cite what you used.",
+    hooks={"before_llm": [compaction_hook]},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Summarize recent fusion energy milestones.")],
+)
+print(result["last_message"].text)
+```
+
+See [`CompactionHook`](compaction/compaction-hook.mdx) for threshold configuration, context measurement, lifecycle, and serialization.
+
+## Compaction strategies
+
+Compactors receive the current messages, a target token count, and the same token counter used to measure the context. They return a shorter replacement conversation or `None` when there is nothing useful to change.
+
+| Compactor | Strategy | Trade-off |
+| --- | --- | --- |
+| [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions and latest user task, keeps complete historical turns while they fit, and trims the current task's own Agent steps only when that is not enough. | Fast and local, but discarded information is not summarized. |
+| [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while preserving tool-call/result structure. | Retains the shape of the run and recent results, but removes the content of pruned results. |
+
+## Combining compaction strategies
+
+Register multiple `CompactionHook` instances at `before_llm` to apply progressively more aggressive strategies. Hooks run in list order against the same Agent state, so each hook measures the messages left by the previous one.
+
+For example, prune large tool results first and use a sliding window as a fallback:
+
+```python
+from haystack.hooks.compaction import (
+    CompactionHook,
+    SlidingWindowCompactor,
+    ToolResultPruningCompactor,
+)
+
+prune_tool_results = CompactionHook(
+    compactor=ToolResultPruningCompactor(),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+drop_old_steps = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[fetch_page],
+    hooks={"before_llm": [prune_tool_results, drop_old_steps]},
+)
+```
+
+If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes historical turns and then, if needed, the current task's oldest Agent steps. A result the pruning compactor already replaced with a placeholder stays with the historical turn it belongs to, so its tool call keeps an answer. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
+
+### Creating a custom compactor
+
+Implement the `Compactor` protocol when you need a different strategy, such as summarizing older messages or selectively shortening tool results.
+
+```python
+from typing import Any
+
+from haystack.core.serialization import default_to_dict
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.compaction import Compactor
+from haystack.token_counters import TokenCounter
+
+
+class CustomCompactor(Compactor):
+    def compact(
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+    ) -> list[ChatMessage] | None:
+        # Return a shorter, valid conversation or None when nothing should change.
+        ...
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+```
+
+A compactor must follow these rules:
+
+1. Return `None` unless the conversation actually gets smaller.
+2. Return a new list without modifying the input `messages` list.
+3. Keep tool calls together with all their result messages. Chat-completion APIs reject incomplete tool-call exchanges.
+
+The `target_tokens` value is a goal rather than a guarantee. When the target conflicts with context the Agent must retain, preserve the required context and get as close to the target as possible.
+
+`compact_async()` calls `compact()` by default. Override it when compaction performs I/O, such as calling an LLM, so asynchronous Agent runs are not blocked. Use `to_dict()` to serialize constructor settings. The protocol's default `from_dict()` handles plain constructor values; override it when serialized values must be reconstructed first, such as a `Secret` or nested component.
+
+## Token counters
+
+The default `ApproximateTokenCounter` estimates tokens from text length and needs no extra dependency. You can configure another built-in or custom [`TokenCounter`](../../token-counters.mdx) when you need a model- or provider-specific estimate.
+
+Token counters can also include tool schemas and non-text content in the estimate. Consult the page for the counter you use to understand how it handles images and files.
+
+## Context compaction and tool result offloading
+
+[Tool result offloading](./tool-result-offloading.mdx) solves an adjacent problem: it writes large tool results to a store and leaves a pointer in the conversation. The two approaches work well together — offloading keeps individual results small as they arrive, while compaction bounds the conversation as a whole.
+
+An offloaded result is represented by a reference to the stored content. If a compactor removes or rewrites that message, the model loses the reference it needs to read the content again.
+
+`ToolResultPruningCompactor` skips results marked as offloaded by default, preserving their stored-content references.

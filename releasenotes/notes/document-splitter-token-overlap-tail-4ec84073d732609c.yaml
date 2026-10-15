@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``DocumentSplitter`` with ``split_by="token"`` generating redundant
+    trailing chunks containing only overlap. The splitter now stops creating
+    chunks after reaching the end of the document.

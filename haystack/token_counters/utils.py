@@ -3,10 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Callable
 
 from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessageContentT, ToolCallResultContentT
 from haystack.tools import ToolsType, flatten_tools_or_toolsets
+
+# Builds the stand-in for message content that has no text form, such as an image.
+_PlaceholderFn = Callable[[ChatMessageContentT], str]
 
 
 def _non_text_placeholder(content: ChatMessageContentT) -> str:
@@ -18,26 +22,38 @@ def _non_text_placeholder(content: ChatMessageContentT) -> str:
     return f"<{type(content).__name__}>"
 
 
-def _tool_result_text(result: ToolCallResultContentT) -> str:
+def _tool_result_text(result: ToolCallResultContentT, placeholder: _PlaceholderFn = _non_text_placeholder) -> str:
     """A tool result as a single string, with placeholders standing in for any non-text parts."""
     if isinstance(result, str):
         return result
-    return "".join(block.text if isinstance(block, TextContent) else _non_text_placeholder(block) for block in result)
+    return "".join(block.text if isinstance(block, TextContent) else placeholder(block) for block in result)
 
 
-def _render_message(message: ChatMessage) -> str:
+def _render_message(
+    message: ChatMessage, placeholder: _PlaceholderFn = _non_text_placeholder, include_tool_call_ids: bool = False
+) -> str:
     """
     One message as one or more lines of plain text.
 
     Reasoning content is deliberately left out: providers discard it between turns, so it is not part of the context
     being measured.
+
+    :param message: The message to render.
+    :param placeholder: Builds the stand-in for content that has no text form. The default is short and stable, which
+        is what a counter needs because the stand-in's own length is what gets measured. A caller rendering for a model
+        to read can pass one that describes the content instead.
+    :param include_tool_call_ids: Whether to include tool call IDs in the rendered message.
+    :returns: The rendered message.
     """
     role = message.role.value
     # A tool-result msg only carries tool_call_results, so it is rendered on its own and labelled with the tool that
     # produced it.
     if results := message.tool_call_results:
         return "\n".join(
-            f"[tool:{result.origin.tool_name}{' (error)' if result.error else ''}] {_tool_result_text(result.result)}"
+            f"[tool:{result.origin.tool_name}"
+            f"{' id=' + result.origin.id if include_tool_call_ids and result.origin.id else ''}"
+            f"{' (error)' if result.error else ''}] "
+            f"{_tool_result_text(result.result, placeholder=placeholder)}"
             for result in results
         )
 
@@ -46,17 +62,26 @@ def _render_message(message: ChatMessage) -> str:
         lines.append(f"[{role}] " + "\n".join(texts))
     for call in message.tool_calls:
         arguments = json.dumps(call.arguments, default=str, sort_keys=True)
-        lines.append(f"[{role} -> tool_call] {call.tool_name}({arguments})")
+        call_id = f" id={call.id}" if include_tool_call_ids and call.id else ""
+        lines.append(f"[{role} -> tool_call{call_id}] {call.tool_name}({arguments})")
     # Images and files cost tokens too, so they need a stand-in rather than being skipped.
     non_text: list[ChatMessageContentT] = [*message.images, *message.files]
     for content in non_text:
-        lines.append(f"[{role}] {_non_text_placeholder(content)}")
+        lines.append(f"[{role}] {placeholder(content)}")
     return "\n".join(lines) if lines else f"[{role}] <no content>"
 
 
-def _rendered_conversation(messages: list[ChatMessage]) -> str:
+def _rendered_conversation(
+    messages: list[ChatMessage],
+    *,
+    placeholder: _PlaceholderFn = _non_text_placeholder,
+    include_tool_call_ids: bool = False,
+) -> str:
     """The whole conversation as one plain-text block, which is what a counter measures."""
-    return "\n".join(_render_message(message) for message in messages)
+    return "\n".join(
+        _render_message(message, placeholder=placeholder, include_tool_call_ids=include_tool_call_ids)
+        for message in messages
+    )
 
 
 def _rendered_tools(tools: ToolsType | None) -> str:

@@ -26,14 +26,14 @@ class TestPromptBuilder:
         assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -46,14 +46,14 @@ class TestPromptBuilder:
         assert builder._required_variables == ["variable"]
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -68,7 +68,7 @@ class TestPromptBuilder:
         assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
         assert inputs["template"].type == str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -77,7 +77,7 @@ class TestPromptBuilder:
         assert inputs["var3"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
@@ -204,7 +204,7 @@ class TestPromptBuilder:
         @component
         class DocumentProducer:
             @component.output_types(documents=list[Document])
-            def run(self, doc_input: str):
+            def run(self, doc_input: str) -> dict[str, list[Document]]:
                 return {"documents": [Document(content=doc_input)]}
 
         pipe = Pipeline()

@@ -187,7 +187,7 @@ class JSONConverter:
             to a different document.
         """
         try:
-            file_content = source.data.decode("utf-8")
+            file_content = source.data.decode("utf-8-sig")
         except UnicodeError as exc:
             logger.warning(
                 "Failed to extract text from {source}. Skipping it. Error: {error}",
@@ -237,6 +237,9 @@ class JSONConverter:
                 if isinstance(text, (dict, list)):
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
+
+                if text is not None and not isinstance(text, str):
+                    text = str(text)
 
                 meta = {}
                 if meta_fields == "*":

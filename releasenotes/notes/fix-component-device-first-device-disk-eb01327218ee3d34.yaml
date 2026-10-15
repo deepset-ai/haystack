@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``ComponentDevice.first_device`` raising a ``ValueError`` when the first entry of a device
+    map is a disk device. Disk devices are only valid as part of a device map (for example when
+    HuggingFace offloads weights with ``device_map='auto'``), so ``first_device`` now skips disk
+    entries and returns the first usable device instead of crashing. If the device map is empty or
+    contains only disk devices, a ``ValueError`` is raised.

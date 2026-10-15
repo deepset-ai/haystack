@@ -91,6 +91,14 @@ warm_up() -> None
 
 Initializes the AWS Textract client.
 
+#### close
+
+```python
+close() -> None
+```
+
+Closes the AWS Textract client.
+
 #### run
 
 ```python

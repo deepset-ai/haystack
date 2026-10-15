@@ -36,7 +36,7 @@ If the specialist needs more than a task, for example a variable in its system p
 - `name` is mandatory and specifies the tool name.
 - `description` is mandatory. It should tell the calling LLM what the wrapped Agent is specialized in and when to delegate to it.
 - `parameters` is optional and lets you override the generated JSON schema for the tool's inputs. It must cover every mandatory input of the wrapped Agent that is not supplied through `inputs_from_state`, otherwise a `ValueError` is raised.
-- `outputs_to_string` is optional and controls how the wrapped Agent's output is converted to a string for the calling LLM. By default, the text of the final reply is returned, or the serialized message if the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+- `outputs_to_string` is optional and controls how the wrapped Agent's output is converted to a string for the calling LLM. By default, the text of the final reply is returned, or the serialized message if the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`, reached the model's output limit, or had its response stopped by a content filter.
 - `inputs_from_state` is optional and maps the calling Agent's state keys to inputs of the wrapped Agent. Example: `{"subject": "topic"}` passes the state value at `"subject"` as the wrapped Agent's `"topic"` input. Inputs mapped this way are not added to the generated schema, since the calling Agent provides them.
 - `outputs_to_state` is optional and maps the wrapped Agent's output keys to the calling Agent's state keys. Example: `{"notes": {"source": "last_message"}}` writes the wrapped Agent's `"last_message"` output to `"notes"` in state.
 

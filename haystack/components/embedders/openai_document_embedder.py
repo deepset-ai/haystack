@@ -42,7 +42,7 @@ class OpenAIDocumentEmbedder:
     def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "text-embedding-ada-002",
+        model: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -71,7 +71,7 @@ class OpenAIDocumentEmbedder:
             during initialization.
         :param model:
             The name of the model to use for calculating embeddings.
-            The default model is `text-embedding-ada-002`.
+            The default model is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
             later models support this parameter.
@@ -143,8 +143,12 @@ class OpenAIDocumentEmbedder:
         Initializes the synchronous OpenAI client.
         """
         if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = OpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
@@ -152,8 +156,12 @@ class OpenAIDocumentEmbedder:
         Initializes the asynchronous OpenAI client on the serving event loop.
         """
         if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncOpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     def close(self) -> None:
@@ -289,7 +297,7 @@ class OpenAIDocumentEmbedder:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
-            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions

@@ -52,7 +52,7 @@ class MarkdownToDocument:
         table_to_single_line: bool = False,
         progress_bar: bool = True,
         store_full_path: bool = False,
-        encoding: str = "utf-8",
+        encoding: str = "utf-8-sig",
         *,
         extract_frontmatter: bool = False,
     ) -> None:

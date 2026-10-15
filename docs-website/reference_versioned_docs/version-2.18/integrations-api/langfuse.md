@@ -149,6 +149,14 @@ Initialize the LangfuseConnector component.
   containing any additional configuration options for the Langfuse client. See the Langfuse documentation
   for more details on available configuration options.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Langfuse client and enable tracing once.
+
 #### run
 
 ```python

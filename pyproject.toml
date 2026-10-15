@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,19 +34,18 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  # openai 3.x builds on httpx2, while the clients we pass to `http_client` are httpx ones
-  "openai>=2.6.0,<3",
+  "openai>=2.6.0",
   "pydantic",
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
@@ -54,8 +53,8 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # DocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
+  "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
@@ -88,8 +87,7 @@ docs = "haystack-pydoc pydoc tmp_api_reference"
 # we override dependencies from the default environment
 dependencies = [
   # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x.
-  # numpy 2.5 stubs use PEP 695 `type` statements, which mypy rejects under python_version = "3.10".
-  "numpy>=2,<2.5",
+  "numpy>=2",
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
@@ -103,7 +101,7 @@ dependencies = [
 
 
   # Converters
-  "pypdf",                            # PyPDFToDocument
+  "pypdf>=6.20",                      # PyPDFToDocument; 6.20 changed the extracted text that tests expect
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument
@@ -151,8 +149,7 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 e2e = 'pytest {args:e2e}'
 
-# TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/hooks/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/ test/fuzz/ test/skill_stores/ test/components/caching/ test/components/embedders/ test/components/generators/ test/components/joiners/ test/components/query/ test/components/validators/ test/components/writers/}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test}"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -195,7 +192,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-python_version = "3.10"
+# Deliberately above the 3.11 floor in `requires-python`: numpy's stubs use PEP 695 `type`
+# statements, which mypy rejects as a syntax error below 3.12. The floor stays covered by the
+# unit test matrix, which runs on 3.11.
+python_version = "3.12"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true

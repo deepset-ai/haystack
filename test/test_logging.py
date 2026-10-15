@@ -8,8 +8,9 @@ import logging
 import os
 import sys
 from collections.abc import Callable, Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from unittest.mock import ANY
 
 import pytest
@@ -19,14 +20,16 @@ import structlog.stdlib
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from structlog.typing import EventDict
 
 import haystack.utils.jupyter
 from haystack import logging as haystack_logging
-from test.tracing.utils import SpyingTracer
+from haystack.utils.misc import _parse_dict_from_json
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 @pytest.fixture(autouse=True)
-def reset_logging_config() -> None:
+def reset_logging_config() -> Generator[None, None, None]:
     # `configure_logging` attaches its handler to Haystack's own namespaces (and may flip `propagate`), so we snapshot
     # and restore the root logger plus those namespaces to keep tests isolated.
     names = ["haystack", "haystack_integrations", "haystack_experimental"]
@@ -77,7 +80,7 @@ def restore_structlog_config() -> Generator[None, None, None]:
         structlog.reset_defaults()
 
 
-def _sentinel_processor(logger: object, method_name: str, event_dict: dict) -> dict:
+def _sentinel_processor(logger: object, method_name: str, event_dict: EventDict) -> EventDict:
     """A no-op processor used to detect whether an existing structlog config was left untouched."""
     return event_dict
 
@@ -207,7 +210,7 @@ class TestStructuredLoggingConsoleRendering:
         output = capfd.readouterr().err
 
         # Only check for the minute to be a bit more robust
-        today = datetime.now(tz=timezone.utc).isoformat(timespec="minutes").replace("+00:00", "")
+        today = datetime.now(tz=UTC).isoformat(timespec="minutes").replace("+00:00", "")
         assert today in output
 
         log_level = "warning"
@@ -383,6 +386,98 @@ class TestStructuredLoggingJSONRendering:
             ],
         }
 
+    def test_exception_values_do_not_leak_their_payload(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """Regression test: `repr(UnicodeDecodeError)` carries the whole buffer that failed to decode."""
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        try:
+            (b"%PDF-1.7\r%\xe2\xe3\xcf\xd3" + b"A" * 100_000).decode("utf-8")
+        except UnicodeDecodeError as error:
+            logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"error": error})
+
+        output = capfd.readouterr().err
+        assert len(output) < 1_000
+        assert json.loads(output)["error"] == (
+            "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte"
+        )
+
+    def test_long_values_are_truncated(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"key": "x" * 10_000})
+
+        expected = "x" * haystack_logging.MAX_LOG_VALUE_LENGTH + "... [truncated, 10000 chars]"
+        assert json.loads(capfd.readouterr().err)["key"] == expected
+
+    def test_console_rendering_also_bounds_values(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """The console renderer shares the processor, so a JSONRenderer-only fix would miss it."""
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
+        haystack_logging.configure_logging()
+
+        logging.getLogger("haystack.test_logging").warning("Hello", extra={"key": "x" * 100_000})
+
+        assert len(capfd.readouterr().err) < 5_000
+
+    @pytest.mark.parametrize("container", [list, tuple, dict])
+    def test_exception_in_a_container_does_not_leak_its_payload(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch, container: type
+    ) -> None:
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+        error = UnicodeDecodeError("utf-8", b"\xe2" + b"A" * 100_000, 0, 1, "invalid continuation byte")
+        value = {"error": error} if container is dict else container([error])
+        logging.getLogger("haystack.test_logging").warning("Conversion failed", extra={"errors": value})
+        expected = "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 0: invalid continuation byte"
+        assert json.loads(capfd.readouterr().err)["errors"] == (
+            {"error": expected} if container is dict else [expected]
+        )
+
+    @pytest.mark.parametrize("depth, expected_marker", [(9, "[maximum depth reached]"), (8, "UnicodeDecodeError:")])
+    def test_deep_exception_never_uses_container_repr(self, depth: int, expected_marker: str) -> None:
+        value: Any = UnicodeDecodeError("utf-8", b"\xe2" + b"SECRET" * 100_000, 0, 1, "invalid continuation byte")
+        for _ in range(depth):
+            value = [value]
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
+        assert "SECRET" not in repr(result)
+        assert expected_marker in repr(result)
+
+    def test_nested_strings_obey_character_budget(self) -> None:
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": ["x" * 100_000] * 10})["value"]
+        # the rendered list is over the length limit, so it comes out as one truncated string
+        assert isinstance(result, str)
+        assert result.startswith("['xxx")
+        assert result.endswith("chars]")
+        assert len(result) < 5_000
+
+    def test_wide_cycle_is_bounded(self) -> None:
+        value: list = []
+        value.extend([value] * 100_000)
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})
+        assert "[recursive container]" in str(result["value"])
+        assert len(str(result["value"])) < 5_000
+
+    def test_wide_nested_lists_obey_shared_budget(self) -> None:
+        value = [["x"] * 1_000 for _ in range(1_000)]
+        result = haystack_logging.bound_event_dict_values(None, "warning", {"value": value})["value"]
+        assert "[container budget exhausted]" in repr(result)
+        assert len(repr(result)) < 2_000
+
+    def test_missing_keys_warning_is_bounded(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        """`_parse_dict_from_json` logs the full key list when the expected keys are missing."""
+
+        monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+        haystack_logging.configure_logging()
+
+        reply = json.dumps({f"key_{i:05d}": i for i in range(3_000)})
+        assert _parse_dict_from_json(reply, expected_keys=["score"], raise_on_failure=False) is None
+
+        # the `event` string and the `keys` list are each bounded on their own
+        output = capfd.readouterr().err
+        assert len(output) < 9_000
+        assert json.loads(output)["keys"][-1] == "[container budget exhausted]"
+
 
 class TestLogTraceCorrelation:
     def test_trace_log_correlation_python_logs_with_console_rendering(
@@ -407,6 +502,7 @@ class TestLogTraceCorrelation:
         output = capfd.readouterr().err
         parsed_output = json.loads(output)
 
+        assert isinstance(span, SpyingSpan)
         assert parsed_output == {
             "event": "Hello, structured logging!",
             "key1": "value1",
@@ -498,7 +594,7 @@ class TestCompositeLogger:
             ("critical", "critical"),
         ],
     )
-    def test_various_levels(self, capfd: LogCaptureFixture, method: str, expected_level: str) -> None:
+    def test_various_levels(self, capfd: CaptureFixture, method: str, expected_level: str) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -521,7 +617,29 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log(self, capfd: LogCaptureFixture) -> None:
+    def test_exception_logs_traceback(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened")
+
+        record = caplog.records[0]
+        assert record.exc_info is not None
+        assert record.exc_info[0] is ZeroDivisionError
+
+    def test_exception_respects_explicit_exc_info(self, caplog: LogCaptureFixture) -> None:
+        logger = haystack_logging.getLogger("haystack.test_logging")
+
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("An error happened", exc_info=False)
+
+        assert not caplog.records[0].exc_info
+
+    def test_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -543,7 +661,7 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log_json_content(self, capfd: LogCaptureFixture) -> None:
+    def test_log_json_content(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -565,7 +683,7 @@ class TestCompositeLogger:
             "module": "haystack.test_logging",
         }
 
-    def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
+    def test_log_with_string_cast(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
         logger = haystack_logging.getLogger("haystack.test_logging")
@@ -605,7 +723,7 @@ class TestCompositeLogger:
         logger = haystack_logging.getLogger("haystack.test_logging")
         logger.setLevel(logging.DEBUG)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=rf"Logger\.{method}\(\) takes 1 positional argument"):
             getattr(logger, method)("Hello, structured logging %s!", "logging")
 
     @pytest.mark.parametrize(

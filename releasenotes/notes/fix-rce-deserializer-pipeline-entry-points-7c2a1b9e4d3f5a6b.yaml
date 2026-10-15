@@ -1,0 +1,15 @@
+---
+security:
+  - |
+    Closed an additional remote code execution vector in the deserialization control-plane
+    hardening: the pipeline loading entry points (``Pipeline.loads`` / ``Pipeline.load`` /
+    ``Pipeline.from_dict``, which accept ``unsafe=True``) and the execute primitives
+    (``Pipeline.run`` / ``run_async`` / ``run_async_generator`` / ``stream``) were still resolvable
+    from the allowlisted ``haystack`` namespace. Bound as a ``custom_filters`` entry on an
+    ``OutputAdapter`` or ``ConditionalRouter`` (which bypass the Jinja sandbox),
+    ``Pipeline.loads(..., unsafe=True)`` let a pipeline loaded in default safe mode load a nested
+    pipeline whose own filters (``allow_deserialization_module``, ``deserialize_callable``) bind
+    under the nested unsafe context, disarming the process-wide allowlist with ``"*"`` and invoking
+    ``os.system``. All of these entry points are now marked as deserializer-internal, so they can
+    never be produced by deserializing untrusted data. ``unsafe=True`` still bypasses the check by
+    design; there are no public API changes.

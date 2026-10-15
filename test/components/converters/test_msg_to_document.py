@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack import Document
 from haystack.components.converters.msg import MSGToDocument
 from haystack.dataclasses import ByteStream
 
@@ -26,13 +27,18 @@ class TestMSGToDocument:
         paths = [test_files_path / "msg" / "sample.msg"]
         result = converter.run(sources=paths, meta={"date_added": "2021-09-01T00:00:00"})
         assert len(result["documents"]) == 1
-        assert result["documents"][0].content.startswith('From: "Sebastian Lee"')
+        document = result["documents"][0]
+        assert isinstance(document, Document)
+        assert document.content is not None
+        assert document.content.startswith('From: "Sebastian Lee"')
         assert result["documents"][0].meta == {
             "date_added": "2021-09-01T00:00:00",
             "file_path": str(test_files_path / "msg" / "sample.msg"),
         }
         assert len(result["attachments"]) == 1
-        assert result["attachments"][0].mime_type == "application/pdf"
+        attachment = result["attachments"][0]
+        assert isinstance(attachment, ByteStream)
+        assert attachment.mime_type == "application/pdf"
         assert result["attachments"][0].meta == {
             "date_added": "2021-09-01T00:00:00",
             "parent_file_path": str(test_files_path / "msg" / "sample.msg"),

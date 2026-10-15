@@ -100,7 +100,7 @@ messages and tool schemas, as well as supported non-text content such as images 
 from haystack.dataclasses import ChatMessage
 from haystack.token_counters import OpenAITokenCounter
 
-counter = OpenAITokenCounter("gpt-5-mini")
+counter = OpenAITokenCounter("gpt-5.6-luna")
 messages = [ChatMessage.from_user("Hello, how are you?")]
 token_count = counter.count(messages)
 print(f"Token count: {token_count}")

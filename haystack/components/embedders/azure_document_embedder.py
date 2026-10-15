@@ -40,7 +40,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",
-        azure_deployment: str = "text-embedding-ada-002",
+        azure_deployment: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -67,7 +67,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+            The name of the model deployed on Azure. The default is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only supported in text-embedding-3
             and later models.
@@ -170,8 +170,12 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         Initializes the synchronous AzureOpenAI client.
         """
         if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = AzureOpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
@@ -179,8 +183,12 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         Initializes the asynchronous AzureOpenAI client on the serving event loop.
         """
         if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncAzureOpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     def close(self) -> None:

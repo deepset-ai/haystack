@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Harden callable deserialization by checking the real module of every object traversed in a
+    dotted callable path. This prevents an allowlisted module from exposing an object defined in an
+    unallowlisted module that leads back to an otherwise allowlisted final callable.

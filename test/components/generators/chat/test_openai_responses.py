@@ -104,11 +104,6 @@ class RecordingCallback:
 
 
 class TestInitialization:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert OpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS == {
-            "max_output_tokens": "max_output_tokens"
-        }
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIResponsesChatGenerator.SUPPORTED_MODELS
@@ -361,6 +356,30 @@ class TestSerDe:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
+    def test_from_dict_with_component_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component_tool = ComponentTool(
+            name="message_extractor", description="Extracts messages", component=MessageExtractor()
+        )
+        generator = OpenAIResponsesChatGenerator(tools=[component_tool])
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools is not None
+        assert isinstance(deserialized_generator.tools[0], ComponentTool)
+        assert deserialized_generator.tools[0].name == "message_extractor"
+
+    def test_from_dict_with_raw_openai_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        raw_tools: list[dict[str, Any]] = [{"type": "function", "name": "custom_func", "parameters": {}}]
+        generator = OpenAIResponsesChatGenerator(tools=raw_tools)
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools == raw_tools
+
 
 @pytest.fixture
 def mock_openai_clients(monkeypatch):
@@ -416,67 +435,6 @@ class TestComponentLifecycle:
         generator = OpenAIResponsesChatGenerator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
-
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = OpenAIResponsesChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIResponsesChatGenerator()
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
-    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
-        # must not index ``tools[0]`` unguarded.
-        generator = OpenAIResponsesChatGenerator(tools=[])
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
-    def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIResponsesChatGenerator(
-            tools=[
-                {"type": "web_search_preview"},
-                {
-                    "type": "mcp",
-                    "server_label": "dmcp",
-                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
-                    "server_url": "https://dmcp-server.deno.dev/sse",
-                    "require_approval": "never",
-                },
-            ]
-        )
-        generator.warm_up()
-        assert generator._tools_warmed_up
 
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 
@@ -600,6 +558,24 @@ class TestRun:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
+
+    def test_run_with_empty_tools_override(self, tools: list[Tool], openai_mock_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools[:1])
+        component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
+
+        assert "tools" not in openai_mock_responses.call_args.kwargs
+
+    def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        component.run([ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9})
+
+        kwargs = openai_mock_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
 
     def test_run_with_flattened_generation_kwargs(
         self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
@@ -758,7 +734,9 @@ class TestRun:
 class TestIntegration:
     def test_live_run(self) -> None:
 
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )
@@ -1220,6 +1198,19 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
+
+    async def test_run_async_with_generation_kwargs(self, openai_mock_async_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        await component.run_async(
+            [ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9}
+        )
+
+        kwargs = openai_mock_async_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(

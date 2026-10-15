@@ -1,0 +1,224 @@
+---
+title: "Tool Result Offloading"
+id: tool-result-offloading
+slug: "/tool-result-offloading"
+description: "Tool result offloading writes large tool results to a store and replaces them in the conversation with a compact pointer, keeping the Agent's context window small."
+---
+
+# Tool Result Offloading
+
+Tool result offloading writes selected tool results to a store and replaces them in the conversation with a compact pointer — a reference plus a short preview — so the next LLM call sees a reference instead of the full result.
+This keeps the context window small when tools return large outputs (web pages, file contents, query results), and it is a step towards letting an Agent operate on offloaded results with follow-up tools, such as a file-reading tool that opens the referenced files.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on**       | The [`Agent`](./agent.mdx) component, as a `ToolResultOffloadHook` registered under the `after_tool` [hook point](./hooks.mdx) |
+| **Key classes**         | `ToolResultOffloadHook`, `FileSystemToolResultStore`, `AlwaysOffload`, `NeverOffload`, `OffloadOverChars` |
+| **Import path**         | `haystack.hooks.tool_result_offloading` |
+| **API reference**       | [Hooks](/reference/hooks-api) |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/tool_result_offloading/ |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+Tool result offloading is one application of the Agent's general [hooks](./hooks.mdx) mechanism: a `ToolResultOffloadHook` registered under the `after_tool` hook point runs after each step's tools execute and rewrites the freshly produced tool-result messages in the Agent's [`State`](./state.mdx). It only considers the current step's results; earlier conversation history is left untouched.
+
+The system is composed of these layers:
+
+- **`ToolResultOffloadHook`** - the `after_tool` hook that applies your offload strategies to fresh tool results. Its `offload_strategies` mapping accepts a single tool name, a tuple of tool names, or the wildcard `"*"` that applies to any tool without a more specific entry.
+- **Policy** - decides *whether* a given result is offloaded. Built-in policies: `AlwaysOffload`, `NeverOffload`, `OffloadOverChars`.
+- **Store** - decides *where* the full result lives. The built-in `FileSystemToolResultStore` writes results to the local file system.
+
+When a result is offloaded, the hook writes the full text to the store and rebuilds the message with a one-line pointer in its place:
+
+```
+Tool result offloaded to '/abs/path/tool_results/2_search_call-123.txt' (18234 characters). Preview: Fusion startups reported...
+```
+
+The pointer carries the store reference, the original length, and a preview of the first `preview_chars` characters (200 by default, configurable on the hook), so the model knows roughly what was offloaded and where to find it.
+
+## Usage
+
+### Basic setup
+
+The example below offloads any tool result longer than 4,000 characters to files under a local `tool_results` directory:
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.tool_result_offloading import (
+    FileSystemToolResultStore,
+    OffloadOverChars,
+    ToolResultOffloadHook,
+)
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web and return the (potentially large) results."""
+    # Placeholder: would call a real search API
+    return f"... large result for {query} ..."
+
+
+offload_hook = ToolResultOffloadHook(
+    store=FileSystemToolResultStore(root="tool_results"),
+    offload_strategies={"*": OffloadOverChars(4000)},
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search],
+    hooks={"after_tool": [offload_hook]},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Summarize today's tech news")])
+```
+
+### Configuring what gets offloaded per tool
+
+Each key in `offload_strategies` may be a single tool name, a tuple of tool names sharing one policy, or the wildcard `"*"`. More specific keys win over `"*"`, and a tool with no matching key (and no `"*"`) is never offloaded:
+
+```python
+from haystack.hooks.tool_result_offloading import (
+    AlwaysOffload,
+    FileSystemToolResultStore,
+    NeverOffload,
+    OffloadOverChars,
+    ToolResultOffloadHook,
+)
+
+offload_hook = ToolResultOffloadHook(
+    store=FileSystemToolResultStore(root="tool_results"),
+    offload_strategies={
+        "web_search": AlwaysOffload(),  # force offload
+        "get_time": NeverOffload(),  # opt out of the wildcard default
+        ("read_file", "list_dir"): OffloadOverChars(4000),  # tuple key: shared policy
+        "*": OffloadOverChars(8000),  # default for any unlisted tool
+    },
+)
+```
+
+### What is offloaded
+
+The hook only offloads **successful, text** tool results:
+
+- Error results — including rejections produced by a `before_tool` [Human-in-the-Loop](./human-in-the-loop.mdx) hook — are always left in context, so the model sees what went wrong.
+- Non-text results (image or file content) are left in context; supporting only text is a deliberate choice for now. A warning is logged when a non-text result has a matching offload policy.
+- Each result is offloaded at most once, even though the hook runs on every tool step. This also means two offload hooks registered under `after_tool` won't offload each other's pointers.
+
+## Policies
+
+Policies control *whether* a result is offloaded.
+
+| Policy | Behavior |
+| --- | --- |
+| `AlwaysOffload` | Offload every result of the tool it is assigned to |
+| `NeverOffload` | Never offload - keep the full result in context (useful to opt a tool out of a wildcard default) |
+| `OffloadOverChars(threshold)` | Offload only when the result is longer than `threshold` characters |
+
+### Custom policy
+
+Subclass the `OffloadPolicy` protocol from `haystack.hooks.tool_result_offloading` for custom conditions. A policy needs a `should_offload` method, which receives the tool name, the result text, and the Agent's live [`State`](./state.mdx), so it can also decide based on run context:
+
+```python
+from haystack.components.agents.state import State
+from haystack.hooks.tool_result_offloading import OffloadPolicy
+
+
+class OffloadLateSteps(OffloadPolicy):
+    """Offload results only once the run is several steps deep and context pressure builds up."""
+
+    def should_offload(self, tool_name: str, result: str, state: State) -> bool:
+        return state.data.get("step_count", 0) >= 3 and len(result) > 1000
+```
+
+The protocol provides default `to_dict` / `from_dict` implementations, so a policy like this one, whose constructor takes no arguments, is serializable as-is. A policy with constructor arguments should implement both methods itself, following `OffloadOverChars` as an example.
+
+## Stores
+
+### `FileSystemToolResultStore`
+
+`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
+
+### Custom store
+
+Subclass the `ToolResultStore` protocol to target other backends, such as object storage or an isolated sandbox file system. A store needs two methods: `write(key=..., content=...)` persists the content and returns an opaque reference string, and `read(reference)` resolves that reference back to the content:
+
+```python
+from haystack.hooks.tool_result_offloading import ToolResultStore
+
+
+class InMemoryToolResultStore(ToolResultStore):
+    """Keep offloaded results in a dict - useful for tests."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, str] = {}
+
+    def write(self, *, key: str, content: str) -> str:
+        self._data[key] = content
+        return key
+
+    def read(self, reference: str) -> str:
+        return self._data[reference]
+```
+
+Like `OffloadPolicy`, the protocol provides default `to_dict` / `from_dict` implementations covering stores whose constructor takes no arguments; implement both methods for stores with constructor arguments.
+
+### Per-run stores via `hook_context`
+
+The constructor `store` is shared by every run - fine for single-user or local use. In a multi-user server, give each run its own isolated store (for example, a per-session directory) by passing it in the Agent's generic `hook_context` run argument under the key `RESULT_STORE_CONTEXT_KEY`. It overrides the constructor store for that run:
+
+```python
+from haystack.hooks.tool_result_offloading import (
+    RESULT_STORE_CONTEXT_KEY,
+    FileSystemToolResultStore,
+)
+
+per_request_store = FileSystemToolResultStore(root=f"tool_results/{session_id}")
+result = agent.run(
+    messages=[ChatMessage.from_user("...")],
+    hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store},
+)
+```
+
+Isolating the store per run keeps concurrent users from colliding on store keys or reading each other's offloaded results — especially important when a file-reading tool is scoped to the store. The hook itself keeps no mutable state, so a single instance is safe to share across concurrent runs.
+
+## Letting the Agent read offloaded results back
+
+The pointer left in the conversation tells the model where the full result lives, but the model can only act on it if the Agent has a tool that can read from the store. With `FileSystemToolResultStore`, that can be a simple file-reading tool:
+
+```python
+from typing import Annotated
+
+from haystack.tools import tool
+
+
+@tool
+def read_offloaded_result(
+    path: Annotated[str, "Absolute path of an offloaded tool result"],
+) -> str:
+    """Read back the full content of an offloaded tool result."""
+    return FileSystemToolResultStore(root="tool_results").read(path)
+```
+
+With this tool available, the Agent can work with a compact conversation and selectively re-read only the offloaded results it actually needs — instead of carrying every full result in context on every LLM call.
+
+## Serialization
+
+`ToolResultOffloadHook` implements `to_dict` / `from_dict`, so an Agent using it can be serialized as long as the configured store and policies are serializable too. The built-in store and policies all are; for custom ones, see the notes in [Policies](#custom-policy) and [Stores](#custom-store) above.
+
+## Additional References
+
+📖 Related docs:
+
+- [Hooks](./hooks.mdx) — the general mechanism behind this feature, including the `after_tool` hook point
+- [Human in the Loop](./human-in-the-loop.mdx) — another ready-made hook, intercepting tool calls for human review
+- [State](./state.mdx) — the live run state hooks and policies receive

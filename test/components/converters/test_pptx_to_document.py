@@ -4,6 +4,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
@@ -19,7 +20,8 @@ class TestPPTXToDocument:
         bytestream = ByteStream.from_file_path(test_files_path / "pptx" / "sample_pptx.pptx")
         bytestream.meta["file_path"] = str(test_files_path / "pptx" / "sample_pptx.pptx")
         bytestream.meta["key"] = "value"
-        files = [str(test_files_path / "pptx" / "sample_pptx.pptx"), bytestream]
+        first_path = str(test_files_path / "pptx" / "sample_pptx.pptx")
+        files: list[str | Path | ByteStream] = [first_path, bytestream]
         converter = PPTXToDocument()
         output = converter.run(sources=files)
         docs = output["documents"]
@@ -33,11 +35,11 @@ class TestPPTXToDocument:
             "Sample Title Slide\nJane Doe\fTitle of First Slide\nThis is a bullet point\nThis is another bullet point"
             in docs[0].content
         )
-        assert docs[0].meta["file_path"] == os.path.basename(files[0])
+        assert docs[0].meta["file_path"] == os.path.basename(first_path)
         assert docs[1].meta == {"file_path": os.path.basename(bytestream.meta["file_path"]), "key": "value"}
 
     def test_run_error_non_existent_file(self, caplog):
-        sources = ["non_existing_file.pptx"]
+        sources: list[str | Path | ByteStream] = ["non_existing_file.pptx"]
         converter = PPTXToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
@@ -45,7 +47,7 @@ class TestPPTXToDocument:
             assert results["documents"] == []
 
     def test_run_error_wrong_file_type(self, caplog, test_files_path):
-        sources = [str(test_files_path / "txt" / "doc_1.txt")]
+        sources: list[str | Path | ByteStream] = [str(test_files_path / "txt" / "doc_1.txt")]
         converter = PPTXToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
@@ -99,7 +101,7 @@ class TestPPTXToDocument:
 
     def test_link_format_invalid(self):
         with pytest.raises(ValueError, match="Unknown link format"):
-            PPTXToDocument(link_format="invalid")
+            PPTXToDocument(link_format="invalid")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
     def test_link_extraction(self, test_files_path, link_format):

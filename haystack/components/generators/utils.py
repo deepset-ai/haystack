@@ -183,16 +183,23 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             usage = chunk_usage
             break
 
+    first_chunk_meta = chunks[0].meta if chunks else {}
+    last_chunk_meta = chunks[-1].meta if chunks else {}
+
     meta = {
-        "model": chunks[-1].meta.get("model"),
+        "model": last_chunk_meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
-        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
+        "completion_start_time": first_chunk_meta.get("received_at"),  # first chunk received
         "usage": usage,
     }
 
     if logprobs:
         meta["logprobs"] = logprobs
+
+    refusal = "".join(chunk.meta.get("refusal", "") for chunk in chunks)
+    if refusal:
+        meta["refusal"] = refusal
 
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
 

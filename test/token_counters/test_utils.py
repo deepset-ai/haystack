@@ -75,6 +75,17 @@ class TestRenderedConversation:
     def test_empty_conversation(self):
         assert _rendered_conversation([]) == ""
 
+    def test_a_custom_placeholder_reaches_nested_tool_results(self):
+        messages = [
+            ChatMessage.from_user(content_parts=["look:", IMAGE]),
+            ChatMessage.from_tool(
+                tool_result=[TextContent(text="screenshot: "), IMAGE],
+                origin=ToolCall(tool_name="browse", arguments={}, id="c1"),
+            ),
+        ]
+        rendered = _rendered_conversation(messages, placeholder=lambda content: "<redacted>")
+        assert rendered == "[user] look:\n[user] <redacted>\n[tool:browse] screenshot: <redacted>"
+
 
 @tool
 def search(query: Annotated[str, "the search query"]) -> str:

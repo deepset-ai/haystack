@@ -155,6 +155,7 @@ Convert office files to the specified output format using LibreOffice.
 - <code>ValueError</code> – If a source's file type is not in :attr:`SUPPORTED_TYPES`,
   or if `output_file_type` is not a valid conversion target for it,
   or if `output_file_type` has not been provided anywhere.
+- <code>subprocess.CalledProcessError</code> – If soffice exits with a non-zero status.
 
 #### run_async
 
@@ -192,3 +193,4 @@ This is the asynchronous version of the `run` method with the same parameters an
 - <code>ValueError</code> – If a source's file type is not in :attr:`SUPPORTED_TYPES`,
   or if `output_file_type` is not a valid conversion target for it,
   or if `output_file_type` has not been provided anywhere.
+- <code>subprocess.CalledProcessError</code> – If soffice exits with a non-zero status.

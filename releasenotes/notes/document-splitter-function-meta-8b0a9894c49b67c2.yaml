@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``DocumentSplitter`` now adds ``split_id``, ``split_idx_start`` and ``page_number`` to the metadata of the chunks it
+    creates when ``split_by="function"``, like it already did for all other split modes. Without this metadata,
+    components that rely on it, such as ``SentenceWindowRetriever``, could not be used with chunks produced by a
+    custom splitting function. Empty chunks returned by the splitting function are now also skipped, unless
+    ``skip_empty_documents=False``.

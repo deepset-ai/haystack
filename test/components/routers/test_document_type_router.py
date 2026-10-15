@@ -35,6 +35,18 @@ class TestDocumentTypeRouter:
         ):
             DocumentTypeRouter(mime_types=["text/plain"])
 
+    def test_init_rejects_reserved_output_name(self):
+        with pytest.raises(ValueError, match="'unclassified'.*reserved"):
+            DocumentTypeRouter(mime_types=["unclassified", "text/plain"], mime_type_meta_field="mime_type")
+
+    def test_from_dict_rejects_reserved_output_name(self):
+        data = component_to_dict(
+            DocumentTypeRouter(mime_types=["text/plain"], mime_type_meta_field="mime_type"), "router"
+        )
+        data["init_parameters"]["mime_types"] = ["unclassified", "text/plain"]
+        with pytest.raises(ValueError, match="'unclassified'.*reserved"):
+            component_from_dict(DocumentTypeRouter, data, "router")
+
     def test_init_with_invalid_regex(self):
         with pytest.raises(ValueError, match="Invalid regex pattern"):
             DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=["[Invalid-Regex"])

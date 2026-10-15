@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Preserve original document scores in ``DocumentJoiner`` distribution-based rank
+    fusion when an input list contains a single document or has zero score variance.

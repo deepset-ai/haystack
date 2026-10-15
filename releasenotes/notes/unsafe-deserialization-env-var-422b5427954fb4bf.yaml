@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Added the ``HAYSTACK_UNSAFE_DESERIALIZATION`` environment variable as a process-wide equivalent of
+    loading with ``unsafe=True``. When set to a truthy value (``1`` or ``true``), every
+    ``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict`` call skips all deserialization safety
+    checks — the module allowlist, the builtin/import-primitive and control-plane denylists, the
+    object-internals traversal guard, and the refusal to honor a component's own ``unsafe: true`` flag.
+    This is intended for deployments that only ever load fully trusted pipelines and cannot pass
+    ``unsafe=True`` at every call site. A warning is logged the first time it takes effect. Only enable
+    it when every pipeline the process loads is trusted: a single untrusted pipeline then leads to
+    arbitrary code execution.
+
+    The switch is not limited to pipeline loading: it disables the same checks for every
+    deserialization path in the process, including ones that take no ``unsafe`` argument of their own
+    — ``Tool.from_dict``, ``State.from_dict`` (agent snapshot resume), and the ``ConditionalRouter``
+    and ``OutputAdapter`` Jinja sandbox flags. A deployment that loads trusted pipelines at startup
+    but accepts serialized tools or agent state at request time is therefore exposed on the request
+    path as well, not only at load time.
+
+    The variable is read once, on the first deserialization in the process, and the result is then
+    frozen for the process lifetime: writes to it afterwards are ignored, in either direction. Set it
+    before the first pipeline is loaded. Freezing keeps the safety mode of a process from changing
+    under a caller's feet and, because the first read happens before any deserialized data can run,
+    stops a hostile pipeline from switching the checks off while it is being loaded.

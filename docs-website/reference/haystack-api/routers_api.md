@@ -431,7 +431,7 @@ Initialize the DocumentTypeRouter component.
 **Parameters:**
 
 - **mime_types** (<code>list\[str\]</code>) – A list of MIME types or regex patterns to classify the input documents.
-  (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+  (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`). `"unclassified"` is reserved.
 - **mime_type_meta_field** (<code>str | None</code>) – Optional name of the metadata field that holds the MIME type.
 - **file_path_meta_field** (<code>str | None</code>) – Optional name of the metadata field that holds the file path. Used to infer the MIME type if
   `mime_type_meta_field` is not provided or missing in a document.
@@ -441,8 +441,8 @@ Initialize the DocumentTypeRouter component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `mime_types` is empty or if both `mime_type_meta_field` and `file_path_meta_field` are
-  not provided.
+- <code>ValueError</code> – If `mime_types` is empty, uses the reserved name `"unclassified"`, or if both
+  `mime_type_meta_field` and `file_path_meta_field` are not provided.
 
 #### run
 
@@ -518,11 +518,17 @@ Initialize the FileTypeRouter component.
 
 - **mime_types** (<code>list\[str\]</code>) – A list of MIME types or regex patterns to classify the input files or byte streams.
   (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+  `"unclassified"` and `"failed"` are reserved output names and cannot be used here.
 - **additional_mimetypes** (<code>dict\[str, str\] | None</code>) – A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
   packages from being unclassified.
   (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
 - **raise_on_failure** (<code>bool</code>) – If True, raises FileNotFoundError when a file path doesn't exist.
   If False (default), only emits a warning when a file path doesn't exist.
+
+**Raises:**
+
+- <code>ValueError</code> – If `mime_types` is empty, contains an invalid regex, or uses the reserved names
+  `"unclassified"` or `"failed"`.
 
 #### to_dict
 
@@ -640,7 +646,7 @@ Initialize the LLMMessagesRouter component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator instance which represents the LLM.
 - **output_names** (<code>list\[str\]</code>) – A list of output connection names. These can be used to connect the router to other
-  components.
+  components. `"chat_generator_text"` and `"unmatched"` are reserved output names and cannot be used here.
 - **output_patterns** (<code>list\[str\]</code>) – A list of regular expressions to be matched against the output of the LLM. Each pattern
   corresponds to an output name. Patterns are evaluated in order.
   When using moderation models, refer to the model card to understand the expected outputs.
@@ -649,7 +655,8 @@ Initialize the LLMMessagesRouter component.
 
 **Raises:**
 
-- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length.
+- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length, or if
+  output_names uses the reserved names `"chat_generator_text"` or `"unmatched"`.
 
 #### warm_up
 
@@ -824,7 +831,7 @@ Initializes the MetadataRouter component.
 **Parameters:**
 
 - **rules** (<code>dict\[str, dict\]</code>) – A dictionary defining how to route documents or byte streams to output connections based on their
-  metadata. Keys are output connection names, and values are dictionaries of
+  metadata. Keys are output connection names (`"unmatched"` is reserved), and values are dictionaries of
   [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
   For example:
 
@@ -864,6 +871,10 @@ Initializes the MetadataRouter component.
 - **output_type** (<code>type</code>) – The type of the output produced. Lists of Documents or ByteStreams can be specified.
 - **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other.
   If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
+
+**Raises:**
+
+- <code>ValueError</code> – If `rules` contains the reserved output name `"unmatched"` or an invalid filter.
 
 #### run
 

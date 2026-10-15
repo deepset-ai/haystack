@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -28,7 +29,12 @@ from haystack.components.agents.utils import (
 )
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.hooks.protocol import (
@@ -51,13 +57,18 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
+    ComponentTool,
+    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
+    close_tools,
+    close_tools_async,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
     warm_up_tools,
+    warm_up_tools_async,
 )
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
@@ -65,9 +76,11 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
-# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
-# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
+# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, an
+# incomplete model generation, or the `max_agent_steps` budget running out.
 _EXIT_REASON_TEXT = "text"
+_EXIT_REASON_LENGTH = "length"
+_EXIT_REASON_CONTENT_FILTER = "content_filter"
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
 
 # Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
@@ -82,6 +95,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
 # be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+# - `stop_run`: set by a hook to stop the run, read before each LLM call and used as the `exit_reason`.
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
@@ -89,6 +103,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 #   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
+    "stop_run": {"type": str, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
     "context_tokens": {"type": int, "handler": replace_values},
@@ -147,17 +162,36 @@ def _consume_continue_run(state: State) -> bool:
     return should_continue
 
 
-def _is_text_exit(messages: list[ChatMessage]) -> bool:
+def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     """
-    Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
+    Return the exit reason for a terminal assistant reply without tool calls.
 
-    This is the "no tool call" exit for the model's own replies. The last message must be a non-empty assistant text
-    message, so an invalid response (e.g. one with no tool calls and no text) does not trigger an exit.
+    Incomplete generation reasons take precedence over text so callers can distinguish a partial response from a
+    complete answer. An empty response without a recognized terminal reason does not trigger an exit, preserving the
+    Agent's recovery behavior for malformed tool calls that a Chat Generator discarded.
     """
-    if not messages:
-        return False
+    # If the messages list is empty or the last message has tool calls, don't exit.
+    if not messages or any(message.tool_call for message in messages):
+        return None
+
     last = messages[-1]
-    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
+
+    # If the last message is not from the assistant, don't exit.
+    if not last.is_from(ChatRole.ASSISTANT):
+        return None
+
+    # If the finish reason on the last message is length or content_filter, exit with that reason.
+    if last.meta.get("finish_reason") == _EXIT_REASON_LENGTH:
+        return _EXIT_REASON_LENGTH
+    if last.meta.get("finish_reason") == _EXIT_REASON_CONTENT_FILTER:
+        return _EXIT_REASON_CONTENT_FILTER
+
+    # If the last message has text, exit with the text reason.
+    if last.text:
+        return _EXIT_REASON_TEXT
+
+    # If we reached here no valid exit reason was found, so don't exit.
+    return None
 
 
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
@@ -174,6 +208,34 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
         return []
     last_message = messages[-1]
     return [last_message] if last_message.tool_calls else []
+
+
+def _get_tool_telemetry_data(tool: Tool) -> dict[str, Any]:
+    """
+    Describe a single tool for telemetry.
+
+    Descriptions are deliberately left out: they are free text that can hold personal or confidential data.
+    """
+    data = {"type": generate_qualified_class_name(type(tool)), "name": tool.name}
+    if isinstance(tool, ComponentTool):
+        data["component"] = generate_qualified_class_name(type(tool._component))
+    return data
+
+
+def _get_tools_telemetry_data(tools: ToolsType) -> dict[str, Any]:
+    """
+    Summarize the tools for telemetry.
+
+    Call it only after the tools are warmed up: flattening iterates the Toolsets, and some of them (e.g.
+    SearchableToolset) warm up on iteration, while others (e.g. MCPToolset) only load their tools in `warm_up()`.
+    """
+    toolsets = [tools] if isinstance(tools, Toolset) else [entry for entry in tools if isinstance(entry, Toolset)]
+    flat_tools = flatten_tools_or_toolsets(tools=tools)
+    return {
+        "count": len(flat_tools),
+        "tools": [_get_tool_telemetry_data(tool) for tool in flat_tools],
+        "toolset_types": dict(Counter(generate_qualified_class_name(type(toolset)) for toolset in toolsets)),
+    }
 
 
 @dataclass(kw_only=True)
@@ -218,7 +280,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.generators.utils import print_streaming_chunk
     from haystack.dataclasses import ChatMessage
     from haystack.tools import tool
@@ -249,7 +311,7 @@ class Agent:
             "You are a helpful assistant. Use the 'search' tool to find information "
             "about a user's question and the 'calculator' tool to perform math."
         ),
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[search, calculator],
         streaming_callback=print_streaming_chunk,
     )
@@ -270,7 +332,7 @@ class Agent:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.tools import tool
     from typing import Annotated
 
@@ -285,7 +347,7 @@ class Agent:
         return f"[Translated '{text}' to {target_language}]"
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[translate],
         system_prompt="You are a helpful translation assistant.",
         user_prompt=\"\"\"{% message role="user"%}
@@ -318,13 +380,13 @@ class Agent:
     - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
       running by setting `state.set("continue_run", True)`.
 
-    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
-    required tool has been called.
+    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running when it
+    stops with a text reply, until it finishes by calling `save_result`.
 
     ```python
     from haystack.components.agents import Agent
     from haystack.components.agents.state import State
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.hooks import hook
     from haystack.tools import tool
@@ -340,14 +402,15 @@ class Agent:
 
     @hook
     def require_save(state: State) -> None:
-        if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
-            state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+        if state.data.get("exit_reason") == "text":
+            state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
             state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=OpenAIResponsesChatGenerator(),
         tools=[save_result],
+        exit_conditions=["save_result"],
         hooks={"on_exit": [require_save]},
     )
     ```
@@ -435,9 +498,12 @@ class Agent:
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
-        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
-        # would iterate and prematurely warm it up at init.
-        if tools is not None and not self._chat_generator_supports_tools:
+        # An empty list carries no tools, so it must not trip this check: `tools` is normalized to `[]` below, and
+        # both `clone()` and `to_dict()` feed that normalized value straight back into `__init__`. This mirrors the
+        # equivalent check in `run()`. Only a list is measured; a Toolset is never tested for truthiness here b/c
+        # that calls __len__, which for SearchableToolset would iterate and prematurely warm it up at init.
+        tools_provided = tools is not None and (not isinstance(tools, list) or len(tools) > 0)
+        if tools_provided and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
@@ -575,7 +641,7 @@ class Agent:
 
     async def warm_up_async(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
-        warm_up_tools(tools=self.tools)
+        await warm_up_tools_async(tools=self.tools)
         await warm_up_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
@@ -583,13 +649,15 @@ class Agent:
             self.chat_generator.warm_up()
 
     def close(self) -> None:
-        """Release the hooks' and the underlying chat generator's resources."""
+        """Release tools, hooks, and chat generator resources."""
+        close_tools(tools=self.tools)
         close_hooks(self.hooks)
         if hasattr(self.chat_generator, "close"):
             self.chat_generator.close()
 
     async def close_async(self) -> None:
-        """Release the hooks' and the underlying chat generator's async resources."""
+        """Release async tools, hooks, and chat generator resources."""
+        await close_tools_async(tools=self.tools)
         await close_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "close_async"):
             await self.chat_generator.close_async()
@@ -606,6 +674,15 @@ class Agent:
         init_params = inspect.signature(type(self).__init__).parameters
         params: dict[str, Any] = {name: getattr(self, name) for name in init_params if name != "self"}
         return type(self)(**{**params, **overrides})
+
+    def _get_telemetry_data(self) -> dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        chat_generator_data: dict[str, Any] = {"type": generate_qualified_class_name(type(self.chat_generator))}
+        if hasattr(self.chat_generator, "_get_telemetry_data"):
+            chat_generator_data.update(self.chat_generator._get_telemetry_data())
+        return {"chat_generator": chat_generator_data, "tools": _get_tools_telemetry_data(self.tools)}
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -694,8 +771,9 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
-        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -743,6 +821,7 @@ class Agent:
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
+        state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
@@ -789,9 +868,6 @@ class Agent:
 
         if isinstance(tools, (Toolset, list)):
             selected = cast(ToolsType, tools)  # mypy can't narrow the Union type from the isinstance checks
-            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
-            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools=selected)
             return _spawn_tools(tools=selected)
 
         raise TypeError(
@@ -814,10 +890,13 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -835,13 +914,22 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+              `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         self.warm_up()
+        # warm up tools passed at runtime
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        warm_up_tools(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -898,9 +986,13 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
+            Tool and Toolset objects passed here are warmed up automatically; the caller is responsible for
+            closing them if they hold resources.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
@@ -918,13 +1010,22 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+              `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+              text), the name of the tool that satisfied a tool exit condition (its result is the last tool message in
+              `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
+              the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
+              meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         await self.warm_up_async()
+        # warm up tools passed at runtime
+        if isinstance(tools, Toolset):
+            tools_to_warm_up: ToolsType = tools
+        else:
+            tools_to_warm_up = [tool for tool in tools or [] if not isinstance(tool, str)]
+        await warm_up_tools_async(tools=tools_to_warm_up)
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -974,6 +1075,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -989,17 +1094,18 @@ class Agent:
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
-            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(messages=llm_messages):
+            # Stop when there are no tools, or the model produced a terminal reply without tool calls.
+            model_exit_reason = _get_model_exit_reason(messages=llm_messages)
+            if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
+                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return self._continue_after_exit_hooks(exe_context=exe_context)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
 
             tool_execution_inputs = {
                 "messages": pending_tool_call_messages,
@@ -1037,6 +1143,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1054,17 +1164,18 @@ class Agent:
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
-            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(messages=llm_messages):
+            # Stop when there are no tools, or the model produced a terminal reply without tool calls.
+            model_exit_reason = _get_model_exit_reason(messages=llm_messages)
+            if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
+                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
 
             tool_execution_inputs = {
                 "messages": pending_tool_call_messages,

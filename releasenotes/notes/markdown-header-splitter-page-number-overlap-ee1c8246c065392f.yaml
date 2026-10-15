@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed incorrect ``page_number`` metadata from ``MarkdownHeaderSplitter`` when secondary splitting
+    uses overlap. Page breaks in overlapping content are no longer counted multiple times, and custom
+    ``page_break_character`` values are respected.

@@ -3,6 +3,7 @@ title: "BranchJoiner"
 id: branchjoiner
 slug: "/branchjoiner"
 description: "Use this component to join different branches of a pipeline into a single output."
+hep_available: true
 ---
 
 import ClickableImage from "@site/src/components/ClickableImage";
@@ -113,10 +114,8 @@ result = pipe.run(
 )
 
 print(json.loads(result["validator"]["validated"][0].text))
-
-# Output:
-# {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
-# 'Superhero', 'age': 23, 'location': 'New York City'}
+# >> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
+# >> 'Superhero', 'age': 23, 'location': 'New York City'}
 ```
 
 <details>

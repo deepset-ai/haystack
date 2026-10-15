@@ -1,0 +1,170 @@
+---
+title: "Mem0 Memory Tools"
+id: mem0memorytools
+slug: "/mem0memorytools"
+description: "Tools that allow Agents to retrieve and store long-term memories with Mem0."
+---
+
+# Mem0 Memory Tools
+
+The Mem0 integration provides two ready-made Tools for Agent memory workflows:
+
+- **`retrieve_memories`** (`Mem0MemoryRetrieverTool`) searches long-term memories, or returns all scoped memories when no query is provided.
+- **`store_memory`** (`Mem0MemoryWriterTool`) stores durable facts, preferences, and context as long-term memories.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `memory_store`: A `Mem0MemoryStore` instance. |
+| **Environment variables** | `MEM0_API_KEY`: Your Mem0 cloud API key. |
+| **Mem0 API docs** | [Search Memories](https://docs.mem0.ai/api-reference/memory/search-memories), [Add Memories](https://docs.mem0.ai/api-reference/memory/add-memories) |
+| **API reference** | [Mem0](/reference/integrations-mem0) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mem0 |
+| **Package name** | `mem0-haystack` |
+
+</div>
+
+## Overview
+
+Use these tools when an [Agent](../../pipeline-components/agents-1/agent.mdx) needs persistent memory across conversations. The retriever tool gives the Agent access to memories stored in Mem0, and the writer tool lets the Agent save new information that should be useful in future runs.
+
+Both tools use a shared `Mem0MemoryStore`. By default, they inject `user_id` from [Agent State](../../pipeline-components/agents-1/state.mdx) through `inputs_from_state`, so one Agent instance can serve multiple users without exposing user IDs to the LLM as tool-call parameters.
+
+`Mem0MemoryRetrieverTool` exposes `query` and `top_k` to the LLM. If the Agent omits `query` or passes `null`, the tool returns all memories in the injected scope. This is useful when the Agent needs to inspect known context before deciding whether a more specific memory search is necessary.
+
+`Mem0MemoryWriterTool` exposes `text` and `infer` to the LLM. The writer tool uses `infer=False` by default so the Agent stores exactly the memory text it chose. Use `infer=True` when you want Mem0 to extract memories from longer text, such as a conversation transcript.
+
+### Parameters
+
+`Mem0MemoryRetrieverTool`:
+
+- `memory_store` is _mandatory_. It is the `Mem0MemoryStore` instance to query.
+- `top_k` is _optional_ and defaults to `5`. It sets the default maximum number of memories returned for query searches.
+- `name` is _optional_ and defaults to `"retrieve_memories"`.
+- `description` is _optional_ and describes the tool to the LLM.
+- `parameters` is _optional_ and lets you override the JSON schema exposed to the LLM.
+- `inputs_from_state` is _optional_ and defaults to `{"user_id": "user_id"}`.
+
+`Mem0MemoryWriterTool`:
+
+- `memory_store` is _mandatory_. It is the `Mem0MemoryStore` instance to write to.
+- `name` is _optional_ and defaults to `"store_memory"`.
+- `description` is _optional_ and describes the tool to the LLM.
+- `parameters` is _optional_ and lets you override the JSON schema exposed to the LLM.
+- `inputs_from_state` is _optional_ and defaults to `{"user_id": "user_id"}`.
+
+To pass more Mem0 entity IDs at runtime, add the fields to the Agent's `state_schema` and map those State keys to the tool parameters with `inputs_from_state`. For example, `{"user_id": "user_id", "session_id": "run_id"}` passes `state["session_id"]` to the tool's `run_id` parameter.
+
+At least one Mem0 scope must be available when retrieving or storing memories. Use `user_id` for the common per-user case, or add `run_id`, `agent_id`, or `app_id` when your application needs a narrower scope.
+
+## Usage
+
+Install the Mem0 integration:
+
+```shell
+pip install mem0-haystack
+```
+
+Set your Mem0 API key:
+
+```shell
+export MEM0_API_KEY="your-mem0-api-key"
+```
+
+### With an Agent
+
+You can use both tools with an Agent to read memories at the beginning of a turn and write new durable memories before the final answer.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+from haystack_integrations.tools.mem0 import (
+    Mem0MemoryRetrieverTool,
+    Mem0MemoryWriterTool,
+)
+
+store = Mem0MemoryStore()
+
+retrieve_memories = Mem0MemoryRetrieverTool(memory_store=store, top_k=10)
+store_memory = Mem0MemoryWriterTool(memory_store=store)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4"),
+    tools=[retrieve_memories, store_memory],
+    system_prompt="""You are a helpful assistant with long-term memory.
+
+At the beginning of each turn, call retrieve_memories without a query to inspect known memories.
+Use store_memory only for new durable user-specific facts, preferences, or project context.
+Before storing, compare the proposed memory with retrieved memories and avoid duplicates.
+Do not store transient requests that are only useful in the current conversation.
+""",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"user_id": {"type": str}},
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "My name is Alice. Please remember that I prefer concise Python examples.",
+        ),
+    ],
+    user_id="alice",
+)
+```
+
+### Pass more IDs through State
+
+Mem0 supports scoping memories with `user_id`, `run_id`, `agent_id`, and `app_id`. The tools expose only `user_id` by default, but you can inject more IDs through Agent State without adding them to the LLM-facing parameter schema.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+from haystack_integrations.tools.mem0 import (
+    Mem0MemoryRetrieverTool,
+    Mem0MemoryWriterTool,
+)
+
+store = Mem0MemoryStore()
+
+inputs_from_state = {
+    "user_id": "user_id",
+    # Map the Agent State key "conversation_id" to the tool's "run_id" parameter.
+    "conversation_id": "run_id",
+}
+
+retrieve_memories = Mem0MemoryRetrieverTool(
+    memory_store=store,
+    inputs_from_state=inputs_from_state,
+)
+store_memory = Mem0MemoryWriterTool(
+    memory_store=store,
+    inputs_from_state=inputs_from_state,
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4"),
+    tools=[retrieve_memories, store_memory],
+    state_schema={
+        "user_id": {"type": str},
+        "conversation_id": {"type": str},
+    },
+    streaming_callback=print_streaming_chunk,
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Remember that this conversation is about the docs assistant prototype.",
+        ),
+    ],
+    user_id="alice",
+    conversation_id="docs-assistant-prototype",
+)
+```

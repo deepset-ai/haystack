@@ -52,8 +52,13 @@ Creates an instance of TopPSampler.
   A value of 1.0 indicates no filtering (all documents are retained).
 - **score_field** (<code>str | None</code>) – Name of the field in each document's metadata that contains the score. If None, the default
   document score field is used.
-- **min_top_k** (<code>int | None</code>) – If specified, the minimum number of documents to return. If the top_p selects
-  fewer documents, additional ones with the next highest scores are added to the selection.
+- **min_top_k** (<code>int | None</code>) – Minimum number of scored documents to return. If top-p sampling selects fewer documents,
+  documents with the next-highest scores are added. Must be a non-negative integer or None.
+  If greater than the number of scored documents, all scored documents are returned.
+
+**Raises:**
+
+- <code>ValueError</code> – If top_p is not within [0, 1] or min_top_k is not a non-negative integer or None.
 
 #### run
 

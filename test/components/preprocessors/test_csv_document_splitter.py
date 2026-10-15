@@ -7,6 +7,7 @@ from io import StringIO
 
 import pytest
 from pandas import read_csv
+from pytest import LogCaptureFixture
 
 from haystack import Document
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
@@ -62,14 +63,14 @@ class TestFindSplitIndices:
     def test_find_split_indices_row_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_rows: str
     ) -> None:
-        df = read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3)]
 
     def test_find_split_indices_row_two_tables_with_empty_row(
         self, splitter: CSVDocumentSplitter, three_tables_sep_by_empty_rows: str
     ) -> None:
-        df = read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(3, 4)]
 
@@ -84,14 +85,31 @@ X,Y,Z
 ,,
 P,Q,R
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3), (6, 7)]
+
+    def test_find_split_indices_returns_positional_indices_for_non_zero_index(
+        self, splitter: CSVDocumentSplitter
+    ) -> None:
+        csv_content = """A,B,C
+1,2,3
+4,5,6
+P,Q,R
+,,
+,,
+X,Y,Z
+"""
+        df = read_csv(StringIO(csv_content), header=None, dtype=object).iloc[3:]
+
+        result = splitter._find_split_indices(df, split_threshold=2, axis="row")
+
+        assert result == [(1, 2)]
 
     def test_find_split_indices_column_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str
     ) -> None:
-        df = read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=1, axis="column")
         assert result == [(2, 3)]
 
@@ -100,7 +118,7 @@ P,Q,R
 1,,2,,,7,8
 3,,4,,,9,10
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(3, 4)]
 
@@ -109,7 +127,7 @@ P,Q,R
 1,2,,,7,8,,,11,12
 3,4,,,9,10,,,13,14
 """
-        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(2, 3), (6, 7)]
 
@@ -210,6 +228,32 @@ P,Q,,,,
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
+
+    def test_recursive_split_with_nested_row_and_column_blocks(self) -> None:
+        csv_content = """A,B,C,D,E,F
+1,2,3,4,5,6
+,,,,,
+P,Q,,,X,Y
+1,2,,,7,8
+,,,,M,N
+,,,,9,10
+R,S,,,,
+3,4,,,,
+"""
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=1)
+        doc = Document(content=csv_content, id="test_id")
+
+        result = splitter.run([doc])["documents"]
+
+        assert [(table.content, table.meta) for table in result] == [
+            (
+                "A,B,C,D,E,F\n1,2,3,4,5,6\n",
+                {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            ),
+            ("P,Q\n1,2\n", {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 0, "split_id": 1}),
+            ("X,Y\n7,8\nM,N\n9,10\n", {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 4, "split_id": 2}),
+            ("R,S\n3,4\n", {"source_id": "test_id", "row_idx_start": 7, "col_idx_start": 0, "split_id": 3}),
+        ]
 
     def test_csv_with_blank_lines(self, splitter: CSVDocumentSplitter) -> None:
         csv_data = """ID,LeftVal,,,RightVal,Extra
@@ -343,7 +387,7 @@ E,F,,,G,H
         assert result[1].content == "1,2,3\n"
         assert result[2].content == "X,Y,Z\n"
 
-    def test_split_by_row_with_empty_rows(self, caplog) -> None:
+    def test_split_by_row_with_empty_rows(self, caplog: LogCaptureFixture) -> None:
         splitter = CSVDocumentSplitter(split_mode="row-wise")
         doc = Document(content="")
         with caplog.at_level(logging.ERROR):
@@ -353,4 +397,4 @@ E,F,,,G,H
 
     def test_incorrect_split_mode(self) -> None:
         with pytest.raises(ValueError, match="not recognized"):
-            CSVDocumentSplitter(split_mode="incorrect_mode")
+            CSVDocumentSplitter(split_mode="incorrect_mode")  # type: ignore[arg-type]

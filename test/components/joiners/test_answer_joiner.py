@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Document
@@ -159,12 +161,14 @@ class TestAnswerJoiner:
         assert [answer.data for answer in result["answers"]] == [None, None]
         assert [answer.score for answer in result["answers"]] == [0.5, None]
 
-    def test_sort_by_score_with_answers_missing_score_attribute(self):
+    def test_sort_by_score_with_answers_missing_score_attribute(self, caplog):
         # GeneratedAnswer has no score attribute at all; it must be handled as -infinity and sorted last.
         joiner = AnswerJoiner(sort_by_score=True)
         answers1: list[AnswerType] = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
         answers2: list[AnswerType] = [ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b"))]
-        result = joiner.run([answers1, answers2])
+        with caplog.at_level(logging.INFO):
+            result = joiner.run([answers1, answers2])
         # The ExtractedAnswer (score 0.9) comes first, the GeneratedAnswer (no score) comes last.
         assert isinstance(result["answers"][0], ExtractedAnswer)
         assert isinstance(result["answers"][1], GeneratedAnswer)
+        assert "those with score=None were sorted as if they had a score of -infinity" in caplog.text

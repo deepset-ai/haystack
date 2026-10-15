@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -111,7 +112,8 @@ class TestPDFMinerToDocument:
         """
         Test if the component runs correctly when an argument is None.
         """
-        converter = PDFMinerToDocument(char_margin=None)
+        # Passing None is the point of this test.
+        converter = PDFMinerToDocument(char_margin=None)  # type: ignore[arg-type]
         assert converter.layout_params.char_margin is None
 
     def test_run_doc_metadata(self, test_files_path):
@@ -181,7 +183,7 @@ class TestPDFMinerToDocument:
         """
         Test if the component correctly handles errors.
         """
-        sources = ["non_existing_file.pdf"]
+        sources: list[str | Path | ByteStream] = ["non_existing_file.pdf"]
         converter = PDFMinerToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)

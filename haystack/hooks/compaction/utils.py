@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
+
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.token_counters import TokenCounter
-from haystack.tools import ToolsType
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
 _COMPACTION_META_KEY = "context_compaction"
@@ -133,21 +134,56 @@ def _historical_turn_groups(messages: list[ChatMessage], system_end: int, task_i
     ]
 
 
-def _estimated_context_tokens(
-    messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
-) -> int:
+def _replace_tool_results_until_target(
+    messages: list[ChatMessage],
+    *,
+    target_tokens: int,
+    token_counter: TokenCounter,
+    min_keep_steps: int,
+    replace: Callable[[ChatMessage, int], tuple[ChatMessage, int] | None],
+) -> list[ChatMessage] | None:
     """
-    Estimate the size of the whole conversation.
+    Replace tool results oldest first until the conversation fits within `target_tokens`.
 
-    :param messages: The conversation, oldest to newest.
-    :param context_tokens: The `context_tokens` state key which is computed using the provider's own token counting.
-    :param token_counter: The counter to measure the unaccounted messages with.
-    :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
-    :returns: The estimated total token count.
+    Results from the most recent `min_keep_steps` tool-calling Agent steps are never passed to `replace`. After
+    measuring the initial conversation, the running total is updated with each replacement's saved tokens to avoid
+    recounting the full context.
+
+    :param messages: The conversation to compact, oldest to newest.
+    :param target_tokens: The token count the compacted conversation should fit within.
+    :param token_counter: The `TokenCounter` used to measure the initial conversation.
+    :param min_keep_steps: Number of most recent tool-calling Agent steps whose results are left unchanged.
+    :param replace: Called with a tool-result message and its position. Returns the replacement and the tokens it
+        saves, or None to leave the message unchanged.
+    :returns: The conversation with replaced tool results, or None when nothing was replaced.
     """
-    # Nothing sent yet, or a generator that reports no usage, so count everything.
-    if context_tokens == 0:
-        return token_counter.count(messages=messages, tools=tools)
-    # Only need to estimate the tool result messages after the last assistant message
-    tool_result_messages = messages[_last_assistant_index(messages=messages) + 1 :]
-    return context_tokens + token_counter.count(messages=tool_result_messages)
+    current_tokens = token_counter.count(messages=messages)
+    if current_tokens <= target_tokens:
+        return None
+
+    # Filter the shared Agent-step spans to tool-calling steps; parallel results remain grouped in one span.
+    result_steps = [
+        list(range(start + 1, end))
+        for start, end in _agent_step_spans(messages=messages, start=0)
+        # An assistant-only span has no result to protect and must not consume one of `min_keep_steps`.
+        if end > start + 1
+    ]
+    protected_positions = {position for step in result_steps[-min_keep_steps:] for position in step}
+
+    # Replace entries in a new list so the caller-owned input list remains unchanged.
+    compacted = list(messages)
+    changed = False
+    # Go oldest first and stop at the target, so as much recent output as possible stays in context.
+    for index, message in enumerate(messages):
+        if message.tool_call_result is None or index in protected_positions:
+            continue
+        replacement = replace(message, index)
+        if replacement is None:
+            continue
+        compacted[index], saved_tokens = replacement
+        current_tokens -= saved_tokens
+        changed = True
+        if current_tokens <= target_tokens:
+            break
+
+    return compacted if changed else None
