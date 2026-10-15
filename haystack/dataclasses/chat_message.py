@@ -27,7 +27,7 @@ class ChatRole(str, Enum):  # noqa: UP042 # StrEnum would change str() of this p
     Enumeration representing the roles within a chat.
     """
 
-    #: The user role. A message from the user contains only text.
+    #: The user role. A message from the user can contain text, images, and files.
     USER = "user"
 
     #: The system role. A message from the system contains only text.
@@ -266,7 +266,7 @@ def _deserialize_content_part(serialized_part: dict[str, Any]) -> ChatMessageCon
     :returns:
         A ChatMessageContentT object.
     :raises ValueError:
-        If the part is not a valid ChatMessageContentT object.
+        If the dictionary does not represent a supported content part.
     """
     # handle flat text format separately
     if "text" in serialized_part:
@@ -575,8 +575,8 @@ class ChatMessage:
         """
         Convert the ChatMessage to a dictionary representation for tracing.
 
-        For Image Content objects, the base64_image is replaced with a placeholder string to avoid sending large
-        payloads to the tracing backend.
+        Image and file payloads, including those in tool results, are replaced with placeholder strings to avoid
+        sending large payloads to the tracing backend.
 
         :returns:
             Serialized version of the object only for tracing purposes.
@@ -601,7 +601,7 @@ class ChatMessage:
             The dictionary to build the ChatMessage object.
         :returns:
             The created object.
-        :raises ValueError: If the `role` field is missing from the dictionary.
+        :raises ValueError: If the role or content is missing, or the role is invalid.
         :raises TypeError: If the content is not a string or a sequence of content-part dictionaries.
         """
 
@@ -755,18 +755,18 @@ class ChatMessage:
     @classmethod
     def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
         """
-        Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+        Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat Completions API.
 
         `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
         `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
         `FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
         into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
-        `meta["refusal"]` instead of the text.
+        `meta["refusal"]` instead of the text. Assistant messages with tool calls or a refusal can omit `content`
+        or set it to None.
 
-        NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
-        accepts messages without it to support shallow OpenAI-compatible APIs.
-        If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
-        encounter validation errors.
+        NOTE: This method accepts tool calls without `id` and tool messages without `tool_call_id` to support
+        shallow OpenAI-compatible APIs. Include these IDs when using the resulting ChatMessage with
+        OpenAI Chat Completions to avoid validation errors.
 
         :param message:
             The OpenAI dictionary to build the ChatMessage object.
@@ -774,9 +774,9 @@ class ChatMessage:
             The created ChatMessage object.
 
         :raises ValueError:
-            If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
-            it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
-            files referenced by `file_id`.
+            If the message dictionary is missing required fields, if non-null `content` is neither a string nor a
+            list, or if it contains content parts that can't be converted, such as image URLs that are not base64
+            data URLs or files referenced by `file_id`.
         """
 
         if "role" not in message:
