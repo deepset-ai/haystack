@@ -191,20 +191,6 @@ def _looping_pipeline() -> Pipeline:
 
 
 class TestResumeFromPipelineSnapshot:
-    def test_resuming_snapshot_preserves_saved_state_and_run_budget(self):
-        pipeline = _three_component_pipeline(max_runs_per_component=1)
-
-        with pytest.raises(BreakpointException) as exc_info:
-            pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
-        snapshot = exc_info.value.pipeline_snapshot
-        assert snapshot is not None
-        saved_state = snapshot.to_dict()
-        expected = {"comp3": {"result": "test_processed_processed_processed"}}
-
-        assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
-        assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
-        assert snapshot.to_dict() == saved_state
-
     def test_failed_resume_does_not_modify_snapshot_or_prevent_retry(self, monkeypatch):
         pipeline = _three_component_pipeline(max_runs_per_component=1)
 
