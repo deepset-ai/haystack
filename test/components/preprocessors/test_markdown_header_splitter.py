@@ -1107,6 +1107,28 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
 
 
 @pytest.mark.parametrize(
+    ("header_line", "expected_header"),
+    [
+        ("## Install ##", "Install"),
+        ("## Install #####   ", "Install"),
+        ("## Install\t#", "Install"),
+        ("## ##", ""),
+        # not a closing sequence: no whitespace before the "#"s, or other text after them
+        ("## C#", "C#"),
+        ("## Install #1", "Install #1"),
+        ("## Install \\#", "Install \\#"),
+    ],
+)
+def test_closing_sequence_is_not_part_of_header_metadata(header_line, expected_header):
+    text = f"# Guide #\nIntro.\n{header_line}\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert [doc.meta["header"] for doc in docs] == ["Guide", expected_header]
+    assert docs[1].meta["parent_headers"] == ["Guide"]
+    # the chunk content keeps the closing sequence
+    assert "".join(doc.content or "" for doc in docs) == text
+
+
+@pytest.mark.parametrize(
     ("text", "keep_headers", "expected_contents", "expected_headers"),
     [
         pytest.param(
