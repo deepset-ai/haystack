@@ -193,6 +193,9 @@ Counting is an estimate, and two limits are worth knowing before relying on it:
   than a real count.
 - **It is OpenAI's encoder.** Other providers tokenize differently, so expect the count to drift on them.
 
+Literal special-token strings (for example `<|endoftext|>`) in message or tool content are encoded as ordinary
+text, so they are counted instead of raising an error.
+
 ## Usage Example:
 
 ```python
