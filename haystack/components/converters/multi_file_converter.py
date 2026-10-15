@@ -12,6 +12,7 @@ from haystack.components.converters import (
     DOCXToDocument,
     HTMLToDocument,
     JSONConverter,
+    MarkdownToDocument,
     PPTXToDocument,
     PyPDFToDocument,
     TextFileToDocument,
@@ -92,7 +93,7 @@ class MultiFileConverter:
             ),
         )
         pp.add_component("json", JSONConverter(content_key=self.json_content_key))
-        pp.add_component("md", TextFileToDocument(encoding=self.encoding))
+        pp.add_component("md", MarkdownToDocument(encoding=self.encoding))
         pp.add_component("text", TextFileToDocument(encoding=self.encoding))
         pp.add_component("pdf", PyPDFToDocument())
         pp.add_component("pptx", PPTXToDocument())

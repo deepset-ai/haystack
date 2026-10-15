@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``MultiFileConverter`` now converts ``.md`` files with ``MarkdownToDocument`` instead of reading them as plain text, so Markdown syntax no longer leaks into the Document content.

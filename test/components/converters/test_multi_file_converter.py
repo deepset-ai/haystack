@@ -79,6 +79,12 @@ class TestMultiFileConverter:
         assert docs[0].content is not None
         assert docs[0].meta["file_path"].endswith(suffix)
 
+        if suffix == "md":
+            # Markdown files should be parsed by MarkdownToDocument, not read as raw text.
+            # Raw markdown syntax should not leak into the extracted content.
+            assert "##" not in docs[0].content
+            assert "**" not in docs[0].content
+
         assert len(unclassified) == 1
         assert isinstance(unclassified[0], ByteStream)
         assert unclassified[0].meta["content_type"] == "unknown_type"
