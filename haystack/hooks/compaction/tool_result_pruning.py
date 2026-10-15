@@ -7,7 +7,7 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_spans
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _replace_tool_results_until_target
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -96,43 +96,13 @@ class ToolResultPruningCompactor(Compactor):
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
         :returns: The conversation with older tool results replaced, or None when no result was prunable.
         """
-        current_tokens = token_counter.count(messages=messages)
-        if current_tokens <= target_tokens:
-            return None
-
-        # Filter the shared Agent-step spans to tool-calling steps; parallel results remain grouped in one span.
-        result_steps = [
-            list(range(start + 1, end))
-            for start, end in _agent_step_spans(messages=messages, start=0)
-            # An assistant-only span has no result to protect and must not consume one of `min_keep_steps`.
-            if end > start + 1
-        ]
-
-        protected_positions = {position for step in result_steps[-self.min_keep_steps :] for position in step}
-
-        # Replace entries in a new list so the caller-owned input list remains unchanged.
-        compacted = list(messages)
-        changed = False
-        # Iterate oldest-first so we can stop at the target while leaving as much recent output intact as possible.
-        for index, message in enumerate(messages):
-            if message.tool_call_result is None or index in protected_positions:
-                continue
-            replacement = self._prune(message=message, token_counter=token_counter)
-            if replacement is None:
-                continue
-            pruned, saved_tokens = replacement
-
-            # Update the compacted list and the running token count
-            compacted[index] = pruned
-            current_tokens -= saved_tokens
-            changed = True
-
-            # Once we reach the target, stop pruning to preserve as much recent output as possible.
-            if current_tokens <= target_tokens:
-                break
-
-        # If no candidates were pruned, return None to indicate no change.
-        return compacted if changed else None
+        return _replace_tool_results_until_target(
+            messages=messages,
+            target_tokens=target_tokens,
+            token_counter=token_counter,
+            min_keep_steps=self.min_keep_steps,
+            replace=lambda message, _index: self._prune(message=message, token_counter=token_counter),
+        )
 
     def _prune(self, message: ChatMessage, token_counter: TokenCounter) -> tuple[ChatMessage, int] | None:
         """

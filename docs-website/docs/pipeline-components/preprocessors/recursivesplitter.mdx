@@ -3,6 +3,7 @@ title: "RecursiveDocumentSplitter"
 id: recursivesplitter
 slug: "/recursivesplitter"
 description: "This component recursively breaks down text into smaller chunks by applying a given list of separators to the text."
+hep_available: true
 ---
 
 # RecursiveDocumentSplitter
@@ -32,6 +33,8 @@ The `RecursiveDocumentSplitter` expects a list of documents as input and returns
 - `sentence_splitter_params`: Optional parameters to pass to the [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116).
 
 When `split_unit="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
+
+A meta field `"page_number"` is added to each chunk with the page it starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on, matching [`DocumentSplitter`](documentsplitter.mdx).
 
 The separators are applied in the same order as they are defined in the list. The first separator is used on the text; any resulting chunk that is within the specified `chunk_size` is retained. For chunks that exceed the defined `chunk_size`, the next separator in the list is applied. If all separators are used and the chunk still exceeds the `chunk_size`, a hard split occurs based on the `chunk_size`, taking into account whether words or characters are used as counting units. This process is repeated until all chunks are within the limits of the specified `chunk_size`.
 

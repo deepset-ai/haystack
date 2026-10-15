@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any, Literal
 
 from haystack import Document, component, default_to_dict, logging
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
@@ -82,6 +83,8 @@ class RecursiveDocumentSplitter:
             If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
         :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
+            The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
+            changes the rules the tokenizer uses to decide where a sentence ends.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -151,11 +154,6 @@ class RecursiveDocumentSplitter:
         :returns:
             A tuple containing the current chunk and the remaining chunk.
         """
-        if self.split_units == "word":
-            words = current_chunk.split()
-            current_chunk = " ".join(words[: self.split_length])
-            remaining_words = words[self.split_length :]
-            return current_chunk, " ".join(remaining_words)
         if self.split_units == "char":
             text = current_chunk
             current_chunk = text[: self.split_length]
@@ -172,9 +170,10 @@ class RecursiveDocumentSplitter:
         """
         Applies an overlap between consecutive chunks if the chunk_overlap attribute is greater than zero.
 
-        Works for both word- and character-level splitting. It trims the last chunk if it exceeds the split_length and
-        adds the trimmed content to the next chunk. If the last chunk is still too long after trimming, it splits it
-        and adds the first chunk to the list. This process continues until the last chunk is within the split_length.
+        Works for character- and token-level splitting, words are handled by `_apply_word_overlap`. It trims the last
+        chunk if it exceeds the split_length and adds the trimmed content to the next chunk. If the last chunk is still
+        too long after trimming, it splits it and adds the first chunk to the list. This process continues until the
+        last chunk is within the split_length.
 
         :param chunks: A list of text chunks.
         :returns:
@@ -203,9 +202,7 @@ class RecursiveDocumentSplitter:
             if self._chunk_length(current_chunk) > self.split_length:
                 current_chunk, remaining_text = self._split_chunk(current_chunk)
                 if idx < len(chunks) - 1:
-                    if self.split_units == "word":
-                        chunks[idx + 1] = remaining_text + " " + chunks[idx + 1]
-                    elif self.split_units == "token":
+                    if self.split_units == "token":
                         # For token-based splitting, combine at token level
                         # at this point we know that the tokenizer is already initialized
                         remaining_tokens = self.tiktoken_tokenizer.encode_ordinary(remaining_text)  # type: ignore
@@ -246,9 +243,7 @@ class RecursiveDocumentSplitter:
         return overlapped_chunks
 
     def _create_chunk_starting_with_overlap(self, chunk: str, overlap: str) -> str:
-        if self.split_units == "word":
-            current_chunk = overlap + " " + chunk
-        elif self.split_units == "token":
+        if self.split_units == "token":
             # For token-based splitting, combine at token level
             # at this point we know that the tokenizer is already initialized
             overlap_tokens = self.tiktoken_tokenizer.encode_ordinary(overlap)  # type: ignore
@@ -263,10 +258,7 @@ class RecursiveDocumentSplitter:
         prev_chunk = overlapped_chunks[-1]
         overlap_start = max(0, self._chunk_length(prev_chunk) - self.split_overlap)
 
-        if self.split_units == "word":
-            word_chunks = prev_chunk.split()
-            overlap = " ".join(word_chunks[overlap_start:])
-        elif self.split_units == "token":
+        if self.split_units == "token":
             # For token-based splitting, handle overlap at token level
             # at this point we know that the tokenizer is already initialized
             tokens = self.tiktoken_tokenizer.encode_ordinary(prev_chunk)  # type: ignore
@@ -276,6 +268,58 @@ class RecursiveDocumentSplitter:
             overlap = prev_chunk[overlap_start:]
 
         return overlap, prev_chunk
+
+    def _apply_word_overlap(self, chunks: list[str]) -> list[tuple[int, int]]:
+        """
+        Applies an overlap between consecutive chunks when splitting by words.
+
+        Follows `_apply_overlap`: each chunk starts with the last `split_overlap` words of the chunk before it, and a
+        chunk that grows past `split_length` words is trimmed, its remaining words moving on to the next chunk. The
+        chunks are cut out of the text rather than rebuilt from their words, so they keep its whitespace and page
+        breaks. Words are counted as in `_chunk_length`.
+
+        :param chunks: A list of text chunks, as returned by `_chunk_text`.
+        :returns:
+            The `(start, end)` character offsets of each chunk with the overlap applied, in the concatenated `chunks`.
+        """
+        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only spaces has no words and
+        # joins the chunk before it (or after it, at the start of the text).
+        words: list[tuple[int, int]] = []
+        chunk_word_ends: list[int] = []
+        chunk_starts: list[int] = []
+        offset = 0
+        for chunk in chunks:
+            chunk_words = [(offset + match.start(), offset + match.end()) for match in re.finditer(r"[^ ]+", chunk)]
+            if chunk_words:
+                words.extend(chunk_words)
+                chunk_word_ends.append(len(words))
+                chunk_starts.append(offset)
+            offset += len(chunk)
+        if not words:
+            return [(0, offset)]
+        # a chunk's text runs up to where the next one starts
+        chunk_ends = chunk_starts[1:] + [offset]
+
+        spans = [(0, chunk_ends[0])]
+        # the words the latest chunk spans, as indices into `words`
+        first_word, end_word = 0, chunk_word_ends[0]
+        for idx in range(1, len(chunk_word_ends)):
+            if end_word - first_word <= self.split_overlap:
+                logger.warning(
+                    "Overlap is the same as the previous chunk. "
+                    "Consider increasing the `split_length` parameter or decreasing the `split_overlap` parameter."
+                )
+            # only the last chunk emits more than one chunk; the others hand their remaining words to the next one
+            while True:
+                first_word = max(first_word, end_word - self.split_overlap)
+                end_word = min(first_word + self.split_length, chunk_word_ends[idx])
+                # a trimmed chunk ends after its last word, and the next chunk picks up from its overlap
+                end = chunk_ends[idx] if end_word == chunk_word_ends[idx] else words[end_word - 1][1]
+                spans.append((words[first_word][0], end))
+                if idx < len(chunk_word_ends) - 1 or end_word == chunk_word_ends[idx]:
+                    break
+
+        return spans
 
     def _chunk_length(self, text: str) -> int:
         """
@@ -310,10 +354,19 @@ class RecursiveDocumentSplitter:
             return [text]
 
         for curr_separator in self.separators:
+            # text after the last split that the splits leave out
+            trailing_text = ""
             if curr_separator == "sentence":
                 # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
-                splits = [sentence["sentence"] for sentence in sentence_with_spans]
+                # Each split runs from where its sentence starts to where the next one does, so the splits keep the
+                # whitespace between sentences even where the tokenizer leaves it out (keep_white_spaces=False).
+                # Leaving it out would glue sentences together, lose page breaks and shift every later chunk's offset.
+                split_bounds = [sentence["start"] for sentence in sentence_with_spans]
+                if split_bounds:
+                    split_bounds.append(sentence_with_spans[-1]["end"])
+                    trailing_text = text[split_bounds[-1] :]
+                splits = [text[start:end] for start, end in zip(split_bounds, split_bounds[1:], strict=False)]
             else:
                 # add escape "\" to the separator and wrapped it in a group so that it's included in the splits as well
                 escaped_separator = re.escape(curr_separator)
@@ -368,6 +421,9 @@ class RecursiveDocumentSplitter:
                 chunks.append("".join(current_chunk))
 
             if chunks:
+                # like the whitespace left over by _fall_back_to_fixed_chunking, attach it to the last chunk rather
+                # than making it a chunk of its own
+                chunks[-1] += trailing_text
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
@@ -438,20 +494,34 @@ class RecursiveDocumentSplitter:
             )
 
     def _run_one(self, doc: Document) -> list[Document]:
-        chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
+        content = doc.content or ""  # run() skips documents without content, so this is a non-empty string
+        chunks = self._chunk_text(content)
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
 
         # apply the overlap once, on the fully chunked list, so that chunks produced
         # at inner recursion levels don't get the overlap applied a second time
-        if self.split_overlap > 0:
-            chunks = self._apply_overlap(chunks)
-
-        current_position = 0
-        current_page = 1
+        if self.split_overlap > 0 and self.split_units == "word":
+            text = "".join(chunks)
+            spans = self._apply_word_overlap(chunks)
+            chunks = [text[start:end] for start, end in spans]
+            chunk_starts = [start for start, _ in spans]
+        else:
+            if self.split_overlap > 0:
+                chunks = self._apply_overlap(chunks)
+            # each chunk starts where the previous one ends, minus the overlap it repeats
+            chunk_starts = [0]
+            for chunk in chunks[:-1]:
+                overlap = self._get_overlap([chunk])[0] if self.split_overlap > 0 else ""
+                chunk_starts.append(chunk_starts[-1] + len(chunk) - len(overlap))
 
         new_docs: list[Document] = []
+        # Chunk starts never decrease, so the page breaks before each chunk are counted on from the previous one
+        # rather than from the start of the document every time.
+        page_breaks_before = 0
 
-        for split_nr, chunk in enumerate(chunks):
+        for split_nr, (chunk, current_position) in enumerate(zip(chunks, chunk_starts, strict=True)):
+            if split_nr > 0:
+                page_breaks_before += content.count("\f", chunk_starts[split_nr - 1], current_position)
             meta = deepcopy(doc.meta)
             meta["source_id"] = doc.id
             meta["parent_id"] = doc.id
@@ -464,29 +534,11 @@ class RecursiveDocumentSplitter:
             if split_nr > 0 and self.split_overlap > 0:
                 self._add_overlap_info(current_position, new_doc, new_docs)
 
-            # count page breaks in the chunk
-            current_page += chunk.count("\f")
+            # The page the chunk's first non-page-break character is on: breaks before the chunk, plus the
+            # ones it opens with.
+            new_doc.meta["page_number"] = 1 + page_breaks_before + _leading_page_breaks(chunk)
 
-            # if there are consecutive page breaks at the end with no more text, adjust the page number
-            # e.g: "text\f\f\f" -> 3 page breaks, but current_page should be 1
-            consecutive_page_breaks = len(chunk) - len(chunk.rstrip("\f"))
-
-            if consecutive_page_breaks > 0:
-                new_doc.meta["page_number"] = current_page - consecutive_page_breaks
-            else:
-                new_doc.meta["page_number"] = current_page
-
-            # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            # Advance current_position by chunk length minus overlap.
-            # split_overlap is in split_units, not chars, so get the actual
-            # overlap string from _get_overlap() and use its char length.
-            if self.split_overlap > 0 and split_nr < len(chunks) - 1:
-                overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
-                overlap_char_len = len(overlap_str)
-            else:
-                overlap_char_len = 0
-            current_position += len(chunk) - overlap_char_len
 
         return new_docs
 
@@ -498,7 +550,8 @@ class RecursiveDocumentSplitter:
         :param documents: List of Documents to split.
         :returns:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
-            to the input documents.
+            to the input documents. Each chunk carries a metadata field `page_number` with the page the chunk
+            starts on, counting form feed ("\f") characters in the original document.
         """
         if not self._is_warmed_up and ("sentence" in self.separators or self.split_units == "token"):
             self.warm_up()

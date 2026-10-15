@@ -29,9 +29,10 @@ class TestMemoryEmbeddingRetriever:
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store):
-        with pytest.raises(ValueError):
-            InMemoryEmbeddingRetriever(in_memory_doc_store, top_k=-2)
+    @pytest.mark.parametrize("top_k", [0, -2])
+    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            InMemoryEmbeddingRetriever(in_memory_doc_store, top_k=top_k)
 
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
@@ -140,6 +141,38 @@ class TestMemoryEmbeddingRetriever:
         assert "documents" in result
         assert len(result["documents"]) == top_k
         assert result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]
+
+    @staticmethod
+    def _retriever_with_docs() -> InMemoryEmbeddingRetriever:
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(content="my document", embedding=[0.1, 0.2, 0.3, 0.4]),
+                Document(content="another document", embedding=[1.0, 1.0, 1.0, 1.0]),
+            ]
+        )
+        return InMemoryEmbeddingRetriever(ds)
+
+    def test_run_with_zero_top_k_returns_empty(self):
+        retriever = self._retriever_with_docs()
+        assert retriever.run(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=0) == {"documents": []}
+
+    def test_run_with_negative_top_k_raises(self):
+        # Regression: a negative top_k was used as a negative slice, silently dropping the last documents
+        retriever = self._retriever_with_docs()
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            retriever.run(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=-1)
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_zero_top_k_returns_empty(self):
+        retriever = self._retriever_with_docs()
+        assert await retriever.run_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=0) == {"documents": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_negative_top_k_raises(self):
+        retriever = self._retriever_with_docs()
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await retriever.run_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=-1)
 
     def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self):
         ds = InMemoryDocumentStore(embedding_similarity_function="cosine")

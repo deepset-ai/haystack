@@ -823,6 +823,37 @@ def test_always_incompatible_callable_types(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(Callable[..., int], Callable[[int], int], id="ellipsis-callable-to-typed-callable"),
+        pytest.param(Callable[[int, str], bool], Callable[..., bool], id="typed-callable-to-ellipsis-callable"),
+        pytest.param(
+            Callable[[Callable[..., int]], str],
+            Callable[[Callable[[int], int]], str],
+            id="nested-ellipsis-callable-to-nested-typed-callable",
+        ),
+        pytest.param(Callable, Callable[..., Any], id="bare-callable-to-ellipsis-callable"),
+    ],
+)
+def test_callable_with_ellipsis_parameters_is_compatible(sender_type, receiver_type):
+    # An Ellipsis parameter list matches parameters of any signature, in both directions
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert _types_are_compatible(receiver_type, sender_type)[0]
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(Callable[..., str], Callable[[int], int], id="ellipsis-callable-to-callable-wrong-return-type"),
+        pytest.param(Callable[[int], int], Callable[..., str], id="typed-callable-to-ellipsis-wrong-return-type"),
+    ],
+)
+def test_callable_with_ellipsis_parameters_incompatible_return_type(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
+
+
 nested_container_types = [tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]]
 extras = [int | str]
 

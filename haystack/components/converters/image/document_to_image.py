@@ -114,8 +114,8 @@ class DocumentToImageContent:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
                 data and metadata. The order corresponds to the order of the input documents. A document that is
-                missing the required metadata keys, has an invalid file path, or has an unsupported MIME type gets
-                None in its position and a logged warning with the reason.
+                missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
+                to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
         """
         if not documents:
             return {"image_contents": []}

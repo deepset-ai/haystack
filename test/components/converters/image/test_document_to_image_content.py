@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -97,6 +98,23 @@ class TestDocumentToImageContent:
         assert image_contents[0] is not None
         assert image_contents[1] is not None
         assert image_contents[2] is None
+
+    def test_run_with_unconvertible_pdf_pages(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        unreadable_pdf = tmp_path / "unreadable.pdf"
+        unreadable_pdf.write_bytes(b"%PDF-1.4 not a real PDF")
+        converter = DocumentToImageContent()
+        documents = [
+            Document(content="", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 1}),
+            Document(content="", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf", "page_number": 99}),
+            Document(content="", meta={"file_path": str(unreadable_pdf), "page_number": 1}),
+        ]
+        image_contents = converter.run(documents=documents)["image_contents"]
+        assert image_contents[0] is not None
+        assert image_contents[1] is None
+        assert image_contents[2] is None
+        # the warnings name the PDF the page came from
+        assert f"Page 99 is out of range for the PDF file {Path('test/test_files/pdf/sample_pdf_1.pdf')}" in caplog.text
+        assert f"Could not read PDF file {unreadable_pdf}" in caplog.text
 
     @patch("haystack.components.converters.image.document_to_image._extract_image_sources_info")
     @patch("haystack.components.converters.image.document_to_image._batch_convert_pdf_pages_to_images")

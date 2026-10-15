@@ -309,8 +309,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic
@@ -494,8 +495,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic

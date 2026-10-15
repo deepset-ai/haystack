@@ -21,7 +21,7 @@ class ListJoiner:
     Usage example:
     ```python
     from haystack.components.builders import ChatPromptBuilder
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
     from haystack.components.joiners import ListJoiner
@@ -39,8 +39,8 @@ class ListJoiner:
 
     prompt_builder = ChatPromptBuilder(template=user_message)
     feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-    llm = OpenAIChatGenerator()
-    feedback_llm = OpenAIChatGenerator()
+    llm = OpenAIResponsesChatGenerator()
+    feedback_llm = OpenAIResponsesChatGenerator()
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)

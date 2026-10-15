@@ -57,7 +57,11 @@ if __name__ == "__main__":
     ### Docusaurus updates
 
     # copy docs to versioned_docs/version-target_unstable
-    shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{target_unstable}")
+    shutil.copytree(
+        src="docs-website/docs",
+        dst=f"docs-website/versioned_docs/version-{target_unstable}",
+        ignore=shutil.ignore_patterns("AGENTS.md"),
+    )
 
     # copy reference to reference_versioned_docs/version-target_unstable
     shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{target_unstable}")

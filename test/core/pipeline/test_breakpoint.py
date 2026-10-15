@@ -537,8 +537,9 @@ def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch)
         _save_pipeline_snapshot(snapshot)
 
     with caplog.at_level(logging.ERROR):
-        _save_pipeline_snapshot(snapshot, raise_on_failure=False)
+        result = _save_pipeline_snapshot(snapshot, raise_on_failure=False)
         assert any("Failed to save pipeline snapshot to" in msg for msg in caplog.messages)
+    assert result is None
 
 
 class TestSnapshotCallback:

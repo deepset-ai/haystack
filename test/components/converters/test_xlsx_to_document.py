@@ -109,6 +109,31 @@ class TestXLSXToDocument:
         )
 
     @pytest.mark.parametrize(
+        ("cell_value", "expected_row"),
+        [
+            pytest.param("a|b", "|  1 | a\\|b |", id="pipe"),
+            pytest.param(r"a\|b", r"|  1 | a\\\|b |", id="backslash-before-pipe"),
+            pytest.param("first\r\nsecond", "|  1 | first second |", id="windows-line-break"),
+            pytest.param("first line\nsecond line", "|  1 | first line second line |", id="line-break"),
+        ],
+    )
+    def test_run_markdown_escapes_cell_content(self, tmp_path: Path, cell_value: str, expected_row: str) -> None:
+        """A pipe would be read as a column separator, and a line break would end the row in the middle."""
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet["A1"] = cell_value
+        path = tmp_path / "cell.xlsx"
+        workbook.save(path)
+
+        content = XLSXToDocument(table_format="markdown").run(sources=[path])["documents"][0].content
+        assert content is not None
+        rows = content.split("\n")
+
+        assert len(rows) == 3
+        assert rows[2] == expected_row
+
+    @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
         [
             ("Basic Table", "Basic Table", ",A,B\n1,col_a,col_b\n2,1.5,test\n"),

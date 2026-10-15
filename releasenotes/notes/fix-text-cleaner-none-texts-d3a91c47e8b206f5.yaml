@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``TextCleaner.run`` now raises a clear ``TypeError`` when ``texts`` is not a list or any element is not a ``str``,
+    instead of failing later or producing unexpected results.
