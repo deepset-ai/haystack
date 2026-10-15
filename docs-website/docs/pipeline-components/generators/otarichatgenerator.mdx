@@ -48,7 +48,7 @@ You can pass any parameter of the gateway's chat completions endpoint with the `
 
 The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. Find out more in the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
-To let the model call tools, pass `Tool` objects, a `Toolset`, or a mix of both to the `tools` parameter. See the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation for details.
+To let the model call tools, pass `Tool` objects, a `Toolset`, or a mix of both to the `tools` parameter. See the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation for details. Set `tools_strict=True` to make the model follow the tool schemas exactly.
 
 ### Cost
 

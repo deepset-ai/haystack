@@ -35,6 +35,8 @@ By default, `OtariRanker` calls otari.ai at `https://api.otari.ai/api/v1`. For a
 
 You can also specify the `top_k` parameter to set the maximum number of documents to return, and the `score_threshold` parameter to drop documents with a relevance score below a given value. To limit how much of each document the model reads, set `max_tokens_per_doc`.
 
+Requests that time out, fail to connect, or get a rate-limit or temporary error from the gateway are retried. Set `timeout` and `max_retries` to change the defaults of 30 seconds and 3 retries.
+
 ### Embedding meta fields
 
 Some use cases benefit from including meta information (such as a title) alongside the document content when reranking. Pass the names of the meta fields to include through the `meta_fields_to_embed` parameter; they will be concatenated with the document content using `meta_data_separator`.

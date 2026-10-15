@@ -67,7 +67,7 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 
 ### Cost
 
-When the gateway prices a request, the `usage` entry in the output `meta` contains the cost in US dollars as `cost_usd`, a decimal string, and the price list it came from as `pricing_source`. The component sends the documents in batches of `batch_size`. If there is more than one batch, the token counts in `usage` cover all batches, but `cost_usd` and `pricing_source` come from the first batch only.
+When the gateway prices a request, the `usage` entry in the output `meta` contains the cost in US dollars as `cost_usd`, a decimal string, and the price list it came from as `pricing_source`. The component sends the documents in batches of `batch_size`, and `cost_usd` is the sum over all batches.
 
 ## Usage
 
