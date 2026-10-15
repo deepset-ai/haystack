@@ -493,11 +493,13 @@ class TestLLMDocumentContentExtractor:
                             "schema": {
                                 "type": "object",
                                 "properties": {
+                                    "document_content": {"type": "string"},
                                     "author": {"type": "string"},
                                     "date": {"type": "string"},
                                     "document_type": {"type": "string"},
                                     "title": {"type": "string"},
                                 },
+                                "required": ["document_content"],
                                 "additionalProperties": False,
                             },
                         },

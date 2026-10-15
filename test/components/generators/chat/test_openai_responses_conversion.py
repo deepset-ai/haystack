@@ -22,10 +22,13 @@ from openai.types.responses import (
     ResponseOutputItemAddedEvent,
     ResponseOutputItemDoneEvent,
     ResponseOutputMessage,
+    ResponseOutputRefusal,
     ResponseOutputText,
     ResponseReasoningItem,
     ResponseReasoningSummaryTextDeltaEvent,
     ResponseReasoningTextDeltaEvent,
+    ResponseRefusalDeltaEvent,
+    ResponseRefusalDoneEvent,
     ResponseStreamEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
@@ -1000,6 +1003,62 @@ class TestConversionToStreamingChunks:
         message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
         assert message.meta["finish_reason"] == "stop"
 
+    def test_streaming_refusal_does_not_duplicate_done_events(self) -> None:
+        response = Response(
+            id="resp_test",
+            created_at=0,
+            model="test",
+            object="response",
+            parallel_tool_calls=True,
+            tool_choice="auto",
+            tools=[],
+            status="completed",
+            output=[
+                ResponseOutputMessage(
+                    id="msg",
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                    content=[ResponseOutputRefusal(type="refusal", refusal="I cannot help.")],
+                )
+            ],
+        )
+        events: list[ResponseStreamEvent] = [
+            ResponseRefusalDeltaEvent(
+                type="response.refusal.delta",
+                item_id="msg",
+                output_index=0,
+                content_index=0,
+                sequence_number=index,
+                delta=delta,
+            )
+            for index, delta in enumerate(["I cannot ", "help."])
+        ]
+        events.extend(
+            [
+                ResponseRefusalDoneEvent(
+                    type="response.refusal.done",
+                    item_id="msg",
+                    output_index=0,
+                    content_index=0,
+                    sequence_number=2,
+                    refusal="I cannot help.",
+                ),
+                ResponseCompletedEvent(type="response.completed", sequence_number=3, response=response),
+            ]
+        )
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(chunk=event, previous_chunks=chunks))
+
+        done_chunk = next(chunk for chunk in chunks if chunk.meta.get("type") == "response.refusal.done")
+        assert done_chunk.meta["refusal"] == "I cannot help."
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help."
+
     def test_convert_only_function_call(self) -> None:
 
         chunks = [
@@ -1405,6 +1464,30 @@ class TestResponseToChatMessage:
         extra = {key: value for key, value in item.to_dict().items() if key != "summary"}
         assert message.reasoning == ReasoningContent(reasoning_text=expected_text, extra=extra)
 
+    def test_convert_response_with_refusal(self) -> None:
+        response = Response(
+            id="resp_test",
+            created_at=0,
+            model="test",
+            object="response",
+            parallel_tool_calls=True,
+            tool_choice="auto",
+            tools=[],
+            status="completed",
+            output=[
+                ResponseOutputMessage(
+                    id="msg",
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                    content=[ResponseOutputRefusal(type="refusal", refusal="I cannot help.")],
+                )
+            ],
+        )
+        message = _convert_response_to_chat_message(response)
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help."
+
     def test_convert_system_message(self) -> None:
 
         message = ChatMessage.from_system("You are good assistant")
@@ -1491,6 +1574,12 @@ class TestResponseToChatMessage:
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "assistant", "content": "I have an answer"}
+        ]
+
+    def test_convert_assistant_message_with_refusal(self) -> None:
+        message = ChatMessage.from_assistant(meta={"refusal": "I cannot help."})
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"role": "assistant", "content": [{"type": "refusal", "refusal": "I cannot help."}]}
         ]
 
     def test_convert_assistant_message_w_tool_call(self) -> None:
