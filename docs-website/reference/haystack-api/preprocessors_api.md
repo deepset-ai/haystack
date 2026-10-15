@@ -949,7 +949,8 @@ __init__(
     split_overlap: int = 0,
     split_unit: Literal["word", "char", "token"] = "word",
     separators: list[str] | None = None,
-    sentence_splitter_params: dict[str, Any] | None = None
+    sentence_splitter_params: dict[str, Any] | None = None,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -962,7 +963,7 @@ Initializes a RecursiveDocumentSplitter.
 - **split_overlap** (<code>int</code>) – The number of overlapping units (words, characters, or tokens, per
   `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
-  If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
   Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -973,6 +974,8 @@ Initializes a RecursiveDocumentSplitter.
   See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
   The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
   changes the rules the tokenizer uses to decide where a sentence ends.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_unit="token"`.
 
 **Raises:**
 
