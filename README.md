@@ -67,7 +67,7 @@
 | haystack/components/extractors/llm\_metadata\_extractor.py                |      166 |       12 |     93% |315-323, 338-346, 407, 469 |
 | haystack/components/extractors/regex\_text\_extractor.py                  |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
-| haystack/components/fetchers/link\_content.py                             |      202 |       18 |     91% |212-220, 288, 337-341, 426-430, 471, 504 |
+| haystack/components/fetchers/link\_content.py                             |      202 |       17 |     92% |212-220, 288, 337-341, 426-430, 471 |
 | haystack/components/generators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/azure.py                              |       85 |        3 |     96% |212, 362, 365 |
@@ -146,7 +146,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                        |      331 |       21 |     94% |174, 181, 426, 569, 604, 772, 964-968, 972, 989-993, 997-1009, 1050-1059, 1084 |
+| haystack/core/pipeline/pipeline.py                                        |      331 |       19 |     94% |174, 181, 426, 569, 604, 772, 967, 972, 989-993, 997-1009, 1050-1059, 1084 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                  |      135 |        0 |    100% |           |
@@ -269,7 +269,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17755** |  **710** | **96%** |           |
+| **TOTAL**                                                                 | **17755** |  **707** | **96%** |           |
 
 
 ## Setup coverage badge

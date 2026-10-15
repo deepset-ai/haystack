@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for haystack/components/fetchers/link_content.py: 91%</title>
+    <title>Coverage for haystack/components/fetchers/link_content.py: 92%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_15cffcd0.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>components<span class="sep">/</span>fetchers<span class="sep">/</span>link_content.py</b>:
-            <span class="pc_cov">91%</span>
+            <span class="pc_cov">92%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">202 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">184<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">18<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">185<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">17<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b188fefeb8415761___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-15 07:43 +0000
+            created at 2026-10-15 08:45 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -568,10 +568,10 @@
     <p class="pln"><span class="n"><a id="t486" href="#t486">486</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t487" href="#t487">487</a></span><span class="t"><span class="str">        First, it tries to find a direct match for the content type in the handlers dictionary.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t488" href="#t488">488</a></span><span class="t"><span class="str">        If no direct match is found, it tries to find a pattern match using the fnmatch function.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t489" href="#t489">489</a></span><span class="t"><span class="str">        If no pattern match is found, it returns the default handler for text/plain.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t489" href="#t489">489</a></span><span class="t"><span class="str">        If no pattern match is found, it falls back to the text content handler.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t490" href="#t490">490</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t491" href="#t491">491</a></span><span class="t"><span class="str">        :param content_type: The content type to resolve the handler for.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t492" href="#t492">492</a></span><span class="t"><span class="str">        :returns: The handler for the given content type, if found. Otherwise, the default handler for text/plain.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t492" href="#t492">492</a></span><span class="t"><span class="str">        :returns: The handler for the given content type, if found. Otherwise, the text content handler.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t493" href="#t493">493</a></span><span class="t"><span class="str">        &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t494" href="#t494">494</a></span><span class="t">        <span class="com"># direct match</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t495" href="#t495">495</a></span><span class="t">        <span class="key">if</span> <span class="nam">content_type</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">handlers</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -583,7 +583,7 @@
     <p class="run"><span class="n"><a id="t501" href="#t501">501</a></span><span class="t">                <span class="key">return</span> <span class="nam">handler</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t502" href="#t502">502</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t503" href="#t503">503</a></span><span class="t">        <span class="com"># default handler</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t504" href="#t504">504</a></span><span class="t">        <span class="key">return</span> <span class="nam">self</span><span class="op">.</span><span class="nam">handlers</span><span class="op">[</span><span class="str">&quot;text/plain&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t504" href="#t504">504</a></span><span class="t">        <span class="key">return</span> <span class="nam">_text_content_handler</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -593,7 +593,7 @@
             <a class="nav" href="z_b188fefeb8415761___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-15 07:43 +0000
+            created at 2026-10-15 08:45 +0000
         </p>
     </div>
 </footer>
