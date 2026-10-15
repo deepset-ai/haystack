@@ -1069,6 +1069,14 @@ class TestToOpenaiDictFormat:
         with pytest.raises(ValueError):
             message.to_openai_dict_format()
 
+    @pytest.mark.parametrize("role", [ChatRole.USER, ChatRole.SYSTEM, ChatRole.TOOL])
+    def test_to_openai_dict_format_rejects_tool_calls_in_non_assistant_messages(self, role):
+        message = ChatMessage(
+            _role=role, _content=[TextContent(text="Hello"), ToolCall(tool_name="search", arguments={}, id="call_1")]
+        )
+        with pytest.raises(ValueError, match="^Tool calls are only supported in assistant messages\\.$"):
+            message.to_openai_dict_format()
+
     def test_to_openai_dict_format_require_tool_call_ids(self):
         tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
