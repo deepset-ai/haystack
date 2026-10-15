@@ -3,6 +3,7 @@ title: "OpenAIDocumentEmbedder"
 id: openaidocumentembedder
 slug: "/openaidocumentembedder"
 description: "OpenAIDocumentEmbedder computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses OpenAI embedding models."
+hep_available: true
 ---
 
 # OpenAIDocumentEmbedder
@@ -27,7 +28,7 @@ The vectors computed by this component are necessary to perform embedding retrie
 
 ## Overview
 
-To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings). The default model for `OpenAIDocumentEmbedder` is `text-embedding-ada-002`. You can specify another model with the `model` parameter when initializing this component.
+To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings). The default model for `OpenAIDocumentEmbedder` is `text-embedding-3-small`. You can specify another model with the `model` parameter when initializing this component.
 
 This component should be used to embed a list of documents. To embed a string, use the [OpenAITextEmbedder](openaitextembedder.mdx).
 

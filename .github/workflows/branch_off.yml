@@ -2,12 +2,15 @@ name: Branch off
 
 on:
   workflow_call:
+    secrets:
+      HAYSTACK_BOT_TOKEN:
+        required: true
     outputs:
       bump_version_pr_url:
         description: 'URL of the bump version PR'
         value: ${{ jobs.branch-off.outputs.bump_version_pr_url }}
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
 
 permissions:
   contents: read
@@ -62,7 +65,7 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
 

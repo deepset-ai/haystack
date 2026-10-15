@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 import warnings
 from collections.abc import Sequence
 from typing import Any
@@ -164,6 +165,34 @@ class TestContentParts:
         assert result.result[1].base64_image == base64_image_string
         assert result.result[2].base64_data == base64_pdf_string
         assert result.result[2].filename == "guide.pdf"
+
+    @pytest.mark.parametrize("container", [list, tuple])
+    def test_tool_call_result_to_trace_dict(self, container, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
+        image = ImageContent(base64_image=base64_image_string)
+        file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        text_part = TextContent(text="Summary")
+        tcr = ToolCallResult(result=container([text_part, image, file_part]), origin=tc, error=False)
+
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["origin"] == tc.to_dict()
+        assert trace_dict["error"] is False
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert trace_dict["result"][0] == {"text": "Summary"}
+        assert trace_dict["result"][1]["image"]["base64_image"] == expected_img
+        assert trace_dict["result"][2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
+
+    def test_tool_call_result_to_trace_dict_string_result(self):
+        tc = ToolCall(id="call_1", tool_name="calc", arguments={})
+        tcr = ToolCallResult(result="42", origin=tc, error=False)
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["result"] == "42"
 
     def test_text_content_init(self):
         tc = TextContent(text="Hello")
@@ -757,6 +786,29 @@ class TestChatMessageSerde:
             "meta": {},
         }
 
+    def test_to_trace_dict_with_tool_call_result(self, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={"item": "report"})
+        image = ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})
+        file_part = FileContent(
+            base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf", extra={"foo": "bar"}
+        )
+        text_part = TextContent(text="Report generated successfully.")
+        message = ChatMessage.from_tool(tool_result=[text_part, image, file_part], origin=tc)
+
+        trace_dict = message._to_trace_dict()
+
+        tool_results = trace_dict["content"][0]["tool_call_result"]["result"]
+        assert tool_results[0] == {"text": "Report generated successfully."}
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert tool_results[1]["image"]["base64_image"] == expected_img
+        assert tool_results[2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
+
 
 class MessageEnvelope(BaseModel):
     message: ChatMessage
@@ -912,6 +964,36 @@ class TestToOpenaiDictFormat:
             ],
         }
 
+    def test_to_openai_dict_format_assistant_message_with_refusal(self, caplog):
+        message = ChatMessage.from_assistant(meta={"refusal": "I can't help with that."})
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "content": [{"type": "refusal", "refusal": "I can't help with that."}],
+        }
+
+        message = ChatMessage.from_assistant(text="Here is a summary.", meta={"refusal": "I can't help with that."})
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "content": "Here is a summary.",
+            "refusal": "I can't help with that.",
+        }
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id="123", tool_name="weather", arguments={})], meta={"refusal": "I can't help."}
+        )
+        with caplog.at_level(logging.WARNING):
+            openai_msg = message.to_openai_dict_format()
+        assert openai_msg == {
+            "role": "assistant",
+            "tool_calls": [{"id": "123", "type": "function", "function": {"name": "weather", "arguments": "{}"}}],
+        }
+        assert "Dropping the refusal of an assistant message that also has tool calls" in caplog.text
+
+    @pytest.mark.parametrize("refusal", [True, {"reason": "policy"}, ""])
+    def test_to_openai_dict_format_assistant_message_ignores_non_string_or_empty_refusal(self, refusal):
+        message = ChatMessage.from_assistant(text="Hi", meta={"refusal": refusal})
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": "Hi"}
+
     def test_to_openai_dict_format_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
@@ -1037,6 +1119,164 @@ class TestFromOpenaiDictFormat:
         assert message.role.value == "system"
         assert message.text == "You are a helpful assistant"
 
+    def test_from_openai_dict_format_user_message_with_text_parts(self):
+        openai_msg = {
+            "role": "user",
+            "content": [{"type": "text", "text": "part one"}, {"type": "text", "text": "part two"}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "part one"
+        assert message.texts == ["part one", "part two"]
+
+    def test_from_openai_dict_format_user_message_with_image_part(self, base64_image_string):
+        openai_msg = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "What is in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "low"},
+                },
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "What is in this image?"
+        assert message.images == [ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="low")]
+
+    def test_from_openai_dict_format_user_message_with_file_part(self, base64_pdf_string):
+        openai_msg = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Summarize this document"},
+                {
+                    "type": "file",
+                    "file": {"file_data": f"data:application/pdf;base64,{base64_pdf_string}", "filename": "test.pdf"},
+                },
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "Summarize this document"
+        assert message.files == [
+            FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        ]
+
+    @pytest.mark.parametrize(
+        "part, match",
+        [
+            ({"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}, "Only base64 data URLs"),
+            ({"type": "image_url", "image_url": {"url": None}}, "Only base64 data URLs"),
+            (
+                {"type": "image_url", "image_url": "data:image/png;base64,iVBORw0KGgo="},
+                "Image parts must contain an `image_url` object",
+            ),
+            ({"type": "file", "file": {"file_id": "file-abc123"}}, "files referenced by `file_id`"),
+            ({"type": "file", "file": {"file_data": {"url": "https://example.com/doc.pdf"}}}, "Only base64 data URLs"),
+            (
+                {"type": "file", "file": "data:application/pdf;base64,JVBERi0="},
+                "File parts must contain a `file` object",
+            ),
+            ({"type": "input_audio", "input_audio": {"data": "UklGRg==", "format": "wav"}}, "Supported part types"),
+            ({"type": "text"}, "Text parts must contain a `text` string"),
+        ],
+    )
+    def test_from_openai_dict_format_user_message_with_unsupported_parts(self, part, match):
+        with pytest.raises(ValueError, match=match):
+            ChatMessage.from_openai_dict_format({"role": "user", "content": [part]})
+
+    @pytest.mark.parametrize(
+        "role, expected_role", [("system", "system"), ("developer", "system"), ("assistant", "assistant")]
+    )
+    def test_from_openai_dict_format_system_and_assistant_messages_with_text_parts(self, role, expected_role):
+        openai_msg = {
+            "role": role,
+            "content": [{"type": "text", "text": "part one"}, {"type": "text", "text": "part two"}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == expected_role
+        assert message.text == "part one\npart two"
+
+    @pytest.mark.parametrize(
+        "role, part",
+        [
+            ("system", {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgo="}}),
+            ("developer", {"type": "text"}),
+            ("system", {"type": "refusal", "refusal": "I can't help with that."}),
+            ("assistant", {"type": "refusal"}),
+        ],
+    )
+    def test_from_openai_dict_format_system_and_assistant_messages_with_unsupported_parts(self, role, part):
+        with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
+            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
+
+    @pytest.mark.parametrize(
+        "openai_msg, expected_text",
+        [
+            ({"role": "assistant", "content": [{"type": "refusal", "refusal": "I can't help with that."}]}, None),
+            ({"role": "assistant", "content": None, "refusal": "I can't help with that."}, None),
+            (
+                {"role": "assistant", "content": "Here is a summary.", "refusal": "I can't help with that."},
+                "Here is a summary.",
+            ),
+            (
+                {
+                    "role": "assistant",
+                    "content": [{"type": "refusal", "refusal": "I can't help with that."}],
+                    "refusal": "I can't help with that.",
+                },
+                None,
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_assistant_message_with_refusal(self, openai_msg, expected_text):
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.text == expected_text
+        assert message.meta == {"refusal": "I can't help with that."}
+        assert ChatMessage.from_openai_dict_format(message.to_openai_dict_format()) == message
+
+    def test_from_openai_dict_format_assistant_message_with_non_string_refusal(self):
+        with pytest.raises(ValueError, match="The `refusal` field must be a string, got dict"):
+            ChatMessage.from_openai_dict_format({"role": "assistant", "content": "Hi", "refusal": {"text": "no"}})
+
+    @pytest.mark.parametrize(
+        "role, part, match",
+        [
+            (
+                "system",
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 1000}},
+                "Unsupported content part in system message",
+            ),
+            (
+                "user",
+                {"type": "file", "file": {"file_data": "data:application/pdf," + "A" * 1000}},
+                "Only base64 data URLs",
+            ),
+            (
+                "user",
+                {"type": "input_audio", "input_audio": {"data": "A" * 1000, "format": "wav"}},
+                "Supported part types",
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_error_messages_truncate_payloads(self, role, part, match):
+        with pytest.raises(ValueError, match=match) as exc_info:
+            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
+        assert "A" * 1000 not in str(exc_info.value)
+        assert len(str(exc_info.value)) < 1000
+
+    def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Compare this image and document"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="high"),
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
+            ]
+        )
+        round_tripped = ChatMessage.from_openai_dict_format(message.to_openai_dict_format())
+        assert round_tripped == message
+
     def test_from_openai_dict_format_assistant_message_with_content(self):
         openai_msg = {"role": "assistant", "content": "I can help with that"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
@@ -1152,6 +1392,12 @@ class TestFromOpenaiDictFormat:
     def test_from_openai_dict_format_assistant_missing_content_and_tool_calls(self):
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
+
+    @pytest.mark.parametrize("role", ["user", "system", "developer", "assistant", "tool"])
+    def test_from_openai_dict_format_content_that_is_neither_string_nor_list(self, role):
+        openai_msg = {"role": role, "content": {"type": "text", "text": "a single part not wrapped in a list"}}
+        with pytest.raises(ValueError, match="must be a string or a list of content parts, got dict"):
+            ChatMessage.from_openai_dict_format(openai_msg)
 
     def test_from_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
         openai_msg = {

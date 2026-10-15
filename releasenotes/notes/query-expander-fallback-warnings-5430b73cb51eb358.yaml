@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    ``QueryExpander`` fallback warnings now say what is returned: only the original query, or no queries when
+    ``include_original_query`` is ``False``. ``QueryExpander`` now also warns when the ChatGenerator response isn't
+    valid JSON, including the response and the parsing error, and when the response contains no valid queries.
