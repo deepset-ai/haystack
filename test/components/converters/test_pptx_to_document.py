@@ -6,6 +6,7 @@ import io
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from pptx import Presentation
@@ -139,7 +140,7 @@ class TestPPTXToDocument:
         return buffer.getvalue()
 
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
-    def test_soft_line_break_with_link_format(self, link_format: str) -> None:
+    def test_soft_line_break_with_link_format(self, link_format: Literal["markdown", "plain"]) -> None:
         """
         A soft line break (<a:br/>) between runs must survive every link format.
 
@@ -152,7 +153,7 @@ class TestPPTXToDocument:
         assert content == "Account: Alice\vBalance: 100"
 
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
-    def test_soft_line_break_matches_link_format_none(self, link_format: str) -> None:
+    def test_soft_line_break_matches_link_format_none(self, link_format: Literal["markdown", "plain"]) -> None:
         """
         The formatted link modes return the same text the default "none" mode already returns.
         """
@@ -167,7 +168,9 @@ class TestPPTXToDocument:
         ("link_format", "expected"),
         [("markdown", "before\v[example](https://example.com)"), ("plain", "before\vexample (https://example.com)")],
     )
-    def test_hyperlink_still_formatted_next_to_soft_line_break(self, link_format: str, expected: str) -> None:
+    def test_hyperlink_still_formatted_next_to_soft_line_break(
+        self, link_format: Literal["markdown", "plain"], expected: str
+    ) -> None:
         """
         Keeping soft line breaks must not change how hyperlinked runs are formatted.
         """
