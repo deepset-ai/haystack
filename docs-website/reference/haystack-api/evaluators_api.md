@@ -460,6 +460,7 @@ Create a DocumentNDCGEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### to_dict
 
@@ -625,6 +626,7 @@ Create a DocumentRecallEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### run
 
