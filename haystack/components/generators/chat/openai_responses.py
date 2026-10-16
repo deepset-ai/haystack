@@ -711,6 +711,10 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     )
 
 
+def _format_stream_error(code: str | None, message: str) -> str:
+    return f"{code}: {message}" if code else message
+
+
 def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
@@ -775,6 +779,19 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             finish_reason=_get_response_finish_reason(chunk.response),
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
+
+    # The OpenAI SDK only raises for stream events with a top-level "error" key, so these two reach us
+    # and would otherwise end the stream with an empty reply.
+    elif chunk.type == "response.failed":
+        error = chunk.response.error
+        details = _format_stream_error(error.code, error.message) if error else "no error details were returned"
+        msg = f"The OpenAI Responses API failed to generate a response ({details})."
+        raise RuntimeError(msg)
+
+    elif chunk.type == "error":
+        details = _format_stream_error(chunk.code, chunk.message)
+        msg = f"The OpenAI Responses API returned an error while streaming ({details})."
+        raise RuntimeError(msg)
 
     elif chunk.type == "response.refusal.delta":
         return StreamingChunk(

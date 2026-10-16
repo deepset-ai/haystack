@@ -14,6 +14,9 @@ from openai.types.responses import (
     ResponseContentPartAddedEvent,
     ResponseContentPartDoneEvent,
     ResponseCreatedEvent,
+    ResponseError,
+    ResponseErrorEvent,
+    ResponseFailedEvent,
     ResponseFunctionCallArgumentsDeltaEvent,
     ResponseFunctionCallArgumentsDoneEvent,
     ResponseFunctionToolCall,
@@ -252,6 +255,29 @@ class TestConversionToStreamingChunks:
         assert chunk.finish_reason == finish_reason
         message = _convert_streaming_chunks_to_chat_message([chunk])
         assert message.meta["finish_reason"] == finish_reason
+
+    def test_convert_failed_response_raises(self) -> None:
+        response = Response.model_construct(
+            output=[],
+            status="failed",
+            error=ResponseError(code="server_error", message="The model failed to generate a response."),
+        )
+        event = ResponseFailedEvent.model_construct(response=response, type="response.failed", sequence_number=1)
+
+        with pytest.raises(RuntimeError, match="server_error: The model failed to generate a response."):
+            _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
+
+    def test_convert_error_event_raises(self) -> None:
+        event = ResponseErrorEvent(
+            type="error",
+            code="server_error",
+            message="The model failed to generate a response.",
+            param=None,
+            sequence_number=1,
+        )
+
+        with pytest.raises(RuntimeError, match="server_error: The model failed to generate a response."):
+            _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
 
     def test_convert_streaming_chunks_scans_for_final_response_and_finish_reason(self) -> None:
         chunks = [
