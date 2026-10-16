@@ -104,8 +104,8 @@ Creates a TypeSafeDocumentClassifier.
 
 **Raises:**
 
-- <code>ValueError</code> – If `questions` is empty, a question has an unknown `type`, a `choice` or `score` question has no
-  `criteria`, or `max_workers` is smaller than 1.
+- <code>ValueError</code> – If `questions` is empty, a question has an unknown `type` or is a `Box` question, a `choice` or `score`
+  question has no `criteria`, or `max_workers` is smaller than 1.
 
 #### warm_up
 
