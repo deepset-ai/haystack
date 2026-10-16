@@ -486,6 +486,12 @@ class TestErrorHandling:
                 {"serialization_schema": {"type": "test_base_serialization.NonExistentClass"}, "serialized_data": {}}
             )
 
+    def test_deserialize_value_with_schema_class_with_wrong_path_suggests_correct_path(self):
+        with pytest.raises(DeserializationError, match=r"Did you mean 'haystack\.dataclasses\.document\.Document'\?"):
+            _deserialize_value_with_schema(
+                {"serialization_schema": {"type": "haystack.dataclasses.documents.Document"}, "serialized_data": {}}
+            )
+
     def test_deserialize_value_with_schema_class_name_without_module(self):
         with pytest.raises(DeserializationError, match="Class 'NonExistentClass' not correctly imported"):
             _deserialize_value_with_schema(

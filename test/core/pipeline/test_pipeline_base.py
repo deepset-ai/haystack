@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import re
 from collections.abc import Iterable
 from typing import Any
 from unittest.mock import patch
@@ -2012,6 +2013,29 @@ class TestPipelineBaseFromDict:
             PipelineBase.from_dict(data)
 
         err.match(r"Component .+ not imported.")
+
+    @pytest.mark.parametrize(
+        "component_type",
+        [
+            pytest.param(
+                "haystack.components.generators.chat.openai.OpenAIResponsesChatGenerator", id="sibling-module"
+            ),
+            pytest.param(
+                "haystack.components.generators.chat.openai_response.OpenAIResponsesChatGenerator",
+                id="misspelled-module",
+            ),
+            pytest.param("haystack.components.generators.chat.OpenAIResponsesChatGenerator", id="package-export"),
+        ],
+    )
+    def test_from_dict_with_wrong_component_path_suggests_correct_path(self, component_type):
+        data = {"components": {"generator": {"type": component_type, "init_parameters": {}}}, "connections": []}
+        with pytest.raises(
+            PipelineError,
+            match=re.escape(
+                "Did you mean 'haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator'?"
+            ),
+        ):
+            PipelineBase.from_dict(data)
 
     def test_from_dict_rejects_untrusted_component_module(self):
         data = {

@@ -19,6 +19,7 @@ from haystack.core.serialization_security import (
     _check_not_deserialization_internal,
     _check_resolved_module_allowed,
     _check_traversable_attribute,
+    _is_module_allowed,
     mark_deserialization_internal,
 )
 
@@ -344,3 +345,38 @@ def _import_class_by_name(fully_qualified_name: str) -> Any:
     except (ImportError, AttributeError) as error:
         logger.exception("Failed to import '{full_name}'", full_name=fully_qualified_name)
         raise ImportError(f"Could not import '{fully_qualified_name}'") from error
+
+
+@mark_deserialization_internal
+def _class_path_hint(fully_qualified_name: str) -> str:
+    """
+    Suggest the correct import path for a class whose fully qualified name failed to import.
+
+    The class name is looked up in the declared module and then in its parent package, which covers a class that
+    lives in a sibling module, such as `chat.openai.OpenAIResponsesChatGenerator` instead of
+    `chat.openai_responses.OpenAIResponsesChatGenerator`. Modules outside the deserialization allowlist are never
+    imported.
+
+    :param fully_qualified_name: The fully qualified class name that failed to import.
+    :returns: A sentence like ` Did you mean 'package.module.ClassName'?`, or an empty string if no class with that
+        name is found in an allowlisted module.
+    """
+    if "." not in fully_qualified_name:
+        return ""
+
+    module_path, class_name = fully_qualified_name.rsplit(".", 1)
+    parent_package = module_path.rpartition(".")[0]
+    for candidate_module in (module_path, parent_package):
+        if not candidate_module or not _is_module_allowed(candidate_module):
+            continue
+        try:
+            candidate = getattr(thread_safe_import(candidate_module), class_name)
+        except (ImportError, AttributeError):
+            continue
+        if not isinstance(candidate, type) or not _is_module_allowed(candidate.__module__):
+            continue
+        suggestion = f"{candidate.__module__}.{candidate.__name__}"
+        if suggestion != fully_qualified_name:
+            return f" Did you mean '{suggestion}'?"
+
+    return ""

@@ -11,6 +11,7 @@ from haystack import logging
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.type_serialization import _class_path_hint
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +306,7 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     try:
         cls = import_class_by_name(value_type)
     except (ImportError, ValueError) as e:
-        raise DeserializationError(f"Class '{value_type}' not correctly imported") from e
+        raise DeserializationError(f"Class '{value_type}' not correctly imported.{_class_path_hint(value_type)}") from e
 
     # try from_dict (e.g. Haystack dataclasses and Components)
     if hasattr(cls, "from_dict") and callable(cls.from_dict):

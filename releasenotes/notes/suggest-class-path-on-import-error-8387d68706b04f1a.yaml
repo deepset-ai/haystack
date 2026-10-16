@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    When a pipeline or component is deserialized with a class path that can't be imported, the error now suggests
+    the correct path if a class with that name exists in the declared module or its parent package. For example,
+    ``haystack.components.generators.chat.openai.OpenAIResponsesChatGenerator`` now gets
+    ``Did you mean 'haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator'?``.
+    Only modules on the deserialization allowlist are searched.

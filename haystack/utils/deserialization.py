@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import component_from_dict, import_class_by_name
+from haystack.utils.type_serialization import _class_path_hint
 
 
 def deserialize_chatgenerator_inplace(data: dict[str, Any], key: str = "chat_generator") -> None:
@@ -51,6 +52,9 @@ def deserialize_component_inplace(data: dict[str, Any], key: str = "chat_generat
     try:
         component_class = import_class_by_name(serialized_component["type"])
     except ImportError as e:
-        raise DeserializationError(f"Class '{serialized_component['type']}' not correctly imported") from e
+        raise DeserializationError(
+            f"Class '{serialized_component['type']}' not correctly imported."
+            f"{_class_path_hint(serialized_component['type'])}"
+        ) from e
 
     data[key] = component_from_dict(cls=component_class, data=serialized_component, name=key)
