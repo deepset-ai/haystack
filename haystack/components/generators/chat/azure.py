@@ -126,6 +126,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -191,6 +192,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Disabled by default.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -227,6 +232,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
         self.tools = tools
         self.tools_strict = tools_strict
@@ -344,6 +350,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             tools_strict=self.tools_strict,
             azure_ad_token_provider=azure_ad_token_provider_name,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
