@@ -21,6 +21,86 @@ with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
 
+# The `pandas.read_excel` options that decide which cells end up where in the DataFrame.
+_POSITION_KWARGS = ("skiprows", "nrows", "skipfooter", "usecols", "names", "comment", "index_col")
+
+
+def _get_position_token_parts(comment: Any) -> tuple[str, str]:
+    """Return token parts that pandas will not treat as comment markers."""
+    for prefix in ("__HAYSTACK_XLSX_CELL_POSITION__", "HAYSTACKXLSXCELLPOSITION", "cellposition"):
+        if not isinstance(comment, str) or not comment or comment not in prefix:
+            break
+    for separator in ("_", ":", "~"):
+        if not isinstance(comment, str) or not comment or comment not in separator:
+            return prefix, separator
+    return prefix, "~"
+
+
+def _encode_position(value: int, use_letters: bool) -> str:
+    """Encode a zero-based coordinate without introducing the pandas comment marker into the token."""
+    if not use_letters:
+        return str(value)
+
+    encoded = ""
+    while True:
+        value, remainder = divmod(value, 26)
+        encoded = chr(ord("A") + remainder) + encoded
+        if value == 0:
+            return encoded
+        value -= 1
+
+
+def _decode_position(value: str, use_letters: bool) -> int | None:
+    if not use_letters:
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    if not value or not value.isalpha():
+        return None
+
+    decoded = 0
+    for character in value:
+        if not "A" <= character <= "Z":
+            return None
+        decoded = decoded * 26 + ord(character) - ord("A") + 1
+    return decoded - 1
+
+
+def _make_position_token(
+    row_idx: int, col_idx: int, value: Any, comment: Any, token_prefix: str, token_separator: str, use_letters: bool
+) -> str:
+    """Create a cell value that preserves pandas comment semantics while identifying its source coordinate."""
+    token = (
+        f"{token_prefix}{_encode_position(row_idx, use_letters)}"
+        f"{token_separator}{_encode_position(col_idx, use_letters)}"
+    )
+    if isinstance(comment, str) and comment and isinstance(value, str) and comment in value:
+        comment_idx = value.find(comment)
+        if comment_idx == 0:
+            return f"{comment}{token}"
+        return f"{value[:comment_idx]}{token}{value[comment_idx:]}"
+    return token
+
+
+def _parse_position_token(
+    value: Any, token_prefix: str, token_separator: str, use_letters: bool
+) -> tuple[int, int] | None:
+    if not isinstance(value, str):
+        return None
+    token_idx = value.rfind(token_prefix)
+    if token_idx == -1:
+        return None
+
+    row, separator, column = value[token_idx + len(token_prefix) :].partition(token_separator)
+    if not separator:
+        return None
+    decoded_row = _decode_position(row, use_letters)
+    decoded_column = _decode_position(column, use_letters)
+    if decoded_row is None or decoded_column is None:
+        return None
+    return decoded_row, decoded_column
+
 
 @component
 class XLSXToDocument:
@@ -158,6 +238,81 @@ class XLSXToDocument:
             result.append(col_name)
         return result
 
+    def _apply_hyperlinks(
+        self,
+        dataframe: pd.DataFrame,
+        hyperlinks: dict[tuple[int, int], str],
+        cell_positions: dict[tuple[int, int], tuple[int, int]],
+    ) -> None:
+        for (original_row_idx, original_col_idx), url in hyperlinks.items():
+            position = cell_positions.get((original_row_idx, original_col_idx))
+            if position is None:
+                continue
+            row_idx, col_idx = position
+            if row_idx < len(dataframe) and col_idx < len(dataframe.columns):
+                cell_value = dataframe.iat[row_idx, col_idx]
+                text = str(cell_value) if pd.notna(cell_value) else ""
+                # Hyperlink text must be assignable to numeric and other typed columns.
+                column = dataframe.columns[col_idx]
+                if dataframe[column].dtype != object:
+                    dataframe[column] = dataframe[column].astype(object)
+                if self.link_format == "markdown":
+                    dataframe.iat[row_idx, col_idx] = f"[{text}]({url})"
+                else:
+                    dataframe.iat[row_idx, col_idx] = f"{text} ({url})"
+
+    @staticmethod
+    def _get_worksheet(workbook: Any, sheet_key: str | int | None) -> Any:
+        if isinstance(sheet_key, int):
+            return workbook.worksheets[sheet_key]
+        if sheet_key is None:
+            return workbook.active
+        return workbook[sheet_key]
+
+    def _get_cell_positions(
+        self, workbook: Any, sheet_keys: list[str | int | None]
+    ) -> dict[Any, dict[tuple[int, int], tuple[int, int]]]:
+        """Map original zero-based cell coordinates to positions in the filtered DataFrame."""
+        comment = self.read_excel_kwargs.get("comment")
+        token_prefix, token_separator = _get_position_token_parts(comment)
+        # Decimal coordinates collide with numeric comment markers such as "0" or "1"; use letters in that case.
+        use_letters = isinstance(comment, str) and any(character.isdigit() for character in comment)
+        for sheet_key in sheet_keys:
+            worksheet = self._get_worksheet(workbook, sheet_key)
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    # pandas sizes the sheet by its non-empty cells, so empty cells must stay empty here. This also
+                    # leaves the read-only cells of merged ranges untouched.
+                    if cell.value is None or cell.value == "":
+                        continue
+                    cell.value = _make_position_token(
+                        cell.row - 1, cell.column - 1, cell.value, comment, token_prefix, token_separator, use_letters
+                    )
+
+        # Use pandas itself to resolve skiprows, names, usecols, and comment. The token values identify which
+        # original cells survived filtering without reimplementing pandas' option interactions.
+        cell_map_bytes = io.BytesIO()
+        workbook.save(cell_map_bytes)
+        cell_map_bytes.seek(0)
+        mapping_kwargs: dict[str, Any] = {
+            key: self.read_excel_kwargs[key] for key in _POSITION_KWARGS if key in self.read_excel_kwargs
+        }
+        mapping_kwargs.update({"sheet_name": self.sheet_name, "header": None, "engine": "openpyxl"})
+        cells_by_sheet = pd.read_excel(io=cell_map_bytes, **mapping_kwargs)
+        if isinstance(cells_by_sheet, pd.DataFrame):
+            cells_by_sheet = {self.sheet_name: cells_by_sheet}
+
+        cell_positions_by_sheet = {}
+        for sheet_key, dataframe in cells_by_sheet.items():
+            cell_positions = {}
+            for row_idx, row in enumerate(dataframe.itertuples(index=False, name=None)):
+                for col_idx, value in enumerate(row):
+                    position = _parse_position_token(value, token_prefix, token_separator, use_letters)
+                    if position is not None:
+                        cell_positions[position] = (row_idx, col_idx)
+            cell_positions_by_sheet[sheet_key] = cell_positions
+        return cell_positions_by_sheet
+
     def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
         Extract tables from an Excel file.
@@ -175,23 +330,27 @@ class XLSXToDocument:
 
         # If link extraction is enabled, load the workbook with openpyxl to read hyperlinks
         hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]] = {}
+        cell_positions_by_sheet: dict[str | int | None, dict[tuple[int, int], tuple[int, int]]] = {}
         if self.link_format != "none":
             file_bytes.seek(0)
             wb = openpyxl.load_workbook(file_bytes, data_only=True)
             for sheet_key in sheet_to_dataframe:
-                if isinstance(sheet_key, int):
-                    ws = wb.worksheets[sheet_key]
-                elif sheet_key is None:
-                    ws = wb.active
-                else:
-                    ws = wb[sheet_key]
+                ws = self._get_worksheet(wb, sheet_key)
                 cell_links: dict[tuple[int, int], str] = {}
                 for row in ws.iter_rows():
                     for cell in row:
                         if cell.hyperlink and cell.hyperlink.target:
-                            # Convert to 0-based indices to match DataFrame positions
+                            # Store zero-based Excel coordinates; they are translated to filtered positions below.
                             cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
                 hyperlinks_by_sheet[sheet_key] = cell_links
+            if any(hyperlinks_by_sheet.values()) and any(key in self.read_excel_kwargs for key in _POSITION_KWARGS):
+                cell_positions_by_sheet = self._get_cell_positions(wb, list(sheet_to_dataframe))
+            else:
+                # No option moves cells, or there is nothing to place: Excel coordinates are DataFrame positions.
+                cell_positions_by_sheet = {
+                    sheet_key: {cell: cell for cell in cell_links}
+                    for sheet_key, cell_links in hyperlinks_by_sheet.items()
+                }
             wb.close()
 
         updated_sheet_to_dataframe = {}
@@ -199,24 +358,12 @@ class XLSXToDocument:
             df = sheet_to_dataframe[key]
             # Row starts at 1 in Excel
             df.index = df.index + 1
+            # Apply hyperlinks to cell values before replacing the original column indices with Excel column names.
+            if key in hyperlinks_by_sheet:
+                self._apply_hyperlinks(df, hyperlinks_by_sheet[key], cell_positions_by_sheet[key])
             # Excel column names are Alphabet Characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
-
-            # Apply hyperlinks to cell values
-            if key in hyperlinks_by_sheet:
-                for (row_idx, col_idx), url in hyperlinks_by_sheet[key].items():
-                    if row_idx < len(df) and col_idx < len(df.columns):
-                        cell_value = df.iat[row_idx, col_idx]
-                        text = str(cell_value) if pd.notna(cell_value) else ""
-                        # Hyperlink text must be assignable to numeric and other typed columns.
-                        column = df.columns[col_idx]
-                        if df[column].dtype != object:
-                            df[column] = df[column].astype(object)
-                        if self.link_format == "markdown":
-                            df.iat[row_idx, col_idx] = f"[{text}]({url})"
-                        else:
-                            df.iat[row_idx, col_idx] = f"{text} ({url})"
 
             updated_sheet_to_dataframe[key] = df
 
