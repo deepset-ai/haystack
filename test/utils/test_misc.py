@@ -5,6 +5,7 @@
 import json
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -14,7 +15,51 @@ from haystack.utils.misc import (
     _parse_dict_from_json,
     _reciprocal_rank_fusion,
     expand_page_range,
+    expit,
 )
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(-1000.0, 0.0), (-1.5, 0.18242552380635635), (0.0, 0.5), (1.5, 0.8175744761936437), (1000.0, 1.0)],
+)
+def test_expit_scalar_without_overflow(value: float, expected: float) -> None:
+    with np.errstate(over="raise"):
+        result = expit(value)
+
+    assert np.isscalar(result)
+    assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_expit_array_without_overflow(dtype) -> None:
+    values = np.array([[-1000.0, -1.5, 0.0], [1.5, 1000.0, -50.0]], dtype=dtype)
+
+    with np.errstate(over="raise"):
+        result = expit(values)
+
+    assert result.shape == values.shape
+    assert result.dtype == values.dtype
+    np.testing.assert_allclose(
+        result, [[0.0, 0.18242552380635635, 0.5], [0.8175744761936437, 1.0, 1.9287498479639178e-22]]
+    )
+
+
+def test_expit_integer_limits() -> None:
+    limits = np.iinfo(np.int64)
+    values = np.array([limits.min, 0, limits.max])
+
+    with np.errstate(over="raise"):
+        result = expit(values)
+
+    np.testing.assert_array_equal(result, [0.0, 0.5, 1.0])
+
+
+def test_expit_infinity_and_nan() -> None:
+    with np.errstate(over="raise", invalid="raise"):
+        result = expit(np.array([-np.inf, np.inf, np.nan]))
+
+    np.testing.assert_array_equal(result, [0.0, 1.0, np.nan])
 
 
 class TestNormalizeMetadataFieldName:
