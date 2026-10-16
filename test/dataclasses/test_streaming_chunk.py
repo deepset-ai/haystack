@@ -4,6 +4,7 @@
 
 import logging
 import warnings
+from functools import partial
 
 import pytest
 
@@ -384,6 +385,42 @@ class TestSelectStreamingCallback:
             select_streaming_callback(None, async_callback, requires_async=False)
         with pytest.raises(ValueError, match="cannot be a coroutine"):
             select_streaming_callback(async_callback, None, requires_async=False)
+
+    @pytest.mark.parametrize("wrap_in_partial", [False, True])
+    @pytest.mark.parametrize("at_init", [False, True])
+    def test_async_callable_in_sync_context_raises(self, wrap_in_partial: bool, at_init: bool) -> None:
+        class AsyncCallback:
+            async def __call__(self, chunk: StreamingChunk) -> None:
+                pass
+
+        callback = partial(AsyncCallback()) if wrap_in_partial else AsyncCallback()
+        with pytest.raises(ValueError, match="cannot be a coroutine"):
+            select_streaming_callback(
+                init_callback=callback if at_init else None,
+                runtime_callback=None if at_init else callback,
+                requires_async=False,
+            )
+
+    def test_async_callable_cannot_be_hidden_by_instance_attribute(self) -> None:
+        class AsyncCallback:
+            async def __call__(self, chunk: StreamingChunk) -> None:
+                pass
+
+        callback = AsyncCallback()
+        callback.__dict__["__call__"] = sync_callback
+        with pytest.raises(ValueError, match="cannot be a coroutine"):
+            select_streaming_callback(init_callback=None, runtime_callback=callback, requires_async=False)
+
+    def test_sync_callable_is_not_reclassified_by_instance_attribute(self) -> None:
+        class SyncCallback:
+            def __call__(self, chunk: StreamingChunk) -> None:
+                pass
+
+        callback = SyncCallback()
+        callback.__dict__["__call__"] = async_callback
+        assert (
+            select_streaming_callback(init_callback=None, runtime_callback=callback, requires_async=False) is callback
+        )
 
     def test_sync_callback_in_async_context_warns_but_returns(self, caplog):
         with caplog.at_level(logging.WARNING):

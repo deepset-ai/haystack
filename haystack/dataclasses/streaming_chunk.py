@@ -5,6 +5,7 @@
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
+from functools import partial
 from typing import Any, Literal, overload
 
 from haystack import logging
@@ -211,7 +212,9 @@ def _is_callable_async_compatible(func: Callable) -> bool:
     :returns:
         True if the callable is compatible, False otherwise.
     """
-    return inspect.iscoroutinefunction(func)
+    while isinstance(func, partial):
+        func = func.func
+    return inspect.iscoroutinefunction(func) or inspect.iscoroutinefunction(type(func).__call__)
 
 
 @overload
