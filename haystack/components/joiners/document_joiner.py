@@ -131,6 +131,13 @@ class DocumentJoiner:
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         if weights:
+            if isinstance(weights, dict):
+                # Iterating a mapping yields its keys, so the error below
+                # would be a cryptic "'<' not supported between 'str' and 'int'".
+                raise TypeError(
+                    "The provided `weights` must be a list of numbers, "
+                    f"aligned with the input lists, but a mapping was given: {weights}"
+                )
             if any(weight < 0 for weight in weights):
                 raise ValueError("The provided `weights` must not be negative.")
             weight_sum = sum(weights)

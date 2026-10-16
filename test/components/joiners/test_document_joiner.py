@@ -366,3 +366,11 @@ class TestDocumentJoiner:
         documents_2 = [Document(content="d", score=0.2)]
         output = joiner.run([documents_1, documents_2])
         assert output["documents"] == documents_1 + documents_2
+
+
+class TestDocumentJoinerWeightsType:
+    def test_mapping_weights_raise_clear_error(self):
+        # a mapping used to be iterated key-by-key in the negative check,
+        # failing with a cryptic "'<' not supported between 'str' and 'int'"
+        with pytest.raises(TypeError, match="list of numbers"):
+            DocumentJoiner(weights={"retriever_a": 0.7})
