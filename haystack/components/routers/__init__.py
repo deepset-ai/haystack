@@ -14,7 +14,10 @@ _import_structure = {
     "file_type_router": ["FileTypeRouter"],
     "llm_messages_router": ["LLMMessagesRouter"],
     "metadata_router": ["MetadataRouter"],
+    "openai_decisions_text_router": ["OpenAIDecisionsTextRouter"],
 }
+
+__all__ = [name for names in _import_structure.values() for name in names]
 
 if TYPE_CHECKING:
     from .conditional_router import ConditionalRouter as ConditionalRouter
@@ -23,5 +26,6 @@ if TYPE_CHECKING:
     from .file_type_router import FileTypeRouter as FileTypeRouter
     from .llm_messages_router import LLMMessagesRouter as LLMMessagesRouter
     from .metadata_router import MetadataRouter as MetadataRouter
+    from .openai_decisions_text_router import OpenAIDecisionsTextRouter as OpenAIDecisionsTextRouter
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
