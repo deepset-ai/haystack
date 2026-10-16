@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add ``OpenAIDecisionsDocumentClassifier`` to answer choice, score, and predicate
+    questions about documents using the OpenAI Decisions API. Answers are stored in
+    document metadata.

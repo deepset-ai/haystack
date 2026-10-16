@@ -236,6 +236,7 @@ export default {
           },
           items: [
             'pipeline-components/classifiers/documentlanguageclassifier',
+            'pipeline-components/classifiers/openaidecisionsdocumentclassifier',
             'pipeline-components/classifiers/transformerszeroshotdocumentclassifier',
             'pipeline-components/classifiers/typesafedocumentclassifier',
           ],

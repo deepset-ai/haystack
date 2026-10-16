@@ -45,7 +45,7 @@ dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  "openai>=2.6.0",
+  "openai>=3.26.0",
   "pydantic",
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
