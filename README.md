@@ -56,8 +56,8 @@
 | haystack/components/evaluators/context\_relevance.py                      |       50 |        0 |    100% |           |
 | haystack/components/evaluators/document\_map.py                           |       55 |        4 |     93% |73, 76-80, 138 |
 | haystack/components/evaluators/document\_mrr.py                           |       45 |        4 |     91% |71, 74-78, 126 |
-| haystack/components/evaluators/document\_ndcg.py                          |       70 |        0 |    100% |           |
-| haystack/components/evaluators/document\_recall.py                        |       76 |        2 |     97% |   109-113 |
+| haystack/components/evaluators/document\_ndcg.py                          |       71 |        0 |    100% |           |
+| haystack/components/evaluators/document\_recall.py                        |       77 |        2 |     97% |   111-115 |
 | haystack/components/evaluators/faithfulness.py                            |       50 |        0 |    100% |           |
 | haystack/components/evaluators/llm\_evaluator.py                          |      168 |        1 |     99% |       264 |
 | haystack/components/evaluators/sas\_evaluator.py                          |       58 |       15 |     74% |112-126, 171-181 |
@@ -146,7 +146,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                        |      331 |       19 |     94% |174, 181, 427, 570, 605, 773, 968, 973, 990-994, 998-1010, 1051-1060, 1085 |
+| haystack/core/pipeline/pipeline.py                                        |      331 |       21 |     94% |174, 181, 427, 570, 605, 773, 965-969, 973, 990-994, 998-1010, 1051-1060, 1085 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                  |      135 |        0 |    100% |           |
@@ -169,7 +169,7 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                          |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                   |      448 |       16 |     96% |66, 468-469, 478, 587, 668, 719, 721, 748-749, 805, 947, 949, 967, 972-973 |
+| haystack/document\_stores/in\_memory/document\_store.py                   |      441 |       15 |     97% |453-454, 463, 572, 653, 704, 706, 733-734, 790, 932, 934, 952, 957-958 |
 | haystack/document\_stores/types/\_\_init\_\_.py                           |        4 |        0 |    100% |           |
 | haystack/document\_stores/types/filter\_policy.py                         |       65 |       10 |     85% |25, 38-39, 190, 198-204, 250-255, 259-265 |
 | haystack/document\_stores/types/policy.py                                 |        6 |        0 |    100% |           |
@@ -266,12 +266,12 @@
 | haystack/utils/jinja2\_extensions.py                                      |       47 |        0 |    100% |           |
 | haystack/utils/jinja2\_sandbox.py                                         |       16 |        0 |    100% |           |
 | haystack/utils/jupyter.py                                                 |        9 |        3 |     67% |     15-17 |
-| haystack/utils/misc.py                                                    |       99 |        5 |     95% |52-53, 132-135 |
+| haystack/utils/misc.py                                                    |      107 |        5 |     95% |68-69, 148-151 |
 | haystack/utils/requests\_utils.py                                         |       33 |        0 |    100% |           |
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17821** |  **693** | **96%** |           |
+| **TOTAL**                                                                 | **17824** |  **694** | **96%** |           |
 
 
 ## Setup coverage badge
