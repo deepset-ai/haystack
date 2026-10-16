@@ -18,6 +18,8 @@ class MarkdownHeaderSplitter:
     """
     Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
+    Header prefixes may be followed by spaces or tabs before the header text.
+
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
     - Optionally applying a secondary split (by word, passage, period, or line) to each chunk
@@ -78,7 +80,7 @@ class MarkdownHeaderSplitter:
         self.keep_headers = keep_headers
         self.header_split_levels = header_split_levels
         self._header_split_levels_set = set(header_split_levels)
-        self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
+        self._header_pattern = re.compile(r"(?m)^(#{1,6})[ \t](.+)$")  # ATX-style .md-headers
 
         # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
         # Broken down:

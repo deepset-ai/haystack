@@ -31,7 +31,7 @@ The `MarkdownHeaderSplitter` processes text documents by:
 - Optionally applying a secondary split (by word, passage, period, or line) to each chunk using Haystack's [`DocumentSplitter`](documentsplitter.mdx).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
-Only ATX-style headers are recognized (e.g. `# Title`). Setext-style headers (`Underline with ===`) aren't supported.
+Only ATX-style headers are recognized (e.g. `# Title`). Spaces or tabs can separate the header prefix from its text. Setext-style headers (`Underline with ===`) aren't supported.
 
 Parameters you can set when initializing the component:
 
