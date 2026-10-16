@@ -744,8 +744,8 @@ Creates a new ChatMessage object from a dictionary.
 
 **Raises:**
 
-- <code>ValueError</code> – If the `role` field is missing from the dictionary.
-- <code>TypeError</code> – If the `content` field is not a list or string.
+- <code>ValueError</code> – If the role or content is missing, or the role is invalid.
+- <code>TypeError</code> – If the content is not a string or a sequence of content-part dictionaries.
 
 #### to_openai_dict_format
 
@@ -780,18 +780,18 @@ refusal is dropped with a warning, because OpenAI ignores the tool calls of a me
 from_openai_dict_format(message: dict[str, Any]) -> ChatMessage
 ```
 
-Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat Completions API.
 
 `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
 `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
 `FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
 into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
-`meta["refusal"]` instead of the text.
+`meta["refusal"]` instead of the text. Assistant messages with tool calls or a refusal can omit `content`
+or set it to None.
 
-NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
-accepts messages without it to support shallow OpenAI-compatible APIs.
-If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
-encounter validation errors.
+NOTE: This method accepts tool calls without `id` and tool messages without `tool_call_id` to support
+shallow OpenAI-compatible APIs. Include these IDs when using the resulting ChatMessage with
+OpenAI Chat Completions to avoid validation errors.
 
 **Parameters:**
 
@@ -803,9 +803,9 @@ encounter validation errors.
 
 **Raises:**
 
-- <code>ValueError</code> – If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
-  it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
-  files referenced by `file_id`.
+- <code>ValueError</code> – If the message dictionary is missing required fields, if non-null `content` is neither a string nor a
+  list, or if it contains content parts that can't be converted, such as image URLs that are not base64
+  data URLs or files referenced by `file_id`.
 
 ## document
 
