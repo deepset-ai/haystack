@@ -46,7 +46,7 @@ dependencies = [
   "tenacity!=8.4.0",
   "lazy-imports",
   "openai>=2.6.0",
-  "pydantic",
+  "pydantic>=2.11",         # tool parameter JSON schemas (``$ref``/``required``) depend on it
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
