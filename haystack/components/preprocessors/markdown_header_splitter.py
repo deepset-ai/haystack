@@ -80,8 +80,8 @@ class MarkdownHeaderSplitter:
         self._header_split_levels_set = set(header_split_levels)
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
         # Optional closing sequence of an ATX header, e.g. the trailing "##" in "## Install ##". It is not part of
-        # the header text, and it only counts when it is the whole text or follows whitespace, so "C#" is kept.
-        self._closing_sequence_pattern = re.compile(r"(?:^|\s)#+$")
+        # the header text. Only spaces/tabs may surround it, with an optional carriage return for Windows line endings.
+        self._closing_sequence_pattern = re.compile(r"(?:^|[ \t])#+[ \t]*\r?$")
 
         # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
         # Broken down:
@@ -189,7 +189,7 @@ class MarkdownHeaderSplitter:
             # extract header info
             header_prefix = match.group(1)
             # keep surrounding whitespace and the optional closing "#"s out of the metadata
-            header_text = self._closing_sequence_pattern.sub("", match.group(2).strip()).strip()
+            header_text = self._closing_sequence_pattern.sub("", match.group(2)).strip()
             level = len(header_prefix)
 
             # get content

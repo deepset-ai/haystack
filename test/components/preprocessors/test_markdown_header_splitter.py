@@ -1112,11 +1112,15 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
         ("## Install ##", "Install"),
         ("## Install #####   ", "Install"),
         ("## Install\t#", "Install"),
+        ("## Install ##\r", "Install"),
         ("## ##", ""),
         # not a closing sequence: no whitespace before the "#"s, or other text after them
         ("## C#", "C#"),
         ("## Install #1", "Install #1"),
         ("## Install \\#", "Install \\#"),
+        # Non-breaking spaces do not delimit an ATX closing sequence.
+        ("## Install\u00a0##", "Install\u00a0##"),
+        ("## Install ##\u00a0", "Install ##"),
     ],
 )
 def test_closing_sequence_is_not_part_of_header_metadata(header_line, expected_header):
