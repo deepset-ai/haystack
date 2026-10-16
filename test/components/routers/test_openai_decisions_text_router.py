@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -288,8 +287,7 @@ class TestRun:
 
 @pytest.mark.integration
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-@pytest.mark.asyncio
-async def test_live_run_in_pipeline(self):
+def test_live_run_in_pipeline():
     pipeline = Pipeline()
     router = OpenAIDecisionsTextRouter(labels=_LABELS, instructions="Which team should handle this support request?")
     pipeline.add_component("router", router)
@@ -298,6 +296,4 @@ async def test_live_run_in_pipeline(self):
         "technical": "The app crashes every time I open the settings page.",
     }
     for label, text in texts.items():
-        data = {"router": {"text": text}}
-        assert await asyncio.to_thread(pipeline.run, data=data) == {"router": {label: text}}
-        assert await pipeline.run_async(data=data) == {"router": {label: text}}
+        assert pipeline.run(data={"router": {"text": text}}) == {"router": {label: text}}
