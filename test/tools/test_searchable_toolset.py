@@ -113,6 +113,40 @@ def large_catalog():
 
 
 class TestSearchableToolset:
+    @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
+    @pytest.mark.parametrize("async_warm_up", [False, True])
+    async def test_warm_up_rejects_catalog_name_matching_search_tool(self, search_tool_name, async_warm_up):
+        catalog_tool = create_tool_from_function(get_weather, name=search_tool_name)
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name=search_tool_name)
+
+        # A failed warm-up must not leave the toolset initialized on a subsequent attempt.
+        for _ in range(2):
+            with pytest.raises(
+                ValueError,
+                match="Catalog tool name .* conflicts with the search tool. Choose a different search_tool_name.",
+            ):
+                if async_warm_up:
+                    await toolset.warm_up_async()
+                else:
+                    toolset.warm_up()
+
+    @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
+    def test_passthrough_allows_catalog_name_matching_unused_search_tool(self, search_tool_name):
+        catalog_tool = create_tool_from_function(get_weather, name=search_tool_name)
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=2, search_tool_name=search_tool_name)
+
+        assert [tool.name for tool in toolset] == [search_tool_name]
+        assert toolset[0].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
+
+    def test_renamed_search_tool_can_discover_catalog_tool_named_search_tools(self):
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name="find_tools")
+
+        toolset[0].invoke(tool_keywords="weather")
+
+        assert [tool.name for tool in toolset] == ["find_tools", "search_tools"]
+        assert toolset[1].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
+
     def test_init_with_invalid_catalog(self):
         with pytest.raises(TypeError):
             SearchableToolset(catalog=123)  # type: ignore[arg-type]

@@ -100,7 +100,7 @@ print(result["messages"][-1].text)
 
 You can customize the name, description, and parameter descriptions of the `search_tools` bootstrap tool:
 
-- `search_tool_name`: Custom name for the bootstrap tool. Default is `"search_tools"`.
+- `search_tool_name`: Custom name for the bootstrap tool. Default is `"search_tools"`. When discovery is active, this name must differ from every catalog tool name; otherwise, warm-up raises a `ValueError`. Choose a different name if your catalog already contains a tool called `search_tools`.
 - `search_tool_description`: Custom description for the bootstrap tool.
 - `search_tool_parameters_description`: Custom descriptions for the bootstrap tool's parameters. Keys must be a subset of `{"tool_keywords", "k"}`.
 
