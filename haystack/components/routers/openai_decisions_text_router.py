@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
 
 from openai import AsyncOpenAI, OpenAI
@@ -77,9 +78,11 @@ class OpenAIDecisionsTextRouter:
             Threshold between 0 and 1 for the answer's `confidence`. Texts below it are sent to the `low_confidence`
             output. If `None`, every non-refused text goes to a label output.
         :param timeout:
-            Timeout in seconds for each request attempt. If `None`, uses the OpenAI SDK default.
+            Timeout for OpenAI client calls. If not set, it defaults to either the
+            `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
-            Maximum number of retries after a failed request attempt. If `None`, uses the OpenAI SDK default.
+            Maximum number of retries to contact OpenAI after an internal error.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :raises ValueError:
             If labels are invalid, duplicated or reserved, or `min_confidence` is outside 0 to 1.
         """
@@ -122,12 +125,16 @@ class OpenAIDecisionsTextRouter:
         component.set_output_types(self, **dict.fromkeys(outputs, str))
 
     def _client_kwargs(self) -> dict[str, Any]:
-        kwargs: dict[str, Any] = {"api_key": self.api_key.resolve_value(), "base_url": self.api_base_url}
-        if self.timeout is not None:
-            kwargs["timeout"] = self.timeout
-        if self.max_retries is not None:
-            kwargs["max_retries"] = self.max_retries
-        return kwargs
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "base_url": self.api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
 
     def warm_up(self) -> None:
         """Creates the synchronous OpenAI client if needed."""

@@ -144,7 +144,7 @@ class TestSerialization:
 
 
 @pytest.mark.usefixtures("api_key")
-class TestWarmUp:
+class TestLifecycle:
     @patch("haystack.components.routers.openai_decisions_text_router.OpenAI")
     def test_warm_up(self, mock_client):
         router = OpenAIDecisionsTextRouter(
@@ -161,12 +161,14 @@ class TestWarmUp:
 
     @pytest.mark.asyncio
     @patch("haystack.components.routers.openai_decisions_text_router.AsyncOpenAI")
-    async def test_warm_up_async(self, mock_client):
+    async def test_warm_up_async(self, mock_client, monkeypatch):
+        monkeypatch.delenv("OPENAI_TIMEOUT", raising=False)
+        monkeypatch.delenv("OPENAI_MAX_RETRIES", raising=False)
         router = OpenAIDecisionsTextRouter(labels=_LABELS)
         mock_client.assert_not_called()
         await router.warm_up_async()
         await router.warm_up_async()
-        mock_client.assert_called_once_with(api_key="test-key", base_url=None)
+        mock_client.assert_called_once_with(api_key="test-key", base_url=None, timeout=30.0, max_retries=5)
         assert router._async_client is mock_client.return_value
         assert router._client is None
 
