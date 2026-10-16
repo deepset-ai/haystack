@@ -109,6 +109,7 @@ class ComponentTool(Tool):
         :param description: Optional description (defaults to component's docstring).
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
+            Top-level property names must match the component's input socket names.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
             Optional dictionary defining how tool outputs should be converted into string(s) or results.
@@ -159,7 +160,9 @@ class ComponentTool(Tool):
             }
             ```
         :raises TypeError: If the object passed is not a Haystack Component instance.
-        :raises ValueError: If the component has already been added to a pipeline, or if schema generation fails.
+        :raises ValueError:
+            If the component has already been added to a pipeline, schema generation fails,
+            or custom parameters declare unknown component inputs.
         """
         if not isinstance(component, Component):
             message = (
@@ -249,6 +252,12 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
+
+        if parameters:
+            unknown = set(parameters.get("properties", {})) - self._get_valid_inputs()
+            if unknown:
+                names = ", ".join(sorted(unknown))
+                raise ValueError(f"Custom parameters contain unknown component input parameter(s): {names}.")
 
     def _get_valid_inputs(self) -> set[str]:
         """

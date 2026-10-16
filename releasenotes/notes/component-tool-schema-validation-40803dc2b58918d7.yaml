@@ -1,0 +1,6 @@
+upgrade:
+  - |
+    ``ComponentTool`` now raises ``ValueError`` during construction when a custom
+    ``parameters`` schema declares top-level properties that are not component
+    inputs. Previously these names could cause a ``KeyError`` during invocation.
+    Rename or remove unknown properties to match the component input sockets.
