@@ -2,11 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import io
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 import pytest
+from pptx import Presentation
+from pptx.util import Inches
 
 from haystack.components.converters.pptx import PPTXToDocument
 from haystack.dataclasses import ByteStream
@@ -123,3 +127,64 @@ class TestPPTXToDocument:
 
         assert "https://example.com" not in content
         assert "Example" in content
+
+    @staticmethod
+    def _pptx_with_soft_line_break(text: str) -> bytes:
+        """Build a one-slide deck whose text box holds `text`, with \\v marking soft line breaks."""
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        text_frame = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(7), Inches(2)).text_frame
+        text_frame.text = text
+        buffer = io.BytesIO()
+        presentation.save(buffer)
+        return buffer.getvalue()
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_soft_line_break_with_link_format(self, link_format: Literal["markdown", "plain"]) -> None:
+        """
+        A soft line break (<a:br/>) between runs must survive every link format.
+
+        See https://github.com/deepset-ai/haystack/issues/13043.
+        """
+        data = self._pptx_with_soft_line_break("Account: Alice\vBalance: 100")
+        converter = PPTXToDocument(link_format=link_format)
+        content = converter.run(sources=[ByteStream(data=data)])["documents"][0].content
+
+        assert content == "Account: Alice\vBalance: 100"
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_soft_line_break_matches_link_format_none(self, link_format: Literal["markdown", "plain"]) -> None:
+        """
+        The formatted link modes return the same text the default "none" mode already returns.
+        """
+        data = self._pptx_with_soft_line_break("before\vafter")
+        expected = PPTXToDocument(link_format="none").run(sources=[ByteStream(data=data)])["documents"][0].content
+        assert (
+            PPTXToDocument(link_format=link_format).run(sources=[ByteStream(data=data)])["documents"][0].content
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        ("link_format", "expected"),
+        [("markdown", "before\v[example](https://example.com)"), ("plain", "before\vexample (https://example.com)")],
+    )
+    def test_hyperlink_still_formatted_next_to_soft_line_break(
+        self, link_format: Literal["markdown", "plain"], expected: str
+    ) -> None:
+        """
+        Keeping soft line breaks must not change how hyperlinked runs are formatted.
+        """
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        text_frame = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(7), Inches(2)).text_frame
+        text_frame.text = "before\vexample"
+        text_frame.paragraphs[0].runs[1].hyperlink.address = "https://example.com"
+        buffer = io.BytesIO()
+        presentation.save(buffer)
+
+        content = (
+            PPTXToDocument(link_format=link_format)
+            .run(sources=[ByteStream(data=buffer.getvalue())])["documents"][0]
+            .content
+        )
+        assert content == expected

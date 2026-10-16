@@ -14,7 +14,8 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
-    from pptx.text.text import _Paragraph
+    from pptx.oxml.text import CT_RegularTextRun, CT_TextLineBreak
+    from pptx.text.text import _Paragraph, _Run
 
 
 logger = logging.getLogger(__name__)
@@ -100,15 +101,23 @@ class PPTXToDocument:
         """
         if self.link_format == "none":
             return paragraph.text
+        # `paragraph.runs` yields only the `<a:r>` children, so it drops the `<a:br/>` elements that
+        # stand between runs. Walk every paragraph child instead and emit each break as the vertical
+        # tab python-pptx itself uses in `paragraph.text`, keeping the formatted modes consistent
+        # with `"none"`.
         parts = []
-        for run in paragraph.runs:
-            if run.hyperlink and run.hyperlink.address:
-                if self.link_format == "markdown":
-                    parts.append(f"[{run.text}]({run.hyperlink.address})")
+        for child in paragraph._p.iterchildren():
+            if isinstance(child, CT_RegularTextRun):
+                run = _Run(child, paragraph)
+                if run.hyperlink and run.hyperlink.address:
+                    if self.link_format == "markdown":
+                        parts.append(f"[{run.text}]({run.hyperlink.address})")
+                    else:
+                        parts.append(f"{run.text} ({run.hyperlink.address})")
                 else:
-                    parts.append(f"{run.text} ({run.hyperlink.address})")
-            else:
-                parts.append(run.text)
+                    parts.append(run.text)
+            elif isinstance(child, CT_TextLineBreak):
+                parts.append("\v")
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
