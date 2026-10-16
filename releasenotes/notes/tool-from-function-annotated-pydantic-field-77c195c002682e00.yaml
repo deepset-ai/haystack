@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and the ``@tool`` decorator no longer fail with
+    "The provided parameters do not define a valid JSON schema" when a parameter is annotated with a Pydantic
+    ``Field``, for example ``Annotated[int, Field(ge=1)]``. Previously, the first ``Annotated`` metadata item was
+    always written to the schema as the parameter description, even when it was not a string.
+    Now only a string metadata item is used as the description, and a ``Field`` is left to Pydantic, so its
+    constraints and its own ``description`` appear in the tool schema.
