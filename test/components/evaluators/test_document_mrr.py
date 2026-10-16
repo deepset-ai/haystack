@@ -59,6 +59,21 @@ def test_run_with_meta_comparison():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+def test_run_with_empty_comparison_values_does_not_match():
+    evaluator = DocumentMRREvaluator(document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="Strasbourg", meta={"file_id": ""})],
+            [Document(content="Paris", meta={"file_id": "a"})],
+        ],
+        retrieved_documents=[
+            [Document(content="pasta", meta={"file_id": ""})],
+            [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+        ],
+    )
+    assert result == {"individual_scores": [0.0, 0.5], "score": 0.25}
+
+
 def test_run_with_nested_meta_comparison():
     evaluator = DocumentMRREvaluator(document_comparison_field="meta.source.url")
     result = evaluator.run(

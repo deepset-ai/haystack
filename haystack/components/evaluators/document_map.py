@@ -128,7 +128,8 @@ class DocumentMAPEvaluator:
             uncredited_ground_truth_values: list[Any] = []
             for doc in ground_truth:
                 value = self._get_comparison_value(doc)
-                if value is not None and value not in uncredited_ground_truth_values:
+                # Missing or empty values can't identify a relevant document, so they never match
+                if value not in ("", None) and value not in uncredited_ground_truth_values:
                     uncredited_ground_truth_values.append(value)
 
             total_relevant_documents = len(uncredited_ground_truth_values)
