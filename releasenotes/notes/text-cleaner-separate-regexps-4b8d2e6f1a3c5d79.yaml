@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``TextCleaner`` now applies each pattern in ``remove_regexps`` on its own instead of joining them into a single
+    regular expression. Previously, a backreference such as ``\1`` in any pattern after the first pointed at another
+    pattern's group, two patterns using the same group name raised ``re.error``, and a global inline flag such as
+    ``(?m)`` was rejected unless it was in the first pattern. The docstring now also states that the patterns match
+    case-insensitively.

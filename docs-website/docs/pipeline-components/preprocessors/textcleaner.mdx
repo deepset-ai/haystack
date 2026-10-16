@@ -31,7 +31,7 @@ Use `TextCleaner` to make text data more readable. It removes regexes, punctuati
 - `remove_punctuation` removes all punctuation from the text.
 - `remove_numbers` removes all numerical digits from the text.
 
-In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed.
+In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed. The patterns are applied one after another and match case-insensitively. To match part of a pattern case-sensitively, use an inline flag group such as `(?-i:[A-Z]+)`.
 
 ## Usage
 
