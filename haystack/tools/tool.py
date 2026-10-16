@@ -206,7 +206,7 @@ class Tool:
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )
-                if valid_inputs and param_name not in valid_inputs:
+                if param_name not in valid_inputs:
                     raise ValueError(
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
@@ -225,7 +225,13 @@ class Tool:
 
         Subclasses like ComponentTool override this to return component input socket names.
 
-        :returns: Set of valid input parameter names for validation.
+        Unlike `_get_valid_outputs()`, which returns `None` to mean "outputs are unknown", this
+        method never returns `None`: the accepted parameter names are always determinable, so an
+        empty set means the tool genuinely takes no input rather than that the answer is unknown.
+        Callers must therefore validate `inputs_from_state` against the returned set
+        unconditionally.
+
+        :returns: Set of valid input parameter names for validation, empty if the tool takes no input.
         """
         # Combine parameters from both function signature and schema for robustness
         # Function signature includes all parameters (even those excluded from schema)
