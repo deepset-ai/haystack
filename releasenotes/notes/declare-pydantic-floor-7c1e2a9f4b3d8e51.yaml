@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Declared ``pydantic>=2.11`` as the minimum supported version. Older pydantic
+    releases generate different JSON schemas for dataclass parameters (``allOf``
+    wrappers around ``$ref`` and missing ``required`` lists), so the tool schemas
+    produced by ``Tool`` and ``ComponentTool`` silently differed from the ones the
+    tests and the models expect when an environment resolved to an older pydantic.
