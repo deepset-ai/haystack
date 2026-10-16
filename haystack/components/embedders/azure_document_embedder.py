@@ -93,6 +93,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             Number of documents to embed at once.
         :param progress_bar:
             If `True`, shows a progress bar when running.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param meta_fields_to_embed:
             List of metadata fields to embed along with the document text.
         :param embedding_separator:

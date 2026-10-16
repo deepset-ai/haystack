@@ -214,6 +214,46 @@ class TestOpenAIDocumentEmbedder:
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("progress_bar", [False, True])
+    @pytest.mark.parametrize("run_async", [False, True])
+    async def test_progress_bar_override_is_resolved_each_run(
+        self, monkeypatch, mock_openai_clients, progress_bar, run_async
+    ):
+        monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", "false")
+        embedder = OpenAIDocumentEmbedder(progress_bar=progress_bar)
+        sync_cls, async_cls = mock_openai_clients
+        response = Mock(
+            data=[Mock(embedding=[0.1, 0.2, 0.3])],
+            model="text-embedding-3-small",
+            usage={"prompt_tokens": 1, "total_tokens": 1},
+        )
+        sync_cls.return_value.embeddings.create.return_value = response
+        async_cls.return_value.embeddings.create = AsyncMock(return_value=response)
+        progress = Mock(side_effect=lambda iterable, **kwargs: iterable)
+        monkeypatch.setattr(openai_document_embedder_module, "async_tqdm" if run_async else "tqdm", progress)
+
+        expected_progress_calls = 0
+        for override, expected in [("false", False), ("true", True), (None, progress_bar)]:
+            if override is None:
+                monkeypatch.delenv("HAYSTACK_PROGRESS_BARS")
+            else:
+                monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", override)
+            documents = [Document(content="test document")]
+            result = await embedder.run_async(documents=documents) if run_async else embedder.run(documents=documents)
+
+            assert result["documents"][0].embedding == [0.1, 0.2, 0.3]
+            if run_async:
+                expected_progress_calls += int(expected)
+                assert progress.call_count == expected_progress_calls
+            else:
+                assert progress.call_args.kwargs["disable"] is not expected
+            assert embedder.progress_bar is progress_bar
+
+        monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", "true" if not progress_bar else "false")
+        restored = OpenAIDocumentEmbedder.from_dict(embedder.to_dict())
+        assert restored.progress_bar is progress_bar
+
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
         embedder.warm_up()

@@ -14,6 +14,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
+from haystack.utils.progress import _get_progress_bar_setting
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ class OpenAIDocumentEmbedder:
             Number of documents to embed at once.
         :param progress_bar:
             If `True`, shows a progress bar when running.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param meta_fields_to_embed:
             List of metadata fields to embed along with the document text.
         :param embedding_separator:
@@ -250,7 +252,9 @@ class OpenAIDocumentEmbedder:
         doc_ids_to_embeddings: dict[str, list[float]] = {}
         meta: dict[str, Any] = {}
         for batch in tqdm(
-            batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+            batched(texts_to_embed.items(), batch_size),
+            disable=not _get_progress_bar_setting(self.progress_bar),
+            desc="Calculating embeddings",
         ):
             args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
@@ -293,7 +297,7 @@ class OpenAIDocumentEmbedder:
         meta: dict[str, Any] = {}
 
         batches = list(batched(texts_to_embed.items(), batch_size))
-        if self.progress_bar:
+        if _get_progress_bar_setting(self.progress_bar):
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
