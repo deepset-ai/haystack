@@ -17,7 +17,7 @@ Routes a text to the output of the label an OpenAI Decisions model picks for it.
 | **Mandatory init variables** | `labels`: The labels to route between <br /> <br />`api_key`: The OpenAI API key. Can be set with the `OPENAI_API_KEY` env var. |
 | **Mandatory run variables** | `text`: The text to route |
 | **Output variables** | `<label>`: The input text, on the output named after the label the model picked. There's one output per label. <br /> <br />`low_confidence`: The input text when the answer's confidence is below `min_confidence`. Only present if `min_confidence` is set. <br /> <br />`refused`: The input text when the model declines to classify it. This output always exists. |
-| **API reference** | [Routers](/reference/routers-api#openaidecisionstextrouter) |
+| **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/openai_decisions_text_router.py |
 | **Package name** | `haystack-ai` |
 

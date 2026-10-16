@@ -17,8 +17,6 @@ _import_structure = {
     "openai_decisions_text_router": ["OpenAIDecisionsTextRouter"],
 }
 
-__all__ = [name for names in _import_structure.values() for name in names]
-
 if TYPE_CHECKING:
     from .conditional_router import ConditionalRouter as ConditionalRouter
     from .document_length_router import DocumentLengthRouter as DocumentLengthRouter
