@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any
@@ -114,9 +115,11 @@ class OpenAIDecisionsDocumentClassifier:
         :param metadata_field:
             Name of the metadata field the answers are written to.
         :param timeout:
-            Timeout in seconds for each request attempt. If `None`, uses the OpenAI SDK default.
+            Timeout for OpenAI client calls. If not set, it defaults to either the
+            `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
-            Maximum number of retries after a failed request attempt. If `None`, uses the OpenAI SDK default.
+            Maximum number of retries to contact OpenAI after an internal error.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param max_workers:
             Maximum number of worker threads in `run` and of concurrent requests in `run_async`. Must be at least 1.
         :param raise_on_failure:
@@ -164,12 +167,16 @@ class OpenAIDecisionsDocumentClassifier:
         self._async_client: AsyncOpenAI | None = None
 
     def _client_kwargs(self) -> dict[str, Any]:
-        kwargs: dict[str, Any] = {"api_key": self.api_key.resolve_value(), "base_url": self.api_base_url}
-        if self.timeout is not None:
-            kwargs["timeout"] = self.timeout
-        if self.max_retries is not None:
-            kwargs["max_retries"] = self.max_retries
-        return kwargs
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "base_url": self.api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
 
     def warm_up(self) -> None:
         """

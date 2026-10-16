@@ -4,3 +4,7 @@ features:
     Add ``OpenAIDecisionsDocumentClassifier`` to answer choice, score, and predicate
     questions about documents using the OpenAI Decisions API. Answers are stored in
     document metadata.
+upgrade:
+  - |
+    Raise the minimum supported ``openai`` SDK version from ``2.6.0`` to ``3.26.0``
+    to support the Decisions API.

@@ -132,29 +132,33 @@ class TestSerialization:
 @pytest.mark.usefixtures("api_key")
 class TestLifecycle:
     @patch("haystack.components.classifiers.openai_decisions_document_classifier.OpenAI")
-    def test_warm_up(self, mock_client):
+    def test_warm_up(self, mock_client, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "45.5")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "2")
         component = OpenAIDecisionsDocumentClassifier(
             questions=[{"name": "refund", "type": "predicate", "instructions": "Is this a refund request?"}],
             api_base_url="https://example.com/v1",
             timeout=30.0,
-            max_retries=5,
+            max_retries=0,
         )
         component.warm_up()
         component.warm_up()
         mock_client.assert_called_once_with(
-            api_key="test-key", base_url="https://example.com/v1", timeout=30.0, max_retries=5
+            api_key="test-key", base_url="https://example.com/v1", timeout=30.0, max_retries=0
         )
         assert component._client is mock_client.return_value
 
     @pytest.mark.asyncio
     @patch("haystack.components.classifiers.openai_decisions_document_classifier.AsyncOpenAI")
-    async def test_warm_up_async(self, mock_client):
+    async def test_warm_up_async(self, mock_client, monkeypatch):
+        monkeypatch.delenv("OPENAI_TIMEOUT", raising=False)
+        monkeypatch.delenv("OPENAI_MAX_RETRIES", raising=False)
         component = OpenAIDecisionsDocumentClassifier(
             questions=[{"name": "refund", "type": "predicate", "instructions": "Is this a refund request?"}]
         )
         await component.warm_up_async()
         await component.warm_up_async()
-        mock_client.assert_called_once_with(api_key="test-key", base_url=None)
+        mock_client.assert_called_once_with(api_key="test-key", base_url=None, timeout=30.0, max_retries=5)
         assert component._async_client is mock_client.return_value
 
     def test_close(self):
