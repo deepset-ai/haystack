@@ -157,6 +157,11 @@ A component that merges multiple input branches of a pipeline into a single outp
 `BranchJoiner` receives multiple inputs of the same data type and forwards the first received value
 to its output. This is useful for scenarios where multiple branches need to converge before proceeding.
 
+Only one of the connected branches should produce output in each run. `BranchJoiner` runs as soon as it receives
+a value, so if several branches produce output, it runs once per value and the components after it run multiple
+times too. To collect the outputs of several branches, use a joiner that waits for all of them, such as
+`ListJoiner` or `DocumentJoiner`.
+
 ### Common Use Cases:
 
 - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates
