@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Add ``split_by="token"`` to ``HierarchicalDocumentSplitter``, so block sizes are counted in LLM tokens using
+    tiktoken, as in ``DocumentSplitter``. The encoding defaults to ``"o200k_base"`` and can be changed with the new
+    ``tokenizer_encoding`` parameter. ``HierarchicalDocumentSplitter`` also gets a ``warm_up()`` method that loads the
+    sentence tokenizer or tiktoken encoding up front instead of on the first ``run()``. Requires ``pip install tiktoken``
+    for ``split_by="token"``.
