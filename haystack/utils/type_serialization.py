@@ -149,7 +149,7 @@ def _parse_generic_args(args_str: str) -> list[str]:
             escaped = False
         elif char == "\\" and quote:
             escaped = True
-        elif char in ("'", '\"'):
+        elif char in ("'", '"'):
             if quote == char:
                 quote = None
             elif quote is None:
@@ -267,11 +267,10 @@ def deserialize_type(type_str: str) -> Any:
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
         if main_type is typing.Annotated:
-            args = _parse_generic_args(generics_str)
-            metadata = [ast.literal_eval(arg) for arg in args[1:]]
-            return typing.Annotated[deserialize_type(args[0]), *metadata]
-
-        generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
+            annotated_args = _parse_generic_args(generics_str)
+            generic_args = [deserialize_type(annotated_args[0]), *(ast.literal_eval(arg) for arg in annotated_args[1:])]
+        else:
+            generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
         # Reconstruct
         try:
