@@ -93,8 +93,12 @@ def serialize_type(target: Any) -> str:
 
     # Literal holds values (e.g. Literal["yes", "no"]), not types. Serialize each value with repr() so
     # strings keep their quotes.
-    if typing.get_origin(target) is typing.Literal:
+    origin = typing.get_origin(target)
+    if origin is typing.Literal:
         return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
+    if origin is typing.Annotated:
+        args = get_args(target)
+        return f"typing.Annotated[{serialize_type(args[0])}, {', '.join(repr(a) for a in args[1:])}]"
 
     args = get_args(target)
 
@@ -136,15 +140,26 @@ def serialize_type(target: Any) -> str:
 def _parse_generic_args(args_str: str) -> list[str]:
     args = []
     bracket_count = 0
+    quote = None
+    escaped = False
     current_arg = ""
 
     for char in args_str:
-        if char == "[":
+        if escaped:
+            escaped = False
+        elif char == "\\" and quote:
+            escaped = True
+        elif char in ("'", '\"'):
+            if quote == char:
+                quote = None
+            elif quote is None:
+                quote = char
+        elif quote is None and char == "[":
             bracket_count += 1
-        elif char == "]":
+        elif quote is None and char == "]":
             bracket_count -= 1
 
-        if char == "," and bracket_count == 0:
+        if char == "," and bracket_count == 0 and quote is None:
             args.append(current_arg.strip())
             current_arg = ""
         else:
@@ -251,6 +266,10 @@ def deserialize_type(type_str: str) -> Any:
         # arguments.
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+        if main_type is typing.Annotated:
+            args = _parse_generic_args(generics_str)
+            metadata = [ast.literal_eval(arg) for arg in args[1:]]
+            return typing.Annotated[deserialize_type(args[0]), *metadata]
 
         generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
