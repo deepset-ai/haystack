@@ -693,6 +693,17 @@ class TestGetModelExitReason:
     def test_classifies_tool_call_free_model_replies(self, message, expected):
         assert _get_model_exit_reason([message]) == expected
 
+    def test_only_the_last_message_tool_calls_matter(self) -> None:
+        # An earlier assistant turn had a tool call, but the terminal reply is plain text.
+        # The exit reason must be classified from the last message, not from any message in the batch.
+        messages = [
+            ChatMessage.from_assistant(
+                "", tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+            ChatMessage.from_assistant("Complete answer."),
+        ]
+        assert _get_model_exit_reason(messages) == "text"
+
     def test_empty_message_batch_is_not_an_exit(self):
         assert _get_model_exit_reason([]) is None
 
