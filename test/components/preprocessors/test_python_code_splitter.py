@@ -910,3 +910,28 @@ class TestEdgeCases:
         doc = Document(content="class Broken(\n    pass\n")
         with pytest.raises(SyntaxError):
             splitter.run(documents=[doc])
+
+    def test_form_feed_does_not_shift_ast_line_numbers(self):
+        """Form feed must not break alignment with ast line numbers (GH#13299)."""
+        import ast
+
+        source = (
+            "import os\n"
+            "\n"
+            "\x0c\n"
+            "def first():\n"
+            "    return 1\n"
+            "\n"
+            "\n"
+            "def second():\n"
+            '    """Docstring of second."""\n'
+            "    value = 2\n"
+            "    return value\n"
+        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1)
+        chunks = splitter.run(documents=[Document(content=source)])["documents"]
+        for chunk in chunks:
+            ast.parse(chunk.content)
+        contents = [c.content or "" for c in chunks]
+        assert any("def first" in c and "return 1" in c for c in contents)
+        assert any("def second" in c and "return value" in c for c in contents)
