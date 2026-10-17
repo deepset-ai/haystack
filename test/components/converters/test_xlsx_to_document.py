@@ -254,3 +254,60 @@ class TestXLSXToDocument:
         ]
         assert rows == [linked_values + ["1.23"], ["43", "4.5", "False", "2.35"]]
         assert documents[0].meta["xlsx"] == {"sheet_name": "Sheet"}
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    def test_run_preserves_literal_na_strings(self, tmp_path: Path, table_format: Literal["csv", "markdown"]) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Code", "Status", "Blank"])
+        sheet.append(["NA", "OK", None])
+        sheet.append(["N/A", "pending", ""])
+        sheet.append(["North America", "active", ""])
+        path = tmp_path / "literal_na.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        converter = XLSXToDocument(table_format=table_format)
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+
+        if table_format == "csv":
+            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+            assert rows == [
+                ["Code", "Status", "Blank"],
+                ["NA", "OK", ""],
+                ["N/A", "pending", ""],
+                ["North America", "active", ""],
+            ]
+        else:
+            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+            assert rows == [
+                ["Code", "Status", "Blank"],
+                ["NA", "OK", ""],
+                ["N/A", "pending", ""],
+                ["North America", "active", ""],
+            ]
+
+    def test_run_keep_default_na_override(self, tmp_path: Path) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Code", "Status"])
+        sheet.append(["NA", "OK"])
+        sheet.append(["N/A", "pending"])
+        path = tmp_path / "override_na.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        converter = XLSXToDocument(read_excel_kwargs={"keep_default_na": True})
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+        rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        assert rows == [["Code", "Status"], ["", "OK"], ["", "pending"]]
