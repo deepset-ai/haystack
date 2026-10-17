@@ -4,7 +4,7 @@
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, get_origin
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -168,8 +168,13 @@ class LLMEvaluator:
         # Validate inputs
         if (
             not isinstance(inputs, list)
-            or not all(isinstance(_input, tuple) for _input in inputs)
-            or not all(isinstance(_input[0], str) and _input[1] is not list and len(_input) == 2 for _input in inputs)
+            or not all(
+                isinstance(_input, tuple)
+                and len(_input) == 2
+                and isinstance(_input[0], str)
+                and get_origin(_input[1]) is list
+                for _input in inputs
+            )
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "

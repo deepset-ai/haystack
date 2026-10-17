@@ -106,6 +106,21 @@ class TestLLMEvaluator:
                 ],
             )
 
+        # Malformed tuple shapes and invalid declared types must raise ValueError.
+        for invalid_inputs in [
+            [("predicted_answers",)],
+            [("predicted_answers", list[str], "extra")],
+            [("predicted_answers", str)],
+            [("predicted_answers", dict)],
+            [("predicted_answers", list)],
+        ]:
+            with pytest.raises(ValueError, match="expects inputs to be a list of tuples"):
+                LLMEvaluator.validate_init_parameters(
+                    inputs=invalid_inputs,
+                    outputs=["score"],
+                    examples=[],
+                )
+
         # Invalid outputs
         with pytest.raises(ValueError):
             LLMEvaluator(

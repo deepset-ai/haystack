@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Fix ``LLMEvaluator`` input validation so malformed input tuples and non-list type declarations raise ``ValueError`` instead of being accepted or causing an indexing error.
