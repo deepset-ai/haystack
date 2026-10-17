@@ -192,7 +192,7 @@ Deserialize secrets in a dictionary inplace.
 default_azure_ad_token_provider() -> str
 ```
 
-Get a Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
+Get an Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
 
 ## base_serialization
 

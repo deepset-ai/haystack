@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` now raises a ``ValueError`` when any value in ``weights`` is negative. Previously negative
+    weights were normalized by their -- possibly negative -- sum, which flipped their sign and could produce
+    negative document scores in ``merge`` mode. For example ``weights=[1, -2]`` was normalized to ``[-1.0, 2.0]``.
+    The existing error for weights that sum to zero is unchanged.

@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``LLMRanker`` no longer crashes with ``AttributeError`` when ``query`` is
+    ``None`` (or another non-string) coming from an upstream pipeline
+    component. Both ``run`` and ``run_async`` now return the documents
+    unranked, matching the existing empty-query fallback.

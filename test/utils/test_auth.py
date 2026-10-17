@@ -7,7 +7,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from haystack.utils.auth import EnvVarSecret, Secret, SecretType, TokenSecret
+from haystack.utils.auth import EnvVarSecret, Secret, SecretType, TokenSecret, deserialize_secrets_inplace
 
 
 def test_secret_type():
@@ -85,3 +85,37 @@ def test_env_var_secret():
         secret._strict = False  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
         secret._type = SecretType.TOKEN  # type: ignore[misc]
+
+
+def test_deserialize_secrets_inplace_deserializes_listed_keys():
+    data = {"api_key": Secret.from_env_var("TEST_ENV_VAR1").to_dict(), "model": "gpt"}
+
+    deserialize_secrets_inplace(data, ["api_key"])
+
+    assert isinstance(data["api_key"], EnvVarSecret)
+    assert data["model"] == "gpt"
+
+
+def test_deserialize_secrets_inplace_deserializes_listed_keys_when_recursive():
+    """A serialized secret is itself a dict, so recursion must not take priority over the requested keys."""
+    data = {"api_key": Secret.from_env_var("TEST_ENV_VAR1").to_dict()}
+
+    deserialize_secrets_inplace(data, ["api_key"], recursive=True)
+
+    assert isinstance(data["api_key"], EnvVarSecret)
+
+
+def test_deserialize_secrets_inplace_recurses_into_nested_dicts():
+    data = {"a": {"b": {"api_key": Secret.from_env_var("TEST_ENV_VAR1").to_dict()}}}
+
+    deserialize_secrets_inplace(data, ["api_key"], recursive=True)
+
+    assert isinstance(data["a"]["b"]["api_key"], EnvVarSecret)
+
+
+def test_deserialize_secrets_inplace_leaves_non_secret_nested_dicts_untouched():
+    data = {"a": {"b": {"timeout": 3}}, "api_key": None}
+
+    deserialize_secrets_inplace(data, ["api_key"], recursive=True)
+
+    assert data == {"a": {"b": {"timeout": 3}}, "api_key": None}

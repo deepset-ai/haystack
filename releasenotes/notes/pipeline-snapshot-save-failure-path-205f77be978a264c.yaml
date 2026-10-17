@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    When a pipeline fails and its snapshot can't be written to disk, ``error.pipeline_snapshot_file_path`` is now
+    ``None``. Before, it held the path of the snapshot file that was never written.

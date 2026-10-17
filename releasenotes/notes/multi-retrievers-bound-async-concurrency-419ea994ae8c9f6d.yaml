@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``MultiQueryTextRetriever``, ``MultiQueryEmbeddingRetriever`` and ``MultiRetriever`` now honour
+    ``max_workers`` in their ``run_async`` methods. Previously only the synchronous ``run`` bounded fan-out
+    (via a ``ThreadPoolExecutor``); ``run_async`` launched every sub-query / sub-retriever call at once,
+    ignoring ``max_workers`` and risking rate limits or connection exhaustion against the underlying
+    retriever or embedder. ``run_async`` now bounds concurrency with an ``asyncio.Semaphore``, matching the
+    behaviour of the LLM extractors.

@@ -3,6 +3,7 @@ title: "HTMLToDocument"
 id: htmltodocument
 slug: "/htmltodocument"
 description: "A component that converts HTML files to documents."
+hep_available: true
 ---
 
 # HTMLToDocument
@@ -27,6 +28,16 @@ A component that converts HTML files to documents.
 The `HTMLToDocument` component converts HTML files into documents. It can be used in an indexing pipeline to index the contents of an HTML file into a Document Store or even in a querying pipeline after the [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx).  The `HTMLToDocument` component takes a list of HTML file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and converts the files to a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 When you initialize the component, you can optionally set  `extraction_kwargs`,  a dictionary containing keyword arguments to customize the extraction process. These are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
+
+### Character encoding
+
+By default, `HTMLToDocument` lets Trafilatura detect the HTML encoding and extract the text (`encoding=None`). If the result contains incorrect characters, you can install `trafilatura[all]`, which includes an additional encoding detector:
+
+```shell
+pip install "trafilatura[all]"
+```
+
+If you know the encoding, set it on the converter to bypass automatic detection, for example `HTMLToDocument(encoding="latin-1")`.
 
 ## Usage
 

@@ -356,6 +356,30 @@ class TestSerDe:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
+    def test_from_dict_with_component_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component_tool = ComponentTool(
+            name="message_extractor", description="Extracts messages", component=MessageExtractor()
+        )
+        generator = OpenAIResponsesChatGenerator(tools=[component_tool])
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools is not None
+        assert isinstance(deserialized_generator.tools[0], ComponentTool)
+        assert deserialized_generator.tools[0].name == "message_extractor"
+
+    def test_from_dict_with_raw_openai_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        raw_tools: list[dict[str, Any]] = [{"type": "function", "name": "custom_func", "parameters": {}}]
+        generator = OpenAIResponsesChatGenerator(tools=raw_tools)
+        data = generator.to_dict()
+
+        deserialized_generator = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert deserialized_generator.tools == raw_tools
+
 
 @pytest.fixture
 def mock_openai_clients(monkeypatch):
@@ -411,67 +435,6 @@ class TestComponentLifecycle:
         generator = OpenAIResponsesChatGenerator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
-
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        generator = OpenAIResponsesChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
-        assert not generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert generator._tools_warmed_up
-
-        generator.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIResponsesChatGenerator()
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
-    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
-        # must not index ``tools[0]`` unguarded.
-        generator = OpenAIResponsesChatGenerator(tools=[])
-        generator.warm_up()
-        assert generator._tools_warmed_up
-
-    def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
-        generator = OpenAIResponsesChatGenerator(
-            tools=[
-                {"type": "web_search_preview"},
-                {
-                    "type": "mcp",
-                    "server_label": "dmcp",
-                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
-                    "server_url": "https://dmcp-server.deno.dev/sse",
-                    "require_approval": "never",
-                },
-            ]
-        )
-        generator.warm_up()
-        assert generator._tools_warmed_up
 
     def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
 

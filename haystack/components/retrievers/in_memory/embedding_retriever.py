@@ -65,7 +65,7 @@ class InMemoryEmbeddingRetriever:
         :param filters:
             A dictionary with filters to narrow down the retriever's search space in the document store.
         :param top_k:
-            The maximum number of documents to retrieve.
+            The maximum number of documents to retrieve. Must be greater than 0.
         :param scale_score:
             When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
             When `False`, uses raw similarity scores.
@@ -79,7 +79,7 @@ class InMemoryEmbeddingRetriever:
         - `MERGE`: Combines runtime filters with initialization filters to narrow down the search.
         :raises TypeError: If the document_store is not an instance of InMemoryDocumentStore.
         :raises ValueError:
-            If the specified top_k is not > 0.
+            If `top_k` is not greater than 0.
         """
         if not isinstance(document_store, InMemoryDocumentStore):
             raise TypeError("document_store must be an instance of InMemoryDocumentStore")
@@ -87,7 +87,7 @@ class InMemoryEmbeddingRetriever:
         self.document_store = document_store
 
         if top_k <= 0:
-            raise ValueError(f"top_k must be greater than 0. Currently, top_k is {top_k}")
+            raise ValueError(f"top_k must be greater than 0, but got {top_k}")
 
         self.filters = filters
         self.top_k = top_k
@@ -150,7 +150,7 @@ class InMemoryEmbeddingRetriever:
         :param filters:
             A dictionary with filters to narrow down the search space when retrieving documents.
         :param top_k:
-            The maximum number of documents to return.
+            The maximum number of documents to return. If 0, no documents are returned.
         :param scale_score:
             When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
             When `False`, uses raw similarity scores.
@@ -161,11 +161,14 @@ class InMemoryEmbeddingRetriever:
             The retrieved documents.
 
         :raises ValueError:
-            If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
+            If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance,
+            or if `top_k` is negative.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
         if scale_score is None:
             scale_score = self.scale_score
         if return_embedding is None:
@@ -198,7 +201,7 @@ class InMemoryEmbeddingRetriever:
         :param filters:
             A dictionary with filters to narrow down the search space when retrieving documents.
         :param top_k:
-            The maximum number of documents to return.
+            The maximum number of documents to return. If 0, no documents are returned.
         :param scale_score:
             When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
             When `False`, uses raw similarity scores.
@@ -209,11 +212,14 @@ class InMemoryEmbeddingRetriever:
             The retrieved documents.
 
         :raises ValueError:
-            If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
+            If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance,
+            or if `top_k` is negative.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
         if scale_score is None:
             scale_score = self.scale_score
         if return_embedding is None:

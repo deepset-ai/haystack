@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``Pipeline.run()``, ``Pipeline.run_async()``, and ``Pipeline.stream()``
+    treating a flat input with a dictionary value as a component name. For
+    example, ``{"payload": {"x": 1}}`` now reaches components with a ``payload``
+    input without requiring the component name in the input data.

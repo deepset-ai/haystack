@@ -113,6 +113,28 @@ async def test_stream_yields_chunks_with_flat_input():
 
 
 @pytest.mark.asyncio
+async def test_stream_accepts_dict_valued_flat_input():
+    @component
+    class DictStreamer:
+        @component.output_types(reply=str)
+        def run(self, payload: dict, streaming_callback: AsyncStreamingCallbackT | None = None) -> dict:
+            return {"reply": payload["text"]}
+
+        @component.output_types(reply=str)
+        async def run_async(self, payload: dict, streaming_callback: AsyncStreamingCallbackT | None = None) -> dict:
+            if streaming_callback is not None:
+                await streaming_callback(StreamingChunk(content=payload["text"]))
+            return {"reply": payload["text"]}
+
+    pipeline = Pipeline()
+    pipeline.add_component("streamer", DictStreamer())
+
+    handle = pipeline.stream(data={"payload": {"text": "hello"}})
+    assert [chunk.content async for chunk in handle] == ["hello"]
+    assert handle.result == {"streamer": {"reply": "hello"}}
+
+
+@pytest.mark.asyncio
 async def test_stream_composes_with_init_streaming_callback():
     seen = []
 

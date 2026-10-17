@@ -31,6 +31,17 @@ class TestDocumentJoiner:
         with pytest.raises(ValueError, match="must not sum to zero"):
             DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
 
+    @pytest.mark.parametrize("weights", [[1.0, -2.0], [-1.0, -1.0], [0.5, -0.1]])
+    def test_init_with_negative_weights_raises(self, weights):
+        # Regression: negative weights were normalized by their (possibly negative) sum, which flipped their sign
+        # and produced negative document scores in merge mode.
+        with pytest.raises(ValueError, match="must not be negative"):
+            DocumentJoiner(join_mode="merge", weights=weights)
+
+    def test_init_with_zero_weight_is_allowed(self):
+        joiner = DocumentJoiner(join_mode="merge", weights=[0.0, 1.0])
+        assert joiner.weights == [0.0, 1.0]
+
     def test_init_with_top_k_none_is_valid(self):
         joiner = DocumentJoiner(top_k=None)
         assert joiner.top_k is None

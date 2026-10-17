@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fix ``Pipeline.connect()`` silently skipping a new socket-to-socket connection
+    when other connections already link the same sender and receiver components.
+    Repeating an existing connection remains a no-op, and invalid additional
+    connections now raise the expected error.

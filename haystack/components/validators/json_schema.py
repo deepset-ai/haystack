@@ -39,7 +39,7 @@ class JsonSchemaValidator:
 
     ```python
     from haystack import Pipeline
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
     from haystack import component
@@ -55,7 +55,9 @@ class JsonSchemaValidator:
 
 
     p = Pipeline()
-    p.add_component("llm", OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component(
+        "llm", OpenAIResponsesChatGenerator(generation_kwargs={"text": {"format": {"type": "json_object"}}})
+    )
     p.add_component("schema_validator", JsonSchemaValidator())
     p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
@@ -129,9 +131,12 @@ class JsonSchemaValidator:
         :return:  A dictionary with the following keys:
             - "validated": A list of messages if the last message is valid.
             - "validation_error": A list of messages if the last message is invalid.
-        :raises ValueError: If the last message has no text content, or if no JSON schema is provided either in
-            the `run` method or in the component init.
+        :raises ValueError: If `messages` is empty, if the last message has no text content, or if no JSON schema is
+            provided either in the `run` method or in the component init.
         """
+        if not messages:
+            raise ValueError("The provided list of messages is empty.")
+
         last_message = messages[-1]
         if last_message.text is None:
             raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {last_message}")
@@ -147,10 +152,10 @@ class JsonSchemaValidator:
             }
 
         last_message_content = json.loads(last_message.text)
-        json_schema = json_schema or self.json_schema
+        json_schema = self.json_schema if json_schema is None else json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
-        if not json_schema:
+        if json_schema is None:
             raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema

@@ -3,6 +3,7 @@ title: "MarkdownHeaderSplitter"
 id: markdownheadersplitter
 slug: "/markdownheadersplitter"
 description: "Split documents at ATX-style Markdown headers (#), with optional secondary splitting. Preserves header hierarchy as metadata."
+hep_available: true
 ---
 
 # MarkdownHeaderSplitter
@@ -45,7 +46,7 @@ Parameters you can set when initializing the component:
 Each output document's metadata includes:
 
 - `source_id`: ID of the original document.
-- `page_number`: Page number. Updated when `page_break_character` is found.
+- `page_number`: The page the chunk starts on, counted from the `page_break_character` occurrences that precede its text.
 - `split_id`: Index of the chunk within its parent.
 - `header`: The header text for this chunk.
 - `parent_headers`: List of parent header texts in hierarchy order.
