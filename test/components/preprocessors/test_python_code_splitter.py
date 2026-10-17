@@ -719,6 +719,29 @@ class TestDocstringStripping:
         for chunk in result["documents"]:
             ast.parse(chunk.content or "")
 
+    @pytest.mark.parametrize(
+        "source",
+        [
+            'def f():\n    """Docs."""; return 5\n',
+            'def f():\n    """Docs\n    more."""; x = 1\n    return x\n',
+            'class A:\n    """Docs."""; y = 2\n\n    def m(self):\n        return self.y\n',
+        ],
+    )
+    def test_strip_docstrings_keeps_code_sharing_a_line_with_the_docstring(self, source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert "".join(chunk.content or "" for chunk in result["documents"]) == source
+        assert not [d for chunk in result["documents"] for d in chunk.meta.get("docstrings", [])]
+
+    def test_strip_docstrings_drops_trailing_comment_with_docstring(self):
+        source = 'def f():\n    """Docs."""  # noqa: D400\n    return 5\n'
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert [chunk.content for chunk in result["documents"]] == ["def f():\n    return 5\n"]
+        assert result["documents"][0].meta["docstrings"] == ["Docs."]
+
 
 class TestTopLevelStatements:
     @pytest.fixture
