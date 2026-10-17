@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``Agent`` incorrectly continuing a run instead of reporting a ``length`` or
+    ``content_filter`` exit reason when an earlier assistant turn had a tool call but the
+    final reply did not. The exit-reason check now looks only at the last message, matching
+    its documented intent.
