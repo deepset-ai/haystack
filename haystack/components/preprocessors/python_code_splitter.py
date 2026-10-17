@@ -197,6 +197,13 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # Whole lines are removed, so keep the docstring when other code shares its lines, as in `"""doc"""; x = 1`.
+        # AST column offsets count UTF-8 bytes. A trailing comment is dropped along with the docstring.
+        text_before = source_lines[ds_start - 1].encode()[: first.col_offset]
+        text_after = source_lines[ds_end - 1].encode()[first.end_col_offset :].strip()
+        if text_before.strip() or (text_after and not text_after.startswith(b"#")):
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         # Removing the only statement from a function or class would leave an
