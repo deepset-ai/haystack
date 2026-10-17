@@ -3,7 +3,8 @@ name: PR flood guard
 # Ask community contributors to slow down when review capacity is the
 # bottleneck. On every newly opened PR from outside the org, warn if:
 #  - another open PR already targets the same linked issue (duplicate), or
-#  - the author already has more than two PRs open in this repository.
+#  - the author already has more than two PRs open in this repository, unless
+#    maintainers have exempted them via EXEMPT_AUTHORS.
 #
 # Uses pull_request_target so it can comment on fork PRs; this is safe because
 # the workflow never checks out or executes PR code.
@@ -27,6 +28,7 @@ jobs:
         with:
           script: |
             const MAX_OPEN_PRS = 2;
+            const EXEMPT_AUTHORS = ["maxdswain"];
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
 
@@ -94,7 +96,7 @@ jobs:
               owner, repo, state: "open", per_page: 100,
             });
             const authored = openPrs.filter((p) => p.user?.login === pr.user.login);
-            if (authored.length > MAX_OPEN_PRS) {
+            if (authored.length > MAX_OPEN_PRS && !EXEMPT_AUTHORS.includes(pr.user.login)) {
               const others = authored
                 .filter((p) => p.number !== pr.number)
                 .map((p) => `#${p.number}`)
