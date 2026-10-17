@@ -210,6 +210,51 @@ class TestAutoMergingRetrieverAsync:
         assert result["documents"][0].meta["__level"] == 0  # hit root document
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("threshold", [0.4, 0.5, 0.6, 0.9])
+    @pytest.mark.parametrize("reverse", [False, True])
+    async def test_run_merges_leaves_at_different_depths(self, in_memory_doc_store, threshold, reverse):
+        source = Document(content="one two three four five")
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run([source])["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if not doc.meta["__children_ids"]]
+        assert {doc.meta["__level"] for doc in leaves} == {1, 2}
+        if reverse:
+            leaves.reverse()
+
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=threshold)
+        assert await retriever.run_async(documents=leaves) == {"documents": [hierarchy[0]]}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("threshold", [0.6, 0.7])
+    async def test_run_applies_threshold_after_merging_deeper_leaves(self, in_memory_doc_store, threshold):
+        source = Document(content="one two three four five six seven eight nine")
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run([source])["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if doc.content in {"one two ", "three four ", "nine"}]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=threshold)
+
+        documents = (await retriever.run_async(documents=leaves))["documents"]
+
+        if threshold == 0.6:
+            assert documents == [hierarchy[0]]
+        else:
+            expected = [doc for doc in hierarchy if doc.content in {"one two three four ", "nine"}]
+            assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
+
+    @pytest.mark.asyncio
+    async def test_run_processes_shallow_leaves_when_deeper_leaves_do_not_merge(self, in_memory_doc_store):
+        sources = [Document(content="one two three four five"), Document(content="six seven eight")]
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run(sources)["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven ", "eight"}]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=0.5)
+
+        documents = (await retriever.run_async(documents=leaves))["documents"]
+
+        expected = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven eight"}]
+        assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
+
+    @pytest.mark.asyncio
     async def test_close_async(self):
         closable_document_store = Mock(spec=["close_async"])
         closable_document_store.close_async = AsyncMock()
