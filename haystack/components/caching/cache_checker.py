@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -37,7 +38,14 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        cache_field: str,
+        *,
+        ttl: float | timedelta | None = None,
+        time_field: str = "cached_at",
+    ) -> None:
         """
         Creates a CacheChecker component.
 
@@ -49,6 +57,8 @@ class CacheChecker:
         """
         self.document_store = document_store
         self.cache_field = cache_field
+        self.ttl = timedelta(seconds=ttl) if isinstance(ttl, (int, float)) else ttl
+        self.time_field = time_field
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -57,7 +67,46 @@ class CacheChecker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store, cache_field=self.cache_field)
+        return default_to_dict(
+            self,
+            document_store=self.document_store,
+            cache_field=self.cache_field,
+            ttl=self.ttl.total_seconds() if self.ttl is not None else None,
+            time_field=self.time_field,
+        )
+
+    def _is_fresh(self, document: Document) -> bool:
+        """
+        Checks whether a cached document is still within its TTL.
+
+        Always returns True when no `ttl` is configured, to preserve the original non-expiring behavior.
+
+        :param document:
+            The candidate cache-hit document.
+        :returns:
+            True if the document should count as a cache hit, False if it should be treated as expired.
+        """
+        if self.ttl is None:
+            return True
+
+        cached_at = document.meta.get(self.time_field)
+        if cached_at is None:
+            # ttl is enabled but the document was never stamped with a cache time: treat as stale
+            return False
+
+        if isinstance(cached_at, str):
+            try:
+                cached_at = datetime.fromisoformat(cached_at)
+            except ValueError:
+                return False
+
+        if not isinstance(cached_at, datetime):
+            return False
+
+        if cached_at.tzinfo is None:
+            cached_at = cached_at.replace(tzinfo=timezone.utc)
+
+        return datetime.now(timezone.utc) - cached_at < self.ttl
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
@@ -89,10 +138,12 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = self.document_store.filter_documents(filters=filters)
-            if found:
-                found_documents.extend(found)
+            fresh = [doc for doc in found if self._is_fresh(doc)]
+            if fresh:
+                found_documents.extend(fresh)
             else:
                 misses.append(item)
+
         return {"hits": found_documents, "misses": misses}
 
     @component.output_types(hits=list[Document], misses=list)
@@ -116,8 +167,9 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = await self.document_store.filter_documents_async(filters=filters)
-            if found:
-                found_documents.extend(found)
+            fresh = [doc for doc in found if self._is_fresh(doc)]
+            if fresh:
+                found_documents.extend(fresh)
             else:
                 misses.append(item)
         return {"hits": found_documents, "misses": misses}

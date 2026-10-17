@@ -1,0 +1,5 @@
+---
+enhancements:
+    Add optional TTL support to ``CacheChecker`` to allow cached documents
+    to expire after a configurable amount of time. The cache timestamp
+    field can be customized using the ``time_field`` parameter.
