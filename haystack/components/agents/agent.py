@@ -171,7 +171,7 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     Agent's recovery behavior for malformed tool calls that a Chat Generator discarded.
     """
     # If the messages list is empty or the last message has tool calls, don't exit.
-    if not messages or any(message.tool_call for message in messages):
+    if not messages or messages[-1].tool_calls:
         return None
 
     last = messages[-1]
