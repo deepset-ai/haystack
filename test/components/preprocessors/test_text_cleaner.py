@@ -14,7 +14,7 @@ def test_init_default():
     assert not cleaner._convert_to_lowercase
     assert not cleaner._remove_punctuation
     assert not cleaner._remove_numbers
-    assert cleaner._regex is None
+    assert cleaner._regexes == []
     assert cleaner._translator is None
 
 
@@ -55,6 +55,28 @@ def test_run_with_multiple_regexps():
     result = cleaner.run(texts=["Open123! Source", "Haystack.AI"])
     assert len(result) == 1
     assert result["texts"] == ["Open Source", "HaystackAI"]
+
+
+@pytest.mark.parametrize(
+    ("remove_regexps", "text", "expected"),
+    [
+        # a backreference keeps pointing at its own pattern's group
+        ([r"(\[\d+\])", r"\b(\w+) \1\b"], "see [1] the the cat", "see   cat"),
+        # the same group name may be used in more than one pattern
+        ([r"(?P<n>\d+)px", r"(?P<n>\d+)em"], "10px and 2em", " and "),
+        # a global inline flag is allowed in any pattern, not just the first
+        ([r"\d+", r"(?m)^>.*\n"], "> quoted 1\nreply 2\n", "reply \n"),
+    ],
+)
+def test_run_applies_each_regexp_independently(remove_regexps, text, expected):
+    cleaner = TextCleaner(remove_regexps=remove_regexps)
+    assert cleaner.run(texts=[text])["texts"] == [expected]
+
+
+def test_run_with_regex_is_case_insensitive_unless_scoped_otherwise():
+    assert TextCleaner(remove_regexps=[r"haystack"]).run(texts=["Haystack and HAYSTACK"])["texts"] == [" and "]
+    cleaner = TextCleaner(remove_regexps=[r"\b(?-i:[A-Z]{2,})\b"])
+    assert cleaner.run(texts=["NASA sent an email"])["texts"] == [" sent an email"]
 
 
 def test_run_with_convert_to_lowercase():
