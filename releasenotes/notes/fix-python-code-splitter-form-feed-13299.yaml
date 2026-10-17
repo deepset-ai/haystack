@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``PythonCodeSplitter`` misaligning chunks and line numbers when the
+    source contains a form feed or other ``str.splitlines``-only breaks. Line
+    splitting now matches ``ast`` (newline forms only), so functions stay whole
+    and ``start_line`` / ``end_line`` point at the correct text.
