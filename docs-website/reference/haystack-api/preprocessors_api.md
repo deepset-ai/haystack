@@ -98,12 +98,14 @@ Initializes the CSVDocumentSplitter component.
 
 - **row_split_threshold** (<code>int | None</code>) – The minimum number of consecutive empty rows required to trigger a split.
 - **column_split_threshold** (<code>int | None</code>) – The minimum number of consecutive empty columns required to trigger a split.
-- **read_csv_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to `pandas.read_csv`.
-  By default, the component with options:
+- **read_csv_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments passed to `pandas.read_csv`.
+  These extend or override the following defaults:
 - `header=None`
 - `skip_blank_lines=False` to preserve blank lines
 - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
   See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
+  Customizing CSV parsing options may cause splitting errors or inaccurate position metadata.
+  Validate the split content and metadata on representative inputs when customizing these options.
 - **split_mode** (<code>SplitMode</code>) – If `threshold`, the component will split the document based on the number of
   consecutive empty rows or columns that exceed the `row_split_threshold` or `column_split_threshold`.
   If `row-wise`, the component will split each row into a separate sub-table.
@@ -473,7 +475,8 @@ and an overlap of `split_overlap`.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -630,7 +633,8 @@ Split documents based on embedding similarity.
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -660,7 +664,8 @@ This is the asynchronous version of the `run` method with the same parameters an
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
   - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting form feed
+    ("") characters in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -884,7 +889,8 @@ Run the markdown header splitter with optional secondary splitting.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
-  - A metadata field `page_number` to track the original page number.
+  - A metadata field `page_number` with the page the chunk starts on, counting
+    `page_break_character` occurrences in the original document.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
@@ -943,7 +949,8 @@ __init__(
     split_overlap: int = 0,
     split_unit: Literal["word", "char", "token"] = "word",
     separators: list[str] | None = None,
-    sentence_splitter_params: dict[str, Any] | None = None
+    sentence_splitter_params: dict[str, Any] | None = None,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -956,7 +963,7 @@ Initializes a RecursiveDocumentSplitter.
 - **split_overlap** (<code>int</code>) – The number of overlapping units (words, characters, or tokens, per
   `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
-  If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
   Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -965,6 +972,10 @@ Initializes a RecursiveDocumentSplitter.
   If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
 - **sentence_splitter_params** (<code>dict\[str, Any\] | None</code>) – Optional parameters to pass to the sentence tokenizer.
   See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
+  The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
+  changes the rules the tokenizer uses to decide where a sentence ends.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_unit="token"`.
 
 **Raises:**
 
@@ -1006,7 +1017,8 @@ Split a list of documents into documents with smaller chunks of text.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
-  to the input documents.
+  to the input documents. Each chunk carries a metadata field `page_number` with the page the chunk
+  starts on, counting form feed ("") characters in the original document.
 
 ## text_cleaner
 

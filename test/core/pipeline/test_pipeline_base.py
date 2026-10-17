@@ -2170,6 +2170,16 @@ class TestPipelineConnect:
         assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
+    def test_connect_cross_socket_edge(self):
+        sender = component_class("Sender", output_types={"x": list[int], "y": list[int]})()
+        receiver = component_class("Receiver", input_types={"x": list[int], "y": list[int]})()
+        pipe = PipelineBase().add_components({"a": sender, "b": receiver})
+        pipe.connect("a.x", "b.x")
+        pipe.connect("a.y", "b.y")
+        pipe.connect("a.x", "b.y")
+
+        assert set(pipe.graph.edges) == {("a", "b", "x/x"), ("a", "b", "y/y"), ("a", "b", "x/y")}
+
     def test_connect_with_sender_component_name(self):
         comp1 = component_class("Comp1", output_types={"value": int})()
         comp2 = component_class("Comp2", input_types={"value": int})()

@@ -104,7 +104,7 @@ def audit_tool_calls(state: State) -> None:
 def require_search(state: State) -> None:
     # on_exit: keep going until the agent has actually searched.
     if state.get("tool_call_counts", {}).get("search", 0) == 0:
-        state.set("messages", [ChatMessage.from_system("Search before answering.")])
+        state.set("messages", [ChatMessage.from_user("Search before answering.")])
         state.set("continue_run", True)
 
 
@@ -125,6 +125,8 @@ result = agent.run(
 )
 print(result["last_message"].text)
 ```
+
+Add mid-run nudges like this one as user messages. Some chat generators, such as `AnthropicChatGenerator`, move every system message into the request's system prompt, so a system message added mid-run doesn't stay where it was added in the conversation.
 
 ### Class-based hooks
 
@@ -199,6 +201,70 @@ result = agent.run(messages=[ChatMessage.from_user("Explain how vaccines work.")
 print(result["last_message"].text)
 ```
 
+## Requiring a tool call before the Agent finishes
+
+A common setup is an Agent that should finish by calling a tool, such as one that submits its final answer (`exit_conditions=["submit_report"]`). `"text"` is always an exit condition, so a reply without tool calls also stops the Agent, with `exit_reason` set to `"text"`. The model can finish with plain text and never call the tool.
+
+An `on_exit` hook catches this: when `exit_reason` is `"text"`, it asks the model to call the tool and keeps the Agent running. When the model calls the tool, the tool has already run by the time `on_exit` runs, and `exit_reason` holds the tool's name, so the hook lets the Agent finish. A counter in `state_schema` caps how many times the hook sends the Agent back, so a model that never calls the tool still stops.
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web."""
+    # Placeholder: would call a real search API
+    return "Fusion startups reported net-energy-gain milestones this year."
+
+
+@tool(outputs_to_state={"report": {"source": "report"}})
+def submit_report(report: Annotated[str, "The final report"]) -> dict:
+    """Submit the final report. Call this to finish."""
+    return {"report": report}
+
+
+@hook
+def require_submit_report(state: State) -> None:
+    if state.data.get("exit_reason") != "text":
+        return
+    nudges = state.data.get("submit_nudges") or 0
+    if nudges >= 2:
+        return
+    state.set("submit_nudges", nudges + 1)
+    state.set(
+        "messages",
+        [ChatMessage.from_user("Call submit_report with your final report to finish.")],
+    )
+    state.set("continue_run", True)
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[search, submit_report],
+    exit_conditions=["submit_report"],
+    state_schema={"report": {"type": str}, "submit_nudges": {"type": int}},
+    hooks={"on_exit": [require_submit_report]},
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Write a short report on the latest developments in fusion energy."
+        )
+    ],
+)
+# `report` is only set when the model called submit_report.
+print(result.get("report"))
+```
+
 ## Ready-made hooks
 
 Haystack ships several ready-made hooks, each in its own submodule of `haystack.hooks`:
@@ -207,3 +273,4 @@ Haystack ships several ready-made hooks, each in its own submodule of `haystack.
 - `ConfirmationHook` (from `haystack.hooks.human_in_the_loop`): A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
 - `ToolResultOffloadHook` (from `haystack.hooks.tool_result_offloading`): An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).
 - `TokenBudgetHook` (from `haystack.hooks.budget`): A `before_llm` hook that ends the run once its cumulative token usage reaches a configured budget, reporting `"token_budget_exceeded"` as the `exit_reason`. See [Token Budget](./token-budget.mdx).
+- `StructuredOutputHook` (from `haystack.hooks.structured_output`): An `on_exit` hook that parses the Agent's final text reply as JSON, validates it against a Pydantic model or JSON schema, and stores the result in a `State` key. It asks the model to correct an invalid reply, up to `max_retries` times. See [Structured Output](./structured-output.mdx).

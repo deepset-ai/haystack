@@ -27,6 +27,7 @@ class TestMockTextEmbedder:
         [
             (([0.1, 0.2],), {"embedding_fn": _ones}, ValueError, "either 'embedding' or 'embedding_fn'"),
             ((), {"dimension": 0}, ValueError, "must be a positive integer"),
+            ((), {"dimension": -1}, ValueError, "must be a positive integer"),
             (([],), {}, ValueError, "must not be empty"),
             ((["not", "numbers"],), {}, TypeError, "must be a sequence of numbers"),
         ],
@@ -51,13 +52,16 @@ class TestMockTextEmbedder:
             MockTextEmbedder(dimension=8).run("x")["embedding"] == MockTextEmbedder(dimension=8).run("x")["embedding"]
         )
 
-    def test_fixed_embedding(self):
-        embedder = MockTextEmbedder([0.1, 0.2, 0.3])
+    @pytest.mark.parametrize("dimension", [768, 0, -1])
+    def test_fixed_embedding(self, dimension):
+        embedder = MockTextEmbedder([0.1, 0.2, 0.3], dimension=dimension)
         assert embedder.run("anything")["embedding"] == [0.1, 0.2, 0.3]
         assert embedder.run("something else")["embedding"] == [0.1, 0.2, 0.3]
 
-    def test_embedding_fn(self):
-        assert MockTextEmbedder(embedding_fn=_ones).run("hello")["embedding"] == [1.0, 1.0, 1.0]
+    @pytest.mark.parametrize("dimension", [768, 0, -1])
+    def test_embedding_fn(self, dimension):
+        embedder = MockTextEmbedder(embedding_fn=_ones, dimension=dimension)
+        assert embedder.run("hello")["embedding"] == [1.0, 1.0, 1.0]
 
     def test_embedding_fn_invalid_return_raises(self):
         # embedding_fn deliberately returns a non-vector to exercise the runtime type check

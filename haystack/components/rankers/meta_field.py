@@ -258,16 +258,17 @@ class MetaFieldRanker:
         docs_with_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
         docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is None]
 
-        # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
                 "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided "
                 "Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
-                "Returning the <top_k> of the original Documents since there are no values to rank.",
+                "Applying the configured <missing_meta> policy instead of ranking.",
                 meta_field=self.meta_field,
                 document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
+            if missing_meta == "drop":
+                return {"documents": []}
             return {"documents": deduplicated_documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
@@ -304,14 +305,21 @@ class MetaFieldRanker:
         try:
             tuple_sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
-            # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
+            # Keep the original order if the meta values can't be compared (e.g. int and str),
+            # but still place the Documents missing the meta field as set by missing_meta
             logger.warning(
                 "Tried to sort Documents with IDs {document_ids}, but got TypeError with the message: {error}\n"
-                "Returning the <top_k> of the original Documents since meta field ranking is not possible.",
+                "Returning the <top_k> Documents in their original order since meta field ranking is not possible.",
                 document_ids=",".join([doc.id for doc in docs_with_meta_field]),
                 error=error,
             )
-            return {"documents": deduplicated_documents[:top_k]}
+            if missing_meta == "top":
+                fallback_documents = docs_missing_meta_field + docs_with_meta_field
+            elif missing_meta == "bottom":
+                fallback_documents = docs_with_meta_field + docs_missing_meta_field
+            else:
+                fallback_documents = docs_with_meta_field
+            return {"documents": fallback_documents[:top_k]}
 
         # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]

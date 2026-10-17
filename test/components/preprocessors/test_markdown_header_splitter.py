@@ -1008,6 +1008,44 @@ def test_custom_page_break_character_in_secondary_splitting():
     assert [doc.meta["page_number"] for doc in docs] == [1, 2]
 
 
+def test_page_number_of_split_starting_with_page_break():
+    # The break ends the preceding page, so this split's own text starts on the page after it.
+    text = "# H1\nSentence one.\fSentence two."
+    splitter = MarkdownHeaderSplitter(secondary_split="period", split_length=1)
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["# H1\nSentence one.", "\fSentence two."]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+
+    reference = DocumentSplitter(split_by="period", split_length=1).run(documents=[Document(content=text)])["documents"]
+    assert [doc.meta["page_number"] for doc in docs] == [doc.meta["page_number"] for doc in reference]
+
+
+def test_page_number_of_secondary_splits_under_a_chunk_starting_with_a_page_break():
+    # The content before the first header opens with a page break, so that break is counted both by the
+    # header chunk's own page and by the page-break scan the secondary splits are numbered against.
+    text = "\fAAA. BBB.\n# H1\nCCC."
+
+    docs = MarkdownHeaderSplitter(secondary_split="period", split_length=1).run(documents=[Document(content=text)])[
+        "documents"
+    ]
+
+    assert [doc.content for doc in docs] == ["\fAAA.", " BBB.", "\n", "# H1\nCCC."]
+    # the text holds a single page break, so everything after it is on page 2 - never page 3
+    assert [doc.meta["page_number"] for doc in docs] == [2, 2, 2, 2]
+
+
+def test_page_number_of_split_starting_with_multi_character_page_break():
+    text = "# H1\nw1 w2.<PAGE>w3 w4."
+    splitter = MarkdownHeaderSplitter(page_break_character="<PAGE>", secondary_split="period", split_length=1)
+
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in docs] == ["# H1\nw1 w2.", "<PAGE>w3 w4."]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+
+
 def test_page_break_in_removed_header_is_counted():
     text = "# H1<PAGE>\nw1 w2 w3 w4"
     splitter = MarkdownHeaderSplitter(
@@ -1066,6 +1104,32 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
         split_contents.append(doc.content)
     assert "".join(split_contents) == text
     assert docs[-1].meta["header"] == ""
+
+
+@pytest.mark.parametrize(
+    ("header_line", "expected_header"),
+    [
+        ("## Install ##", "Install"),
+        ("## Install #####   ", "Install"),
+        ("## Install\t#", "Install"),
+        ("## Install ##\r", "Install"),
+        ("## ##", ""),
+        # not a closing sequence: no whitespace before the "#"s, or other text after them
+        ("## C#", "C#"),
+        ("## Install #1", "Install #1"),
+        ("## Install \\#", "Install \\#"),
+        # Non-breaking spaces do not delimit an ATX closing sequence.
+        ("## Install\u00a0##", "Install\u00a0##"),
+        ("## Install ##\u00a0", "Install ##"),
+    ],
+)
+def test_closing_sequence_is_not_part_of_header_metadata(header_line, expected_header):
+    text = f"# Guide #\nIntro.\n{header_line}\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert [doc.meta["header"] for doc in docs] == ["Guide", expected_header]
+    assert docs[1].meta["parent_headers"] == ["Guide"]
+    # the chunk content keeps the closing sequence
+    assert "".join(doc.content or "" for doc in docs) == text
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``SentenceWindowRetriever`` now queries the Document Store once per ``run`` or ``run_async`` call instead of
+    once per retrieved document. It combines the windows of all retrieved documents into a single ``OR`` filter and
+    assigns the returned documents to each window in memory. This reduces the load on Document Stores such as
+    OpenSearch or Elasticsearch when many documents are retrieved. The ``context_windows`` and ``context_documents``
+    outputs are unchanged.

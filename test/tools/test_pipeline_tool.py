@@ -15,6 +15,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.tools import PipelineTool
 
 
@@ -68,7 +69,7 @@ def sample_pipeline_dict():
                     "document_store": {
                         "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                         "init_parameters": {
-                            "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                            "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                             "bm25_algorithm": "BM25L",
                             "bm25_parameters": {},
                             "embedding_similarity_function": "dot_product",

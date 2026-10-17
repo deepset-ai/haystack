@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a ``SchemaGenerationError`` when using ``@tool``, ``create_tool_from_function``, or ``ComponentTool``
+    with a parameter typed as ``Annotated[State, ...]``, including optional variants.
+    These parameters are now excluded from the schema sent to the language model and receive
+    the Agent's live ``State`` object when the tool runs, just like parameters typed as ``State``.
