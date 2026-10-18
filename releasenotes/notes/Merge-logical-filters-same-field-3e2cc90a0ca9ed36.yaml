@@ -1,9 +1,9 @@
 ---
 fixes:
   - |
-    Fixed `FilterPolicy.MERGE` resolving differently depending on how the filters are wrapped. When the init and the
-    runtime filters are both `AND` logical filters constraining the same field, the conditions were concatenated, so
+    Fixed ``FilterPolicy.MERGE`` resolving differently depending on how the filters are wrapped. When the init and the
+    runtime filters are both ``AND`` logical filters constraining the same field, the conditions were concatenated, so
     the result was their intersection instead of the runtime condition overwriting the init condition. For example,
-    with init `meta.lang == "en"` and runtime `meta.lang == "de"`, `AND`-wrapped filters returned no documents while
+    with init ``meta.lang == "en"`` and runtime ``meta.lang == "de"``, ``AND``-wrapped filters returned no documents while
     bare comparison filters returned the German ones. All four shapes now resolve the same way, with a warning, and
     init conditions on other fields are still kept.
