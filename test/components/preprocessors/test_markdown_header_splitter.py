@@ -631,6 +631,48 @@ class TestCodeBlockExclusion:
         assert docs[1].meta["header"] == "Real Subheader"
         assert "not a header" not in [doc.meta["header"] for doc in docs]
 
+    @pytest.mark.parametrize(
+        ("text", "expected_headers"),
+        [
+            pytest.param(
+                "# Intro\n````python\n# fake\n`````\n## Real\n", ["Intro", "Real"], id="longer-backtick-closer"
+            ),
+            pytest.param("# Intro\n~~~~\n# fake\n~~~~~\n## Real\n", ["Intro", "Real"], id="longer-tilde-closer"),
+            pytest.param(
+                "# Intro\n````\n# a\n```\n# b\n````\n## Real\n", ["Intro", "Real"], id="shorter-run-does-not-close"
+            ),
+            pytest.param(
+                "# Intro\n```\n# a\n~~~\n# b\n```\n## Real\n", ["Intro", "Real"], id="other-character-does-not-close"
+            ),
+            pytest.param(
+                "# Intro\n```\n# a\n```python\n# b\n```\n## Real\n", ["Intro", "Real"], id="info-string-does-not-close"
+            ),
+            pytest.param("# Intro\n```python\n# fake\n## also fake\n", ["Intro"], id="unclosed-runs-to-end"),
+            pytest.param("# Intro\n   ```\n# fake\n   ```\n## Real\n", ["Intro", "Real"], id="indented-fences"),
+            pytest.param(
+                "# Intro\n    ```\n# kept\n    ```\n## Real\n",
+                ["Intro", "kept", "Real"],
+                id="four-spaces-is-not-a-fence",
+            ),
+            pytest.param(
+                "# Intro\n```foo```\n# kept\nText\n## Real\n",
+                ["Intro", "kept", "Real"],
+                id="inline-code-is-not-a-fence",
+            ),
+            pytest.param(
+                "# Intro\n~~~ `x`\n# fake\n~~~\n## Real\n", ["Intro", "Real"], id="tilde-info-may-contain-backticks"
+            ),
+            pytest.param("# Intro\r\n```\r\n# fake\r\n```\r\n## Real\r\n", ["Intro", "Real"], id="crlf-line-endings"),
+            pytest.param("# Intro\n```\n# fake\n```", ["Intro"], id="closer-on-last-line"),
+        ],
+    )
+    def test_commonmark_fence_rules(self, text, expected_headers):
+        """Code blocks follow the CommonMark fence rules, so hash lines inside them are never headers (#12954)."""
+        docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["header"] for doc in docs] == expected_headers
+        assert "".join(doc.content for doc in docs) == text
+
     def test_code_block_with_no_real_headers(self):
         """If the only hash lines are inside code blocks, the document is returned unchunked."""
         text = "Plain text before code.\n```\n# entirely fake\n```\nPlain text after code.\n"
