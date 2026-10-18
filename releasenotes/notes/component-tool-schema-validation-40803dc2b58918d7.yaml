@@ -1,6 +1,7 @@
-upgrade:
+fixes:
   - |
-    ``ComponentTool`` now raises ``ValueError`` during construction when a custom
-    ``parameters`` schema declares top-level properties that are not component
-    inputs. Previously these names could cause a ``KeyError`` during invocation.
-    Rename or remove unknown properties to match the component input sockets.
+    ``ComponentTool`` now skips unknown invocation arguments with a warning instead of raising
+    ``KeyError``, including extra properties in custom schemas and arguments added by the LLM.
+    Custom schemas with unknown properties also produce a warning during construction.
+    A ``ValueError`` is raised when a custom schema omits mandatory component inputs not provided
+    through ``inputs_from_state``. Automatically injected ``State`` inputs are excluded.

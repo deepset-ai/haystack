@@ -173,17 +173,28 @@ class TestComponentTool:
         assert "reply" in result
         assert result["reply"] == "Hello, world!"
 
-    def test_custom_parameters_reject_unknown_component_input(self):
-        parameters = {"type": "object", "properties": {"unknown": {"type": "string"}}}
+    def test_custom_parameters_warn_unknown_component_input(self, caplog):
+        parameters = {"type": "object", "properties": {"text": {"type": "string"}, "unknown": {"type": "string"}}}
+        tool = ComponentTool(component=SimpleComponent(), parameters=parameters)
+        assert "unknown" in caplog.text
+        restored = ComponentTool.from_dict(tool.to_dict())
+        assert restored.invoke(text="world", unknown="ignored") == {"reply": "Hello, world!"}
 
-        with pytest.raises(ValueError, match="unknown component input parameter.*unknown"):
+    @pytest.mark.parametrize("parameters", [{"type": "object"}, {"type": "object", "properties": {}}])
+    def test_custom_parameters_reject_missing_mandatory_input(self, parameters):
+        with pytest.raises(ValueError, match="requires the inputs.*text"):
             ComponentTool(component=SimpleComponent(), parameters=parameters)
 
-    @pytest.mark.parametrize("parameters", [{}, {"type": "object"}, {"type": "object", "properties": {}}])
-    def test_custom_parameters_allow_implicit_inputs(self, parameters):
-        tool = ComponentTool(component=SimpleComponent(), parameters=parameters)
-
-        assert tool.invoke(text="world") == {"reply": "Hello, world!"}
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("async_call", [False, True])
+    async def test_unknown_arguments_are_skipped(self, caplog, async_call):
+        tool = ComponentTool(component=DualModeComponent())
+        if async_call:
+            result = await tool.invoke_async(text="hi", unexpected=42)
+            assert result == {"reply": "async:hi"}
+        else:
+            assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
+        assert "unexpected" in caplog.text
 
     def test_custom_parameters_allow_mandatory_input_from_state(self):
         parameters = {"type": "object", "properties": {}}
@@ -542,6 +553,11 @@ class TestComponentTool:
         param_names = list(tool.parameters.get("properties", {}).keys())
         assert "state" not in param_names
         assert "query" in param_names
+
+        custom_tool = ComponentTool(
+            component=ComponentWithState(), parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+        )
+        assert custom_tool.invoke(query="hello", state=State(schema={})) == {"result": "hello"}
 
     def test_from_component_with_optional_state_param_excluded_from_schema(self):
         @component
