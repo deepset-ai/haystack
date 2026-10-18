@@ -5,12 +5,13 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
+from pydantic import BeforeValidator, Field, WrapValidator
 
 from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
@@ -19,6 +20,7 @@ from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGen
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
+from haystack.tools.errors import ToolInvocationError
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 # Component and Model Definitions
@@ -356,6 +358,128 @@ class TestComponentTool:
         )
         result = tool.invoke(messages=[ChatMessage.from_user(text="world")])
         assert result == {"reply": "Hello, world!"}
+
+    @pytest.mark.parametrize(
+        "messages_type",
+        [
+            Annotated[list[ChatMessage], Field(min_length=1)],
+            Annotated[list[ChatMessage] | None, Field(min_length=1)],
+            Optional[Annotated[list[ChatMessage], Field(min_length=1)]],  # noqa: UP045 - test typing.Optional
+        ],
+    )
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_annotated_chat_messages_are_converted(self, messages_type: Any, use_async: bool) -> None:
+        @component
+        class MessageEcho:
+            @component.output_types(reply=str)
+            def run(self, messages: list[ChatMessage] | None) -> dict[str, str]:
+                return {"reply": messages[0].text or "" if messages else ""}
+
+            @component.output_types(reply=str)
+            async def run_async(self, messages: list[ChatMessage] | None) -> dict[str, str]:
+                return self.run(messages=messages)
+
+            run.__annotations__["messages"] = messages_type
+            run_async.__annotations__["messages"] = messages_type
+
+        tool = ComponentTool(component=MessageEcho())
+        messages = [ChatMessage.from_user("Hello").to_dict()]
+        result = await tool.invoke_async(messages=messages) if use_async else tool.invoke(messages=messages)
+        assert result == {"reply": "Hello"}
+        assert set(tool.parameters["$defs"]["ChatMessage"]["properties"]) == {"role", "content", "name", "meta"}
+        messages_schema = tool.parameters["properties"]["messages"]
+        schemas = messages_schema.get("anyOf", [messages_schema])
+        assert next(schema for schema in schemas if schema["type"] == "array")["minItems"] == 1
+
+        with pytest.raises(ToolInvocationError, match="at least 1 item"):
+            if use_async:
+                await tool.invoke_async(messages=[])
+            else:
+                tool.invoke(messages=[])
+
+    def test_annotated_primitive_keeps_before_validator(self) -> None:
+        @component
+        class HexParser:
+            @component.output_types(number=int)
+            def run(self, number: Annotated[int, BeforeValidator(lambda value: int(value, 16))]) -> dict[str, int]:
+                return {"number": number}
+
+        tool = ComponentTool(component=HexParser())
+        assert tool.invoke(number="ff") == {"number": 255}
+
+    @pytest.mark.parametrize("validator_kind", ["before", "wrap"])
+    @pytest.mark.parametrize("wrapper", ["plain", "annotation_outside", "optional_outside"])
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_annotated_chat_message_validators_receive_serialized_input(
+        self, validator_kind: str, wrapper: str, use_async: bool
+    ) -> None:
+        received_values = []
+
+        def deserialize(values: list[dict[str, Any]] | None) -> list[ChatMessage] | None:
+            received_values.append(values)
+            return [ChatMessage.from_dict(value) for value in values] if values is not None else None
+
+        validator = (
+            BeforeValidator(deserialize)
+            if validator_kind == "before"
+            else WrapValidator(lambda values, handler: handler(deserialize(values)))
+        )
+        messages_type: Any = Annotated[list[ChatMessage], validator]
+        if wrapper == "annotation_outside":
+            messages_type = Annotated[list[ChatMessage] | None, validator]
+        elif wrapper == "optional_outside":
+            messages_type = Optional[Annotated[list[ChatMessage], validator]]  # noqa: UP045 - test typing.Optional
+
+        @component
+        class MessageEcho:
+            @component.output_types(reply=str)
+            def run(self, messages: list[ChatMessage] | None) -> dict[str, str]:
+                return {"reply": messages[0].text or "" if messages else ""}
+
+            @component.output_types(reply=str)
+            async def run_async(self, messages: list[ChatMessage] | None) -> dict[str, str]:
+                return self.run(messages=messages)
+
+            run.__annotations__["messages"] = messages_type
+            run_async.__annotations__["messages"] = messages_type
+
+        tool = ComponentTool(component=MessageEcho())
+        messages = [ChatMessage.from_user("Hello").to_dict()]
+        result = await tool.invoke_async(messages=messages) if use_async else tool.invoke(messages=messages)
+        assert result == {"reply": "Hello"}
+        assert received_values == [messages]
+
+        if wrapper != "plain":
+            received_values.clear()
+            result = await tool.invoke_async(messages=None) if use_async else tool.invoke(messages=None)
+            assert result == {"reply": ""}
+            assert received_values == ([None] if wrapper == "annotation_outside" else [])
+
+    @pytest.mark.parametrize(
+        "value_type, value",
+        [
+            (Annotated[list[ChatMessage] | dict[str, int], "Messages or counters"], {"counter": 1}),
+            (Annotated[list[ChatMessage] | list[dict[str, int]], "Messages or counters"], [{"counter": 1}]),
+        ],
+    )
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_annotated_union_keeps_other_branches(self, value_type: Any, value: Any, use_async: bool) -> None:
+        @component
+        class Echo:
+            @component.output_types(value=Any)
+            def run(self, value: Any) -> dict[str, Any]:
+                return {"value": value}
+
+            @component.output_types(value=Any)
+            async def run_async(self, value: Any) -> dict[str, Any]:
+                return self.run(value=value)
+
+            run.__annotations__["value"] = value_type
+            run_async.__annotations__["value"] = value_type
+
+        tool = ComponentTool(component=Echo())
+        result = await tool.invoke_async(value=value) if use_async else tool.invoke(value=value)
+        assert result == {"value": value}
 
     def test_component_tool_with_super_component_docstrings(self, monkeypatch):
         """Test that ComponentTool preserves docstrings from underlying pipeline components in SuperComponents."""

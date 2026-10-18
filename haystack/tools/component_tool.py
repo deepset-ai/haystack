@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from typing import Any, get_args, get_origin
+from typing import Annotated, Any, get_args, get_origin
 
-from pydantic import Field, TypeAdapter, create_model
+from pydantic import BeforeValidator, Field, TypeAdapter, create_model
 
 from haystack import logging
 from haystack.core.component import Component
@@ -403,6 +403,15 @@ class ComponentTool(Tool):
         # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
         unwrapped_param_type = _unwrap_optional(param_type)
 
+        has_annotations = False
+        while get_origin(unwrapped_param_type) is Annotated:
+            has_annotations = True
+            unwrapped_param_type = _unwrap_optional(get_args(unwrapped_param_type)[0])
+
+        if has_annotations and _is_union_type(unwrapped_param_type):
+            # Preserve branch selection for broader unions, such as list[ChatMessage] | dict[str, int].
+            return TypeAdapter(param_type).validate_python(param_value)
+
         # We handle union types (e.g. list[ChatMessage] | str) by extracting the list[T] arm that has
         # from_dict, so the conversion below works the same as for plain list[T]. Other arms like str
         # need no special handling and fall through to Pydantic or the plain return at the end.
@@ -420,11 +429,28 @@ class ComponentTool(Tool):
             get_args(unwrapped_param_type)[0] if get_origin(unwrapped_param_type) is list else unwrapped_param_type
         )
         if hasattr(target_type, "from_dict"):
-            if isinstance(param_value, list):
-                return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
-            if isinstance(param_value, dict):
-                return target_type.from_dict(param_value)
-            return param_value
+
+            def _convert_dataclass(value: Any) -> Any:
+                if isinstance(value, list):
+                    return [target_type.from_dict(item) if isinstance(item, dict) else item for item in value]
+                if isinstance(value, dict):
+                    return target_type.from_dict(value)
+                return value
+
+            if has_annotations:
+
+                def _with_conversion(annotation: Any) -> Any:
+                    if get_origin(annotation) is Annotated:
+                        inner_type, *metadata = get_args(annotation)
+                        return Annotated[_with_conversion(inner_type), *metadata]
+                    inner_type = _unwrap_optional(annotation)
+                    if inner_type is not annotation:
+                        return _with_conversion(inner_type) | None
+                    return Annotated[annotation, BeforeValidator(_convert_dataclass)]
+
+                # User before/wrap validators must see the original input before automatic conversion.
+                return TypeAdapter(_with_conversion(param_type)).validate_python(param_value)
+            return _convert_dataclass(param_value)
 
         # Use the original type for pydantic validation
         return TypeAdapter(param_type).validate_python(param_value)
