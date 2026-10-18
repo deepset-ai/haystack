@@ -5,10 +5,10 @@
 from typing import Literal
 
 import pytest
-from haystack.utils.filters import document_matches_filter
 
 from haystack import Document
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
+from haystack.utils.filters import document_matches_filter
 
 
 def test_merge_two_comparison_filters():
