@@ -275,6 +275,16 @@ class TestOrderingAndLineRanges:
             expected = "".join(source_lines[chunk.meta["start_line"] - 1 : chunk.meta["end_line"]])
             assert (chunk.content or "").endswith(expected)
 
+    def test_form_feed_does_not_shift_ast_line_numbers(self):
+        source = "\x0c\ndef first():\n    return 1\n\ndef second():\n    return 2\n"
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1)
+        chunks = splitter.run(documents=[Document(content=source)])["documents"]
+
+        contents = [chunk.content for chunk in chunks]
+        assert contents == ["\x0c\ndef first():\n    return 1\n", "\ndef second():\n    return 2\n"]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 3), (5, 6)]
+        assert "".join(content or "" for content in contents) == source
+
 
 class TestFileNamePropagation:
     def test_file_name_propagated_to_all_chunks(self, simple_module_source):
