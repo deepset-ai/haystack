@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 
 
 @component
@@ -31,8 +32,8 @@ class HierarchicalDocumentSplitter:
     # >> Document(id=8dc.., content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['39d..', 'e23..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
     # >> Document(id=f19.., content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
     # >> Document(id=52c.., content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
-    # >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    # >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
+    # >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 10}),
+    # >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 22})]}
     ```
     """  # noqa: E501
 
@@ -121,8 +122,14 @@ class HierarchicalDocumentSplitter:
                 if len(child_docs) == 1:
                     next_level_nodes.append(doc)
                     continue
+                # the splitter counts pages and offsets from the start of `doc`, not of the original document
+                is_root = doc.meta["__level"] == 0
+                page_offset = 0 if is_root else doc.meta["page_number"] - 1 - _leading_page_breaks(doc.content or "")
+                idx_offset = 0 if is_root else doc.meta["split_idx_start"]
                 for child_doc in child_docs:
                     child_doc = self._add_meta_data(child_doc)
+                    child_doc.meta["page_number"] += page_offset
+                    child_doc.meta["split_idx_start"] += idx_offset
                     child_doc.meta["__level"] = doc.meta["__level"] + 1
                     child_doc.meta["__block_size"] = block
                     child_doc.meta["__parent_id"] = doc.id
