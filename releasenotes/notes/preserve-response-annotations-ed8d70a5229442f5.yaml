@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` now preserves text annotations in
+    ``reply.meta["annotations"]``, with aligned ``annotation_offsets`` for
+    locating citations in the concatenated reply text.

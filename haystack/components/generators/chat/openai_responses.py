@@ -642,6 +642,25 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
 
+def _extract_annotations(output: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[int]]:
+    """Return original annotations and aligned text-block offsets in the concatenated reply."""
+    annotations: list[dict[str, Any]] = []
+    annotation_offsets: list[int] = []
+    text_offset = 0
+    for item in output:
+        if item["type"] != "message":
+            continue
+        for content in item["content"]:
+            if content["type"] != "output_text":
+                continue
+            content_annotations = content.get("annotations", [])
+            annotations.extend(content_annotations)
+            annotation_offsets.extend([text_offset] * len(content_annotations))
+            # Unannotated text also contributes to the concatenated reply's offsets.
+            text_offset += len(content["text"])
+    return annotations, annotation_offsets
+
+
 def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
@@ -692,10 +711,14 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
                 arguments = {}
 
     # we save the response as dict because it contains resp_id etc.
-    meta = responses.to_dict()
+    meta: dict[str, Any] = responses.to_dict()
 
     # remove output from meta because it contains toolcalls, reasoning, text etc.
-    meta.pop("output")
+    response_output = meta.pop("output")
+    annotations, annotation_offsets = _extract_annotations(output=response_output)
+    if annotations:
+        meta["annotations"] = annotations
+        meta["annotation_offsets"] = annotation_offsets
     meta["finish_reason"] = _get_response_finish_reason(responses)
 
     if logprobs:
@@ -873,8 +896,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 # here the tool_call.id is fc_id not call_id
                 assert tool_call.id is not None
                 # We use the tool call id to track the tool call across chunks
-                if tool_call.id not in tool_call_data:
-                    tool_call_data[tool_call.id] = {"name": "", "arguments": ""}
+                tool_call_data.setdefault(tool_call.id, {"name": "", "arguments": ""})
 
                 if tool_call.arguments is not None:
                     tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
@@ -913,7 +935,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         (response for response in reversed(responses) if response.get("usage") is not None), None
     )
     final_response = (response_with_usage or responses[-1]).copy() if responses else {}
-    final_response.pop("output", None)
+    response_output = final_response.pop("output", [])
+    annotations, annotation_offsets = _extract_annotations(output=response_output)
+    if annotations:
+        final_response["annotations"] = annotations
+        final_response["annotation_offsets"] = annotation_offsets
     refusals: dict[tuple[int | None, int], str] = {}
     for chunk in (c for c in chunks if c.meta.get("type") == "response.refusal.delta"):
         refusal_key = (chunk.index, chunk.meta["content_index"])
