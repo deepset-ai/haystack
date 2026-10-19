@@ -199,6 +199,19 @@ class PythonCodeSplitter:
 
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
+
+        # When the docstring shares its physical line with a following statement,
+        # keep the suffix on that line.  Dropping the entire line silently deletes
+        # valid code such as `"""Docs."""; return 5`.
+        if ds_start == ds_end:
+            docstring_line = source_lines[ds_start - 1]
+            # AST column offsets are UTF-8 byte offsets, not Python character offsets.
+            start_col = first.col_offset
+            end_col = first.end_col_offset
+            line_bytes = docstring_line.encode("utf-8")
+            replacement = line_bytes[:start_col] + line_bytes[end_col:]
+            after.insert(0, replacement.decode("utf-8"))
+
         # Removing the only statement from a function or class would leave an
         # invalid suite. Keep the generated chunk syntactically valid.
         if len(body) == 1:
