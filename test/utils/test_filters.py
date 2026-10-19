@@ -412,6 +412,38 @@ document_matches_filter_data = [
         False,
         id="not in operator with filter value containing Document value",
     ),
+    # in operator params with list-valued Document meta (terms semantics, see #13312)
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": [1, 10]}),
+        True,
+        id="in operator with list-valued Document meta sharing an element with filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": [1, 2]}),
+        False,
+        id="in operator with list-valued Document meta sharing no element with filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": []}),
+        False,
+        id="in operator with empty list-valued Document meta",
+    ),
+    # not in operator params with list-valued Document meta (terms semantics, see #13312)
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": [1, 10]}),
+        False,
+        id="not in operator with list-valued Document meta sharing an element with filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": [1, 2]}),
+        True,
+        id="not in operator with list-valued Document meta sharing no element with filter value",
+    ),
     # AND operator params
     pytest.param(
         {

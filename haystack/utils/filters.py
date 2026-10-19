@@ -247,6 +247,14 @@ def _in(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool
             f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
+    if isinstance(value, list):
+        # Match the `terms` query semantics of OpenSearch and Elasticsearch: a list-valued
+        # field matches when any of its elements is among the filter values.
+        return any(
+            _equal(filter_element, document_element, strict_datetime_comparison)
+            for document_element in value
+            for filter_element in filter_value
+        )
     return any(_equal(e, value, strict_datetime_comparison) for e in filter_value)
 
 

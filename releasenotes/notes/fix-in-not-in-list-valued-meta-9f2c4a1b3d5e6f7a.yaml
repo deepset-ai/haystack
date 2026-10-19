@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed the ``in`` and ``not in`` filter operators on list-valued meta fields in the
+    in-memory document store. They previously compared the whole list against the filter
+    values, so a document whose field held ``["sports", "weather"]`` never matched a filter
+    like ``{"field": "meta.topics", "operator": "in", "value": ["sports"]}``. They now follow
+    the ``terms`` query semantics of the OpenSearch and Elasticsearch document stores:
+    a document matches when any element of its list-valued field is among the filter values.
