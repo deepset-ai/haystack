@@ -27,7 +27,7 @@ This component ranks documents by their relevance to the query using rerank mode
 
 [Otari](https://github.com/mozilla-ai/otari) is an open-source, OpenAI-compatible LLM gateway by mozilla.ai. It routes requests to over 40 model providers and adds API keys, budgets, and usage and cost tracking.
 
-`OtariRanker` reranks documents through the gateway's `/rerank` endpoint. Use it after a Retriever in a query pipeline to reorder the retrieved documents by relevance to the query. Name the model with a selector that the gateway accepts, such as `cohere:rerank-v3.5` (default). The gateway needs a credential for a provider that serves rerank models, such as Cohere.
+`OtariRanker` reranks documents through the gateway's `/rerank` endpoint. Use it after a Retriever in a query pipeline to reorder the retrieved documents by relevance to the query. Name the model with a selector that the gateway accepts, such as `cohere:rerank-v3.5` (default).
 
 By default, `OtariRanker` calls otari.ai at `https://api.otari.ai/api/v1`. For an account in otari.ai's EU region, whose API keys start with `otk_v1_eu_`, set `api_base_url` to `https://eu.api.otari.ai/api/v1`. For a gateway you run yourself, set `api_base_url` to its address followed by `/api/v1`, for example `http://localhost:8000/api/v1`.
 
@@ -36,6 +36,18 @@ By default, `OtariRanker` calls otari.ai at `https://api.otari.ai/api/v1`. For a
 You can also specify the `top_k` parameter to set the maximum number of documents to return, and the `score_threshold` parameter to drop documents with a relevance score below a given value. To limit how much of each document the model reads, set `max_tokens_per_doc`.
 
 Requests that time out, fail to connect, or get a rate-limit or temporary error from the gateway are retried. Set `timeout` and `max_retries` to change the defaults of 30 seconds and 3 retries.
+
+### Provider credentials
+
+The gateway needs a credential for a provider that serves rerank models, such as Cohere. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  cohere:
+    api_key: ${COHERE_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `COHERE_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
 
 ### Embedding meta fields
 
@@ -69,8 +81,7 @@ docs = [
 ]
 result = ranker.run(query="What is the capital of France?", documents=docs)
 print(result["documents"][0].content)
-
-# The capital of France is Paris.
+# >> The capital of France is Paris.
 ```
 
 ### In a pipeline
@@ -107,6 +118,5 @@ result = document_ranker_pipeline.run(
 )
 
 print(result["ranker"]["documents"][0])
-
-# Document(id=..., content: 'Paris is in France', score: ...)
+# >> Document(id=..., content: 'Paris is in France', score: ...)
 ```

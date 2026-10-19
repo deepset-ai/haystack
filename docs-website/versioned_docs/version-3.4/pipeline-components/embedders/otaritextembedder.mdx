@@ -29,7 +29,7 @@ This component should be used to embed a string, such as a query. To embed a lis
 
 [Otari](https://github.com/mozilla-ai/otari) is an open-source, OpenAI-compatible LLM gateway by mozilla.ai. It routes requests to over 40 model providers and adds API keys, budgets, and usage and cost tracking.
 
-`OtariTextEmbedder` computes the embedding of a string through the gateway's embeddings endpoint. Name the model with a selector that the gateway accepts, such as `openai:text-embedding-3-small` (default). The gateway needs a credential for the provider. Set `dimensions` to shorten the embeddings of models that support it.
+`OtariTextEmbedder` computes the embedding of a string through the gateway's embeddings endpoint. Name the model with a selector that the gateway accepts, such as `openai:text-embedding-3-small` (default). Set `dimensions` to shorten the embeddings of models that support it.
 
 By default, `OtariTextEmbedder` calls otari.ai at `https://api.otari.ai/api/v1`. For an account in otari.ai's EU region, whose API keys start with `otk_v1_eu_`, set `api_base_url` to `https://eu.api.otari.ai/api/v1`. For a gateway you run yourself, set `api_base_url` to its address followed by `/api/v1`, for example `http://localhost:8000/api/v1`.
 
@@ -50,6 +50,18 @@ embedder = OtariTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
 
 When the gateway prices a request, the `usage` entry in the output `meta` contains the cost in US dollars as `cost_usd`, a decimal string, and the price list it came from as `pricing_source`.
 
+### Provider credentials
+
+The gateway needs a credential for the provider of the embedding model. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `OPENAI_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
+
 ## Usage
 
 ### On its own
@@ -60,9 +72,8 @@ from haystack_integrations.components.embedders.otari import OtariTextEmbedder
 text_embedder = OtariTextEmbedder()
 
 print(text_embedder.run("I love pizza!"))
-
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-#  'meta': {'model': 'text-embedding-3-small', 'usage': {...}}}
+# >> {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+# >>  'meta': {'model': 'text-embedding-3-small', 'usage': {...}}}
 ```
 
 ### In a pipeline
@@ -98,6 +109,5 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 result = query_pipeline.run({"text_embedder": {"text": "Who lives in Berlin?"}})
 
 print(result["retriever"]["documents"][0])
-
-# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+# >> Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

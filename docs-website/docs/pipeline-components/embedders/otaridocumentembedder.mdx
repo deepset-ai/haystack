@@ -29,7 +29,7 @@ This component should be used to embed a list of documents. To embed a string, u
 
 [Otari](https://github.com/mozilla-ai/otari) is an open-source, OpenAI-compatible LLM gateway by mozilla.ai. It routes requests to over 40 model providers and adds API keys, budgets, and usage and cost tracking.
 
-`OtariDocumentEmbedder` computes the embeddings of a list of documents through the gateway's embeddings endpoint and stores the obtained vectors in the embedding field of each document. Name the model with a selector that the gateway accepts, such as `openai:text-embedding-3-small` (default). The gateway needs a credential for the provider. Set `dimensions` to shorten the embeddings of models that support it.
+`OtariDocumentEmbedder` computes the embeddings of a list of documents through the gateway's embeddings endpoint and stores the obtained vectors in the embedding field of each document. Name the model with a selector that the gateway accepts, such as `openai:text-embedding-3-small` (default). Set `dimensions` to shorten the embeddings of models that support it.
 
 By default, `OtariDocumentEmbedder` calls otari.ai at `https://api.otari.ai/api/v1`. For an account in otari.ai's EU region, whose API keys start with `otk_v1_eu_`, set `api_base_url` to `https://eu.api.otari.ai/api/v1`. For a gateway you run yourself, set `api_base_url` to its address followed by `/api/v1`, for example `http://localhost:8000/api/v1`.
 
@@ -47,6 +47,18 @@ from haystack_integrations.components.embedders.otari import OtariDocumentEmbedd
 
 embedder = OtariDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
 ```
+
+### Provider credentials
+
+The gateway needs a credential for the provider of the embedding model. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `OPENAI_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
 
 ### Embedding metadata
 
@@ -83,8 +95,7 @@ document_embedder = OtariDocumentEmbedder()
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
-
-# [0.017020374536514282, -0.023255806416273117, ...]
+# >> [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
 ### In an indexing pipeline

@@ -38,7 +38,19 @@ By default, `OtariChatGenerator` calls otari.ai at `https://api.otari.ai/api/v1`
 
 ### Models
 
-Name a model with a selector that the gateway accepts: `provider:model`, such as `openai:gpt-5-mini` (default) or `anthropic:claude-sonnet-4-6`, a model alias, or the name of a routing policy. The gateway needs a credential for the provider: a provider key in your otari.ai organization, or a provider configured on your own gateway. For details, see the [Otari model docs](https://github.com/mozilla-ai/otari/blob/main/docs/models.md).
+Name a model with a selector that the gateway accepts: `provider:model`, such as `openai:gpt-5-mini` (default) or `anthropic:claude-sonnet-4-6`, a model alias, or the name of a routing policy. For details, see the [Otari model docs](https://github.com/mozilla-ai/otari/blob/main/docs/models.md).
+
+### Provider credentials
+
+The gateway needs a credential for each provider you use. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `OPENAI_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
 
 ### Parameters
 
@@ -92,7 +104,10 @@ from haystack_integrations.components.generators.otari import OtariChatGenerator
 client = OtariChatGenerator()
 response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 print(response["replies"][0].text)
+# >> Agentic pipelines are workflows in which an LLM-driven agent decides which steps
+# >> to take, such as calling tools or retrieving data, to complete a task.
 print(response["replies"][0].meta["usage"]["cost_usd"])
+# >> 0.000279
 ```
 
 ### In a pipeline
@@ -120,34 +135,28 @@ response = pipe.run(
     data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
 )
 print(response["llm"]["replies"][0].text)
+# >> Berlin is the capital of Germany and its largest city, known for its history,
+# >> culture, and nightlife.
 ```
 
 ### With an Agent
 
 ```python
+from typing import Annotated
+
 from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool
+from haystack.tools import tool
 from haystack_integrations.components.generators.otari import OtariChatGenerator
 
 
-def weather(city: str) -> str:
+@tool
+def weather(city: Annotated[str, "The city to get the weather for"]) -> str:
     """Get weather for a given city."""
     return f"The weather in {city} is sunny and 32°C"
 
 
-tool = Tool(
-    name="weather",
-    description="Get weather for a given city",
-    parameters={
-        "type": "object",
-        "properties": {"city": {"type": "string"}},
-        "required": ["city"],
-    },
-    function=weather,
-)
-
-agent = Agent(chat_generator=OtariChatGenerator(), tools=[tool])
+agent = Agent(chat_generator=OtariChatGenerator(), tools=[weather])
 
 result = agent.run(
     messages=[ChatMessage.from_user("What's the weather like in Paris?")]
