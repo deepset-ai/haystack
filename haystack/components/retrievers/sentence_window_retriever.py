@@ -146,7 +146,7 @@ class SentenceWindowRetriever:
             merged_text += doc.content[start - int(doc.meta["split_idx_start"]) :]
 
             # update the last end index
-            last_idx_end = int(doc.meta["split_idx_start"]) + len(doc.content)
+            last_idx_end = max(last_idx_end, int(doc.meta["split_idx_start"]) + len(doc.content))
 
         return merged_text
 
