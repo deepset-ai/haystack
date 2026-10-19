@@ -100,7 +100,7 @@ messages and tool schemas, as well as supported non-text content such as images 
 from haystack.dataclasses import ChatMessage
 from haystack.token_counters import OpenAITokenCounter
 
-counter = OpenAITokenCounter("gpt-5-mini")
+counter = OpenAITokenCounter("gpt-5.6-luna")
 messages = [ChatMessage.from_user("Hello, how are you?")]
 token_count = counter.count(messages)
 print(f"Token count: {token_count}")
@@ -192,6 +192,9 @@ Counting is an estimate, and two limits are worth knowing before relying on it:
 - **It is text-only**, so images and files get the flat `tokens_per_image` / `tokens_per_file` estimate rather
   than a real count.
 - **It is OpenAI's encoder.** Other providers tokenize differently, so expect the count to drift on them.
+
+Literal special-token strings (for example `<|endoftext|>`) in message or tool content are encoded as ordinary
+text, so they are counted instead of raising an error.
 
 ## Usage Example:
 

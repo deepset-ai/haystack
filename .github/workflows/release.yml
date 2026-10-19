@@ -64,8 +64,8 @@ jobs:
     needs: ["parse-validate-version"]
     if: needs.parse-validate-version.outputs.is_first_rc == 'true'
     uses: ./.github/workflows/branch_off.yml
-    # https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#passing-secrets-to-nested-workflows
-    secrets: inherit
+    secrets:
+      HAYSTACK_BOT_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
   create-release-tag:
     needs: ["parse-validate-version", "branch-off"]

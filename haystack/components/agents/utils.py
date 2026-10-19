@@ -115,7 +115,7 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
     Standalone Tools are kept when their name is requested. A Toolset with run-scoped state (one overriding
     `spawn()`, such as SearchableToolset) is replaced by a per-run copy carrying the requested names, so its
     dynamic behavior (search/lazy-loading) is preserved without mutating the shared, configured Toolset. Any
-    other Toolset is warmed up and reduced to the matching Tools.
+    other Toolset is reduced to the matching Tools. The caller must warm up the tools before selection.
 
     :param configured_tools: The tools configured on the Agent.
     :param names: The requested tool names.

@@ -13,8 +13,9 @@ from haystack.hooks.compaction.utils import (
     _historical_turn_spans,
     _is_compaction_message,
     _last_assistant_index,
+    _replace_tool_results_until_target,
 )
-from test.hooks.compaction.helpers import tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, conversation, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -172,3 +173,76 @@ class TestCurrentAgentStepGroups:
     def test_missing_task_anchor(self):
         messages = [ChatMessage.from_system("rules"), ChatMessage.from_assistant("step")]
         assert _current_agent_step_groups(messages=messages, system_end=1, task_index=None) == [[1]]
+
+
+COUNTER = FakeCounter(chars_per_token=1)
+
+
+def _shorten(message: ChatMessage, index: int) -> tuple[ChatMessage, int]:
+    """Replace a tool result with a short marker naming its position."""
+    assert message.tool_call_result is not None
+    shortened = ChatMessage.from_tool(tool_result=f"replaced {index}", origin=message.tool_call_result.origin)
+    return shortened, COUNTER.count(messages=[message]) - COUNTER.count(messages=[shortened])
+
+
+def _replaced_positions(messages: list[ChatMessage]) -> list[int]:
+    return [
+        index
+        for index, message in enumerate(messages)
+        if message.tool_call_result is not None and message.tool_call_result.result == f"replaced {index}"
+    ]
+
+
+class TestReplaceToolResultsUntilTarget:
+    def test_stops_after_reaching_target(self):
+        messages = conversation("a" * 400, "b" * 400, "newest")
+        compacted = _replace_tool_results_until_target(
+            messages=messages,
+            target_tokens=COUNTER.count(messages=messages) - 1,
+            token_counter=COUNTER,
+            min_keep_steps=1,
+            replace=_shorten,
+        )
+
+        assert compacted is not None
+        assert _replaced_positions(compacted) == [2]
+        # The caller-owned input list is unchanged.
+        assert _replaced_positions(messages) == []
+
+    @pytest.mark.parametrize(
+        ("min_keep_steps", "expected"),
+        [pytest.param(1, [2, 4, 5], id="keeps_newest_step"), pytest.param(2, [2], id="keeps_parallel_step_together")],
+    )
+    def test_keeps_min_keep_steps(self, min_keep_steps, expected):
+        messages = [
+            *conversation("old" * 200),
+            tool_call("parallel-1", "parallel-2"),
+            tool_result("first" * 200, call_id="parallel-1"),
+            tool_result("second" * 200, call_id="parallel-2"),
+            tool_call("newest"),
+            tool_result("newest" * 200, call_id="newest"),
+        ]
+        compacted = _replace_tool_results_until_target(
+            messages=messages, target_tokens=1, token_counter=COUNTER, min_keep_steps=min_keep_steps, replace=_shorten
+        )
+
+        assert compacted is not None
+        assert _replaced_positions(compacted) == expected
+
+    @pytest.mark.parametrize(
+        ("messages", "target_tokens", "replace"),
+        [
+            pytest.param(conversation("a" * 400, "newest"), 10_000, _shorten, id="conversation_already_fits"),
+            pytest.param(conversation("only result"), 1, _shorten, id="every_step_is_protected"),
+            pytest.param(
+                conversation("a" * 400, "newest"), 1, lambda message, index: None, id="nothing_is_replaceable"
+            ),
+        ],
+    )
+    def test_returns_none(self, messages, target_tokens, replace):
+        assert (
+            _replace_tool_results_until_target(
+                messages=messages, target_tokens=target_tokens, token_counter=COUNTER, min_keep_steps=1, replace=replace
+            )
+            is None
+        )

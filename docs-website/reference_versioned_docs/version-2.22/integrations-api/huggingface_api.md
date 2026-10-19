@@ -864,9 +864,7 @@ Initialize the HuggingFaceAPIChatGenerator instance.
 warm_up() -> None
 ```
 
-Warm up the Hugging Face API chat generator.
-
-This creates the synchronous client and warms up the configured tools.
+Create the synchronous Hugging Face client.
 
 #### warm_up_async
 
@@ -874,7 +872,7 @@ This creates the synchronous client and warms up the configured tools.
 warm_up_async() -> None
 ```
 
-Create the asynchronous Hugging Face client and warm up the configured tools.
+Create the asynchronous Hugging Face client.
 
 #### close
 

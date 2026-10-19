@@ -44,6 +44,22 @@ Create a RunBashCommandTool.
 
 - **sandbox** (<code>E2BSandbox</code>) – The :class:`E2BSandbox` instance that will execute commands.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Start the sandbox if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the sandbox.
+
 #### to_dict
 
 ```python
@@ -96,15 +112,6 @@ agent = Agent(
         ListDirectoryTool(sandbox=sandbox),
     ],
 )
-```
-
-Lifecycle is handled automatically by the Agent's pipeline. If you use the
-tools standalone, call :meth:`warm_up` before the first tool invocation:
-
-```python
-sandbox.warm_up()
-# ... use tools ...
-sandbox.close()
 ```
 
 #### __init__
@@ -226,6 +233,22 @@ Create a ListDirectoryTool.
 
 - **sandbox** (<code>E2BSandbox</code>) – The :class:`E2BSandbox` instance to list directories from.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Start the sandbox if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the sandbox.
+
 #### to_dict
 
 ```python
@@ -273,6 +296,22 @@ Create a ReadFileTool.
 **Parameters:**
 
 - **sandbox** (<code>E2BSandbox</code>) – The :class:`E2BSandbox` instance to read files from.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Start the sandbox if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the sandbox.
 
 #### to_dict
 
@@ -400,6 +439,22 @@ Create a WriteFileTool.
 **Parameters:**
 
 - **sandbox** (<code>E2BSandbox</code>) – The :class:`E2BSandbox` instance to write files to.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Start the sandbox if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the sandbox.
 
 #### to_dict
 

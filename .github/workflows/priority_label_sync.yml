@@ -1,0 +1,159 @@
+name: Priority label sync
+
+# Mirror the priority label of the issues a PR links onto the PR. If the linked issues
+# carry different priorities, the highest one wins. Once no linked issue has a priority,
+# or the PR no longer links an issue, the priority labels this workflow added are removed
+# again; priority labels set by hand stay.
+#
+# We use "schedule" in addition to the "pull_request_target" and "issues" triggers to catch
+# links made via the "Development" sidebar, which emit no event.
+#
+# Uses pull_request_target so it also has write permissions on fork PRs; this
+# is safe because the workflow never checks out or executes PR code.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited]
+  issues:
+    types: [labeled, unlabeled]
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A group keeps only one pending run, so events for other labels get a group of their own
+# to not cancel a pending priority run.
+concurrency:
+  group: >-
+    priority-label-sync-${{
+      (github.event_name == 'issues' && !contains(fromJSON('["P0", "P1", "P2", "P3"]'), github.event.label.name)) && github.run_id
+      || github.event.pull_request.number || github.event.issue.number || 'sweep'
+    }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-slim
+    if: ${{ github.event_name != 'issues' || contains(fromJSON('["P0", "P1", "P2", "P3"]'), github.event.label.name) }}
+    permissions:
+      issues: read
+      pull-requests: write
+    steps:
+      - name: Sync priority labels from linked issues
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            // Ordered from highest to lowest priority.
+            const PRIORITIES = ["P0", "P1", "P2", "P3"];
+            // Actor of label events created with GITHUB_TOKEN.
+            const WORKFLOW_ACTOR = "github-actions";
+
+            const PR_FIELDS = `
+              number
+              labels(first: 100) { nodes { name } }
+              timelineItems(itemTypes: [LABELED_EVENT], last: 100) {
+                nodes { ... on LabeledEvent { label { name } actor { login } } }
+              }
+              closingIssuesReferences(first: 25) {
+                nodes {
+                  repository { nameWithOwner }
+                  labels(first: 100) { nodes { name } }
+                }
+              }`;
+
+            async function syncPr(pr) {
+              const issues = pr.closingIssuesReferences.nodes.filter(
+                (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
+              );
+              const issuePriorities = new Set(
+                issues.flatMap((issue) => issue.labels.nodes.map((l) => l.name)),
+              );
+              const wanted = PRIORITIES.find((p) => issuePriorities.has(p));
+              const current = pr.labels.nodes.map((l) => l.name).filter((n) => PRIORITIES.includes(n));
+
+              // A label counts as added by this workflow if its most recent "labeled" event is ours.
+              // Labels whose event is out of the fetched range count as set by hand.
+              const addedBy = new Map();
+              for (const event of pr.timelineItems.nodes) addedBy.set(event.label.name, event.actor?.login);
+              const addedByWorkflow = (name) => addedBy.get(name) === WORKFLOW_ACTOR;
+
+              const toRemove = wanted ? current.filter((n) => n !== wanted) : current.filter(addedByWorkflow);
+              for (const name of toRemove) {
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: pr.number, name });
+                } catch (error) {
+                  // Already removed, e.g. by a concurrent run.
+                  if (error.status !== 404) throw error;
+                }
+                core.info(`Removed ${name} from PR #${pr.number}`);
+              }
+              if (wanted && !current.includes(wanted)) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [wanted] });
+                core.info(`Added ${wanted} to PR #${pr.number}`);
+              }
+            }
+
+            // Keep going when one PR fails so the others still get synced.
+            async function syncPrs(prs) {
+              const failed = [];
+              for (const pr of prs) {
+                try {
+                  await syncPr(pr);
+                } catch (error) {
+                  core.error(`Failed to sync PR #${pr.number}: ${error.message}`);
+                  failed.push(pr.number);
+                }
+              }
+              return failed;
+            }
+
+            let failed = [];
+            if (context.eventName === "pull_request_target") {
+              const result = await github.graphql(
+                `query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) { pullRequest(number: $number) { ${PR_FIELDS} } }
+                }`,
+                { owner, repo, number: context.payload.pull_request.number },
+              );
+              failed = await syncPrs([result.repository.pullRequest]);
+            } else if (context.eventName === "issues") {
+              const result = await github.graphql(
+                `query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) {
+                      closedByPullRequestsReferences(first: 25, includeClosedPrs: false) {
+                        nodes { repository { nameWithOwner } ${PR_FIELDS} }
+                      }
+                    }
+                  }
+                }`,
+                { owner, repo, number: context.payload.issue.number },
+              );
+              const prs = result.repository.issue.closedByPullRequestsReferences.nodes.filter(
+                (pr) => pr.repository.nameWithOwner === `${owner}/${repo}`,
+              );
+              if (!prs.length) core.info(`Issue #${context.payload.issue.number} has no open linked PRs.`);
+              failed = await syncPrs(prs);
+            } else {
+              let cursor = null;
+              do {
+                const result = await github.graphql(
+                  `query($owner: String!, $repo: String!, $cursor: String) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequests(states: OPEN, first: 50, after: $cursor) {
+                        pageInfo { hasNextPage endCursor }
+                        nodes { ${PR_FIELDS} }
+                      }
+                    }
+                  }`,
+                  { owner, repo, cursor },
+                );
+                const page = result.repository.pullRequests;
+                failed.push(...(await syncPrs(page.nodes)));
+                cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+              } while (cursor);
+            }
+            if (failed.length) core.setFailed(`Failed to sync PRs: ${failed.map((n) => `#${n}`).join(", ")}`);

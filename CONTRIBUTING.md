@@ -188,7 +188,9 @@ This helps maintainers and keeps the project ready for both human and AI contrib
 
 ### Setting up your development environment
 
-*To run Haystack tests locally, ensure your development environment uses Python >=3.10 and <3.14.*
+*To run Haystack tests locally, ensure your development environment uses Python >=3.11 and <3.16.*
+PyTorch does not publish Python 3.15 wheels on PyPI yet, so on 3.15 create the test environment with
+`UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu UV_INDEX_STRATEGY=unsafe-best-match hatch env create test`.
 
 Haystack makes heavy use of [Hatch](https://hatch.pypa.io/latest/), a Python project manager that we use to set up the
 virtual environments, build the project, and publish packages. As you can imagine, the first step towards becoming a
@@ -288,10 +290,10 @@ To check for static type errors, run:
 hatch run test:types
 ```
 
-Note that type checking targets Python 3.12, even though Haystack supports 3.10 and above. numpy's
+Note that type checking targets Python 3.12, even though Haystack supports 3.11 and above. numpy's
 type stubs use [PEP 695](https://peps.python.org/pep-0695/) `type` statements, which mypy rejects as
 a syntax error below 3.12. Support for the older versions is covered by the unit test matrix, which
-runs on Python 3.10.
+runs on Python 3.11.
 
 To format your code and perform linting using Ruff (with automatic fixes), run:
 ```sh

@@ -18,7 +18,6 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -29,7 +28,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Generates text using OpenAI's models on Azure.
 
-    It works with the gpt-4 - type models and supports streaming responses
+    It works with OpenAI's GPT models deployed on Azure and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -53,7 +52,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     client = AzureOpenAIChatGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+        azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
     response = client.run(messages)
     print(response)
     ```
@@ -64,7 +63,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
          enabling computers to understand, interpret, and generate human language in a way that is useful.")],
          _name=None,
-         _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```
@@ -234,7 +233,6 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
         self.client: AzureOpenAI | None = None
         self.async_client: AsyncAzureOpenAI | None = None
-        self._tools_warmed_up = False
 
     def _client_kwargs(self) -> dict[str, Any]:
         timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -260,16 +258,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             "azure_ad_token_provider": self.azure_ad_token_provider,
         }
 
-    def _warm_up_tools(self) -> None:
-        if not self._tools_warmed_up:
-            warm_up_tools(self.tools)
-            self._tools_warmed_up = True
-
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous Azure OpenAI client.
+        Initialize the synchronous Azure OpenAI client.
         """
-        self._warm_up_tools()
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
@@ -281,9 +273,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+        Initialize the asynchronous Azure OpenAI client on the serving event loop.
         """
-        self._warm_up_tools()
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
