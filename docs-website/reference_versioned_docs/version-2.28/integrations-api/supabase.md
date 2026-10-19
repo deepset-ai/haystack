@@ -94,22 +94,6 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SupabaseBucketDownloader
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SupabaseBucketDownloader</code> – Deserialized component.
-
 ## haystack_integrations.components.retrievers.supabase.embedding_retriever
 
 ### SupabasePgvectorEmbeddingRetriever
