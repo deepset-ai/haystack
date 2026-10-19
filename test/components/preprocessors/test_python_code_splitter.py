@@ -708,6 +708,18 @@ class TestDocstringStripping:
         assert "Class-level docstring." not in (header.content or "")
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
 
+    def test_strip_inline_docstring_preserves_following_statement(self):
+        source = 'def f():\n    """Docs."""; return 5\n'
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert result["documents"]
+        content = result["documents"][0].content or ""
+        assert "return 5" in content
+        ast.parse(content)
+        assert result["documents"][0].meta["docstrings"] == ["Docs."]
+
     @pytest.mark.parametrize(
         "source", ['def only_docstring():\n    """Function docs."""\n', 'class OnlyDocstring:\n    """Class docs."""\n']
     )
