@@ -8,7 +8,7 @@ import pytest
 
 from haystack import Document
 from haystack.errors import FilterError
-from haystack.utils.filters import document_matches_filter
+from haystack.utils.filters import _parse_date, document_matches_filter
 
 document_matches_filter_data = [
     # == operator params
@@ -223,6 +223,31 @@ document_matches_filter_data = [
         id=">= operator with equal datetime in different ISO 8601 format",
     ),
     pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": ">=", "value": "1969"},
+        Document(meta={"date": "1969-01-01"}),
+        True,
+        id=">= operator with partial year filter value matches start of the year",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969"},
+        Document(meta={"date": "1968-12-31T23:59:59"}),
+        False,
+        id=">= operator with partial year filter value excludes previous year",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07"},
+        Document(meta={"date": "1969-07-21"}),
+        True,
+        id=">= operator with partial year-month filter value matches start of the month",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07"},
+        Document(meta={"date": "1969-06-30"}),
+        False,
+        id=">= operator with partial year-month filter value excludes previous month",
+    ),
+    pytest.param(
         {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40+00:00"},
         Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
         True,
@@ -276,6 +301,19 @@ document_matches_filter_data = [
         Document(meta={"date": "1969-07-21T20:17:40"}),
         False,
         id="< operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": "<", "value": "1969"},
+        Document(meta={"date": "1968-06-15"}),
+        True,
+        id="< operator with partial year filter value matches previous year",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969"},
+        Document(meta={"date": "1969-06-15"}),
+        False,
+        id="< operator with partial year filter value excludes same year",
     ),
     pytest.param(
         {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
@@ -631,6 +669,13 @@ document_matches_filter_data = [
 @pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filters, document, expected_result):
     assert document_matches_filter(filters, document) == expected_result
+
+
+def test_parse_date_partial_dates_resolve_to_start_of_period():
+    # Regression test: partial dates must not be filled with the current date,
+    # otherwise the same filter returns different documents depending on the day it runs.
+    assert _parse_date("2024") == datetime(2024, 1, 1)
+    assert _parse_date("2024-06") == datetime(2024, 6, 1)
 
 
 @pytest.mark.parametrize(
