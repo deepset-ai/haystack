@@ -709,6 +709,52 @@ def test_document_matches_filter_strict_datetime_comparison_in_nested_condition(
     )
 
 
+# Edge cases for the in/not in operators on list-valued Document meta (terms semantics, see #13312).
+# Independently verified against OpenSearch 3.5.0 by zheke01 on PR #13313.
+@pytest.mark.parametrize("operator", ["in", "not in"])
+@pytest.mark.parametrize(
+    "document_value,filter_value,strict_datetime_comparison,expected_in",
+    [
+        pytest.param(["a"], [], False, False, id="empty filter values"),
+        pytest.param([], ["a"], False, False, id="empty list-valued Document meta"),
+        pytest.param([], [], False, False, id="empty Document meta and empty filter values"),
+        pytest.param([1], ["1"], False, False, id="no coercion between different types"),
+        pytest.param(
+            ["2025-02-03T12:45:46Z"],
+            ["2025-02-03T12:45:46+00:00"],
+            False,
+            True,
+            id="equivalent datetimes match in default comparison mode",
+        ),
+        pytest.param(
+            ["2025-02-03T12:45:46"],
+            ["2025-02-03T12:45:46+00:00"],
+            False,
+            True,
+            id="mixed timezone awareness matches in default comparison mode",
+        ),
+        pytest.param(
+            ["2025-02-03T12:45:46"],
+            ["2025-02-03T12:45:46+00:00"],
+            True,
+            False,
+            id="mixed timezone awareness does not match in strict comparison mode",
+        ),
+    ],
+)
+def test_in_not_in_operators_on_list_valued_meta_edge_cases(
+    operator, document_value, filter_value, strict_datetime_comparison, expected_in
+):
+    filters = {"field": "meta.tags", "operator": operator, "value": filter_value}
+    document = Document(meta={"tags": document_value})
+    expected_result = expected_in if operator == "in" else not expected_in
+
+    assert (
+        document_matches_filter(filters, document, strict_datetime_comparison=strict_datetime_comparison)
+        is expected_result
+    )
+
+
 document_matches_filter_raises_error_data = [
     # > operator params
     pytest.param({"field": "meta.page", "operator": ">", "value": "10"}, id="> operator with string filter value"),
