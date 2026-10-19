@@ -261,7 +261,6 @@ for annotation, offset in zip(
     start = offset + annotation["start_index"]
     end = offset + annotation["end_index"]
     print(reply.text[start:end], annotation["url"])
-generator.close()
 ```
 
 ## Usage

@@ -1061,14 +1061,16 @@ class TestConversionToStreamingChunks:
                 logprobs=[],
                 delta=text,
             ),
-            ResponseOutputTextAnnotationAddedEvent(
-                type="response.output_text.annotation.added",
-                item_id="msg_1",
-                output_index=1,
-                content_index=0,
-                sequence_number=2,
-                annotation_index=0,
-                annotation=citation,
+            ResponseOutputTextAnnotationAddedEvent.model_validate(
+                {
+                    "type": "response.output_text.annotation.added",
+                    "item_id": "msg_1",
+                    "output_index": 1,
+                    "content_index": 0,
+                    "sequence_number": 2,
+                    "annotation_index": 0,
+                    "annotation": citation,
+                }
             ),
             ResponseCompletedEvent(type="response.completed", response=response, sequence_number=3),
         ]
