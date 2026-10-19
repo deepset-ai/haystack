@@ -1,0 +1,121 @@
+---
+title: "OtariDocumentEmbedder"
+id: otaridocumentembedder
+slug: "/otaridocumentembedder"
+description: "This component computes the embeddings of a list of documents using embedding models from many providers through an Otari LLM gateway."
+---
+
+# OtariDocumentEmbedder
+
+This component computes the embeddings of a list of documents using embedding models from many providers through an [Otari](https://github.com/mozilla-ai/otari) LLM gateway.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: An Otari API key. Can be set with `OTARI_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to be embedded |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Otari](/reference/integrations-otari) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/otari |
+| **Package name** | `otari-haystack` |
+
+</div>
+
+This component should be used to embed a list of documents. To embed a string, use the [`OtariTextEmbedder`](otaritextembedder.mdx).
+
+## Overview
+
+[Otari](https://github.com/mozilla-ai/otari) is an open-source, OpenAI-compatible LLM gateway by mozilla.ai. It routes requests to over 40 model providers and adds API keys, budgets, and usage and cost tracking.
+
+`OtariDocumentEmbedder` computes the embeddings of a list of documents through the gateway's embeddings endpoint and stores the obtained vectors in the embedding field of each document. Name the model with a selector that the gateway accepts, such as `openai:text-embedding-3-small` (default). Set `dimensions` to shorten the embeddings of models that support it.
+
+By default, `OtariDocumentEmbedder` calls otari.ai at `https://api.otari.ai/api/v1`. For an account in otari.ai's EU region, whose API keys start with `otk_v1_eu_`, set `api_base_url` to `https://eu.api.otari.ai/api/v1`. For a gateway you run yourself, set `api_base_url` to its address followed by `/api/v1`, for example `http://localhost:8000/api/v1`.
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install otari-haystack
+```
+
+`OtariDocumentEmbedder` needs an Otari API key to work. It uses an `OTARI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.otari import OtariDocumentEmbedder
+
+embedder = OtariDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+### Provider credentials
+
+The gateway needs a credential for the provider of the embedding model. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `OPENAI_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
+
+### Embedding metadata
+
+Text documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval.
+
+You can do this by using the `meta_fields_to_embed` parameter:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.otari import OtariDocumentEmbedder
+
+doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
+
+embedder = OtariDocumentEmbedder(meta_fields_to_embed=["title"])
+
+docs_w_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+### Cost
+
+When the gateway prices a request, the `usage` entry in the output `meta` contains the cost in US dollars as `cost_usd`, a decimal string, and the price list it came from as `pricing_source`. The component sends the documents in batches of `batch_size`, and `cost_usd` is the sum over all batches.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.otari import OtariDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = OtariDocumentEmbedder()
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+# >> [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+### In an indexing pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import TextFileToDocument
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.otari import OtariDocumentEmbedder
+
+document_store = InMemoryDocumentStore()
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("converter", TextFileToDocument())
+indexing_pipeline.add_component("embedder", OtariDocumentEmbedder())
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+indexing_pipeline.connect("converter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"converter": {"sources": ["./my_document.txt"]}})
+```
