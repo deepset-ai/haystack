@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import io
 import logging
 import os
 from pathlib import Path
@@ -11,34 +10,6 @@ import pytest
 
 from haystack.components.converters.pptx import PPTXToDocument
 from haystack.dataclasses import ByteStream
-
-
-def _deck_with_a_group_and_a_table() -> bytes:
-    """A one-slide deck holding a plain textbox, a table, and a group of textboxes."""
-    from pptx import Presentation
-    from pptx.util import Inches
-
-    presentation = Presentation()
-    slide = presentation.slides.add_slide(presentation.slide_layouts[6])  # blank
-
-    textbox = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(4), Inches(0.6))
-    textbox.text_frame.text = "PLAIN TEXTBOX"
-
-    table = slide.shapes.add_table(2, 2, Inches(0.5), Inches(1.2), Inches(4), Inches(1.2)).table
-    table.cell(0, 0).text = "HEADER A"
-    table.cell(0, 1).text = "HEADER B"
-    table.cell(1, 0).text = "CELL A"
-    table.cell(1, 1).text = "CELL B"
-
-    first = slide.shapes.add_textbox(Inches(0.5), Inches(3.0), Inches(2), Inches(0.5))
-    first.text_frame.text = "GROUPED ONE"
-    second = slide.shapes.add_textbox(Inches(3.0), Inches(3.0), Inches(2), Inches(0.5))
-    second.text_frame.text = "GROUPED TWO"
-    slide.shapes.add_group_shape([first, second])
-
-    buffer = io.BytesIO()
-    presentation.save(buffer)
-    return buffer.getvalue()
 
 
 class TestPPTXToDocument:
@@ -153,49 +124,31 @@ class TestPPTXToDocument:
         assert "https://example.com" not in content
         assert "Example" in content
 
-    def test_run_reads_text_inside_a_group(self):
-        """A group carries no text of its own, so its children have to be read through."""
-        converter = PPTXToDocument()
-
-        output = converter.run(sources=[ByteStream(data=_deck_with_a_group_and_a_table())])
-
-        content = output["documents"][0].content
-        assert "GROUPED ONE" in content
-        assert "GROUPED TWO" in content
-
-    def test_run_reads_table_cells(self):
-        """A table lives on a graphic frame, which is not a text frame either."""
-        converter = PPTXToDocument()
-
-        output = converter.run(sources=[ByteStream(data=_deck_with_a_group_and_a_table())])
-
-        content = output["documents"][0].content
-        assert "HEADER A,HEADER B" in content
-        assert "CELL A,CELL B" in content
-
-    def test_run_still_reads_a_plain_textbox(self):
-        converter = PPTXToDocument()
-
-        output = converter.run(sources=[ByteStream(data=_deck_with_a_group_and_a_table())])
-
-        assert "PLAIN TEXTBOX" in output["documents"][0].content
-
-    def test_run_formats_links_inside_a_group(self):
-        """`link_format` has to survive the descent into a group."""
-        from pptx import Presentation
-        from pptx.util import Inches
-
-        presentation = Presentation()
-        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-        textbox = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(4), Inches(0.6))
-        run = textbox.text_frame.paragraphs[0].add_run()
-        run.text = "deepset"
-        run.hyperlink.address = "https://deepset.ai"
-        slide.shapes.add_group_shape([textbox])
-        buffer = io.BytesIO()
-        presentation.save(buffer)
-
+    def test_run_reads_nested_groups_and_table_with_links(self, test_files_path):
+        # The slide includes nested text groups, a grouped table, and an empty decorative shape.
         converter = PPTXToDocument(link_format="markdown")
-        output = converter.run(sources=[ByteStream(data=buffer.getvalue())])
+        source = test_files_path / "pptx" / "complex_groups_and_table.pptx"
 
-        assert "[deepset](https://deepset.ai)" in output["documents"][0].content
+        documents = converter.run(sources=[source])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == (
+            "PPTX extraction playground\n"
+            "One slide • text boxes • nested groups • table cells • hyperlinks\n"
+            "PLAIN TEXTBOX\n"
+            "First paragraph.\n"
+            "Second paragraph: café, naïve, 日本語.\n"
+            "[Haystack documentation](https://docs.haystack.deepset.ai/)\n"
+            "OUTER GROUP\n"
+            "Text directly inside the outer group.\n"
+            "NESTED GROUP\n"
+            "Text two levels deep.\n"
+            "[deepset website](https://www.deepset.ai/)\n"
+            "TABLE INSIDE A GROUP\n"
+            "Case,Content,Reference\r\n"
+            'CSV escaping,"Hello, world\nHe said ""yes""",\r\n'
+            "Markdown,left | right,[Docs](https://docs.haystack.deepset.ai/)\r\n"
+            'Unicode,café / 日本語,"Two\nparagraphs"\n'
+            "\n"
+            "END OF SLIDE — text after the groups and table"
+        )
