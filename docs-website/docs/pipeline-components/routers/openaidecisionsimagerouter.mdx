@@ -14,7 +14,7 @@ Routes an image to one of the configured label outputs using the OpenAI Decision
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | `labels`: The labels to route between |
+| **Mandatory init variables** | `labels`: The labels to route between <br /> <br />`api_key`: The OpenAI API key. Can be set with the `OPENAI_API_KEY` env var. |
 | **Mandatory run variables** | `image`: The [ImageContent](/reference/data-classes-api#imagecontent) to route |
 | **Optional run variables** | `text`: Additional context for the image |
 | **Output variables** | `<label>`: The original image on the output named after the picked label. <br /> <br />`low_confidence`: The original image when confidence is below `min_confidence`. Only available when a threshold is configured. <br /> <br />`refused`: The original image when the model declines to classify it. Always available. |
@@ -154,6 +154,7 @@ pipeline.connect("humanities_prompt_builder.prompt", "humanities_tutor.messages"
 result = pipeline.run(
     {"router": {"image": ImageContent.from_file_path(file_path="exercise.jpg")}}
 )
-for agent_output in result.values():
-    print(agent_output["last_message"].text)
+for agent_name in ("math_tutor", "humanities_tutor"):
+    if agent_name in result:
+        print(f"{agent_name}: {result[agent_name]['last_message'].text}")
 ```
