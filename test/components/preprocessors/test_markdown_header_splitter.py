@@ -671,7 +671,7 @@ class TestCodeBlockExclusion:
         docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
 
         assert [doc.meta["header"] for doc in docs] == expected_headers
-        assert "".join(doc.content for doc in docs) == text
+        assert "".join(doc.content or "" for doc in docs) == text
 
     def test_code_block_with_no_real_headers(self):
         """If the only hash lines are inside code blocks, the document is returned unchunked."""
