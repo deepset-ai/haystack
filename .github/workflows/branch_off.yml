@@ -2,12 +2,15 @@ name: Branch off
 
 on:
   workflow_call:
+    secrets:
+      HAYSTACK_BOT_TOKEN:
+        required: true
     outputs:
       bump_version_pr_url:
         description: 'URL of the bump version PR'
         value: ${{ jobs.branch-off.outputs.bump_version_pr_url }}
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
 
 permissions:
   contents: read

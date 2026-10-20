@@ -78,7 +78,8 @@ class ToolResultOffloadCompactor(Compactor):
         Initialize the compactor.
 
         :param store: Where offloaded results are written. Image and file results are only written to a store that sets
-            `supports_binary_content`; otherwise they stay in the conversation.
+            `supports_binary_content`; otherwise they stay in the conversation. A result whose write fails also stays
+            in the conversation, and a warning is logged.
         :param min_keep_steps: Number of most recent tool-calling Agent steps whose results are never offloaded, even
             when the target is missed. Must be at least 1, so the model always sees the latest results.
         :param min_tokens: Only offload tool-result messages larger than this many tokens.
@@ -174,6 +175,9 @@ class ToolResultOffloadCompactor(Compactor):
                 _COMPACTION_META_KEY: {"strategy": "tool_result_offloading", "original_tokens": original_tokens}
             },
         )
+        # A failed store write leaves the result in context.
+        if offloaded is None:
+            return None
         saved_tokens = original_tokens - token_counter.count(messages=[offloaded])
         # A reference can cost more than a small result. That replacement is dropped and its store entry left unused.
         return (offloaded, saved_tokens) if saved_tokens > 0 else None

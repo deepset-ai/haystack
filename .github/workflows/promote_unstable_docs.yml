@@ -9,7 +9,7 @@ on:
       - "!v1.[0-9]+.[0-9]+"
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
 
 permissions:
   contents: read

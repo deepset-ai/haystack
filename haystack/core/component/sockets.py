@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
 
 from haystack.core.type_utils import _type_name
 
@@ -122,16 +121,6 @@ class Sockets:  # noqa: PLW1641
         # Let's use default __repr__. We don't call repr() directly as Components have a custom
         # __repr__ method and that would lead to infinite recursion since we call Sockets.__repr__ in it.
         return object.__repr__(self._component)
-
-    def __getattribute__(self, name: Any) -> Any:
-        try:
-            sockets = object.__getattribute__(self, "_sockets")
-            if name in sockets:
-                return sockets[name]
-        except AttributeError:
-            pass
-
-        return object.__getattribute__(self, name)
 
     def __repr__(self) -> str:
         result = ""

@@ -342,14 +342,16 @@ jobs:
             // --- Event dispatch -------------------------------------------------
 
             if (context.eventName === "status") {
-              // CLA turned green on some commit: restore any gated PRs for it.
-              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner, repo, commit_sha: context.payload.sha,
+              // CLA turned green on some commit: restore the gated PRs whose head it is.
+              // Gated PRs are matched by head SHA because GitHub's commit-to-PR lookup
+              // returns nothing for commits on a fork branch.
+              const gated = await github.paginate(github.rest.issues.listForRepo, {
+                owner, repo, state: "open", labels: LABEL, per_page: 100,
               });
-              for (const prLite of prs) {
-                if (prLite.state !== "open") continue;
-                if (!prLite.labels.some((l) => l.name === LABEL)) continue;
-                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prLite.number });
+              for (const issue of gated) {
+                if (!issue.pull_request) continue;
+                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: issue.number });
+                if (pr.head.sha !== context.payload.sha) continue;
                 await restore(pr);
               }
               return;

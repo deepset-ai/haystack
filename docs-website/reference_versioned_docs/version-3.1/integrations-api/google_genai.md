@@ -163,22 +163,6 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAIDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAIDocumentEmbedder</code> – Deserialized component.
-
 #### run
 
 ```python
@@ -380,22 +364,6 @@ Serializes the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAIMultimodalDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAIMultimodalDocumentEmbedder</code> – Deserialized component.
 
 #### run
 
@@ -600,22 +568,6 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAITextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAITextEmbedder</code> – Deserialized component.
-
 #### run
 
 ```python
@@ -807,6 +759,7 @@ response = chat_generator.run(messages=[chat_message])
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "gemini-4-argon",
     "gemini-3.8-flash",
     "gemini-3.7-flash",
     "gemini-3.6-flash",
