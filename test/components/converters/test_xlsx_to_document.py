@@ -219,192 +219,49 @@ class TestXLSXToDocument:
             assert "Click here (https://example.com)" in content
             assert "Docs (https://python.org)" in content
 
-    def test_link_extraction_with_skiprows(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_skiprows.xlsx"
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_content"),
+        [
+            pytest.param(
+                {"skiprows": 1},
+                ",A,B,C\n"
+                "1,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
+                "2,Bob,bob@example.com,B\n",
+                id="skiprows",
+            ),
+            pytest.param(
+                {"usecols": "B:C"},
+                ",A,B\n1,Email,Reference\n2,[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n3,bob@example.com,B\n",
+                id="usecols",
+            ),
+            pytest.param(
+                {"names": ["Name", "Email", "Reference"]},
+                ",A,B,C\n"
+                "1,Name,Email,Reference\n"
+                "2,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
+                "3,Bob,bob@example.com,B\n",
+                id="names",
+            ),
+            pytest.param(
+                {"names": ["Name", "Email", "Reference"], "usecols": ["Name", "Reference"]},
+                ",A,B\n1,Name,Reference\n2,[Alice](https://example.com/alice),[A](#Data!A1:C2)\n3,Bob,B\n",
+                id="names-and-usecols",
+            ),
+        ],
+    )
+    def test_link_extraction_with_read_excel_kwargs(
+        self, tmp_path: Path, read_excel_kwargs: dict[str, Any], expected_content: str
+    ) -> None:
+        """A positional read_excel_kwargs option must move the hyperlinks along with their cells."""
+        path = tmp_path / "links_with_read_excel_kwargs.xlsx"
         _write_linked_workbook(path)
 
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"skiprows": 1}).run(sources=[path])[
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs=read_excel_kwargs).run(sources=[path])[
             "documents"
         ]
 
-        assert documents[0].content == (
-            ",A,B,C\n"
-            "1,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
-            "2,Bob,bob@example.com,B\n"
-        )
-
-    def test_link_extraction_with_usecols(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_usecols.xlsx"
-        _write_linked_workbook(path)
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "B"}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (",A\n1,Email\n2,[alice@example.com](#Data!A2)\n3,bob@example.com\n")
-
-    def test_link_extraction_with_usecols_range(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_usecols_range.xlsx"
-        _write_linked_workbook(path)
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "B:C"}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (
-            ",A,B\n1,Email,Reference\n2,[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n3,bob@example.com,B\n"
-        )
-
-    def test_link_extraction_with_names(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_names.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["Alice", "Bob"])
-        sheet.append(["Carol", "Dave"])
-        sheet["A1"].hyperlink = "https://example.com/alice"
-        sheet["B1"].hyperlink = "https://example.com/bob"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": [1, 0]}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (
-            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
-        )
-
-    def test_link_extraction_with_names_and_usecols(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_names_and_usecols.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["Alice", "Bob"])
-        sheet.append(["Carol", "Dave"])
-        sheet["A1"].hyperlink = "https://example.com/alice"
-        sheet["B1"].hyperlink = "https://example.com/bob"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": ["second"], "usecols": "B"}).run(
-            sources=[path]
-        )["documents"]
-
-        assert documents[0].content == ",A\n1,[Bob](https://example.com/bob)\n2,Dave\n"
-
-    def test_link_extraction_with_usecols_named_columns(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_named_usecols.xlsx"
-        _write_linked_workbook(path)
-
-        documents = XLSXToDocument(
-            link_format="markdown",
-            read_excel_kwargs={"names": ["Name", "Email", "Reference"], "usecols": ["Name", "Reference"]},
-        ).run(sources=[path])["documents"]
-
-        assert documents[0].content == (
-            ",A,B\n1,Name,Reference\n2,[Alice](https://example.com/alice),[A](#Data!A1:C2)\n3,Bob,B\n"
-        )
-
-    def test_link_extraction_with_usecols_multiple_ranges(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_multiple_usecols_ranges.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["Name", "Email", "Reference", "Notes"])
-        sheet.append(["Alice", "alice@example.com", "A", "first"])
-        sheet.append(["Bob", "bob@example.com", "B", "second"])
-        sheet["A2"].hyperlink = "https://example.com/alice"
-        sheet["C2"].hyperlink = "#Data!A1:C2"
-        sheet["D2"].hyperlink = "https://example.com/notes"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "A,C:D"}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (
-            ",A,B,C\n"
-            "1,Name,Reference,Notes\n"
-            "2,[Alice](https://example.com/alice),[A](#Data!A1:C2),[first](https://example.com/notes)\n"
-            "3,Bob,B,second\n"
-        )
-
-    def test_link_extraction_with_comment(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_comment.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["a1", "b1"])
-        sheet.append(["# note", "b2"])
-        sheet.append(["a3", "b3"])
-        sheet.append(["a4", "b4"])
-        sheet["A3"].hyperlink = "https://example.com/a3"
-        sheet["A4"].hyperlink = "https://example.com/a4"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": "#"}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (
-            ",A,B\n1,a1,b1\n2,[a3](https://example.com/a3),b3\n3,[a4](https://example.com/a4),b4\n"
-        )
-
-    @pytest.mark.parametrize("comment", ["0", "1", "_"])
-    def test_link_extraction_with_numeric_or_separator_comment_marker(self, tmp_path: Path, comment: str) -> None:
-        path = tmp_path / "links_with_comment_marker_collision.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["Alice", "Bob"])
-        sheet.append(["Carol", "Dave"])
-        sheet["A1"].hyperlink = "https://example.com/alice"
-        sheet["B1"].hyperlink = "https://example.com/bob"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": comment}).run(sources=[path])[
-            "documents"
-        ]
-
-        assert documents[0].content == (
-            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
-        )
-
-    def test_link_extraction_with_comment_and_usecols(self, tmp_path: Path) -> None:
-        path = tmp_path / "links_with_comment_and_usecols.xlsx"
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.title = "Data"
-        sheet.append(["Name", "Email", "Reference"])
-        sheet.append(["Alice", "alice@example.com", "A"])
-        sheet.append(["# note", "skipped@example.com", "skipped"])
-        sheet.append(["Bob", "bob@example.com", "B"])
-        sheet["B2"].hyperlink = "https://example.com/alice"
-        sheet["C4"].hyperlink = "#Data!A1:C2"
-        workbook.save(path)
-        workbook.close()
-
-        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"comment": "#", "usecols": "B:C"}).run(
-            sources=[path]
-        )["documents"]
-
-        assert documents[0].content == (
-            ",A,B\n"
-            "1,Email,Reference\n"
-            "2,[alice@example.com](https://example.com/alice),A\n"
-            "3,,\n"
-            "4,bob@example.com,[B](#Data!A1:C2)\n"
-        )
+        assert len(documents) == 1
+        assert documents[0].content == expected_content
 
     @pytest.mark.parametrize(
         ("read_excel_kwargs", "expected_content"),
