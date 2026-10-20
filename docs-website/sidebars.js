@@ -679,6 +679,7 @@ export default {
             'pipeline-components/routers/filetyperouter',
             'pipeline-components/routers/llmmessagesrouter',
             'pipeline-components/routers/metadatarouter',
+            'pipeline-components/routers/openaidecisionsimagerouter',
             'pipeline-components/routers/openaidecisionstextrouter',
             'pipeline-components/routers/textlanguagerouter',
             'pipeline-components/routers/transformerstextrouter',
