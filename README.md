@@ -130,6 +130,7 @@
 | haystack/components/routers/file\_type\_router.py                          |       78 |        6 |     92% |   197-202 |
 | haystack/components/routers/llm\_messages\_router.py                       |       92 |        1 |     99% |       204 |
 | haystack/components/routers/metadata\_router.py                            |       38 |        0 |    100% |           |
+| haystack/components/routers/openai\_decisions\_image\_router.py            |       99 |        0 |    100% |           |
 | haystack/components/routers/openai\_decisions\_text\_router.py             |       82 |        0 |    100% |           |
 | haystack/components/samplers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                     |       67 |        0 |    100% |           |
@@ -274,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18057** |  **692** | **96%** |           |
+| **TOTAL**                                                                  | **18156** |  **692** | **96%** |           |
 
 
 ## Setup coverage badge
