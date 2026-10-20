@@ -273,11 +273,11 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 
 Bases: <code>AnthropicChatGenerator</code>
 
-Enables text generation using Anthropic's Claude models via Azure Foundry.
+Enables text generation using Anthropic's Claude models via Microsoft Foundry.
 
-A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Azure Foundry.
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Microsoft Foundry.
 
-To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Foundry enabled
+To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Microsoft Foundry enabled
 and the desired Anthropic model deployed in your Foundry resource.
 
 For more details, refer to the [Anthropic Foundry documentation](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/lib/foundry.md).
@@ -309,8 +309,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic
@@ -336,7 +337,7 @@ SUPPORTED_MODELS: list[str] = [
 ```
 
 A non-exhaustive list of chat models supported by this component.
-The actual availability depends on your Azure Foundry resource configuration.
+The actual availability depends on your Microsoft Foundry resource configuration.
 
 #### __init__
 
@@ -494,8 +495,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic

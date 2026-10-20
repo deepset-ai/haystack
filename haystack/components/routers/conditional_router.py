@@ -5,11 +5,10 @@
 import ast
 import contextlib
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, TypedDict, get_args, get_origin
+from typing import Any, NotRequired, TypedDict, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
-from typing_extensions import NotRequired
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.errors import DeserializationError

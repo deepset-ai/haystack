@@ -11,35 +11,33 @@ export default {
     },
     {
       type: 'category',
-      label: 'Overview',
+      label: 'Get Started',
       items: [
         'overview/installation',
-        'overview/get-started',
+        {
+          type: 'doc',
+          id: 'overview/get-started',
+          label: 'Quickstart',
+        },
         'overview/docs-mcp-server',
-        'overview/faq',
-        'overview/telemetry',
-        'overview/breaking-change-policy',
-        'overview/migration',
-        'overview/migrating-from-langgraphlangchain-to-haystack',
-        'overview/platform-components',
+        {
+          type: 'category',
+          label: 'Migration',
+          link: {
+            type: 'doc',
+            id: 'overview/migration'
+          },
+          items: [
+            'overview/migrating-from-langgraphlangchain-to-haystack',
+          ],
+        },
       ],
     },
     {
       type: 'category',
-      label: 'Haystack Concepts',
+      label: 'Core Concepts',
       items: [
         'concepts/concepts-overview',
-        {
-          type: 'category',
-          label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'concepts/agents'
-          },
-          items: [
-            'concepts/agents/multi-agent-systems',
-          ],
-        },
         {
           type: 'category',
           label: 'Components',
@@ -71,6 +69,23 @@ export default {
         },
         {
           type: 'category',
+          label: 'Agents',
+          link: {
+            type: 'doc',
+            id: 'concepts/agents'
+          },
+          items: [
+            'concepts/agents/choosing-between-pipelines-and-agents',
+            'concepts/agents/multi-agent-systems',
+          ],
+        },
+        {
+          type: 'ref',
+          id: 'tools/tool',
+          label: 'Agent Tools',
+        },
+        {
+          type: 'category',
           label: 'Data Classes',
           link: {
             type: 'doc',
@@ -94,61 +109,35 @@ export default {
             'concepts/document-store/creating-custom-document-stores',
           ],
         },
+        {
+          type: 'category',
+          label: 'Memory Stores',
+          items: [
+            'memory-stores/cogneememorystore',
+            'memory-stores/mem0memorystore',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Token Counters',
+          link: {
+            type: 'doc',
+            id: 'token-counters'
+          },
+          items: [
+            'token-counters/approximatetokencounter',
+            'token-counters/tiktokencounter',
+            'token-counters/openaitokencounter',
+            'token-counters/anthropictokencounter',
+            'token-counters/googlegenaitokencounter',
+            'token-counters/amazonbedrocktokencounter',
+          ],
+        },
         'concepts/metadata-filtering',
         'concepts/device-management',
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Document Stores',
-      items: [
-        'document-stores/inmemorydocumentstore',
-        'document-stores/alloydbdocumentstore',
-        'document-stores/arangodocumentstore',
-        'document-stores/arcadedbdocumentstore',
-        'document-stores/astradocumentstore',
-        'document-stores/azureaisearchdocumentstore',
-        'document-stores/azuredocumentdbdocumentstore',
-        'document-stores/chromadocumentstore',
-        'document-stores/dynamodbdocumentstore',
-        {
-          type: 'link',
-          label: 'CouchbaseDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
-        },
-        'document-stores/elasticsearch-document-store',
-        'document-stores/faissdocumentstore',
-        'document-stores/falkordbdocumentstore',
-        {
-          type: 'link',
-          label: 'LanceDBDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/lancedb/',
-        },
-        'document-stores/mariadbdocumentstore',
-        {
-          type: 'link',
-          label: 'MilvusDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
-        },
-        'document-stores/mongodbatlasdocumentstore',
-        {
-          type: 'link',
-          label: 'Neo4jDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
-        },
-        'document-stores/opensearch-document-store',
-        'document-stores/oracledocumentstore',
-        'document-stores/pgvectordocumentstore',
-        'document-stores/pinecone-document-store',
-        'document-stores/qdrant-document-store',
-        'document-stores/solrdocumentstore',
-        'document-stores/supabasedocumentstore',
-        'document-stores/valkeydocumentstore',
-        'document-stores/vespadocumentstore',
-        'document-stores/weaviatedocumentstore',
       ],
     },
     {
@@ -179,12 +168,14 @@ export default {
                     'pipeline-components/agents-1/compaction/compaction-hook',
                     'pipeline-components/agents-1/compaction/sliding-window-compactor',
                     'pipeline-components/agents-1/compaction/summarization-compactor',
+                    'pipeline-components/agents-1/compaction/tool-result-offload-compactor',
                     'pipeline-components/agents-1/compaction/tool-result-pruning-compactor',
                   ],
                 },
                 'pipeline-components/agents-1/human-in-the-loop',
                 'pipeline-components/agents-1/tool-result-offloading',
                 'pipeline-components/agents-1/token-budget',
+                'pipeline-components/agents-1/structured-output',
               ],
             },
             'pipeline-components/agents-1/state',
@@ -245,7 +236,9 @@ export default {
           },
           items: [
             'pipeline-components/classifiers/documentlanguageclassifier',
+            'pipeline-components/classifiers/openaidecisionsdocumentclassifier',
             'pipeline-components/classifiers/transformerszeroshotdocumentclassifier',
+            'pipeline-components/classifiers/typesafedocumentclassifier',
           ],
         },
         {
@@ -352,6 +345,8 @@ export default {
             'pipeline-components/embedders/googlegenaimultimodaldocumentembedder',
             'pipeline-components/embedders/huggingfaceapidocumentembedder',
             'pipeline-components/embedders/huggingfaceapitextembedder',
+            'pipeline-components/embedders/huggingfaceteisparsedocumentembedder',
+            'pipeline-components/embedders/huggingfaceteisparsetextembedder',
             'pipeline-components/embedders/jinadocumentembedder',
             'pipeline-components/embedders/jinadocumentimageembedder',
             'pipeline-components/embedders/jinatextembedder',
@@ -367,6 +362,8 @@ export default {
             'pipeline-components/embedders/openaitextembedder',
             'pipeline-components/embedders/optimumdocumentembedder',
             'pipeline-components/embedders/optimumtextembedder',
+            'pipeline-components/embedders/otaridocumentembedder',
+            'pipeline-components/embedders/otaritextembedder',
             'pipeline-components/embedders/perplexitydocumentembedder',
             'pipeline-components/embedders/perplexitytextembedder',
             'pipeline-components/embedders/sentencetransformersdocumentembedder',
@@ -485,6 +482,7 @@ export default {
             'pipeline-components/generators/openaiimagegenerator',
             'pipeline-components/generators/openrouterchatgenerator',
             'pipeline-components/generators/orcarouterchatgenerator',
+            'pipeline-components/generators/otarichatgenerator',
             'pipeline-components/generators/parallelchatgenerator',
             'pipeline-components/generators/perplexitychatgenerator',
             'pipeline-components/generators/sagemakergenerator',
@@ -573,6 +571,7 @@ export default {
             'pipeline-components/rankers/metafieldgroupingranker',
             'pipeline-components/rankers/metafieldranker',
             'pipeline-components/rankers/nvidiaranker',
+            'pipeline-components/rankers/otariranker',
             'pipeline-components/rankers/pyversityranker',
             'pipeline-components/rankers/sentencetransformersdiversityranker',
             'pipeline-components/rankers/sentencetransformerssimilarityranker',
@@ -680,9 +679,11 @@ export default {
             'pipeline-components/routers/filetyperouter',
             'pipeline-components/routers/llmmessagesrouter',
             'pipeline-components/routers/metadatarouter',
+            'pipeline-components/routers/openaidecisionstextrouter',
             'pipeline-components/routers/textlanguagerouter',
             'pipeline-components/routers/transformerstextrouter',
             'pipeline-components/routers/transformerszeroshottextrouter',
+            'pipeline-components/routers/typesafetextrouter',
           ],
         },
         {
@@ -740,7 +741,7 @@ export default {
     },
     {
       type: 'category',
-      label: 'Tools',
+      label: 'Agent Tools',
       items: [
         'tools/tool',
         'tools/agenttool',
@@ -775,31 +776,94 @@ export default {
     },
     {
       type: 'category',
-      label: 'Token Counters',
-      link: {
-        type: 'doc',
-        id: 'token-counters'
-      },
+      label: 'Document Stores',
       items: [
-        'token-counters/approximatetokencounter',
-        'token-counters/tiktokencounter',
-        'token-counters/openaitokencounter',
-        'token-counters/anthropictokencounter',
-        'token-counters/googlegenaitokencounter',
-        'token-counters/amazonbedrocktokencounter',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Memory Stores',
-      items: [
-        'memory-stores/cogneememorystore',
-        'memory-stores/mem0memorystore',
+        'document-stores/inmemorydocumentstore',
+        'document-stores/alloydbdocumentstore',
+        'document-stores/arangodocumentstore',
+        'document-stores/arcadedbdocumentstore',
+        'document-stores/astradocumentstore',
+        'document-stores/azureaisearchdocumentstore',
+        'document-stores/azuredocumentdbdocumentstore',
+        'document-stores/chromadocumentstore',
+        'document-stores/dynamodbdocumentstore',
+        {
+          type: 'link',
+          label: 'CouchbaseDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
+        },
+        'document-stores/elasticsearch-document-store',
+        'document-stores/faissdocumentstore',
+        'document-stores/falkordbdocumentstore',
+        {
+          type: 'link',
+          label: 'LanceDBDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/lancedb/',
+        },
+        'document-stores/mariadbdocumentstore',
+        {
+          type: 'link',
+          label: 'MilvusDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
+        },
+        'document-stores/mongodbatlasdocumentstore',
+        {
+          type: 'link',
+          label: 'Neo4jDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
+        },
+        'document-stores/opensearch-document-store',
+        'document-stores/oracledocumentstore',
+        'document-stores/pgvectordocumentstore',
+        'document-stores/pinecone-document-store',
+        'document-stores/qdrant-document-store',
+        'document-stores/solrdocumentstore',
+        'document-stores/supabasedocumentstore',
+        'document-stores/valkeydocumentstore',
+        'document-stores/vespadocumentstore',
+        'document-stores/weaviatedocumentstore',
       ],
     },
     {
       type: 'category',
       label: 'Optimization',
+      items: [
+        {
+          type: 'category',
+          label: 'Advanced RAG Techniques',
+          link: {
+            type: 'doc',
+            id: 'optimization/advanced-rag-techniques'
+          },
+          items: [
+            'optimization/advanced-rag-techniques/hypothetical-document-embeddings-hyde',
+          ],
+        },
+        'development/enabling-gpu-acceleration',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Deployment',
+      link: {
+        type: 'doc',
+        id: 'development/deployment'
+      },
+      items: [
+        'development/hayhooks',
+        'development/deployment/haystack-enterprise-platform',
+        'development/deployment/docker',
+        'development/deployment/kubernetes',
+        'development/deployment/openshift',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Production usage',
+      link: {
+        type: 'doc',
+        id: 'production-usage'
+      },
       items: [
         {
           type: 'category',
@@ -813,24 +877,6 @@ export default {
             'optimization/evaluation/statistical-evaluation',
           ],
         },
-        {
-          type: 'category',
-          label: 'Advanced RAG Techniques',
-          link: {
-            type: 'doc',
-            id: 'optimization/advanced-rag-techniques'
-          },
-          items: [
-            'optimization/advanced-rag-techniques/hypothetical-document-embeddings-hyde',
-          ],
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Development',
-      items: [
-        'development/logging',
         {
           type: 'category',
           label: 'Tracing',
@@ -850,23 +896,17 @@ export default {
             'development/tracing/custom-tracer',
           ],
         },
-        'development/enabling-gpu-acceleration',
-        'development/hayhooks',
-        {
-          type: 'category',
-          label: 'Deployment',
-          link: {
-            type: 'doc',
-            id: 'development/deployment'
-          },
-          items: [
-            'development/deployment/haystack-enterprise-platform',
-            'development/deployment/docker',
-            'development/deployment/kubernetes',
-            'development/deployment/openshift',
-          ],
-        },
-        'development/external-integrations-development',
+        'development/logging',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Resources',
+      items: [
+        'overview/faq',
+        'overview/telemetry',
+        'overview/breaking-change-policy',
+        'overview/platform-components',
       ],
     },
   ],
