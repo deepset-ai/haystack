@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from dataclasses import replace
 from typing import Any
 
 from openai import AsyncOpenAI, OpenAI
@@ -25,7 +26,9 @@ class OpenAIDecisionsImageRouter:
     Routes an image to one of the configured label outputs using the OpenAI Decisions API.
 
     Pass an `ImageContent` to `run()` or `run_async()`. The model answers a single `choice` question using
-    `instructions` and `labels`, and the component returns the original image on the selected label's output.
+    `instructions` and `labels`, and the component returns the image on the selected label's output.
+
+    The returned image includes the decision in `meta["openai_decisions"]`.
 
     You can pass optional `text` alongside the image to provide context for the decision.
 
@@ -185,6 +188,9 @@ class OpenAIDecisionsImageRouter:
     def _route(self, *, image: ImageContent, response: Decision) -> dict[str, ImageContent]:
         """Returns the image under the selected label, `low_confidence`, or `refused`."""
         answer = response.answers[0]
+        image = replace(
+            image, meta={**image.meta, "openai_decisions": answer.model_dump(mode="json", exclude={"name"})}
+        )
         if answer.type == "refusal":
             return {"refused": image}
         if answer.type != "choice" or not isinstance(answer.choice, str) or answer.choice not in self.labels:
@@ -202,7 +208,8 @@ class OpenAIDecisionsImageRouter:
         :param text:
             Optional text context for the decision. Defaults to `None`.
         :returns:
-            A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input image.
+            A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+            with the answer in `meta["openai_decisions"]`.
         :raises TypeError:
             If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
         :raises ValueError:
@@ -224,7 +231,8 @@ class OpenAIDecisionsImageRouter:
         :param text:
             Optional text context for the decision. Defaults to `None`.
         :returns:
-            A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input image.
+            A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+            with the answer in `meta["openai_decisions"]`.
         :raises TypeError:
             If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
         :raises ValueError:

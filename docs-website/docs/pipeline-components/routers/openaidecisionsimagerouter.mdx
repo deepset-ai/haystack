@@ -17,7 +17,7 @@ Routes an image to one of the configured label outputs using the OpenAI Decision
 | **Mandatory init variables** | `labels`: The labels to route between <br /> <br />`api_key`: The OpenAI API key. Can be set with the `OPENAI_API_KEY` env var. |
 | **Mandatory run variables** | `image`: The [ImageContent](/reference/data-classes-api#imagecontent) to route |
 | **Optional run variables** | `text`: Additional context for the image |
-| **Output variables** | `<label>`: The original image on the output named after the picked label. <br /> <br />`low_confidence`: The original image when confidence is below `min_confidence`. Only available when a threshold is configured. <br /> <br />`refused`: The original image when the model declines to classify it. Always available. |
+| **Output variables** | `<label>`: The image on the output named after the picked label. <br /> <br />`low_confidence`: The image when confidence is below `min_confidence`. Only available when a threshold is configured. <br /> <br />`refused`: The image when the model declines to classify it. Always available. |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/openai_decisions_image_router.py |
 | **Package name** | `haystack-ai` |
@@ -26,8 +26,8 @@ Routes an image to one of the configured label outputs using the OpenAI Decision
 
 ## Overview
 
-`OpenAIDecisionsImageRouter` takes an [ImageContent](/reference/data-classes-api#imagecontent) and returns the original
-image on one of the configured label outputs.
+`OpenAIDecisionsImageRouter` takes an [ImageContent](/reference/data-classes-api#imagecontent) and returns the image
+on one of the configured label outputs.
 An [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) model selects the label by answering a
 single `choice` question.
 
@@ -35,6 +35,9 @@ Pass `labels` as a list of names, or as a dict of label to description to tell t
 `instructions` to define how the model should choose between the labels.
 
 You can pass optional `text` alongside the image to provide context for the decision.
+
+Every output image includes the answer in `meta["openai_decisions"]`: `type`, `choice`, `confidence`, and `probabilities`
+for a choice, or `{"type": "refusal"}` for a refusal.
 
 When you set `min_confidence`, the component gets an extra `low_confidence` output. Images whose answer has a
 `confidence` below the threshold go there instead, so you can send them to a fallback such as another model or human
@@ -74,7 +77,7 @@ result = router.run(image=image)
 ### In a pipeline
 
 This pipeline routes a photo of an exercise to a specialized tutor. Math exercises go to an Agent with a calculator tool;
-humanities exercises go to an Agent that can search course materials. The selected Agent receives the original image and
+humanities exercises go to an Agent that can search course materials. The selected Agent receives the image and
 explains the solution.
 
 ```python

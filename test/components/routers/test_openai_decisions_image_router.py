@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from dataclasses import replace
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from openai.types import Decision
@@ -215,8 +216,8 @@ class TestRun:
                 }
             ],
         )
-        assert result == {expected_output: image}
-        assert result[expected_output] is image
+        answer = client.decisions.create.return_value.answers[0].model_dump(mode="json", exclude={"name"})
+        assert result == {expected_output: replace(image, meta={**original_meta, "openai_decisions": answer})}
         assert image.meta == original_meta
 
     def test_run_without_min_confidence_ignores_confidence(self, image):
@@ -224,7 +225,7 @@ class TestRun:
         client = MagicMock()
         router._client = client
         client.decisions.create.return_value = _response("logo", confidence=0.01)
-        assert router.run(image=image) == {"logo": image}
+        assert set(router.run(image=image)) == {"logo"}
 
     @pytest.mark.asyncio
     async def test_run_async(self, test_files_path):
@@ -233,7 +234,7 @@ class TestRun:
         client = MagicMock()
         router._async_client = client
         client.decisions.create = AsyncMock(return_value=_response("fruit"))
-        assert await router.run_async(image=image) == {"fruit": image}
+        assert set(await router.run_async(image=image)) == {"fruit"}
         client.decisions.create.assert_awaited_once_with(
             model="gpt-6-luna",
             input=[
@@ -258,7 +259,8 @@ class TestRun:
         client = MagicMock()
         router._client = client
         client.decisions.create.return_value = _response(None)
-        assert router.run(image=image) == {"refused": image}
+        result = router.run(image=image)
+        assert result == {"refused": replace(image, meta={**image.meta, "openai_decisions": {"type": "refusal"}})}
 
     def test_run_unexpected_answer(self, image):
         router = OpenAIDecisionsImageRouter(labels=_LABELS)
@@ -281,4 +283,20 @@ class TestRun:
 def test_live_run(test_files_path):
     router = OpenAIDecisionsImageRouter(labels=_LABELS, instructions="What does this image show?")
     image = ImageContent.from_file_path(file_path=test_files_path / "images" / "apple.jpg", detail="low")
-    assert router.run(image=image) == {"fruit": image}
+    original_meta = image.meta.copy()
+    result = router.run(image=image)
+    assert result == {
+        "fruit": replace(
+            image,
+            meta={
+                **original_meta,
+                "openai_decisions": {
+                    "type": "choice",
+                    "choice": "fruit",
+                    "confidence": ANY,
+                    "probabilities": [{"value": "fruit", "probability": ANY}, {"value": "logo", "probability": ANY}],
+                },
+            },
+        )
+    }
+    assert image.meta == original_meta
