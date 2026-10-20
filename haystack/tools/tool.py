@@ -25,9 +25,10 @@ class Tool:
     are important for the Language Model to correctly prepare the call.
 
     For resource-intensive operations like establishing connections to remote services or
-    loading models, override the `warm_up()` method. This method is called before the Tool
-    is used and should be idempotent, as it may be called multiple times during
-    pipeline/agent setup.
+    loading models, implement an optional `warm_up()` method. It is called before invocation
+    and during pipeline/agent setup, and must be idempotent. Native async tools can implement
+    `warm_up_async()` instead. Implement `close()` and/or `close_async()` to release owned resources;
+    these methods must be safe to call before warm-up and multiple times.
 
     :param name:
         Name of the Tool.
@@ -270,19 +271,9 @@ class Tool:
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
-    def warm_up(self) -> None:
-        """
-        Prepare the Tool for use.
-
-        Override this method to establish connections to remote services, load models,
-        or perform other resource-intensive initialization. This method should be idempotent,
-        as it may be called multiple times.
-        """
-        pass
-
     def invoke(self, **kwargs: Any) -> Any:
         """
-        Invoke the Tool synchronously with the provided keyword arguments.
+        Warm up the Tool if supported and invoke it synchronously with the provided keyword arguments.
 
         :raises ToolInvocationError: If the Tool has no sync `function`, or if the underlying call
             raises an exception.
@@ -295,6 +286,8 @@ class Tool:
             )
 
         try:
+            if hasattr(self, "warm_up"):
+                self.warm_up()
             result = self.function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
@@ -306,16 +299,21 @@ class Tool:
         """
         Invoke the Tool asynchronously with the provided keyword arguments.
 
-        If `async_function` is set, it is awaited directly. Otherwise the sync `function` is dispatched to a worker
-        thread via `asyncio.to_thread`, which propagates the current context to the worker.
+        If `async_function` is set, prepare with `warm_up_async` (falling back to `warm_up`) before awaiting it.
+        Otherwise, synchronous preparation and invocation run in a worker thread via `asyncio.to_thread`,
+        which propagates the current context to the worker.
 
         :raises ToolInvocationError: If the underlying call raises an exception.
         """
+        if self.async_function is None:
+            return await asyncio.to_thread(self.invoke, **kwargs)
+
         try:
-            if self.async_function is not None:
-                return await self.async_function(**kwargs)
-            # `function` is guaranteed to be set: __post_init__ enforces at least one of the two.
-            return await asyncio.to_thread(self.function, **kwargs)  # type: ignore[arg-type]
+            if hasattr(self, "warm_up_async"):
+                await self.warm_up_async()
+            elif hasattr(self, "warm_up"):
+                self.warm_up()
+            return await self.async_function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
                 f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name

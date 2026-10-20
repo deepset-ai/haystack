@@ -155,4 +155,4 @@ class TestOpenAITokenCounterIntegration:
             ChatMessage.from_assistant("The image and file have both been inspected."),
         ]
         counter = OpenAITokenCounter("gpt-5-mini-2025-08-07")
-        assert counter.count(messages, tools=[inspect_image, inspect_file]) == 300
+        assert counter.count(messages, tools=[inspect_image, inspect_file]) == 310

@@ -1,5 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
+const DEEPSET_API_BASE = "https://api.cloud.deepset.ai/api/v1";
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -12,10 +14,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Query is required" });
   }
 
-  const { SEARCH_API_WORKSPACE, SEARCH_API_PIPELINE, SEARCH_API_TOKEN } =
+  const { SEARCH_API_WORKSPACE, SEARCH_API_DEPLOYMENT, SEARCH_API_TOKEN } =
     process.env;
 
-  if (!SEARCH_API_WORKSPACE || !SEARCH_API_PIPELINE || !SEARCH_API_TOKEN) {
+  if (!SEARCH_API_WORKSPACE || !SEARCH_API_DEPLOYMENT || !SEARCH_API_TOKEN) {
     console.error(
       "Search API environment variables are not configured on the server."
     );
@@ -23,9 +25,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Client-Source": "haystack-docs",
+      Authorization: `Bearer ${SEARCH_API_TOKEN}`,
+    };
+    const deploymentUrl = `${DEEPSET_API_BASE}/workspaces/${SEARCH_API_WORKSPACE}/deployments/${SEARCH_API_DEPLOYMENT}`;
+
+    // Deployment chat requires a search session
+    const sessionResponse = await fetch(`${deploymentUrl}/search_sessions`, {
+      method: "POST",
+      headers,
+    });
+    if (!sessionResponse.ok) {
+      console.error("Haystack API error:", await sessionResponse.text());
+      return res
+        .status(sessionResponse.status)
+        .json({ error: `API error: ${sessionResponse.statusText}` });
+    }
+    const { search_session_id } = await sessionResponse.json();
+
     // Build the request body with optional filters
     const requestBody: any = {
       queries: [query],
+      search_session_id,
     };
 
     // Add filters if provided (for future backend filtering support)
@@ -43,18 +66,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     }
 
-    const apiResponse = await fetch(
-      `https://api.cloud.deepset.ai/api/v1/workspaces/${SEARCH_API_WORKSPACE}/pipelines/${SEARCH_API_PIPELINE}/search`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Client-Source": "haystack-docs",
-          Authorization: `Bearer ${SEARCH_API_TOKEN}`,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
+    const apiResponse = await fetch(`${deploymentUrl}/chat`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
 
     if (!apiResponse.ok) {
       const errorData = await apiResponse.text();

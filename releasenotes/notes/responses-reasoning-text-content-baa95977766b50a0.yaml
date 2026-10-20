@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` now map the raw reasoning text that
+    the Responses API returns as ``reasoning_text`` content to ``ReasoningContent.reasoning_text``, both when streaming
+    (``response.reasoning_text.delta`` events) and when not streaming. Previously, this text was dropped while
+    streaming and only kept in ``ReasoningContent.extra["content"]`` otherwise. OpenAI models only return reasoning
+    summaries, which still take precedence, but other providers such as OpenRouter return the raw reasoning.
+    When such a reply is sent back to the model in a later turn, the raw reasoning is no longer duplicated as a summary.

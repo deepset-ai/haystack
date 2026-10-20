@@ -924,3 +924,149 @@ Deserialize this component from a dictionary.
 **Returns:**
 
 - <code>MetadataRouter</code> – The deserialized component instance.
+
+## openai_decisions_text_router
+
+### OpenAIDecisionsTextRouter
+
+Routes a text to the connection of the label an OpenAI Decisions model picks for it.
+
+The model answers a single `choice` question over `labels`. The component has one output per label.
+When `min_confidence` is set, it also has a `low_confidence` output that receives the text whenever the
+answer's `confidence` is below the threshold, so uncertain texts can go to a fallback such as an LLM or a human.
+
+OpenAI can decline to answer a question. In that case, the text goes to the `refused` output,
+independently of `min_confidence`.
+
+### Usage example
+
+```python
+from haystack.components.routers import OpenAIDecisionsTextRouter
+
+# Set OPENAI_API_KEY in the environment.
+router = OpenAIDecisionsTextRouter(
+    labels={
+        "billing": "Payments, invoices, refunds and charges",
+        "technical": "Bugs, crashes and errors in the product",
+    },
+    instructions="Which team should handle this support request?",
+    min_confidence=0.6,
+)
+result = router.run(text="I was charged twice for my subscription.")
+# >> {"billing": "I was charged twice for my subscription."}
+```
+
+#### __init__
+
+```python
+__init__(
+    labels: list[str] | dict[str, str | None],
+    *,
+    instructions: str = "Which category does this text belong to?",
+    model: str = "gpt-6-luna",
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
+    min_confidence: float | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
+) -> None
+```
+
+Creates an OpenAIDecisionsTextRouter.
+
+**Parameters:**
+
+- **labels** (<code>list\[str\] | dict\[str, str | None\]</code>) – The labels to route between, each becoming an output connection. Pass a dict of label to description to
+  tell the model what each label means. Requires between 2 and 255 unique, non-empty string labels.
+  `low_confidence` and `refused` are reserved output names.
+- **instructions** (<code>str</code>) – The question the model answers by picking one of the labels.
+  Defaults to "Which category does this text belong to?".
+- **model** (<code>str</code>) – Name of the Decisions model to use. Defaults to `gpt-6-luna`.
+- **api_key** (<code>Secret</code>) – OpenAI API key. Defaults to the `OPENAI_API_KEY` environment variable, resolved during warm-up.
+- **api_base_url** (<code>str | None</code>) – API base URL. If `None`, uses the SDK default or `OPENAI_BASE_URL` environment variable.
+- **min_confidence** (<code>float | None</code>) – Threshold between 0 and 1 for the answer's `confidence`. Texts below it are sent to the `low_confidence`
+  output. If `None`, every non-refused text goes to a label output.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
+  `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+
+**Raises:**
+
+- <code>ValueError</code> – If labels are invalid, duplicated or reserved, or `min_confidence` is outside 0 to 1.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Creates the synchronous OpenAI client if needed.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Creates the asynchronous OpenAI client if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous OpenAI client, if initialized.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client, if initialized.
+
+#### run
+
+```python
+run(text: str) -> dict[str, str]
+```
+
+Routes the text to the output of the label the model picks.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The text to route.
+
+**Returns:**
+
+- <code>dict\[str, str\]</code> – A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input text.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
+
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, str]
+```
+
+Asynchronously routes the text to the output of the label the model picks.
+
+This is the asynchronous version of the `run` method with the same parameters and return values.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The text to route.
+
+**Returns:**
+
+- <code>dict\[str, str\]</code> – A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input text.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.

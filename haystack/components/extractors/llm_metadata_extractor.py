@@ -46,7 +46,7 @@ class LLMMetadataExtractor:
     ```python
     from haystack import Document
     from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
     NER_PROMPT = '''
     -Goal-
@@ -92,15 +92,13 @@ class LLMMetadataExtractor:
         Document(content="Hugging Face is a company that was founded in New York, USA and is known for its Transformers library")
     ]
 
-    chat_generator = OpenAIChatGenerator(
+    chat_generator = OpenAIResponsesChatGenerator(
         generation_kwargs={
-            "max_completion_tokens": 500,
-            "temperature": 0.0,
-            "seed": 0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "entity_extraction",
+                    "strict": True,
                     "schema": {
                         "type": "object",
                         "properties": {
@@ -167,8 +165,9 @@ class LLMMetadataExtractor:
             which points to a single document in the list of documents. For example, to access the content of the
             document, use `{{ document.content }}` in the prompt.
         :param chat_generator: a ChatGenerator instance which represents the LLM. In order for the component to work,
-            the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
-            should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
+            the LLM should be configured to return a JSON object. For example, when using the
+            OpenAIResponsesChatGenerator, you should pass `{"text": {"format": {"type": "json_schema", ...}}}` in the
+            `generation_kwargs`.
         :param expected_keys: The keys expected in the JSON output from the LLM.
         :param page_range: A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
             metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:

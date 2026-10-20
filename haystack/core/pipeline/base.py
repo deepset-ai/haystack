@@ -10,10 +10,9 @@ from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar, Union, get_args
+from typing import Any, Self, TextIO, TypeVar, Union, get_args
 
 import networkx
-from typing_extensions import Self
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -764,7 +763,8 @@ class PipelineBase:  # noqa: PLW1641
             receiver_socket_name=receiver_socket.name,
         )
 
-        if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
+        edge_key = f"{sender_socket.name}/{receiver_socket.name}"
+        if self.graph.has_edge(sender_component_name, receiver_component_name, key=edge_key):
             # This is already connected, nothing to do
             return self
 

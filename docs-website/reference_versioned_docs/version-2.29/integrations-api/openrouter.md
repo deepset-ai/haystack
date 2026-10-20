@@ -27,7 +27,8 @@ Key Features and Compatibility:
 - **Customizability**: Supports all parameters supported by the OpenRouter chat completion endpoint.
 - **Reasoning Support**: Extracts reasoning/thinking content from models that support it
   (e.g., DeepSeek R1, Claude with extended thinking) and stores it in the `ReasoningContent`
-  field on `ChatMessage`. Reasoning content is only captured for non-streaming requests.
+  field on `ChatMessage`. When streaming, reasoning is also passed to the `streaming_callback`
+  in `StreamingChunk.reasoning`.
 
 This component uses the ChatMessage format for structuring both input and output,
 ensuring coherent and contextually relevant responses in chat-based text generation scenarios.
@@ -99,7 +100,6 @@ Creates an instance of OpenRouterChatGenerator.
 - `random_seed`: The seed to use for random sampling.
 - `reasoning`: A dict to configure reasoning/thinking tokens for models that support it.
   Example: `{"effort": "high"}` or `{"max_tokens": 2000}`.
-  Reasoning content is only captured for non-streaming requests.
   See [OpenRouter reasoning docs](https://openrouter.ai/docs/use-cases/reasoning-tokens).
 - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
@@ -145,8 +145,9 @@ Invokes chat completion on the OpenRouter API.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
   For details on OpenRouter API parameters, see
   [OpenRouter docs](https://openrouter.ai/docs/quickstart).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -179,7 +180,9 @@ Asynchronously invokes chat completion on the OpenRouter API.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset.
 - **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls.
 
