@@ -1,5 +1,5 @@
 ---
-fixes:
+enhancements:
   - |
     ``OpenAIResponsesChatGenerator`` now preserves text annotations in
     ``reply.meta["annotations"]``, with aligned ``annotation_offsets`` for
