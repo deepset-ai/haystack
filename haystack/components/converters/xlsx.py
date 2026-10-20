@@ -65,6 +65,9 @@ class XLSXToDocument:
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             By default, `keep_default_na` is set to False and `na_values` to `[""]` so literal text
             values like "NA" and "N/A" are preserved while empty cells remain empty.
+            If `na_values` is a list, `""` is included without modifying the supplied list, so empty cells
+            are still treated as missing. Other forms of `na_values` are passed directly to pandas.
+            Set `keep_default_na=True` to restore pandas' default NA parsing.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
@@ -173,6 +176,9 @@ class XLSXToDocument:
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
+        na_values = resolved_read_excel_kwargs["na_values"]
+        if isinstance(na_values, list) and "" not in na_values:
+            resolved_read_excel_kwargs["na_values"] = [*na_values, ""]
         sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
