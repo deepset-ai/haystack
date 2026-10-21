@@ -1,4 +1,9 @@
 ---
+upgrade:
+  - |
+    ``max_agent_steps`` is now a reserved state key on ``Agent``. If you defined a custom ``state_schema`` key named
+    ``max_agent_steps``, rename it (e.g. ``my_max_agent_steps``): the Agent now raises a ``ValueError`` at
+    initialization when a reserved key is redefined.
 features:
   - |
     Added ``StepBudgetReminderHook``, a ``before_llm`` hook that tells the model how many steps it has
@@ -20,6 +25,7 @@ features:
 
     Reminder messages are marked with ``meta={"system_reminder": True}``. Context compaction recognizes the marker and
     never treats a reminder as the user's task.
+enhancements:
   - |
-    Hooks can now read the Agent's step limit from the internal ``max_agent_steps`` state key. As a result,
-    ``max_agent_steps`` is now a reserved key and cannot be used in a user-provided ``state_schema``.
+    Hooks can now read the Agent's step limit from the internal ``max_agent_steps`` state key, for example with
+    ``state.get("max_agent_steps")``. It is not returned as an Agent output.
