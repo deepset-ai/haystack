@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``PPTXToDocument`` now keeps soft line breaks (Shift+Enter, the ``<a:br/>`` element) when ``link_format``
+    is ``"markdown"`` or ``"plain"``. Those two modes joined only the paragraph's runs, so a text box holding
+    ``Account: Alice``, a soft line break, and ``Balance: 100`` was converted into the single token
+    ``Account: AliceBalance: 100``, which cannot be matched by retrieval. Both link formats now return the
+    same text as the default ``link_format="none"``, and hyperlinked runs are still formatted as before.
