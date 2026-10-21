@@ -287,14 +287,18 @@ class RecursiveDocumentSplitter:
         :returns:
             The `(start, end)` character offsets of each chunk with the overlap applied, in the concatenated `chunks`.
         """
-        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only spaces has no words and
+        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only whitespace has no words and
         # joins the chunk before it (or after it, at the start of the text).
         words: list[tuple[int, int]] = []
         chunk_word_ends: list[int] = []
         chunk_starts: list[int] = []
         offset = 0
         for chunk in chunks:
-            chunk_words = [(offset + match.start(), offset + match.end()) for match in re.finditer(r"[^ ]+", chunk)]
+            chunk_words = [
+                (offset + match.start(), offset + match.end())
+                for match in re.finditer(r"[^ ]+", chunk)
+                if match.group().strip()
+            ]
             if chunk_words:
                 words.extend(chunk_words)
                 chunk_word_ends.append(len(words))
@@ -334,7 +338,8 @@ class RecursiveDocumentSplitter:
         :returns: The length of the text in the specified units.
         """
         if self.split_units == "word":
-            words = [word for word in text.split(" ") if word]
+            # like _fall_back_to_fixed_chunking, don't count whitespace-only pieces such as "\f" as words
+            words = [word for word in text.split(" ") if word.strip()]
             return len(words)
         if self.split_units == "char":
             return len(text)
