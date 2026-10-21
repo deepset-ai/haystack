@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 _FINAL_MESSAGE_TEXT = "The Agent stopped because the token budget was exceeded."
 
 _STEPS_REMAINING_TEMPLATE = (
-    "You have {steps_remaining} of {max_agent_steps} steps remaining before this run is stopped. Stop gathering "
-    "information and start working toward your final answer."
+    "You have {steps_remaining} of {max_agent_steps} steps remaining before this run is stopped. Start working "
+    "toward your final answer."
 )
 _LAST_STEP_TEMPLATE = (
     "This is your last step of {max_agent_steps}. Give your final answer now: you will not see the results of any "

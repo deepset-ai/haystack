@@ -124,8 +124,8 @@ class TestTokenBudgetHook:
 
 
 _TWO_LEFT = (
-    "<system-reminder>\nYou have 2 of 4 steps remaining before this run is stopped. Stop gathering information and "
-    "start working toward your final answer.\n</system-reminder>"
+    "<system-reminder>\nYou have 2 of 4 steps remaining before this run is stopped. Start working toward your "
+    "final answer.\n</system-reminder>"
 )
 _LAST_STEP = (
     "<system-reminder>\nThis is your last step of 4. Give your final answer now: you will not see the results of any "

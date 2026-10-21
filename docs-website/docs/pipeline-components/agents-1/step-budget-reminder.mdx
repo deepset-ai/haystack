@@ -26,7 +26,7 @@ description: "Use StepBudgetReminderHook to tell an Agent how many steps it has 
 
 Before each of the Agent's last `remind_within_steps` LLM calls, `StepBudgetReminderHook` adds a reminder telling the model how many steps are left:
 
-- With more than one step left: `You have 2 of 10 steps remaining before this run is stopped. Stop gathering information and start working toward your final answer.`
+- With more than one step left: `You have 2 of 10 steps remaining before this run is stopped. Start working toward your final answer.`
 - On the last step: `This is your last step of 10. Give your final answer now: you will not see the results of any further tool calls.`
 
 A step is one LLM call plus the tool calls it requests.
