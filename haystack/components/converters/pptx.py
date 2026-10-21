@@ -17,6 +17,7 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.oxml.text import CT_RegularTextRun, CT_TextField
     from pptx.shapes.autoshape import Shape
     from pptx.shapes.base import BaseShape
     from pptx.shapes.graphfrm import GraphicFrame
@@ -137,7 +138,15 @@ class PPTXToDocument:
         if self.link_format == "none":
             return paragraph.text
         parts = []
-        for run in paragraph.runs:
+        runs = iter(paragraph.runs)
+        for child in paragraph._p.iterchildren():
+            # Fields have text but are not included in paragraph.runs.
+            if isinstance(child, CT_TextField):
+                parts.append(child.text)
+                continue
+            if not isinstance(child, CT_RegularTextRun):
+                continue
+            run = next(runs)
             if run.hyperlink and run.hyperlink.address:
                 if self.link_format == "markdown":
                     parts.append(f"[{run.text}]({run.hyperlink.address})")
