@@ -47,7 +47,9 @@ jobs:
           fail: "Copyleft,Other,Error"
           # Exclusions in the vanilla distribution must be explicitly motivated
           # - tqdm is MLP but there are no better alternatives
-          exclude: "(?i)^(tqdm).*"
+          # - certifi is MPL; it's installed transitively via httpx and posthog anyway,
+          #   we only list it directly to enforce a security floor
+          exclude: "(?i)^(tqdm|certifi).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
