@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {"step_budget": ["StepBudgetReminderHook"]}
+_import_structure = {"hooks": ["StepBudgetReminderHook"]}
 
 if TYPE_CHECKING:
-    from .step_budget import StepBudgetReminderHook as StepBudgetReminderHook
+    from .hooks import StepBudgetReminderHook as StepBudgetReminderHook
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
