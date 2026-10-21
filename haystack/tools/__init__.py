@@ -20,7 +20,14 @@ from lazy_imports import LazyImporter
 #     splitting them.
 #   - Symbols from any other submodule have no name collision and should be added lazily to `import_structure` (plus
 #     the `TYPE_CHECKING` block below) like the existing entries.
-from haystack.tools.from_function import create_tool_from_function, tool
+#
+# With Python 3.15 lazy imports (PEP 810), the same collision would also make `tool` resolve to the submodule:
+#   - Importing `tool.py` rebinds this module's global `tool` to the submodule, so the decorator is imported under an
+#     alias.
+#   - A lazy `from haystack.tools import tool` resolves to the submodule unless `tool` is in the package's `__dict__`,
+#     so the decorator is bound there explicitly below.
+from haystack.tools.from_function import create_tool_from_function
+from haystack.tools.from_function import tool as _tool_decorator
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 
 _import_structure = {
@@ -31,13 +38,14 @@ _import_structure = {
     "pipeline_tool": ["PipelineTool"],
     "agent_tool": ["AgentTool"],
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
-    "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
+    "utils": ["flatten_tools_or_toolsets", "warm_up_tools", "warm_up_tools_async", "close_tools", "close_tools_async"],
     "tool_types": ["ToolsType"],
 }
 
 if TYPE_CHECKING:
     from haystack.tools.agent_tool import AgentTool as AgentTool
     from haystack.tools.component_tool import ComponentTool as ComponentTool
+    from haystack.tools.from_function import tool as tool
     from haystack.tools.pipeline_tool import PipelineTool as PipelineTool
     from haystack.tools.searchable_toolset import SearchableToolset as SearchableToolset
     from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace as deserialize_tools_or_toolset_inplace
@@ -45,17 +53,22 @@ if TYPE_CHECKING:
     from haystack.tools.skills import SkillToolset as SkillToolset
     from haystack.tools.tool_types import ToolsType as ToolsType
     from haystack.tools.toolset import Toolset as Toolset
+    from haystack.tools.utils import close_tools as close_tools
+    from haystack.tools.utils import close_tools_async as close_tools_async
     from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets
     from haystack.tools.utils import warm_up_tools as warm_up_tools
+    from haystack.tools.utils import warm_up_tools_async as warm_up_tools_async
 else:
-    sys.modules[__name__] = LazyImporter(
+    _module = LazyImporter(
         name=__name__,
         module_file=__file__,
         import_structure=_import_structure,
         extra_objects={
             "create_tool_from_function": create_tool_from_function,
-            "tool": tool,
+            "tool": _tool_decorator,
             "Tool": Tool,
             "_check_duplicate_tool_names": _check_duplicate_tool_names,
         },
     )
+    _module.tool = _tool_decorator
+    sys.modules[__name__] = _module

@@ -24,7 +24,7 @@ class ConfirmationHook:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.tools import tool
     from haystack.hooks.human_in_the_loop import (
         AlwaysAskPolicy,
@@ -47,7 +47,7 @@ class ConfirmationHook:
             )
         }
     )
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
     ```
 
     A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies

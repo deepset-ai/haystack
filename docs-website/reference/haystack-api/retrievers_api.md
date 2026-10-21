@@ -1340,9 +1340,11 @@ document from the document store.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
   - `context_windows`: A list of strings, where each string represents the concatenated text from the
     context window of the corresponding document in `retrieved_documents`.
-  - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
-    document surrounding them. The documents are sorted by the `split_idx_start`
-    meta field.
+  - `context_documents`: A list of `Document` objects, containing the retrieved documents plus the
+    context documents surrounding them, grouped by window in the order of
+    `retrieved_documents`. Within each window, the documents are sorted by the
+    meta field set in `split_id_meta_field`. Documents shared by overlapping
+    windows appear once per window.
 
 #### run_async
 
@@ -1369,9 +1371,11 @@ document from the document store.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
   - `context_windows`: A list of strings, where each string represents the concatenated text from the
     context window of the corresponding document in `retrieved_documents`.
-  - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
-    document surrounding them. The documents are sorted by the `split_idx_start`
-    meta field.
+  - `context_documents`: A list of `Document` objects, containing the retrieved documents plus the
+    context documents surrounding them, grouped by window in the order of
+    `retrieved_documents`. Within each window, the documents are sorted by the
+    meta field set in `split_id_meta_field`. Documents shared by overlapping
+    windows appear once per window.
 
 #### close
 

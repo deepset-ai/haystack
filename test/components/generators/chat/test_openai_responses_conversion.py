@@ -22,14 +22,22 @@ from openai.types.responses import (
     ResponseOutputItemAddedEvent,
     ResponseOutputItemDoneEvent,
     ResponseOutputMessage,
+    ResponseOutputRefusal,
     ResponseOutputText,
+    ResponseOutputTextAnnotationAddedEvent,
     ResponseReasoningItem,
+    ResponseReasoningSummaryTextDeltaEvent,
+    ResponseReasoningTextDeltaEvent,
+    ResponseRefusalDeltaEvent,
+    ResponseRefusalDoneEvent,
+    ResponseStreamEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
     ResponseTextDoneEvent,
     ResponseUsage,
 )
 from openai.types.responses.response import IncompleteDetails
+from openai.types.responses.response_reasoning_item import Content, Summary
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from haystack.components.generators.chat.openai_responses import (
@@ -272,6 +280,67 @@ class TestConversionToStreamingChunks:
             "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3},
             "finish_reason": "stop",
         }
+
+    @pytest.mark.parametrize(
+        ("delta_event", "completed_item"),
+        [
+            (
+                ResponseReasoningTextDeltaEvent(
+                    content_index=0,
+                    delta="Thinking.",
+                    item_id="rs_1",
+                    output_index=0,
+                    sequence_number=1,
+                    type="response.reasoning_text.delta",
+                ),
+                ResponseReasoningItem(
+                    id="rs_1",
+                    summary=[],
+                    type="reasoning",
+                    content=[Content(text="Thinking.", type="reasoning_text")],
+                    status="completed",
+                ),
+            ),
+            (
+                ResponseReasoningSummaryTextDeltaEvent(
+                    delta="Thinking.",
+                    item_id="rs_1",
+                    output_index=0,
+                    sequence_number=1,
+                    summary_index=0,
+                    type="response.reasoning_summary_text.delta",
+                ),
+                ResponseReasoningItem(
+                    id="rs_1",
+                    summary=[Summary(text="Thinking.", type="summary_text")],
+                    type="reasoning",
+                    status="completed",
+                ),
+            ),
+        ],
+    )
+    def test_convert_streamed_reasoning_text_is_not_repeated_from_completed_item(
+        self,
+        delta_event: ResponseReasoningTextDeltaEvent | ResponseReasoningSummaryTextDeltaEvent,
+        completed_item: ResponseReasoningItem,
+    ) -> None:
+        events: list[ResponseStreamEvent] = [
+            delta_event,
+            ResponseOutputItemDoneEvent(
+                item=completed_item, output_index=0, sequence_number=2, type="response.output_item.done"
+            ),
+        ]
+
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(event, previous_chunks=chunks))
+
+        delta_extra = {key: value for key, value in delta_event.to_dict().items() if key != "delta"}
+        assert chunks[0].reasoning == ReasoningContent(reasoning_text="Thinking.", extra=delta_extra)
+        assert chunks[1].reasoning == ReasoningContent(reasoning_text="", extra=completed_item.to_dict())
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == "Thinking."
 
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
@@ -934,6 +1003,147 @@ class TestConversionToStreamingChunks:
 
         message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
         assert message.meta["finish_reason"] == "stop"
+        assert "annotations" not in message.meta
+        assert "annotation_offsets" not in message.meta
+
+    def test_convert_text_with_annotations(self) -> None:
+        intro = "Checking official sources."
+        text = (
+            "- **Python 3.13.0** release date: **October 7, 2024**. "
+            "([python.org](https://www.python.org/downloads/release/python-3130/?utm_source=openai))"
+        )
+        citation = {
+            "type": "url_citation",
+            "start_index": 55,
+            "end_index": 142,
+            "title": "Python Release Python 3.13.0 | Python.org",
+            "url": "https://www.python.org/downloads/release/python-3130/?utm_source=openai",
+        }
+        response = Response.model_construct(
+            status="completed",
+            output=[
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_0",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": intro, "annotations": []}],
+                    }
+                ),
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_1",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": text, "annotations": [citation]}],
+                    }
+                ),
+            ],
+        )
+        events: list[ResponseStreamEvent] = [
+            ResponseTextDeltaEvent(
+                type="response.output_text.delta",
+                item_id="msg_0",
+                output_index=0,
+                content_index=0,
+                sequence_number=0,
+                logprobs=[],
+                delta=intro,
+            ),
+            ResponseTextDeltaEvent(
+                type="response.output_text.delta",
+                item_id="msg_1",
+                output_index=1,
+                content_index=0,
+                sequence_number=1,
+                logprobs=[],
+                delta=text,
+            ),
+            ResponseOutputTextAnnotationAddedEvent.model_validate(
+                {
+                    "type": "response.output_text.annotation.added",
+                    "item_id": "msg_1",
+                    "output_index": 1,
+                    "content_index": 0,
+                    "sequence_number": 2,
+                    "annotation_index": 0,
+                    "annotation": citation,
+                }
+            ),
+            ResponseCompletedEvent(type="response.completed", response=response, sequence_number=3),
+        ]
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(chunk=event, previous_chunks=chunks))
+
+        assert chunks[2] == StreamingChunk(content="", index=1, meta={**events[2].to_dict(), "received_at": ANY})
+        message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+        assert message.text == intro + text
+        assert message.meta == {
+            "status": "completed",
+            "finish_reason": "stop",
+            "annotations": [citation],
+            "annotation_offsets": [len(intro)],
+        }
+
+    def test_streaming_refusal_does_not_duplicate_done_events(self) -> None:
+        response = Response(
+            id="resp_test",
+            created_at=0,
+            model="test",
+            object="response",
+            parallel_tool_calls=True,
+            tool_choice="auto",
+            tools=[],
+            status="completed",
+            output=[
+                ResponseOutputMessage(
+                    id="msg",
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                    content=[ResponseOutputRefusal(type="refusal", refusal="I cannot help.")],
+                )
+            ],
+        )
+        events: list[ResponseStreamEvent] = [
+            ResponseRefusalDeltaEvent(
+                type="response.refusal.delta",
+                item_id="msg",
+                output_index=0,
+                content_index=0,
+                sequence_number=index,
+                delta=delta,
+            )
+            for index, delta in enumerate(["I cannot ", "help."])
+        ]
+        events.extend(
+            [
+                ResponseRefusalDoneEvent(
+                    type="response.refusal.done",
+                    item_id="msg",
+                    output_index=0,
+                    content_index=0,
+                    sequence_number=2,
+                    refusal="I cannot help.",
+                ),
+                ResponseCompletedEvent(type="response.completed", sequence_number=3, response=response),
+            ]
+        )
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(chunk=event, previous_chunks=chunks))
+
+        done_chunk = next(chunk for chunk in chunks if chunk.meta.get("type") == "response.refusal.done")
+        assert done_chunk.meta["refusal"] == "I cannot help."
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help."
 
     def test_convert_only_function_call(self) -> None:
 
@@ -1279,6 +1489,43 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
+    def test_convert_text_with_annotations(self) -> None:
+        text = (
+            "- **Python 3.13.0** release date: **October 7, 2024**. "
+            "([python.org](https://www.python.org/downloads/release/python-3130/?utm_source=openai))"
+        )
+        citation = {
+            "type": "url_citation",
+            "start_index": 55,
+            "end_index": 142,
+            "title": "Python Release Python 3.13.0 | Python.org",
+            "url": "https://www.python.org/downloads/release/python-3130/?utm_source=openai",
+        }
+        response = Response.model_construct(
+            status="completed",
+            output=[
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_1",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": text, "annotations": [citation]}],
+                    }
+                )
+            ],
+        )
+
+        message = _convert_response_to_chat_message(responses=response)
+
+        assert message.text == text
+        assert message.meta == {
+            "status": "completed",
+            "finish_reason": "stop",
+            "annotations": [citation],
+            "annotation_offsets": [0],
+        }
+
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
@@ -1295,6 +1542,74 @@ class TestResponseToChatMessage:
         message = _convert_response_to_chat_message(response)
 
         assert message.meta["finish_reason"] == finish_reason
+
+    @pytest.mark.parametrize("arguments", ["", None])
+    def test_convert_zero_argument_function_call(self, arguments: str | None) -> None:
+        # OpenAI-compatible servers such as vLLM send an empty string or null for a tool with no parameters
+        function_call = ResponseFunctionToolCall.model_construct(
+            arguments=arguments, call_id="call_1", name="get_time", type="function_call", id="fc_1", status="completed"
+        )
+        response = Response.model_construct(output=[function_call], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.tool_calls == [
+            ToolCall(id="fc_1", tool_name="get_time", arguments={}, extra={"call_id": "call_1"})
+        ]
+
+    @pytest.mark.parametrize(
+        ("summary", "content", "expected_text"),
+        [
+            ([Summary(text="Summary.", type="summary_text")], None, "Summary."),
+            (
+                [],
+                [
+                    Content(text="First step.", type="reasoning_text"),
+                    Content(text="Second step.", type="reasoning_text"),
+                ],
+                "First step.\nSecond step.",
+            ),
+            (
+                [Summary(text="Summary.", type="summary_text")],
+                [Content(text="Raw reasoning.", type="reasoning_text")],
+                "Summary.",
+            ),
+        ],
+    )
+    def test_convert_reasoning_item(
+        self, summary: list[Summary], content: list[Content] | None, expected_text: str
+    ) -> None:
+        item = ResponseReasoningItem(id="rs_1", summary=summary, type="reasoning", content=content, status="completed")
+        response = Response.model_construct(output=[item], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        extra = {key: value for key, value in item.to_dict().items() if key != "summary"}
+        assert message.reasoning == ReasoningContent(reasoning_text=expected_text, extra=extra)
+
+    def test_convert_response_with_refusal(self) -> None:
+        response = Response(
+            id="resp_test",
+            created_at=0,
+            model="test",
+            object="response",
+            parallel_tool_calls=True,
+            tool_choice="auto",
+            tools=[],
+            status="completed",
+            output=[
+                ResponseOutputMessage(
+                    id="msg",
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                    content=[ResponseOutputRefusal(type="refusal", refusal="I cannot help.")],
+                )
+            ],
+        )
+        message = _convert_response_to_chat_message(response)
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help."
 
     def test_convert_system_message(self) -> None:
 
@@ -1382,6 +1697,12 @@ class TestResponseToChatMessage:
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "assistant", "content": "I have an answer"}
+        ]
+
+    def test_convert_assistant_message_with_refusal(self) -> None:
+        message = ChatMessage.from_assistant(meta={"refusal": "I cannot help."})
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"role": "assistant", "content": [{"type": "refusal", "refusal": "I cannot help."}]}
         ]
 
     def test_convert_assistant_message_w_tool_call(self) -> None:
@@ -1477,6 +1798,28 @@ class TestResponseToChatMessage:
                 "encrypted_content": "enc123",
                 "status": "completed",
                 "summary": [{"text": "Let me think.", "type": "summary_text"}],
+            }
+        ]
+
+    def test_convert_reasoning_text_content_round_trip_without_duplicate_summary(self) -> None:
+        item = ResponseReasoningItem(
+            id="rs_1",
+            summary=[],
+            type="reasoning",
+            content=[Content(text="Thinking.", type="reasoning_text")],
+            status="completed",
+        )
+        response = Response.model_construct(output=[item], output_text=None, status="completed")
+
+        message = _convert_response_to_chat_message(response)
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "id": "rs_1",
+                "type": "reasoning",
+                "content": [{"text": "Thinking.", "type": "reasoning_text"}],
+                "status": "completed",
+                "summary": [],
             }
         ]
 

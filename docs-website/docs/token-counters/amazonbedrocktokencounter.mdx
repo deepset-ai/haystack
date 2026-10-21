@@ -79,6 +79,14 @@ counter.warm_up()
 counter.close()
 ```
 
+### Running on Amazon EKS
+
+On Amazon EKS, the counter can authenticate with the pod's IAM role through [IAM roles for service accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), so you don't need access keys. When no access keys are set, the counter falls back to the [boto3 credential chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html), which picks up the role that EKS assigns to the pod.
+
+1. Associate an IAM role with the pod's Kubernetes service account and allow the role to call `bedrock:CountTokens`.
+2. Don't pass `aws_access_key_id` and `aws_secret_access_key` to the counter, and don't set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables in the pod. Access keys take precedence over the pod's role.
+3. Set the region with `aws_region_name` or the `AWS_DEFAULT_REGION` environment variable.
+
 ## Whole conversations only
 
 Bedrock validates the input of `CountTokens` the same way it validates a `Converse` request: the conversation must begin with a user message, and each tool result must follow the tool call that produced it. The counter therefore measures complete conversations, and raises `AmazonBedrockInferenceError` for fragments such as a single tool result message.

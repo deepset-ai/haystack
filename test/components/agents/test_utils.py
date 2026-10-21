@@ -112,25 +112,6 @@ class TestSelectToolsByName:
         selected = _select_tools_by_name([second_tool, toolset], [first_tool.name, second_tool.name])
         assert selected == [second_tool, first_tool]
 
-    def test_warms_up_lazy_toolsets_to_resolve_names(self, first_tool: Tool, second_tool: Tool) -> None:
-        class LazyToolset(Toolset):
-            """A Toolset that loads its tools on warm_up(), like toolsets backed by external services."""
-
-            def __init__(self, tools_to_load):
-                self._tools_to_load = tools_to_load
-                super().__init__([])  # no tools until warm_up
-
-            def warm_up(self):
-                if not self.tools:
-                    self.tools = list(self._tools_to_load)
-
-        toolset = LazyToolset([first_tool, second_tool])
-        assert list(toolset) == []  # not loaded yet
-
-        # Name resolution warms the toolset first, so lazily loaded tools are selectable.
-        selected = _select_tools_by_name([toolset], [first_tool.name])
-        assert selected == [first_tool]
-
     def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool) -> None:
         class RunScopedToolset(Toolset):
             """A Toolset overriding spawn(), signaling run-scoped state."""

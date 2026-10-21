@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import Mock
+
 import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
+from haystack.components.preprocessors import document_splitter as document_splitter_module
 from haystack.components.writers import DocumentWriter
 
 
@@ -43,7 +46,12 @@ class TestHierarchicalDocumentSplitter:
         expected = builder.to_dict()
         assert expected == {
             "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
-            "init_parameters": {"block_sizes": [300, 200, 100], "split_overlap": 25, "split_by": "word"},
+            "init_parameters": {
+                "block_sizes": [300, 200, 100],
+                "split_overlap": 25,
+                "split_by": "word",
+                "tokenizer_encoding": "o200k_base",
+            },
         }
 
     def test_from_dict(self):
@@ -56,6 +64,8 @@ class TestHierarchicalDocumentSplitter:
         assert builder.block_sizes == [10, 5, 2]
         assert builder.split_overlap == 0
         assert builder.split_by == "word"
+        # dicts serialized before tokenizer_encoding existed get the default
+        assert builder.tokenizer_encoding == "o200k_base"
 
     def test_run(self):
         builder = HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=0, split_by="word")
@@ -144,7 +154,12 @@ class TestHierarchicalDocumentSplitter:
 
         assert expected["components"]["hierarchical_doc_splitter"] == {
             "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
-            "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
+            "init_parameters": {
+                "block_sizes": [10, 5, 2],
+                "split_overlap": 0,
+                "split_by": "word",
+                "tokenizer_encoding": "o200k_base",
+            },
         }
 
     def test_from_dict_in_pipeline(self):
@@ -276,3 +291,72 @@ class TestHierarchicalDocumentSplitter:
                 for child in children:
                     assert child.meta["__parent_id"] == doc.id
                     assert child.meta["__level"] == doc.meta["__level"] + 1
+
+    def test_init_with_token_split(self):
+        splitter = HierarchicalDocumentSplitter(
+            block_sizes={100, 20}, split_by="token", tokenizer_encoding="cl100k_base"
+        )
+        assert splitter.split_by == "token"
+        assert splitter.tokenizer_encoding == "cl100k_base"
+        for block_size, inner_splitter in splitter.splitters.items():
+            assert inner_splitter.split_by == "token"
+            assert inner_splitter.split_length == block_size
+            assert inner_splitter.tokenizer_encoding == "cl100k_base"
+
+    def test_serialization_round_trip_with_token_split(self):
+        splitter = HierarchicalDocumentSplitter(
+            block_sizes={100, 20}, split_overlap=5, split_by="token", tokenizer_encoding="cl100k_base"
+        )
+        restored = HierarchicalDocumentSplitter.from_dict(splitter.to_dict())
+        assert restored.block_sizes == [100, 20]
+        assert restored.split_overlap == 5
+        assert restored.split_by == "token"
+        assert restored.tokenizer_encoding == "cl100k_base"
+        assert restored.splitters[20].tokenizer_encoding == "cl100k_base"
+
+    def test_warm_up_loads_the_encoding_for_every_block_size_once(self, monkeypatch):
+        encoding = Mock()
+        get_encoding = Mock(return_value=encoding)
+        monkeypatch.setattr(document_splitter_module.tiktoken, "get_encoding", get_encoding)
+
+        splitter = HierarchicalDocumentSplitter(
+            block_sizes={100, 20}, split_by="token", tokenizer_encoding="cl100k_base"
+        )
+        splitter.warm_up()
+        splitter.warm_up()
+
+        # one call per block size, the second warm_up() is a no-op
+        assert get_encoding.call_count == 2
+        get_encoding.assert_called_with("cl100k_base")
+        assert all(inner_splitter._tiktoken_tokenizer is encoding for inner_splitter in splitter.splitters.values())
+
+
+@pytest.mark.integration
+class TestHierarchicalDocumentSplitterByTokenIntegration:
+    """Integration tests for split_by="token" that load a real tiktoken encoding."""
+
+    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+    def test_run_split_by_token(self, encoding):
+        text = (
+            "Haystack pipelines connect retrievers, rankers and generators. Hierarchical chunks let an "
+            "AutoMergingRetriever return a parent block when enough of its children match.\f"
+            "Token-based block sizes keep every chunk inside the context budget of the model."
+        )
+        splitter = HierarchicalDocumentSplitter(block_sizes={20, 8}, split_by="token", tokenizer_encoding=encoding)
+        splitter.warm_up()
+
+        documents = splitter.run([Document(content=text)])["documents"]
+
+        tokenizer = splitter.splitters[20]._tiktoken_tokenizer
+        assert tokenizer is not None
+        docs_by_id = {doc.id: doc for doc in documents}
+        assert {doc.meta["__level"] for doc in documents} == {0, 1, 2}
+        for doc in documents[1:]:
+            assert doc.content is not None
+            assert len(tokenizer.encode_ordinary(doc.content)) <= doc.meta["__block_size"]
+            assert doc.id in docs_by_id[doc.meta["__parent_id"]].meta["__children_ids"]
+        # without overlap, the children of every block add up to exactly the block's text
+        for doc in documents:
+            if doc.meta["__children_ids"]:
+                children_text = "".join(str(docs_by_id[child_id].content) for child_id in doc.meta["__children_ids"])
+                assert children_text == doc.content

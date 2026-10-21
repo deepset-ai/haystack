@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,7 +22,7 @@ from haystack.components.routers import FileTypeRouter
 from haystack.dataclasses import ByteStream
 
 
-class ConverterMimeType(str, Enum):
+class ConverterMimeType(StrEnum):
     CSV = "text/csv"
     DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     HTML = "text/html"
@@ -101,7 +101,7 @@ class MultiFileConverter:
         pp.add_component("csv", CSVToDocument(encoding=self.encoding))
 
         for mime_type in ConverterMimeType:
-            pp.connect(f"router.{mime_type.value}", str(mime_type).lower().rsplit(".", maxsplit=1)[-1])
+            pp.connect(f"router.{mime_type.value}", mime_type.name.lower())
 
         pp.connect("docx.documents", "joiner.documents")
         pp.connect("html.documents", "joiner.documents")
