@@ -11,6 +11,7 @@ import unicodedata
 from typing import Literal, cast
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -509,6 +510,29 @@ class TestMemoryDocumentStore(
             in_memory_doc_store.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
+        # every element is checked, not only the first
+        with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[1.0, "invalid"])
+        with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[True, False])
+
+    @pytest.mark.parametrize(
+        "query_embedding",
+        [
+            [1, 0],
+            [np.float32(1.0), np.float32(0.0)],
+            np.array([1.0, 0.0], dtype=np.float32),
+            np.array([1, 0], dtype=np.int64),
+        ],
+        ids=["ints", "float32-elements", "float32-array", "int64-array"],
+    )
+    def test_embedding_retrieval_accepts_any_real_numbers(self, in_memory_doc_store, query_embedding):
+        in_memory_doc_store.write_documents(
+            [Document(content="a", embedding=[1.0, 0.0]), Document(content="b", embedding=[0.0, 1.0])]
+        )
+        results = in_memory_doc_store.embedding_retrieval(query_embedding=query_embedding, scale_score=False)
+        assert [doc.content for doc in results] == ["a", "b"]
+        assert results[0].score == pytest.approx(1.0)
 
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)

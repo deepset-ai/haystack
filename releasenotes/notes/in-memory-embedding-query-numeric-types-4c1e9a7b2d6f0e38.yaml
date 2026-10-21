@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    `InMemoryDocumentStore.embedding_retrieval` (and so `InMemoryEmbeddingRetriever`) now accepts any non-empty sequence of real numbers as `query_embedding`, including ints and numpy `float32` values such as the output of `SentenceTransformer.encode()`. Every element is checked, so a vector with a non-numeric element raises the store's `ValueError` instead of a numpy error.

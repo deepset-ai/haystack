@@ -5,6 +5,7 @@
 import asyncio
 import json
 import math
+import numbers
 import re
 import unicodedata
 import uuid
@@ -859,7 +860,11 @@ class InMemoryDocumentStore:
         :returns: A list of the top_k documents most relevant to the query.
         :raises ValueError: if filters have invalid syntax.
         """
-        if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
+        # Accept any real numbers (ints, numpy float32 as returned by many embedders), not just Python floats,
+        # and check every element so a malformed vector fails here rather than inside numpy.
+        if len(query_embedding) == 0 or not all(
+            isinstance(value, numbers.Real) and not isinstance(value, bool) for value in query_embedding
+        ):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
         if filters:
