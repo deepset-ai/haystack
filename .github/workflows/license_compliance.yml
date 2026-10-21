@@ -49,7 +49,9 @@ jobs:
           # - tqdm is MLP but there are no better alternatives
           # - typing_extensions>=4.13.0 has a Python Software Foundation License 2.0 but pip-license-checker does not recognize it
           #   (https://github.com/pilosus/pip-license-checker/issues/143)
-          exclude: "(?i)^(tqdm|typing_extensions).*"
+          # - certifi is MPL; it's installed transitively via httpx and posthog anyway,
+          #   we only list it directly to enforce a security floor
+          exclude: "(?i)^(tqdm|typing_extensions|certifi).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
