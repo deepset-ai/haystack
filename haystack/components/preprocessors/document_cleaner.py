@@ -234,7 +234,7 @@ class DocumentCleaner:
         :returns: The text without the substrings that match the regex.
         """
         texts = text.split("\f")
-        cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
+        cleaned_text = [re.sub(regex, "", text) for text in texts]
         return "\f".join(cleaned_text)
 
     def _replace_regexes(self, text: str, replace_regexes: dict[str, str]) -> str:
