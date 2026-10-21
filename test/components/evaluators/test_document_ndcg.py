@@ -326,6 +326,7 @@ def test_run_with_empty_comparison_values_does_not_match():
     )
     # The real match is at rank 2, so its gain is 1 / log2(3)
     assert result["individual_scores"] == pytest.approx([0.0, 0.6309], abs=1e-4)
+    assert result["score"] == pytest.approx(0.3155, abs=1e-4)
 
 
 def test_run_with_nested_meta_comparison():
