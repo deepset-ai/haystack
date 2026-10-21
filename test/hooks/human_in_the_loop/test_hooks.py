@@ -10,7 +10,7 @@ import pytest
 from haystack import tracing
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import merge_lists, replace_values
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, ToolCall
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
@@ -149,6 +149,44 @@ class TestConfirmationHook:
         assert state.get("messages")[: len(earlier)] == earlier
         if ui_result.action == "confirm":
             assert state.get("messages") == [*earlier, tool_call_message]
+
+    @pytest.mark.parametrize("run_async", [False, True])
+    @pytest.mark.parametrize(
+        "ui_result",
+        [
+            ConfirmationUIResult(action="confirm"),
+            ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}),
+            ConfirmationUIResult(action="reject"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_preserves_multiple_reasoning_items(self, tools, ui_result, run_async):
+        reasonings = [
+            ReasoningContent(reasoning_text="", extra={"id": "rs_first", "encrypted_content": "encrypted_first"}),
+            ReasoningContent(
+                reasoning_text="Use the tool", extra={"id": "rs_last", "encrypted_content": "encrypted_last"}
+            ),
+        ]
+        message = ChatMessage.from_assistant(
+            text="Adding the numbers",
+            reasoning=reasonings,
+            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1")],
+            meta={"model": "test-model"},
+            name="assistant",
+        )
+        state = _state_with([ChatMessage.from_user("add"), message], tools)
+        hook = _confirm_hook(ui_result)
+        if run_async:
+            await hook.run_async(state)
+        else:
+            hook.run(state)
+        rebuilt_messages = [item for item in state.get("messages") if item.tool_calls]
+        assert len(rebuilt_messages) == 1
+        assert rebuilt_messages[0].reasonings == reasonings
+        assert rebuilt_messages[0].text == message.text
+        assert rebuilt_messages[0].meta == message.meta
+        assert rebuilt_messages[0].name == message.name
+        assert message.reasonings == reasonings
 
     def test_hook_context_is_not_deepcopied(self, tools):
         # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy

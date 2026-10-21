@@ -576,7 +576,7 @@ def _apply_tool_execution_decisions(
             meta=chat_message.meta,
             name=chat_message.name,
             tool_calls=tool_calls,
-            reasoning=chat_message.reasoning,
+            reasoning=chat_message.reasonings,
         )
 
     new_tool_call_messages = []
