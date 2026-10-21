@@ -116,11 +116,11 @@
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                  |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py               |       48 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py          |       53 |        1 |     98% |       102 |
-| haystack/components/retrievers/multi\_query\_embedding\_retriever.py       |       82 |        2 |     98% |  202, 221 |
-| haystack/components/retrievers/multi\_query\_text\_retriever.py            |       72 |        3 |     96% |124, 178, 193 |
+| haystack/components/retrievers/multi\_query\_embedding\_retriever.py       |       83 |        2 |     98% |  203, 222 |
+| haystack/components/retrievers/multi\_query\_text\_retriever.py            |       73 |        3 |     96% |125, 179, 194 |
 | haystack/components/retrievers/multi\_retriever.py                         |      131 |        1 |     99% |       160 |
 | haystack/components/retrievers/sentence\_window\_retriever.py              |      112 |        1 |     99% |       138 |
-| haystack/components/retrievers/text\_embedding\_retriever.py               |       52 |        0 |    100% |           |
+| haystack/components/retrievers/text\_embedding\_retriever.py               |       53 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                       |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                           |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
@@ -275,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18178** |  **692** | **96%** |           |
+| **TOTAL**                                                                  | **18181** |  **692** | **96%** |           |
 
 
 ## Setup coverage badge
