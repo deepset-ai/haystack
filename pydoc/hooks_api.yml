@@ -4,7 +4,6 @@ loaders:
       "compaction/summarization", "compaction/tool_result_offloading", "compaction/tool_result_pruning",
       "compaction/types/protocol", "human_in_the_loop/dataclasses", "human_in_the_loop/hooks",
       "human_in_the_loop/policies", "human_in_the_loop/strategies", "human_in_the_loop/user_interfaces", "structured_output/hooks",
-      "system_reminders/hooks",
       "tool_result_offloading/hooks", "tool_result_offloading/policies", "tool_result_offloading/stores",
       "tool_result_offloading/types/protocol"]
 processors:

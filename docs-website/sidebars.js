@@ -175,7 +175,7 @@ export default {
                 'pipeline-components/agents-1/human-in-the-loop',
                 'pipeline-components/agents-1/tool-result-offloading',
                 'pipeline-components/agents-1/token-budget',
-                'pipeline-components/agents-1/system-reminders',
+                'pipeline-components/agents-1/step-budget-reminder',
                 'pipeline-components/agents-1/structured-output',
               ],
             },

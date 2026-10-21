@@ -1,13 +1,13 @@
 ---
-title: "System Reminders"
-id: system-reminders
-slug: "/system-reminders"
+title: "Step Budget Reminder"
+id: step-budget-reminder
+slug: "/step-budget-reminder"
 description: "Use StepBudgetReminderHook to tell an Agent how many steps it has left before it reaches max_agent_steps."
 ---
 
-# System Reminders
+# Step Budget Reminder
 
-System reminders are messages a hook adds partway through an Agent run to remind the model of something it would otherwise lose track of. `StepBudgetReminderHook` reminds the model how many steps it has left before `max_agent_steps`. Without a warning, the Agent can hit the limit in the middle of its research and stop without a final answer. With the reminder, it can wrap up and answer within the steps it has left.
+`StepBudgetReminderHook` tells the model how many steps it has left before the Agent reaches `max_agent_steps`. Without a warning, the Agent can hit the limit in the middle of its research and stop without a final answer. With the reminder, it can wrap up and answer within the steps it has left.
 
 <div className="key-value-table">
 
@@ -15,9 +15,9 @@ System reminders are messages a hook adds partway through an Agent run to remind
 | --- | --- |
 | **Configured on**       | The [`Agent`](./agent.mdx) component, as a `StepBudgetReminderHook` registered under the `before_llm` [hook point](./hooks.mdx) |
 | **Key classes**         | `StepBudgetReminderHook` |
-| **Import path**         | `haystack.hooks.system_reminders` |
+| **Import path**         | `haystack.hooks.budget` |
 | **API reference**       | [Hooks](/reference/hooks-api) |
-| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/system_reminders/ |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/budget/ |
 | **Package name**        | `haystack-ai` |
 
 </div>
@@ -49,7 +49,7 @@ from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.system_reminders import StepBudgetReminderHook
+from haystack.hooks.budget import StepBudgetReminderHook
 from haystack.tools import tool
 
 

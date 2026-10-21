@@ -9,7 +9,7 @@ features:
 
     .. code-block:: python
 
-        from haystack.hooks.system_reminders import StepBudgetReminderHook
+        from haystack.hooks.budget import StepBudgetReminderHook
 
         agent = Agent(
             chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
