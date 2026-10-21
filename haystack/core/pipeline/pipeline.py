@@ -325,8 +325,6 @@ class Pipeline(PipelineBase):
         :raises PipelineBreakpointException:
             When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
         """
-        pipeline_running(self)  # telemetry
-
         if (
             break_point
             and pipeline_snapshot
@@ -346,6 +344,9 @@ class Pipeline(PipelineBase):
 
         # warm up the pipeline by running each component's warm_up method
         self.warm_up()
+
+        # after warm-up, so toolsets that load their tools in warm_up() report them
+        pipeline_running(self)  # telemetry
 
         if include_outputs_from is None:
             include_outputs_from = set()
@@ -376,7 +377,8 @@ class Pipeline(PipelineBase):
             _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot, self.graph)
 
             # Handle resuming the pipeline from a snapshot
-            component_visits = pipeline_snapshot.pipeline_state.component_visits
+            # Advancing or failing a resumed run must not consume the snapshot's saved run budget.
+            component_visits = pipeline_snapshot.pipeline_state.component_visits.copy()
             ordered_component_names = pipeline_snapshot.ordered_component_names
             data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
 
@@ -900,10 +902,11 @@ class Pipeline(PipelineBase):
         if concurrency_limit < 1:
             raise ValueError("concurrency_limit must be greater than or equal to 1.")
 
-        pipeline_running(self)  # telemetry
-
         # warm up the pipeline by running each component's warm_up_async (or warm_up) method
         await self.warm_up_async()
+
+        # after warm-up, so toolsets that load their tools in warm_up() report them
+        pipeline_running(self)  # telemetry
 
         if include_outputs_from is None:
             include_outputs_from = set()

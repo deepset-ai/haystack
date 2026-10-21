@@ -157,6 +157,8 @@ Initialize the Azure OpenAI Chat Generator component.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are sent directly to
   the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
@@ -1045,6 +1047,8 @@ in the OpenAI client.
   the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
   more details.
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
@@ -1345,6 +1349,8 @@ in the OpenAI client.
   - `generate_summary`: Whether to generate a summary of the reasoning.
   - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+    If a provider returns the raw reasoning as `reasoning_text` content instead,
+    it is mapped to `ReasoningContent.reasoning_text` when no summary is returned.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
 - `include`: Specify additional output data to include in the model response. Supported values are:
   - web_search_call.action.sources: Include the sources of the web search tool call.

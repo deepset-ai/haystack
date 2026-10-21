@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed misleading ``LLMDocumentContentExtractor`` messages. The failure warning said "Skipping metadata
+    extraction", and a document that couldn't be converted to an image got ``extraction_error`` set to "Document has
+    no content". The docstring also named the wrong metadata field (``content_extraction_error`` instead of
+    ``extraction_error``). Warnings now say the document is returned in ``failed_documents``, and a response that
+    isn't a JSON object is now logged too.

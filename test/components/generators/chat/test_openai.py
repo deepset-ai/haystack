@@ -524,8 +524,16 @@ class TestOpenAIChatGenerator:
         assert kwargs["temperature"] == 0.9
         assert kwargs["max_completion_tokens"] == 10
 
+    @pytest.mark.parametrize(
+        ("generation_kwargs", "expected_options"),
+        [({}, {"include_usage": True}), ({"stream_options": {"include_usage": False}}, {"include_usage": False})],
+    )
     def test_run_with_params_streaming(
-        self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
+        self,
+        chat_messages: list[ChatMessage],
+        openai_mock_chat_completion_chunk: MagicMock,
+        generation_kwargs: dict[str, Any],
+        expected_options: dict[str, bool],
     ) -> None:
 
         streaming_callback_called = False
@@ -537,7 +545,8 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
         )
-        response = component.run(chat_messages)
+        response = component.run(chat_messages, generation_kwargs=generation_kwargs)
+        assert openai_mock_chat_completion_chunk.call_args.kwargs["stream_options"] == expected_options
 
         # check we called the streaming callback
         assert streaming_callback_called
@@ -1970,6 +1979,25 @@ class TestChatCompletionChunkConversion:
         assert result.meta["completion_start_time"] is not None
         assert result.meta["usage"] == STREAMED_USAGE.model_dump()
 
+    def test_streaming_preserves_refusal(self) -> None:
+        events = [
+            ChatCompletionChunk(id="test", created=0, model="test", object="chat.completion.chunk", choices=[choice])
+            for choice in [
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(role="assistant", content="")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(refusal="I cannot ")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(refusal="help with that.")),
+                chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(), finish_reason="stop"),
+            ]
+        ]
+        stream = MagicMock()
+        stream.__iter__.return_value = iter(events)
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        message = generator._handle_stream_response(chat_completion=stream, callback=lambda _: None)[0]
+
+        assert message.text is None
+        assert message.meta["refusal"] == "I cannot help with that."
+
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 
         usage_chunk = ChatCompletionChunk(
@@ -1997,6 +2025,18 @@ class TestChatCompletionChunkConversion:
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
+
+    def test_convert_chat_completion_with_refusal(self) -> None:
+        refusal = "I cannot help with that."
+        choice = Choice(
+            index=0,
+            finish_reason="stop",
+            message=ChatCompletionMessage(role="assistant", content=None, refusal=refusal),
+        )
+        completion = ChatCompletion(id="test", created=0, model="test", object="chat.completion", choices=[choice])
+        message = _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
+        assert message.text is None
+        assert message.meta == {"model": "test", "index": 0, "finish_reason": "stop", "usage": None, "refusal": refusal}
 
     @pytest.mark.parametrize("arguments", ["", None])
     def test_convert_chat_completion_with_zero_argument_tool_call(self, arguments: str | None) -> None:

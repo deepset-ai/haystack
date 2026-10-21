@@ -751,6 +751,26 @@ class TestIntegration:
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
 
+    def test_live_run_with_web_search_annotations(self) -> None:
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4.1-mini",
+            tools=[{"type": "web_search", "search_context_size": "low", "external_web_access": False}],
+            generation_kwargs={"tool_choice": "required", "max_tool_calls": 1, "max_output_tokens": 128},
+        )
+        results = component.run(
+            messages="Search for the Python 3.13 release date. Reply with only the date and one citation."
+        )
+        component.close()
+
+        reply = results["replies"][0]
+        assert reply.text
+        assert reply.meta["status"] == "completed"
+        annotations = reply.meta["annotations"]
+        offsets = reply.meta["annotation_offsets"]
+        assert len(annotations) == len(offsets) > 0
+        assert annotations[0]["type"] == "url_citation"
+        assert annotations[0]["url"]
+
     def test_live_run_with_reasoning(self) -> None:
 
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]

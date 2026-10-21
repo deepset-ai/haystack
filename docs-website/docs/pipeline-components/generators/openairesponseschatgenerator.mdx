@@ -3,6 +3,7 @@ title: "OpenAIResponsesChatGenerator"
 id: openairesponseschatgenerator
 slug: "/openairesponseschatgenerator"
 description: "`OpenAIResponsesChatGenerator` enables chat completion using OpenAI's Responses API with support for reasoning models."
+hep_available: true
 ---
 
 # OpenAIResponsesChatGenerator
@@ -73,6 +74,8 @@ The `reasoning` parameter accepts:
 
 :::note
 OpenAI does not return the actual reasoning tokens, but you can view the summary if enabled. For more details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+
+If a provider returns the raw reasoning as `reasoning_text` content instead, it is mapped to `reasoning.reasoning_text` in the reply when no summary is returned.
 :::
 
 ### Multi-turn Conversations
@@ -238,6 +241,27 @@ Streaming works only with a single response. If a provider supports multiple can
 See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+### Annotations
+
+The Responses API can attach annotations, such as URL and file citations, to text blocks. The generator preserves their original fields in `reply.meta["annotations"]`.
+
+A response can contain multiple text blocks, which Haystack concatenates into `reply.text`. Each annotation's indices refer to its original block. The aligned `reply.meta["annotation_offsets"]` list gives that block's starting position in the concatenated text. For example, for URL citations, add the offset to `start_index` and `end_index` to locate the cited span in `reply.text`.
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+
+generator = OpenAIResponsesChatGenerator(tools=[{"type": "web_search"}])
+reply = generator.run(
+    messages="Search the web: when was Python 3.13 released? Cite your sources."
+)["replies"][0]
+for annotation, offset in zip(
+    reply.meta["annotations"], reply.meta["annotation_offsets"]
+):
+    start = offset + annotation["start_index"]
+    end = offset + annotation["end_index"]
+    print(reply.text[start:end], annotation["url"])
+```
 
 ## Usage
 

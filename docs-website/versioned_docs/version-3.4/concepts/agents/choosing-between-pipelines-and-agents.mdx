@@ -1,0 +1,50 @@
+---
+title: "Choosing Between Pipelines and Agents"
+id: choosing-between-pipelines-and-agents
+slug: "/choosing-between-pipelines-and-agents"
+description: "Pipelines and Agents solve the same problem - connecting components to answer a query - with a different tradeoff between predictability and freedom. Learn which one fits your use case, and how to combine them."
+---
+
+# Choosing Between Pipelines and Agents
+
+Pipelines and Agents solve the same problem - connecting components to answer a query - with a different tradeoff between predictability and freedom.
+
+If you came here to build a pipeline, you might actually be looking for an Agent, or the other way around. This page explains the difference so you can pick the right starting point.
+
+## The core tradeoff
+
+A [`Pipeline`](../pipelines.mdx) is a graph you wire yourself. You decide which components run, in what order, and how data flows between them. At runtime, the pipeline follows that graph exactly - the same input takes the same path every time, which makes pipelines predictable, inspectable, and reproducible to evaluate.
+
+An [`Agent`](../../pipeline-components/agents-1/agent.mdx) hands control flow to the LLM instead. Given a system prompt, a set of tools, and a goal, the agent decides at each step whether to call a tool, call another one, or stop and answer. That buys adaptability - the agent can handle requests you didn't enumerate in advance - at the cost of determinism: the number of steps, the tools used, the latency, and the cost of a single run are not fixed ahead of time.
+
+## When a pipeline is the right fit
+
+Reach for a `Pipeline` when:
+
+- The steps to answer a query are known in advance and don't depend on the query itself (for example, a RAG pipeline that always retrieves, then generates).
+- You need predictable latency and cost - a fixed pipeline shape means bounded LLM calls.
+- You need to audit or reproduce a specific run, or evaluate quality across a stable set of steps (see [Evaluation](../../optimization/evaluation.mdx)).
+
+## When an agent is the right fit
+
+Reach for an `Agent` when:
+
+- The number and order of steps depend on the query, or on what an earlier step returns - for example, a support request that may or may not need a database lookup, a web search, both, or neither.
+- The right tool to call can only be decided from intermediate results, not from the input alone.
+- The task is open-ended enough that hand-wiring every path would mean re-implementing the LLM's own reasoning.
+
+## They are not mutually exclusive
+
+An `Agent` is itself a Haystack component, so you can place one inside a `Pipeline` alongside deterministic steps - for example, a fixed preprocessing pipeline that hands off to an agent only for the parts of the task that need judgment.
+
+The reverse also works: wrap a whole pipeline as a tool with [`PipelineTool`](../../tools/pipelinetool.mdx) so an agent can call it as one predictable step in its own reasoning, without knowing what happens inside.
+
+If you need adaptability without giving up all predictability, [pipeline loops](../pipelines/pipeline-loops.mdx) are a middle ground: a fixed, bounded loop (for example, "retry generation until validation passes") without handing full control flow to the LLM.
+
+| You have... | Reach for... |
+| --- | --- |
+| A fixed sequence of steps, known upfront | `Pipeline` |
+| A bounded retry or refinement loop | `Pipeline` with a loop |
+| Steps that depend on the query or on intermediate results | `Agent` |
+| A pipeline that should be callable as one step by an agent | `Pipeline` wrapped in `PipelineTool` |
+| An agent that should run as one step inside a larger, fixed flow | `Agent` used as a pipeline component |

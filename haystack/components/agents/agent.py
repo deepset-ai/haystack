@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -28,7 +29,12 @@ from haystack.components.agents.utils import (
 )
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.hooks.protocol import (
@@ -51,6 +57,8 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
+    ComponentTool,
+    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -202,6 +210,34 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     return [last_message] if last_message.tool_calls else []
 
 
+def _get_tool_telemetry_data(tool: Tool) -> dict[str, Any]:
+    """
+    Describe a single tool for telemetry.
+
+    Descriptions are deliberately left out: they are free text that can hold personal or confidential data.
+    """
+    data = {"type": generate_qualified_class_name(type(tool)), "name": tool.name}
+    if isinstance(tool, ComponentTool):
+        data["component"] = generate_qualified_class_name(type(tool._component))
+    return data
+
+
+def _get_tools_telemetry_data(tools: ToolsType) -> dict[str, Any]:
+    """
+    Summarize the tools for telemetry.
+
+    Call it only after the tools are warmed up: flattening iterates the Toolsets, and some of them (e.g.
+    SearchableToolset) warm up on iteration, while others (e.g. MCPToolset) only load their tools in `warm_up()`.
+    """
+    toolsets = [tools] if isinstance(tools, Toolset) else [entry for entry in tools if isinstance(entry, Toolset)]
+    flat_tools = flatten_tools_or_toolsets(tools=tools)
+    return {
+        "count": len(flat_tools),
+        "tools": [_get_tool_telemetry_data(tool) for tool in flat_tools],
+        "toolset_types": dict(Counter(generate_qualified_class_name(type(toolset)) for toolset in toolsets)),
+    }
+
+
 @dataclass(kw_only=True)
 class _ExecutionContext:
     """
@@ -344,8 +380,8 @@ class Agent:
     - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
       running by setting `state.set("continue_run", True)`.
 
-    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
-    required tool has been called.
+    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running when it
+    stops with a text reply, until it finishes by calling `save_result`.
 
     ```python
     from haystack.components.agents import Agent
@@ -366,14 +402,15 @@ class Agent:
 
     @hook
     def require_save(state: State) -> None:
-        if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
-            state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+        if state.data.get("exit_reason") == "text":
+            state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
             state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
     agent = Agent(
         chat_generator=OpenAIResponsesChatGenerator(),
         tools=[save_result],
+        exit_conditions=["save_result"],
         hooks={"on_exit": [require_save]},
     )
     ```
@@ -637,6 +674,15 @@ class Agent:
         init_params = inspect.signature(type(self).__init__).parameters
         params: dict[str, Any] = {name: getattr(self, name) for name in init_params if name != "self"}
         return type(self)(**{**params, **overrides})
+
+    def _get_telemetry_data(self) -> dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        chat_generator_data: dict[str, Any] = {"type": generate_qualified_class_name(type(self.chat_generator))}
+        if hasattr(self.chat_generator, "_get_telemetry_data"):
+            chat_generator_data.update(self.chat_generator._get_telemetry_data())
+        return {"chat_generator": chat_generator_data, "tools": _get_tools_telemetry_data(self.tools)}
 
     def to_dict(self) -> dict[str, Any]:
         """

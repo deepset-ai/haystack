@@ -34,7 +34,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool, warm_up_tools, warm_up_tools_async
+from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -88,6 +88,19 @@ def weather_tool():
         description="Provides weather information for a given location.",
         parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
         function=weather_function,
+    )
+
+
+@pytest.fixture
+def failing_tool():
+    def failing_function(location: str) -> dict[str, str]:
+        raise RuntimeError("weather service unavailable")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=failing_function,
     )
 
 
@@ -618,6 +631,50 @@ class TestAgentClone:
 
         assert clone.tools == [weather_tool, component_tool]
         assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
+
+
+class TestAgentTelemetry:
+    def test_get_telemetry_data(self, weather_tool, component_tool):
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, Toolset([component_tool])])
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {
+                "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                "model": chat_generator.model,
+            },
+            "tools": {
+                "count": 2,
+                "tools": [
+                    {"type": "haystack.tools.tool.Tool", "name": "weather_tool"},
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "name": "parrot",
+                        "component": "haystack.components.builders.prompt_builder.PromptBuilder",
+                    },
+                ],
+                "toolset_types": {"haystack.tools.toolset.Toolset": 1},
+            },
+        }
+
+    def test_get_telemetry_data_without_tools(self):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"))
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 0, "tools": [], "toolset_types": {}},
+        }
+
+    def test_get_telemetry_data_reports_searchable_toolset_catalog(self, weather_tool):
+        # below the search threshold a SearchableToolset is a passthrough exposing its whole catalog
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=SearchableToolset(catalog=[weather_tool]))
+        agent.warm_up()
+
+        assert agent._get_telemetry_data()["tools"] == {
+            "count": 1,
+            "tools": [{"type": "haystack.tools.tool.Tool", "name": "weather_tool"}],
+            "toolset_types": {"haystack.tools.searchable_toolset.SearchableToolset": 1},
+        }
 
 
 class TestGetModelExitReason:
@@ -1450,6 +1507,29 @@ class TestAgentTracing:
         }
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
+
+    def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
 
     def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""

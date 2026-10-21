@@ -25,7 +25,8 @@ Response handling:
 The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
 `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` as shown in the usage example below.
 
-Documents that fail extraction are returned in `failed_documents` with `content_extraction_error` in metadata.
+Documents that fail extraction are returned in `failed_documents` with the error in their `extraction_error`
+metadata field.
 
 ### Usage example
 
@@ -113,7 +114,8 @@ Initialize the LLMDocumentContentExtractor component.
   that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
 - **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
 - **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
-- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are returned.
+- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, documents that fail extraction
+  are returned in `failed_documents` with the error in their `extraction_error` metadata field.
 - **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
 
 #### warm_up
