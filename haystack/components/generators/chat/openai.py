@@ -734,6 +734,8 @@ def _convert_chat_completion_to_chat_message(
     }
     if logprobs:
         meta["logprobs"] = logprobs
+    if message.refusal:
+        meta["refusal"] = message.refusal
 
     return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
@@ -834,6 +836,9 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
     if logprobs:
         meta["logprobs"] = logprobs
+
+    if choice.delta and choice.delta.refusal:
+        meta["refusal"] = choice.delta.refusal
 
     content = ""
     if choice.delta and choice.delta.content:

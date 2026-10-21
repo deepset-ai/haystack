@@ -735,7 +735,9 @@ splitter.run([doc])
 __init__(
     block_sizes: set[int],
     split_overlap: int = 0,
-    split_by: Literal["word", "sentence", "page", "passage"] = "word",
+    split_by: Literal["word", "sentence", "page", "passage", "token"] = "word",
+    *,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -745,12 +747,24 @@ Initialize HierarchicalDocumentSplitter.
 
 - **block_sizes** (<code>set\[int\]</code>) – Set of block sizes to split the document into. The blocks are split in descending order.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
-- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage']</code>) – The unit for splitting your documents.
+- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage', 'token']</code>) – The unit for splitting your documents: `word`, `sentence`, `page`, `passage`, or `token`.
+  `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that block sizes
+  match an LLM's context budget.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_by="token"`.
 
 **Raises:**
 
 - <code>ValueError</code> – If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
   greater than or equal to the smallest value in `block_sizes`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the splitters by loading the sentence tokenizer or the tiktoken encoding they need.
 
 #### run
 
@@ -949,7 +963,8 @@ __init__(
     split_overlap: int = 0,
     split_unit: Literal["word", "char", "token"] = "word",
     separators: list[str] | None = None,
-    sentence_splitter_params: dict[str, Any] | None = None
+    sentence_splitter_params: dict[str, Any] | None = None,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -962,7 +977,7 @@ Initializes a RecursiveDocumentSplitter.
 - **split_overlap** (<code>int</code>) – The number of overlapping units (words, characters, or tokens, per
   `split_unit`) between consecutive chunks.
 - **split_unit** (<code>Literal['word', 'char', 'token']</code>) – The unit of the split_length parameter. It can be either "word", "char", or "token".
-  If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+  If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
   Special-token strings in document content are encoded as ordinary text.
 - **separators** (<code>list\[str\] | None</code>) – An optional list of separator strings to use for splitting the text. The string
   separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -973,6 +988,8 @@ Initializes a RecursiveDocumentSplitter.
   See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
   The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
   changes the rules the tokenizer uses to decide where a sentence ends.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_unit="token"`.
 
 **Raises:**
 
