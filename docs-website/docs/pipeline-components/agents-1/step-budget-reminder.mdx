@@ -22,10 +22,6 @@ description: "Use StepBudgetReminderHook to tell an Agent how many steps it has 
 
 </div>
 
-:::warning
-`StepBudgetReminderHook` is experimental. Its API can change in any release, without following the usual deprecation policy.
-:::
-
 ## Overview
 
 Before each of the Agent's last `remind_within_steps` LLM calls, `StepBudgetReminderHook` adds a reminder telling the model how many steps are left:
@@ -37,7 +33,7 @@ A step is one LLM call plus the tool calls it requests.
 
 The reminder is a user message wrapped in `<system-reminder>` tags and marked with `meta={"system_reminder": True}`. [Context compaction](./compaction.mdx) uses this marker so it never mistakes a reminder for the user's task.
 
-Reminders stay in the conversation and appear in the Agent's `messages` output. Earlier messages are left unchanged, so prompt caching keeps working.
+Reminders stay in the conversation and appear in the Agent's `messages` output.
 
 ## Usage
 

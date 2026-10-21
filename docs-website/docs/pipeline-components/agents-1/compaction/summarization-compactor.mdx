@@ -58,6 +58,8 @@ The compactor divides the conversation into two regions:
 - **History** starts after the leading system messages and ends before the latest real user message.
 - **Current task** starts with the latest real user message and continues to the end.
 
+A real user message is one that compaction didn't add and that isn't [marked as a system reminder](../compaction.mdx#messages-added-by-hooks).
+
 It always spends history before the current task. Each round uses the first applicable tier below and selects only enough of its oldest content to reach the target:
 
 1. **Historical turns:** Summarize complete historical user turns, oldest first.
