@@ -670,7 +670,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     """
 
     tool_calls = []
-    reasoning = None
+    reasonings = []
     logprobs: list[dict] = []
     refusals: list[str] = []
     for output in responses.output:
@@ -689,7 +689,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             reasoning_text = "\n".join(summary.text for summary in output.summary)
             if not reasoning_text:
                 reasoning_text = "\n".join(part.text for part in output.content or [] if part.type == "reasoning_text")
-            reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
+            reasonings.append(ReasoningContent(reasoning_text=reasoning_text, extra=extra))
 
         elif output.type == "function_call":
             try:
@@ -728,7 +728,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
-        reasoning=reasoning,
+        reasoning=reasonings,
         tool_calls=tool_calls,
         meta=meta,
     )
@@ -879,14 +879,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     text = "".join([chunk.content for chunk in chunks])
     logprobs = [chunk.meta["logprobs"] for chunk in chunks if chunk.meta.get("logprobs")]
 
-    # Gather reasoning information if present
-    reasoning_id = None
-    reasoning_text = ""
+    # Deltas carry item_id instead of id; output_index links both to the same item.
+    reasoning_chunks: dict[int, list[ReasoningContent]] = {}
     for chunk in chunks:
-        if chunk.reasoning:
-            reasoning_text += chunk.reasoning.reasoning_text
-            if chunk.reasoning.extra.get("id"):
-                reasoning_id = chunk.reasoning.extra.get("id")
+        if chunk.reasoning and chunk.index is not None:
+            reasoning_chunks.setdefault(chunk.index, []).append(chunk.reasoning)
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
@@ -955,24 +952,24 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         final_response["logprobs"] = logprobs
 
-    # Add reasoning content if id is available
-    # Note: the API expects a reasoning id even if there is no reasoning text
-    # function calls without reasoning ids are not supported by the API
-    reasoning = None
-    if reasoning_id:
-        # Preserve all extra fields from streaming chunks (e.g. encrypted_content) while ensuring id and
-        # type are present
+    reasonings = []
+    for index in sorted(reasoning_chunks):
+        item_chunks = reasoning_chunks[index]
         reasoning_extra = {}
-        for chunk in chunks:
-            if chunk.reasoning and chunk.reasoning.extra:
-                reasoning_extra.update(chunk.reasoning.extra)
-        # Ensure id and type are always set, but don't override if already present
-        reasoning_extra.setdefault("id", reasoning_id)
-        reasoning_extra.setdefault("type", "reasoning")
-        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=reasoning_extra)
+        for item_chunk in item_chunks:
+            reasoning_extra.update(item_chunk.extra)
+        reasoning_id = reasoning_extra.get("id") or reasoning_extra.get("item_id")
+        if reasoning_id:
+            reasoning_extra.update({"id": reasoning_id, "type": "reasoning"})
+            reasonings.append(
+                ReasoningContent(
+                    reasoning_text="".join(item_chunk.reasoning_text for item_chunk in item_chunks),
+                    extra=reasoning_extra,
+                )
+            )
 
     return ChatMessage.from_assistant(
-        text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasoning
+        text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasonings
     )
 
 

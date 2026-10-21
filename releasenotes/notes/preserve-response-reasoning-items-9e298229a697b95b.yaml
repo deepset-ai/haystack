@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Preserve all reasoning items returned by ``OpenAIResponsesChatGenerator`` in both
+    streaming and non-streaming responses, including each item's ID and encrypted content.
+    ``ChatMessage.from_assistant(reasoning=...)`` now also accepts a list of
+    ``ReasoningContent`` objects. Existing string and single-item inputs remain supported.

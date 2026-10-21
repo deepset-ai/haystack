@@ -510,7 +510,7 @@ class ChatMessage:
         name: str | None = None,
         tool_calls: list[ToolCall] | None = None,
         *,
-        reasoning: str | ReasoningContent | None = None,
+        reasoning: str | ReasoningContent | list[ReasoningContent] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the assistant.
@@ -519,9 +519,11 @@ class ChatMessage:
         :param meta: Additional metadata associated with the message.
         :param name: An optional name for the participant. This field is only supported by OpenAI.
         :param tool_calls: The Tool calls to include in the message.
-        :param reasoning: The reasoning content to include in the message.
+        :param reasoning: The reasoning content to include in the message, as a string, a `ReasoningContent`,
+            or a list of `ReasoningContent` objects in order.
         :returns: A new ChatMessage instance.
-        :raises TypeError: If `reasoning` is not a string or ReasoningContent object.
+        :raises TypeError: If `reasoning` is not a string, a `ReasoningContent`,
+            or a list of `ReasoningContent` objects.
         """
         content: list[ChatMessageContentT] = []
         if reasoning:
@@ -529,8 +531,13 @@ class ChatMessage:
                 content.append(ReasoningContent(reasoning_text=reasoning))
             elif isinstance(reasoning, ReasoningContent):
                 content.append(reasoning)
+            elif isinstance(reasoning, list) and all(isinstance(item, ReasoningContent) for item in reasoning):
+                content.extend(reasoning)
             else:
-                raise TypeError(f"reasoning must be a string or a ReasoningContent object, got {type(reasoning)}")
+                raise TypeError(
+                    "reasoning must be a string, a ReasoningContent object, or a list of ReasoningContent objects, "
+                    f"got {type(reasoning)}"
+                )
         if text is not None:
             content.append(TextContent(text=text))
         if tool_calls:

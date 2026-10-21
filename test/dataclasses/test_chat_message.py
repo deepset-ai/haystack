@@ -487,6 +487,33 @@ class TestChatMessage:
         assert not message.files
         assert not message.file
 
+    @pytest.mark.parametrize(
+        "reasonings",
+        [
+            [],
+            [
+                ReasoningContent(reasoning_text="first", extra={"id": "rs_1"}),
+                ReasoningContent(reasoning_text="", extra={"id": "rs_2", "encrypted_content": "encrypted"}),
+            ],
+        ],
+    )
+    def test_from_assistant_with_reasoning_list(self, reasonings):
+        tool_call = ToolCall(id="fc_1", tool_name="weather", arguments={})
+
+        message = ChatMessage.from_assistant(text="answer", reasoning=reasonings, tool_calls=[tool_call])
+
+        assert message.reasonings == reasonings
+        assert message.reasoning == (reasonings[0] if reasonings else None)
+        assert message._content == [*reasonings, TextContent(text="answer"), tool_call]
+        assert ChatMessage.from_dict(message.to_dict()) == message
+
+    @pytest.mark.parametrize(
+        "reasoning", [["not a reasoning item"], [ReasoningContent(reasoning_text="valid"), "not a reasoning item"]]
+    )
+    def test_from_assistant_rejects_invalid_reasoning_list(self, reasoning):
+        with pytest.raises(TypeError, match="reasoning must be .*list of ReasoningContent"):
+            ChatMessage.from_assistant(reasoning=reasoning)
+
     def test_from_assistant_with_invalid_reasoning(self):
         with pytest.raises(TypeError):
             ChatMessage.from_assistant(text="text", reasoning=123)  # type: ignore[arg-type]
