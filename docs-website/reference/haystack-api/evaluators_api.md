@@ -160,7 +160,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -459,6 +460,7 @@ Create a DocumentNDCGEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### to_dict
 
@@ -624,6 +626,7 @@ Create a DocumentRecallEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### run
 
@@ -738,7 +741,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -879,7 +883,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   `outputs` parameters.
   Each example is a dictionary with keys "inputs" and "outputs"
   They contain the input and output as dictionaries respectively.
-- **raise_on_failure** (<code>bool</code>) – If True, the component will raise an exception on an unsuccessful API call.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,

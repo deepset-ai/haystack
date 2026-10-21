@@ -8,7 +8,6 @@ from typing import Any, get_args, get_origin
 from pydantic import Field, TypeAdapter, create_model
 
 from haystack import logging
-from haystack.components.agents.state.state import State
 from haystack.core.component import Component
 from haystack.core.serialization import component_to_dict, generate_qualified_class_name
 from haystack.tools import Tool
@@ -17,6 +16,7 @@ from haystack.tools.from_function import _remove_title_from_schema
 from haystack.tools.parameters_schema_utils import (
     _contains_callable_type,
     _get_component_param_descriptions,
+    _is_state_annotation,
     _resolve_type,
     _unwrap_optional,
 )
@@ -361,7 +361,7 @@ class ComponentTool(Tool):
                 continue
 
             # Skip State-typed parameters - Agent tool execution injects them at runtime
-            if _unwrap_optional(input_type) is State:
+            if _is_state_annotation(input_type):
                 continue
 
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")

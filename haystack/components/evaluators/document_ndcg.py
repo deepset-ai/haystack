@@ -6,6 +6,7 @@ from math import log2
 from typing import Any
 
 from haystack import Document, component, default_to_dict
+from haystack.utils.misc import _make_metadata_value_hashable
 
 
 @component
@@ -45,6 +46,7 @@ class DocumentNDCGEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
         """
         self.document_comparison_field = document_comparison_field
 
@@ -63,7 +65,7 @@ class DocumentNDCGEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."

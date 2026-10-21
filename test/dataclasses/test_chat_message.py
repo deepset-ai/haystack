@@ -35,7 +35,31 @@ class TestChatRole:
             ChatRole.from_str("function")
 
 
-class TestContentParts:
+class TestTextContent:
+    def test_text_content_init(self):
+        tc = TextContent(text="Hello")
+        assert tc.text == "Hello"
+
+    def test_text_content_to_dict(self):
+        tc = TextContent(text="Hello")
+        assert tc.to_dict() == {"text": "Hello"}
+
+    def test_text_content_from_dict(self):
+        tc = TextContent.from_dict({"text": "Hello"})
+        assert tc.text == "Hello"
+
+    def test_text_content_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Warning)
+            TextContent(text="hello")
+
+    def test_text_content_warn_on_inplace_mutation(self):
+        tc = TextContent(text="hello")
+        with pytest.warns(Warning, match="dataclasses.replace"):
+            tc.text = "world"
+
+
+class TestToolCall:
     def test_tool_call_init(self):
         tc = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
         assert tc.id == "123"
@@ -55,6 +79,18 @@ class TestContentParts:
         assert tc.arguments == {"a": 1}
         assert tc.extra == {"call_id": "123"}
 
+    def test_tool_call_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Warning)
+            ToolCall(tool_name="t", arguments={"a": 1})
+
+    def test_tool_call_warn_on_inplace_mutation(self):
+        tc = ToolCall(tool_name="t", arguments={"a": 1})
+        with pytest.warns(Warning, match="dataclasses.replace"):
+            tc.tool_name = "other"
+
+
+class TestToolCallResult:
     def test_tool_call_result_init(self):
         tcr = ToolCallResult(
             result="result", origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}), error=True
@@ -117,6 +153,15 @@ class TestContentParts:
             "error": False,
         }
 
+    @pytest.mark.parametrize("invalid_result", [123, ["invalid"]])
+    def test_tool_call_result_to_dict_with_invalid_result(self, invalid_result):
+        result = ToolCallResult(result=invalid_result, origin=ToolCall(tool_name="search", arguments={}), error=False)
+        with pytest.raises(
+            ValueError,
+            match="^ToolCallResult result must be a string or a sequence of TextContent, ImageContent, or FileContent$",
+        ):
+            result.to_dict()
+
     def test_tool_call_result_from_dict(self):
         tcr = ToolCallResult.from_dict(
             {"result": "result", "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}, "error": True}
@@ -166,18 +211,46 @@ class TestContentParts:
         assert result.result[2].base64_data == base64_pdf_string
         assert result.result[2].filename == "guide.pdf"
 
-    def test_text_content_init(self):
-        tc = TextContent(text="Hello")
-        assert tc.text == "Hello"
+    def test_tool_call_result_to_trace_dict_string_result(self):
+        tc = ToolCall(id="call_1", tool_name="calc", arguments={})
+        tcr = ToolCallResult(result="42", origin=tc, error=False)
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["result"] == "42"
 
-    def test_text_content_to_dict(self):
-        tc = TextContent(text="Hello")
-        assert tc.to_dict() == {"text": "Hello"}
+    @pytest.mark.parametrize("container", [list, tuple])
+    def test_tool_call_result_to_trace_dict(self, container, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={})
+        image = ImageContent(base64_image=base64_image_string)
+        file_part = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        text_part = TextContent(text="Summary")
+        tcr = ToolCallResult(result=container([text_part, image, file_part]), origin=tc, error=False)
 
-    def test_text_content_from_dict(self):
-        tc = TextContent.from_dict({"text": "Hello"})
-        assert tc.text == "Hello"
+        trace_dict = tcr._to_trace_dict()
+        assert trace_dict["origin"] == tc.to_dict()
+        assert trace_dict["error"] is False
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert trace_dict["result"][0] == {"text": "Summary"}
+        assert trace_dict["result"][1]["image"]["base64_image"] == expected_img
+        assert trace_dict["result"][2]["file"]["base64_data"] == expected_pdf
 
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
+
+    def test_tool_call_result_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Warning)
+            ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
+
+    def test_tool_call_result_warn_on_inplace_mutation(self):
+        tcr = ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
+        with pytest.warns(Warning, match="dataclasses.replace"):
+            tcr.error = True
+
+
+class TestReasoningContent:
     def test_reasoning_content_init(self):
         rc = ReasoningContent(reasoning_text="Let me think about it...")
 
@@ -197,36 +270,6 @@ class TestContentParts:
         assert rc.reasoning_text == "Let me think about it..."
         assert rc.extra == {"key": "value"}
 
-    def test_text_content_no_warning_on_init(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Warning)
-            TextContent(text="hello")
-
-    def test_text_content_warn_on_inplace_mutation(self):
-        tc = TextContent(text="hello")
-        with pytest.warns(Warning, match="dataclasses.replace"):
-            tc.text = "world"
-
-    def test_tool_call_no_warning_on_init(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Warning)
-            ToolCall(tool_name="t", arguments={"a": 1})
-
-    def test_tool_call_warn_on_inplace_mutation(self):
-        tc = ToolCall(tool_name="t", arguments={"a": 1})
-        with pytest.warns(Warning, match="dataclasses.replace"):
-            tc.tool_name = "other"
-
-    def test_tool_call_result_no_warning_on_init(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Warning)
-            ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
-
-    def test_tool_call_result_warn_on_inplace_mutation(self):
-        tcr = ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
-        with pytest.warns(Warning, match="dataclasses.replace"):
-            tcr.error = True
-
     def test_reasoning_content_no_warning_on_init(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error", Warning)
@@ -239,6 +282,119 @@ class TestContentParts:
 
 
 class TestChatMessage:
+    def test_from_user_with_valid_content(self):
+        text = "I have a question."
+        message = ChatMessage.from_user(text=text)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [TextContent(text)]
+        assert message.name is None
+
+        assert message.text == text
+        assert message.texts == [text]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
+        assert not message.files
+        assert not message.file
+
+    def test_from_user_with_name(self):
+        text = "I have a question."
+        message = ChatMessage.from_user(text=text, name="John")
+
+        assert message.name == "John"
+        assert message.role == ChatRole.USER
+        assert message._content == [TextContent(text)]
+
+    def test_from_user_empty_text(self):
+        message = ChatMessage.from_user(text="")
+        assert message.role == ChatRole.USER
+        assert message._content == [TextContent(text="")]
+        assert message.text == ""
+        assert message.texts == [""]
+
+    def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
+        content_parts: list[TextContent | ImageContent | FileContent | str] = [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == content_parts
+        assert message.image == content_parts[1]
+        assert message.file == content_parts[2]
+
+        content_parts = [
+            "text",
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
+
+        content_parts = [ImageContent(base64_image=base64_image_string)]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [ImageContent(base64_image=base64_image_string)]
+
+        content_parts = [FileContent(base64_data=base64_pdf_string)]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [FileContent(base64_data=base64_pdf_string)]
+
+    def test_from_user_fails_if_no_text_or_content_parts(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_user()
+
+    def test_from_user_fails_if_text_and_content_parts(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_user(text="text", content_parts=[TextContent(text="text")])
+
+    def test_from_user_with_content_parts_fails_unsupported_parts(self):
+        with pytest.raises(TypeError):
+            ChatMessage.from_user(
+                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]  # type: ignore[list-item]
+            )
+
+    def test_from_user_with_content_parts_fails_with_empty_parts(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_user(content_parts=[])
+
+    def test_from_system_with_valid_content(self):
+        text = "I have a question."
+        message = ChatMessage.from_system(text=text)
+
+        assert message.role == ChatRole.SYSTEM
+        assert message._content == [TextContent(text)]
+
+        assert message.text == text
+        assert message.texts == [text]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
+
     def test_from_assistant_with_text(self):
         text = "Hello, how can I assist you?"
         message = ChatMessage.from_assistant(text)
@@ -335,117 +491,6 @@ class TestChatMessage:
         with pytest.raises(TypeError):
             ChatMessage.from_assistant(text="text", reasoning=123)  # type: ignore[arg-type]
 
-    def test_from_user_with_valid_content(self):
-        text = "I have a question."
-        message = ChatMessage.from_user(text=text)
-
-        assert message.role == ChatRole.USER
-        assert message._content == [TextContent(text)]
-        assert message.name is None
-
-        assert message.text == text
-        assert message.texts == [text]
-
-        assert not message.tool_calls
-        assert not message.tool_call
-        assert not message.tool_call_results
-        assert not message.tool_call_result
-        assert not message.images
-        assert not message.image
-        assert not message.reasonings
-        assert not message.reasoning
-        assert not message.files
-        assert not message.file
-
-    def test_from_user_with_name(self):
-        text = "I have a question."
-        message = ChatMessage.from_user(text=text, name="John")
-
-        assert message.name == "John"
-        assert message.role == ChatRole.USER
-        assert message._content == [TextContent(text)]
-
-    def test_from_user_fails_if_no_text_or_content_parts(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_user()
-
-    def test_from_user_fails_if_text_and_content_parts(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_user(text="text", content_parts=[TextContent(text="text")])
-
-    def test_from_user_empty_text(self):
-        message = ChatMessage.from_user(text="")
-        assert message.role == ChatRole.USER
-        assert message._content == [TextContent(text="")]
-        assert message.text == ""
-        assert message.texts == [""]
-
-    def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
-        content_parts: list[TextContent | ImageContent | FileContent | str] = [
-            TextContent(text="text"),
-            ImageContent(base64_image=base64_image_string),
-            FileContent(base64_data=base64_pdf_string),
-        ]
-        message = ChatMessage.from_user(content_parts=content_parts)
-
-        assert message.role == ChatRole.USER
-        assert message._content == content_parts
-
-        content_parts = [
-            "text",
-            ImageContent(base64_image=base64_image_string),
-            FileContent(base64_data=base64_pdf_string),
-        ]
-        message = ChatMessage.from_user(content_parts=content_parts)
-
-        assert message.role == ChatRole.USER
-        assert message._content == [
-            TextContent(text="text"),
-            ImageContent(base64_image=base64_image_string),
-            FileContent(base64_data=base64_pdf_string),
-        ]
-
-        content_parts = [ImageContent(base64_image=base64_image_string)]
-        message = ChatMessage.from_user(content_parts=content_parts)
-
-        assert message.role == ChatRole.USER
-        assert message._content == [ImageContent(base64_image=base64_image_string)]
-
-        content_parts = [FileContent(base64_data=base64_pdf_string)]
-        message = ChatMessage.from_user(content_parts=content_parts)
-
-        assert message.role == ChatRole.USER
-        assert message._content == [FileContent(base64_data=base64_pdf_string)]
-
-    def test_from_user_with_content_parts_fails_unsupported_parts(self):
-        with pytest.raises(TypeError):
-            ChatMessage.from_user(
-                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]  # type: ignore[list-item]
-            )
-
-    def test_from_user_with_content_parts_fails_with_empty_parts(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_user(content_parts=[])
-
-    def test_from_system_with_valid_content(self):
-        text = "I have a question."
-        message = ChatMessage.from_system(text=text)
-
-        assert message.role == ChatRole.SYSTEM
-        assert message._content == [TextContent(text)]
-
-        assert message.text == text
-        assert message.texts == [text]
-
-        assert not message.tool_calls
-        assert not message.tool_call
-        assert not message.tool_call_results
-        assert not message.tool_call_result
-        assert not message.images
-        assert not message.image
-        assert not message.reasonings
-        assert not message.reasoning
-
     def test_from_tool_with_valid_content(self):
         tool_result = "Tool result"
         origin = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
@@ -516,6 +561,16 @@ class TestChatMessage:
         assert message.tool_calls == [content[1]]
         assert message.tool_call == content[1]
 
+    def test_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Warning)
+            ChatMessage.from_user("hello")
+
+    def test_warn_on_inplace_mutation(self):
+        msg = ChatMessage.from_user("hello")
+        with pytest.warns(Warning, match="dataclasses.replace"):
+            msg._meta = {"new": "meta"}
+
     def test_from_function_class_method_removed(self):
         with pytest.raises(AttributeError):
             ChatMessage.from_function("Result of function invocation", "my_function")  # type: ignore[attr-defined]
@@ -528,16 +583,6 @@ class TestChatMessage:
     def test_chat_message_init_parameters_removed(self):
         with pytest.raises(TypeError):
             ChatMessage(role="irrelevant", content="This is a message")  # type: ignore[call-arg]
-
-    def test_no_warning_on_init(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Warning)
-            ChatMessage.from_user("hello")
-
-    def test_warn_on_inplace_mutation(self):
-        msg = ChatMessage.from_user("hello")
-        with pytest.warns(Warning, match="dataclasses.replace"):
-            msg._meta = {"new": "meta"}
 
 
 class TestChatMessageSerde:
@@ -601,6 +646,15 @@ class TestChatMessageSerde:
         deserialized_message = ChatMessage.from_dict(serialized_message)
         assert deserialized_message == message
 
+    def test_from_dict_some_fields_missing(self):
+        serialized_msg = {"role": "user", "content": [{"text": "This is a message"}]}
+        msg = ChatMessage.from_dict(serialized_msg)
+
+        assert msg.role == ChatRole.USER
+        assert msg._content == [TextContent(text="This is a message")]
+        assert msg.name is None
+        assert msg.meta == {}
+
     def test_to_dict_with_invalid_content_type(self):
         text_content = TextContent(text="Hello")
         invalid_content = "invalid"
@@ -609,6 +663,10 @@ class TestChatMessageSerde:
 
         with pytest.raises(TypeError):
             message.to_dict()
+
+    def test_from_dict_with_non_sequence_content(self):
+        with pytest.raises(TypeError, match="^Unsupported content type in serialized ChatMessage: `123`$"):
+            ChatMessage.from_dict({"role": "user", "content": 123})
 
     def test_from_dict_with_invalid_content_type(self):
         data = {"role": "assistant", "content": [{"text": "Hello"}, "invalid"]}
@@ -624,6 +682,11 @@ class TestChatMessageSerde:
 
         with pytest.raises(ValueError, match=r"The `role` field is required"):
             ChatMessage.from_dict(data)
+
+    def test_from_dict_missing_content_field(self):
+        serialized_msg = {"role": "user", "name": "some_name", "meta": {"some": "info"}}
+        with pytest.raises(ValueError):
+            ChatMessage.from_dict(serialized_msg)
 
     def test_from_dict_with_pre29_format(self):
         """
@@ -680,20 +743,8 @@ class TestChatMessageSerde:
         assert msg.name is None
         assert msg.meta == {}
 
-    def test_from_dict_some_fields_missing(self):
-        serialized_msg = {"role": "user", "content": [{"text": "This is a message"}]}
-        msg = ChatMessage.from_dict(serialized_msg)
 
-        assert msg.role == ChatRole.USER
-        assert msg._content == [TextContent(text="This is a message")]
-        assert msg.name is None
-        assert msg.meta == {}
-
-    def test_from_dict_missing_content_field(self):
-        serialized_msg = {"role": "user", "name": "some_name", "meta": {"some": "info"}}
-        with pytest.raises(ValueError):
-            ChatMessage.from_dict(serialized_msg)
-
+class TestChatMessageTracing:
     def test_to_trace_dict(self):
         message = ChatMessage.from_user(text="This is a message", name="John", meta={"foo": "bar"})
         trace_dict = message._to_trace_dict()
@@ -757,6 +808,29 @@ class TestChatMessageSerde:
             "name": None,
             "meta": {},
         }
+
+    def test_to_trace_dict_with_tool_call_result(self, base64_image_string, base64_pdf_string):
+        tc = ToolCall(id="call_1", tool_name="fetch_media", arguments={"item": "report"})
+        image = ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})
+        file_part = FileContent(
+            base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf", extra={"foo": "bar"}
+        )
+        text_part = TextContent(text="Report generated successfully.")
+        message = ChatMessage.from_tool(tool_result=[text_part, image, file_part], origin=tc)
+
+        trace_dict = message._to_trace_dict()
+
+        tool_results = trace_dict["content"][0]["tool_call_result"]["result"]
+        assert tool_results[0] == {"text": "Report generated successfully."}
+        expected_img = f"Base64 string ({len(base64_image_string)} characters)"
+        expected_pdf = f"Base64 string ({len(base64_pdf_string)} characters)"
+        assert tool_results[1]["image"]["base64_image"] == expected_img
+        assert tool_results[2]["file"]["base64_data"] == expected_pdf
+
+        # Assert raw base64 data is not present anywhere in the trace dict
+        trace_str = str(trace_dict)
+        assert base64_image_string not in trace_str
+        assert base64_pdf_string not in trace_str
 
 
 class MessageEnvelope(BaseModel):
@@ -839,42 +913,29 @@ class TestFromDictPydanticDump:
 
 
 class TestToOpenaiDictFormat:
-    def test_to_openai_dict_format_system_message(self):
-        message = ChatMessage.from_system("You are good assistant")
-        assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
-
     def test_to_openai_dict_format_user_message(self):
         message = ChatMessage.from_user("I have a question")
         assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question"}
 
-    def test_to_openai_dict_format_multimodal_user_message(self, base64_image_string):
+    @pytest.mark.parametrize("detail, expected_detail", [("auto", {"detail": "auto"}), (None, {})])
+    def test_to_openai_dict_format_multimodal_user_message(self, base64_image_string, detail, expected_detail):
+        image_url = {"url": f"data:image/png;base64,{base64_image_string}", **expected_detail}
         message = ChatMessage.from_user(
             content_parts=[
                 TextContent("I have a question"),
-                ImageContent(base64_image=base64_image_string, detail="auto"),
+                ImageContent(base64_image=base64_image_string, detail=detail),
             ]
         )
         assert message.to_openai_dict_format() == {
             "role": "user",
-            "content": [
-                {"type": "text", "text": "I have a question"},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
-                },
-            ],
+            "content": [{"type": "text", "text": "I have a question"}, {"type": "image_url", "image_url": image_url}],
         }
 
         # image content only should be supported as well
-        message = ChatMessage.from_user(content_parts=[ImageContent(base64_image=base64_image_string, detail="auto")])
+        message = ChatMessage.from_user(content_parts=[ImageContent(base64_image=base64_image_string, detail=detail)])
         assert message.to_openai_dict_format() == {
             "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
-                }
-            ],
+            "content": [{"type": "image_url", "image_url": image_url}],
         }
 
     def test_to_openai_dict_format_user_message_with_file_content(self, base64_pdf_string):
@@ -913,6 +974,37 @@ class TestToOpenaiDictFormat:
             ],
         }
 
+    def test_to_openai_dict_format_system_message(self):
+        message = ChatMessage.from_system("You are good assistant")
+        assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
+
+    def test_to_openai_dict_format_assistant_message(self):
+        message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})]
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "assistant",
+            "tool_calls": [
+                {"id": "123", "type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}
+            ],
+        }
+
+    def test_to_openai_dict_format_contentless_assistant_message(self):
+        # A Chat Generator that discards a malformed tool call returns a reply with no content parts. The API rejects
+        # an assistant message with no `content` key, so it is sent with empty content, and it round-trips.
+        message = ChatMessage.from_assistant(text=None)
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+        assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
+
+    def test_to_openai_dict_format_reasoning_only_assistant_message(self):
+        # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the
+        # same as a reply carrying reasoning alongside text.
+        message = ChatMessage.from_assistant(reasoning="only reasoning")
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+
     def test_to_openai_dict_format_assistant_message_with_refusal(self, caplog):
         message = ChatMessage.from_assistant(meta={"refusal": "I can't help with that."})
         assert message.to_openai_dict_format() == {
@@ -943,20 +1035,6 @@ class TestToOpenaiDictFormat:
         message = ChatMessage.from_assistant(text="Hi", meta={"refusal": refusal})
         assert message.to_openai_dict_format() == {"role": "assistant", "content": "Hi"}
 
-    def test_to_openai_dict_format_assistant_message(self):
-        message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
-        assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
-
-        message = ChatMessage.from_assistant(
-            tool_calls=[ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})]
-        )
-        assert message.to_openai_dict_format() == {
-            "role": "assistant",
-            "tool_calls": [
-                {"id": "123", "type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}
-            ],
-        }
-
     def test_to_openai_dict_format_tool_message(self):
         tool_result = json.dumps({"weather": "sunny", "temperature": "25"})
         message = ChatMessage.from_tool(
@@ -975,6 +1053,17 @@ class TestToOpenaiDictFormat:
             "tool_call_id": "123",
         }
 
+    def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
+        tool_result: Sequence[TextContent | ImageContent] = [
+            TextContent(text="first result"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+        ]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
+        )
+        with pytest.raises(ValueError):
+            message.to_openai_dict_format()
+
     def test_to_openai_dict_format_with_name(self):
         message = ChatMessage.from_user(text="I have a question", name="John")
         assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question", "name": "John"}
@@ -985,38 +1074,6 @@ class TestToOpenaiDictFormat:
             "content": "I have an answer",
             "name": "Assistant1",
         }
-
-    def test_to_openai_dict_format_contentless_assistant_message(self):
-        # A Chat Generator that discards a malformed tool call returns a reply with no content parts. The API rejects
-        # an assistant message with no `content` key, so it is sent with empty content, and it round-trips.
-        message = ChatMessage.from_assistant(text=None)
-        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
-        assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
-
-    def test_to_openai_dict_format_reasoning_only_assistant_message(self):
-        # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the
-        # same as a reply carrying reasoning alongside text.
-        message = ChatMessage.from_assistant(reasoning="only reasoning")
-        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
-
-    def test_to_openai_dict_format_invalid(self):
-        message = ChatMessage(_role=ChatRole.USER, _content=[])
-        with pytest.raises(ValueError):
-            message.to_openai_dict_format()
-
-        message = ChatMessage(
-            _role=ChatRole.USER,
-            _content=[
-                TextContent(text="I have an answer"),
-                ToolCallResult(
-                    result="I have another answer",
-                    origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}),
-                    error=False,
-                ),
-            ],
-        )
-        with pytest.raises(ValueError):
-            message.to_openai_dict_format()
 
     def test_to_openai_dict_format_require_tool_call_ids(self):
         tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
@@ -1042,15 +1099,31 @@ class TestToOpenaiDictFormat:
         openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
         assert openai_msg == {"role": "tool", "content": "result"}
 
-    def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
-        tool_result: Sequence[TextContent | ImageContent] = [
-            TextContent(text="first result"),
-            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
-        ]
-        message = ChatMessage.from_tool(
-            tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
+    def test_to_openai_dict_format_invalid(self):
+        message = ChatMessage(_role=ChatRole.USER, _content=[])
+        with pytest.raises(ValueError):
+            message.to_openai_dict_format()
+
+        message = ChatMessage(
+            _role=ChatRole.USER,
+            _content=[
+                TextContent(text="I have an answer"),
+                ToolCallResult(
+                    result="I have another answer",
+                    origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}),
+                    error=False,
+                ),
+            ],
         )
         with pytest.raises(ValueError):
+            message.to_openai_dict_format()
+
+    @pytest.mark.parametrize("role", [ChatRole.USER, ChatRole.SYSTEM, ChatRole.TOOL])
+    def test_to_openai_dict_format_rejects_tool_calls_in_non_assistant_messages(self, role):
+        message = ChatMessage(
+            _role=role, _content=[TextContent(text="Hello"), ToolCall(tool_name="search", arguments={}, id="call_1")]
+        )
+        with pytest.raises(ValueError, match="^Tool calls are only supported in assistant messages\\.$"):
             message.to_openai_dict_format()
 
 
@@ -1061,12 +1134,6 @@ class TestFromOpenaiDictFormat:
         assert message.role.value == "user"
         assert message.text == "Hello, how are you?"
         assert message.name == "John"
-
-    def test_from_openai_dict_format_system_message(self):
-        openai_msg = {"role": "system", "content": "You are a helpful assistant"}
-        message = ChatMessage.from_openai_dict_format(openai_msg)
-        assert message.role.value == "system"
-        assert message.text == "You are a helpful assistant"
 
     def test_from_openai_dict_format_user_message_with_text_parts(self):
         openai_msg = {
@@ -1112,6 +1179,17 @@ class TestFromOpenaiDictFormat:
             FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
         ]
 
+    def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Compare this image and document"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="high"),
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
+            ]
+        )
+        round_tripped = ChatMessage.from_openai_dict_format(message.to_openai_dict_format())
+        assert round_tripped == message
+
     @pytest.mark.parametrize(
         "part, match",
         [
@@ -1134,6 +1212,12 @@ class TestFromOpenaiDictFormat:
     def test_from_openai_dict_format_user_message_with_unsupported_parts(self, part, match):
         with pytest.raises(ValueError, match=match):
             ChatMessage.from_openai_dict_format({"role": "user", "content": [part]})
+
+    def test_from_openai_dict_format_system_message(self):
+        openai_msg = {"role": "system", "content": "You are a helpful assistant"}
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "system"
+        assert message.text == "You are a helpful assistant"
 
     @pytest.mark.parametrize(
         "role, expected_role", [("system", "system"), ("developer", "system"), ("assistant", "assistant")]
@@ -1159,72 +1243,6 @@ class TestFromOpenaiDictFormat:
     def test_from_openai_dict_format_system_and_assistant_messages_with_unsupported_parts(self, role, part):
         with pytest.raises(ValueError, match=f"Unsupported content part in {role} message"):
             ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
-
-    @pytest.mark.parametrize(
-        "openai_msg, expected_text",
-        [
-            ({"role": "assistant", "content": [{"type": "refusal", "refusal": "I can't help with that."}]}, None),
-            ({"role": "assistant", "content": None, "refusal": "I can't help with that."}, None),
-            (
-                {"role": "assistant", "content": "Here is a summary.", "refusal": "I can't help with that."},
-                "Here is a summary.",
-            ),
-            (
-                {
-                    "role": "assistant",
-                    "content": [{"type": "refusal", "refusal": "I can't help with that."}],
-                    "refusal": "I can't help with that.",
-                },
-                None,
-            ),
-        ],
-    )
-    def test_from_openai_dict_format_assistant_message_with_refusal(self, openai_msg, expected_text):
-        message = ChatMessage.from_openai_dict_format(openai_msg)
-        assert message.text == expected_text
-        assert message.meta == {"refusal": "I can't help with that."}
-        assert ChatMessage.from_openai_dict_format(message.to_openai_dict_format()) == message
-
-    def test_from_openai_dict_format_assistant_message_with_non_string_refusal(self):
-        with pytest.raises(ValueError, match="The `refusal` field must be a string, got dict"):
-            ChatMessage.from_openai_dict_format({"role": "assistant", "content": "Hi", "refusal": {"text": "no"}})
-
-    @pytest.mark.parametrize(
-        "role, part, match",
-        [
-            (
-                "system",
-                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 1000}},
-                "Unsupported content part in system message",
-            ),
-            (
-                "user",
-                {"type": "file", "file": {"file_data": "data:application/pdf," + "A" * 1000}},
-                "Only base64 data URLs",
-            ),
-            (
-                "user",
-                {"type": "input_audio", "input_audio": {"data": "A" * 1000, "format": "wav"}},
-                "Supported part types",
-            ),
-        ],
-    )
-    def test_from_openai_dict_format_error_messages_truncate_payloads(self, role, part, match):
-        with pytest.raises(ValueError, match=match) as exc_info:
-            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
-        assert "A" * 1000 not in str(exc_info.value)
-        assert len(str(exc_info.value)) < 1000
-
-    def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
-        message = ChatMessage.from_user(
-            content_parts=[
-                TextContent(text="Compare this image and document"),
-                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="high"),
-                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
-            ]
-        )
-        round_tripped = ChatMessage.from_openai_dict_format(message.to_openai_dict_format())
-        assert round_tripped == message
 
     def test_from_openai_dict_format_assistant_message_with_content(self):
         openai_msg = {"role": "assistant", "content": "I can help with that"}
@@ -1293,6 +1311,44 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(json.JSONDecodeError):
             ChatMessage.from_openai_dict_format(openai_msg)
 
+    def test_from_openai_dict_format_invalid_tool_calls(self):
+        openai_msg = {"role": "assistant", "tool_calls": [{"invalid": "format"}]}
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(openai_msg)
+
+    @pytest.mark.parametrize(
+        "openai_msg, expected_text",
+        [
+            ({"role": "assistant", "content": [{"type": "refusal", "refusal": "I can't help with that."}]}, None),
+            ({"role": "assistant", "content": None, "refusal": "I can't help with that."}, None),
+            (
+                {"role": "assistant", "content": "Here is a summary.", "refusal": "I can't help with that."},
+                "Here is a summary.",
+            ),
+            (
+                {
+                    "role": "assistant",
+                    "content": [{"type": "refusal", "refusal": "I can't help with that."}],
+                    "refusal": "I can't help with that.",
+                },
+                None,
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_assistant_message_with_refusal(self, openai_msg, expected_text):
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.text == expected_text
+        assert message.meta == {"refusal": "I can't help with that."}
+        assert ChatMessage.from_openai_dict_format(message.to_openai_dict_format()) == message
+
+    def test_from_openai_dict_format_assistant_message_with_non_string_refusal(self):
+        with pytest.raises(ValueError, match="The `refusal` field must be a string, got dict"):
+            ChatMessage.from_openai_dict_format({"role": "assistant", "content": "Hi", "refusal": {"text": "no"}})
+
+    def test_from_openai_dict_format_assistant_missing_content_and_tool_calls(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
+
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
@@ -1321,33 +1377,6 @@ class TestFromOpenaiDictFormat:
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id is None
 
-    def test_from_openai_dict_format_missing_role(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"content": "test"})
-
-    def test_from_openai_dict_format_missing_content(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"role": "user"})
-
-    def test_from_openai_dict_format_invalid_tool_calls(self):
-        openai_msg = {"role": "assistant", "tool_calls": [{"invalid": "format"}]}
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format(openai_msg)
-
-    def test_from_openai_dict_format_unsupported_role(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"role": "invalid", "content": "test"})
-
-    def test_from_openai_dict_format_assistant_missing_content_and_tool_calls(self):
-        with pytest.raises(ValueError):
-            ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
-
-    @pytest.mark.parametrize("role", ["user", "system", "developer", "assistant", "tool"])
-    def test_from_openai_dict_format_content_that_is_neither_string_nor_list(self, role):
-        openai_msg = {"role": role, "content": {"type": "text", "text": "a single part not wrapped in a list"}}
-        with pytest.raises(ValueError, match="must be a string or a list of content parts, got dict"):
-            ChatMessage.from_openai_dict_format(openai_msg)
-
     def test_from_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
         openai_msg = {
             "role": "tool",
@@ -1367,3 +1396,47 @@ class TestFromOpenaiDictFormat:
         }
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format(openai_msg)
+
+    def test_from_openai_dict_format_missing_role(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"content": "test"})
+
+    def test_from_openai_dict_format_unsupported_role(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"role": "invalid", "content": "test"})
+
+    def test_from_openai_dict_format_missing_content(self):
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format({"role": "user"})
+
+    @pytest.mark.parametrize("role", ["user", "system", "developer", "assistant", "tool"])
+    def test_from_openai_dict_format_content_that_is_neither_string_nor_list(self, role):
+        openai_msg = {"role": role, "content": {"type": "text", "text": "a single part not wrapped in a list"}}
+        with pytest.raises(ValueError, match="must be a string or a list of content parts, got dict"):
+            ChatMessage.from_openai_dict_format(openai_msg)
+
+    @pytest.mark.parametrize(
+        "role, part, match",
+        [
+            (
+                "system",
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 1000}},
+                "Unsupported content part in system message",
+            ),
+            (
+                "user",
+                {"type": "file", "file": {"file_data": "data:application/pdf," + "A" * 1000}},
+                "Only base64 data URLs",
+            ),
+            (
+                "user",
+                {"type": "input_audio", "input_audio": {"data": "A" * 1000, "format": "wav"}},
+                "Supported part types",
+            ),
+        ],
+    )
+    def test_from_openai_dict_format_error_messages_truncate_payloads(self, role, part, match):
+        with pytest.raises(ValueError, match=match) as exc_info:
+            ChatMessage.from_openai_dict_format({"role": role, "content": [part]})
+        assert "A" * 1000 not in str(exc_info.value)
+        assert len(str(exc_info.value)) < 1000

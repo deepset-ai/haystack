@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import io
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -199,6 +200,12 @@ class PythonCodeSplitter:
 
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
+        # Removing the only statement from a function or class would leave an
+        # invalid suite. Keep the generated chunk syntactically valid.
+        if len(body) == 1:
+            docstring_line = source_lines[ds_start - 1]
+            indentation = docstring_line[: len(docstring_line) - len(docstring_line.lstrip())]
+            after.insert(0, f"{indentation}pass\n")
         return "".join(before + after), docstring
 
     def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
@@ -315,7 +322,8 @@ class PythonCodeSplitter:
     def _extract_units(self, source: str) -> list[_CodeUnit]:
         """Parse ``source`` and produce the ordered list of syntactic split units."""
         tree = ast.parse(source)
-        source_lines = source.splitlines(keepends=True)
+        # Match ast line numbers: split only on \n / \r\n / \r, not form feed etc.
+        source_lines = io.StringIO(source, newline="").readlines()
         total_lines = len(source_lines)
 
         units: list[_CodeUnit] = []

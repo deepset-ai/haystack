@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
 import io
 import os
+from collections.abc import Iterable, Iterator
+from io import StringIO
 from pathlib import Path
 from typing import Any, Literal
 
@@ -14,10 +17,24 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.shapes.autoshape import Shape
+    from pptx.shapes.base import BaseShape
+    from pptx.shapes.graphfrm import GraphicFrame
+    from pptx.shapes.group import GroupShape
+    from pptx.table import Table
     from pptx.text.text import _Paragraph
 
 
 logger = logging.getLogger(__name__)
+
+
+def _iter_shapes(shapes: Iterable["BaseShape"]) -> Iterator["BaseShape"]:
+    """Iterate over all shapes, unpacking any groups, including nested ones."""
+    for shape in shapes:
+        if isinstance(shape, GroupShape):
+            yield from _iter_shapes(shape.shapes)
+        else:
+            yield shape
 
 
 @component
@@ -80,16 +97,35 @@ class PPTXToDocument:
         text_all_slides = []
         for slide in pptx_presentation.slides:
             text_on_slide = []
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    paragraphs = []
-                    for paragraph in shape.text_frame.paragraphs:
-                        paragraphs.append(self._process_paragraph(paragraph))
-                    text_on_slide.append("\n".join(paragraphs))
+            for shape in _iter_shapes(slide.shapes):
+                if isinstance(shape, GraphicFrame) and shape.has_table:
+                    text_on_slide.append(self._table_to_csv(shape.table))
+                elif isinstance(shape, Shape):
+                    text_on_slide.append("\n".join(self._process_paragraph(p) for p in shape.text_frame.paragraphs))
                 elif hasattr(shape, "text"):
                     text_on_slide.append(shape.text)
             text_all_slides.append("\n".join(text_on_slide))
         return "\f".join(text_all_slides)
+
+    def _table_to_csv(self, table: "Table") -> str:
+        """
+        Converts a PPTX table to a CSV string.
+
+        :param table: The PPTX table to convert.
+        :returns: A CSV string representation of the table.
+        """
+        csv_output = StringIO()
+        csv_writer = csv.writer(csv_output, quoting=csv.QUOTE_MINIMAL)
+        for row in table.rows:
+            csv_writer.writerow(
+                [
+                    "\n".join(self._process_paragraph(p) for p in cell.text_frame.paragraphs).strip()
+                    for cell in row.cells
+                ]
+            )
+        csv_string = csv_output.getvalue().strip()
+        csv_output.close()
+        return csv_string
 
     def _process_paragraph(self, paragraph: "_Paragraph") -> str:
         """
