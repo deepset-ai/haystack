@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` now validates ``split_unit`` when it is constructed and raises a ``ValueError``
+    for values other than ``"word"``, ``"char"`` or ``"token"``. Previously an invalid value was accepted and
+    failed later during ``run()`` with an unrelated ``AttributeError``, which also happened when the value came
+    from a deserialized pipeline.
