@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Added the missing ``delete_by_filter_async()`` method to ``InMemoryDocumentStore``.
+    Previously, only the sync ``delete_by_filter()`` was available, unlike the other methods of the store,
+    which all have an async counterpart. The new method runs ``delete_by_filter()`` in the store's
+    thread-pool executor and returns the number of deleted documents.
