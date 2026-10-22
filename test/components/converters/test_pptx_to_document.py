@@ -18,43 +18,6 @@ from haystack.dataclasses import ByteStream
 
 
 class TestPPTXToDocument:
-    @pytest.mark.parametrize("link_format", ["none", "markdown", "plain"])
-    @pytest.mark.parametrize("in_table", [False, True])
-    def test_preserves_field_text(self, link_format: Literal["none", "markdown", "plain"], in_table: bool) -> None:
-        presentation = Presentation()
-        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-        if in_table:
-            table = slide.shapes.add_table(1, 1, Inches(1), Inches(1), Inches(6), Inches(1)).table
-            paragraph = table.cell(0, 0).text_frame.paragraphs[0]
-        else:
-            paragraph = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(6), Inches(1)).text_frame.paragraphs[0]
-
-        paragraph.add_run().text = "Slide "
-        field = OxmlElement("a:fld")
-        field.set("id", "{00000000-0000-0000-0000-000000000001}")
-        field.set("type", "slidenum")
-        field_text = OxmlElement("a:t")
-        field_text.text = "3"
-        field.append(field_text)
-        paragraph._p.append(field)
-        paragraph.add_run().text = ": "
-        run = paragraph.add_run()
-        run.text = "Report"
-        run.hyperlink.address = "https://example.com"
-
-        source = io.BytesIO()
-        presentation.save(source)
-        converter = PPTXToDocument(link_format=link_format)
-        documents = converter.run(sources=[ByteStream(data=source.getvalue())])["documents"]
-
-        expected = {
-            "none": "Slide 3: Report",
-            "markdown": "Slide 3: [Report](https://example.com)",
-            "plain": "Slide 3: Report (https://example.com)",
-        }
-        assert len(documents) == 1
-        assert documents[0].content == expected[link_format]
-
     def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
@@ -165,6 +128,51 @@ class TestPPTXToDocument:
 
         assert "https://example.com" not in content
         assert "Example" in content
+
+    @pytest.mark.parametrize(
+        "link_format, expected",
+        [
+            ("none", "Slide 3: Report"),
+            ("markdown", "Slide 3: [Report](https://example.com)"),
+            ("plain", "Slide 3: Report (https://example.com)"),
+        ],
+    )
+    @pytest.mark.parametrize("in_table", [False, True])
+    def test_preserves_field_text(
+        self, link_format: Literal["none", "markdown", "plain"], expected: str, in_table: bool
+    ) -> None:
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        if in_table:
+            table = slide.shapes.add_table(
+                rows=1, cols=1, left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)
+            ).table
+            paragraph = table.cell(row_idx=0, col_idx=0).text_frame.paragraphs[0]
+        else:
+            paragraph = slide.shapes.add_textbox(
+                left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)
+            ).text_frame.paragraphs[0]
+
+        paragraph.add_run().text = "Slide "
+        field = OxmlElement("a:fld")
+        field.set("id", "{00000000-0000-0000-0000-000000000001}")
+        field.set("type", "slidenum")
+        field_text = OxmlElement("a:t")
+        field_text.text = "3"
+        field.append(field_text)
+        paragraph._p.append(field)
+        paragraph.add_run().text = ": "
+        run = paragraph.add_run()
+        run.text = "Report"
+        run.hyperlink.address = "https://example.com"
+
+        source = io.BytesIO()
+        presentation.save(source)
+        converter = PPTXToDocument(link_format=link_format)
+        documents = converter.run(sources=[ByteStream(data=source.getvalue())])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected
 
     def test_run_reads_nested_groups_and_table_with_links(self, test_files_path):
         # The slide includes nested text groups, a grouped table, and an empty decorative shape.

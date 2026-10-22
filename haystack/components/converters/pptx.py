@@ -23,7 +23,7 @@ with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx.shapes.graphfrm import GraphicFrame
     from pptx.shapes.group import GroupShape
     from pptx.table import Table
-    from pptx.text.text import _Paragraph
+    from pptx.text.text import _Paragraph, _Run
 
 
 logger = logging.getLogger(__name__)
@@ -138,22 +138,19 @@ class PPTXToDocument:
         if self.link_format == "none":
             return paragraph.text
         parts = []
-        runs = iter(paragraph.runs)
-        for child in paragraph._p.iterchildren():
+        for child in paragraph._p:
             # Fields have text but are not included in paragraph.runs.
             if isinstance(child, CT_TextField):
                 parts.append(child.text)
-                continue
-            if not isinstance(child, CT_RegularTextRun):
-                continue
-            run = next(runs)
-            if run.hyperlink and run.hyperlink.address:
-                if self.link_format == "markdown":
-                    parts.append(f"[{run.text}]({run.hyperlink.address})")
+            elif isinstance(child, CT_RegularTextRun):
+                run = _Run(r=child, parent=paragraph)
+                if run.hyperlink and run.hyperlink.address:
+                    if self.link_format == "markdown":
+                        parts.append(f"[{run.text}]({run.hyperlink.address})")
+                    else:
+                        parts.append(f"{run.text} ({run.hyperlink.address})")
                 else:
-                    parts.append(f"{run.text} ({run.hyperlink.address})")
-            else:
-                parts.append(run.text)
+                    parts.append(run.text)
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
