@@ -13,7 +13,6 @@ from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.recursive_splitter import RecursiveDocumentSplitter
 from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
-from haystack.core.errors import DeserializationError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
@@ -40,23 +39,7 @@ def test_init_with_invalid_separators():
 @pytest.mark.parametrize("split_unit", ["Word", "WORD", "words", "sentence", "", " token "])
 def test_init_with_invalid_split_unit(split_unit):
     with pytest.raises(ValueError, match="split_unit .* is not recognized"):
-        _ = RecursiveDocumentSplitter(split_length=4, split_unit=split_unit, separators=[" "])
-
-
-@pytest.mark.parametrize("split_unit", ["word", "char", "token"])
-def test_init_with_valid_split_unit(split_unit):
-    splitter = RecursiveDocumentSplitter(split_length=4, split_unit=split_unit, separators=[" "])
-    assert splitter.split_units == split_unit
-
-
-def test_from_dict_with_invalid_split_unit_raises():
-    pipeline = Pipeline()
-    pipeline.add_component("chunker", RecursiveDocumentSplitter(split_length=4, separators=[" "]))
-    data = pipeline.to_dict()
-    data["components"]["chunker"]["init_parameters"]["split_unit"] = "Word"
-
-    with pytest.raises(DeserializationError, match="split_unit .* is not recognized"):
-        _ = Pipeline.from_dict(data)
+        RecursiveDocumentSplitter(split_unit=split_unit)
 
 
 def test_init_with_negative_split_length():

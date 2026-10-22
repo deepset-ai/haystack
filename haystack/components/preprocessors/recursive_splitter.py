@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Literal, get_args
+from typing import Any, Literal
 
 from haystack import Document, component, default_to_dict, logging
 from haystack.components.preprocessors._page_numbers import _leading_page_breaks
@@ -14,8 +14,6 @@ with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
     import tiktoken
 
 logger = logging.getLogger(__name__)
-
-SplitUnit = Literal["word", "char", "token"]
 
 
 @component
@@ -64,7 +62,7 @@ class RecursiveDocumentSplitter:
         *,
         split_length: int = 200,
         split_overlap: int = 0,
-        split_unit: SplitUnit = "word",
+        split_unit: Literal["word", "char", "token"] = "word",
         separators: list[str] | None = None,
         sentence_splitter_params: dict[str, Any] | None = None,
         tokenizer_encoding: str = "o200k_base",
@@ -138,10 +136,8 @@ class RecursiveDocumentSplitter:
         )
 
     def _check_params(self) -> None:
-        if self.split_units not in get_args(SplitUnit):
-            raise ValueError(
-                f"split_unit '{self.split_units}' is not recognized. Choose one of: {', '.join(get_args(SplitUnit))}."
-            )
+        if self.split_units not in ("word", "char", "token"):
+            raise ValueError(f"split_unit '{self.split_units}' is not recognized. Choose one of: word, char, token.")
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
