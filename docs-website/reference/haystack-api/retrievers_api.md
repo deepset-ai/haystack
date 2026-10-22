@@ -25,10 +25,10 @@ chunks alone.
 Currently the AutoMergingRetriever can only be used by the following DocumentStores:
 
 - [AstraDB](https://haystack.deepset.ai/integrations/astradb)
-- [ElasticSearch](https://haystack.deepset.ai/docs/latest/documentstore/elasticsearch)
-- [OpenSearch](https://haystack.deepset.ai/docs/latest/documentstore/opensearch)
-- [PGVector](https://haystack.deepset.ai/docs/latest/documentstore/pgvector)
-- [Qdrant](https://haystack.deepset.ai/docs/latest/documentstore/qdrant)
+- [ElasticSearch](https://docs.haystack.deepset.ai/docs/elasticsearch-document-store)
+- [OpenSearch](https://docs.haystack.deepset.ai/docs/opensearch-document-store)
+- [PGVector](https://docs.haystack.deepset.ai/docs/pgvectordocumentstore)
+- [Qdrant](https://docs.haystack.deepset.ai/docs/qdrant-document-store)
 
 ```python
 from haystack import Document
