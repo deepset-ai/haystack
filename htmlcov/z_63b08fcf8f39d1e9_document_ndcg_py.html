@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_63b08fcf8f39d1e9_document_recall_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-22 06:02 +0000
+            created at 2026-10-22 06:37 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -158,15 +158,15 @@
     <p class="pln"><span class="n"><a id="t76" href="#t76">76</a></span><span class="t">        <span class="str">&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t77" href="#t77">77</a></span><span class="t"><span class="str">        Map each ground truth comparison value to its relevance score.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t78" href="#t78">78</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t79" href="#t79">79</a></span><span class="t"><span class="str">        Documents whose comparison value cannot be determined (e.g. missing meta key) are skipped,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t80" href="#t80">80</a></span><span class="t"><span class="str">        since they can never be matched during retrieval either. Documents that share a comparison</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t79" href="#t79">79</a></span><span class="t"><span class="str">        Documents whose comparison value is missing (e.g. missing meta key) or empty are skipped,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t80" href="#t80">80</a></span><span class="t"><span class="str">        since they can&#x27;t identify a relevant document. Documents that share a comparison</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t81" href="#t81">81</a></span><span class="t"><span class="str">        value are collapsed to a single entry keeping the highest relevance, so `calculate_dcg` and</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t82" href="#t82">82</a></span><span class="t"><span class="str">        `calculate_idcg` credit the same unique relevant set with the same scores.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t83" href="#t83">83</a></span><span class="t"><span class="str">        &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t">        <span class="nam">relevant_value_to_score</span><span class="op">:</span> <span class="nam">dict</span><span class="op">[</span><span class="nam">Any</span><span class="op">,</span> <span class="nam">float</span><span class="op">]</span> <span class="op">=</span> <span class="op">{</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">        <span class="key">for</span> <span class="nam">doc</span> <span class="key">in</span> <span class="nam">gt_docs</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t86" href="#t86">86</a></span><span class="t">            <span class="nam">value</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_get_comparison_value</span><span class="op">(</span><span class="nam">doc</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="key">if</span> <span class="nam">value</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="key">if</span> <span class="nam">value</span> <span class="key">in</span> <span class="op">(</span><span class="str">&quot;&quot;</span><span class="op">,</span> <span class="key">None</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">            <span class="nam">relevance</span> <span class="op">=</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">score</span> <span class="key">if</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">score</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span> <span class="key">else</span> <span class="num">1.0</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">            <span class="nam">relevant_value_to_score</span><span class="op">[</span><span class="nam">value</span><span class="op">]</span> <span class="op">=</span> <span class="nam">max</span><span class="op">(</span><span class="nam">relevant_value_to_score</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">value</span><span class="op">,</span> <span class="nam">relevance</span><span class="op">)</span><span class="op">,</span> <span class="nam">relevance</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -269,7 +269,7 @@
     <p class="pln"><span class="n"><a id="t187" href="#t187">187</a></span><span class="t">        <span class="str">&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t188" href="#t188">188</a></span><span class="t"><span class="str">        Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t189" href="#t189">189</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t190" href="#t190">190</a></span><span class="t"><span class="str">        Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t190" href="#t190">190</a></span><span class="t"><span class="str">        Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t191" href="#t191">191</a></span><span class="t"><span class="str">        are excluded, since they can never be matched in `calculate_dcg` either. Documents that share</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t192" href="#t192">192</a></span><span class="t"><span class="str">        a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t193" href="#t193">193</a></span><span class="t"><span class="str">        credits each relevant value at most once. Including duplicates or unmatchable documents here</span>&nbsp;</span><span class="r"></span></p>
@@ -295,7 +295,7 @@
             <a class="nav" href="z_63b08fcf8f39d1e9_document_recall_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-22 06:02 +0000
+            created at 2026-10-22 06:37 +0000
         </p>
     </div>
 </footer>
