@@ -312,6 +312,23 @@ def test_run_with_meta_comparison():
     assert result["score"] == pytest.approx(0.9197, abs=1e-4)
 
 
+def test_run_with_empty_comparison_values_does_not_match():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="Strasbourg", meta={"file_id": ""})],
+            [Document(content="Paris", meta={"file_id": "a"})],
+        ],
+        retrieved_documents=[
+            [Document(content="pasta", meta={"file_id": ""})],
+            [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+        ],
+    )
+    # The real match is at rank 2, so its gain is 1 / log2(3)
+    assert result["individual_scores"] == pytest.approx([0.0, 0.6309], abs=1e-4)
+    assert result["score"] == pytest.approx(0.3155, abs=1e-4)
+
+
 def test_run_with_nested_meta_comparison():
     evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.source.url")
     result = evaluator.run(

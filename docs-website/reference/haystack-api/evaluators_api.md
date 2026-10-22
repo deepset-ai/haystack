@@ -546,7 +546,7 @@ calculate_idcg(gt_docs: list[Document]) -> float
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
 are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
 a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
 credits each relevant value at most once. Including duplicates or unmatchable documents here
