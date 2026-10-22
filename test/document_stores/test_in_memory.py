@@ -1014,6 +1014,108 @@ class TestMemoryDocumentStore(
         assert store._avg_doc_len == pytest.approx(3.0)
 
 
+class TestBM25OkapiQueryPerformance:
+    @pytest.fixture(params=[True, False], ids=["shared", "local"])
+    def store(self, request):
+        store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=request.param)
+        yield store
+        store.shutdown()
+
+    @pytest.mark.parametrize("query", ["term0", "common", "missing"])
+    def test_repeated_queries_do_not_rescan_the_vocabulary(self, store, query):
+        store.write_documents(
+            [Document(content=f"common rare term{i}") for i in range(20)] + [Document(content="common other")]
+        )
+        expected = store.bm25_retrieval(query=query)
+
+        with patch("haystack.document_stores.in_memory.document_store.math.log", wraps=math.log) as log:
+            actual = store.bm25_retrieval(query=query)
+
+        assert actual == expected
+        assert log.call_count <= 1
+
+    def test_rare_query_does_not_scan_the_vocabulary_on_first_use(self, store):
+        store.write_documents([Document(content=f"common term{i}") for i in range(20)])
+
+        with patch("haystack.document_stores.in_memory.document_store.math.log", wraps=math.log) as log:
+            documents = store.bm25_retrieval(query="term0", top_k=1)
+
+        assert documents[0].content == "common term0"
+        assert log.call_count == 1
+
+    @pytest.mark.parametrize(
+        "mutation", ["insert", "overwrite", "delete", "delete_by_filter", "clear", "remove_content"]
+    )
+    def test_scores_match_a_fresh_index_after_corpus_changes(self, store, mutation):
+        store.write_documents(
+            [
+                Document(id="a", content="common alpha"),
+                Document(id="b", content="common beta"),
+                Document(id="c", content="common gamma"),
+            ]
+        )
+        store.bm25_retrieval(query="common alpha")
+
+        if mutation == "insert":
+            store.write_documents([Document(id="d", content="unrelated delta epsilon")])
+        elif mutation == "overwrite":
+            store.write_documents(
+                [Document(id="a", content="common alpha alpha newterm")], policy=DuplicatePolicy.OVERWRITE
+            )
+        elif mutation == "delete":
+            store.delete_documents(["b"])
+        elif mutation == "delete_by_filter":
+            store.delete_by_filter({"field": "id", "operator": "==", "value": "b"})
+        elif mutation == "clear":
+            store.delete_all_documents()
+            assert store.bm25_retrieval(query="common alpha") == []
+            store.write_documents([Document(id="a", content="common alpha extra one two three")])
+        else:
+            store.write_documents([Document(id="a", embedding=[0.1, 0.2])], policy=DuplicatePolicy.OVERWRITE)
+
+        reference = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+        reference.write_documents(store.filter_documents())
+        try:
+            for scale_score in (False, True):
+                expected = reference.bm25_retrieval(query="common alpha", scale_score=scale_score)
+                actual = store.bm25_retrieval(query="common alpha", scale_score=scale_score)
+                assert actual == expected
+        finally:
+            reference.shutdown()
+
+    def test_shared_instances_refresh_scores_with_their_own_epsilon(self):
+        store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi")
+        store.write_documents([Document(id="a", content="common alpha"), Document(id="b", content="common beta")])
+        other = InMemoryDocumentStore(index=store.index, bm25_algorithm="BM25Okapi", bm25_parameters={"epsilon": 0.75})
+        reference = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+        try:
+            for extra_document in (None, Document(id="c", content="unrelated gamma delta")):
+                if extra_document is not None:
+                    other.write_documents([extra_document])
+                reference.delete_all_documents()
+                reference.write_documents(store.filter_documents())
+                for reader in (store, other):
+                    reference.bm25_parameters = reader.bm25_parameters.copy()
+                    assert reader.bm25_retrieval(query="common") == reference.bm25_retrieval(query="common")
+        finally:
+            store.shutdown()
+            other.shutdown()
+            reference.shutdown()
+
+    def test_non_shared_indexes_keep_independent_statistics(self):
+        first = InMemoryDocumentStore(index="isolated-bm25", bm25_algorithm="BM25Okapi", shared=False)
+        second = InMemoryDocumentStore(index=first.index, bm25_algorithm="BM25Okapi", shared=False)
+        try:
+            first.write_documents([Document(content="common alpha"), Document(content="common beta")])
+            expected = first.bm25_retrieval(query="common")
+            second.write_documents([Document(content="common gamma delta epsilon")])
+            second.bm25_retrieval(query="common")
+            assert first.bm25_retrieval(query="common") == expected
+        finally:
+            first.shutdown()
+            second.shutdown()
+
+
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
     """
     Runs the full DocumentStore conformance suite against a non-shared (instance-local) store.
@@ -1048,6 +1150,7 @@ class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
                 in_memory_module._BM25_STATS_STORAGES,
                 in_memory_module._AVERAGE_DOC_LEN_STORAGES,
                 in_memory_module._FREQ_VOCAB_FOR_IDF_STORAGES,
+                in_memory_module._BM25_IDF_SUM_STORAGES,
             ):
                 storage.pop(index, None)
 
