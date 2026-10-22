@@ -166,6 +166,7 @@ class XLSXToDocument:
        
 resolved_read_excel_kwargs = {
     "keep_default_na": False,
+    "na_values": [""],
     **self.read_excel_kwargs,
     "sheet_name": self.sheet_name,
     "header": None,  # Don't assign any pandas column labels
