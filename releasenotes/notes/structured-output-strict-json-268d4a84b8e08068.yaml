@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``StructuredOutputHook`` now validates Pydantic schemas in JSON mode, allowing
+    strict schemas with date, UUID, or tuple fields to accept their valid JSON
+    representations instead of exhausting retries. Invalid values, including
+    strings supplied for strict integer fields, still fail validation.
