@@ -63,10 +63,11 @@ class XLSXToDocument:
         :param table_format: The format to convert the Excel file to.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
-            By default, `keep_default_na` is set to False and `na_values` to `[""]` so literal text
-            values like "NA" and "N/A" are preserved while empty cells remain empty.
-            If `na_values` is a list, `""` is included without modifying the supplied list, so empty cells
-            are still treated as missing. Other forms of `na_values` are passed directly to pandas.
+            When neither `keep_default_na` nor `na_values` is supplied, `keep_default_na=False` and
+            `na_values=[""]` preserve literal text like "NA" and "N/A" while treating empty cells as missing.
+            If either option is supplied, both follow pandas' semantics without adding converter defaults
+            or modifying the supplied values. Custom `na_values` alone supplement pandas' default NA strings;
+            explicit `keep_default_na=False` disables those strings without adding missing values.
             Set `keep_default_na=True` to restore pandas' default NA parsing.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
@@ -169,16 +170,13 @@ class XLSXToDocument:
         """
         file_bytes = io.BytesIO(bytestream.data)
         resolved_read_excel_kwargs = {
-            "keep_default_na": False,
-            "na_values": [""],
             **self.read_excel_kwargs,
             "sheet_name": self.sheet_name,
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
-        na_values = resolved_read_excel_kwargs["na_values"]
-        if isinstance(na_values, list) and "" not in na_values:
-            resolved_read_excel_kwargs["na_values"] = [*na_values, ""]
+        if "keep_default_na" not in self.read_excel_kwargs and "na_values" not in self.read_excel_kwargs:
+            resolved_read_excel_kwargs.update(keep_default_na=False, na_values=[""])
         sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}

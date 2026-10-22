@@ -29,14 +29,6 @@ The `XLSXToDocument` component converts XLSX files into Haystack Documents wit
 
 To see the additional parameters that you can specify with the component initialization, check out the [API Reference](/reference/converters-api#xlsxtodocument).
 
-### Missing values
-
-By default, `XLSXToDocument` preserves literal strings such as `"NA"`, `"N/A"`, `"NULL"`, and `"None"`. Empty cells are treated as missing values and rendered as blank cells. To customize their output, use `table_format_kwargs={"na_rep": "<missing>"}` for CSV or `table_format_kwargs={"missingval": "<missing>"}` for Markdown.
-
-Pass a list through `read_excel_kwargs={"na_values": ["foo"]}` to treat additional values as missing. The converter includes `""` in that list when reading the workbook so empty cells still receive the configured missing-value marker, without modifying your list. Other forms of `na_values` are passed directly to pandas.
-
-To restore pandas' previous default NA parsing, which also treats strings such as `"NA"` and `"NULL"` as missing, set `read_excel_kwargs={"keep_default_na": True}`.
-
 ## Usage
 
 First, install the pandas, openpyxl, and tabulate packages to start using this converter:

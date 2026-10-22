@@ -31,9 +31,9 @@ To see the additional parameters that you can specify with the component initial
 
 ### Missing values
 
-By default, `XLSXToDocument` preserves literal strings such as `"NA"`, `"N/A"`, `"NULL"`, and `"None"`. Empty cells are treated as missing values and rendered as blank cells. To customize their output, use `table_format_kwargs={"na_rep": "<missing>"}` for CSV or `table_format_kwargs={"missingval": "<missing>"}` for Markdown.
+When neither `keep_default_na` nor `na_values` is supplied in `read_excel_kwargs`, `XLSXToDocument` uses `keep_default_na=False` and `na_values=[""]`. This preserves literal strings such as `"NA"`, `"N/A"`, `"NULL"`, and `"None"` while treating empty cells as missing. Missing values are rendered as blank cells unless you set `table_format_kwargs={"na_rep": "<missing>"}` for CSV or `table_format_kwargs={"missingval": "<missing>"}` for Markdown.
 
-Pass a list through `read_excel_kwargs={"na_values": ["foo"]}` to treat additional values as missing. The converter includes `""` in that list when reading the workbook so empty cells still receive the configured missing-value marker, without modifying your list. Other forms of `na_values` are passed directly to pandas.
+If you supply either option, the converter passes your NA settings to pandas unchanged and adds neither default. For example, `read_excel_kwargs={"na_values": ["foo"]}` treats `"foo"` and pandas' built-in NA strings as missing. Setting `read_excel_kwargs={"keep_default_na": False}` preserves those strings and keeps empty cells as empty strings unless you explicitly include `""` in `na_values`. The converter does not modify caller-provided lists or other containers. Setting `na_filter=False` disables missing-value detection entirely.
 
 To restore pandas' previous default NA parsing, which also treats strings such as `"NA"` and `"NULL"` as missing, set `read_excel_kwargs={"keep_default_na": True}`.
 
