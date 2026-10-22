@@ -245,7 +245,7 @@
 | haystack/tools/serde\_utils.py                                             |       43 |        3 |     93% |33, 35, 57 |
 | haystack/tools/skills/\_\_init\_\_.py                                      |        2 |        0 |    100% |           |
 | haystack/tools/skills/skill\_toolset.py                                    |       64 |        0 |    100% |           |
-| haystack/tools/tool.py                                                     |      154 |        5 |     97% |175, 198, 242-243, 374 |
+| haystack/tools/tool.py                                                     |      152 |        4 |     97% |175, 198, 236, 369 |
 | haystack/tools/tool\_types.py                                              |        5 |        0 |    100% |           |
 | haystack/tools/toolset.py                                                  |       46 |        3 |     93% |101, 157, 211 |
 | haystack/tools/utils.py                                                    |       53 |        0 |    100% |           |
@@ -275,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18222** |  **692** | **96%** |           |
+| **TOTAL**                                                                  | **18220** |  **691** | **96%** |           |
 
 
 ## Setup coverage badge
