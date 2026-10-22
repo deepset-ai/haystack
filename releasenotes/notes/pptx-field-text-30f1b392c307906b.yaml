@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``PPTXToDocument`` now keeps the text of a field, such as a slide number or a date,
+    when ``link_format`` is ``"markdown"`` or ``"plain"``. These formats read only the
+    runs of a paragraph, so the text of a field between runs was dropped, for example
+    the ``3`` in ``Slide 3``. The default ``link_format="none"`` already kept field text.
