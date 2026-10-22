@@ -12,6 +12,7 @@ from haystack import Document, Pipeline
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
+from haystack.testing.factory import document_store_class
 
 
 class TestSentenceWindowRetrieverAsync:
@@ -321,6 +322,14 @@ class TestSentenceWindowRetrieverAsync:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_docstore(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        retriever = SentenceWindowRetriever(document_store=mocked_docstore_class(), window_size=2)
+
+        with pytest.raises(TypeError, match="does not provide async support"):
+            await retriever.run_async(retrieved_documents=[Document(content="test")])
 
     @pytest.mark.asyncio
     async def test_close_async(self):

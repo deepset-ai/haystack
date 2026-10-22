@@ -99,8 +99,12 @@ class FilterRetriever:
             If not specified, the FilterRetriever uses the values provided at initialization.
         :returns:
             A list of retrieved documents.
+        :raises TypeError:
+            If the document store does not provide async support.
         """
-        # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
+        if not hasattr(self.document_store, "filter_documents_async"):
+            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
+
         resolved_filters = filters if filters is not None else self.filters
         out_documents = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
             filters=resolved_filters

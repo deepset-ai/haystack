@@ -9,6 +9,7 @@ import pytest
 from haystack import Document
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
 from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
+from haystack.testing.factory import document_store_class
 
 
 class TestAutoMergingRetrieverAsync:
@@ -208,6 +209,14 @@ class TestAutoMergingRetrieverAsync:
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_docstore(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        retriever = AutoMergingRetriever(document_store=mocked_docstore_class())
+
+        with pytest.raises(TypeError, match="does not provide async support"):
+            await retriever.run_async(documents=[Document(content="test")])
 
     @pytest.mark.asyncio
     async def test_close_async(self):

@@ -230,8 +230,13 @@ class SentenceWindowRetriever:
                                       `retrieved_documents`. Within each window, the documents are sorted by the
                                       meta field set in `split_id_meta_field`. Documents shared by overlapping
                                       windows appear once per window.
+        :raises TypeError:
+            If the document store does not provide async support.
 
         """
+        if not hasattr(self.document_store, "filter_documents_async"):
+            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
+
         window_size = self.window_size if window_size is None else window_size
         self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)

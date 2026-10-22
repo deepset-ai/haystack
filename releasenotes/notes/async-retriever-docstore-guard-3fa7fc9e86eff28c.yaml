@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``FilterRetriever``, ``AutoMergingRetriever`` and ``SentenceWindowRetriever`` now raise a clear ``TypeError`` when their document store does not implement the optional async API, instead of failing with an ``AttributeError`` for ``filter_documents_async``. This matches the behavior ``DocumentWriter`` and ``CacheChecker`` already had.

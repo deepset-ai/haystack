@@ -179,7 +179,12 @@ class AutoMergingRetriever:
         :param documents: List of leaf documents that were matched by a retriever
         :returns:
             List of documents (could be a mix of different hierarchy levels)
+        :raises TypeError:
+            If the document store does not provide async support.
         """
+
+        if not hasattr(self.document_store, "filter_documents_async"):
+            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
 
         AutoMergingRetriever._check_valid_documents(documents)
 
