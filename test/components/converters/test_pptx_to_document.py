@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import io
 import logging
 import os
 from pathlib import Path
@@ -152,3 +153,44 @@ class TestPPTXToDocument:
             "\n"
             "END OF SLIDE — text after the groups and table"
         )
+
+
+def _pptx_with_line_break_and_field() -> bytes:
+    from lxml import etree
+    from pptx import Presentation
+    from pptx.oxml.ns import qn
+    from pptx.util import Inches
+
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    frame = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1)).text_frame
+
+    paragraph = frame.paragraphs[0]
+    paragraph.add_run().text = "Quarterly"
+    paragraph.add_line_break()
+    linked = paragraph.add_run()
+    linked.text = "results"
+    linked.hyperlink.address = "https://example.com"
+
+    paragraph = frame.add_paragraph()
+    paragraph.add_run().text = "Slide "
+    field = etree.SubElement(paragraph._p, qn("a:fld"), id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}", type="slidenum")
+    etree.SubElement(field, qn("a:t")).text = "3"
+
+    buffer = io.BytesIO()
+    presentation.save(buffer)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize(
+    "link_format, expected",
+    [
+        ("none", "Quarterly\nresults\nSlide 3"),
+        ("markdown", "Quarterly\n[results](https://example.com)\nSlide 3"),
+        ("plain", "Quarterly\nresults (https://example.com)\nSlide 3"),
+    ],
+)
+def test_line_breaks_and_fields(link_format, expected):
+    converter = PPTXToDocument(link_format=link_format)
+    output = converter.run(sources=[ByteStream(data=_pptx_with_line_break_and_field())])
+    assert output["documents"][0].content == expected

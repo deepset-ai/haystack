@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `PPTXToDocument` now turns line breaks inside a paragraph into newlines instead of a vertical tab
+    (`link_format="none"`) or nothing (`"markdown"` and `"plain"`), and keeps field text such as slide numbers
+    when extracting links.

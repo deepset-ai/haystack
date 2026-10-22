@@ -17,12 +17,13 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.oxml.ns import qn
     from pptx.shapes.autoshape import Shape
     from pptx.shapes.base import BaseShape
     from pptx.shapes.graphfrm import GraphicFrame
     from pptx.shapes.group import GroupShape
     from pptx.table import Table
-    from pptx.text.text import _Paragraph
+    from pptx.text.text import _Paragraph, _Run
 
 
 logger = logging.getLogger(__name__)
@@ -135,16 +136,26 @@ class PPTXToDocument:
         :returns: A string with links formatted according to the specified format.
         """
         if self.link_format == "none":
-            return paragraph.text
+            # python-pptx returns a line break (<a:br/>) inside a paragraph as a vertical tab
+            return paragraph.text.replace("\v", "\n")
         parts = []
-        for run in paragraph.runs:
-            if run.hyperlink and run.hyperlink.address:
-                if self.link_format == "markdown":
-                    parts.append(f"[{run.text}]({run.hyperlink.address})")
+        # Walk the paragraph's children in order: line breaks and fields (e.g. slide numbers) are not runs
+        for child in paragraph._p:
+            tag = child.tag.rsplit("}", 1)[-1]
+            if tag == "br":
+                parts.append("\n")
+            elif tag == "fld":
+                text = child.find(qn("a:t"))
+                parts.append(text.text or "" if text is not None else "")
+            elif tag == "r":
+                run = _Run(child, paragraph)
+                if run.hyperlink and run.hyperlink.address:
+                    if self.link_format == "markdown":
+                        parts.append(f"[{run.text}]({run.hyperlink.address})")
+                    else:
+                        parts.append(f"{run.text} ({run.hyperlink.address})")
                 else:
-                    parts.append(f"{run.text} ({run.hyperlink.address})")
-            else:
-                parts.append(run.text)
+                    parts.append(run.text)
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
