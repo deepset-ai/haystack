@@ -75,11 +75,4 @@ async def _call_with_async_fallback(instance: Any, method_name: str, /, **kwargs
     if callable(async_method):
         return await async_method(**kwargs)
 
-    logger.debug(
-        "{instance_type} does not implement '{async_method_name}'. Running '{method_name}' in a worker thread "
-        "to avoid blocking the event loop.",
-        instance_type=type(instance).__name__,
-        async_method_name=async_method_name,
-        method_name=method_name,
-    )
     return await asyncio.to_thread(getattr(instance, method_name), **kwargs)

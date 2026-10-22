@@ -101,9 +101,7 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        # The DocumentStore Protocol does not declare the async methods; stores that implement them expose
-        # them at runtime, so the shared helper looks them up by name and runs the synchronous method in a
-        # worker thread for stores that do not provide an async one.
+        # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
         resolved_filters = filters if filters is not None else self.filters
         out_documents = await _call_with_async_fallback(
             self.document_store, "filter_documents", filters=resolved_filters

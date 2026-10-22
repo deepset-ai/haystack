@@ -239,8 +239,7 @@ class SentenceWindowRetriever:
 
         windows = self._get_windows(retrieved_documents)
         filters = self._build_filters(windows, window_size)
-        # The DocumentStore Protocol does not declare filter_documents_async; the helper falls back to the
-        # synchronous method in a worker thread for stores that do not implement the async one.
+        # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
         fetched_documents = (
             await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters) if filters else []
         )

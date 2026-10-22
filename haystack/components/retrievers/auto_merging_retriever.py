@@ -185,8 +185,7 @@ class AutoMergingRetriever:
         AutoMergingRetriever._check_valid_documents(documents)
 
         async def _get_parent_doc(parent_id: str) -> Document:
-            # The DocumentStore Protocol does not declare the async methods; the shared helper falls back to
-            # the synchronous method in a worker thread for stores that do not implement the async one.
+            # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
             parent_docs = await _call_with_async_fallback(
                 self.document_store, "filter_documents", filters={"field": "id", "operator": "==", "value": parent_id}
             )
