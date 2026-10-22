@@ -11,6 +11,7 @@ import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.joiners import BranchJoiner
+from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineRuntimeError
 
 _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
@@ -298,6 +299,43 @@ def test_async_pipeline_does_not_corrupt_outputs():
 
     assert result["producer"]["doc"].content == "original"
     assert result["mutator"]["doc"].content == "mutated"
+
+
+def test_run_async_passes_variadic_inputs_in_same_order_as_run():
+    @component
+    class Sender:
+        def __init__(self, value: str, delay: float):
+            self.value = value
+            self.delay = delay
+
+        @component.output_types(value=str)
+        def run(self) -> dict:
+            return {"value": self.value}
+
+        @component.output_types(value=str)
+        async def run_async(self) -> dict:
+            await asyncio.sleep(self.delay)
+            return {"value": self.value}
+
+    @component
+    class Collector:
+        @component.output_types(values=list[str])
+        def run(self, values: Variadic[str]) -> dict:
+            return {"values": list(values)}
+
+    pipe = Pipeline()
+    # "a" sorts first and runs first in run(), but finishes last in run_async()
+    pipe.add_component("a", Sender(value="a", delay=0.05))
+    pipe.add_component("b", Sender(value="b", delay=0))
+    pipe.add_component("collector", Collector())
+    pipe.connect("a.value", "collector.values")
+    pipe.connect("b.value", "collector.values")
+
+    sync_result = pipe.run({})
+    async_result = asyncio.run(pipe.run_async({}))
+
+    assert sync_result == {"collector": {"values": ["a", "b"]}}
+    assert async_result == sync_result
 
 
 @component
