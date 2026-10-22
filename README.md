@@ -198,7 +198,7 @@
 | haystack/hooks/human\_in\_the\_loop/dataclasses.py                         |       16 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/hooks.py                               |       30 |        1 |     97% |       117 |
 | haystack/hooks/human\_in\_the\_loop/policies.py                            |       17 |        0 |    100% |           |
-| haystack/hooks/human\_in\_the\_loop/strategies.py                          |      188 |        5 |     97% |338, 386, 430, 499, 693 |
+| haystack/hooks/human\_in\_the\_loop/strategies.py                          |      188 |        5 |     97% |339, 387, 431, 500, 694 |
 | haystack/hooks/human\_in\_the\_loop/types/\_\_init\_\_.py                  |        2 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/types/protocol.py                      |       25 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/user\_interfaces.py                    |       96 |        2 |     98% |   65, 103 |
