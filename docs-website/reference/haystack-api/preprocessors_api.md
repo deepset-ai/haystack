@@ -993,8 +993,8 @@ Initializes a RecursiveDocumentSplitter.
 
 **Raises:**
 
-- <code>ValueError</code> – If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-  if any separator is not a string.
+- <code>ValueError</code> – If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+  equal to the chunk size, if the overlap is negative, or if any separator is not a string.
 
 #### warm_up
 
