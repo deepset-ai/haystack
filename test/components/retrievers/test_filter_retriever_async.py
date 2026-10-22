@@ -115,12 +115,14 @@ class TestFilterRetrieverAsync:
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["all_docs"])
 
     @pytest.mark.asyncio
-    async def test_run_async_invalid_docstore(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
+    async def test_run_async_sync_only_docstore(self):
+        doc = Document(content="Python is a popular programming language", meta={"lang": "en"})
+        mocked_docstore_class = document_store_class("MockedDocumentStore", documents=[doc])
         retriever = FilterRetriever(document_store=mocked_docstore_class())
 
-        with pytest.raises(TypeError, match="does not provide async support"):
-            await retriever.run_async()
+        result = await retriever.run_async(filters={"field": "lang", "operator": "==", "value": "en"})
+
+        assert result["documents"] == [doc]
 
     @pytest.mark.asyncio
     async def test_close_async(self):

@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -179,19 +180,15 @@ class AutoMergingRetriever:
         :param documents: List of leaf documents that were matched by a retriever
         :returns:
             List of documents (could be a mix of different hierarchy levels)
-        :raises TypeError:
-            If the document store does not provide async support.
         """
-
-        if not hasattr(self.document_store, "filter_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
 
         AutoMergingRetriever._check_valid_documents(documents)
 
         async def _get_parent_doc(parent_id: str) -> Document:
-            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-            parent_docs = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
-                {"field": "id", "operator": "==", "value": parent_id}
+            # The DocumentStore Protocol does not declare the async methods; the shared helper falls back to
+            # the synchronous method in a worker thread for stores that do not implement the async one.
+            parent_docs = await _call_with_async_fallback(
+                self.document_store, "filter_documents", filters={"field": "id", "operator": "==", "value": parent_id}
             )
             if len(parent_docs) != 1:
                 raise ValueError(f"Expected 1 parent document with id {parent_id}, found {len(parent_docs)}")

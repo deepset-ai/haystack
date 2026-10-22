@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -230,24 +231,18 @@ class SentenceWindowRetriever:
                                       `retrieved_documents`. Within each window, the documents are sorted by the
                                       meta field set in `split_id_meta_field`. Documents shared by overlapping
                                       windows appear once per window.
-        :raises TypeError:
-            If the document store does not provide async support.
 
         """
-        if not hasattr(self.document_store, "filter_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
-
         window_size = self.window_size if window_size is None else window_size
         self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         windows = self._get_windows(retrieved_documents)
         filters = self._build_filters(windows, window_size)
-        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
+        # The DocumentStore Protocol does not declare filter_documents_async; the helper falls back to the
+        # synchronous method in a worker thread for stores that do not implement the async one.
         fetched_documents = (
-            await self.document_store.filter_documents_async(filters)  # type: ignore[attr-defined]
-            if filters
-            else []
+            await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters) if filters else []
         )
 
         return self._assemble_context(retrieved_documents, windows, window_size, fetched_documents)

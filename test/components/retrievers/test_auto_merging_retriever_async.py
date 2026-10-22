@@ -211,12 +211,15 @@ class TestAutoMergingRetrieverAsync:
         assert result["documents"][0].meta["__level"] == 0  # hit root document
 
     @pytest.mark.asyncio
-    async def test_run_async_invalid_docstore(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
+    async def test_run_async_sync_only_docstore(self):
+        parent = Document(id="parent", content="parent", meta={"__level": 0, "__children_ids": ["leaf"]})
+        leaf = Document(id="leaf", content="leaf", meta={"__level": 1, "__parent_id": "parent", "__block_size": 10})
+        mocked_docstore_class = document_store_class("MockedDocumentStore", documents=[parent])
         retriever = AutoMergingRetriever(document_store=mocked_docstore_class())
 
-        with pytest.raises(TypeError, match="does not provide async support"):
-            await retriever.run_async(documents=[Document(content="test")])
+        result = await retriever.run_async(documents=[leaf])
+
+        assert result["documents"] == [parent]
 
     @pytest.mark.asyncio
     async def test_close_async(self):

@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -99,15 +100,13 @@ class FilterRetriever:
             If not specified, the FilterRetriever uses the values provided at initialization.
         :returns:
             A list of retrieved documents.
-        :raises TypeError:
-            If the document store does not provide async support.
         """
-        if not hasattr(self.document_store, "filter_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
-
+        # The DocumentStore Protocol does not declare the async methods; stores that implement them expose
+        # them at runtime, so the shared helper looks them up by name and runs the synchronous method in a
+        # worker thread for stores that do not provide an async one.
         resolved_filters = filters if filters is not None else self.filters
-        out_documents = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
-            filters=resolved_filters
+        out_documents = await _call_with_async_fallback(
+            self.document_store, "filter_documents", filters=resolved_filters
         )
         return {"documents": out_documents}
 

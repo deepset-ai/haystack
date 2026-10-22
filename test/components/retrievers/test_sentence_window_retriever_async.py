@@ -226,7 +226,7 @@ class TestSentenceWindowRetrieverAsync:
             result = await retriever.run_async(retrieved_documents=[docs[2], docs[15], docs[2]])
 
         filter_documents_async.assert_awaited_once()
-        assert len(filter_documents_async.call_args.args[0]["conditions"]) == 2
+        assert len(filter_documents_async.call_args.kwargs["filters"]["conditions"]) == 2
         assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
         assert [doc.content for doc in result["context_documents"]] == [
             "a1.",
@@ -324,12 +324,18 @@ class TestSentenceWindowRetrieverAsync:
         assert deserialized == pipe
 
     @pytest.mark.asyncio
-    async def test_run_async_invalid_docstore(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
+    async def test_run_async_sync_only_docstore(self):
+        docs = [
+            Document(content=f"Sentence {sent}.", meta={"id": f"doc_{sent}", "source_id": "source1", "split_id": sent})
+            for sent in range(10)
+        ]
+        mocked_docstore_class = document_store_class("MockedDocumentStore", documents=docs)
         retriever = SentenceWindowRetriever(document_store=mocked_docstore_class(), window_size=2)
+        retrieved_documents = [doc for doc in docs if doc.content == "Sentence 4."]
 
-        with pytest.raises(TypeError, match="does not provide async support"):
-            await retriever.run_async(retrieved_documents=[Document(content="test")])
+        result = await retriever.run_async(retrieved_documents=retrieved_documents)
+
+        assert len(result["context_documents"]) == 5
 
     @pytest.mark.asyncio
     async def test_close_async(self):
