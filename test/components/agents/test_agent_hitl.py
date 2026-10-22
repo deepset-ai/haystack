@@ -143,8 +143,9 @@ class TestAgent:
                                             },
                                             "reject_template": "Tool execution for '{tool_name}' was rejected by "
                                             "the user.",
-                                            "modify_template": "The parameters for tool '{tool_name}' were updated "
-                                            "by the user to:\n{final_tool_params}",
+                                            "modify_template": "The user changed the arguments of '{tool_name}' "
+                                            "to {final_tool_params} and wants that result used. Don't call it again "
+                                            "with the original arguments.",
                                             "user_feedback_template": "With user feedback: {feedback}",
                                         },
                                     }
@@ -372,8 +373,14 @@ class TestMultipleConfirmationHooks:
                 origin=ToolCall("foo", {"x": 1}),
                 error=True,
             ),
-            ChatMessage.from_user("The parameters for tool 'bar' were updated by the user to:\n{'x': 99}"),
-            ChatMessage.from_user("The parameters for tool 'baz' were updated by the user to:\n{'x': 77}"),
+            ChatMessage.from_user(
+                "The user changed the arguments of 'bar' to {'x': 99} and wants that result used. "
+                "Don't call it again with the original arguments."
+            ),
+            ChatMessage.from_user(
+                "The user changed the arguments of 'baz' to {'x': 77} and wants that result used. "
+                "Don't call it again with the original arguments."
+            ),
             ChatMessage.from_assistant(tool_calls=[ToolCall("bar", {"x": 99}), ToolCall("baz", {"x": 77})]),
             ChatMessage.from_tool(tool_result='{"echoed": 99}', origin=ToolCall("bar", {"x": 99}), error=False),
             ChatMessage.from_tool(tool_result='{"echoed": 77}', origin=ToolCall("baz", {"x": 77}), error=False),
