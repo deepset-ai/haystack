@@ -701,6 +701,7 @@ __init__(
     write_batch_size: int = 100,
     scroll_size: int = 10000,
     payload_fields_to_index: list[dict] | None = None,
+    client_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -756,6 +757,13 @@ Initializes a QdrantDocumentStore.
 - **write_batch_size** (<code>int</code>) – The batch size for writing documents.
 - **scroll_size** (<code>int</code>) – The scroll size for reading documents.
 - **payload_fields_to_index** (<code>list\[dict\] | None</code>) – List of payload fields to index.
+- **client_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments passed to both `QdrantClient` and `AsyncQdrantClient`.
+  These arguments take precedence over named client parameters in case of overlap.
+  Serialized as-is by `to_dict()`: callbacks and `httpx.Limits` may not serialize, and
+  authentication headers will appear in plain text in pipeline YAML.
+  The same arguments are used for sync and async clients. For example, an async
+  `auth_token_provider` is also passed to `QdrantClient`, where it may not work with
+  synchronous requests.
 
 #### close
 

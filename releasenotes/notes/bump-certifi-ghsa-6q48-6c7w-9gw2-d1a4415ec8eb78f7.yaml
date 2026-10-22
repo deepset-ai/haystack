@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Haystack now requires ``certifi>=2026.10.19``. ``certifi`` is installed transitively through ``httpx`` and
+    ``posthog``; earlier versions trust eMudhra/emSign certificate authorities whose private keys were compromised
+    (GHSA-6q48-6c7w-9gw2). If you pin ``certifi``, raise the pin to at least 2026.10.19.

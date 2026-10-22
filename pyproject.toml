@@ -55,6 +55,7 @@ dependencies = [
   "networkx",               # Pipeline graphs
   "httpx",
   "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
+  "certifi>=2026.10.19",    # transitive via httpx and posthog; floor for GHSA-6q48-6c7w-9gw2
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool

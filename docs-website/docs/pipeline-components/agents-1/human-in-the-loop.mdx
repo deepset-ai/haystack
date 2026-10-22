@@ -177,7 +177,7 @@ agent = Agent(
 When a tool call is rejected or modified, `BlockingConfirmationStrategy` sends a message back to the LLM explaining what happened. Three optional template parameters control these messages — each has a sensible default, so you only need to set them if you want different wording:
 
 - `reject_template`: Sent to the LLM when the user rejects a tool call. Must include a `{tool_name}` placeholder. Default: `"Tool execution for '{tool_name}' was rejected by the user."`
-- `modify_template`: Sent when the user modifies the parameters. Must include `{tool_name}` and `{final_tool_params}` placeholders. Default: `"The parameters for tool '{tool_name}' were updated by the user to:\n{final_tool_params}"`
+- `modify_template`: Sent when the user modifies the parameters. Must include `{tool_name}` and `{final_tool_params}` placeholders. Default: `"The user changed the arguments of '{tool_name}' to {final_tool_params} and wants that result used. Don't call it again with the original arguments."`
 - `user_feedback_template`: Appends the user's optional free-text feedback to either message. Must include a `{feedback}` placeholder. Default: `"With user feedback: {feedback}"`
 
 ```python

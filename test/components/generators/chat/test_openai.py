@@ -524,8 +524,16 @@ class TestOpenAIChatGenerator:
         assert kwargs["temperature"] == 0.9
         assert kwargs["max_completion_tokens"] == 10
 
+    @pytest.mark.parametrize(
+        ("generation_kwargs", "expected_options"),
+        [({}, {"include_usage": True}), ({"stream_options": {"include_usage": False}}, {"include_usage": False})],
+    )
     def test_run_with_params_streaming(
-        self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
+        self,
+        chat_messages: list[ChatMessage],
+        openai_mock_chat_completion_chunk: MagicMock,
+        generation_kwargs: dict[str, Any],
+        expected_options: dict[str, bool],
     ) -> None:
 
         streaming_callback_called = False
@@ -537,7 +545,8 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
         )
-        response = component.run(chat_messages)
+        response = component.run(chat_messages, generation_kwargs=generation_kwargs)
+        assert openai_mock_chat_completion_chunk.call_args.kwargs["stream_options"] == expected_options
 
         # check we called the streaming callback
         assert streaming_callback_called
