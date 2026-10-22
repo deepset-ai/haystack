@@ -1081,6 +1081,9 @@ Note: The `contains` filter operator is case-sensitive (substring
 matching). For case-insensitive matching, normalize the value before
 building the filter.
 
+Note: `NOT` over the `contains` operator is translated to Weaviate's
+native `NOT`, which requires Weaviate 1.33 or later.
+
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
@@ -1103,6 +1106,9 @@ DocumentStore.filter_documents() protocol documentation.
 Note: The `contains` filter operator is case-sensitive (substring
 matching). For case-insensitive matching, normalize the value before
 building the filter.
+
+Note: `NOT` over the `contains` operator is translated to Weaviate's
+native `NOT`, which requires Weaviate 1.33 or later.
 
 **Parameters:**
 

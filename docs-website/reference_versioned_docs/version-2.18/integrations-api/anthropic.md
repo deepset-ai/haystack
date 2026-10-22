@@ -273,11 +273,11 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 
 Bases: <code>AnthropicChatGenerator</code>
 
-Enables text generation using Anthropic's Claude models via Azure Foundry.
+Enables text generation using Anthropic's Claude models via Microsoft Foundry.
 
-A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Azure Foundry.
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Microsoft Foundry.
 
-To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Foundry enabled
+To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Microsoft Foundry enabled
 and the desired Anthropic model deployed in your Foundry resource.
 
 For more details, refer to the [Anthropic Foundry documentation](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/lib/foundry.md).
@@ -337,7 +337,7 @@ SUPPORTED_MODELS: list[str] = [
 ```
 
 A non-exhaustive list of chat models supported by this component.
-The actual availability depends on your Azure Foundry resource configuration.
+The actual availability depends on your Microsoft Foundry resource configuration.
 
 #### __init__
 

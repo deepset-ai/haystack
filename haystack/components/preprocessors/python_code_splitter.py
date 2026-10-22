@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import io
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -321,7 +322,8 @@ class PythonCodeSplitter:
     def _extract_units(self, source: str) -> list[_CodeUnit]:
         """Parse ``source`` and produce the ordered list of syntactic split units."""
         tree = ast.parse(source)
-        source_lines = source.splitlines(keepends=True)
+        # Match ast line numbers: split only on \n / \r\n / \r, not form feed etc.
+        source_lines = io.StringIO(source, newline="").readlines()
         total_lines = len(source_lines)
 
         units: list[_CodeUnit] = []

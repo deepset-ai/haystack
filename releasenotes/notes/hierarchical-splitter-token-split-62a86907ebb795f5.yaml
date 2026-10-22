@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    ``HierarchicalDocumentSplitter`` now supports ``split_by="token"`` (requires ``pip install tiktoken``), with the
+    encoding set by the new ``tokenizer_encoding`` parameter (default ``"o200k_base"``). A new ``warm_up()`` method
+    loads the tokenizer up front instead of on the first ``run()``.
