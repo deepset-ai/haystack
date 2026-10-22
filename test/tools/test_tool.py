@@ -4,6 +4,7 @@
 
 import re
 import threading
+from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
@@ -37,14 +38,6 @@ parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "req
 
 async def async_get_weather(city: str) -> str:
     return f"Weather report for {city}: 20°C, sunny"
-
-
-def no_param_tool() -> dict:
-    return {"output": "12:00"}
-
-
-async def async_no_param_tool() -> dict:
-    return {"output": "12:00"}
 
 
 class TestTool:
@@ -311,8 +304,14 @@ class TestTool:
                 inputs_from_state={"state_key": "nonexistent"},
             )
 
-    def test_inputs_from_state_validation_with_no_valid_parameters(self):
-        """A tool with no input parameters has a known-empty valid set, so any mapping target is a typo."""
+    @pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
+    def test_inputs_from_state_rejects_parameters_for_no_input_callable(self, is_async):
+        def no_args_function() -> str:
+            return "12:00"
+
+        async def async_no_args_function() -> str:
+            return "12:00"
+
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -323,37 +322,24 @@ class TestTool:
                 name="clock",
                 description="What time is it?",
                 parameters={"type": "object", "properties": {}},
-                function=no_param_tool,
+                function=None if is_async else no_args_function,
+                async_function=async_no_args_function if is_async else None,
                 inputs_from_state={"city": "nonexistent"},
             )
 
-    def test_inputs_from_state_validation_with_no_valid_parameters_async_tool(self):
-        """The same guarantee holds for an async-only tool that takes no input."""
-        with pytest.raises(
-            ValueError,
-            match=re.escape(
-                "inputs_from_state maps 'city' to unknown parameter 'nonexistent'. Valid parameters are: set()."
-            ),
-        ):
-            Tool(
-                name="clock",
-                description="What time is it?",
-                parameters={"type": "object", "properties": {}},
-                async_function=async_no_param_tool,
-                inputs_from_state={"city": "nonexistent"},
-            )
-
-    def test_inputs_from_state_validation_with_empty_mapping_stays_valid(self):
-        """An empty mapping maps nothing, so it must remain valid even for a tool with no input parameters."""
+    @pytest.mark.parametrize(
+        "properties", [{}, {"seconds": {"type": "number"}}], ids=["empty-schema", "partial-schema"]
+    )
+    def test_inputs_from_state_with_uninspectable_callable(self, properties):
         tool = Tool(
-            name="clock",
-            description="What time is it?",
-            parameters={"type": "object", "properties": {}},
-            function=no_param_tool,
-            inputs_from_state={},
+            name="duration",
+            description="Return the duration from state",
+            parameters={"type": "object", "properties": properties},
+            function=timedelta,
+            inputs_from_state={"duration_days": "days"},
         )
 
-        assert tool.inputs_from_state == {}
+        assert tool.invoke(days=3) == timedelta(days=3)
 
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""
