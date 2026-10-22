@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``FileTypeRouter`` now preserves the detected MIME type when converting file paths
+    to ``ByteStream`` objects to attach metadata. Files remain correctly classified
+    by downstream routers instead of becoming unclassified and being skipped during indexing.
+upgrade:
+  - |
+    Outputs for file paths supplied with nonempty ``meta`` now retain the inferred
+    ``ByteStream.mime_type`` instead of ``None``. No configuration changes are required.
