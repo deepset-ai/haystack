@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``DOCXToDocument`` now reads text that a paragraph keeps inside a tracked insertion,
+    moved text, a smart tag, custom XML, a simple field or a filled-in inline content
+    control. Previously only a paragraph's direct runs and hyperlinks were read, so a
+    document with unaccepted tracked changes lost every inserted word, and a filled form
+    field lost its value. Deleted text, the old place of moved text and content controls
+    that still show their placeholder prompt are left out, as the document does not show them.
