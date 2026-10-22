@@ -661,6 +661,32 @@ def _extract_annotations(output: list[dict[str, Any]]) -> tuple[list[dict[str, A
     return annotations, annotation_offsets
 
 
+def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningContent | None:
+    if not items:
+        return None
+
+    texts = []
+    for item in items:
+        text = "\n".join(part["text"] for part in item.get("summary") or [])
+        if not text:
+            text = "\n".join(part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text")
+        if text:
+            texts.append(text)
+    return ReasoningContent(reasoning_text="\n".join(texts), extra={"reasoning_items": items})
+
+
+def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str, Any]]:
+    items = reasoning.extra.get("reasoning_items")
+    if items is None:
+        # Continue accepting messages serialized with the legacy single-item extra.
+        item = {"summary": [], **reasoning.extra}
+        if reasoning.reasoning_text and not item.get("content"):
+            item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
+        items = [item]
+    valid_fields = {"id", "type", "summary", "encrypted_content", "status", "content", "output_index"}
+    return [{"summary": [], **{key: value for key, value in item.items() if key in valid_fields}} for item in items]
+
+
 def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
@@ -670,10 +696,10 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     """
 
     tool_calls = []
-    reasonings = []
+    reasoning_items = []
     logprobs: list[dict] = []
     refusals: list[str] = []
-    for output in responses.output:
+    for output_index, output in enumerate(responses.output):
         if output.type == "message":
             for content in output.content:
                 if isinstance(content, ResponseOutputRefusal):
@@ -682,21 +708,17 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
                     logprobs.append(_serialize_object(content.logprobs))
 
         if output.type == "reasoning":
-            extra = output.to_dict()
-            # we dont need the summary in the extra
-            extra.pop("summary")
-            # OpenAI returns reasoning summaries, other providers may return raw reasoning as `reasoning_text` content
-            reasoning_text = "\n".join(summary.text for summary in output.summary)
-            if not reasoning_text:
-                reasoning_text = "\n".join(part.text for part in output.content or [] if part.type == "reasoning_text")
-            reasonings.append(ReasoningContent(reasoning_text=reasoning_text, extra=extra))
+            reasoning_items.append({**output.to_dict(), "output_index": output_index})
 
         elif output.type == "function_call":
             try:
                 arguments = _parse_openai_tool_call_arguments(output.arguments)
                 tool_calls.append(
                     ToolCall(
-                        id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id}
+                        id=output.id,
+                        tool_name=output.name,
+                        arguments=arguments,
+                        extra={"call_id": output.call_id, "output_index": output_index},
                     )
                 )
             except json.JSONDecodeError:
@@ -728,7 +750,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
-        reasoning=reasonings,
+        reasoning=_reasoning_content_from_items(reasoning_items),
         tool_calls=tool_calls,
         meta=meta,
     )
@@ -824,9 +846,6 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
-        # Unlike non-streaming, where raw reasoning text is only a fallback when there is no summary, summary and raw
-        # reasoning deltas are both streamed as they arrive and end up concatenated in the final reasoning_text.
-        # In practice this rarely matters, because providers usually send only one kind.
     elif chunk.type in ("response.reasoning_summary_text.delta", "response.reasoning_text.delta"):
         # We remove the delta from the extra because it is already in the reasoning_text
         # Remaining information needs to be saved for chat message
@@ -893,7 +912,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 # here the tool_call.id is fc_id not call_id
                 assert tool_call.id is not None
                 # We use the tool call id to track the tool call across chunks
-                tool_call_data.setdefault(tool_call.id, {"name": "", "arguments": ""})
+                tool_call_data.setdefault(tool_call.id, {"name": "", "arguments": "", "extra": {}})
+                tool_call_data[tool_call.id]["extra"]["output_index"] = tool_call.index
 
                 if tool_call.arguments is not None:
                     tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
@@ -904,11 +924,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
                 # We capture the call_id from one of the chunks
                 if tool_call.extra and "call_id" in tool_call.extra:
-                    tool_call_data[tool_call.id]["extra"] = {"call_id": tool_call.extra["call_id"]}
+                    tool_call_data[tool_call.id]["extra"]["call_id"] = tool_call.extra["call_id"]
 
     # Convert accumulated tool call data into ToolCall objects
     tool_calls = []
-    sorted_keys = sorted(tool_call_data.keys())
+    sorted_keys = sorted(tool_call_data, key=lambda key: tool_call_data[key]["extra"]["output_index"])
     for key in sorted_keys:
         tool_call_dict = tool_call_data[key]
         try:
@@ -952,7 +972,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         final_response["logprobs"] = logprobs
 
-    reasonings = []
+    reasoning_items = []
     for index in sorted(reasoning_chunks):
         item_chunks = reasoning_chunks[index]
         reasoning_extra = {}
@@ -960,16 +980,19 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             reasoning_extra.update(item_chunk.extra)
         reasoning_id = reasoning_extra.get("id") or reasoning_extra.get("item_id")
         if reasoning_id:
-            reasoning_extra.update({"id": reasoning_id, "type": "reasoning"})
-            reasonings.append(
-                ReasoningContent(
-                    reasoning_text="".join(item_chunk.reasoning_text for item_chunk in item_chunks),
-                    extra=reasoning_extra,
+            reasoning_extra.update({"id": reasoning_id, "type": "reasoning", "output_index": index})
+            if not reasoning_extra.get("summary") and not reasoning_extra.get("content"):
+                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks)
+                reasoning_extra["summary"] = (
+                    [{"text": reasoning_text, "type": "summary_text"}] if reasoning_text else []
                 )
-            )
+            reasoning_items.append(reasoning_extra)
 
     return ChatMessage.from_assistant(
-        text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasonings
+        text=text or None,
+        tool_calls=tool_calls,
+        meta=final_response,
+        reasoning=_reasoning_content_from_items(reasoning_items),
     )
 
 
@@ -1053,25 +1076,8 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
 
-    # Note: the API expects a reasoning id even if there is no reasoning text
-    # function calls without reasoning ids are not supported by the API
-    if reasonings:
-        formatted_reasonings = []
-        for reasoning in reasonings:
-            # Streaming events (e.g. response.reasoning_summary_text.delta) store event-level
-            # fields like item_id, output_index, summary_index, event_id, sequence_number into
-            # reasoning.extra. Those are not valid reasoning input item fields and the API
-            # rejects them with "Unknown parameter" when sent back in subsequent turns.
-            # Valid fields per ResponseReasoningItem schema: id, type, summary (handled separately),
-            # content, encrypted_content, status.
-            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
-            filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
-            reasoning_item = {"summary": [], **filtered_extra}
-            # Raw reasoning text is already sent back in `content`, repeating it as a summary would duplicate it
-            if reasoning.reasoning_text and not filtered_extra.get("content"):
-                reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
-            formatted_reasonings.append(reasoning_item)
-        formatted_messages.extend(formatted_reasonings)
+    for reasoning in reasonings:
+        formatted_messages.extend(_reasoning_items_from_content(reasoning))
 
     for tc in tool_calls:
         openai_tool_call = {
@@ -1081,9 +1087,15 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             "arguments": json.dumps(tc.arguments, ensure_ascii=False),
             "id": tc.id,
             "call_id": tc.extra.get("call_id") if tc.extra else "",
+            "output_index": tc.extra.get("output_index") if tc.extra else None,
         }
 
         formatted_messages.append(openai_tool_call)
+
+    # Indices are Haystack metadata, not valid Responses API input fields.
+    formatted_messages.sort(key=lambda item: (item.get("output_index") is None, item.get("output_index")))
+    for item in formatted_messages:
+        item.pop("output_index", None)
 
     # system and assistant messages
     refusal = message.meta.get("refusal")

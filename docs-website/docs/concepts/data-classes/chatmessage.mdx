@@ -276,31 +276,6 @@ print(assistant_message.texts)
 # >> ['How can I assist you today?']
 ```
 
-### from_assistant with ReasoningContent
-
-The `reasoning` parameter accepts a string, a `ReasoningContent` object, or a list of `ReasoningContent` objects.
-Use a list to keep separate reasoning items and their provider metadata, such as IDs and encrypted content.
-`reasoning` returns the first item; `reasonings` returns all items in order.
-
-```python
-from haystack.dataclasses import ChatMessage, ReasoningContent
-
-message = ChatMessage.from_assistant(
-    text="The answer is 42.",
-    reasoning=[
-        ReasoningContent(
-            reasoning_text="Check the first result.", extra={"id": "rs_1"}
-        ),
-        ReasoningContent(
-            reasoning_text="Check the second result.", extra={"id": "rs_2"}
-        ),
-    ],
-)
-
-print([item.extra["id"] for item in message.reasonings])
-# >> ['rs_1', 'rs_2']
-```
-
 ### from_assistant with ToolCall
 
 ```python

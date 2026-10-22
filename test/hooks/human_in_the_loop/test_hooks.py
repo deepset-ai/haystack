@@ -159,16 +159,14 @@ class TestConfirmationHook:
         ],
     )
     def test_preserves_multiple_reasoning_items(self, tools, ui_result):
-        reasonings = [
-            ReasoningContent(reasoning_text="", extra={"id": "rs_first", "encrypted_content": "encrypted_first"}),
-            ReasoningContent(
-                reasoning_text="Use the tool", extra={"id": "rs_last", "encrypted_content": "encrypted_last"}
-            ),
-        ]
+        reasoning = ReasoningContent(
+            reasoning_text="Use the tool",
+            extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
+        )
         message = ChatMessage.from_assistant(
             text="Adding the numbers",
-            reasoning=reasonings,
-            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1")],
+            reasoning=reasoning,
+            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1", extra={"output_index": 3})],
             meta={"model": "test-model"},
             name="assistant",
         )
@@ -177,11 +175,12 @@ class TestConfirmationHook:
         hook.run(state)
         rebuilt_messages = [item for item in state.get("messages") if item.tool_calls]
         assert len(rebuilt_messages) == 1
-        assert rebuilt_messages[0].reasonings == reasonings
+        assert rebuilt_messages[0].reasoning == reasoning
+        assert rebuilt_messages[0].tool_calls[0].extra == {"output_index": 3}
         assert rebuilt_messages[0].text == message.text
         assert rebuilt_messages[0].meta == message.meta
         assert rebuilt_messages[0].name == message.name
-        assert message.reasonings == reasonings
+        assert message.reasoning == reasoning
 
     def test_hook_context_is_not_deepcopied(self, tools):
         # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy
@@ -353,16 +352,14 @@ class TestConfirmationHookAsync:
     )
     @pytest.mark.asyncio
     async def test_preserves_multiple_reasoning_items(self, tools, ui_result):
-        reasonings = [
-            ReasoningContent(reasoning_text="", extra={"id": "rs_first", "encrypted_content": "encrypted_first"}),
-            ReasoningContent(
-                reasoning_text="Use the tool", extra={"id": "rs_last", "encrypted_content": "encrypted_last"}
-            ),
-        ]
+        reasoning = ReasoningContent(
+            reasoning_text="Use the tool",
+            extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
+        )
         message = ChatMessage.from_assistant(
             text="Adding the numbers",
-            reasoning=reasonings,
-            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1")],
+            reasoning=reasoning,
+            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1", extra={"output_index": 3})],
             meta={"model": "test-model"},
             name="assistant",
         )
@@ -371,11 +368,12 @@ class TestConfirmationHookAsync:
         await hook.run_async(state)
         rebuilt_messages = [item for item in state.get("messages") if item.tool_calls]
         assert len(rebuilt_messages) == 1
-        assert rebuilt_messages[0].reasonings == reasonings
+        assert rebuilt_messages[0].reasoning == reasoning
+        assert rebuilt_messages[0].tool_calls[0].extra == {"output_index": 3}
         assert rebuilt_messages[0].text == message.text
         assert rebuilt_messages[0].meta == message.meta
         assert rebuilt_messages[0].name == message.name
-        assert message.reasonings == reasonings
+        assert message.reasoning == reasoning
 
 
 class TestConfirmationHookTracing:

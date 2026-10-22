@@ -3,7 +3,7 @@ fixes:
   - |
     Preserve all reasoning items returned by ``OpenAIResponsesChatGenerator`` in both
     streaming and non-streaming responses, including each item's ID and encrypted content.
-    ``ChatMessage.from_assistant(reasoning=...)`` now also accepts a list of
-    ``ReasoningContent`` objects. Existing string and single-item inputs remain supported.
-    Tool-confirmation hooks retain the full reasoning list when confirming, modifying,
-    or rejecting tool calls.
+    Individual items are stored in a single ``ReasoningContent.extra["reasoning_items"]``
+    list without changing ``ChatMessage.from_assistant()``. Reasoning items and function
+    calls retain their original relative order when replayed in a multi-turn conversation.
+    Previously serialized single-item reasoning metadata remains supported.
