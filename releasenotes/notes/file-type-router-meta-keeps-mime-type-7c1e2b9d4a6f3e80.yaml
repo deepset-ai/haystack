@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``FileTypeRouter`` now keeps the detected MIME type when ``meta`` is passed. A path converted
+    to a ``ByteStream`` to carry the metadata used to have ``mime_type=None``, so downstream
+    components such as ``FileToFileContent`` could no longer tell its type.
