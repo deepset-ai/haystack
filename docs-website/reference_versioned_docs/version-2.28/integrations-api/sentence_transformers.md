@@ -684,9 +684,12 @@ Create a SentenceTransformersTextEmbedder component.
   for a stored model on Hugging Face.
 - **quantization_ranges** (<code>list\[list\[float\]\] | None</code>) – Calibration ranges to use when `precision` is "int8" or "uint8", with shape `(2, embedding_dim)`:
   minimum values in the first row and maximum values in the second.
-  Scalar quantization calibrates the min/max range from the batch being encoded, which is degenerate
-  for a single text and produces meaningless embeddings. Pass ranges computed from a representative
-  sample of embeddings to get consistent quantized embeddings.
+  Required for "int8" and "uint8" because ranges cannot be inferred from a single text.
+  Compute ranges from a representative sample of embeddings.
+
+**Raises:**
+
+- <code>ValueError</code> – `precision` is "int8" or "uint8" and `quantization_ranges` is not provided.
 
 #### to_dict
 
