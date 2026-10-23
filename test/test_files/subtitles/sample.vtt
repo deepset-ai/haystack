@@ -1,0 +1,10 @@
+WEBVTT
+
+NOTE This is a note and should be ignored
+
+1
+00:00:01.000 --> 00:00:03.500
+<i>Hello</i> from VTT
+
+00:00:04.000 --> 00:00:06.000
+Second VTT cue
