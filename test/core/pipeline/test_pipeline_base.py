@@ -1514,7 +1514,7 @@ class TestPipelineBase:
                         {"sender": None, "value": 33},  # User input
                     ]
                 },
-                {"lazy": [42, 24, 33]},  # Takes all valid inputs
+                {"lazy": [33, 42, 24]},  # Takes all valid inputs, user input first
                 {"lazy": [{"sender": None, "value": 33}]},  # User input remains
             ),
             # Mixed socket types

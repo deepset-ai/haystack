@@ -738,28 +738,6 @@ class Pipeline(PipelineBase):
         if pruned or component_name in include_outputs_from:
             yield {component_name: _deepcopy_with_exceptions(pruned)}
 
-    @staticmethod
-    def _sort_lazy_variadic_inputs_by_sender(
-        component_name: str, component: dict, inputs: dict[str, dict[str, list[dict[str, Any]]]]
-    ) -> None:
-        """
-        Sorts the inputs of each lazy variadic socket of a component by sender, in place.
-
-        Concurrent senders write to a lazy variadic socket in completion order, which can change between runs.
-        Sorting user inputs first and then by sender name gives the order `Pipeline.run()` produces when the senders
-        have the same priority. The sort is stable, so values from the same sender keep their arrival order.
-
-        :param component_name: The name of the component receiving the inputs.
-        :param component: Component with component metadata.
-        :param inputs: The global input state shared by all components. Mutated in place.
-        """
-        component_inputs = inputs.get(component_name, {})
-        for socket_name, socket in component["input_sockets"].items():
-            if socket.is_lazy_variadic and socket_name in component_inputs:
-                component_inputs[socket_name].sort(
-                    key=lambda entry: (entry["sender"] is not None, entry["sender"] or "")
-                )
-
     def _schedule_component(
         self,
         *,
@@ -797,7 +775,6 @@ class Pipeline(PipelineBase):
         scheduled_components.add(component_name)
 
         component = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        self._sort_lazy_variadic_inputs_by_sender(component_name, component, inputs)
         component_inputs = self._consume_component_inputs(component_name, component, inputs)
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 

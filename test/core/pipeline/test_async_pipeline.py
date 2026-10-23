@@ -6,13 +6,18 @@ import asyncio
 import contextvars
 import logging
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.joiners import BranchJoiner
+from haystack.components.converters import OutputAdapter
+from haystack.components.joiners import BranchJoiner, DocumentJoiner
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.routers import ConditionalRouter
 from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineRuntimeError
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
@@ -336,6 +341,106 @@ def test_run_async_passes_variadic_inputs_in_same_order_as_run():
 
     assert sync_result == {"collector": {"values": ["a", "b"]}}
     assert async_result == sync_result
+
+
+@component
+class _QueryEmbedder:
+    @component.output_types(embedding=list[float])
+    def run(self, text: str) -> dict:
+        return {"embedding": [1.0, 0.0, 0.0]}
+
+
+def _programming_document_store() -> InMemoryDocumentStore:
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents(
+        [
+            Document(
+                id="1", content="Python is a programming language", embedding=[1.0, 0.0, 0.0], meta={"year": 2024}
+            ),
+            Document(id="2", content="Java is a programming language", embedding=[0.0, 1.0, 0.0], meta={"year": 2023}),
+            Document(id="3", content="Pythons are large snakes", embedding=[0.8, 0.0, 0.6], meta={"year": 2024}),
+        ]
+    )
+    return document_store
+
+
+def _joined_ids_and_scores(result: dict) -> list[tuple[str, float | None]]:
+    return [(doc.id, doc.score) for doc in result["joiner"]["documents"]]
+
+
+def test_run_async_applies_document_joiner_weights_to_the_same_retrievers_as_run():
+    @component
+    class SlowBM25Retriever(InMemoryBM25Retriever):
+        @component.output_types(documents=list[Document])
+        async def run_async(
+            self,
+            query: str,
+            filters: dict[str, Any] | None = None,
+            top_k: int | None = None,
+            scale_score: bool | None = None,
+        ) -> dict[str, list[Document]]:
+            await asyncio.sleep(0.05)
+            # @component rebuilds the class, which breaks a zero-argument super()
+            return await InMemoryBM25Retriever.run_async(
+                self, query=query, filters=filters, top_k=top_k, scale_score=scale_score
+            )
+
+    document_store = _programming_document_store()
+    pipe = Pipeline()
+    # "dense_retriever" sorts first but sits one step deeper than "sparse_retriever", and the sparse retriever
+    # finishes last in run_async(), so neither name order nor completion order gives the order of run()
+    pipe.add_component("embedder", _QueryEmbedder())
+    pipe.add_component("dense_retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+    pipe.add_component("sparse_retriever", SlowBM25Retriever(document_store=document_store))
+    pipe.add_component("joiner", DocumentJoiner(join_mode="merge", weights=[0.7, 0.3]))
+    pipe.connect("embedder.embedding", "dense_retriever.query_embedding")
+    pipe.connect("dense_retriever.documents", "joiner.documents")
+    pipe.connect("sparse_retriever.documents", "joiner.documents")
+
+    data = {"embedder": {"text": "python programming"}, "sparse_retriever": {"query": "python programming"}}
+    sync_result = pipe.run(data)
+    async_result = asyncio.run(pipe.run_async(data))
+
+    assert _joined_ids_and_scores(async_result) == _joined_ids_and_scores(sync_result)
+
+
+@pytest.mark.parametrize("year", [None, 2024], ids=["filter_branch_skipped", "filter_branch_runs"])
+def test_run_async_applies_document_joiner_weights_like_run_when_an_optional_filter_branch_is_skipped(year):
+    routes = [
+        {"condition": "{{ year is not none }}", "output": "{{ year }}", "output_name": "year", "output_type": int},
+        {"condition": "{{ year is none }}", "output": "{{ year }}", "output_name": "no_year", "output_type": None},
+    ]
+
+    document_store = _programming_document_store()
+    pipe = Pipeline()
+    pipe.add_component("router", ConditionalRouter(routes=routes, optional_variables=["year"]))
+    pipe.add_component(
+        "filter_builder",
+        OutputAdapter(
+            template="{{ {'field': 'meta.year', 'operator': '==', 'value': year} }}", output_type=dict[str, Any]
+        ),
+    )
+    pipe.add_component("embedder", _QueryEmbedder())
+    pipe.add_component("embedding_retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+    pipe.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipe.add_component("joiner", DocumentJoiner(join_mode="merge", weights=[0.7, 0.3]))
+    pipe.connect("router.year", "filter_builder.year")
+    pipe.connect("filter_builder.output", "bm25_retriever.filters")
+    pipe.connect("embedder.embedding", "embedding_retriever.query_embedding")
+    pipe.connect("embedding_retriever.documents", "joiner.documents")
+    pipe.connect("bm25_retriever.documents", "joiner.documents")
+
+    # Without a year, filter_builder never runs, so run() defers bm25_retriever until after embedding_retriever even
+    # though bm25_retriever only consumes user input
+    data = {
+        "router": {"year": year} if year is not None else {},
+        "embedder": {"text": "python programming"},
+        "bm25_retriever": {"query": "python programming"},
+    }
+    sync_result = pipe.run(data)
+    async_result = asyncio.run(pipe.run_async(data))
+
+    assert _joined_ids_and_scores(async_result) == _joined_ids_and_scores(sync_result)
 
 
 @component
