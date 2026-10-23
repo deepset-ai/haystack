@@ -341,6 +341,28 @@ class TestTool:
 
         assert tool.invoke(days=3) == timedelta(days=3)
 
+    @pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
+    @pytest.mark.parametrize("properties", [{}, {"query": {"type": "string"}}], ids=["empty-schema", "partial-schema"])
+    async def test_inputs_from_state_accepts_keyword_arguments(self, is_async, properties):
+        def search(query: str = "weather", **kwargs: str) -> str:
+            return f"{query} in {kwargs['city']}"
+
+        async def search_async(query: str = "weather", **kwargs: str) -> str:
+            return search(query=query, **kwargs)
+
+        tool = Tool(
+            name="search",
+            description="Search using the location from state",
+            parameters={"type": "object", "properties": properties},
+            function=None if is_async else search,
+            async_function=search_async if is_async else None,
+            inputs_from_state={"location": "city"},
+        )
+
+        assert await tool.invoke_async(city="Berlin") == "weather in Berlin"
+        if not is_async:
+            assert tool.invoke(city="Berlin") == "weather in Berlin"
+
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""
         with pytest.raises(TypeError, match=re.escape("inputs_from_state values must be str, not dict")):

@@ -1,0 +1,10 @@
+fixes:
+  - |
+    ``Tool`` now accepts ``inputs_from_state`` mappings to arguments handled by
+    ``**kwargs``, for both synchronous and asynchronous functions. Previously,
+    these mappings were rejected unless the argument appeared in the JSON schema.
+upgrade:
+  - |
+    Tools accepting ``**kwargs`` no longer need state-only arguments in the JSON
+    schema as a workaround for ``inputs_from_state`` validation. Existing
+    configurations remain valid.
