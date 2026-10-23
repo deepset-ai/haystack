@@ -166,15 +166,12 @@ class LLMEvaluator:
             If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
         """
         # Validate inputs
-        if (
-            not isinstance(inputs, list)
-            or not all(
-                isinstance(_input, tuple)
-                and len(_input) == 2
-                and isinstance(_input[0], str)
-                and get_origin(_input[1]) is list
-                for _input in inputs
-            )
+        if not isinstance(inputs, list) or not all(
+            isinstance(_input, tuple)
+            and len(_input) == 2
+            and isinstance(_input[0], str)
+            and (_input[1] is list or get_origin(_input[1]) is list)
+            for _input in inputs
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
