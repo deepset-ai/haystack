@@ -101,17 +101,17 @@ class TestTypeCoercion:
             (
                 Document(id="1", content="text"),
                 '{"id": "1", "content": "text", "blob": null, "score": null, "embedding": null, '
-                '"sparse_embedding": null}',
+                '"sparse_embedding": null, "multi_vector_embedding": null}',
             ),
             (
                 [Document(id="1", content="text")],
                 '[{"id": "1", "content": "text", "blob": null, "score": null, "embedding": null, '
-                '"sparse_embedding": null}]',
+                '"sparse_embedding": null, "multi_vector_embedding": null}]',
             ),
             (
                 {"key": Document(id="1", content="text")},
                 '{"key": {"id": "1", "content": "text", "blob": null, "score": null, "embedding": null, '
-                '"sparse_embedding": null}}',
+                '"sparse_embedding": null, "multi_vector_embedding": null}}',
             ),
         ],
     )
