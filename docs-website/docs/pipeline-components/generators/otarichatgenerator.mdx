@@ -1,0 +1,168 @@
+---
+title: "OtariChatGenerator"
+id: otarichatgenerator
+slug: "/otarichatgenerator"
+description: "This component enables chat completion using models from many providers through an Otari LLM gateway."
+hep_available: false
+---
+
+# OtariChatGenerator
+
+This component enables chat completion using models from many providers through an [Otari](https://github.com/mozilla-ai/otari) LLM gateway.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: An Otari API key. Can be set with `OTARI_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [Otari](/reference/integrations-otari) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/otari |
+| **Package name** | `otari-haystack` |
+
+</div>
+
+## Overview
+
+[Otari](https://github.com/mozilla-ai/otari) is an open-source, OpenAI-compatible LLM gateway by mozilla.ai. It routes requests to over 40 model providers and adds API keys, budgets, usage and cost tracking, and routing policies such as failover. You can use otari.ai, the gateway that mozilla.ai runs, or run Otari yourself.
+
+`OtariChatGenerator` sends chat completions to the gateway. The provider credentials stay in the gateway, so your application only needs an Otari API key.
+
+### Gateways
+
+By default, `OtariChatGenerator` calls otari.ai at `https://api.otari.ai/api/v1`. Set `api_base_url` to call another gateway:
+
+- For an account in otari.ai's EU region, whose API keys start with `otk_v1_eu_`, use `https://eu.api.otari.ai/api/v1`. If such a key is sent with the default URL, the component logs a warning, because the default host rejects it.
+- For a gateway you run yourself, use its address followed by `/api/v1`, for example `http://localhost:8000/api/v1`.
+
+### Models
+
+Name a model with a selector that the gateway accepts: `provider:model`, such as `openai:gpt-5-mini` (default) or `anthropic:claude-sonnet-4-6`, a model alias, or the name of a routing policy. For details, see the [Otari model docs](https://github.com/mozilla-ai/otari/blob/main/docs/models.md).
+
+### Provider credentials
+
+The gateway needs a credential for each provider you use. On otari.ai, add a provider key on your organization's Providers page. On a gateway you run yourself, add the provider on the Providers page of its dashboard, or declare it in the gateway's `config.yml`:
+
+```yaml
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+```
+
+The gateway reads a provider's environment variable, such as `OPENAI_API_KEY`, only if its config names the variable like this. For details, see [Configuring a provider](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#configuring-a-provider) in the Otari docs.
+
+### Parameters
+
+To use the `OtariChatGenerator`, set an `OTARI_API_KEY` environment variable. Alternatively, provide the API key as another environment variable or a token by setting `api_key` and using Haystack's [secret management](../../concepts/secret-management.mdx).
+
+You can pass any parameter of the gateway's chat completions endpoint with the `generation_kwargs` parameter in the init or run methods. The endpoint is OpenAI-compatible, so the same parameters as for the [OpenAIChatGenerator](openaichatgenerator.mdx) apply. Request headers, such as Otari's `Idempotency-Key`, go into `generation_kwargs["extra_headers"]`.
+
+The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. Find out more in the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
+
+To let the model call tools, pass `Tool` objects, a `Toolset`, or a mix of both to the `tools` parameter. See the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation for details. Set `tools_strict=True` to make the model follow the tool schemas exactly.
+
+### Cost
+
+When the gateway prices a request, the `usage` entry in the meta of each reply contains the cost in US dollars as `cost_usd`, a decimal string, and the price list it came from as `pricing_source`.
+
+When streaming, the gateway reports usage only if you ask for it with `generation_kwargs={"stream_options": {"include_usage": True}}`.
+
+### Reasoning
+
+Models that reason, such as Claude or Cohere's reasoning models, return their reasoning through the gateway. You find it in the `reasoning` property of the reply, a [`ReasoningContent`](../../concepts/data-classes/chatmessage.mdx#types-of-content), and when streaming, in the `reasoning` of the streamed chunks. Set how much the model reasons with `reasoning_effort`, for example `generation_kwargs={"reasoning_effort": "low"}`.
+
+If the gateway adds provider data that the next request needs, such as Anthropic's thinking signature, the component sends the reasoning back with the reply in later requests. Anthropic models need this to keep reasoning across tool calls.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.otari import OtariChatGenerator
+
+client = OtariChatGenerator(streaming_callback=print_streaming_chunk)
+client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+```
+
+## Usage
+
+Install the `otari-haystack` package to use the `OtariChatGenerator`:
+
+```shell
+pip install otari-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.otari import OtariChatGenerator
+
+client = OtariChatGenerator()
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+print(response["replies"][0].text)
+# >> Agentic pipelines are workflows in which an LLM-driven agent decides which steps
+# >> to take, such as calling tools or retrieving data, to complete a task.
+print(response["replies"][0].meta["usage"]["cost_usd"])
+# >> 0.000279
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.otari import OtariChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = OtariChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+)
+print(response["llm"]["replies"][0].text)
+# >> Berlin is the capital of Germany and its largest city, known for its history,
+# >> culture, and nightlife.
+```
+
+### With an Agent
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack_integrations.components.generators.otari import OtariChatGenerator
+
+
+@tool
+def weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+    """Get weather for a given city."""
+    return f"The weather in {city} is sunny and 32°C"
+
+
+agent = Agent(chat_generator=OtariChatGenerator(), tools=[weather])
+
+result = agent.run(
+    messages=[ChatMessage.from_user("What's the weather like in Paris?")]
+)
+
+print(result["last_message"].text)
+# >> The weather in Paris is sunny and 32°C.
+```

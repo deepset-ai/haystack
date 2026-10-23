@@ -9,6 +9,7 @@ import pytest
 from haystack import Document
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
 from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
+from haystack.testing.factory import document_store_class
 
 
 class TestAutoMergingRetrieverAsync:
@@ -253,6 +254,17 @@ class TestAutoMergingRetrieverAsync:
 
         expected = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven eight"}]
         assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
+
+    @pytest.mark.asyncio
+    async def test_run_async_sync_only_docstore(self):
+        parent = Document(id="parent", content="parent", meta={"__level": 0, "__children_ids": ["leaf"]})
+        leaf = Document(id="leaf", content="leaf", meta={"__level": 1, "__parent_id": "parent", "__block_size": 10})
+        mocked_docstore_class = document_store_class("MockedDocumentStore", documents=[parent])
+        retriever = AutoMergingRetriever(document_store=mocked_docstore_class())
+
+        result = await retriever.run_async(documents=[leaf])
+
+        assert result["documents"] == [parent]
 
     @pytest.mark.asyncio
     async def test_close_async(self):

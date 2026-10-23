@@ -735,7 +735,9 @@ splitter.run([doc])
 __init__(
     block_sizes: set[int],
     split_overlap: int = 0,
-    split_by: Literal["word", "sentence", "page", "passage"] = "word",
+    split_by: Literal["word", "sentence", "page", "passage", "token"] = "word",
+    *,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -745,12 +747,24 @@ Initialize HierarchicalDocumentSplitter.
 
 - **block_sizes** (<code>set\[int\]</code>) – Set of block sizes to split the document into. The blocks are split in descending order.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
-- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage']</code>) – The unit for splitting your documents.
+- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage', 'token']</code>) – The unit for splitting your documents: `word`, `sentence`, `page`, `passage`, or `token`.
+  `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that block sizes
+  match an LLM's context budget.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_by="token"`.
 
 **Raises:**
 
 - <code>ValueError</code> – If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
   greater than or equal to the smallest value in `block_sizes`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the splitters by loading the sentence tokenizer or the tiktoken encoding they need.
 
 #### run
 
@@ -979,8 +993,8 @@ Initializes a RecursiveDocumentSplitter.
 
 **Raises:**
 
-- <code>ValueError</code> – If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-  if any separator is not a string.
+- <code>ValueError</code> – If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+  equal to the chunk size, if the overlap is negative, or if any separator is not a string.
 
 #### warm_up
 

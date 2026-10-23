@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``RecursiveDocumentSplitter`` now validates ``split_unit`` at initialization, raising a ``ValueError``
+    for values other than ``"word"``, ``"char"``, or ``"token"`` instead of failing later during ``run()``.

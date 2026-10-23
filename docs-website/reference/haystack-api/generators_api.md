@@ -157,6 +157,8 @@ Initialize the Azure OpenAI Chat Generator component.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are sent directly to
   the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
@@ -1045,6 +1047,8 @@ in the OpenAI client.
   the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
   more details.
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.

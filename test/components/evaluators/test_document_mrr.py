@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Document, default_from_dict
@@ -57,6 +59,23 @@ def test_run_with_meta_comparison():
         ],
     )
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
+def test_run_with_empty_comparison_values_does_not_match(caplog):
+    evaluator = DocumentMRREvaluator(document_comparison_field="meta.file_id")
+    with caplog.at_level(logging.WARNING):
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="Strasbourg", meta={"file_id": ""})],
+                [Document(content="Paris", meta={"file_id": "a"})],
+            ],
+            retrieved_documents=[
+                [Document(content="pasta", meta={"file_id": ""})],
+                [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+            ],
+        )
+    assert result == {"individual_scores": [0.0, 0.5], "score": 0.25}
+    assert "none of them contain a valid comparison value" in caplog.text
 
 
 def test_run_with_nested_meta_comparison():

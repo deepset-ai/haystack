@@ -153,6 +153,8 @@ class OpenAIChatGenerator:
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
             Some of the supported parameters:
+            - `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+                when streaming. Set `{"include_usage": False}` to disable requesting token usage.
             - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
                 including visible output tokens and reasoning tokens.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
@@ -518,6 +520,8 @@ class OpenAIChatGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         is_streaming = streaming_callback is not None
+        if is_streaming:
+            generation_kwargs.setdefault("stream_options", {"include_usage": True})
         num_responses = generation_kwargs.pop("n", 1)
 
         if is_streaming and num_responses > 1:
