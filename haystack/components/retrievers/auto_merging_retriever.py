@@ -100,10 +100,6 @@ class AutoMergingRetriever:
 
     @staticmethod
     def _check_valid_documents(matched_leaf_documents: list[Document]) -> None:
-        # check if the matched leaf documents have the required meta fields
-        if not all(doc.meta.get("__parent_id") for doc in matched_leaf_documents):
-            raise ValueError("The matched leaf documents do not have the required meta field '__parent_id'")
-
         # HierarchicalDocumentSplitter uses __level=0 and __block_size=0 for the root, so these
         # fields must be checked for presence rather than truthiness.
         if not all("__level" in doc.meta for doc in matched_leaf_documents):
