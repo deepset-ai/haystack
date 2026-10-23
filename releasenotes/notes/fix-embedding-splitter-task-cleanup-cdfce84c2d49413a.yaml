@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``EmbeddingBasedDocumentSplitter.run_async`` now cancels and waits for remaining
+    document tasks before propagating a splitting error. Previously, native asynchronous
+    embedding calls could continue after a failure. Invalid batches no longer leave
+    unawaited coroutines.
