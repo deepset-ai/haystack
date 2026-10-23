@@ -147,6 +147,13 @@ def test_id_is_independent_of_nested_meta_key_order():
     assert doc1.id == doc2.id
 
 
+def test_multivectors_round_trip():
+    document = Document(content="example", multi_vector_embedding=[[1.0, 0.0], [0.0, 1.0]])
+    assert Document.from_dict(document.to_dict()) == document
+    assert Document.from_dict(document.to_dict(flatten=False)) == document
+    assert Document(content="example").multi_vector_embedding is None
+
+
 def test_to_dict():
     doc = Document()
     assert doc.to_dict() == {
@@ -156,6 +163,7 @@ def test_to_dict():
         "score": None,
         "embedding": None,
         "sparse_embedding": None,
+        "multi_vector_embedding": None,
     }
 
 
@@ -169,6 +177,7 @@ def test_to_dict_without_flattening():
         "score": None,
         "embedding": None,
         "sparse_embedding": None,
+        "multi_vector_embedding": None,
     }
 
 
@@ -191,6 +200,7 @@ def test_to_dict_with_custom_parameters():
         "score": 0.99,
         "embedding": [10.0, 10.0],
         "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "multi_vector_embedding": None,
     }
 
 
@@ -212,6 +222,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "score": 0.99,
         "embedding": [10.0, 10.0],
         "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "multi_vector_embedding": None,
     }
 
 
@@ -225,6 +236,7 @@ def test_to_dict_with_colliding_meta_keys():
         "score": 0.9,
         "embedding": None,
         "sparse_embedding": None,
+        "multi_vector_embedding": None,
         "source": "web",
         "meta": {"content": "from-meta", "score": 0.5},
     }
