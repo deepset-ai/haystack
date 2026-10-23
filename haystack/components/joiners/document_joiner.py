@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from dataclasses import replace
 from enum import Enum
-from math import inf
+from math import inf, isfinite
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -131,8 +131,8 @@ class DocumentJoiner:
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         if weights:
-            if any(weight < 0 for weight in weights):
-                raise ValueError("The provided `weights` must not be negative.")
+            if any(not isfinite(weight) or weight < 0 for weight in weights):
+                raise ValueError("The provided `weights` must be finite and must not be negative.")
             weight_sum = sum(weights)
             if weight_sum == 0:
                 raise ValueError("The provided `weights` must not sum to zero.")
