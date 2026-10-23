@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Prevent ``SentenceWindowRetriever`` from repeating text in context windows
+    when a retrieved chunk is fully contained in an earlier chunk. Both
+    synchronous and asynchronous retrieval preserve the original text.

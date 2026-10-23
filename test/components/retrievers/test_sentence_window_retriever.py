@@ -63,6 +63,20 @@ class TestSentenceWindowRetriever:
         expected = "This is a text with some words. There is a second sentence. And there is also a third sentence"
         assert merged_text == expected
 
+    def test_run_preserves_text_with_contained_chunks(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        text = "one two three four"
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=lambda content: [content[:13], content[4:7], content[8:]]
+        )
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.meta["split_idx_start"] for doc in documents] == [0, 4, 8]
+        in_memory_doc_store.write_documents(documents)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        result = retriever.run(retrieved_documents=[documents[1]])
+
+        assert result == {"context_windows": [text], "context_documents": documents}
+
     def test_to_dict(self, in_memory_doc_store):
         window_retriever = SentenceWindowRetriever(in_memory_doc_store)
         data = window_retriever.to_dict()

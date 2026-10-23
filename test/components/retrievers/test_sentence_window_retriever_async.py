@@ -12,9 +12,27 @@ from haystack import Document, Pipeline
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestSentenceWindowRetrieverAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_preserves_text_with_contained_chunks(
+        self, in_memory_doc_store: InMemoryDocumentStore
+    ) -> None:
+        text = "one two three four"
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=lambda content: [content[:13], content[4:7], content[8:]]
+        )
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.meta["split_idx_start"] for doc in documents] == [0, 4, 8]
+        in_memory_doc_store.write_documents(documents)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        result = await retriever.run_async(retrieved_documents=[documents[1]])
+
+        assert result == {"context_windows": [text], "context_documents": documents}
+
     @pytest.mark.asyncio
     async def test_document_without_split_id(self, in_memory_doc_store):
         docs = [
