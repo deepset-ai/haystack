@@ -61,7 +61,7 @@
 | haystack/components/evaluators/document\_ndcg.py                           |       71 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                         |       77 |        2 |     97% |   111-115 |
 | haystack/components/evaluators/faithfulness.py                             |       50 |        0 |    100% |           |
-| haystack/components/evaluators/llm\_evaluator.py                           |      168 |        1 |     99% |       264 |
+| haystack/components/evaluators/llm\_evaluator.py                           |      168 |        1 |     99% |       266 |
 | haystack/components/evaluators/sas\_evaluator.py                           |       58 |       15 |     74% |112-126, 171-181 |
 | haystack/components/extractors/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
