@@ -5,6 +5,7 @@
 import ast
 import io
 import math
+import tokenize
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
@@ -208,9 +209,23 @@ class PythonCodeSplitter:
             after.insert(0, f"{indentation}pass\n")
         return "".join(before + after), docstring
 
-    def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
+    @staticmethod
+    def _definition_start(
+        node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef, decorator_starts: dict[int, int]
+    ) -> int:
+        """Include the decorator marker, which may precede the AST expression's first line."""
+        return decorator_starts[node.decorator_list[0].lineno] if node.decorator_list else node.lineno
+
+    def _emit_class_units(
+        self,
+        cls: ast.ClassDef,
+        source_lines: list[str],
+        cursor: int,
+        units: list[_CodeUnit],
+        decorator_starts: dict[int, int],
+    ) -> int:
         """Emit class header and per-method units for ``cls``; return the next cursor (1-indexed)."""
-        class_start = cls.decorator_list[0].lineno if cls.decorator_list else cls.lineno
+        class_start = self._definition_start(cls, decorator_starts)
         class_end = cls.end_lineno or cls.lineno
         class_name = cls.name
         class_decorators = [self._safe_unparse(d) for d in cls.decorator_list]
@@ -227,7 +242,13 @@ class PythonCodeSplitter:
         # ``preserve_class_definition`` to prefix later chunks of the same class.
         class_signature: str | None = None
         if cls.body:
-            body_start = cls.body[0].lineno
+            first_statement = cls.body[0]
+            body_start = first_statement.lineno
+            if (
+                isinstance(first_statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and first_statement.decorator_list
+            ):
+                body_start = self._definition_start(first_statement, decorator_starts)
             if body_start > class_start:
                 class_signature = self._slice_lines(source_lines, class_start, body_start - 1)
 
@@ -258,7 +279,7 @@ class PythonCodeSplitter:
             isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
             and first_child.decorator_list
         ):
-            first_child_start = first_child.decorator_list[0].lineno
+            first_child_start = self._definition_start(first_child, decorator_starts)
         else:
             first_child_start = first_child.lineno
         header_end = first_child_start - 1
@@ -286,7 +307,7 @@ class PythonCodeSplitter:
             child = cls.body[idx]
             if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue  # narrowed above; kept for the type checker
-            child_start = child.decorator_list[0].lineno if child.decorator_list else child.lineno
+            child_start = self._definition_start(child, decorator_starts)
             child_end = child.end_lineno or child.lineno
             decorators = [self._safe_unparse(d) for d in child.decorator_list]
 
@@ -319,9 +340,32 @@ class PythonCodeSplitter:
 
         return class_end + 1
 
+    @staticmethod
+    def _decorator_start_lines(source: str) -> dict[int, int]:
+        """Map decorator expression lines to the line containing their opening @."""
+        # Tokenize normalized newlines to match AST line numbers, including bare CR.
+        # Only a logical line's first token can introduce a decorator; @ inside an
+        # expression is matrix multiplication, not a new decorator boundary.
+        decorator_starts: dict[int, int] = {}
+        line_start = True
+        decorator_start: int | None = None
+        normalized_source = source.replace("\r\n", "\n").replace("\r", "\n")
+        for token in tokenize.generate_tokens(io.StringIO(normalized_source).readline):
+            if token.type == tokenize.NEWLINE:
+                line_start = True
+                decorator_start = None
+            elif token.type not in (tokenize.NL, tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT):
+                if line_start and token.type == tokenize.OP and token.string == "@":
+                    decorator_start = token.start[0]
+                if decorator_start is not None:
+                    decorator_starts[token.start[0]] = decorator_start
+                line_start = False
+        return decorator_starts
+
     def _extract_units(self, source: str) -> list[_CodeUnit]:
         """Parse ``source`` and produce the ordered list of syntactic split units."""
         tree = ast.parse(source)
+        decorator_starts = self._decorator_start_lines(source)
         # Match ast line numbers: split only on \n / \r\n / \r, not form feed etc.
         source_lines = io.StringIO(source, newline="").readlines()
         total_lines = len(source_lines)
@@ -375,12 +419,12 @@ class PythonCodeSplitter:
                 continue
 
             if isinstance(node, ast.ClassDef):
-                cursor = self._emit_class_units(node, source_lines, cursor, units)
+                cursor = self._emit_class_units(node, source_lines, cursor, units, decorator_starts)
                 node_idx += 1
                 continue
 
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                start = node.decorator_list[0].lineno if node.decorator_list else node.lineno
+                start = self._definition_start(node, decorator_starts)
                 end = node.end_lineno or node.lineno
                 decorators = [self._safe_unparse(d) for d in node.decorator_list]
                 unit_slice = self._slice_lines(source_lines, cursor, end)

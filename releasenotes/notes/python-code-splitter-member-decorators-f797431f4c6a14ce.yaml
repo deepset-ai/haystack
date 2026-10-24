@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    Re-split Python sources whose first class member is decorated if their chunks were
+    produced with ``PythonCodeSplitter(preserve_class_definition=True)``. Previously,
+    the first member's decorators could be copied into other members' chunks. No
+    configuration changes are required.
+fixes:
+  - |
+    ``PythonCodeSplitter`` now excludes member decorators from the class signature
+    prepended to separate member chunks, preserving each member's original decorators
+    instead of duplicating them or applying them to unrelated methods.
+    Parenthesized multiline decorators are kept with their definitions, and their
+    start-line metadata points to the opening decorator marker.
