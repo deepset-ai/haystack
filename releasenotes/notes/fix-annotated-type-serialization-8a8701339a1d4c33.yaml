@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` so ``typing.Annotated`` type hints round-trip with their metadata.
+    Metadata is serialized with ``repr()`` and read back with ``ast.literal_eval`` and quote-aware argument splitting,
+    preserving values such as strings containing commas.
