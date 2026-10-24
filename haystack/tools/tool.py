@@ -214,7 +214,7 @@ class Tool:
 
     def _get_valid_inputs(self) -> set[str] | None:
         """
-        Return the tool's accepted input parameter names, or None if unknown.
+        Return the tool's accepted input parameter names, or None if unrestricted or unknown.
 
         Used to validate parameter names in `inputs_from_state` when the tool is created.
 
@@ -222,13 +222,14 @@ class Tool:
         The signature also includes parameters supplied from state, which may be omitted
         from the schema exposed to the LLM.
 
-        Returns None if the signature cannot be inspected. In this case, the schema alone
-        cannot identify all accepted parameters, so name validation is skipped.
+        Returns None if the function accepts arbitrary keyword arguments or its signature
+        cannot be inspected. In these cases, the schema alone cannot identify all accepted
+        parameters, so name validation is skipped.
 
         Subclasses like ComponentTool override this to return component input socket names.
 
         :returns: Accepted input parameter names, an empty set if the tool takes no input,
-            or None if the names cannot be determined.
+            or None if the names are unrestricted or cannot be determined.
         """
         # Prefer the sync callable when both are provided
         introspection_target = self.function if self.function is not None else self.async_function
@@ -238,6 +239,9 @@ class Tool:
         try:
             sig = inspect.signature(introspection_target)
         except (ValueError, TypeError):
+            return None
+
+        if any(param.kind is inspect.Parameter.VAR_KEYWORD for param in sig.parameters.values()):
             return None
 
         return set(sig.parameters) | set(self.parameters.get("properties", {}))
