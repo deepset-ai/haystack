@@ -1,0 +1,13 @@
+---
+enhancements:
+  - |
+    ``EvaluationRunResult.comparative_detailed_report`` has a new ``align_on`` parameter to match the rows of the
+    two runs by an input column, such as a question ID or the question itself, instead of by position. This
+    compares runs correctly even if they evaluated the same questions in a different order, or not all of the same
+    questions. Rows without a match are kept with ``None`` for the other run.
+fixes:
+  - |
+    ``EvaluationRunResult.comparative_detailed_report`` no longer drops the first run's scores when both runs have
+    the same ``run_name``. Their columns are named with ``_first`` and ``_second`` again, as they were before the
+    report stopped using pandas. It also logs a warning when the rows of the two runs don't seem to line up, since
+    rows are matched by position unless ``align_on`` is set.

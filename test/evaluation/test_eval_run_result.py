@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack import Document
 from haystack.evaluation import EvaluationRunResult
 
 
@@ -242,3 +243,142 @@ def test_comparative_individual_scores_report():
         "testing_pipeline_2_faithfulness",
         "testing_pipeline_2_semantic_answer_similarity",
     ]
+
+
+SCORES = {"q1": 1.0, "q2": 0.5, "q3": 0.0, "q4": 0.25}
+
+
+def _run(name: str, ids: list[str], questions: list[str] | None = None) -> EvaluationRunResult:
+    return EvaluationRunResult(
+        name,
+        inputs={
+            "query_id": ids,
+            "question": questions or [f"Question {qid}?" for qid in ids],
+            "predicted_answer": [f"{name} answer to {qid}" for qid in ids],
+        },
+        results={"faithfulness": {"score": 0.5, "individual_scores": [SCORES[qid] for qid in ids]}},
+    )
+
+
+def test_comparative_detailed_report_align_on_matches_reordered_rows():
+    run_a = _run("a", ["q1", "q2", "q3"])
+    run_b = _run("b", ["q3", "q1", "q2"])
+
+    report = run_a.comparative_detailed_report(run_b, align_on="query_id")
+    assert isinstance(report, dict)
+
+    assert report["query_id"] == ["q1", "q2", "q3"]
+    assert report["a_faithfulness"] == [1.0, 0.5, 0.0]
+    assert report["b_faithfulness"] == [1.0, 0.5, 0.0]
+
+
+def test_comparative_detailed_report_align_on_keeps_rows_missing_in_either_run(caplog):
+    run_a = _run("a", ["q1", "q2", "q3"])
+    run_b = _run("b", ["q4", "q1", "q2"])
+
+    report = run_a.comparative_detailed_report(run_b, align_on="query_id")
+    assert isinstance(report, dict)
+
+    assert report["query_id"] == ["q1", "q2", "q3", "q4"]
+    assert report["a_faithfulness"] == [1.0, 0.5, 0.0, None]
+    assert report["b_faithfulness"] == [1.0, 0.5, None, 0.25]
+    assert "1 row(s) of 'a' have no match in 'b'" in caplog.text
+    assert "1 row(s) of 'b' have no match in 'a'" in caplog.text
+
+
+def test_comparative_detailed_report_align_on_pairs_repeated_values_in_order(caplog):
+    run_a = _run("a", ["q1", "q2", "q1"])
+    run_b = _run("b", ["q1", "q1", "q2"])
+    run_b.results["faithfulness"]["individual_scores"] = [0.1, 0.2, 0.3]
+
+    report = run_a.comparative_detailed_report(run_b, align_on="query_id")
+    assert isinstance(report, dict)
+
+    assert report["query_id"] == ["q1", "q2", "q1"]
+    assert report["b_faithfulness"] == [0.1, 0.3, 0.2]
+    assert caplog.text == ""
+
+
+def test_comparative_detailed_report_align_on_ignores_whitespace_but_not_case():
+    run_a = _run("a", ["q1", "q2"], questions=["How many days?", "Who approves?"])
+    run_b = _run("b", ["q2", "q1"], questions=["Who  approves? ", "how many days?"])
+
+    report = run_a.comparative_detailed_report(run_b, align_on="question")
+    assert isinstance(report, dict)
+
+    assert report["question"] == ["How many days?", "Who approves?", "how many days?"]
+    assert report["b_faithfulness"] == [None, 0.5, 1.0]
+
+
+def test_comparative_detailed_report_align_on_missing_column_raises():
+    run_a = _run("a", ["q1"])
+    run_b = _run("b", ["q1"])
+
+    with pytest.raises(ValueError, match="'qid' is not an input column of the evaluation run 'a'"):
+        run_a.comparative_detailed_report(run_b, align_on="qid")
+
+
+def test_comparative_detailed_report_align_on_keeps_kept_columns_with_their_row():
+    run_a = _run("a", ["q1", "q2"])
+    run_b = _run("b", ["q2", "q1"])
+
+    report = run_a.comparative_detailed_report(run_b, keep_columns=["predicted_answer"], align_on="query_id")
+    assert isinstance(report, dict)
+
+    assert report["a_predicted_answer"] == ["a answer to q1", "a answer to q2"]
+    assert report["b_predicted_answer"] == ["b answer to q1", "b answer to q2"]
+
+
+def test_comparative_detailed_report_same_run_names_keeps_both_runs():
+    run_a = _run("prompt", ["q1", "q2"])
+    run_b = _run("prompt", ["q1", "q2"])
+    run_b.results["faithfulness"]["individual_scores"] = [0.1, 0.2]
+
+    report = run_a.comparative_detailed_report(run_b)
+    assert isinstance(report, dict)
+
+    assert report["prompt_first_faithfulness"] == [1.0, 0.5]
+    assert report["prompt_second_faithfulness"] == [0.1, 0.2]
+
+
+@pytest.mark.parametrize(
+    "ids_b",
+    [
+        ["q3", "q1", "q2"],  # same questions, different order
+        ["q1", "q2"],  # fewer rows
+        ["q2", "q1", "q4"],  # different order and a different question, same number of rows
+    ],
+)
+def test_comparative_detailed_report_warns_when_rows_seem_misaligned(caplog, ids_b):
+    run_a = _run("a", ["q1", "q2", "q3"])
+    run_b = _run("b", ids_b)
+
+    run_a.comparative_detailed_report(run_b)
+
+    assert "The rows of 'a' and 'b' may not line up" in caplog.text
+
+
+def test_comparative_detailed_report_no_warning_for_aligned_runs_with_repeated_values(caplog):
+    run_a = _run("a", ["q1", "q2", "q3"])
+    run_b = _run("b", ["q1", "q2", "q3"])
+    run_a.inputs["predicted_answer"] = ["I don't know", "20 days", "I don't know"]
+    run_b.inputs["predicted_answer"] = ["Up to 5 days", "I don't know", "I don't know"]
+
+    report = run_a.comparative_detailed_report(run_b)
+    assert isinstance(report, dict)
+
+    assert report["b_faithfulness"] == [1.0, 0.5, 0.0]
+    assert caplog.text == ""
+
+
+def test_comparative_detailed_report_skips_unhashable_columns_when_checking_alignment(caplog):
+    run_a = _run("a", ["q1", "q2"])
+    run_b = _run("b", ["q1", "q2"])
+    run_a.inputs["documents"] = [[Document(content="x")], [Document(content="y")]]
+    run_b.inputs["documents"] = [[Document(content="y")], [Document(content="x")]]
+
+    report = run_a.comparative_detailed_report(run_b)
+    assert isinstance(report, dict)
+
+    assert report["b_faithfulness"] == [1.0, 0.5]
+    assert caplog.text == ""
