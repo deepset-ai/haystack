@@ -1,0 +1,31 @@
+---
+upgrade:
+  - |
+    ``max_agent_steps`` is now a reserved state key on ``Agent``. If you defined a custom ``state_schema`` key named
+    ``max_agent_steps``, rename it (e.g. ``my_max_agent_steps``): the Agent now raises a ``ValueError`` at
+    initialization when a reserved key is redefined.
+features:
+  - |
+    Added ``StepBudgetReminderHook``, a ``before_llm`` hook that tells the model how many steps it has
+    left once an Agent run gets close to ``max_agent_steps``. Before each of the last ``remind_within_steps`` LLM
+    calls, it adds a user message wrapped in ``<system-reminder>`` tags, such as "You have 2 of 10 steps remaining",
+    and on the last step asks for the final answer. This lets the Agent wrap up instead of being cut off
+    mid-investigation.
+
+    .. code-block:: python
+
+        from haystack.hooks.budget import StepBudgetReminderHook
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[search],
+            max_agent_steps=20,
+            hooks={"before_llm": [StepBudgetReminderHook(remind_within_steps=3)]},
+        )
+
+    Reminder messages are marked with ``meta={"system_reminder": True}``. Context compaction recognizes the marker and
+    never treats a reminder as the user's task.
+enhancements:
+  - |
+    Hooks can now read the Agent's step limit from the internal ``max_agent_steps`` state key, for example with
+    ``state.get("max_agent_steps")``. It is not returned as an Agent output.
