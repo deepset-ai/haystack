@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``MetadataRouter.from_dict`` mutating the caller's serialized dictionary in place.
+    Previously, serialized ``output_type`` strings were deserialized directly inside the
+    caller's dictionary, causing subsequent deserialization attempts with the same configuration
+    dictionary to fail. ``MetadataRouter.from_dict`` now operates on a copy, leaving the caller's
+    data untouched and allowing the serialized configuration to be safely reused.

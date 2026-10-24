@@ -174,8 +174,8 @@ class MetadataRouter:
         :returns:
             The deserialized component instance.
         """
-        init_params = data.get("init_parameters", {})
+        init_params = dict(data.get("init_parameters", {}))
         if "output_type" in init_params:
             # Deserialize the output_type to its original type
             init_params["output_type"] = deserialize_type(init_params["output_type"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
