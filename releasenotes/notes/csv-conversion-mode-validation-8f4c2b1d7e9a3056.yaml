@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``CSVToDocument`` now rejects an unsupported ``conversion_mode`` in its constructor.
+    Previously the value was only compared against ``"file"`` in ``run()``, so any other
+    string, including a typo such as ``"Rows"`` or a value with a trailing space, silently
+    selected the row mode and produced one ``Document`` per row instead of one per file.
+    When ``content_column`` was not passed, the raised error also reported
+    ``conversion_mode='row'`` for a component the caller had never configured that way.
