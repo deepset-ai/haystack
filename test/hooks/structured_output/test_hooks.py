@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from datetime import date
+from uuid import UUID
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State
@@ -19,6 +21,21 @@ from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY
 class CityInfo(BaseModel):
     city: str
     population: int
+
+
+class StrictAppointment(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    day: date
+    identifier: UUID
+    coordinates: tuple[int, int]
+    participants: int
+
+
+APPOINTMENT_REPLY = (
+    '{"day": "2026-10-22", "identifier": "12345678-1234-5678-1234-567812345678", '
+    '"coordinates": [1, 2], "participants": 3}'
+)
 
 
 CITY_JSON_SCHEMA = {
@@ -49,6 +66,34 @@ def _agent(responses: list[str | ChatMessage], hook: StructuredOutputHook, max_a
 
 
 class TestStructuredOutputHook:
+    @pytest.mark.parametrize("fenced", [False, True], ids=["plain", "json-fence"])
+    def test_validates_strict_pydantic_schema_as_json(self, fenced):
+        reply = f"```json\n{APPOINTMENT_REPLY}\n```" if fenced else APPOINTMENT_REPLY
+        agent = _agent(responses=[reply], hook=StructuredOutputHook(schema=StrictAppointment, max_retries=0))
+
+        result = agent.run(messages=[ChatMessage.from_user("Schedule an appointment")])
+
+        assert result["structured_output"] == {
+            "day": "2026-10-22",
+            "identifier": "12345678-1234-5678-1234-567812345678",
+            "coordinates": [1, 2],
+            "participants": 3,
+        }
+        assert result["step_count"] == 1
+
+    @pytest.mark.parametrize(
+        "reply",
+        [APPOINTMENT_REPLY.replace("2026-10-22", "2026-02-30"), APPOINTMENT_REPLY.replace(": 3}", ': "3"}')],
+        ids=["invalid-date", "string-integer"],
+    )
+    def test_rejects_invalid_strict_pydantic_values(self, reply):
+        agent = _agent(responses=[reply], hook=StructuredOutputHook(schema=StrictAppointment, max_retries=0))
+
+        result = agent.run(messages=[ChatMessage.from_user("Schedule an appointment")])
+
+        assert result["structured_output"] is None
+        assert result["step_count"] == 1
+
     @pytest.mark.parametrize(
         "reply",
         [
@@ -180,6 +225,26 @@ class TestStructuredOutputHook:
 
 
 class TestStructuredOutputHookAsync:
+    @pytest.mark.asyncio
+    async def test_retries_strict_pydantic_schema_as_json(self):
+        agent = _agent(
+            responses=[APPOINTMENT_REPLY.replace(": 3}", ': "3"}'), APPOINTMENT_REPLY],
+            hook=StructuredOutputHook(schema=StrictAppointment, max_retries=1),
+        )
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("Schedule an appointment")])
+
+        assert result["structured_output"] == {
+            "day": "2026-10-22",
+            "identifier": "12345678-1234-5678-1234-567812345678",
+            "coordinates": [1, 2],
+            "participants": 3,
+        }
+        assert result["step_count"] == 2
+        correction = result["messages"][-2]
+        assert correction.meta[_CORRECTION_META_KEY] is True
+        assert "participants" in correction.text
+
     @pytest.mark.asyncio
     async def test_retries_with_a_correction_message(self):
         agent = _agent(responses=["not json", VALID_REPLY], hook=StructuredOutputHook(schema=CityInfo, max_retries=1))
