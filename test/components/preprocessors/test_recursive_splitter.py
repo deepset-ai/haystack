@@ -445,6 +445,15 @@ def test_run_page_number_does_not_drift_with_overlap():
             [1, 1, 3],
             id="fixed_size_fallback_with_page_breaks",
         ),
+        pytest.param(
+            # the page breaks between the words are not words: they are neither counted nor taken as the overlap
+            "aa bb \f cc dd \f ee ff gg",
+            3,
+            1,
+            ["aa bb \f cc", "cc dd \f ee", "ee ff gg"],
+            [1, 2, 3],
+            id="page_breaks_between_words",
+        ),
     ],
 )
 def test_run_word_overlap_keeps_source_text_and_page_numbers(
@@ -753,31 +762,29 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     result = splitter.run([doc])
     doc_chunks = result["documents"]
 
-    assert len(doc_chunks) == 5
-    assert doc_chunks[0].content == "This is some text. "
+    # the page breaks between the words are not words, so they don't take up any of the split_length
+    assert len(doc_chunks) == 4
+    assert doc_chunks[0].content == "This is some text. \f "
     assert doc_chunks[0].meta["page_number"] == 1
     assert doc_chunks[0].meta["split_id"] == 0
     assert doc_chunks[0].meta["split_idx_start"] == text.index(doc_chunks[0].content)
 
-    assert doc_chunks[1].content == "\f This text is "
+    assert doc_chunks[1].content == "This text is on "
     assert doc_chunks[1].meta["page_number"] == 2
     assert doc_chunks[1].meta["split_id"] == 1
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
-    assert doc_chunks[2].content == "on another page. \f "
+    assert doc_chunks[2].content == "another page. \f This is "
     assert doc_chunks[2].meta["page_number"] == 2
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 
-    assert doc_chunks[3].content == "This is the last "
+    assert doc_chunks[3].content == "the last pag3."
     assert doc_chunks[3].meta["page_number"] == 3
     assert doc_chunks[3].meta["split_id"] == 3
     assert doc_chunks[3].meta["split_idx_start"] == text.index(doc_chunks[3].content)
 
-    assert doc_chunks[4].content == "pag3."
-    assert doc_chunks[4].meta["page_number"] == 3
-    assert doc_chunks[4].meta["split_id"] == 4
-    assert doc_chunks[4].meta["split_idx_start"] == text.index(doc_chunks[4].content)
+    assert "".join(chunk.content for chunk in doc_chunks if chunk.content is not None) == text
 
 
 def test_run_split_by_page_break_count_page_breaks_word_unit() -> None:
@@ -802,12 +809,13 @@ def test_run_split_by_page_break_count_page_breaks_word_unit() -> None:
     assert chunks_docs[1].meta["split_id"] == 1
     assert chunks_docs[1].meta["split_idx_start"] == text.index(chunks_docs[1].content)
 
-    assert chunks_docs[2].content == "Sentence on page 3. Another on page 3.\f"
+    # the blank page holds no words, so it fits in the previous chunk
+    assert chunks_docs[2].content == "Sentence on page 3. Another on page 3.\f\f"
     assert chunks_docs[2].meta["page_number"] == 3
     assert chunks_docs[2].meta["split_id"] == 2
     assert chunks_docs[2].meta["split_idx_start"] == text.index(chunks_docs[2].content)
 
-    assert chunks_docs[3].content == "\f Sentence on page 5."
+    assert chunks_docs[3].content == " Sentence on page 5."
     assert chunks_docs[3].meta["page_number"] == 5
     assert chunks_docs[3].meta["split_id"] == 3
     assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)
@@ -1545,6 +1553,23 @@ def test_word_fallback_does_not_count_multichar_whitespace_as_words():
         stripped_contents.append(chunk.content.strip())
     assert stripped_contents == ["hello", "world"]
     assert all(stripped_contents)
+
+
+def test_chunk_length_does_not_count_whitespace_only_pieces_as_words():
+    # _chunk_length must count words like the fallback does, or the fallback's chunks measure longer than split_length
+    splitter = RecursiveDocumentSplitter(split_length=1, split_overlap=0, split_unit="word", separators=["."])
+    text = "a \f b \t c"
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    contents: list[str] = []
+    for chunk in chunks:
+        assert chunk.content is not None
+        assert splitter._chunk_length(chunk.content) <= 1
+        contents.append(chunk.content)
+    assert contents == ["a", " \f b", " \t c"]
+    assert "".join(contents) == text
+    assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2]
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 1, 5]
 
 
 def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
