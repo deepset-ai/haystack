@@ -1,0 +1,7 @@
+fixes:
+  - |
+    ``ComponentTool`` now skips unknown invocation arguments with a warning instead of raising
+    ``KeyError``, including extra properties in custom schemas and arguments added by the LLM.
+    Custom schemas with unknown properties also produce a warning during construction.
+    A ``ValueError`` is raised when a custom schema omits mandatory component inputs not provided
+    through ``inputs_from_state``. Automatically injected ``State`` inputs are excluded.
