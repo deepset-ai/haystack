@@ -202,6 +202,7 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                                     "score": None,
                                     "embedding": None,
                                     "sparse_embedding": None,
+                                    "multi_vector_embedding": None,
                                 }
                             ],
                             "meta": {"page": 1},
@@ -220,6 +221,7 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                                     "score": None,
                                     "embedding": None,
                                     "sparse_embedding": None,
+                                    "multi_vector_embedding": None,
                                 }
                             ],
                             "meta": {"page": 1},
@@ -346,6 +348,7 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
                     "score": None,
                     "embedding": None,
                     "sparse_embedding": None,
+                    "multi_vector_embedding": None,
                 }
             ],
             "list_of_dicts": [{"numbers": [1, 2, 3]}],
@@ -362,6 +365,7 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
                             "score": None,
                             "embedding": None,
                             "sparse_embedding": None,
+                            "multi_vector_embedding": None,
                         }
                     ],
                     "meta": {"page": 1},

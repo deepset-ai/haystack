@@ -90,6 +90,11 @@ DOCUMENT_SCHEMA = {
             "default": None,
             "description": "sparse vector representation of the document.",
         },
+        "multi_vector_embedding": {
+            "anyOf": [{"type": "array", "items": {"type": "array", "items": {"type": "number"}}}, {"type": "null"}],
+            "default": None,
+            "description": "Field 'multi_vector_embedding' of 'Document'.",
+        },
     },
 }
 
