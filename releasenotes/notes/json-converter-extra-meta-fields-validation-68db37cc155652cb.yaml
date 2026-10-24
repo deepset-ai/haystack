@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    In `JSONConverter`, reject an `extra_meta_fields` value that is a string other than the
+    literal `'*'` at component creation. Previously such a string was silently iterated
+    character by character, producing meaningless metadata keys and dropping the intended
+    fields from the converted documents.

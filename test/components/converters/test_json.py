@@ -83,6 +83,21 @@ def test_init_without_jq_schema_and_missing_dependency(jq_import):
     assert converter._meta_fields is None
 
 
+def test_init_rejects_non_star_string_extra_meta_fields():
+    with pytest.raises(ValueError, match="Invalid extra_meta_fields value 'author'"):
+        JSONConverter(content_key="title", extra_meta_fields="author")
+
+    with pytest.raises(ValueError, match="Invalid extra_meta_fields value '\\*\\*'"):
+        JSONConverter(content_key="title", extra_meta_fields="**")
+
+
+@patch("haystack.components.converters.json.jq_import")
+def test_init_accepts_star_literal_extra_meta_fields(jq_import):
+    converter = JSONConverter(content_key="title", extra_meta_fields="*")
+    jq_import.check.assert_not_called()
+    assert converter._meta_fields == "*"
+
+
 @patch("haystack.components.converters.json.jq_import")
 def test_init_with_jq_schema_and_missing_dependency(jq_import):
     jq_import.check.side_effect = ImportError

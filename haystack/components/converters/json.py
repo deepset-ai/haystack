@@ -135,6 +135,13 @@ class JSONConverter:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
+        if isinstance(extra_meta_fields, str) and extra_meta_fields != "*":
+            msg = (
+                f"Invalid extra_meta_fields value '{extra_meta_fields}'. "
+                "Provide a set of field names or the literal '*' to include all fields."
+            )
+            raise ValueError(msg)
+
         self._compiled_filter = None
         if jq_schema:
             jq_import.check()
