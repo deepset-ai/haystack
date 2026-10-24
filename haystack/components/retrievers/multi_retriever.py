@@ -111,12 +111,19 @@ class MultiRetriever:
             - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
 
         :raises ValueError:
-            If `top_k` or `top_k_per_retriever` is set and is not greater than 0.
+            If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `join_mode` is not one of
+            the available modes.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be greater than 0, but got {top_k}")
         if top_k_per_retriever is not None and top_k_per_retriever <= 0:
             raise ValueError(f"top_k_per_retriever must be greater than 0, but got {top_k_per_retriever}")
+        if join_mode not in ("concatenate", "reciprocal_rank_fusion"):
+            raise ValueError(
+                "The value of parameter <join_mode> must be 'concatenate' or 'reciprocal_rank_fusion', but is "
+                f"currently set to '{join_mode}'.\nChange the <join_mode> value to 'concatenate' or "
+                "'reciprocal_rank_fusion' when initializing the MultiRetriever."
+            )
         self.retrievers = retrievers
         self.filters = filters
         self.top_k_per_retriever = top_k_per_retriever
