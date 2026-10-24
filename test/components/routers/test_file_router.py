@@ -175,8 +175,11 @@ class TestFileTypeRouter:
         router = FileTypeRouter(mime_types=[r"text/plain", r"image/jpeg"])
         output = router.run(sources=file_paths, meta={"meta_field": "meta_value"})
 
-        assert output[r"text/plain"][0].mime_type == "text/plain"
-        assert output[r"image/jpeg"][0].mime_type == "image/jpeg"
+        text_source, image_source = output[r"text/plain"][0], output[r"image/jpeg"][0]
+        assert isinstance(text_source, ByteStream)
+        assert isinstance(image_source, ByteStream)
+        assert text_source.mime_type == "text/plain"
+        assert image_source.mime_type == "image/jpeg"
 
     def test_run_with_meta_keeps_bytestream_mime_type(self):
         """
@@ -187,7 +190,9 @@ class TestFileTypeRouter:
 
         output = router.run(sources=[bs], meta={"another_key": "another_value"})
 
-        assert output[r"text/.*"][0].mime_type == "text/plain"
+        routed = output[r"text/.*"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.mime_type == "text/plain"
 
     def test_run_with_meta_and_bytestreams(self):
         """
