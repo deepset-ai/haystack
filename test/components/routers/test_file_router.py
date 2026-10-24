@@ -13,6 +13,7 @@ import pytest
 from haystack import Pipeline, component
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ByteStream
 
 
@@ -539,3 +540,80 @@ class TestFileTypeRouter:
         assert "failed" in result
         assert PosixPath("non_existent_file.txt") in result["failed"]
         assert "text/plain" not in result
+
+
+class TestFileTypeRouterMetadata:
+    @pytest.mark.parametrize("source_as_string", [False, True], ids=["path", "string"])
+    @pytest.mark.parametrize("content", [b"Haystack!", b""], ids=["nonempty", "empty"])
+    def test_metadata_preserves_detected_mime_type(self, tmp_path, source_as_string, content):
+        path = tmp_path / "document.haystack_metadata"
+        path.write_bytes(content)
+        mime_type = "application/x-haystack-metadata"
+        router = FileTypeRouter(mime_types=[r"application/.*"], additional_mimetypes={mime_type: ".haystack_metadata"})
+        source = str(path) if source_as_string else path
+
+        result = router.run(sources=[source], meta={"tenant": "example"})
+
+        assert list(result) == [r"application/.*"]
+        routed = result[r"application/.*"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.data == content
+        assert routed.meta == {"file_path": str(path), "tenant": "example"}
+        assert routed.mime_type == mime_type
+
+    @pytest.mark.parametrize("mime_type", ["text/plain", None], ids=["known", "unknown"])
+    def test_metadata_preserves_input_bytestream(self, mime_type):
+        source = ByteStream(data=b"Haystack!", mime_type=mime_type, meta={"original": True})
+        router = FileTypeRouter(mime_types=["text/plain"])
+
+        result = router.run(sources=[source], meta={"tenant": "example"})
+
+        bucket = mime_type or "unclassified"
+        assert list(result) == [bucket]
+        routed = result[bucket][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.data == source.data
+        assert routed.mime_type == mime_type
+        assert routed.meta == {"original": True, "tenant": "example"}
+        assert source.meta == {"original": True}
+        assert source.mime_type == mime_type
+
+    def test_metadata_keeps_unknown_file_type_unclassified(self, tmp_path):
+        path = tmp_path / "document.haystack_unknown_mime"
+        path.write_bytes(b"Haystack!")
+        router = FileTypeRouter(mime_types=["text/plain"])
+
+        result = router.run(sources=[path], meta={"tenant": "example"})
+
+        assert list(result) == ["unclassified"]
+        routed = result["unclassified"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.mime_type is None
+        assert routed.meta == {"file_path": str(path), "tenant": "example"}
+
+    @pytest.mark.parametrize("meta", [None, {"tenant": "example"}], ids=["without-meta", "with-meta"])
+    @pytest.mark.parametrize("use_async", [False, True], ids=["sync", "async"])
+    async def test_metadata_preserves_downstream_routing(self, tmp_path, in_memory_doc_store, meta, use_async):
+        path = tmp_path / "document.haystack_metadata"
+        path.write_text("Article body for retrieval.", encoding="utf-8")
+        mime_type = "application/x-haystack-metadata"
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "broad",
+            FileTypeRouter(mime_types=[r"application/.*"], additional_mimetypes={mime_type: ".haystack_metadata"}),
+        )
+        pipeline.add_component("specific", FileTypeRouter(mime_types=[mime_type]))
+        pipeline.add_component("converter", TextFileToDocument())
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
+        pipeline.connect("broad.application/.*", "specific.sources")
+        pipeline.connect(f"specific.{mime_type}", "converter.sources")
+        pipeline.connect("converter.documents", "writer.documents")
+
+        data = {"broad": {"sources": [path], "meta": meta}}
+        result = await pipeline.run_async(data=data) if use_async else pipeline.run(data=data)
+
+        assert result == {"writer": {"documents_written": 1}}
+        documents = in_memory_doc_store.filter_documents()
+        assert len(documents) == 1
+        assert documents[0].content == "Article body for retrieval."
+        assert documents[0].meta == {"file_path": path.name, **(meta or {})}
