@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 import pytest
 
@@ -242,10 +242,10 @@ def test_mixed_variadic_types():
     # Variadic with Union
     var_union = Variadic[Union[int, str]]
 
-    is_compat, common = _is_compatible(var_union, Union[int, str])  # type: ignore[arg-type]
+    is_compat, common = _is_compatible(var_union, Union[int, str])
     assert is_compat and common == Union[int, str]
 
-    is_compat, common = _is_compatible(Union[int, str], var_union)  # type: ignore[arg-type]
+    is_compat, common = _is_compatible(Union[int, str], var_union)
     assert is_compat and common == Union[int, str]
 
     # GreedyVariadic with Optional
@@ -262,3 +262,39 @@ def test_mixed_variadic_types():
 
     is_compat, common = _is_compatible(nested_var, list[int])
     assert is_compat and common == list[int]
+
+
+# `Annotated[T, m1, m2, ...]` is the same type as `T` for compatibility — the metadata is just an
+# annotation, not a type modifier. These tests verify that the super_component type checker treats
+# Annotated the same as the wrapped type. Without this, a SuperComponent socket declared as
+# `Annotated[int, "doc"]` could not be aligned with one declared as `int`.
+def test_annotated_type_compatibility():
+    # Annotated[int, ...] is compatible with int in both directions.
+    is_compat, common = _is_compatible(Annotated[int, "doc"], int)
+    assert is_compat and common is int
+
+    is_compat, common = _is_compatible(int, Annotated[int, "doc"])
+    assert is_compat and common is int
+
+    # Two Annotated types with the same wrapped type are compatible (metadata is ignored).
+    is_compat, common = _is_compatible(Annotated[int, "x"], Annotated[int, "y"])
+    assert is_compat and common is int
+
+    # Nested Annotated: unwrap recursively.
+    is_compat, common = _is_compatible(Annotated[Annotated[int, "inner"], "outer"], int)
+    assert is_compat and common is int
+
+    # Annotated with a generic wrapped type is compatible with the bare generic.
+    is_compat, common = _is_compatible(Annotated[list[int], "doc"], list[int])
+    assert is_compat and common == list[int]
+
+    is_compat, common = _is_compatible(list[int], Annotated[list[int], "doc"])
+    assert is_compat and common == list[int]
+
+    # Annotated[Optional[int], ...] is compatible with Optional[int].
+    is_compat, common = _is_compatible(Annotated[Optional[int], "doc"], Optional[int])
+    assert is_compat and common == Optional[int]
+
+    # Annotated[str, ...] is not compatible with int.
+    is_compat, _ = _is_compatible(Annotated[str, "doc"], int)
+    assert not is_compat
