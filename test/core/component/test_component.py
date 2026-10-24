@@ -399,6 +399,8 @@ def test_component_decorator_set_it_as_component():
 
     comp = MockComponent()
     assert isinstance(comp, Component)
+    # Requires `Component.run` to stay a method at runtime: protocols with non-method members reject issubclass()
+    assert issubclass(MockComponent, Component)
 
 
 def test_input_has_default_value():

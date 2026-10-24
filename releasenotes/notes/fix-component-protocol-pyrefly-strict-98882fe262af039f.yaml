@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed Pyrefly's strict preset rejecting every component passed to ``Pipeline.add_component`` with a
+    ``bad-argument-type`` error. The ``Component`` protocol
+    declared ``run`` as ``(*args: Any, **kwargs: Any)``, which Pyrefly's ``strict-callable-subtyping`` setting does
+    not treat as "any signature". Type checkers now see ``run`` as a read-only ``Callable[..., Mapping[str, Any]]``,
+    so components with any ``run`` signature type-check in Pyrefly, mypy, and Pyright. Runtime behavior is unchanged:
+    ``isinstance()`` and ``issubclass()`` checks against ``Component`` work as before.
+    As a side effect, mypy now reports passing a component class instead of an instance, for example
+    ``add_component("name", MyComponent)`` instead of ``add_component("name", MyComponent())``.
