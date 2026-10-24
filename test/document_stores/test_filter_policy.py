@@ -316,6 +316,7 @@ class TestMergeTwoLogicalFiltersWithSameField:
     )
     def test_runtime_condition_overwrites_init_condition_on_same_field(self, init_filters, runtime_filters):
         result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert result is not None
         assert document_matches_filter(result, Document(content="hello welt", meta={"lang": "de"}))
         assert not document_matches_filter(result, Document(content="hello world", meta={"lang": "en"}))
 
@@ -323,4 +324,5 @@ class TestMergeTwoLogicalFiltersWithSameField:
         init_filters = _logical_and(LANG_EN, {"field": "meta.kind", "operator": "==", "value": "article"})
         runtime_filters = _logical_and(LANG_DE)
         result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert result is not None
         assert result["conditions"] == [{"field": "meta.kind", "operator": "==", "value": "article"}, LANG_DE]
