@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``XLSXToDocument`` attaching hyperlinks to the wrong cells when
+    ``read_excel_kwargs`` includes ``skiprows``, ``usecols``, or ``names``.
