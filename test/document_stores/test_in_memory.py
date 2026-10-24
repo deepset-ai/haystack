@@ -504,6 +504,47 @@ class TestMemoryDocumentStore(
         assert all(score is not None and not math.isnan(score) for score in scores.values())
         assert scores["zero"] == 0.0
 
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_embedding_retrieval_repeated_queries_return_same_scores(self, similarity):
+        docstore = InMemoryDocumentStore(embedding_similarity_function=similarity)
+        docstore.write_documents(
+            [Document(content="a", embedding=[0.1, 0.2, 0.3]), Document(content="b", embedding=[3.0, 2.0, 1.0])]
+        )
+        first = docstore.embedding_retrieval(query_embedding=[1.0, 0.5, 0.0])
+        second = docstore.embedding_retrieval(query_embedding=[1.0, 0.5, 0.0])
+        assert [(doc.id, doc.score) for doc in first] == [(doc.id, doc.score) for doc in second]
+
+    def test_embedding_retrieval_reflects_changes_between_queries(self):
+        docstore = InMemoryDocumentStore()
+        docs = [Document(content=f"doc {i}", meta={"even": i % 2 == 0}, embedding=[float(i), 1.0]) for i in range(4)]
+        docstore.write_documents(docs)
+        query = [1.0, 0.0]
+        assert docstore.embedding_retrieval(query_embedding=query, top_k=1)[0].content == "doc 3"
+
+        # a filtered query scores only the matching documents
+        even = docstore.embedding_retrieval(
+            query_embedding=query, filters={"field": "meta.even", "operator": "==", "value": True}
+        )
+        assert [(doc.content, doc.score) for doc in even] == [("doc 2", 2.0), ("doc 0", 0.0)]
+
+        docstore.write_documents([Document(content="new", embedding=[10.0, 0.0])])
+        assert docstore.embedding_retrieval(query_embedding=query, top_k=1)[0].content == "new"
+
+        docstore.write_documents(
+            [Document(id=docs[1].id, content="doc 1", embedding=[20.0, 0.0])], policy=DuplicatePolicy.OVERWRITE
+        )
+        assert docstore.embedding_retrieval(query_embedding=query, top_k=1)[0].score == 20.0
+
+        docstore.storage[docs[0].id].embedding = [30.0, 0.0]
+        assert docstore.embedding_retrieval(query_embedding=query, top_k=1)[0].score == 30.0
+
+        docstore.delete_documents([docs[0].id, docs[1].id])
+        assert docstore.embedding_retrieval(query_embedding=query, top_k=1)[0].content == "new"
+
+        docstore.write_documents([Document(content="other model", embedding=[1.0, 2.0, 3.0])])
+        with pytest.raises(DocumentStoreError, match="The embedding size of all Documents should be the same"):
+            docstore.embedding_retrieval(query_embedding=query)
+
     def test_embedding_retrieval_invalid_query(self, in_memory_doc_store):
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=[])
