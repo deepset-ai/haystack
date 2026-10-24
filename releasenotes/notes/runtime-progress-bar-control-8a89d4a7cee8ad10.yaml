@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Set ``HAYSTACK_PROGRESS_BARS`` to control progress bars in
+    ``OpenAIDocumentEmbedder``, ``AzureOpenAIDocumentEmbedder``,
+    ``MarkdownToDocument``, ``LLMEvaluator``, ``FaithfulnessEvaluator``, and
+    ``ContextRelevanceEvaluator``. Use ``0``, ``false``, ``no``, or ``off`` to
+    disable them, or ``1``, ``true``, ``yes``, or ``on`` to enable them.
+    Values are case-insensitive and ignore surrounding whitespace. An unset,
+    empty, or unrecognized value uses the component's ``progress_bar`` setting.
+    The override is read at execution time for synchronous and asynchronous
+    runs without changing the component's stored or serialized configuration.

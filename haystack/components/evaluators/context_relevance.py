@@ -134,6 +134,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             ```
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
+            The `HAYSTACK_PROGRESS_BARS` environment variable can override this setting at run time.
         :param raise_on_failure:
             If True, the component raises an exception when the chat generator call fails or its response isn't valid
             JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
