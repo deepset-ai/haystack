@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``SearchableToolset`` now rejects catalog tools that share the bootstrap
+    search tool name when discovery is active. Previously, discovering such
+    a tool produced duplicate names and failed the Agent run. Set
+    ``search_tool_name`` to a different name to use that catalog.
