@@ -72,6 +72,8 @@ asyncio.run(main())
 
 The reverse is not supported: passing an async callback to the sync `run` method raises an error, since a coroutine cannot be awaited from sync code.
 
+Callable objects with an `async def __call__` method, including `functools.partial` wrappers, follow the same rules as async functions: use them with `run_async`.
+
 ### Custom Callback
 
 If you need custom rendering, write your own callback. Handle the four chunk types in order:
