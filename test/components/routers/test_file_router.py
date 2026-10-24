@@ -166,6 +166,34 @@ class TestFileTypeRouter:
                 expected_meta_key, expected_meta_value = list(meta[i].items())[0]
                 assert el.meta[expected_meta_key] == expected_meta_value
 
+    def test_run_with_meta_keeps_detected_mime_type_on_paths(self, test_files_path):
+        """
+        A path converted to a ByteStream to carry meta keeps the MIME type it was routed by.
+        """
+        file_paths = [test_files_path / "txt" / "doc_1.txt", test_files_path / "images" / "apple.jpg"]
+
+        router = FileTypeRouter(mime_types=[r"text/plain", r"image/jpeg"])
+        output = router.run(sources=file_paths, meta={"meta_field": "meta_value"})
+
+        text_source, image_source = output[r"text/plain"][0], output[r"image/jpeg"][0]
+        assert isinstance(text_source, ByteStream)
+        assert isinstance(image_source, ByteStream)
+        assert text_source.mime_type == "text/plain"
+        assert image_source.mime_type == "image/jpeg"
+
+    def test_run_with_meta_keeps_bytestream_mime_type(self):
+        """
+        A ByteStream's own MIME type is left as it is when meta is added.
+        """
+        bs = ByteStream.from_string("Haystack!", mime_type="text/plain")
+        router = FileTypeRouter(mime_types=[r"text/.*"])
+
+        output = router.run(sources=[bs], meta={"another_key": "another_value"})
+
+        routed = output[r"text/.*"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.mime_type == "text/plain"
+
     def test_run_with_meta_and_bytestreams(self):
         """
         Test if the component runs correctly with ByteStream inputs and meta.
