@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` now recognizes ATX headers with up to three leading
+    spaces, preserving section boundaries and header hierarchy metadata for indented
+    Markdown headers. Lines indented by four or more spaces remain ordinary content.
