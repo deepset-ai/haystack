@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``CSVDocumentSplitter`` no longer treats literal strings such as ``N/A``, ``NA``, ``NULL``, or ``nan`` as missing
+    values. Previously, pandas' default missing-value parsing emptied these cells in the split output, and a row made
+    only of such values was treated as an empty row and used as a split boundary. The splitter now reads CSV content
+    with ``keep_default_na=False`` and ``na_values=[""]``, so only genuinely empty fields count as empty.
+    To restore the previous behavior, pass ``read_csv_kwargs={"keep_default_na": True}``.

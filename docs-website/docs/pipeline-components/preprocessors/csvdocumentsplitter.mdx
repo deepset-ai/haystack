@@ -38,6 +38,8 @@ The splitting process follows these rules:
 2. **Column-Based Splitting**: If `column_split_threshold` is set, consecutive empty columns equalling or exceeding this threshold trigger a split.
 3. **Recursive Splitting**: If both thresholds are provided, `CSVDocumentSplitter` first splits by rows and then by columns. If more empty rows are detected, the splitting process is called again. This ensures that sub-tables are fully separated.
 
+A row or column counts as empty only when all of its fields are empty. Cells that contain text such as `N/A`, `NA`, or `NULL` are kept as content.
+
 Each extracted sub-table retains metadata from the original document and includes additional fields:
 
 - `source_id`: The ID of the original document
