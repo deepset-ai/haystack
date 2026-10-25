@@ -64,7 +64,8 @@ def create_tool_from_function(
         The function to be converted into a Tool. May be either a regular function (assigned to the
         resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
         to `async_function`).
-        The function must include type hints for all parameters.
+        The function must include type hints for all parameters, except `*args` and `**kwargs`, which are left out
+        of the Tool's parameters.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -141,6 +142,10 @@ def create_tool_from_function(
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
+        # Skip *args and **kwargs because the LLM passes arguments by name
+        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            continue
+
         annotation = param_types[param_name]
 
         # Skip adding parameter names that will be passed to the tool from State
