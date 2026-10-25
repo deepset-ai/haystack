@@ -345,7 +345,7 @@ class MultiRetriever:
             run_kwargs["filters"] = resolved_filters
 
         # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
-        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+        semaphore = asyncio.Semaphore(self.max_workers)
 
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
             async with semaphore:
