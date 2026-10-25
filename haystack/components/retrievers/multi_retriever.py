@@ -111,8 +111,7 @@ class MultiRetriever:
             - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
 
         :raises ValueError:
-            If `top_k` or `top_k_per_retriever` is set and is not greater than 0.
-            If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
+             If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
             greater than 0.
         """
         if top_k is not None and top_k <= 0:
