@@ -134,6 +134,30 @@ class TestLinkContentFetcher:
             assert first_stream.meta["content_type"] == "application/pdf"
             assert first_stream.mime_type == "application/pdf"
 
+    @pytest.mark.parametrize(
+        ("header", "expected_content_type"),
+        [
+            ("Application/PDF", "application/pdf"),
+            ("APPLICATION/PDF; charset=binary", "application/pdf"),
+            (" application/pdf ; charset=binary", "application/pdf"),
+        ],
+    )
+    def test_run_binary_content_type_is_case_insensitive(self, test_files_path, header, expected_content_type):
+        with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
+            file_bytes = f1.read()
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            # `text` would only be used by the text handler and must not end up in the stream
+            mock_response = Mock(
+                status_code=200, content=file_bytes, text="corrupted", headers={"Content-Type": header}
+            )
+            mock_get.return_value = mock_response
+            fetcher = LinkContentFetcher()
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+            first_stream = streams[0]
+            assert first_stream.data == file_bytes
+            assert first_stream.meta["content_type"] == expected_content_type
+            assert first_stream.mime_type == expected_content_type
+
     def test_run_bad_request_no_exception(self):
         """Test behavior when a request results in an error status code"""
         empty_byte_stream = b""
@@ -455,6 +479,22 @@ class TestLinkContentFetcherAsync:
             assert first_stream.data == expected_content
             assert first_stream.meta["content_type"] == "text/plain"
             assert first_stream.mime_type == "text/plain"
+
+    async def test_run_async_binary_content_type_is_case_insensitive(self):
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            png_bytes = b"\x89PNG\r\n"
+            mock_response = Mock(
+                status_code=200, content=png_bytes, text="corrupted", headers={"Content-Type": "IMAGE/PNG"}
+            )
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher()
+            streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
+
+            first_stream = streams[0]
+            assert first_stream.data == png_bytes
+            assert first_stream.meta["content_type"] == "image/png"
+            assert first_stream.mime_type == "image/png"
 
     async def test_run_async_multiple(self):
         """Test async fetching of multiple URLs with mocked responses"""
