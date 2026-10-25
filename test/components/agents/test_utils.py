@@ -86,6 +86,17 @@ class TestAccumulateUsage:
     def test_sums_floats(self):
         assert _accumulate_usage(1.5, 2.25) == 3.75
 
+    def test_none_does_not_erase_reported_values(self):
+        reported = {"prompt_tokens": 100, "prompt_tokens_details": {"cached_tokens": 64}}
+        unreported = {"prompt_tokens": 120, "prompt_tokens_details": None}
+        expected = {"prompt_tokens": 220, "prompt_tokens_details": {"cached_tokens": 64}}
+        assert _accumulate_usage(reported, unreported) == expected
+        assert _accumulate_usage(unreported, reported) == expected
+
+    def test_none_leaf_does_not_erase_a_count(self):
+        assert _accumulate_usage({"cached_tokens": 64}, {"cached_tokens": None}) == {"cached_tokens": 64}
+        assert _accumulate_usage({"cached_tokens": None}, {"cached_tokens": 64}) == {"cached_tokens": 64}
+
 
 class TestSelectToolsByName:
     def test_selects_standalone_tools_by_name(self, first_tool: Tool, second_tool: Tool) -> None:
