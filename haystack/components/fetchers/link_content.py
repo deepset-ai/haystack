@@ -379,6 +379,9 @@ class LinkContentFetcher:
                 raise e
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
             logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
+            # Nothing was fetched, so the initial "text/html" guess would pass a
+            # fake content type downstream; label it like _fetch_async does.
+            content_type = "Unknown"
 
         return {"content_type": content_type, "url": url}, stream
 
