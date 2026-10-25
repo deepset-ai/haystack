@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LinkContentFetcher`` with ``raise_on_failure=False`` no longer labels a failed
+    fetch's empty ``ByteStream`` with the default ``content_type`` of ``text/html``.
+    Failed streams are now labelled ``Unknown`` (matching ``run_async``), so downstream
+    components no longer route empty failure results through HTML parsing.
