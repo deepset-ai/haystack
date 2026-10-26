@@ -30,6 +30,8 @@ Use this Router in indexing pipelines to route file paths or byte streams based 
 
 When initializing the component, you specify the set of MIME types to route to separate outputs. To do this, set the `mime_types` parameter to a list of types, for example: `["text/plain", "audio/x-wav", "image/jpeg"]`. Types that are not listed are routed to an output named “unclassified”.
 
+When you attach metadata through `meta`, file paths are converted to `ByteStream` objects with their detected MIME type preserved in `mime_type`. This lets downstream routers classify the files even when the first router uses a broad pattern such as `text/.*`.
+
 ## Usage
 
 ### On its own
