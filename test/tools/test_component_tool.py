@@ -194,6 +194,16 @@ class TestComponentTool:
         with pytest.raises(TypeError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})  # type: ignore[dict-item]
 
+    def test_inputs_from_state_rejects_parameters_for_component_without_inputs(self):
+        @component
+        class NoInputComponent:
+            @component.output_types(reply=str)
+            def run(self) -> dict[str, str]:
+                return {"reply": "Hello!"}
+
+        with pytest.raises(ValueError, match="unknown parameter 'text'. Valid parameters are: set\\(\\)\\."):
+            ComponentTool(component=NoInputComponent(), inputs_from_state={"state_text": "text"})
+
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}

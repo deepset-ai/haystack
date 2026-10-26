@@ -23,6 +23,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils import expit
 from haystack.utils.filters import document_matches_filter
+from haystack.utils.misc import _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -56,22 +57,6 @@ _CJK_CHAR_CLASS = (
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
 _DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
-
-
-def _make_metadata_value_hashable(value: Any) -> Any:
-    """Convert nested metadata values into values that can be used for deduplication."""
-    if isinstance(value, list):
-        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, tuple):
-        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, dict):
-        return (
-            "dict",
-            frozenset(
-                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
-            ),
-        )
-    return value
 
 
 @dataclass

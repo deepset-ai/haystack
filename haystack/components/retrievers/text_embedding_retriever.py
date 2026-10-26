@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from math import inf
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -125,7 +126,7 @@ class TextEmbeddingRetriever:
         docs: list[Document] = result["documents"]
 
         # sort
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     @component.output_types(documents=list[Document])
@@ -153,7 +154,7 @@ class TextEmbeddingRetriever:
         )
 
         docs: list[Document] = result["documents"]
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     def to_dict(self) -> dict[str, Any]:

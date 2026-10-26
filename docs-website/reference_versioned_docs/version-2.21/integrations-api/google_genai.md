@@ -163,22 +163,6 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAIDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAIDocumentEmbedder</code> – Deserialized component.
-
 #### run
 
 ```python
@@ -380,22 +364,6 @@ Serializes the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAIMultimodalDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAIMultimodalDocumentEmbedder</code> – Deserialized component.
 
 #### run
 
@@ -599,22 +567,6 @@ Serializes the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> GoogleGenAITextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>GoogleGenAITextEmbedder</code> – Deserialized component.
 
 #### run
 

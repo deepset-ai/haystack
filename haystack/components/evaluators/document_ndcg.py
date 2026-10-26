@@ -6,6 +6,7 @@ from math import log2
 from typing import Any
 
 from haystack import Document, component, default_to_dict
+from haystack.utils.misc import _make_metadata_value_hashable
 
 
 @component
@@ -45,6 +46,7 @@ class DocumentNDCGEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
         """
         self.document_comparison_field = document_comparison_field
 
@@ -63,7 +65,7 @@ class DocumentNDCGEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -74,15 +76,15 @@ class DocumentNDCGEvaluator:
         """
         Map each ground truth comparison value to its relevance score.
 
-        Documents whose comparison value cannot be determined (e.g. missing meta key) are skipped,
-        since they can never be matched during retrieval either. Documents that share a comparison
+        Documents whose comparison value is missing (e.g. missing meta key) or empty are skipped,
+        since they can't identify a relevant document. Documents that share a comparison
         value are collapsed to a single entry keeping the highest relevance, so `calculate_dcg` and
         `calculate_idcg` credit the same unique relevant set with the same scores.
         """
         relevant_value_to_score: dict[Any, float] = {}
         for doc in gt_docs:
             value = self._get_comparison_value(doc)
-            if value is None:
+            if value in ("", None):
                 continue
             relevance = doc.score if doc.score is not None else 1.0
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
@@ -185,7 +187,7 @@ class DocumentNDCGEvaluator:
         """
         Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-        Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+        Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
         are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
         a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
         credits each relevant value at most once. Including duplicates or unmatchable documents here

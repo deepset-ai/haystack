@@ -121,8 +121,16 @@ class TestDocumentWriter:
         assert nonclosable_document_store.mock_calls == []
 
     @pytest.mark.asyncio
-    async def test_run_async_invalid_docstore(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
+    async def test_run_async_sync_only_docstore(self):
+        written_documents = []
+
+        def write_documents(self, documents, policy=None):
+            written_documents.extend(documents)
+            return len(documents)
+
+        mocked_docstore_class = document_store_class(
+            "MockedDocumentStore", extra_fields={"write_documents": write_documents}
+        )
 
         writer = DocumentWriter(mocked_docstore_class())
         documents = [
@@ -130,8 +138,10 @@ class TestDocumentWriter:
             Document(content="This is the text of another document."),
         ]
 
-        with pytest.raises(TypeError, match="does not provide async support"):
-            await writer.run_async(documents=documents)
+        result = await writer.run_async(documents=documents)
+
+        assert result["documents_written"] == 2
+        assert written_documents == documents
 
     @pytest.mark.asyncio
     async def test_run_async(self, in_memory_doc_store):

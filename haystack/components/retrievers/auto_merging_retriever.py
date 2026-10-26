@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -26,10 +27,10 @@ class AutoMergingRetriever:
 
     Currently the AutoMergingRetriever can only be used by the following DocumentStores:
     - [AstraDB](https://haystack.deepset.ai/integrations/astradb)
-    - [ElasticSearch](https://haystack.deepset.ai/docs/latest/documentstore/elasticsearch)
-    - [OpenSearch](https://haystack.deepset.ai/docs/latest/documentstore/opensearch)
-    - [PGVector](https://haystack.deepset.ai/docs/latest/documentstore/pgvector)
-    - [Qdrant](https://haystack.deepset.ai/docs/latest/documentstore/qdrant)
+    - [ElasticSearch](https://docs.haystack.deepset.ai/docs/elasticsearch-document-store)
+    - [OpenSearch](https://docs.haystack.deepset.ai/docs/opensearch-document-store)
+    - [PGVector](https://docs.haystack.deepset.ai/docs/pgvectordocumentstore)
+    - [Qdrant](https://docs.haystack.deepset.ai/docs/qdrant-document-store)
 
     ```python
     from haystack import Document
@@ -184,9 +185,9 @@ class AutoMergingRetriever:
         AutoMergingRetriever._check_valid_documents(documents)
 
         async def _get_parent_doc(parent_id: str) -> Document:
-            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-            parent_docs = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
-                {"field": "id", "operator": "==", "value": parent_id}
+            # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
+            parent_docs = await _call_with_async_fallback(
+                self.document_store, "filter_documents", filters={"field": "id", "operator": "==", "value": parent_id}
             )
             if len(parent_docs) != 1:
                 raise ValueError(f"Expected 1 parent document with id {parent_id}, found {len(parent_docs)}")

@@ -24,6 +24,7 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputRefusal,
     ResponseOutputText,
+    ResponseOutputTextAnnotationAddedEvent,
     ResponseReasoningItem,
     ResponseReasoningSummaryTextDeltaEvent,
     ResponseReasoningTextDeltaEvent,
@@ -1002,6 +1003,91 @@ class TestConversionToStreamingChunks:
 
         message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
         assert message.meta["finish_reason"] == "stop"
+        assert "annotations" not in message.meta
+        assert "annotation_offsets" not in message.meta
+
+    def test_convert_text_with_annotations(self) -> None:
+        intro = "Checking official sources."
+        text = (
+            "- **Python 3.13.0** release date: **October 7, 2024**. "
+            "([python.org](https://www.python.org/downloads/release/python-3130/?utm_source=openai))"
+        )
+        citation = {
+            "type": "url_citation",
+            "start_index": 55,
+            "end_index": 142,
+            "title": "Python Release Python 3.13.0 | Python.org",
+            "url": "https://www.python.org/downloads/release/python-3130/?utm_source=openai",
+        }
+        response = Response.model_construct(
+            status="completed",
+            output=[
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_0",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": intro, "annotations": []}],
+                    }
+                ),
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_1",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": text, "annotations": [citation]}],
+                    }
+                ),
+            ],
+        )
+        events: list[ResponseStreamEvent] = [
+            ResponseTextDeltaEvent(
+                type="response.output_text.delta",
+                item_id="msg_0",
+                output_index=0,
+                content_index=0,
+                sequence_number=0,
+                logprobs=[],
+                delta=intro,
+            ),
+            ResponseTextDeltaEvent(
+                type="response.output_text.delta",
+                item_id="msg_1",
+                output_index=1,
+                content_index=0,
+                sequence_number=1,
+                logprobs=[],
+                delta=text,
+            ),
+            ResponseOutputTextAnnotationAddedEvent.model_validate(
+                {
+                    "type": "response.output_text.annotation.added",
+                    "item_id": "msg_1",
+                    "output_index": 1,
+                    "content_index": 0,
+                    "sequence_number": 2,
+                    "annotation_index": 0,
+                    "annotation": citation,
+                }
+            ),
+            ResponseCompletedEvent(type="response.completed", response=response, sequence_number=3),
+        ]
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(chunk=event, previous_chunks=chunks))
+
+        assert chunks[2] == StreamingChunk(content="", index=1, meta={**events[2].to_dict(), "received_at": ANY})
+        message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+        assert message.text == intro + text
+        assert message.meta == {
+            "status": "completed",
+            "finish_reason": "stop",
+            "annotations": [citation],
+            "annotation_offsets": [len(intro)],
+        }
 
     def test_streaming_refusal_does_not_duplicate_done_events(self) -> None:
         response = Response(
@@ -1403,6 +1489,43 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
+    def test_convert_text_with_annotations(self) -> None:
+        text = (
+            "- **Python 3.13.0** release date: **October 7, 2024**. "
+            "([python.org](https://www.python.org/downloads/release/python-3130/?utm_source=openai))"
+        )
+        citation = {
+            "type": "url_citation",
+            "start_index": 55,
+            "end_index": 142,
+            "title": "Python Release Python 3.13.0 | Python.org",
+            "url": "https://www.python.org/downloads/release/python-3130/?utm_source=openai",
+        }
+        response = Response.model_construct(
+            status="completed",
+            output=[
+                ResponseOutputMessage.model_validate(
+                    {
+                        "id": "msg_1",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": text, "annotations": [citation]}],
+                    }
+                )
+            ],
+        )
+
+        message = _convert_response_to_chat_message(responses=response)
+
+        assert message.text == text
+        assert message.meta == {
+            "status": "completed",
+            "finish_reason": "stop",
+            "annotations": [citation],
+            "annotation_offsets": [0],
+        }
+
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
