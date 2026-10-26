@@ -124,7 +124,7 @@ class OpenAIResponsesChatGenerator:
         self,
         *,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-5-mini",
+        model: str = "gpt-5.6-terra",
         streaming_callback: StreamingCallbackT | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -136,7 +136,7 @@ class OpenAIResponsesChatGenerator:
         http_client_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
-        Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
+        Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively
