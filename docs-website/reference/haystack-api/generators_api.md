@@ -974,7 +974,7 @@ Output:
         that focuses on enabling computers to understand, interpret, and generate human language in
         a way that is meaningful and useful.")],
      _name=None,
-     _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-5.6-terra', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
     ]
 }
@@ -1015,7 +1015,7 @@ See https://developers.openai.com/api/docs/models for the full list and snapshot
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "gpt-5-mini",
+    model: str = "gpt-5.6-terra",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -1028,7 +1028,7 @@ __init__(
 ) -> None
 ```
 
-Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
+Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
 
 Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
 environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -1054,6 +1054,10 @@ in the OpenAI client.
   when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
+- `reasoning_effort`: How much effort a reasoning model spends on reasoning, for example `"none"`,
+  `"low"`, or `"high"`. Over Chat Completions, gpt-5.6, gpt-6-sol, and gpt-6-luna models accept tools
+  only with `"none"`, so when you pass tools to these models without setting `reasoning_effort`, the
+  component sends `"none"`. To combine reasoning with tools, use `OpenAIResponsesChatGenerator`.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
   Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -1291,7 +1295,7 @@ See https://platform.openai.com/docs/models for the full list and snapshot IDs.
 __init__(
     *,
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "gpt-5-mini",
+    model: str = "gpt-5.6-terra",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -1304,7 +1308,7 @@ __init__(
 ) -> None
 ```
 
-Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
+Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
 Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
 environment variables to override the `timeout` and `max_retries` parameters respectively
