@@ -515,8 +515,9 @@ class TestLLMMetadataExtractor:
             prompt=ner_prompt,
             expected_keys=["entities"],
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -541,7 +542,7 @@ class TestLLMMetadataExtractor:
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )
@@ -575,8 +576,9 @@ class TestLLMMetadataExtractor:
             prompt=ner_prompt,
             expected_keys=["entities"],
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -601,7 +603,7 @@ class TestLLMMetadataExtractor:
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )

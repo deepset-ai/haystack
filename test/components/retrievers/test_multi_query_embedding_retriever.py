@@ -274,7 +274,9 @@ class TestMultiQueryEmbeddingRetriever:
     @pytest.mark.integration
     def test_pipeline_integration(self, document_store_with_embeddings):
         expander = QueryExpander(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            n_expansions=3,
+            include_original_query=True,
         )
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
         query_embedder = OpenAITextEmbedder()

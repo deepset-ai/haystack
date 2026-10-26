@@ -984,22 +984,25 @@ Output:
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-5",
-    "gpt-5.1",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.4",
     "gpt-5.2",
     "gpt-5.2-pro",
-    "gpt-5.4",
+    "gpt-5.1",
+    "gpt-5",
     "gpt-5-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
     "gpt-4.1",
     "gpt-4.1-mini",
-    "gpt-4.1-nano",
     "gpt-4o",
     "gpt-4o-mini",
-    "gpt-4-turbo",
-    "gpt-4",
-    "gpt-3.5-turbo",
 ]
 
 ```
@@ -1254,26 +1257,27 @@ print(response)
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-5",
-    "gpt-5.1",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.4",
     "gpt-5.2",
     "gpt-5.2-pro",
-    "gpt-5.4",
+    "gpt-5.1",
+    "gpt-5",
     "gpt-5-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
     "gpt-4.1",
     "gpt-4.1-mini",
-    "gpt-4.1-nano",
     "gpt-4o",
     "gpt-4o-mini",
-    "o1",
-    "o1-mini",
-    "o1-pro",
     "o3",
-    "o3-mini",
     "o3-pro",
-    "o4-mini",
 ]
 
 ```

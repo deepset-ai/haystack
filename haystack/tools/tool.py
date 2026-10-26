@@ -206,46 +206,41 @@ class Tool:
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )
-                if valid_inputs and param_name not in valid_inputs:
+                if valid_inputs is not None and param_name not in valid_inputs:
                     raise ValueError(
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
                     )
 
-    def _get_valid_inputs(self) -> set[str]:
+    def _get_valid_inputs(self) -> set[str] | None:
         """
-        Return the set of valid input parameter names that this tool accepts.
+        Return the tool's accepted input parameter names, or None if unknown.
 
-        Used to validate that `inputs_from_state` only references parameters that actually exist.
-        This prevents typos and catches configuration errors at tool construction time.
+        Used to validate parameter names in `inputs_from_state` when the tool is created.
 
-        By default, introspects the function signature to get ALL parameters, including those
-        that may be excluded from the JSON schema (e.g., parameters mapped from state).
-        Falls back to schema properties if introspection fails.
+        Combines the function's signature parameters with the JSON schema properties.
+        The signature also includes parameters supplied from state, which may be omitted
+        from the schema exposed to the LLM.
+
+        Returns None if the signature cannot be inspected. In this case, the schema alone
+        cannot identify all accepted parameters, so name validation is skipped.
 
         Subclasses like ComponentTool override this to return component input socket names.
 
-        :returns: Set of valid input parameter names for validation.
+        :returns: Accepted input parameter names, an empty set if the tool takes no input,
+            or None if the names cannot be determined.
         """
-        # Combine parameters from both function signature and schema for robustness
-        # Function signature includes all parameters (even those excluded from schema)
-        # Schema properties provide the validated parameter set
-        valid_params: set[str] = set()
-
-        # Try to get parameters from function introspection.
-        # Prefer `function`; fall back to `async_function` for async-only tools.
+        # Prefer the sync callable when both are provided
         introspection_target = self.function if self.function is not None else self.async_function
-        if introspection_target is not None:
-            try:
-                sig = inspect.signature(introspection_target)
-                valid_params.update(sig.parameters.keys())
-            except (ValueError, TypeError):
-                pass  # Introspection failed, will rely on schema
+        if introspection_target is None:
+            return None
 
-        # Add parameters from schema (union with function params)
-        valid_params.update(self.parameters.get("properties", {}).keys())
+        try:
+            sig = inspect.signature(introspection_target)
+        except (ValueError, TypeError):
+            return None
 
-        return valid_params
+        return set(sig.parameters) | set(self.parameters.get("properties", {}))
 
     def _get_valid_outputs(self) -> set[str] | None:
         """
