@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ImageFileToImageContent`` now skips a source that is not a valid image instead of failing the whole
+    ``run()`` call. A non-image file in a mixed batch, such as a ``.txt`` file, is logged and omitted from
+    ``image_contents``, while the other sources are still converted.

@@ -115,3 +115,16 @@ class TestImageFileToImageContent:
         results = converter.run(sources=[byte_stream])
 
         assert results["image_contents"] == []
+
+    def test_run_with_non_image_file_skips_it(self, caplog: pytest.LogCaptureFixture) -> None:
+        # A file that exists but is not an image must be skipped like any other conversion failure,
+        # instead of failing the whole batch when ImageContent rejects its MIME type.
+        converter = ImageFileToImageContent()
+        sources = ["./test/test_files/images/apple.jpg", "./test/test_files/txt/doc_1.txt"]
+
+        results = converter.run(sources=sources)
+
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].mime_type == "image/jpeg"
+        assert "Could not convert file" in caplog.text
+        assert "text/plain is not a valid image MIME type" in caplog.text
