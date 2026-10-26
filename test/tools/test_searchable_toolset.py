@@ -985,7 +985,11 @@ class TestSearchableToolsetAgentIntegration:
     def test_agent_discovers_and_uses_tools(self, large_catalog):
         """Agent discovers tools via BM25 search and uses them."""
         toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            tools=toolset,
+            max_agent_steps=5,
+        )
 
         assert len(agent.tools) == 1
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
@@ -1006,16 +1010,21 @@ class TestSearchableToolsetAgentIntegration:
     def test_agent_discovers_multiple_tools_across_steps(self, large_catalog):
         """A task needing two different tools forces the agent to search for and load each one."""
         # Use two tools the model cannot answer on its own (live weather and stock price) so it is forced
-        # to call both. top_k=1 means a single search returns at most one tool, so the agent must search
-        # again for the second tool — exercising that discovered tools accumulate across agent steps.
+        # to call both. Request k=1 explicitly because the model can override the top_k default,
+        # ensuring discovery happens across steps and previously discovered tools remain available.
         toolset = SearchableToolset(catalog=large_catalog, top_k=1, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=8)
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            tools=toolset,
+            max_agent_steps=8,
+        )
 
         result = agent.run(
             messages=[
                 ChatMessage.from_user(
                     "What is the current weather in Milan, and what is the current stock price of AAPL? "
-                    "Use the available tools to look up both."
+                    "Use the available tools to look up both. Search for one tool at a time with k=1, "
+                    "and use it before searching for the next tool."
                 )
             ]
         )
