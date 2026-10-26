@@ -1,15 +1,7 @@
 ---
-upgrade:
-  - |
-    ``DocumentCleaner`` and ``DocumentPreprocessor`` no longer strip leading and trailing whitespace from each page
-    when ``remove_regex`` is set. Only the regex matches are removed, so cleaned content (and the generated document
-    IDs) can change if your text has indentation or newlines at the start or end of a page.
-    To keep the previous output, also pass ``replace_regexes={r"^\s+|\s+$": ""}``, which strips each page the same
-    way. Use ``strip_whitespaces=True`` instead if stripping the start and end of the whole document is enough.
-    ``DocumentPreprocessor`` does not expose these parameters; to keep the previous output there, connect a
-    ``DocumentSplitter`` to a ``DocumentCleaner`` configured as above.
 fixes:
   - |
     Fixed ``DocumentCleaner`` removing indentation and newlines at the start and end of every page when
-    ``remove_regex`` was set, even if the regex matched nothing and ``remove_extra_whitespaces``,
-    ``remove_empty_lines`` and ``strip_whitespaces`` were all disabled. This damaged Markdown and code content.
+    ``remove_regex`` was set, even on pages where the regex matched nothing. Pages without a match are now left
+    unchanged, which preserves Markdown and code content when ``remove_extra_whitespaces``, ``remove_empty_lines``
+    and ``strip_whitespaces`` are disabled. Pages where the regex matches are still stripped as before.
