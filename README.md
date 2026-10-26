@@ -77,8 +77,8 @@
 | haystack/components/generators/chat/fallback.py                            |      102 |        3 |     97% |   258-263 |
 | haystack/components/generators/chat/llm.py                                 |       40 |        1 |     98% |       124 |
 | haystack/components/generators/chat/mock.py                                |      154 |        0 |    100% |           |
-| haystack/components/generators/chat/openai.py                              |      243 |        4 |     98% |463, 528, 740, 842 |
-| haystack/components/generators/chat/openai\_responses.py                   |      395 |       25 |     94% |297, 421, 502, 518, 555, 580, 633-642, 682, 702-711, 725, 921-922, 956, 1008, 1031, 1050 |
+| haystack/components/generators/chat/openai.py                              |      243 |        4 |     98% |466, 531, 743, 845 |
+| haystack/components/generators/chat/openai\_responses.py                   |      395 |       25 |     94% |298, 422, 503, 519, 556, 581, 634-643, 683, 703-712, 726, 922-923, 957, 1009, 1032, 1051 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                  |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                      |        4 |        0 |    100% |           |
 | haystack/components/generators/openai\_image\_generator.py                 |       80 |        0 |    100% |           |
