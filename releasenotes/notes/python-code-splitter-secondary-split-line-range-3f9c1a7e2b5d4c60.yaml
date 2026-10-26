@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` now sets ``start_line`` and ``end_line`` on each piece of an oversized
+    function or method to the lines that piece covers. Previously every secondary-split piece reported
+    the full range of the whole function, so line-based citations pointed at the wrong code.

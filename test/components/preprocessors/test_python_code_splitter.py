@@ -850,6 +850,29 @@ class TestOversizedFallback:
             assert chunk.meta["start_line"] >= 1
             assert chunk.meta["end_line"] <= oversized_function_source.count("\n") + 1
 
+    def test_secondary_split_pieces_report_their_own_line_range(self):
+        body = "".join(f"    value_{i} = compute_something_long({i}, factor={i * 3})\n" for i in range(30))
+        source = "import os\n\n# helper\n\ndef big():\n" + body + "\n\ndef small():\n    return 1\n"
+        splitter = PythonCodeSplitter(
+            min_effective_lines=1, max_effective_lines=5, secondary_split_length=8, secondary_split_overlap=2
+        )
+        result = splitter.run(documents=[Document(content=source)])
+        secondary = [c for c in result["documents"] if c.meta.get("secondary_split")]
+        assert len(secondary) > 1
+
+        lines = source.splitlines(keepends=True)
+        for chunk in secondary:
+            start, end = chunk.meta["start_line"], chunk.meta["end_line"]
+            assert 5 <= start <= end <= 35
+            # The lines the metadata points at are the code in the chunk.
+            assert chunk.content.strip().endswith("".join(lines[start - 1 : end]).strip())
+
+        starts = [c.meta["start_line"] for c in secondary]
+        assert starts[0] == 5
+        assert starts == sorted(starts)
+        assert len(set(starts)) == len(starts)
+        assert secondary[-1].meta["end_line"] == 35
+
     def test_small_function_does_not_trigger_secondary(self, simple_module_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=50, oversized_factor=3)
         result = splitter.run(documents=[Document(content=simple_module_source)])
