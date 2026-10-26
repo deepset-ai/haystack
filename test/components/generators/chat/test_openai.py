@@ -909,13 +909,13 @@ class TestOpenAIChatGenerator:
         # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
         # It serializes with empty content, so this also checks the API accepts that, not just the converter.
         chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
-        component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none", "n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "Paris" in message.text
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
 
@@ -929,7 +929,8 @@ class TestOpenAIChatGenerator:
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
         component = OpenAIChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"response_format": calendar_event_model}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning_effort": "none", "response_format": calendar_event_model},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -953,7 +954,10 @@ class TestOpenAIChatGenerator:
                 'For example: {"city": "Paris"}'
             )
         ]
-        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": {"type": "json_object"}})
+        comp = OpenAIChatGenerator(
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning_effort": "none", "response_format": {"type": "json_object"}},
+        )
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -982,8 +986,8 @@ class TestOpenAIChatGenerator:
             )
         ]
         comp = OpenAIChatGenerator(
-            model="gpt-4.1-nano",
-            generation_kwargs={"response_format": {"type": "json_object"}},
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning_effort": "none", "response_format": {"type": "json_object"}},
             streaming_callback=streaming_callback,
         )
         results = comp.run(chat_messages)
@@ -1021,7 +1025,9 @@ class TestOpenAIChatGenerator:
         }
 
         chat_messages = [ChatMessage.from_user("What's the capital of France?")]
-        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": response_schema})
+        comp = OpenAIChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none", "response_format": response_schema}
+        )
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -1065,8 +1071,8 @@ class TestOpenAIChatGenerator:
 
         chat_messages = [ChatMessage.from_user("What's the capital of France?")]
         comp = OpenAIChatGenerator(
-            model="gpt-4.1-nano",
-            generation_kwargs={"response_format": response_schema},
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning_effort": "none", "response_format": response_schema},
             streaming_callback=streaming_callback,
         )
         results = comp.run(chat_messages)
@@ -1110,9 +1116,9 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             streaming_callback=callback,
-            generation_kwargs={"stream_options": {"include_usage": True}},
+            generation_kwargs={"reasoning_effort": "none", "stream_options": {"include_usage": True}},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -1126,7 +1132,7 @@ class TestOpenAIChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4.1-nano" in metadata["model"]
+        assert "gpt-5.6-luna" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         # Usage information checks
@@ -1152,10 +1158,10 @@ class TestOpenAIChatGenerator:
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
         component = OpenAIChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             tools=tools,
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"stream_options": {"include_usage": True}},
+            generation_kwargs={"reasoning_effort": "none", "stream_options": {"include_usage": True}},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -1209,7 +1215,9 @@ class TestOpenAIChatGenerator:
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
-        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=toolset)
+        component = OpenAIChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}, tools=toolset
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -1237,7 +1245,7 @@ class TestOpenAIChatGenerator:
 
         chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
 
-        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1
@@ -1267,7 +1275,7 @@ class TestOpenAIChatGenerator:
             )
         ]
 
-        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1
@@ -2361,7 +2369,9 @@ class TestMakeSchemaStrict:
             },
             function=lambda name, address: f"{name} at {address}",
         )
-        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools_strict=True)
+        component = OpenAIChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}, tools_strict=True
+        )
         results = component.run(
             messages=[ChatMessage.from_user("Create a person named John at 123 Main St, Springfield")], tools=[tool]
         )
