@@ -15,6 +15,7 @@ from haystack.components.converters import OutputAdapter
 from haystack.components.joiners import BranchJoiner, DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.routers import ConditionalRouter
+from haystack.components.routers.conditional_router import Route
 from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineRuntimeError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -406,9 +407,14 @@ def test_run_async_applies_document_joiner_weights_to_the_same_retrievers_as_run
 
 @pytest.mark.parametrize("year", [None, 2024], ids=["filter_branch_skipped", "filter_branch_runs"])
 def test_run_async_applies_document_joiner_weights_like_run_when_an_optional_filter_branch_is_skipped(year):
-    routes = [
+    routes: list[Route] = [
         {"condition": "{{ year is not none }}", "output": "{{ year }}", "output_name": "year", "output_type": int},
-        {"condition": "{{ year is none }}", "output": "{{ year }}", "output_name": "no_year", "output_type": None},
+        {
+            "condition": "{{ year is none }}",
+            "output": "{{ year }}",
+            "output_name": "no_year",
+            "output_type": type(None),
+        },
     ]
 
     document_store = _programming_document_store()

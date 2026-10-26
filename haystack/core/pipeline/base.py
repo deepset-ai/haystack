@@ -170,7 +170,8 @@ class PipelineBase:  # noqa: PLW1641
             slots_by_socket.setdefault((receiver, edge_data["to_socket"].name), []).append(index)
         for slots in slots_by_socket.values():
             in_connection_order = sorted(
-                (edges[slot] for slot in slots), key=lambda edge: edge[2]["to_socket"].senders.index(edge[0])
+                (edges[slot] for slot in slots),
+                key=lambda edge: _connection_index(socket=edge[2]["to_socket"], sender=edge[0]),
             )
             for slot, edge in zip(slots, in_connection_order, strict=True):
                 edges[slot] = edge
@@ -1970,18 +1971,31 @@ def _sort_by_connection_order(socket: InputSocket, socket_inputs: list[dict[str,
     Sorts the inputs of a lazy variadic socket in the order their senders were connected to it.
 
     Senders write to the socket in the order they finish, which varies between runs in `Pipeline.run_async()`.
-    Connection order is the same in both run modes. User inputs come first and senders the socket doesn't list come
-    last. The sort is stable, so values from the same sender keep the order they were written in.
+    Connection order is the same in both run modes. The sort is stable, so values from the same sender keep the order
+    they were written in.
 
     :param socket: The lazy variadic input socket.
     :param socket_inputs: The inputs written to the socket, as `{"sender": ..., "value": ...}` entries.
     :returns: The inputs sorted by connection order.
     """
-    connection_index = {sender: index for index, sender in reversed(list(enumerate(socket.senders)))}
-    return sorted(
-        socket_inputs,
-        key=lambda sock: -1 if sock["sender"] is None else connection_index.get(sock["sender"], len(connection_index)),
-    )
+    return sorted(socket_inputs, key=lambda sock: _connection_index(socket=socket, sender=sock["sender"]))
+
+
+def _connection_index(socket: InputSocket, sender: str | None) -> int:
+    """
+    Returns the position of a sender in the order senders were connected to a socket.
+
+    User inputs (`sender` is None) sort before every sender, and senders the socket doesn't list sort after them.
+
+    :param socket: The input socket.
+    :param sender: The name of the sending component, or None for a user input.
+    :returns: The sender's position in `socket.senders`.
+    """
+    if sender is None:
+        return -1
+    if sender not in socket.senders:
+        return len(socket.senders)
+    return socket.senders.index(sender)
 
 
 def _write_to_lazy_variadic_socket(
