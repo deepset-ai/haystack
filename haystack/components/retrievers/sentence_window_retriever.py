@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -238,11 +239,9 @@ class SentenceWindowRetriever:
 
         windows = self._get_windows(retrieved_documents)
         filters = self._build_filters(windows, window_size)
-        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
+        # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
         fetched_documents = (
-            await self.document_store.filter_documents_async(filters)  # type: ignore[attr-defined]
-            if filters
-            else []
+            await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters) if filters else []
         )
 
         return self._assemble_context(retrieved_documents, windows, window_size, fetched_documents)

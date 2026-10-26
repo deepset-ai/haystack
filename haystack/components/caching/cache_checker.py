@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -110,12 +111,9 @@ class CacheChecker:
         found_documents = []
         misses = []
 
-        if not hasattr(self.document_store, "filter_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
-
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
-            found = await self.document_store.filter_documents_async(filters=filters)
+            found = await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters)
             if found:
                 found_documents.extend(found)
             else:

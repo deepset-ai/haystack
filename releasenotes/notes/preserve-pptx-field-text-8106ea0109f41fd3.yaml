@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Preserve field text, such as slide numbers, in ``PPTXToDocument`` when
+    ``link_format`` is ``"markdown"`` or ``"plain"``. Field values in text boxes
+    and table cells are kept in their original position alongside text and links.
