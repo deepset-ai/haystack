@@ -738,14 +738,15 @@ class TestIntegration:
         # It serializes with empty content, so this also checks the API accepts that, not just the converter.
         chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
@@ -862,9 +863,9 @@ class TestIntegration:
 
         callback = RecordingCallback()
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             streaming_callback=callback,
-            generation_kwargs={"include": ["message.output_text.logprobs"]},
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -878,7 +879,7 @@ class TestIntegration:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4.1-nano" in metadata["model"]
+        assert "gpt-5.6-luna" in metadata["model"]
         assert metadata["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -992,7 +993,9 @@ class TestIntegration:
             )
         ]
 
-        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+        )
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1
@@ -1159,7 +1162,9 @@ class TestIntegration:
         )
 
         agent = Agent(
-            chat_generator=OpenAIResponsesChatGenerator(model="gpt-4.1-nano"),
+            chat_generator=OpenAIResponsesChatGenerator(
+                model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+            ),
             system_prompt="You are an Agent that can retrieve documents and answer questions about them.",
             tools=[document_retriever_tool],
         )
@@ -1242,14 +1247,15 @@ class TestOpenAIResponsesChatGeneratorAsync:
 
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
