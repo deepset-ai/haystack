@@ -475,7 +475,7 @@ def test_run_async_applies_document_joiner_weights_to_the_retrievers_in_connecti
 
 
 @pytest.mark.parametrize("year", [None, 2024], ids=["filter_branch_skipped", "filter_branch_runs"])
-def test_run_async_applies_document_joiner_weights_like_run_when_an_optional_filter_branch_is_skipped(year):
+def test_run_async_applies_document_joiner_weights_in_connection_order_when_an_optional_filter_branch_is_skipped(year):
     routes: list[Route] = [
         {"condition": "{{ year is not none }}", "output": "{{ year }}", "output_name": "year", "output_type": int},
         {
