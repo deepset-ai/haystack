@@ -96,26 +96,27 @@ class OpenAIResponsesChatGenerator:
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
-        "gpt-5-mini",
-        "gpt-5-nano",
-        "gpt-5",
-        "gpt-5.1",
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.4",
         "gpt-5.2",
         "gpt-5.2-pro",
-        "gpt-5.4",
+        "gpt-5.1",
+        "gpt-5",
         "gpt-5-pro",
+        "gpt-5-mini",
+        "gpt-5-nano",
         "gpt-4.1",
         "gpt-4.1-mini",
-        "gpt-4.1-nano",
         "gpt-4o",
         "gpt-4o-mini",
-        "o1",
-        "o1-mini",
-        "o1-pro",
         "o3",
-        "o3-mini",
         "o3-pro",
-        "o4-mini",
     ]
     """A non-exhaustive list of chat models supported by this component.
     See https://platform.openai.com/docs/models for the full list and snapshot IDs."""
