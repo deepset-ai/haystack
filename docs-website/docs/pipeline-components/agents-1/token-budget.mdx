@@ -71,10 +71,10 @@ def search(query: Annotated[str, "The search query"]) -> str:
 
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5-mini"),
+    chat_generator=OpenAIChatGenerator(),
     tools=[search],
     system_prompt="You are a research assistant. Search one aspect at a time before answering.",
-    hooks={"before_llm": [TokenBudgetHook(max_total_tokens=3_000)]},
+    hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100)]},
 )
 agent.warm_up()
 
@@ -97,7 +97,7 @@ The Agent stops partway through its research and preserves the messages collecte
 When the budget stops a run, the last message may be a tool result rather than a final answer. Set `add_final_message=True` to append an assistant message explaining why the run ended. This message then becomes `last_message`:
 
 ```python
-TokenBudgetHook(max_total_tokens=3_000, add_final_message=True)
+TokenBudgetHook(max_total_tokens=100, add_final_message=True)
 ```
 
 To customize the message or handle other exit reasons such as `max_agent_steps`, use an `after_run` hook. It runs after the Agent ends, regardless of its exit reason:
