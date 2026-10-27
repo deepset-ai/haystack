@@ -82,6 +82,7 @@ class MetaFieldGroupingRanker:
         if a score is present.
 
         The output is a list of documents reordered based on how they were grouped.
+        Missing or `None` subgroup values form a subgroup distinct from every present value.
 
         :param documents: The list of documents to group.
         :returns:
@@ -92,7 +93,7 @@ class MetaFieldGroupingRanker:
         if not documents:
             return {"documents": []}
 
-        document_groups: dict[str, dict[str, list[Document]]] = defaultdict(lambda: defaultdict(list))
+        document_groups: dict[str, dict[str | None, list[Document]]] = defaultdict(lambda: defaultdict(list))
         no_group_docs = []
 
         deduplicated_documents = _deduplicate_documents(documents)
@@ -107,7 +108,7 @@ class MetaFieldGroupingRanker:
                 continue
 
             # Get subgroup value or use a default if not specified
-            subgroup_value = "no_subgroup"
+            subgroup_value = None
             if self.subgroup_by and doc.meta.get(self.subgroup_by) is not None:
                 subgroup_value = str(doc.meta[self.subgroup_by])
 

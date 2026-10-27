@@ -1,0 +1,11 @@
+fixes:
+  - |
+    ``MetaFieldGroupingRanker`` no longer merges documents with missing or
+    ``None`` subgroup metadata into a named ``"no_subgroup"`` subgroup.
+    The two subgroups now remain separate when documents are grouped and sorted.
+upgrade:
+  - |
+    If you use ``subgroup_by`` with a literal ``"no_subgroup"`` value alongside
+    missing or ``None`` values, the output order may change because these are
+    now separate subgroups. To keep them together, normalize the missing values
+    to ``"no_subgroup"`` before ranking.
