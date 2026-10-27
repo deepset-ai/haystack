@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``FileTypeRouter`` now keeps the MIME type it detects for a path when metadata is attached. Passing ``meta``
+    converts a path into a ``ByteStream``, which used to be created without a MIME type, so downstream components
+    such as ``FileToFileContent`` could no longer recover it and logged a warning. Sources routed with metadata now
+    carry the same MIME type as sources routed without it.

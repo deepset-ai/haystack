@@ -139,6 +139,25 @@ class TestFileTypeRouter:
                 assert isinstance(el, ByteStream)
                 assert el.meta["meta_field"] == "meta_value"
 
+    def test_run_with_meta_keeps_detected_mime_type(self, test_files_path):
+        """
+        Test that a path converted to a ByteStream to attach metadata keeps the MIME type detected for it.
+        """
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+        ]
+
+        router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav"])
+        output = router.run(sources=file_paths, meta={"meta_field": "meta_value"})
+
+        assert output[r"text/plain"][0].mime_type == "text/plain"
+        assert output[r"audio/x-wav"][0].mime_type == "audio/x-wav"
+        for elements in output.values():
+            for el in elements:
+                assert isinstance(el, ByteStream)
+                assert el.meta["meta_field"] == "meta_value"
+
     def test_run_with_meta_list(self, test_files_path):
         """
         Test if the component runs correctly when a list of metadata dictionaries is provided.
