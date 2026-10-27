@@ -203,9 +203,7 @@ class FileTypeRouter:
 
                 # `get_bytestream_from_source` hands back a ByteStream source unchanged, so writing the
                 # metadata onto it would modify the object the caller still holds. Build a copy instead.
-                # A path read into a ByteStream has no MIME type yet: carry over the one detected above,
-                # so downstream components see the same type the source was routed by.
-                source = replace(source, meta={**source.meta, **meta_dict}, mime_type=source.mime_type or mime_type)
+                source = replace(source, meta={**source.meta, **meta_dict}, mime_type=mime_type)
 
             matched = False
             if mime_type:
