@@ -335,7 +335,9 @@ class TestFaithfulnessEvaluator:
         questions = ["What is Python and who created it?"]
         contexts = [["Python is a programming language created by Guido van Rossum."]]
         predicted_answers = ["Python is a programming language created by George Lucas."]
-        evaluator = FaithfulnessEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = FaithfulnessEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         required_fields = {"individual_scores", "results", "score"}
@@ -424,7 +426,9 @@ class TestFaithfulnessEvaluatorAsync:
         questions = ["What is Python and who created it?"]
         contexts = [["Python is a programming language created by Guido van Rossum."]]
         predicted_answers = ["Python is a programming language created by George Lucas."]
-        evaluator = FaithfulnessEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = FaithfulnessEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = await evaluator.run_async(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         required_fields = {"individual_scores", "results", "score"}
