@@ -883,7 +883,7 @@ class TestAgentRun:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
@@ -1003,7 +1003,7 @@ class TestAgentStreaming:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         streaming_callback_called = False
 
