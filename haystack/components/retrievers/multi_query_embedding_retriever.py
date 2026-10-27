@@ -83,7 +83,7 @@ class MultiQueryEmbeddingRetriever:
         :param query_embedder: The query embedder to convert text queries to embeddings.
         :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
             `run_async`.
-         :raises ValueError: If `max_workers` is not greater than 0.
+        :raises ValueError: If `max_workers` is not greater than 0.
         """
         if max_workers <= 0:
             raise ValueError(f"max_workers must be greater than 0, but got {max_workers}")
