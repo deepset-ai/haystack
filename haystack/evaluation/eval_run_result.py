@@ -9,7 +9,6 @@ from typing import Any, Literal, Union
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils.misc import _make_metadata_value_hashable
 
 with LazyImport("Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
@@ -26,9 +25,8 @@ def _row_keys(values: list[Any]) -> list[tuple[Any, int]]:
     seen: Counter = Counter()
     keys = []
     for value in values:
-        key = _make_metadata_value_hashable(value)
-        keys.append((key, seen[key]))
-        seen[key] += 1
+        keys.append((value, seen[value]))
+        seen[value] += 1
     return keys
 
 
@@ -303,8 +301,8 @@ class EvaluationRunResult:
             keys_a_set = set(keys_a)
         except TypeError as error:
             raise ValueError(
-                f"The values of the '{align_on}' column can't be used to match rows. Use a column with strings, "
-                "numbers, or lists and dictionaries of them."
+                f"The values of the '{align_on}' column can't be used to match rows. Use a column with hashable "
+                "values, such as strings or numbers."
             ) from error
 
         rows: list[tuple[int | None, int | None]] = [(i, position_b.get(key)) for i, key in enumerate(keys_a)]

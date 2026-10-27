@@ -318,6 +318,16 @@ def test_comparative_detailed_report_align_on_missing_column_raises():
         run_a.comparative_detailed_report(run_b, align_on="qid")
 
 
+def test_comparative_detailed_report_align_on_unhashable_column_raises():
+    run_a = _run("a", ["q1"])
+    run_b = _run("b", ["q1"])
+    run_a.inputs["contexts"] = [["some context"]]
+    run_b.inputs["contexts"] = [["some context"]]
+
+    with pytest.raises(ValueError, match="The values of the 'contexts' column can't be used to match rows"):
+        run_a.comparative_detailed_report(run_b, align_on="contexts")
+
+
 def test_comparative_detailed_report_align_on_keeps_kept_columns_with_their_row():
     run_a = _run("a", ["q1", "q2"])
     run_b = _run("b", ["q2", "q1"])
