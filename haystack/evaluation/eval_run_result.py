@@ -33,25 +33,6 @@ def _row_keys(values: list[Any]) -> list[tuple[Any, int]]:
     return keys
 
 
-def _has_moved_values(values_a: list[Any], values_b: list[Any]) -> bool:
-    """
-    Check whether a value that appears exactly once in each list sits at a different position.
-
-    Values that repeat, like a common "I don't know" answer, are ignored since their position says nothing about
-    whether the rows line up. Columns with values that can't be hashed, like Documents, are skipped.
-    """
-    try:
-        hashable_a = [_make_metadata_value_hashable(value) for value in values_a]
-        hashable_b = [_make_metadata_value_hashable(value) for value in values_b]
-        count_a, count_b = Counter(hashable_a), Counter(hashable_b)
-    except TypeError:
-        return False
-    position_b = {value: j for j, value in enumerate(hashable_b) if count_b[value] == 1}
-    return any(
-        count_a[value] == 1 and value in position_b and position_b[value] != i for i, value in enumerate(hashable_a)
-    )
-
-
 class EvaluationRunResult:
     """
     Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
@@ -291,19 +272,18 @@ class EvaluationRunResult:
 
     def _positional_rows(self, other: "EvaluationRunResult") -> list[tuple[int | None, int | None]]:
         """
-        Pair rows by position and warn if the two runs don't seem to line up.
+        Pair rows by position and warn if the two runs have a different number of rows.
         """
         len_a = len(next(iter(self.inputs.values())))
         len_b = len(next(iter(other.inputs.values())))
-        shared_columns = [column for column in self.inputs if column in other.inputs]
-        if len_a != len_b or any(
-            _has_moved_values(self.inputs[column], other.inputs[column]) for column in shared_columns
-        ):
+        if len_a != len_b:
             logger.warning(
-                "The rows of '{run_a}' and '{run_b}' may not line up, so scores could be compared with the wrong "
+                "'{run_a}' has {len_a} rows and '{run_b}' has {len_b}, so scores could be compared with the wrong "
                 "rows. Pass `align_on` with a column that identifies each row to match them.",
                 run_a=self.run_name,
                 run_b=other.run_name,
+                len_a=len_a,
+                len_b=len_b,
             )
         rows: list[tuple[int | None, int | None]] = [(i, i) for i in range(min(len_a, len_b))]
         rows.extend((i, None) for i in range(len_b, len_a))

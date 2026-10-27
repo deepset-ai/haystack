@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack import Document
 from haystack.evaluation import EvaluationRunResult
 
 
@@ -342,43 +341,22 @@ def test_comparative_detailed_report_same_run_names_keeps_both_runs():
 
 
 @pytest.mark.parametrize(
-    "ids_b",
+    "ids_a, ids_b, expected_a, expected_b, message",
     [
-        ["q3", "q1", "q2"],  # same questions, different order
-        ["q1", "q2"],  # fewer rows
-        ["q2", "q1", "q4"],  # different order and a different question, same number of rows
+        (["q1", "q2", "q3"], ["q1", "q2"], [1.0, 0.5, 0.0], [1.0, 0.5, None], "'a' has 3 rows and 'b' has 2"),
+        (["q1", "q2"], ["q1", "q2", "q3"], [1.0, 0.5, None], [1.0, 0.5, 0.0], "'a' has 2 rows and 'b' has 3"),
     ],
 )
-def test_comparative_detailed_report_warns_when_rows_seem_misaligned(caplog, ids_b):
-    run_a = _run("a", ["q1", "q2", "q3"])
+def test_comparative_detailed_report_warns_and_pads_when_row_counts_differ(
+    caplog, ids_a, ids_b, expected_a, expected_b, message
+):
+    run_a = _run("a", ids_a)
     run_b = _run("b", ids_b)
 
-    run_a.comparative_detailed_report(run_b)
-
-    assert "The rows of 'a' and 'b' may not line up" in caplog.text
-
-
-def test_comparative_detailed_report_no_warning_for_aligned_runs_with_repeated_values(caplog):
-    run_a = _run("a", ["q1", "q2", "q3"])
-    run_b = _run("b", ["q1", "q2", "q3"])
-    run_a.inputs["predicted_answer"] = ["I don't know", "20 days", "I don't know"]
-    run_b.inputs["predicted_answer"] = ["Up to 5 days", "I don't know", "I don't know"]
-
     report = run_a.comparative_detailed_report(run_b)
     assert isinstance(report, dict)
 
-    assert report["b_faithfulness"] == [1.0, 0.5, 0.0]
-    assert caplog.text == ""
-
-
-def test_comparative_detailed_report_skips_unhashable_columns_when_checking_alignment(caplog):
-    run_a = _run("a", ["q1", "q2"])
-    run_b = _run("b", ["q1", "q2"])
-    run_a.inputs["documents"] = [[Document(content="x")], [Document(content="y")]]
-    run_b.inputs["documents"] = [[Document(content="y")], [Document(content="x")]]
-
-    report = run_a.comparative_detailed_report(run_b)
-    assert isinstance(report, dict)
-
-    assert report["b_faithfulness"] == [1.0, 0.5]
-    assert caplog.text == ""
+    assert report["query_id"] == ["q1", "q2", "q3"]
+    assert report["a_faithfulness"] == expected_a
+    assert report["b_faithfulness"] == expected_b
+    assert message in caplog.text

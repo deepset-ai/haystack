@@ -9,5 +9,5 @@ fixes:
   - |
     ``EvaluationRunResult.comparative_detailed_report`` no longer drops the first run's scores when both runs have
     the same ``run_name``. Their columns are named with ``_first`` and ``_second`` again, as they were before the
-    report stopped using pandas. It also logs a warning when the rows of the two runs don't seem to line up, since
-    rows are matched by position unless ``align_on`` is set.
+    report stopped using pandas. When ``align_on`` isn't set and the two runs have a different number of rows,
+    it logs a warning and pads the shorter run with ``None`` instead of returning columns of different lengths.
