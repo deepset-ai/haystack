@@ -228,6 +228,14 @@ class TestMultiRetriever:
         with pytest.raises(ValueError, match="top_k must be greater than 0"):
             MultiRetriever(retrievers=retrievers, top_k=top_k)
 
+    @pytest.mark.parametrize("max_workers", [0, -1])
+    def test_init_with_invalid_max_workers_raises(self, max_workers):
+        # Regression: an invalid max_workers was only rejected later, by ThreadPoolExecutor inside run(), while
+        # run_async() silently clamped it to 1.
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="`max_workers` must be at least 1, got"):
+            MultiRetriever(retrievers=retrievers, max_workers=max_workers)
+
     @pytest.mark.parametrize("top_k_per_retriever", [-1, 0])
     def test_init_with_invalid_top_k_per_retriever_raises(self, top_k_per_retriever):
         retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}

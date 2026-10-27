@@ -165,7 +165,11 @@ class LLMDocumentContentExtractor:
         :param raise_on_failure: If True, exceptions from the LLM are raised. If False, documents that fail extraction
             are returned in `failed_documents` with the error in their `extraction_error` metadata field.
         :param max_workers: Maximum number of threads for parallel LLM calls.
+        :raises ValueError:
+            If `max_workers` is less than 1.
         """
+        if max_workers < 1:
+            raise ValueError(f"`max_workers` must be at least 1, got {max_workers}.")
         self._chat_generator = chat_generator
         self.prompt = prompt
         self.file_path_meta_field = file_path_meta_field

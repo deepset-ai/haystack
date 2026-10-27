@@ -179,7 +179,11 @@ class LLMMetadataExtractor:
         :param max_workers: The maximum number of workers to use in the thread pool executor.
             This parameter is used limit the maximum number of requests that should be allowed to run concurrently
             when using the `run_async` method.
+        :raises ValueError:
+            If `max_workers` is less than 1.
         """
+        if max_workers < 1:
+            raise ValueError(f"`max_workers` must be at least 1, got {max_workers}.")
         self.prompt = prompt
         ast = SandboxedEnvironment().parse(prompt)
         template_variables = meta.find_undeclared_variables(ast)

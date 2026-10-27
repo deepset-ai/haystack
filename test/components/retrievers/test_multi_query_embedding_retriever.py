@@ -83,6 +83,16 @@ class TestMultiQueryEmbeddingRetriever:
         assert retriever.query_embedder == query_embedder
         assert retriever.max_workers == 2
 
+    @pytest.mark.parametrize("max_workers", [0, -1])
+    def test_init_with_invalid_max_workers_raises(self, in_memory_doc_store, max_workers):
+        # Regression: an invalid max_workers was only rejected later, by ThreadPoolExecutor inside run(), while
+        # run_async() silently clamped it to 1.
+        embedding_retriever = InMemoryEmbeddingRetriever(document_store=in_memory_doc_store)
+        with pytest.raises(ValueError, match="`max_workers` must be at least 1, got"):
+            MultiQueryEmbeddingRetriever(
+                retriever=embedding_retriever, query_embedder=MockTextEmbedder(), max_workers=max_workers
+            )
+
     def test_run_with_empty_queries(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockTextEmbedder()

@@ -89,6 +89,15 @@ class TestLLMDocumentContentExtractor:
                 chat_generator=chat_generator, prompt="Extract content from {{document.content}}"
             )
 
+    @pytest.mark.parametrize("max_workers", [0, -1])
+    def test_init_with_invalid_max_workers_raises(self, max_workers):
+        # Regression: an invalid max_workers was only rejected later, by ThreadPoolExecutor inside run(), while
+        # run_async() silently clamped it to 1.
+        with pytest.raises(ValueError, match="`max_workers` must be at least 1, got"):
+            LLMDocumentContentExtractor(
+                chat_generator=MockChatGenerator(), prompt="Extract content from this image", max_workers=max_workers
+            )
+
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
             LLMDocumentContentExtractor()  # type: ignore[call-arg]

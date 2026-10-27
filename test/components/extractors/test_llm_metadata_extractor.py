@@ -108,6 +108,15 @@ class TestLLMMetadataExtractor:
         with pytest.raises(ValueError, match="exactly one variable called 'document'"):
             _ = LLMMetadataExtractor(prompt="prompt {{ document.content }} {{ extra }}", chat_generator=chat_generator)
 
+    @pytest.mark.parametrize("max_workers", [0, -1])
+    def test_init_with_invalid_max_workers_raises(self, max_workers):
+        # Regression: an invalid max_workers was only rejected later, by ThreadPoolExecutor inside run(), while
+        # run_async() silently clamped it to 1.
+        with pytest.raises(ValueError, match="`max_workers` must be at least 1, got"):
+            _ = LLMMetadataExtractor(
+                prompt="prompt {{ document.content }}", chat_generator=MockChatGenerator(), max_workers=max_workers
+            )
+
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         with pytest.raises(TypeError):

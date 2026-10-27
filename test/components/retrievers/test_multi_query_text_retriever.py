@@ -72,6 +72,14 @@ class TestMultiQueryTextRetriever:
         assert retriever.retriever == in_memory_retriever
         assert retriever.max_workers == 2
 
+    @pytest.mark.parametrize("max_workers", [0, -1])
+    def test_init_with_invalid_max_workers_raises(self, in_memory_doc_store, max_workers):
+        # Regression: an invalid max_workers was only rejected later, by ThreadPoolExecutor inside run(), while
+        # run_async() silently clamped it to 1.
+        in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
+        with pytest.raises(ValueError, match="`max_workers` must be at least 1, got"):
+            MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=max_workers)
+
     def test_to_dict(self, in_memory_doc_store):
         in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=2)

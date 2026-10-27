@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Components that run work in parallel ( ``MultiRetriever``, ``MultiQueryTextRetriever``,
+    ``MultiQueryEmbeddingRetriever``, ``LLMMetadataExtractor`` and ``LLMDocumentContentExtractor`` ) now raise a
+    ``ValueError`` when ``max_workers`` is lower than 1, as ``OpenAIDecisionsDocumentClassifier`` already did.
+    Previously ``run`` failed later with a confusing ``ThreadPoolExecutor`` error while ``run_async`` silently used 1,
+    so the same configuration behaved differently depending on how the component was run.
