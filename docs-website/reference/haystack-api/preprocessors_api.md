@@ -199,6 +199,7 @@ Initialize DocumentCleaner.
   which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
 - **remove_substrings** (<code>list\[str\] | None</code>) – List of substrings to remove from the text.
 - **remove_regex** (<code>str | None</code>) – Regex to match and replace substrings by "".
+  Pages where the regex matches are also stripped of leading and trailing whitespace.
 - **keep_id** (<code>bool</code>) – If `True`, keeps the IDs of the original documents.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text.
   Note: This will run before any other steps.
@@ -993,8 +994,8 @@ Initializes a RecursiveDocumentSplitter.
 
 **Raises:**
 
-- <code>ValueError</code> – If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-  if any separator is not a string.
+- <code>ValueError</code> – If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+  equal to the chunk size, if the overlap is negative, or if any separator is not a string.
 
 #### warm_up
 

@@ -4,6 +4,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from math import inf
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -148,7 +149,7 @@ class MultiQueryEmbeddingRetriever:
 
         # de-duplicate and sort
         docs = _deduplicate_documents(docs)
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     @component.output_types(documents=list[Document])
@@ -182,7 +183,7 @@ class MultiQueryEmbeddingRetriever:
         results = await _gather_tasks_with_cancel(tasks)
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:

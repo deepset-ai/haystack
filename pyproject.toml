@@ -46,7 +46,8 @@ dependencies = [
   "tenacity!=8.4.0",
   "lazy-imports",
   "openai>=3.26.0",
-  "pydantic",
+  "pydantic>=2.12.0",       # tool parameter JSON schemas differ below 2.11; 2.12 is the first with Python 3.14 wheels
+  "pydantic>=2.14.0; python_version >= '3.15'",  # first with Python 3.15 wheels
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
@@ -55,6 +56,7 @@ dependencies = [
   "networkx",               # Pipeline graphs
   "httpx",
   "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
+  "certifi>=2026.10.19",    # transitive via httpx and posthog; floor for GHSA-6q48-6c7w-9gw2
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool

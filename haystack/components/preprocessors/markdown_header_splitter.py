@@ -83,23 +83,25 @@ class MarkdownHeaderSplitter:
         # the header text. Only spaces/tabs may surround it, with an optional carriage return for Windows line endings.
         self._closing_sequence_pattern = re.compile(r"(?:^|[ \t])#+[ \t]*\r?$")
 
-        # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
-        # Broken down:
-        #   ^                 - fence must start at the beginning of a line (MULTILINE)
-        #   (?P<fence>`{3,}|~{3,})
-        #                     - named capture group "fence": three or more backticks OR three or
-        #                       more tildes. Capturing it allows the closing fence to be matched
-        #                       with a backreference, so ```-opened blocks must close with ```
-        #                       and ~~~-opened blocks must close with ~~~.
-        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
-        #                       on the opening fence line, up to the newline
-        #   \n                - newline ending the opening fence line
+        # Matches fenced code blocks, following the CommonMark rules for fences
+        # (https://spec.commonmark.org/0.31.2/#fenced-code-blocks). Broken down:
+        #   ^[ ]{0,3}         - a fence starts a line, indented by at most three spaces (four or more
+        #                       make it an indented code block, which this splitter does not track)
+        #   (?P<backticks>`{3,})(?![^\n]*`)
+        #                     - three or more backticks; the rest of the opening line may not contain a
+        #                       backtick, so a line starting with inline code (```foo```) opens nothing
+        #   |(?P<tildes>~{3,}) - or three or more tildes
+        #   [^\n]*(?:\n|\Z)   - optional info string (e.g. "python") up to the end of the opening line
         #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
-        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
-        #                       and must start at the beginning of a line
-        #   \s*$              - optional trailing whitespace after the closing fence
+        #   (?:^[ ]{0,3}(?(backticks)(?P=backticks)`*|(?P=tildes)~*)[ \t]*\r?$|\Z)
+        #                     - closing fence: the same character, at least as many times as the
+        #                       opening fence, indented by at most three spaces and followed only by
+        #                       spaces or tabs. A block that is never closed runs to the end of the text.
         self._code_block_pattern = re.compile(
-            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
+            r"^[ ]{0,3}(?:(?P<backticks>`{3,})(?![^\n]*`)|(?P<tildes>~{3,}))[^\n]*(?:\n|\Z)"
+            r".*?"
+            r"(?:^[ ]{0,3}(?(backticks)(?P=backticks)`*|(?P=tildes)~*)[ \t]*\r?$|\Z)",
+            re.MULTILINE | re.DOTALL,
         )
 
         self._is_warmed_up = False
