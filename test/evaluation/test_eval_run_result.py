@@ -298,15 +298,16 @@ def test_comparative_detailed_report_align_on_pairs_repeated_values_in_order(cap
     assert caplog.text == ""
 
 
-def test_comparative_detailed_report_align_on_ignores_whitespace_but_not_case():
+def test_comparative_detailed_report_align_on_matches_strings_exactly():
     run_a = _run("a", ["q1", "q2"], questions=["How many days?", "Who approves?"])
     run_b = _run("b", ["q2", "q1"], questions=["Who  approves? ", "how many days?"])
 
     report = run_a.comparative_detailed_report(run_b, align_on="question")
     assert isinstance(report, dict)
 
-    assert report["question"] == ["How many days?", "Who approves?", "how many days?"]
-    assert report["b_faithfulness"] == [None, 0.5, 1.0]
+    assert report["question"] == ["How many days?", "Who approves?", "Who  approves? ", "how many days?"]
+    assert report["a_faithfulness"] == [1.0, 0.5, None, None]
+    assert report["b_faithfulness"] == [None, None, 0.5, 1.0]
 
 
 def test_comparative_detailed_report_align_on_missing_column_raises():

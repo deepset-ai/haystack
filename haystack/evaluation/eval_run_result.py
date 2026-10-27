@@ -21,13 +21,12 @@ def _row_keys(values: list[Any]) -> list[tuple[Any, int]]:
     """
     Build a key for each row from its value and how many times that value appeared before.
 
-    Strings are compared with whitespace collapsed but case kept, since IDs can be case-sensitive. The occurrence
-    number pairs repeated values in the order they appear.
+    The occurrence number pairs repeated values in the order they appear.
     """
     seen: Counter = Counter()
     keys = []
     for value in values:
-        key = " ".join(value.split()) if isinstance(value, str) else _make_metadata_value_hashable(value)
+        key = _make_metadata_value_hashable(value)
         keys.append((key, seen[key]))
         seen[key] += 1
     return keys
@@ -198,10 +197,10 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
         :param align_on: Name of an input column that identifies each row, such as a question ID or the question
             itself. If set, rows of the two runs are matched by this column instead of by position, so runs that
-            evaluated the same questions in a different order are compared correctly. Strings are matched with
-            whitespace collapsed but case kept. Repeated values are paired in the order they appear. Rows without a
-            match are kept, with `None` for the other run, and rows only in `other` are added at the end. If not
-            set, rows are matched by position and a warning is logged when they don't seem to line up.
+            evaluated the same questions in a different order are compared correctly. Values must match exactly.
+            Repeated values are paired in the order they appear. Rows without a match are kept, with `None` for the
+            other run, and rows only in `other` are added at the end. If not set, rows are matched by position and a
+            warning is logged when the runs have a different number of rows.
 
         :returns:
             JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
