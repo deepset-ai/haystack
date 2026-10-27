@@ -65,8 +65,8 @@
 | haystack/components/evaluators/sas\_evaluator.py                           |       58 |       15 |     74% |112-126, 171-181 |
 | haystack/components/extractors/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
-| haystack/components/extractors/image/llm\_document\_content\_extractor.py  |      153 |        0 |    100% |           |
-| haystack/components/extractors/llm\_metadata\_extractor.py                 |      166 |       12 |     93% |315-323, 338-346, 407, 469 |
+| haystack/components/extractors/image/llm\_document\_content\_extractor.py  |      155 |        0 |    100% |           |
+| haystack/components/extractors/llm\_metadata\_extractor.py                 |      168 |       12 |     93% |318-326, 341-349, 410, 472 |
 | haystack/components/extractors/regex\_text\_extractor.py                   |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                              |      202 |       17 |     92% |212-220, 288, 337-341, 426-430, 471 |
@@ -116,9 +116,9 @@
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                  |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py               |       48 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py          |       53 |        1 |     98% |       102 |
-| haystack/components/retrievers/multi\_query\_embedding\_retriever.py       |       83 |        2 |     98% |  203, 222 |
-| haystack/components/retrievers/multi\_query\_text\_retriever.py            |       73 |        3 |     96% |125, 179, 194 |
-| haystack/components/retrievers/multi\_retriever.py                         |      131 |        1 |     99% |       160 |
+| haystack/components/retrievers/multi\_query\_embedding\_retriever.py       |       85 |        2 |     98% |  206, 225 |
+| haystack/components/retrievers/multi\_query\_text\_retriever.py            |       75 |        3 |     96% |128, 182, 197 |
+| haystack/components/retrievers/multi\_retriever.py                         |      133 |        1 |     99% |       163 |
 | haystack/components/retrievers/sentence\_window\_retriever.py              |      113 |        1 |     99% |       139 |
 | haystack/components/retrievers/text\_embedding\_retriever.py               |       53 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                       |        2 |        0 |    100% |           |
@@ -150,7 +150,7 @@
 | haystack/core/pipeline/component\_checks.py                                |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                     |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                             |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                         |      331 |       21 |     94% |174, 181, 427, 570, 605, 773, 965-969, 973, 990-994, 998-1010, 1051-1060, 1085 |
+| haystack/core/pipeline/pipeline.py                                         |      331 |       19 |     94% |174, 181, 427, 570, 605, 773, 968, 973, 990-994, 998-1010, 1051-1060, 1085 |
 | haystack/core/pipeline/utils.py                                            |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                             |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                   |      135 |        0 |    100% |           |
@@ -275,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18236** |  **693** | **96%** |           |
+| **TOTAL**                                                                  | **18246** |  **691** | **96%** |           |
 
 
 ## Setup coverage badge
