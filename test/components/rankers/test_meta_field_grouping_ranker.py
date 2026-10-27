@@ -4,6 +4,8 @@
 
 from typing import Any
 
+import pytest
+
 from haystack import Pipeline
 from haystack.components.rankers.meta_field_grouping_ranker import MetaFieldGroupingRanker
 from haystack.dataclasses import Document
@@ -193,6 +195,29 @@ class TestMetaFieldGroupingRanker:
         ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup")
         result = ranker.run(documents=docs)
         assert [doc.content for doc in result["documents"]] == ["subgroup None", "no subgroup key", "subgroup 'None'"]
+
+    @pytest.mark.parametrize(
+        "sort_docs_by, named_first, expected_contents",
+        [
+            (None, False, ["missing", "null", "named late", "named early"]),
+            (None, True, ["named late", "named early", "missing", "null"]),
+            ("split_id", False, ["null", "missing", "named early", "named late"]),
+            ("split_id", True, ["named early", "named late", "null", "missing"]),
+        ],
+    )
+    def test_run_missing_subgroup_is_separate_from_no_subgroup_string(
+        self, sort_docs_by: str | None, named_first: bool, expected_contents: list[str]
+    ) -> None:
+        missing = Document(content="missing", meta={"group": "g", "split_id": 3})
+        null = Document(content="null", meta={"group": "g", "subgroup": None, "split_id": 2})
+        named_late = Document(content="named late", meta={"group": "g", "subgroup": "no_subgroup", "split_id": 4})
+        named_early = Document(content="named early", meta={"group": "g", "subgroup": "no_subgroup", "split_id": 1})
+        docs = [named_late, missing, named_early, null] if named_first else [missing, named_late, null, named_early]
+        ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by=sort_docs_by)
+
+        result = ranker.run(documents=docs)
+
+        assert [doc.content for doc in result["documents"]] == expected_contents
 
     def test_run_metadata_with_different_data_types(self) -> None:
         """
