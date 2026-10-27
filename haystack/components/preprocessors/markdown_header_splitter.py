@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 @component
 class MarkdownHeaderSplitter:
     """
-    Split documents at ATX-style Markdown headers (#), with up to three leading spaces and optional secondary splitting.
+    Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
+
+    Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
 
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
