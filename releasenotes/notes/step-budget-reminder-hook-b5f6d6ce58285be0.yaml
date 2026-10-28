@@ -6,7 +6,7 @@ upgrade:
     initialization when a reserved key is redefined.
 features:
   - |
-    Added ``StepBudgetReminderHook``, a ``before_llm`` hook that tells the model how many steps it has
+    Added ``StepBudgetReminderHook`` (experimental), a ``before_llm`` hook that tells the model how many steps it has
     left once an Agent run gets close to ``max_agent_steps``. Before each of the last ``remind_within_steps`` LLM
     calls, it adds a user message wrapped in ``<system-reminder>`` tags, such as "You have 2 of 10 steps remaining",
     and on the last step asks for the final answer. This lets the Agent wrap up instead of being cut off

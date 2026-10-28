@@ -22,6 +22,10 @@ description: "Use StepBudgetReminderHook to tell an Agent how many steps it has 
 
 </div>
 
+:::warning
+`StepBudgetReminderHook` is experimental. Its API can change in any release, without following the usual deprecation policy.
+:::
+
 ## Overview
 
 Before each of the Agent's last `remind_within_steps` LLM calls, `StepBudgetReminderHook` adds a reminder telling the model how many steps are left:

@@ -110,6 +110,7 @@ class TokenBudgetHook:
         return default_from_dict(cls, data=data)
 
 
+@_experimental
 class StepBudgetReminderHook:
     """
     Tells the Agent how many steps it has left once it gets close to `max_agent_steps`.
