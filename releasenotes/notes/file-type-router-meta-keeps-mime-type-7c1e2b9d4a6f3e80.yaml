@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``FileTypeRouter`` no longer loses the detected MIME type when ``meta`` is passed alongside file paths.
