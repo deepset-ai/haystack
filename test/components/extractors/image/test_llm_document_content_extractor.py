@@ -89,6 +89,14 @@ class TestLLMDocumentContentExtractor:
                 chat_generator=chat_generator, prompt="Extract content from {{document.content}}"
             )
 
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, monkeypatch, max_workers):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            LLMDocumentContentExtractor(chat_generator=chat_generator, max_workers=max_workers)
+
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
             LLMDocumentContentExtractor()  # type: ignore[call-arg]
@@ -418,7 +426,9 @@ class TestLLMDocumentContentExtractor:
     )
     def test_live_run(self, in_memory_doc_store):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
@@ -484,8 +494,9 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor(
             prompt=prompt,
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -503,7 +514,7 @@ class TestLLMDocumentContentExtractor:
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )
@@ -693,7 +704,9 @@ class TestLLMDocumentContentExtractorAsync:
     @pytest.mark.asyncio
     async def test_live_run_async(self):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
 
         result = await extractor.run_async(documents=docs)
 

@@ -246,6 +246,7 @@ class TestAgentInit:
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
             "context_tokens": {"type": int, "handler": replace_values},
+            "max_agent_steps": {"type": int, "handler": replace_values},
         }
 
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
@@ -267,7 +268,7 @@ class TestAgentInit:
             agent.__haystack_input__._sockets_dict.keys()
         )
         # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
-        for internal_key in ("continue_run", "context_tokens"):
+        for internal_key in ("continue_run", "context_tokens", "max_agent_steps"):
             assert internal_key not in agent.__haystack_input__._sockets_dict
             assert internal_key not in agent.__haystack_output__._sockets_dict
 
@@ -883,7 +884,7 @@ class TestAgentRun:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
@@ -1003,7 +1004,7 @@ class TestAgentStreaming:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         streaming_callback_called = False
 
@@ -1427,6 +1428,10 @@ class TestAgentTracing:
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
                 "context_tokens": {
+                    "type": "int",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "max_agent_steps": {
                     "type": "int",
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
