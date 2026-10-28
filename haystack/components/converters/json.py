@@ -134,6 +134,8 @@ class JSONConverter:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :raises ValueError:
+            If neither `jq_schema` nor `content_key` is set, or if `extra_meta_fields` is a string other than `"*"`.
         """
         if isinstance(extra_meta_fields, str) and extra_meta_fields != "*":
             msg = (
