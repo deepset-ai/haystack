@@ -22,6 +22,90 @@ with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
 
 
+def _excel_rows_to_dataframe_positions(max_row: int, read_excel_kwargs: dict[str, Any]) -> dict[int, int] | None:
+    """
+    Map 0-based Excel row numbers to DataFrame positions after pandas filtering.
+
+    Only the filtering pandas applies before the DataFrame is built is modelled
+    here: skiprows, skipfooter and nrows. Any other form returns None, in which
+    case hyperlink application falls back to positional matching.
+    """
+    skiprows = read_excel_kwargs.get("skiprows")
+    if skiprows is None:
+        skipped: set[int] = set()
+    elif isinstance(skiprows, int):
+        skipped = set(range(skiprows))
+    elif isinstance(skiprows, (list, tuple, set)):
+        try:
+            skipped = {int(row) for row in skiprows}
+        except (TypeError, ValueError):
+            return None
+    elif callable(skiprows):
+        try:
+            skipped = {row for row in range(max_row) if skiprows(row)}
+        except Exception:
+            return None
+    else:
+        return None
+
+    kept = [row for row in range(max_row) if row not in skipped]
+    skipfooter = read_excel_kwargs.get("skipfooter")
+    if isinstance(skipfooter, int) and skipfooter > 0:
+        kept = kept[:-skipfooter] if skipfooter < len(kept) else []
+    nrows = read_excel_kwargs.get("nrows")
+    if isinstance(nrows, int) and nrows >= 0:
+        kept = kept[:nrows]
+    return {row: position for position, row in enumerate(kept)}
+
+
+def _excel_columns_to_dataframe_positions(max_column: int, read_excel_kwargs: dict[str, Any]) -> dict[int, int] | None:
+    """
+    Map 0-based Excel column numbers to DataFrame positions after pandas filtering.
+
+    pandas returns usecols columns in ascending Excel order, regardless of the
+    order they were listed in. Any unrecognised usecols form returns None, in
+    which case hyperlink application falls back to positional matching.
+    """
+    usecols = read_excel_kwargs.get("usecols")
+    if usecols is None:
+        kept = list(range(max_column))
+    elif isinstance(usecols, str):
+        kept_set: set[int] = set()
+        try:
+            for part in usecols.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                if ":" in part:
+                    start, end = part.split(":", 1)
+                    start_idx = openpyxl.utils.column_index_from_string(start.strip()) - 1
+                    end_idx = openpyxl.utils.column_index_from_string(end.strip()) - 1
+                    kept_set.update(range(start_idx, end_idx + 1))
+                else:
+                    kept_set.add(openpyxl.utils.column_index_from_string(part) - 1)
+        except (ValueError, TypeError):
+            return None
+        kept = sorted(kept_set)
+    elif isinstance(usecols, (list, tuple, set)):
+        if all(isinstance(column, int) and not isinstance(column, bool) for column in usecols):
+            kept = sorted(usecols)
+        elif all(isinstance(column, str) for column in usecols):
+            try:
+                kept = sorted(openpyxl.utils.column_index_from_string(column.strip()) - 1 for column in usecols)
+            except (ValueError, TypeError):
+                return None
+        else:
+            return None
+    elif callable(usecols):
+        try:
+            kept = [column for column in range(max_column) if usecols(column)]
+        except Exception:
+            return None
+    else:
+        return None
+    return {column: position for position, column in enumerate(kept)}
+
+
 @component
 class XLSXToDocument:
     """
@@ -175,6 +259,12 @@ class XLSXToDocument:
 
         # If link extraction is enabled, load the workbook with openpyxl to read hyperlinks
         hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]] = {}
+        # Excel (0-based) coordinate -> DataFrame positional coordinate, per sheet.
+        # None means the mapping could not be derived for that sheet; in that case
+        # hyperlink application falls back to the previous positional behaviour.
+        hyperlink_positions_by_sheet: dict[
+            str | int | None, tuple[dict[int, int] | None, dict[int, int] | None]
+        ] = {}
         if self.link_format != "none":
             file_bytes.seek(0)
             wb = openpyxl.load_workbook(file_bytes, data_only=True)
@@ -189,9 +279,14 @@ class XLSXToDocument:
                 for row in ws.iter_rows():
                     for cell in row:
                         if cell.hyperlink and cell.hyperlink.target:
-                            # Convert to 0-based indices to match DataFrame positions
+                            # Convert to 0-based Excel indices; these are translated
+                            # to DataFrame positions below, after any filtering.
                             cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
                 hyperlinks_by_sheet[sheet_key] = cell_links
+                hyperlink_positions_by_sheet[sheet_key] = (
+                    _excel_rows_to_dataframe_positions(ws.max_row, resolved_read_excel_kwargs),
+                    _excel_columns_to_dataframe_positions(ws.max_column, resolved_read_excel_kwargs),
+                )
             wb.close()
 
         updated_sheet_to_dataframe = {}
@@ -203,20 +298,36 @@ class XLSXToDocument:
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
 
-            # Apply hyperlinks to cell values
+            # Apply hyperlinks to cell values. Hyperlinks are keyed by Excel
+            # coordinates, so translate them through any skiprows/usecols
+            # filtering first: applying them positionally would attach a link
+            # to the wrong cell (or drop it) whenever rows/columns were filtered.
             if key in hyperlinks_by_sheet:
+                row_positions, column_positions = hyperlink_positions_by_sheet.get(key, (None, None))
                 for (row_idx, col_idx), url in hyperlinks_by_sheet[key].items():
-                    if row_idx < len(df) and col_idx < len(df.columns):
-                        cell_value = df.iat[row_idx, col_idx]
+                    if row_positions is not None:
+                        df_row_idx = row_positions.get(row_idx)
+                        if df_row_idx is None:
+                            continue
+                    else:
+                        df_row_idx = row_idx
+                    if column_positions is not None:
+                        df_col_idx = column_positions.get(col_idx)
+                        if df_col_idx is None:
+                            continue
+                    else:
+                        df_col_idx = col_idx
+                    if df_row_idx < len(df) and df_col_idx < len(df.columns):
+                        cell_value = df.iat[df_row_idx, df_col_idx]
                         text = str(cell_value) if pd.notna(cell_value) else ""
                         # Hyperlink text must be assignable to numeric and other typed columns.
-                        column = df.columns[col_idx]
+                        column = df.columns[df_col_idx]
                         if df[column].dtype != object:
                             df[column] = df[column].astype(object)
                         if self.link_format == "markdown":
-                            df.iat[row_idx, col_idx] = f"[{text}]({url})"
+                            df.iat[df_row_idx, df_col_idx] = f"[{text}]({url})"
                         else:
-                            df.iat[row_idx, col_idx] = f"{text} ({url})"
+                            df.iat[df_row_idx, df_col_idx] = f"{text} ({url})"
 
             updated_sheet_to_dataframe[key] = df
 
