@@ -254,3 +254,35 @@ class TestXLSXToDocument:
         ]
         assert rows == [linked_values + ["1.23"], ["43", "4.5", "False", "2.35"]]
         assert documents[0].meta["xlsx"] == {"sheet_name": "Sheet"}
+
+    def test_link_extraction_with_skiprows_and_usecols(self, tmp_path: Path) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Heading", "HeadingB"])
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A2"].hyperlink = "https://example.com/alice"
+        sheet["B2"].hyperlink = "https://example.com/bob"
+        path = tmp_path / "filtered_links.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        # skiprows=1 drops the heading row, so the links must follow Alice/Bob
+        # to the first data row instead of staying on the second row (Carol/Dave).
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"skiprows": 1}).run(
+            sources=[path]
+        )["documents"]
+        assert documents[0].content is not None
+        assert "[Alice](https://example.com/alice)" in documents[0].content
+        assert "[Bob](https://example.com/bob)" in documents[0].content
+        assert "[Carol](https://example.com/alice)" not in documents[0].content
+
+        # usecols="B" keeps only the Bob column: the Bob link stays, and the
+        # Alice link must not be reassigned to Bob.
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"usecols": "B"}).run(
+            sources=[path]
+        )["documents"]
+        assert documents[0].content is not None
+        assert "[Bob](https://example.com/bob)" in documents[0].content
+        assert "https://example.com/alice" not in documents[0].content
