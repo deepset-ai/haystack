@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copyreg
 import logging
 import warnings
 from collections import namedtuple
@@ -355,6 +356,38 @@ class TestDeepcopyWithFallback:
         document = Document(content="text")
         document.__dict__["run"] = dict
         assert _deepcopy_with_exceptions(document) is document
+
+    @pytest.mark.parametrize(
+        "name, hook",
+        [("__deepcopy__", lambda memo: "custom copy"), ("__reduce_ex__", lambda protocol: (str, ("custom copy",)))],
+    )
+    def test_deepcopy_with_fallback_document_instance_copy_hook_is_used(self, name, hook):
+        document = Document(content="text")
+        document.__dict__[name] = hook
+        assert _deepcopy_with_exceptions(document) == "custom copy"
+
+    def test_deepcopy_with_fallback_document_instance_copy_hook_raising_returns_original(self, caplog):
+        def failing_hook(memo):
+            raise RuntimeError("copy failed")
+
+        document = Document(content="text")
+        document.__dict__["__deepcopy__"] = failing_hook
+        with caplog.at_level(logging.INFO):
+            assert _deepcopy_with_exceptions(document) is document
+            assert "Deepcopy failed for object of type 'Document'" in caplog.text
+
+    def test_deepcopy_with_fallback_document_copyreg_reducer_is_used(self, monkeypatch):
+        monkeypatch.setitem(copyreg.dispatch_table, Document, lambda document: (str, ("custom copy",)))
+        assert _deepcopy_with_exceptions(Document(content="text")) == "custom copy"
+
+    def test_document_uses_default_copy_protocol(self):
+        # `_deepcopy_document` mirrors how `deepcopy` copies a plain dataclass. If `Document` customizes copying,
+        # the fast path must be updated or removed, otherwise it would silently bypass the customization.
+        assert "__deepcopy__" not in vars(Document)
+        assert Document.__reduce_ex__ is object.__reduce_ex__
+        assert Document.__reduce__ is object.__reduce__
+        assert Document.__getstate__ is object.__getstate__
+        assert not hasattr(Document, "__slots__")
 
     def test_deepcopy_with_fallback_document_not_copyable(self, caplog):
         document = Document(content="text", meta={"obj": NotCopyable()})

@@ -2,16 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copyreg
 import heapq
 from collections.abc import Callable
 from copy import deepcopy
 from functools import wraps
 from itertools import count
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from haystack import logging
 from haystack.core.component import Component
-from haystack.dataclasses import Document
+
+if TYPE_CHECKING:
+    from haystack.dataclasses import Document
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +22,12 @@ logger = logging.getLogger(__name__)
 # subclasses, which can customize copying, on the regular path.
 _IMMUTABLE_ATOMIC_TYPES = frozenset({type(None), bool, int, float, complex, str, bytes})
 
+# Instance attributes that `deepcopy` or the `Component` protocol check would pick up from a Document's `__dict__`.
+# Documents that have any of them take the regular path.
+_DOCUMENT_FAST_PATH_EXCLUDED_ATTRIBUTES = frozenset({"run", "__deepcopy__", "__reduce_ex__"})
 
-def _deepcopy_document(document: Document) -> Document:
+
+def _deepcopy_document(document: "Document") -> "Document":
     """
     Return the same result as `deepcopy(document)`, faster.
 
@@ -29,6 +36,9 @@ def _deepcopy_document(document: Document) -> Document:
     instead of element by element. Registering every copy in the memo keeps aliasing between attributes the same as
     `deepcopy` would.
     """
+    # Import here to avoid circular imports
+    from haystack.dataclasses import Document
+
     memo: dict[int, Any] = {}
     copied = Document.__new__(Document)
     memo[id(document)] = copied
@@ -65,6 +75,7 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return obj
 
     # Import here to avoid circular imports
+    from haystack.dataclasses import Document
     from haystack.tools.tool import Tool
     from haystack.tools.toolset import Toolset
 
@@ -79,9 +90,13 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     if isinstance(obj, dict):
         return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
 
-    # A plain Document can only match the `Component` protocol through a `run` attribute set on the instance, so this
-    # skips the slow protocol check without changing which objects are returned as-is.
-    is_plain_document = type(obj) is Document and "run" not in obj.__dict__
+    # A plain Document can only match the `Component` protocol or customize `deepcopy` through attributes set on the
+    # instance or a `copyreg` reducer, so this skips the slow protocol check without changing the result.
+    is_plain_document = (
+        type(obj) is Document
+        and _DOCUMENT_FAST_PATH_EXCLUDED_ATTRIBUTES.isdisjoint(obj.__dict__)
+        and Document not in copyreg.dispatch_table
+    )
 
     # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
     # (e.g. models, clients, etc.). In this case we return the object as-is.
