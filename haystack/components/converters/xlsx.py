@@ -64,6 +64,9 @@ class XLSXToDocument:
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
+            By default, only empty cells are read as missing values (`keep_default_na=False`, `na_values=[""]`),
+            so that cell text such as "NA" or "N/A" is kept. Passing `keep_default_na` or `na_values` here
+            overrides these defaults; to restore the pandas behavior, pass `{"keep_default_na": True}`.
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
               See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
@@ -164,6 +167,10 @@ class XLSXToDocument:
         """
         file_bytes = io.BytesIO(bytestream.data)
         resolved_read_excel_kwargs = {
+            # pandas would otherwise read text such as "NA", "N/A", or "NULL" as a missing value and drop it.
+            # Only empty cells, which pandas reads as "", stay missing.
+            "keep_default_na": False,
+            "na_values": [""],
             **self.read_excel_kwargs,
             "sheet_name": self.sheet_name,
             "header": None,  # Don't assign any pandas column labels
