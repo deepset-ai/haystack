@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``XLSXToDocument`` attaching hyperlinks to the wrong cells when
+    ``read_excel_kwargs`` filters rows or columns, for example with
+    ``skiprows`` or ``usecols``. Hyperlinks are now translated from their
+    Excel coordinates to the filtered DataFrame positions, so a link stays
+    on its original cell and links on filtered-out rows or columns are
+    dropped instead of being reassigned to a different cell.
