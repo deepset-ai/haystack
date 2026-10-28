@@ -5,6 +5,8 @@
 import logging
 import warnings
 from collections import namedtuple
+from copy import deepcopy
+from dataclasses import dataclass
 
 import pytest
 
@@ -16,6 +18,7 @@ from haystack.core.pipeline.utils import (
     args_deprecated,
     parse_connect_string,
 )
+from haystack.dataclasses import ByteStream, Document, SparseEmbedding
 from haystack.tools import ComponentTool
 
 
@@ -268,6 +271,97 @@ class TestDeepcopyWithFallback:
         assert copy["point"].y == 2
         # Its contents are deep-copied, matching how plain tuples are handled.
         assert copy["point"].x is not original["point"].x
+
+    @pytest.mark.parametrize("value", [None, True, 3, 2.5, 1 + 2j, "text", b"bytes"])
+    def test_deepcopy_with_fallback_matches_deepcopy_for_immutable_builtins(self, value):
+        original = {"values": [value], "value": value}
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["values"] is not original["values"]
+        assert copy == original
+        assert copy["value"] is deepcopy(value)
+        assert copy["values"][0] is deepcopy(value)
+
+    def test_deepcopy_with_fallback_copies_subclass_of_immutable_builtin(self):
+        class TaggedStr(str):
+            __slots__ = ()
+
+            def __deepcopy__(self, memo):
+                return TaggedStr(f"{self} (copied)")
+
+        copy = _deepcopy_with_exceptions(TaggedStr("text"))
+        assert type(copy) is TaggedStr
+        assert copy == "text (copied)"
+
+    @pytest.mark.parametrize(
+        "document",
+        [
+            Document(content="text"),
+            Document(content="text", embedding=[0.1, 0.2, 0.3], score=0.5, meta={"page": 1}),
+            Document(content="text", embedding=[], meta={"nested": {"tags": ["a", "b"]}, "items": [{"k": 1}]}),
+            Document(
+                blob=ByteStream(data=b"data"), sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.5, 1.0])
+            ),
+            Document(content="text", embedding=[1, 2.0, None], meta={"mixed": [1, "two", [3]]}),
+        ],
+    )
+    def test_deepcopy_with_fallback_document_matches_deepcopy(self, document):
+        copy = _deepcopy_with_exceptions(document)
+        expected = deepcopy(document)
+        assert type(copy) is Document
+        assert copy == expected
+        assert copy.__dict__ == expected.__dict__
+        for name, value in document.__dict__.items():
+            if type(value) not in (type(None), int, float, str):
+                assert copy.__dict__[name] is not value
+
+    def test_deepcopy_with_fallback_document_copies_nested_meta(self):
+        document = Document(content="text", meta={"nested": {"tags": ["a"]}})
+        copy = _deepcopy_with_exceptions(document)
+        copy.meta["nested"]["tags"].append("b")
+        assert document.meta == {"nested": {"tags": ["a"]}}
+
+    @pytest.mark.parametrize("alias_in_meta_first", [True, False])
+    def test_deepcopy_with_fallback_document_keeps_aliasing_like_deepcopy(self, alias_in_meta_first):
+        embedding = [0.1, 0.2]
+        if alias_in_meta_first:
+            document = Document(content="text", meta={"same": embedding}, embedding=embedding)
+        else:
+            document = Document(content="text", embedding=embedding)
+            document.__dict__["extra"] = embedding
+        copy = _deepcopy_with_exceptions(document)
+        expected = deepcopy(document)
+        aliased_name = "meta" if alias_in_meta_first else "extra"
+        copied_alias = copy.meta["same"] if alias_in_meta_first else copy.__dict__[aliased_name]
+        expected_alias = expected.meta["same"] if alias_in_meta_first else expected.__dict__[aliased_name]
+        assert (copied_alias is copy.embedding) == (expected_alias is expected.embedding) is True
+        assert copy.embedding is not embedding
+
+    def test_deepcopy_with_fallback_document_keeps_extra_attributes(self):
+        document = Document(content="text")
+        document.__dict__["extra"] = [{"k": 1}]
+        copy = _deepcopy_with_exceptions(document)
+        assert copy.__dict__["extra"] == [{"k": 1}]
+        assert copy.__dict__["extra"][0] is not document.__dict__["extra"][0]
+
+    def test_deepcopy_with_fallback_document_subclass_uses_deepcopy(self):
+        @dataclass
+        class CustomDocument(Document):
+            def __deepcopy__(self, memo):
+                return "custom copy"
+
+        assert _deepcopy_with_exceptions(CustomDocument(content="text")) == "custom copy"
+
+    def test_deepcopy_with_fallback_document_matching_component_protocol_is_not_copied(self):
+        document = Document(content="text")
+        document.__dict__["run"] = dict
+        assert _deepcopy_with_exceptions(document) is document
+
+    def test_deepcopy_with_fallback_document_not_copyable(self, caplog):
+        document = Document(content="text", meta={"obj": NotCopyable()})
+        with caplog.at_level(logging.INFO):
+            copy = _deepcopy_with_exceptions(document)
+            assert "Deepcopy failed for object of type 'Document'" in caplog.text
+        assert copy is document
 
 
 class TestArgsDeprecated:
