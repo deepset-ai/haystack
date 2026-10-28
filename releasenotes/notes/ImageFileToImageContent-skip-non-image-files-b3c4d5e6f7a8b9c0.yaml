@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    `ImageFileToImageContent` now gracefully skips non-image files in batches with a warning instead of failing the entire batch. Previously, when a source with a non-image MIME type (e.g., a ``.txt`` file) was passed in a mixed batch, the component would crash with a ``ValueError``. Non-image sources are now logged and skipped, allowing valid images in the batch to be processed successfully.

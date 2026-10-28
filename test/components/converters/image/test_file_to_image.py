@@ -115,3 +115,32 @@ class TestImageFileToImageContent:
         results = converter.run(sources=[byte_stream])
 
         assert results["image_contents"] == []
+
+    def test_run_with_non_image_file_in_batch(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test that non-image files in a batch are skipped with a warning, not crashing the whole batch."""
+        converter = ImageFileToImageContent()
+        # Mix an image file with a non-image file
+        results = converter.run(sources=["./test/test_files/images/apple.jpg", "./test/test_files/txt/doc_1.txt"])
+
+        # Only the valid image should be in the results
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].mime_type == "image/jpeg"
+        # The non-image file should be logged as skipped
+        assert "Could not convert file" in caplog.text
+        assert "Skipping it" in caplog.text
+
+    def test_run_with_non_image_bytestream_in_batch(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test that ByteStreams with non-image MIME types are skipped with a warning."""
+        converter = ImageFileToImageContent()
+        # Create a ByteStream with a non-image MIME type
+        text_bytestream = ByteStream(data=b"Some text content", mime_type="text/plain", meta={"file_path": "test.txt"})
+        image_path = "./test/test_files/images/apple.jpg"
+
+        results = converter.run(sources=[image_path, text_bytestream])
+
+        # Only the valid image should be in the results
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].mime_type == "image/jpeg"
+        # The non-image ByteStream should be logged as skipped
+        assert "Could not convert file" in caplog.text
+        assert "Skipping it" in caplog.text

@@ -135,16 +135,15 @@ class ImageFileToImageContent:
 
             try:
                 inferred_mime_type, base64_image = _encode_image_to_base64(bytestream=bytestream, size=resolved_size)
+                merged_metadata = {**bytestream.meta, **metadata}
+                image_content = ImageContent(
+                    base64_image=base64_image, mime_type=inferred_mime_type, meta=merged_metadata, detail=resolved_detail
+                )
+                image_contents.append(image_content)
             except Exception as e:
                 logger.warning(
                     "Could not convert file {source}. Skipping it. Error message: {error}", source=source, error=e
                 )
                 continue
-
-            merged_metadata = {**bytestream.meta, **metadata}
-            image_content = ImageContent(
-                base64_image=base64_image, mime_type=inferred_mime_type, meta=merged_metadata, detail=resolved_detail
-            )
-            image_contents.append(image_content)
 
         return {"image_contents": image_contents}
