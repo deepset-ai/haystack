@@ -576,6 +576,7 @@ export default {
             'pipeline-components/rankers/pyversityranker',
             'pipeline-components/rankers/sentencetransformersdiversityranker',
             'pipeline-components/rankers/sentencetransformerssimilarityranker',
+            'pipeline-components/rankers/typesaferanker',
             'pipeline-components/rankers/vllmranker',
             'pipeline-components/rankers/external-integrations-rankers',
           ],
