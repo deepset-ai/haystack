@@ -1409,6 +1409,28 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format({"role": "user"})
 
+    @pytest.mark.parametrize(
+        "message",
+        [
+            ChatMessage.from_user(text=""),
+            ChatMessage.from_system(text=""),
+            ChatMessage.from_tool(tool_result="", origin=ToolCall(id="call_123", tool_name="", arguments={})),
+        ],
+    )
+    def test_from_openai_dict_format_empty_string_content_round_trip(self, message):
+        assert ChatMessage.from_openai_dict_format(message.to_openai_dict_format()) == message
+
+    def test_from_openai_dict_format_developer_message_with_empty_string_content(self):
+        message = ChatMessage.from_openai_dict_format({"role": "developer", "content": ""})
+        assert message.role == ChatRole.SYSTEM
+        assert message.text == ""
+
+    @pytest.mark.parametrize("role", ["user", "system", "developer", "tool"])
+    @pytest.mark.parametrize("content", [None, []])
+    def test_from_openai_dict_format_none_or_empty_list_content(self, role, content):
+        with pytest.raises(ValueError, match=f"^The `content` field is required for {role} messages\\.$"):
+            ChatMessage.from_openai_dict_format({"role": role, "content": content})
+
     @pytest.mark.parametrize("role", ["user", "system", "developer", "assistant", "tool"])
     def test_from_openai_dict_format_content_that_is_neither_string_nor_list(self, role):
         openai_msg = {"role": role, "content": {"type": "text", "text": "a single part not wrapped in a list"}}
