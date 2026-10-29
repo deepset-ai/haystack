@@ -370,7 +370,15 @@ class ComponentTool(Tool):
             # to explicitly indicate that the parameter is required
             default = ... if socket.is_mandatory else socket.default_value
             resolved_type = _resolve_type(input_type)
-            fields[input_name] = (resolved_type, Field(default=default, description=description))
+
+            # Pydantic rejects field names starting with underscore. To preserve such input names,
+            # use a safe internal field name with Field(alias=...). The alias exposes the original name
+            # in the JSON schema and tool invocation, while the field name is internal to Pydantic.
+            if input_name.startswith("_"):
+                safe_field_name = input_name.lstrip("_") or "param"
+                fields[safe_field_name] = (resolved_type, Field(default=default, description=description, alias=input_name))
+            else:
+                fields[input_name] = (resolved_type, Field(default=default, description=description))
 
         parameters_schema: dict[str, Any] = {}
         try:
