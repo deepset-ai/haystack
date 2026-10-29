@@ -179,7 +179,10 @@ class LLMMetadataExtractor:
         :param max_workers: The maximum number of workers to use in the thread pool executor.
             This parameter is used limit the maximum number of requests that should be allowed to run concurrently
             when using the `run_async` method.
+        :raises ValueError: If `max_workers` is not greater than 0.
         """
+        if max_workers <= 0:
+            raise ValueError(f"max_workers must be greater than 0, but got {max_workers}")
         self.prompt = prompt
         ast = SandboxedEnvironment().parse(prompt)
         template_variables = meta.find_undeclared_variables(ast)
@@ -475,7 +478,7 @@ class LLMMetadataExtractor:
         parent_span = tracing.tracer.current_span()
 
         # Run the LLM on each prompt, bounding concurrency per task so max_workers is enforced.
-        sem = Semaphore(max(1, self.max_workers))
+        sem = Semaphore(self.max_workers)
 
         async def _bounded_run(document: Document, prompt: ChatMessage | None) -> tuple[Document, bool]:
             async with sem:

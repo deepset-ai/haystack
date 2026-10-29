@@ -817,7 +817,7 @@ class ChatMessage:
                 ],
             )
 
-        if not openai_content:
+        if openai_content is None or openai_content == []:
             raise ValueError(f"The `content` field is required for {role} messages.")
         if role == "user":
             if isinstance(openai_content, str):
