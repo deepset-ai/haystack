@@ -622,6 +622,7 @@ export default {
             'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/falkordbcypherretriever',
             'pipeline-components/retrievers/falkordbembeddingretriever',
+            'pipeline-components/retrievers/falkordbtexttocypherretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/googledriveretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
