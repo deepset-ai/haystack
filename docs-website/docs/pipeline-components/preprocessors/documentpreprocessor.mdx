@@ -8,7 +8,7 @@ hep_available: true
 
 # DocumentPreprocessor
 
-Divides a list of text documents into a list of shorter text documents and then makes them more readable by cleaning.
+Cleans a list of text documents to make them more readable and then divides them into a list of shorter text documents.
 
 <div className="key-value-table">
 
@@ -16,7 +16,7 @@ Divides a list of text documents into a list of shorter text documents and then 
 | --- | --- |
 | **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)                                                    |
 | **Mandatory run variables**            | `documents`: A list of documents                                                                              |
-| **Output variables**                   | `documents`: A list of split and cleaned documents                                                            |
+| **Output variables**                   | `documents`: A list of cleaned and split documents                                                            |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_preprocessor.py |
 | **Package name** | `haystack-ai` |
@@ -25,9 +25,9 @@ Divides a list of text documents into a list of shorter text documents and then 
 
 ## Overview
 
-`DocumentPreprocessor` first splits and then cleans documents.
+`DocumentPreprocessor` first cleans and then splits documents. Cleaning runs first, so the split metadata on each returned chunk, such as `split_idx_start` and `_split_overlap`, matches its content.
 
-It is a SuperComponent that combines a `DocumentSplitter` and a `DocumentCleaner` into a single component.
+It is a SuperComponent that combines a `DocumentCleaner` and a `DocumentSplitter` into a single component.
 
 ### Parameters
 

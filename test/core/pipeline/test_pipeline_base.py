@@ -1647,11 +1647,11 @@ class TestPipelineBase:
         assert sorted(merged_graph.nodes) == expected_nodes
 
         expected_edges = [
-            ("cleaner", "writer"),
+            ("cleaner", "splitter"),
             ("csv", "joiner"),
             ("docx", "joiner"),
             ("html", "joiner"),
-            ("joiner", "splitter"),
+            ("joiner", "cleaner"),
             ("json", "joiner"),
             ("md", "joiner"),
             ("pdf", "joiner"),
@@ -1665,7 +1665,7 @@ class TestPipelineBase:
             ("router", "pptx"),
             ("router", "text"),
             ("router", "xlsx"),
-            ("splitter", "cleaner"),
+            ("splitter", "writer"),
             ("text", "joiner"),
             ("xlsx", "joiner"),
         ]
