@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ChatMessage.from_openai_dict_format`` now accepts an empty string as ``content`` for user, system, developer,
+    and tool messages instead of raising ``ValueError``. Messages such as ``ChatMessage.from_tool(tool_result="", ...)``
+    or ``ChatMessage.from_user(text="")`` now round-trip through ``to_openai_dict_format``.
