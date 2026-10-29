@@ -31,8 +31,8 @@ class TestDocumentPreprocessor:
 
     def test_init(self, preprocessor: DocumentPreprocessor) -> None:
         assert isinstance(preprocessor.pipeline, Pipeline)
-        assert preprocessor.input_mapping == {"documents": ["splitter.documents"]}
-        assert preprocessor.output_mapping == {"cleaner.documents": "documents"}
+        assert preprocessor.input_mapping == {"documents": ["cleaner.documents"]}
+        assert preprocessor.output_mapping == {"splitter.documents": "documents"}
 
         cleaner = preprocessor.pipeline.get_component("cleaner")
         assert isinstance(cleaner, DocumentCleaner)
@@ -131,7 +131,7 @@ class TestDocumentPreprocessor:
         # Check that the content was cleaned and split
         for doc in processed_docs:
             assert doc.content is not None
-            assert doc.content.strip() == doc.content
+            assert "  " not in doc.content
             assert len(doc.content.split()) <= 3  # Split length of 3 words
             assert doc.id is not None
 
@@ -156,3 +156,26 @@ class TestDocumentPreprocessor:
         for doc in processed_docs:
             assert doc.content is not None
             assert "." not in doc.content  # Each doc should be a single sentence
+
+    def test_run_split_metadata_refers_to_returned_chunks(self) -> None:
+        document = Document(content="one  two   three four\n\n\nfive six  seven eight nine ten")
+        preprocessor = DocumentPreprocessor(split_by="word", split_length=4, split_overlap=1)
+
+        chunks = preprocessor.run(documents=[document])["documents"]
+
+        cleaned_text = "one two three four five six seven eight nine ten"
+        assert [chunk.content for chunk in chunks] == [
+            "one two three four ",
+            "four five six seven ",
+            "seven eight nine ten",
+        ]
+        assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2]
+        content_by_id = {chunk.id: chunk.content or "" for chunk in chunks}
+        for chunk in chunks:
+            assert chunk.content is not None
+            assert chunk.meta["source_id"] == document.id
+            start = chunk.meta["split_idx_start"]
+            assert cleaned_text[start : start + len(chunk.content)] == chunk.content
+            for overlap in chunk.meta["_split_overlap"]:
+                overlap_start, overlap_end = overlap["range"]
+                assert content_by_id[overlap["doc_id"]][overlap_start:overlap_end].strip() in chunk.content

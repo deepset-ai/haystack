@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    ``DocumentPreprocessor`` now cleans documents before splitting them, instead of splitting first and cleaning
+    each chunk. Returned chunks keep the whitespace produced by ``DocumentSplitter`` (for example a trailing space
+    after the last word), and their IDs change accordingly. The ``keep_id`` parameter no longer has an effect:
+    chunk IDs are always computed from the cleaned content and ``source_id`` always refers to the input document.
+    If you stored chunks from ``DocumentPreprocessor`` before, re-index them so stored IDs and split metadata match
+    the new output. If you need chunks without surrounding whitespace, strip ``Document.content`` after
+    preprocessing, but note that ``SentenceWindowRetriever`` relies on the unstripped content to rebuild context
+    windows. You can remove ``keep_id`` from your ``DocumentPreprocessor`` arguments.
+fixes:
+  - |
+    Fixed ``DocumentPreprocessor`` returning chunks whose ``split_idx_start`` and ``_split_overlap`` metadata did not
+    match their content, because the cleaner rewrote chunks after the splitter had computed it. Overlap entries
+    referenced chunk IDs that no longer existed, and ``SentenceWindowRetriever`` built wrong context windows from
+    these chunks, gluing words together or duplicating characters.
