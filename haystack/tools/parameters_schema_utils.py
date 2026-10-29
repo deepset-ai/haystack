@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import keyword
 import types
 from collections.abc import Callable, Sequence
 from collections.abc import Callable as ABCCallable
@@ -161,9 +162,74 @@ def _get_component_param_descriptions(component: Any) -> dict[str, str]:
     return param_descriptions
 
 
+def _safe_internal_field_name(param_name: str, taken: set[str]) -> str:
+    """
+    Return a Pydantic field name that does not start with an underscore.
+
+    ``create_model`` treats a leading underscore as a private attribute. The returned name is
+    internal only; callers set ``Field(alias=param_name)`` so the JSON schema uses ``param_name``.
+
+    :param param_name: The real parameter name, which starts with ``_``.
+    :param taken: Field names already reserved. Not modified.
+    :returns: A unique identifier that does not start with ``_``.
+    """
+    base = param_name.lstrip("_")
+    if not base.isidentifier() or keyword.iskeyword(base):
+        base = "param"
+    candidate = base
+    suffix = 2
+    while candidate in taken:
+        candidate = f"{base}_{suffix}"
+        suffix += 1
+    return candidate
+
+
+def _create_model_fields(
+    specs: list[tuple[str, Any, Any]], *, descriptions: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """
+    Build ``create_model`` field definitions for tool parameters.
+
+    Pydantic drops names that start with ``_`` from ``model_json_schema()`` when they are passed as
+    ``(annotation, default)``, and raises if they are passed as ``Field``. Those parameters are stored
+    under a safe internal name with ``Field(alias=param_name)`` so the schema still exposes the real
+    name, including whether the parameter is required.
+
+    When ``descriptions`` is omitted, parameters that do not start with ``_`` keep the
+    ``(annotation, default)`` form. Callers that read descriptions from ``Annotated`` metadata can
+    apply them to the schema afterwards. When ``descriptions`` is provided, every field is a ``Field``
+    and includes that description.
+
+    :param specs: ``(name, annotation, default)`` triples in schema order. ``default`` is ``...`` when
+        the parameter is required.
+    :param descriptions: Optional mapping of parameter name to description.
+    :returns: A mapping suitable for ``create_model(model_name, **fields)``.
+    """
+    taken = {name for name, _, _ in specs if not name.startswith("_")}
+    field_defs: dict[str, Any] = {}
+    for name, annotation, default in specs:
+        if name.startswith("_"):
+            internal = _safe_internal_field_name(name, taken)
+            taken.add(internal)
+            if descriptions is None:
+                field_defs[internal] = (annotation, Field(default, alias=name))
+            else:
+                field_defs[internal] = (annotation, Field(default, alias=name, description=descriptions[name]))
+            continue
+        if descriptions is None:
+            field_defs[name] = (annotation, default)
+        else:
+            field_defs[name] = (annotation, Field(default, description=descriptions[name]))
+    return field_defs
+
+
 def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     """
     Convert a Python dataclass to an equivalent Pydantic model.
+
+    Field names that start with an underscore are included in the schema under that name.
+    ``ChatMessage`` is the exception: its leading underscores are removed so the schema matches
+    ``ChatMessage.from_dict``, which accepts ``role``, ``content``, ``name``, and ``meta``.
 
     :param dc_type: The dataclass type to convert.
     :returns:
@@ -173,22 +239,22 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     _, param_descriptions = _get_param_descriptions(dc_type)
     cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
 
-    field_defs: dict[str, Any] = {}
+    specs: list[tuple[str, Any, Any]] = []
+    descriptions: dict[str, str] = {}
     for field in fields(dc_type):
         f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
         default = field.default if field.default is not MISSING else ...
         default = field.default_factory() if callable(field.default_factory) else default
 
-        # Special handling for ChatMessage since pydantic doesn't allow for field names with leading underscores
+        # ChatMessage.from_dict accepts these names without the leading underscore.
         field_name = field.name
         if dc_type is ChatMessage and field_name.startswith("_"):
-            # We remove the underscore since ChatMessage.from_dict does allow for field names without the underscore
             field_name = field_name[1:]
 
-        description = param_descriptions.get(field_name, f"Field '{field_name}' of '{cls.__name__}'.")
-        field_defs[field_name] = (f_type, Field(default, description=description))
+        specs.append((field_name, f_type, default))
+        descriptions[field_name] = param_descriptions.get(field_name, f"Field '{field_name}' of '{cls.__name__}'.")
 
-    return create_model(cls.__name__, **field_defs)
+    return create_model(cls.__name__, **_create_model_fields(specs, descriptions=descriptions))
 
 
 def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
