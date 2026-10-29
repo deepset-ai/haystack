@@ -241,6 +241,38 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_reciprocal_rank_fusion_counts_duplicate_once_in_single_source(self) -> None:
+        joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion")
+        documents = [Document(id="a", score=3.0), Document(id="a", score=2.0), Document(id="b", score=1.0)]
+
+        results = joiner.run(documents=[documents])["documents"]
+
+        assert {doc.id: doc.score for doc in results} == pytest.approx({"a": 1.0, "b": 61 / 63})
+        assert [doc.score for doc in documents] == [3.0, 2.0, 1.0]
+
+    @pytest.mark.parametrize("weights", [None, [0.5, 0.5], [0.8, 0.2]])
+    def test_reciprocal_rank_fusion_counts_each_source_once(self, weights: list[float] | None) -> None:
+        joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=weights)
+        documents = [
+            [Document(id="a"), Document(id="a"), Document(id="b")],
+            [Document(id="b"), Document(id="a"), Document(id="b")],
+        ]
+
+        results = joiner.run(documents=documents)["documents"]
+
+        first_weight, second_weight = weights if weights is not None else [0.5, 0.5]
+        assert {doc.id: doc.score for doc in results} == pytest.approx(
+            {"a": first_weight + second_weight * 61 / 62, "b": first_weight * 61 / 63 + second_weight}
+        )
+
+    def test_reciprocal_rank_fusion_still_accumulates_different_sources(self) -> None:
+        joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion")
+
+        results = joiner.run(documents=[[Document(id="a")], [Document(id="a")]])["documents"]
+
+        assert len(results) == 1
+        assert results[0].score == pytest.approx(1.0)
+
     def test_run_with_distribution_based_rank_fusion_join_mode(self):
         joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
         documents_1 = [
