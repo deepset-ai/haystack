@@ -302,7 +302,7 @@ class TestDeepcopyWithFallback:
             Document(
                 blob=ByteStream(data=b"data"), sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.5, 1.0])
             ),
-            Document(content="text", embedding=[1, 2.0, None], meta={"mixed": [1, "two", [3]]}),
+            Document(content="text", embedding=[1, 2.0], meta={"mixed": [1, "two", [3]]}),
         ],
     )
     def test_deepcopy_with_fallback_document_matches_deepcopy(self, document):
@@ -340,9 +340,12 @@ class TestDeepcopyWithFallback:
     def test_deepcopy_with_fallback_document_keeps_extra_attributes(self):
         document = Document(content="text")
         document.__dict__["extra"] = [{"k": 1}]
+        document.__dict__["flags"] = [1, None, "x"]
         copy = _deepcopy_with_exceptions(document)
         assert copy.__dict__["extra"] == [{"k": 1}]
         assert copy.__dict__["extra"][0] is not document.__dict__["extra"][0]
+        assert copy.__dict__["flags"] == [1, None, "x"]
+        assert copy.__dict__["flags"] is not document.__dict__["flags"]
 
     def test_deepcopy_with_fallback_document_subclass_uses_deepcopy(self):
         @dataclass
