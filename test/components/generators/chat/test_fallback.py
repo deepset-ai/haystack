@@ -67,6 +67,7 @@ class _DummyFailGen:
     def __init__(self, exc: Exception | None = None, delay: float = 0.0):
         self.exc = exc or RuntimeError("boom")
         self.delay = delay
+        self.received_messages: list[list[ChatMessage]] = []
 
     def to_dict(self) -> dict[str, Any]:
         return default_to_dict(self, exc={"message": str(self.exc)}, delay=self.delay)
@@ -86,6 +87,7 @@ class _DummyFailGen:
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
+        self.received_messages.append(messages)
         if self.delay:
             time.sleep(self.delay)
         raise self.exc
@@ -97,6 +99,7 @@ class _DummyFailGen:
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
+        self.received_messages.append(messages)
         if self.delay:
             await asyncio.sleep(self.delay)
         raise self.exc
@@ -620,3 +623,79 @@ def test_serialization_with_custom_generators_without_to_dict():
     non_serializable_fallback = FallbackChatGenerator(chat_generators=[NonSerializableGenerator(object())])
     with pytest.raises(SerializationError, match="unsupported value of type"):
         non_serializable_fallback.to_dict()
+
+
+def test_strip_reasoning_on_fallback_sync():
+    fail_gen = _DummyFailGen()
+    success_gen = _DummySuccessGen(text="fallback response")
+
+    fallback = FallbackChatGenerator(
+        chat_generators=[fail_gen, success_gen],
+        strip_reasoning_on_fallback=True,
+    )
+
+    messages = [
+        ChatMessage.from_user("Hello"),
+        ChatMessage.from_assistant("Let me think", reasoning="Internal thought process"),
+        ChatMessage.from_user("Another question"),
+    ]
+
+    res = fallback.run(messages=messages)
+    assert res["replies"][0].text == "fallback response"
+
+    # Verify fail_gen received the original messages with reasoning
+    assert len(fail_gen.received_messages) == 1
+    assert fail_gen.received_messages[0][1].reasoning is not None
+
+    # Verify success_gen received cleaned messages without reasoning
+    assert len(success_gen.received_messages) == 1
+    second_msg = success_gen.received_messages[0][1]
+    assert second_msg.reasoning is None
+    assert second_msg.text == "Let me think"
+
+
+@pytest.mark.asyncio
+async def test_strip_reasoning_on_fallback_async():
+    fail_gen = _DummyFailGen()
+    success_gen = _DummySuccessGen(text="fallback async response")
+
+    fallback = FallbackChatGenerator(
+        chat_generators=[fail_gen, success_gen],
+        strip_reasoning_on_fallback=True,
+    )
+
+    messages = [
+        ChatMessage.from_user("Hello"),
+        ChatMessage.from_assistant("Let me think", reasoning="Internal thought process"),
+    ]
+
+    res = await fallback.run_async(messages=messages)
+    assert res["replies"][0].text == "fallback async response"
+
+    assert len(fail_gen.received_messages) == 1
+    assert fail_gen.received_messages[0][1].reasoning is not None
+
+    assert len(success_gen.received_messages) == 1
+    assert success_gen.received_messages[0][1].reasoning is None
+
+
+def test_strip_reasoning_disabled_preserves_reasoning():
+    fail_gen = _DummyFailGen()
+    success_gen = _DummySuccessGen(text="fallback response")
+
+    fallback = FallbackChatGenerator(
+        chat_generators=[fail_gen, success_gen],
+        strip_reasoning_on_fallback=False,
+    )
+
+    messages = [
+        ChatMessage.from_user("Hello"),
+        ChatMessage.from_assistant("Let me think", reasoning="Internal thought process"),
+    ]
+
+    res = fallback.run(messages=messages)
+    assert res["replies"][0].text == "fallback response"
+
+    # Both generators should receive the reasoning unchanged
+    assert success_gen.received_messages[0][1].reasoning is not None
+    assert success_gen.received_messages[0][1].reasoning.reasoning_text == "Internal thought process"

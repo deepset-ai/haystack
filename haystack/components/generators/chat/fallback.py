@@ -10,7 +10,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _normalize_messages, _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingCallbackT
 from haystack.tools import ToolsType
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -49,22 +49,26 @@ class FallbackChatGenerator:
     - Any other exception
     """
 
-    def __init__(self, chat_generators: list[ChatGenerator]) -> None:
+    def __init__(self, chat_generators: list[ChatGenerator], strip_reasoning_on_fallback: bool = False) -> None:
         """
         Creates an instance of FallbackChatGenerator.
 
         :param chat_generators: A non-empty list of chat generator components to try in order.
+        :param strip_reasoning_on_fallback: If True, strips `ReasoningContent` from assistant messages when falling
+            back to subsequent chat generators after an earlier generator in the chain fails.
         """
         if not chat_generators:
             msg = "'chat_generators' must be a non-empty list"
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
+        self.strip_reasoning_on_fallback = strip_reasoning_on_fallback
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators."""
         return default_to_dict(
             self,
+            strip_reasoning_on_fallback=self.strip_reasoning_on_fallback,
             chat_generators=[
                 component_to_dict(gen, name=f"chat_generator_{idx}") for idx, gen in enumerate(self.chat_generators)
             ],
@@ -85,6 +89,25 @@ class FallbackChatGenerator:
         init_params["chat_generators"] = deserialized
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
+
+    @staticmethod
+    def _strip_reasoning_from_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
+        """Strip `ReasoningContent` parts from messages to avoid forwarding unsupported reasoning tokens to fallback."""
+        cleaned_messages: list[ChatMessage] = []
+        for msg in messages:
+            if any(isinstance(c, ReasoningContent) for c in msg._content):
+                non_reasoning_content = [c for c in msg._content if not isinstance(c, ReasoningContent)]
+                cleaned_messages.append(
+                    ChatMessage(
+                        _role=msg._role,
+                        _content=non_reasoning_content,
+                        _name=msg._name,
+                        _meta=dict(msg._meta),
+                    )
+                )
+            else:
+                cleaned_messages.append(msg)
+        return cleaned_messages
 
     def warm_up(self) -> None:
         """Warm up all underlying chat generators."""
@@ -179,7 +202,12 @@ class FallbackChatGenerator:
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = self._run_single_sync(gen, messages, generation_kwargs, tools, streaming_callback)
+                gen_messages = (
+                    self._strip_reasoning_from_messages(messages)
+                    if (idx > 0 and self.strip_reasoning_on_fallback)
+                    else messages
+                )
+                result = self._run_single_sync(gen, gen_messages, generation_kwargs, tools, streaming_callback)
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(
@@ -236,7 +264,14 @@ class FallbackChatGenerator:
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = await self._run_single_async(gen, messages, generation_kwargs, tools, streaming_callback)
+                gen_messages = (
+                    self._strip_reasoning_from_messages(messages)
+                    if (idx > 0 and self.strip_reasoning_on_fallback)
+                    else messages
+                )
+                result = await self._run_single_async(
+                    gen, gen_messages, generation_kwargs, tools, streaming_callback
+                )
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(
