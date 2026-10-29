@@ -3,5 +3,5 @@ enhancements:
   - |
     ``Pipeline`` now copies component inputs faster. Inputs are still deep-copied before each component
     runs, with the same results as before, but plain ``Document`` objects and immutable values such as strings and
-    numbers take a quicker path. Pipelines that pass many embedded documents between components benefit most, for
-    example an indexing pipeline with a splitter, an embedder, and a writer runs about 20% faster.
+    numbers take a quicker path. Pipelines that pass embeddings or many embedded documents between components
+    benefit most.
