@@ -37,6 +37,15 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.client is None
         assert embedder.async_client is None
 
+    @pytest.mark.parametrize("batch_size", [0, -1])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(ValueError, match="batch_size must be greater than 0"):
+            AzureOpenAIDocumentEmbedder(
+                azure_endpoint="https://example-resource.azure.openai.com/",
+                api_key=Secret.from_token("fake-api-key"),
+                batch_size=batch_size,
+            )
+
     def test_init_with_0_max_retries(self, monkeypatch):
         """Tests that the max_retries init param is set correctly if equal 0"""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
