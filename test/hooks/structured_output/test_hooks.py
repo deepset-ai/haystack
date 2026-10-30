@@ -12,8 +12,10 @@ from haystack.components.agents.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.hooks import hook
+from haystack.hooks.budget import StepBudgetReminderHook
 from haystack.hooks.structured_output import StructuredOutputHook
-from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY
+from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY, _count_corrections
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 
 
 class CityInfo(BaseModel):
@@ -132,6 +134,44 @@ class TestStructuredOutputHook:
         result = agent.run(messages=[*earlier_turn, ChatMessage.from_user("Now tell me about Paris again")])
 
         assert result["structured_output"] == {"city": "Paris", "population": 2100000}
+
+    def test_system_reminders_do_not_reset_the_retry_count(self, caplog):
+        agent = Agent(
+            chat_generator=MockChatGenerator(responses=["not json"]),
+            state_schema={"structured_output": {"type": dict}},
+            hooks={
+                "before_llm": [StepBudgetReminderHook(remind_within_steps=6)],
+                "on_exit": [StructuredOutputHook(schema=CityInfo, max_retries=1)],
+            },
+            max_agent_steps=6,
+        )
+        agent.warm_up()
+        with caplog.at_level(logging.WARNING):
+            result = agent.run(messages=[ChatMessage.from_user("Tell me about Paris")])
+
+        assert result["structured_output"] is None
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 2
+        assert sum(1 for m in result["messages"] if m.meta.get(_CORRECTION_META_KEY)) == 1
+        assert "after 1 retries" in caplog.text
+
+    def test_count_corrections_skips_system_reminders_but_stops_at_a_user_message(self):
+        reminder = ChatMessage.from_user(
+            "<system-reminder>2 steps left</system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}
+        )
+        correction = ChatMessage.from_user("Your previous reply could not be used", meta={_CORRECTION_META_KEY: True})
+        messages = [
+            ChatMessage.from_user("Tell me about Paris"),
+            ChatMessage.from_assistant("not json"),
+            correction,
+            reminder,
+            ChatMessage.from_assistant("not json"),
+            correction,
+            reminder,
+            ChatMessage.from_assistant("not json"),
+        ]
+        assert _count_corrections(messages=messages) == 2
+        assert _count_corrections(messages=[*messages, ChatMessage.from_user("New question"), reminder]) == 0
 
     def test_skips_parsing_while_another_hook_keeps_the_agent_running(self, caplog):
         hook = StructuredOutputHook(schema=CityInfo, max_retries=0)
