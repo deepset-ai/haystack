@@ -33,6 +33,16 @@ _UNSAFE_MODULE_ROOTS: frozenset[str] = frozenset(
     }
 )
 
+# Module prefixes whose callables must never be invocable from a template.
+#
+# Haystack's own data classes end up in the template context (e.g. `documents`, `messages`) and expose public
+# methods that perform file I/O, make network requests or resolve secrets (`ByteStream.to_file`,
+# `ByteStream.from_file_path`, `ImageContent.from_url`, `Secret.resolve_value`, ...).
+_UNSAFE_CALLABLE_MODULE_PREFIXES: tuple[str, ...] = ("haystack.dataclasses", "haystack.utils.auth")
+
+# Side-effect-free methods of those data classes that templates may still call.
+_SAFE_DATACLASS_METHOD_NAMES: frozenset[str] = frozenset({"to_dict", "is_from", "to_openai_dict_format"})
+
 
 class HaystackSandboxedEnvironment(SandboxedEnvironment):
     """
@@ -42,8 +52,10 @@ class HaystackSandboxedEnvironment(SandboxedEnvironment):
 
     - refuses attribute access on module objects, so a module that leaks into the template context
       (e.g. via a custom filter that imports one) cannot be walked into (`os.system`, ...);
-    - refuses to call module objects, and refuses to call any callable whose defining module is
-      rooted in a dangerous standard-library module (see :data:`_UNSAFE_MODULE_ROOTS`).
+    - refuses to call module objects, refuses to call any callable whose defining module is rooted in
+      a dangerous standard-library module (see `_UNSAFE_MODULE_ROOTS`), and refuses to call any
+      callable defined in one of Haystack's own data-class modules (see `_UNSAFE_CALLABLE_MODULE_PREFIXES`)
+      except the side-effect-free methods in `_SAFE_DATACLASS_METHOD_NAMES`.
 
     Note that Jinja invokes *filters* directly, bypassing `is_safe_callable`, so this does not
     constrain what a registered `custom_filters` function itself does; it only governs attribute
@@ -58,10 +70,16 @@ class HaystackSandboxedEnvironment(SandboxedEnvironment):
         return super().is_safe_attribute(obj, attr, value)
 
     def is_safe_callable(self, obj: Any) -> bool:
-        """Reject calling module objects and callables from dangerous modules; else defer to super."""
+        """Reject calling module objects, dangerous-module callables, and Haystack data-class methods."""
         if isinstance(obj, ModuleType):
             return False
-        root = (getattr(obj, "__module__", "") or "").split(".", 1)[0]
+        module = getattr(obj, "__module__", "") or ""
+        root = module.split(".", 1)[0]
         if root in _UNSAFE_MODULE_ROOTS:
+            return False
+        if (
+            module.startswith(_UNSAFE_CALLABLE_MODULE_PREFIXES)
+            and getattr(obj, "__name__", None) not in _SAFE_DATACLASS_METHOD_NAMES
+        ):
             return False
         return super().is_safe_callable(obj)
