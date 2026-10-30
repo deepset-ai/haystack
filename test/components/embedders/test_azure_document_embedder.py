@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -36,6 +37,24 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.http_client_kwargs is None
         assert embedder.client is None
         assert embedder.async_client is None
+
+    @pytest.mark.parametrize("batch_size", [0, -1, 0.5, 32.0, "32", None])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(
+            ValueError, match=re.escape(f"batch_size must be a positive integer, but got {batch_size!r}")
+        ):
+            AzureOpenAIDocumentEmbedder(
+                azure_endpoint="https://example-resource.azure.openai.com/",
+                api_key=Secret.from_token("fake-api-key"),
+                batch_size=batch_size,
+            )
+
+    def test_from_dict_invalid_batch_size(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        data = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/").to_dict()
+        data["init_parameters"]["batch_size"] = 0
+        with pytest.raises(ValueError, match="batch_size must be a positive integer, but got 0"):
+            AzureOpenAIDocumentEmbedder.from_dict(data)
 
     def test_init_with_0_max_retries(self, monkeypatch):
         """Tests that the max_retries init param is set correctly if equal 0"""
