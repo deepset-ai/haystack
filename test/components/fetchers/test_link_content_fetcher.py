@@ -147,12 +147,13 @@ class TestLinkContentFetcher:
             mock_get.return_value = mock_response
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
 
-        # empty byte stream is returned because raise_on_failure is False
+        # empty byte stream is returned because raise_on_failure is False; its
+        # content type is labeled Unknown, matching run_async's failure handling
         assert len(streams) == 1
         first_stream = streams[0]
         assert first_stream.data == empty_byte_stream
-        assert first_stream.meta["content_type"] == "text/html"
-        assert first_stream.mime_type == "text/html"
+        assert first_stream.meta["content_type"] == "Unknown"
+        assert first_stream.mime_type == "Unknown"
 
     def test_bad_request_exception_raised(self):
         """
@@ -259,6 +260,18 @@ class TestLinkContentFetcher:
 
         assert fetcher._resolve_handler(content_type) is _text_content_handler
         assert fetcher.handlers == registered
+
+    def test_failed_request_is_labeled_unknown_when_not_raising(self):
+        """A failed fetch must not pass a fake content type downstream (mirrors run_async)."""
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_get.side_effect = Exception("connection refused")
+
+            fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
+            streams = fetcher.run(urls=["https://www.example.com"])["streams"]
+
+            assert len(streams) == 1
+            assert streams[0].meta["content_type"] == "Unknown"
+            assert streams[0].mime_type == "Unknown"
 
 
 class TestComponentLifecycle:
