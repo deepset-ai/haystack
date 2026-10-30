@@ -371,6 +371,34 @@ class TestResumeFromLegacyPipelineSnapshot:
         result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
         assert result == {"greeter": {"result": "hi"}}
 
+    def test_resume_from_legacy_snapshot_with_a_populated_and_a_missing_socket(self):
+        """A missing socket is skipped without affecting a populated socket on the same component."""
+
+        @component
+        class Greeter:
+            @component.output_types(result=str)
+            def run(self, name: str, greeting: str = "hi"):
+                return {"result": f"{greeting},{name}"}
+
+        pipeline = Pipeline()
+        pipeline.add_component("greeter", Greeter())
+
+        with pytest.raises(BreakpointException) as exc_info:
+            pipeline.run(data={"greeter": {"name": "Ada"}}, break_point=Breakpoint(component_name="greeter"))
+        snapshot = exc_info.value.pipeline_snapshot
+        assert snapshot is not None
+
+        legacy_inputs = _serialize_value_with_schema(
+            _transform_json_structure(_deserialize_value_with_schema(snapshot.pipeline_state.inputs))
+        )
+        assert legacy_inputs["serialized_data"]["greeter"] == {"name": "Ada"}
+        legacy_snapshot = replace(
+            snapshot, pipeline_state=replace(snapshot.pipeline_state, inputs=legacy_inputs, inputs_format=None)
+        )
+
+        result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
+        assert result == {"greeter": {"result": "hi,Ada"}}
+
     def test_resume_from_legacy_snapshot_into_a_loop(self):
         """
         A legacy snapshot needs its special input handling for the visit it was paused on, and only that visit.
