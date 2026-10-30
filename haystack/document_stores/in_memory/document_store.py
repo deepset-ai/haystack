@@ -999,6 +999,19 @@ class InMemoryDocumentStore:
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
         )
 
+    async def delete_by_filter_async(self, filters: dict[str, Any]) -> int:
+        """
+        Deletes all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for deletion.
+            For filter syntax, see filter_documents.
+        :returns: The number of documents deleted.
+        :raises ValueError: if filters have invalid syntax.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.delete_by_filter(filters=filters)
+        )
+
     async def update_by_filter_async(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
         Updates the metadata of all documents that match the provided filters.
