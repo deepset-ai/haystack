@@ -8,6 +8,7 @@ from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.hooks.compaction import SlidingWindowCompactor
 from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE, _is_compaction_note
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from test.hooks.compaction.helpers import (
     FakeCounter,
     count_markers,
@@ -195,6 +196,46 @@ class TestSlidingWindowCompactor:
         assert count_markers(messages=compacted) == 1
         # The earlier note is counted among the removed, alongside the two messages of the oldest step.
         assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 3
+
+    def test_keeps_a_system_reminder_after_the_last_step(self):
+        reminder = ChatMessage.from_user(
+            text="<system-reminder>\nThis is your last step.\n</system-reminder>",
+            meta={_SYSTEM_REMINDER_META_KEY: True},
+        )
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="old question " * 100),
+            ChatMessage.from_assistant(text="old answer"),
+            ChatMessage.from_user(text="current task"),
+            tool_call("c1"),
+            tool_result(result="result", call_id="c1"),
+            # Added by a `before_llm` hook for the LLM call that is about to happen, so the model has not seen it yet.
+            reminder,
+        ]
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=60, token_counter=COUNTER)
+        assert compacted is not None
+        # Only the historical turn is removed, and the reminder stays at the end of the conversation.
+        assert compacted == [messages[0], compacted[1], *messages[3:]]
+        assert compacted[1].meta[_COMPACTION_META_KEY]["removed_messages"] == 2
+
+    def test_keeps_a_system_reminder_with_the_step_that_follows_it(self):
+        reminder = ChatMessage.from_user(
+            text="<system-reminder>\n2 steps remaining.\n</system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}
+        )
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="current task"),
+            tool_call("c1"),
+            tool_result(result="first result", call_id="c1"),
+            reminder,
+            tool_call("c2"),
+            tool_result(result="second result", call_id="c2"),
+        ]
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+        assert compacted is not None
+        # The oldest step is removed, while the reminder stays in front of the step the model took after reading it.
+        assert compacted == [*messages[:2], compacted[2], *messages[4:]]
+        assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 2
 
     def test_keeps_a_pruned_tool_result_inside_a_kept_turn(self):
         messages = [

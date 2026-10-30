@@ -17,6 +17,7 @@ from haystack.hooks.compaction.utils import (
     _messages_at,
     _messages_except,
 )
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -42,19 +43,45 @@ def _flatten(groups: list[list[int]]) -> list[int]:
     return [index for group in groups for index in group]
 
 
+def _attach_system_reminders(
+    messages: list[ChatMessage], groups: list[list[int]], start: int
+) -> tuple[list[list[int]], list[int]]:
+    """
+    Add each system reminder in the current task to the Agent step that follows it.
+
+    A reminder is added before an LLM call, so it belongs with the step that call produced and is kept or removed
+    together with it. Reminders after the last step are for the LLM call about to happen and have not been read yet.
+
+    :param messages: The full conversation, ordered oldest to newest.
+    :param groups: Index groups for the current task's Agent steps, oldest first.
+    :param start: The index the current task's steps are looked for from.
+    :returns: The step groups with their reminders, and the indices of the reminders after the last step.
+    """
+    groups_by_start = {group[0]: group for group in groups}
+    attached: list[list[int]] = []
+    pending: list[int] = []
+    for index in range(start, len(messages)):
+        if index in groups_by_start:
+            attached.append([*pending, *groups_by_start[index]])
+            pending = []
+        elif messages[index].is_from(role=ChatRole.USER) and _SYSTEM_REMINDER_META_KEY in messages[index].meta:
+            pending.append(index)
+    return attached, pending
+
+
 def _removable_groups(
     messages: list[ChatMessage], system_end: int, task_index: int | None
-) -> tuple[list[list[int]], list[list[int]]]:
+) -> tuple[list[list[int]], list[list[int]], list[int]]:
     """
     Group the two stretches of conversation compaction is allowed to remove.
 
     :param messages: The full conversation, ordered oldest to newest.
     :param system_end: The end of the leading system-message block.
     :param task_index: The index of the user message anchoring the current task, or None when there is none.
-    :returns: Index groups for the complete historical turns preceding the current task, and index groups for the
-        current task's own Agent steps. Both are ordered oldest group first. A group is the unit of removal: it is
-        kept or removed entire, which is what keeps a tool call with its results and an assistant reply with the user
-        message it answers.
+    :returns: Index groups for the complete historical turns preceding the current task, index groups for the
+        current task's own Agent steps, and the indices of system reminders after the last step. Both group lists are
+        ordered oldest group first. A group is the unit of removal: it is kept or removed entire, which is what keeps a
+        tool call with its results and an assistant reply with the user message it answers.
     """
     # An earlier compaction's note is left out of its turn, so keeping the turn folds that note into the note this
     # compaction leaves behind.
@@ -62,8 +89,12 @@ def _removable_groups(
         [index for index in group if not _is_compaction_note(message=messages[index])]
         for group in _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
     ]
-    agent_step_groups = _current_agent_step_groups(messages=messages, system_end=system_end, task_index=task_index)
-    return historical_groups, agent_step_groups
+    agent_step_groups, pending_reminders = _attach_system_reminders(
+        messages=messages,
+        groups=_current_agent_step_groups(messages=messages, system_end=system_end, task_index=task_index),
+        start=task_index + 1 if task_index is not None else system_end,
+    )
+    return historical_groups, agent_step_groups, pending_reminders
 
 
 def _first_group_to_keep(
@@ -164,12 +195,13 @@ def _task_and_step_split(
     task_indices = [task_index] if task_index is not None else []
 
     # The two stretches compaction may remove. A group is the unit of removal, so a turn or a step is never split.
-    historical_groups, agent_step_groups = _removable_groups(
+    historical_groups, agent_step_groups, pending_reminders = _removable_groups(
         messages=messages, system_end=system_end, task_index=task_index
     )
 
-    # The instructions and the current task are never removed, so they come off the budget first.
-    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices])
+    # The instructions, the current task, and the reminders not read yet are never removed, so they come off the
+    # budget first.
+    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices, *pending_reminders])
     first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
         historical_groups=historical_groups,
@@ -179,10 +211,11 @@ def _task_and_step_split(
         min_keep_steps=min_keep_steps,
     )
 
-    # What survives, laid out in conversation order: the instructions, the turns that fit, the task, then its steps.
+    # What survives, laid out in conversation order: the instructions, the turns that fit, the task, its steps, then
+    # the reminders not read yet.
     kept_turn_indices = _flatten(groups=historical_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=agent_step_groups[first_kept_step:])
-    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices]
+    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices, *pending_reminders]
 
     # The note stands in for what was dropped, so it goes where those messages used to sit. Either right after the
     # instructions when the historical turns were trimmed, or right after the task anchor when its own steps were.
