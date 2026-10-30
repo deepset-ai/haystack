@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``RegexTextExtractor`` now returns an empty string when its first capture
+    group does not participate in the match, for example with
+    ``regex_pattern=r"Score: (\d+)|N/A"`` on ``"N/A"``. Previously it returned
+    ``None`` although the component declares ``str`` output, which broke
+    downstream components.

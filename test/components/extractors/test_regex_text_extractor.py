@@ -186,6 +186,20 @@ class TestRegexTextExtractor:
 
         assert result == {"captured_text": "username"}
 
+    def test_first_capture_group_outside_match_returns_empty_string(self):
+        """A pattern can match while its first group does not participate in the match."""
+        extractor = RegexTextExtractor(regex_pattern=r"Score: (\d+)|N/A")
+
+        assert extractor.run(text_or_messages="Score: 7") == {"captured_text": "7"}
+        assert extractor.run(text_or_messages="N/A") == {"captured_text": ""}
+
+    def test_first_capture_group_not_participating_returns_empty_string(self):
+        """An optional first group that captures nothing still yields a str."""
+        extractor = RegexTextExtractor(regex_pattern=r"Answer:( \w+)?")
+
+        assert extractor.run(text_or_messages="Answer: yes") == {"captured_text": " yes"}
+        assert extractor.run(text_or_messages="Answer:") == {"captured_text": ""}
+
     def test_pipeline_integration(self):
         """Test component integration in a Haystack pipeline."""
         pattern = r'<issue url="(.+?)">'
