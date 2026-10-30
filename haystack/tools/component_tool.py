@@ -109,6 +109,7 @@ class ComponentTool(Tool):
         :param description: Optional description (defaults to component's docstring).
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
+            Unknown top-level properties produce a warning; unknown invocation arguments are skipped with a warning.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
             Optional dictionary defining how tool outputs should be converted into string(s) or results.
@@ -159,7 +160,9 @@ class ComponentTool(Tool):
             }
             ```
         :raises TypeError: If the object passed is not a Haystack Component instance.
-        :raises ValueError: If the component has already been added to a pipeline, or if schema generation fails.
+        :raises ValueError:
+            If the component has already been added to a pipeline, schema generation fails,
+            or custom parameters omit mandatory inputs not supplied through state.
         """
         if not isinstance(component, Component):
             message = (
@@ -179,6 +182,19 @@ class ComponentTool(Tool):
         # Create the tools schema from the component run method parameters
         tool_schema = parameters or self._create_tool_parameters_schema(component, inputs_from_state or {})
 
+        def convert_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            unknown = set(kwargs) - set(input_sockets)
+            if unknown:
+                logger.warning(
+                    "Skipping unknown component input parameter(s): {names}.", names=", ".join(sorted(unknown))
+                )
+            return {
+                name: self._convert_param(value, input_sockets[name].type)
+                for name, value in kwargs.items()
+                if name in input_sockets
+            }
+
         def component_invoker(**kwargs: Any) -> dict[str, Any]:
             """
             Invokes the component using keyword arguments provided by the LLM function calling/tool-generated response.
@@ -186,11 +202,7 @@ class ComponentTool(Tool):
             :param kwargs: The keyword arguments to invoke the component with.
             :returns: The result of the component invocation.
             """
-            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
-            converted_kwargs = {
-                param_name: self._convert_param(param_value, input_sockets[param_name].type)
-                for param_name, param_value in kwargs.items()
-            }
+            converted_kwargs = convert_kwargs(kwargs)
             logger.debug(
                 "Invoking component {component_type} with kwargs: {converted_kwargs}",
                 component_type=type(component),
@@ -205,11 +217,7 @@ class ComponentTool(Tool):
             :param kwargs: The keyword arguments to invoke the component with.
             :returns: The result of the component invocation.
             """
-            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
-            converted_kwargs = {
-                param_name: self._convert_param(param_value, input_sockets[param_name].type)
-                for param_name, param_value in kwargs.items()
-            }
+            converted_kwargs = convert_kwargs(kwargs)
             logger.debug(
                 "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
                 component_type=type(component),
@@ -250,12 +258,30 @@ class ComponentTool(Tool):
             outputs_to_string=outputs_to_string,
         )
 
+        if parameters:
+            unknown = set(parameters.get("properties", {})) - self._get_valid_inputs()
+            if unknown:
+                names = ", ".join(sorted(unknown))
+                logger.warning("Custom parameters contain unknown component input parameter(s): {names}.", names=names)
+            state_inputs = set((inputs_from_state or {}).values())
+            missing = [
+                name
+                for name, socket in component.__haystack_input__._sockets_dict.items()  # type: ignore[attr-defined]
+                if socket.is_mandatory
+                and not _is_state_annotation(socket.type)
+                and name not in parameters.get("properties", {})
+                and name not in state_inputs
+            ]
+            if missing:
+                raise ValueError(
+                    f"The component wrapped by this tool requires the inputs {missing}, but this tool "
+                    "does not supply them, so it can never run. Add them to 'parameters', the schema that the calling "
+                    "LLM fills in, or to 'inputs_from_state', which takes them from the calling Agent's state."
+                )
+
     def _get_valid_inputs(self) -> set[str]:
         """
         Return valid input parameter names from the component's input sockets.
-
-        Used to validate `inputs_from_state` against the component's actual inputs.
-        This ensures users don't reference non-existent component inputs.
 
         :returns: Set of component input socket names.
         """
