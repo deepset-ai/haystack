@@ -80,7 +80,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
+from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -159,29 +159,25 @@ class Component(Protocol):
         isinstance(MyComponent, Component)
     """
 
-    # The following expression defines a run method compatible with any input signature.
-    # Its type is equivalent to Callable[..., dict[str, Any]].
-    # See https://typing.python.org/en/latest/spec/callables.html#meaning-of-in-callable.
+    # The protocol must accept any `run` signature, so type checkers and the runtime get different definitions.
     #
-    # Using `run: Callable[..., dict[str, Any]]` directly leads to type errors: the protocol would expect a settable
-    # attribute `run`, while the actual implementation is a read-only method.
-    # For example:
-    # from haystack import Pipeline, component
-    # @component
-    # class MyComponent:
-    #     @component.output_types(out=str)
-    #     def run(self):
-    #         return {"out": "Hello, world!"}
-    # pipeline = Pipeline()
-    # pipeline.add_component("my_component", MyComponent())
+    # Type checkers see a read-only property returning `Callable[..., Mapping[str, Any]]`. `...` accepts any
+    # signature in every checker, including Pyrefly's `strict-callable-subtyping`, which does not treat
+    # `(*args: Any, **kwargs: Any)` as equivalent to `...`. The property is needed because a plain
+    # `run: Callable[...]` annotation declares a settable attribute, which read-only methods do not satisfy.
     #
-    # mypy raises:
-    # error: Argument 2 to "add_component" of "PipelineBase" has incompatible type "MyComponent"; expected "Component"
-    # [arg-type]
-    # note: Protocol member Component.run expected settable variable, got read-only attribute
+    # At runtime `run` stays a method: a property would make it a non-method protocol member, and
+    # `issubclass(..., Component)` would raise a TypeError.
+    if TYPE_CHECKING:
 
-    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # noqa: D102
-        ...
+        @property
+        def run(self) -> Callable[..., Mapping[str, Any]]:  # noqa: D102
+            ...
+
+    else:
+
+        def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # noqa: D102
+            ...
 
 
 class ComponentMeta(type):

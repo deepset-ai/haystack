@@ -128,9 +128,9 @@ class TestPipelineAddComponent:
     def test_add_invalid_component_name(self):
         pipe = PipelineBase()
         with pytest.raises(ValueError):
-            pipe.add_component("this.is.not.a.valida.name", FakeComponent)
+            pipe.add_component("this.is.not.a.valida.name", FakeComponent())
         with pytest.raises(ValueError):
-            pipe.add_component("_debug", FakeComponent)
+            pipe.add_component("_debug", FakeComponent())
 
     def test_add_component_to_different_pipelines(self):
         first_pipe = PipelineBase()
