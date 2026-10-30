@@ -623,6 +623,91 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
     }
 
 
+def test_from_function_with_underscore_param_required():
+    """Test that a required parameter with leading underscore is included in the schema."""
+    def lookup_order(_tenant: str, order_id: str) -> str:
+        """Look up an order for a tenant."""
+        return f"{_tenant}/{order_id}"
+
+    tool = create_tool_from_function(lookup_order)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "_tenant": {"type": "string"},
+            "order_id": {"type": "string"},
+        },
+        "required": ["_tenant", "order_id"],
+    }
+    # Verify the tool can be invoked with both parameters
+    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
+
+
+def test_from_function_with_underscore_param_optional():
+    """Test that an optional parameter with leading underscore is included in the schema."""
+    def get_user(_session: str = "default", user_id: str = "guest") -> str:
+        """Get a user with optional session context."""
+        return f"{_session}:{user_id}"
+
+    tool = create_tool_from_function(get_user)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "_session": {"type": "string", "default": "default"},
+            "user_id": {"type": "string", "default": "guest"},
+        },
+    }
+    # Verify invocation with default
+    assert tool.invoke(user_id="alice") == "default:alice"
+    # Verify invocation with explicit underscore param
+    assert tool.invoke(_session="prod", user_id="bob") == "prod:bob"
+
+
+def test_from_function_with_underscore_param_annotated():
+    """Test that underscore parameters with Annotated type hints work correctly."""
+    def process_data(
+        _context: Annotated[str, "Internal processing context"],
+        data: Annotated[str, "The data to process"],
+    ) -> str:
+        """Process data with internal context."""
+        return f"[{_context}] {data}"
+
+    tool = create_tool_from_function(process_data)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "_context": {"type": "string", "description": "Internal processing context"},
+            "data": {"type": "string", "description": "The data to process"},
+        },
+        "required": ["_context", "data"],
+    }
+    assert tool.invoke(_context="internal", data="test") == "[internal] test"
+
+
+def test_from_function_with_multiple_underscore_params():
+    """Test multiple underscore parameters in the same function."""
+    def complex_operation(_x: int, _y: int, operation: str = "add") -> str:
+        """Perform a complex operation."""
+        result = _x + _y if operation == "add" else _x * _y
+        return f"{_x} {operation} {_y} = {result}"
+
+    tool = create_tool_from_function(complex_operation)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "_x": {"type": "integer"},
+            "_y": {"type": "integer"},
+            "operation": {"type": "string", "default": "add"},
+        },
+        "required": ["_x", "_y"],
+    }
+    assert tool.invoke(_x=5, _y=3) == "5 add 3 = 8"
+    assert tool.invoke(_x=5, _y=3, operation="multiply") == "5 multiply 3 = 15"
+
+
 async def async_function_with_docstring(city: str) -> str:
     """Get weather report for a city."""
     return f"Weather report for {city}: 20°C, sunny"

@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable
 from typing import Any, overload
 
-from pydantic import create_model
+from pydantic import Field, create_model
 
 from haystack.core.type_utils import _resolve_parameter_types
 
@@ -166,7 +166,16 @@ def create_tool_from_function(
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
         default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (annotation, default)
+
+        # Pydantic rejects field names starting with underscore. To preserve such parameter names,
+        # use a safe internal field name with Field(alias=...). The alias exposes the original name
+        # in the JSON schema and tool invocation, while the field name is internal to Pydantic.
+        if param_name.startswith("_"):
+            # Generate safe field name: strip leading underscores, fallback if all underscores
+            safe_field_name = param_name.lstrip("_") or "param"
+            fields[safe_field_name] = (annotation, Field(default=default, alias=param_name))
+        else:
+            fields[param_name] = (annotation, default)
 
         if hasattr(annotation, "__metadata__"):
             descriptions[param_name] = annotation.__metadata__[0]

@@ -176,3 +176,6 @@ haystack/json-schemas
 
 # uv
 uv.lock
+
+# Claude Code settings
+.claude/
