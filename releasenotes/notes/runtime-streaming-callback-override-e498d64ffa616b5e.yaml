@@ -1,0 +1,8 @@
+fixes:
+  - |
+    Runtime streaming callbacks now override initialization callbacks during
+    compatibility checks as well as selection, including callback objects whose
+    truth value is false. A synchronous runtime callback
+    can replace an asynchronous initialization callback for synchronous runs
+    without an error. Unused initialization callbacks no longer emit misleading
+    warnings about blocking the event loop.
