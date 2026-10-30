@@ -46,7 +46,8 @@ class PythonCodeSplitter:
     A function whose effective length exceeds ``oversized_factor * max_effective_lines``
     is the only case where chunks may overlap: it is broken down with a line-based
     secondary split (:class:`DocumentSplitter`, ``split_by="line"``) and the resulting
-    pieces carry ``secondary_split=True`` along with the originating function's metadata.
+    pieces carry ``secondary_split=True`` along with the originating function's metadata,
+    with ``start_line`` and ``end_line`` narrowed to the lines each piece covers.
     The primary split never adds overlap.
 
     Per-chunk metadata: ``source_id``, ``split_id``, ``start_line``, ``end_line``,
@@ -155,6 +156,11 @@ class PythonCodeSplitter:
     def _is_oversized(self, unit: "_CodeUnit") -> bool:
         """Return ``True`` if ``unit`` should trigger the secondary line-based split."""
         return self._effective_lines(unit.source) > self.oversized_factor * self.max_effective_lines
+
+    @staticmethod
+    def _count_lines(text: str) -> int:
+        """Count lines in ``text`` the way ``ast`` does (only \\n, \\r\\n and \\r end a line)."""
+        return len(io.StringIO(text, newline="").readlines())
 
     @staticmethod
     def _slice_lines(source_lines: list[str], start: int, end: int) -> str:
@@ -559,14 +565,25 @@ class PythonCodeSplitter:
         intermediate = splitter.run(documents=[Document(content=unit.source)])["documents"]
 
         base_meta = self._build_chunk_meta([unit], parent_doc)
+        # The unit source ends at ``unit.end_line`` but may start earlier (blank lines and comments
+        # before the definition). Map each piece back to the physical lines it covers. When the
+        # docstring was stripped, the source no longer lines up with the file, so keep the unit range.
+        source_first_line = unit.end_line - self._count_lines(unit.source) + 1
         results: list[Document] = []
         for idx, piece in enumerate(intermediate):
             meta = deepcopy(base_meta)
+            piece_content = piece.content or ""
+            piece_offset = piece.meta.get("split_idx_start")
+            if unit.docstring is None and piece_offset is not None and piece_content:
+                piece_start = source_first_line + self._count_lines(unit.source[:piece_offset])
+                piece_end = piece_start + self._count_lines(piece_content) - 1
+                meta["start_line"] = min(max(piece_start, unit.start_line), unit.end_line)
+                meta["end_line"] = max(min(piece_end, unit.end_line), meta["start_line"])
             meta["secondary_split"] = True
             meta["secondary_split_index"] = idx
             meta["secondary_split_total"] = len(intermediate)
             meta["qualified_name"] = qualified_name
-            results.append(Document(content=piece.content or "", meta=meta))
+            results.append(Document(content=piece_content, meta=meta))
 
         return results
 
