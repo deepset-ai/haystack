@@ -10,6 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "llm_ranker": ["LLMRanker"],
     "lost_in_the_middle": ["LostInTheMiddleRanker"],
+    "max_sim": ["MaxSimRanker"],
     "meta_field": ["MetaFieldRanker"],
     "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
 }
@@ -17,6 +18,7 @@ _import_structure = {
 if TYPE_CHECKING:
     from .llm_ranker import LLMRanker as LLMRanker
     from .lost_in_the_middle import LostInTheMiddleRanker as LostInTheMiddleRanker
+    from .max_sim import MaxSimRanker as MaxSimRanker
     from .meta_field import MetaFieldRanker as MetaFieldRanker
     from .meta_field_grouping_ranker import MetaFieldGroupingRanker as MetaFieldGroupingRanker
 
