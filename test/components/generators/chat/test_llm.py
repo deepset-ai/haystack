@@ -276,6 +276,25 @@ class TestLLM:
             assert result["last_message"].text == "Async reply"
             assert prior_message in result["messages"]
 
+        def test_run_returns_only_declared_outputs(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            result = llm.run(query="What is 2+2?")
+            declared_outputs = set(llm.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
+            assert set(result.keys()) == declared_outputs
+            # regression test for https://github.com/deepset-ai/haystack/issues/13487
+            assert "exit_reason" not in result
+
+        @pytest.mark.asyncio
+        async def test_run_async_returns_only_declared_outputs(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            result = await llm.run_async(query="What is 2+2?")
+            declared_outputs = set(llm.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
+            assert set(result.keys()) == declared_outputs
+            # regression test for https://github.com/deepset-ai/haystack/issues/13487
+            assert "exit_reason" not in result
+
     class TestPipelineIntegration:
         @pytest.fixture()
         def document_store_with_docs(self):

@@ -86,9 +86,9 @@ class LLM(Agent):
                 )
             component.set_input_type(self, "messages", list[ChatMessage], None)
 
-        # The Agent base class declares `step_count` and `tool_call_counts` as outputs, but an LLM never has tools
-        # and always runs exactly one step — those values are uninformative, so drop them from the public surface.
-        # `token_usage` is still meaningful and stays exposed.
+        # The Agent base class declares `step_count`, `tool_call_counts`, and `exit_reason` as outputs, but an LLM
+        # never has tools and always runs exactly one step, so those values are uninformative — drop them from the
+        # public surface (see run/run_async). `token_usage` is still meaningful and stays exposed.
         component.set_output_types(
             self, messages=list[ChatMessage], last_message=ChatMessage, token_usage=dict[str, Any]
         )
@@ -163,6 +163,7 @@ class LLM(Agent):
         # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
         result.pop("step_count", None)
         result.pop("tool_call_counts", None)
+        result.pop("exit_reason", None)
         return result
 
     async def run_async(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
@@ -204,4 +205,5 @@ class LLM(Agent):
         # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
         result.pop("step_count", None)
         result.pop("tool_call_counts", None)
+        result.pop("exit_reason", None)
         return result
