@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Resuming a breakpoint snapshot saved by an older Haystack no longer crashes with
+    ``IndexError`` when the paused component has an input socket without a stored value,
+    for example a component whose inputs are all optional. The component now resumes with
+    its socket default.

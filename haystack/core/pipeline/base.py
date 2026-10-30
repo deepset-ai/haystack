@@ -1352,9 +1352,12 @@ class PipelineBase:  # noqa: PLW1641
                 sock["value"] for sock in socket_inputs if not isinstance(sock["value"], _NoOutputProduced)
             ]
 
-            # if we are resuming a component, the inputs are already consumed, so we just return the first input
+            # if we are resuming a component, the inputs are already consumed, so we just return the first input.
+            # a legacy snapshot may not carry a value for every socket, in which case the socket is left out
+            # so the component falls back to its default.
             if is_resume:
-                consumed_inputs[socket_name] = socket_inputs_values[0]
+                if socket_inputs_values:
+                    consumed_inputs[socket_name] = socket_inputs_values[0]
                 continue
 
             if socket_inputs_values:

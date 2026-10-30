@@ -344,6 +344,33 @@ class TestResumeFromLegacyPipelineSnapshot:
         result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
         assert result["comp3"]["result"] == "test_processed_processed_processed"
 
+    def test_resume_from_legacy_snapshot_with_an_empty_socket(self):
+        """A legacy snapshot may not carry a value for every socket; the component must resume with its default."""
+
+        @component
+        class AllOptional:
+            @component.output_types(result=str)
+            def run(self, greeting: str = "hi"):
+                return {"result": greeting}
+
+        pipeline = Pipeline()
+        pipeline.add_component("greeter", AllOptional())
+
+        with pytest.raises(BreakpointException) as exc_info:
+            pipeline.run(data={}, break_point=Breakpoint(component_name="greeter"))
+        snapshot = exc_info.value.pipeline_snapshot
+        assert snapshot is not None
+
+        legacy_inputs = _serialize_value_with_schema(
+            _transform_json_structure(_deserialize_value_with_schema(snapshot.pipeline_state.inputs))
+        )
+        legacy_snapshot = replace(
+            snapshot, pipeline_state=replace(snapshot.pipeline_state, inputs=legacy_inputs, inputs_format=None)
+        )
+
+        result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
+        assert result == {"greeter": {"result": "hi"}}
+
     def test_resume_from_legacy_snapshot_into_a_loop(self):
         """
         A legacy snapshot needs its special input handling for the visit it was paused on, and only that visit.
