@@ -1,0 +1,208 @@
+---
+title: "FalkorDBTextToCypherRetriever"
+id: falkordbtexttocypherretriever
+slug: "/falkordbtexttocypherretriever"
+description: "A Retriever that translates natural-language queries into read-only OpenCypher queries with a Chat Generator and runs them against a FalkorDB Document Store."
+hep_available: true
+---
+
+# FalkorDBTextToCypherRetriever
+
+A Retriever that translates natural-language queries into read-only OpenCypher queries with a Chat Generator and runs them against a FalkorDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in a GraphRAG pipeline |
+| **Mandatory init variables** | `document_store`: An instance of a [FalkorDBDocumentStore](../../document-stores/falkordbdocumentstore.mdx)  <br /> <br />`chat_generator`: A Chat Generator configured for structured output |
+| **Mandatory run variables** | `query`: A natural-language retrieval request |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [FalkorDB](/reference/integrations-falkordb) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/falkordb |
+| **Package name** | `falkordb-haystack` |
+
+</div>
+
+## Overview
+
+The `FalkorDBTextToCypherRetriever` lets users query a graph in natural language. A Chat Generator translates the query into OpenCypher, and the Retriever runs it through FalkorDB's read-only query command, so generated queries can't modify the graph.
+
+To ground the generated queries, the Retriever samples the graph schema (labels, relationship types, property keys, and up to `schema_sample_size` nodes per label and relationships per type) on warm-up and includes it in the system prompt. The schema is cached: after changing the graph, call `close()` and warm up again to refresh it. Sampling can miss rare properties or relationship patterns.
+
+The Chat Generator must return a JSON object with a single `query` field. Configure it for structured output using `FalkorDBTextToCypherRetriever.RESPONSE_SCHEMA`. The generated query must return document nodes or document-shaped maps in its first column. Any other result raises a `DocumentStoreError`.
+
+Use these parameters to bound the results and their cost:
+
+- `top_k`: The maximum number of unique documents to return. The generator is asked to add a matching `LIMIT`, and results are deduplicated and truncated in case it doesn't. You can override it at runtime.
+- `timeout`: The maximum query runtime in milliseconds, enforced by the FalkorDB server.
+
+### Customizing the system prompt
+
+Pass `system_prompt` to replace the default instructions, for example to add domain hints or example queries. The prompt must contain a `{graph_schema}` placeholder, which is replaced with the sampled schema. Other braces are kept as-is, so Cypher examples need no escaping. To extend the default prompt instead of replacing it, start from `FalkorDBTextToCypherRetriever.DEFAULT_SYSTEM_PROMPT`.
+
+:::warning[Security]
+The user query and the sampled graph schema, including property values from sampled nodes, are sent to the Chat Generator's provider. Read-only queries can still expose sensitive data or be expensive to run. Connect with least-privilege credentials, set a `timeout`, and use `recreate_graph=False` when pointing the Document Store at an existing graph.
+:::
+
+## Installation
+
+```shell
+pip install falkordb-haystack
+```
+
+Ensure FalkorDB is running, for example via Docker:
+
+```shell
+docker run -d -p 6379:6379 falkordb/falkordb:latest
+```
+
+The examples on this page use the `OpenAIChatGenerator`, which needs the `OPENAI_API_KEY` environment variable.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import (
+    FalkorDBTextToCypherRetriever,
+)
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    recreate_graph=True,
+)
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+            meta={"topic": "linguistics"},
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+            meta={"topic": "biology"},
+        ),
+    ],
+)
+
+generator = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    generation_kwargs={
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "cypher_query",
+                "strict": True,
+                "schema": FalkorDBTextToCypherRetriever.RESPONSE_SCHEMA,
+            },
+        },
+    },
+)
+
+retriever = FalkorDBTextToCypherRetriever(
+    document_store=document_store,
+    chat_generator=generator,
+    top_k=5,
+    timeout=1000,
+)
+result = retriever.run(query="Find documents about linguistics")
+print(result["documents"][0].content)
+```
+
+### With a custom system prompt
+
+```python
+system_prompt = """Translate the user's request into a single read-only FalkorDB OpenCypher query.
+Documents are `Document` nodes with a `topic` property, for example (d:Document {topic: "biology"}).
+Return document nodes in the first column.
+Graph schema:
+{graph_schema}"""
+
+retriever = FalkorDBTextToCypherRetriever(
+    document_store=document_store,
+    chat_generator=generator,
+    system_prompt=system_prompt,
+)
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import (
+    FalkorDBTextToCypherRetriever,
+)
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    recreate_graph=True,
+)
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+            meta={"topic": "linguistics"},
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+            meta={"topic": "biology"},
+        ),
+    ],
+)
+
+cypher_generator = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    generation_kwargs={
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "cypher_query",
+                "strict": True,
+                "schema": FalkorDBTextToCypherRetriever.RESPONSE_SCHEMA,
+            },
+        },
+    },
+)
+
+prompt_template = [
+    ChatMessage.from_user(
+        """Given these documents, answer the question.
+Documents:
+{% for doc in documents %}
+    {{ doc.content }}
+{% endfor %}
+Question: {{ question }}""",
+    ),
+]
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "retriever",
+    FalkorDBTextToCypherRetriever(
+        document_store=document_store,
+        chat_generator=cypher_generator,
+    ),
+)
+pipeline.add_component("prompt_builder", ChatPromptBuilder(template=prompt_template))
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipeline.connect("retriever.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+question = "How many languages are there?"
+result = pipeline.run(
+    {
+        "retriever": {"query": "Find documents about linguistics"},
+        "prompt_builder": {"question": question},
+    },
+)
+print(result["llm"]["replies"][0].text)
+```
