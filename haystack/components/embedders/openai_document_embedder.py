@@ -105,7 +105,11 @@ class OpenAIDocumentEmbedder:
         :param raise_on_failure:
             Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
             and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+        :raises ValueError:
+            If `batch_size` is not greater than 0.
         """
+        if batch_size <= 0:
+            raise ValueError(f"batch_size must be greater than 0, but got {batch_size}")
         self.api_key = api_key
         self.model = model
         self.dimensions = dimensions
