@@ -5,6 +5,7 @@
 import logging
 import warnings
 from collections import namedtuple
+from copy import deepcopy
 
 import pytest
 
@@ -268,6 +269,26 @@ class TestDeepcopyWithFallback:
         assert copy["point"].y == 2
         # Its contents are deep-copied, matching how plain tuples are handled.
         assert copy["point"].x is not original["point"].x
+
+    @pytest.mark.parametrize("value", [None, True, 3, 2.5, 1 + 2j, "text", b"bytes"])
+    def test_deepcopy_with_fallback_matches_deepcopy_for_immutable_builtins(self, value):
+        original = {"values": [value], "value": value}
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["values"] is not original["values"]
+        assert copy == original
+        assert copy["value"] is deepcopy(value)
+        assert copy["values"][0] is deepcopy(value)
+
+    def test_deepcopy_with_fallback_copies_subclass_of_immutable_builtin(self):
+        class TaggedStr(str):
+            __slots__ = ()
+
+            def __deepcopy__(self, memo):
+                return TaggedStr(f"{self} (copied)")
+
+        copy = _deepcopy_with_exceptions(TaggedStr("text"))
+        assert type(copy) is TaggedStr
+        assert copy == "text (copied)"
 
 
 class TestArgsDeprecated:
