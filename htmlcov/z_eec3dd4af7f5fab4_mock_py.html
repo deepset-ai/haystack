@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_eec3dd4af7f5fab4_openai_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-10-30 09:47 +0000
+            created at 2026-10-30 11:37 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -268,7 +268,7 @@
     <p class="run"><span class="n"><a id="t186" href="#t186">186</a></span><span class="t">    <span class="op">@</span><span class="nam">classmethod</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t187" href="#t187">187</a></span><span class="t">    <span class="key">def</span> <span class="nam">from_dict</span><span class="op">(</span><span class="nam">cls</span><span class="op">,</span> <span class="nam">data</span><span class="op">:</span> <span class="nam">dict</span><span class="op">[</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Any</span><span class="op">]</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="nam">MockChatGenerator</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t188" href="#t188">188</a></span><span class="t">        <span class="str">&quot;&quot;&quot;Deserialize the component from a dictionary.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t189" href="#t189">189</a></span><span class="t">        <span class="nam">init_params</span> <span class="op">=</span> <span class="nam">data</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;init_parameters&quot;</span><span class="op">,</span> <span class="op">{</span><span class="op">}</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t189" href="#t189">189</a></span><span class="t">        <span class="nam">init_params</span> <span class="op">=</span> <span class="nam">dict</span><span class="op">(</span><span class="nam">data</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;init_parameters&quot;</span><span class="op">,</span> <span class="op">{</span><span class="op">}</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t190" href="#t190">190</a></span><span class="t">        <span class="nam">responses</span> <span class="op">=</span> <span class="nam">init_params</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;responses&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t191" href="#t191">191</a></span><span class="t">        <span class="key">if</span> <span class="nam">responses</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t192" href="#t192">192</a></span><span class="t">            <span class="nam">init_params</span><span class="op">[</span><span class="str">&quot;responses&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="op">[</span><span class="nam">ChatMessage</span><span class="op">.</span><span class="nam">from_dict</span><span class="op">(</span><span class="nam">msg</span><span class="op">)</span> <span class="key">for</span> <span class="nam">msg</span> <span class="key">in</span> <span class="nam">responses</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
@@ -278,7 +278,7 @@
     <p class="run"><span class="n"><a id="t196" href="#t196">196</a></span><span class="t">        <span class="nam">streaming_callback</span> <span class="op">=</span> <span class="nam">init_params</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;streaming_callback&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t197" href="#t197">197</a></span><span class="t">        <span class="key">if</span> <span class="nam">streaming_callback</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t198" href="#t198">198</a></span><span class="t">            <span class="nam">init_params</span><span class="op">[</span><span class="str">&quot;streaming_callback&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">deserialize_callable</span><span class="op">(</span><span class="nam">streaming_callback</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t199" href="#t199">199</a></span><span class="t">        <span class="key">return</span> <span class="nam">default_from_dict</span><span class="op">(</span><span class="nam">cls</span><span class="op">,</span> <span class="nam">data</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t199" href="#t199">199</a></span><span class="t">        <span class="key">return</span> <span class="nam">default_from_dict</span><span class="op">(</span><span class="nam">cls</span><span class="op">,</span> <span class="op">{</span><span class="op">**</span><span class="nam">data</span><span class="op">,</span> <span class="str">&quot;init_parameters&quot;</span><span class="op">:</span> <span class="nam">init_params</span><span class="op">}</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t200" href="#t200">200</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t201" href="#t201">201</a></span><span class="t">    <span class="key">def</span> <span class="nam">warm_up</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t202" href="#t202">202</a></span><span class="t">        <span class="str">&quot;&quot;&quot;No-op warm up, provided for interface compatibility with real Chat Generators.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
@@ -500,7 +500,7 @@
             <a class="nav" href="z_eec3dd4af7f5fab4_openai_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-10-30 09:47 +0000
+            created at 2026-10-30 11:37 +0000
         </p>
     </div>
 </footer>
