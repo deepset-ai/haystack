@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``Agent.run_async()`` now cancels and waits for sibling tool invocations when a
+    tool is cancelled, so native async tools finish their cleanup before the agent
+    run exits. The shared task cleanup used by multi-retrievers also handles
+    cancelled child tasks without leaving their siblings running.
