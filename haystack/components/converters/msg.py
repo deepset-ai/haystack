@@ -97,7 +97,15 @@ class MSGToDocument:
             txt += f"From: {msg.sender}\n"
 
         # To
-        recipients_str = ",".join(self._create_recipient_str(r) for r in msg.recipients)
+        # To
+        to_recipients = [
+           r for r in msg.recipients
+           if r.properties.int_prop_value(0x0C15) == 1
+        ]
+        recipients_str = ",".join(
+            self._create_recipient_str(r) for r in to_recipients
+        )
+
         if recipients_str != "":
             txt += f"To: {recipients_str}\n"
 
@@ -105,11 +113,27 @@ class MSGToDocument:
         cc_header = msg.message_headers.get("Cc") or msg.message_headers.get("CC")
         if cc_header is not None:
             txt += f"Cc: {cc_header}\n"
+        else:
+            cc_recipients = [
+                r for r in msg.recipients
+                if r.properties.int_prop_value(0x0C15) == 2
+            ]
+            cc_str = ",".join(self._create_recipient_str(r) for r in cc_recipients)
+            if cc_str:
+                txt += f"Cc: {cc_str}\n"
 
         # BCC
         bcc_header = msg.message_headers.get("Bcc") or msg.message_headers.get("BCC")
         if bcc_header is not None:
             txt += f"Bcc: {bcc_header}\n"
+        else:
+            bcc_recipients = [
+                r for r in msg.recipients
+                if r.properties.int_prop_value(0x0C15) == 3
+        ]
+        bcc_str = ",".join(self._create_recipient_str(r) for r in bcc_recipients)
+        if bcc_str:
+            txt += f"Bcc: {bcc_str}\n"
 
         # Subject
         if msg.subject != "":

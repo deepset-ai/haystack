@@ -104,7 +104,14 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
-        resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
+        resolved_read_csv_kwargs = {
+    "header": None,
+    "skip_blank_lines": False,
+    "dtype": object,
+    "keep_default_na": False,
+    "na_values": [""],
+    **self.read_csv_kwargs,
+}
 
         split_documents = []
         split_dfs = []

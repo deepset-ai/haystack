@@ -163,12 +163,16 @@ class XLSXToDocument:
         Extract tables from an Excel file.
         """
         file_bytes = io.BytesIO(bytestream.data)
-        resolved_read_excel_kwargs = {
-            **self.read_excel_kwargs,
-            "sheet_name": self.sheet_name,
-            "header": None,  # Don't assign any pandas column labels
-            "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
-        }
+       
+resolved_read_excel_kwargs = {
+    "keep_default_na": False,
+    **self.read_excel_kwargs,
+    "sheet_name": self.sheet_name,
+    "header": None,  # Don't assign any pandas column labels
+    "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
+}
+sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
+
         sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
