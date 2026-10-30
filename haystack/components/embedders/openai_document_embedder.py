@@ -86,7 +86,7 @@ class OpenAIDocumentEmbedder:
         :param suffix:
             A string to add at the end of each text.
         :param batch_size:
-            Number of documents to embed at once.
+            Number of documents to embed at once. Must be a positive integer.
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
@@ -105,7 +105,11 @@ class OpenAIDocumentEmbedder:
         :param raise_on_failure:
             Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
             and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+        :raises ValueError:
+            If `batch_size` is not a positive integer.
         """
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
         self.api_key = api_key
         self.model = model
         self.dimensions = dimensions

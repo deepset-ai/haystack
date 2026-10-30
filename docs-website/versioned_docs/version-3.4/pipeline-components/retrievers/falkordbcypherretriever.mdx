@@ -26,7 +26,7 @@ A Retriever that executes arbitrary OpenCypher queries against a FalkorDB Docume
 
 ## Overview
 
-The `FalkorDBCypherRetriever` executes arbitrary OpenCypher queries against a `FalkorDBDocumentStore`, making it suitable for graph traversal and multi-hop queries in GraphRAG pipelines. The query must return nodes or dictionaries that map to Haystack `Document` fields.
+The `FalkorDBCypherRetriever` executes arbitrary OpenCypher queries against a `FalkorDBDocumentStore`, making it suitable for graph traversal and multi-hop queries in GraphRAG pipelines. The query must return nodes or dictionaries that map to Haystack `Document` fields in its first column; other results raise a `DocumentStoreError`.
 
 A `custom_cypher_query` can be set at initialization and optionally overridden at runtime by passing `query` to `run()`. Use parameterized queries (`$param_name` in Cypher, passed via `parameters`) rather than string interpolation to avoid injection vulnerabilities.
 
