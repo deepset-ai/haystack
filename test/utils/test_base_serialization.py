@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
+import json
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
+from uuid import UUID
 
 import pydantic
 import pytest
@@ -23,6 +26,13 @@ class PlainObject:
 class CustomModel(pydantic.BaseModel):
     id: int
     name: str
+
+
+class ModelWithNonJSONFields(pydantic.BaseModel):
+    created_at: datetime
+    day: date
+    uid: UUID
+    amount: Decimal
 
 
 class CustomEnum(Enum):
@@ -504,3 +514,23 @@ class TestErrorHandling:
                     "serialized_data": {"id": "not_an_integer", "name": "Test"},
                 }
             )
+
+
+def test_serialize_pydantic_model_with_non_json_fields_is_json_safe():
+    model = ModelWithNonJSONFields(
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
+        day=date(2024, 1, 2),
+        uid=UUID("12345678-1234-5678-1234-567812345678"),
+        amount=Decimal("1.50"),
+    )
+
+    serialized = _serialize_value_with_schema(model)
+
+    assert serialized["serialized_data"] == {
+        "created_at": "2024-01-02T03:04:05",
+        "day": "2024-01-02",
+        "uid": "12345678-1234-5678-1234-567812345678",
+        "amount": "1.50",
+    }
+    # pipeline snapshots are written with json.dump, so the serialized value must be JSON-safe
+    assert _deserialize_value_with_schema(json.loads(json.dumps(serialized))) == model
