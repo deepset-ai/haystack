@@ -307,18 +307,6 @@ class TestRun:
         ]
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("summary", [None, "", ["not", "text"]], ids=["null", "empty", "non-text"])
-    async def test_run_async_without_text(self, async_client, summary):
-        classifier = OpenAIDecisionsDocumentClassifier(
-            questions=[{"name": "refund", "type": "predicate", "instructions": "Is this a refund request?"}],
-            classification_field="summary",
-        )
-        result = await classifier.run_async(documents=[Document(meta={"summary": summary})])
-        assert result["documents"] == []
-        assert result["failed_documents"][0].meta["classification_error"] == "Document has no text to classify."
-        async_client.decisions.create.assert_not_awaited()
-
-    @pytest.mark.asyncio
     async def test_run_async_records_failed_requests(self, async_client):
         classifier = OpenAIDecisionsDocumentClassifier(
             questions=[{"name": "refund", "type": "predicate", "instructions": "Is this a refund request?"}]

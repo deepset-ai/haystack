@@ -208,6 +208,19 @@ class OpenAIDecisionsDocumentClassifier:
             await self._async_client.close()
             self._async_client = None
 
+    def _text_to_classify(self, document: Document) -> str | None:
+        """
+        Gets the text to send for a document.
+
+        :param document:
+            The document to classify.
+        :returns:
+            The document's `content`, or the value of `meta[classification_field]` if `classification_field` is set.
+            `None` if that value is missing, empty, or not a string.
+        """
+        text = document.content if self.classification_field is None else document.meta.get(self.classification_field)
+        return text if isinstance(text, str) and text else None
+
     def _succeed(self, document: Document, response: Decision) -> tuple[Document, bool]:
         """
         Adds the answers from an OpenAI response to a copy of the document.
@@ -239,8 +252,8 @@ class OpenAIDecisionsDocumentClassifier:
         :raises APIError:
             If the request fails and `raise_on_failure` is `True`.
         """
-        text = document.content if self.classification_field is None else document.meta.get(self.classification_field)
-        if not isinstance(text, str) or not text:
+        text = self._text_to_classify(document)
+        if text is None:
             return replace(document, meta={**document.meta, _ERROR_FIELD: "Document has no text to classify."}), False
         try:
             response = client.decisions.create(model=self.model, input=text, questions=self.questions)
@@ -269,8 +282,8 @@ class OpenAIDecisionsDocumentClassifier:
         :raises APIError:
             If the request fails and `raise_on_failure` is `True`.
         """
-        text = document.content if self.classification_field is None else document.meta.get(self.classification_field)
-        if not isinstance(text, str) or not text:
+        text = self._text_to_classify(document)
+        if text is None:
             return replace(document, meta={**document.meta, _ERROR_FIELD: "Document has no text to classify."}), False
         try:
             async with semaphore:
