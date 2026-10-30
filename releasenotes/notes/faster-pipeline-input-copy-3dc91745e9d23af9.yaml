@@ -1,7 +1,8 @@
 ---
 enhancements:
   - |
-    ``Pipeline`` now copies component inputs faster. Inputs are still deep-copied before each component
-    runs, with the same results as before, but plain ``Document`` objects and immutable values such as strings and
-    numbers take a quicker path. Pipelines that pass embeddings or many embedded documents between components
-    benefit most.
+    Deep copies of ``Document`` objects and pipeline inputs are now faster, with the same results as before.
+    ``Document`` now implements ``__deepcopy__``, which copies the ``embedding`` list in one step instead of element
+    by element. ``Pipeline`` also returns immutable values such as strings and numbers unchanged when copying
+    component inputs, without running the more expensive checks meant for other objects. Pipelines that pass
+    embeddings or many embedded documents between components benefit most.

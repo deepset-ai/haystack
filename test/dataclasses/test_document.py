@@ -4,7 +4,7 @@
 
 import warnings
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 
 import numpy
 import pytest
@@ -423,3 +423,81 @@ def test_warn_on_inplace_mutation():
     doc = Document(content="test")
     with pytest.warns(Warning, match="dataclasses.replace"):
         doc.content = "other"
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        Document(content="text"),
+        Document(content="text", embedding=[0.1, 0.2, 0.3], score=0.5, meta={"page": 1}),
+        Document(content="text", embedding=[], meta={"nested": {"tags": ["a", "b"]}, "items": [{"k": 1}]}),
+        Document(blob=ByteStream(data=b"data"), sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.5, 1.0])),
+    ],
+)
+def test_deepcopy(document):
+    copy = deepcopy(document)
+    assert type(copy) is Document
+    assert copy == document
+    assert copy.__dict__ == document.__dict__
+    for name, value in document.__dict__.items():
+        if type(value) not in (type(None), int, float, str):
+            assert copy.__dict__[name] is not value
+
+
+def test_deepcopy_copies_nested_meta():
+    document = Document(content="text", meta={"nested": {"tags": ["a"]}})
+    copy = deepcopy(document)
+    copy.meta["nested"]["tags"].append("b")
+    assert document.meta == {"nested": {"tags": ["a"]}}
+
+
+def test_deepcopy_does_not_warn_or_change_id():
+    document = Document(content="text", embedding=[0.1, 0.2])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        copy = deepcopy(document)
+    assert copy.id == document.id
+
+
+@pytest.mark.parametrize("embedding_first", [True, False])
+def test_deepcopy_keeps_embedding_aliasing(embedding_first):
+    embedding = [0.1, 0.2]
+    document = Document(content="text")
+    if embedding_first:
+        document.__dict__.update(embedding=embedding, meta={"same": embedding})
+    else:
+        document.__dict__.update(meta={"same": embedding}, embedding=embedding)
+    copy = deepcopy(document)
+    assert copy.embedding == embedding
+    assert copy.embedding is not embedding
+    assert copy.meta["same"] is copy.embedding
+
+
+def test_deepcopy_copies_extra_attributes():
+    document = Document(content="text")
+    document.__dict__["extra"] = [{"k": 1}]
+    copy = deepcopy(document)
+    assert copy.__dict__["extra"] == [{"k": 1}]
+    assert copy.__dict__["extra"][0] is not document.__dict__["extra"][0]
+
+
+def test_deepcopy_keeps_non_list_embedding_type():
+    document = Document(content="text")
+    document.__dict__["embedding"] = numpy.array([0.1, 0.2])
+    copy = deepcopy(document)
+    assert isinstance(copy.embedding, numpy.ndarray)
+    assert copy.embedding is not document.embedding
+    assert copy.embedding.tolist() == [0.1, 0.2]
+
+
+def test_deepcopy_subclass():
+    @dataclass
+    class TaggedDocument(Document):
+        tags: list[str] = field(default_factory=list)
+
+    document = TaggedDocument(content="text", embedding=[0.1], tags=["a"])
+    copy = deepcopy(document)
+    assert type(copy) is TaggedDocument
+    assert copy == document
+    assert copy.tags is not document.tags
+    assert copy.embedding is not document.embedding

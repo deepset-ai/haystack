@@ -4,6 +4,7 @@
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
@@ -95,6 +96,23 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         if type(self) != type(other):
             return False
         return self.to_dict(flatten=False) == other.to_dict(flatten=False)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "Document":
+        """
+        Creates a deep copy of the Document.
+
+        Works like the default `deepcopy`, but copies the `embedding` list in one step instead of element by element.
+        """
+        cls = type(self)
+        copied = cls.__new__(cls)
+        memo[id(self)] = copied
+        for name, value in self.__dict__.items():
+            if name == "embedding" and type(value) is list:
+                # floats are immutable, so a shallow copy of the list is a full deep copy
+                copied.__dict__[name] = memo.setdefault(id(value), list(value))
+            else:
+                copied.__dict__[name] = deepcopy(value, memo)
+        return copied
 
     @classmethod
     def _field_names(cls) -> set[str]:
