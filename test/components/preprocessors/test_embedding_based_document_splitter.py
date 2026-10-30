@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import gc
 import os
 from dataclasses import replace
 from unittest.mock import AsyncMock, Mock, patch
@@ -9,7 +11,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from haystack import Document
-from haystack.components.embedders import OpenAIDocumentEmbedder
+from haystack.components.embedders import MockDocumentEmbedder, OpenAIDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -21,6 +23,83 @@ tqdm.disable = True
 
 
 class TestEmbeddingBasedDocumentSplitter:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failing_first", [True, False])
+    async def test_run_async_drains_sibling_embedding_after_failure(self, failing_first: bool) -> None:
+        sibling_started = asyncio.Event()
+        sibling_finished = asyncio.Event()
+        sibling_tasks: list[asyncio.Task] = []
+
+        class FailingEmbedder:
+            def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+                raise AssertionError("The asynchronous embedder should be used")
+
+            async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+                if documents[0].content == "Fail.":
+                    await sibling_started.wait()
+                    raise RuntimeError("Embedding failed")
+
+                task = asyncio.current_task()
+                assert task is not None
+                sibling_tasks.append(task)
+                sibling_started.set()
+                try:
+                    await asyncio.Event().wait()
+                finally:
+                    await asyncio.sleep(0)
+                    sibling_finished.set()
+                return {"documents": documents}
+
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=FailingEmbedder())
+        documents = [Document(content="Fail."), Document(content="Wait.")]
+        if not failing_first:
+            documents.reverse()
+        try:
+            async with asyncio.timeout(5):
+                with pytest.raises(RuntimeError, match="^Embedding failed$"):
+                    await splitter.run_async(documents=documents)
+            assert sibling_finished.is_set()
+        finally:
+            for task in sibling_tasks:
+                task.cancel()
+            await asyncio.gather(*sibling_tasks, return_exceptions=True)
+
+    @pytest.mark.asyncio
+    async def test_run_async_keeps_document_order_when_embeddings_finish_out_of_order(self) -> None:
+        second_finished = asyncio.Event()
+
+        class OrderedEmbedder:
+            def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+                raise AssertionError("The asynchronous embedder should be used")
+
+            async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+                if documents[0].content == "First.":
+                    await second_finished.wait()
+                else:
+                    second_finished.set()
+                return {"documents": [replace(doc, embedding=[1.0, 0.0]) for doc in documents]}
+
+        documents = [Document(content="First."), Document(content="Second.")]
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=OrderedEmbedder())
+        result = await asyncio.wait_for(splitter.run_async(documents=documents), timeout=5)
+
+        assert [doc.content for doc in result["documents"]] == ["First.", "Second."]
+        assert [doc.meta["source_id"] for doc in result["documents"]] == [doc.id for doc in documents]
+        assert [doc.meta["split_id"] for doc in result["documents"]] == [0, 0]
+        assert [doc.meta["split_idx_start"] for doc in result["documents"]] == [0, 0]
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_batch_does_not_leave_unawaited_coroutines(
+        self, recwarn: pytest.WarningsRecorder
+    ) -> None:
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=MockDocumentEmbedder())
+
+        with pytest.raises(ValueError, match="content for document ID"):
+            await splitter.run_async(documents=[Document(content="Valid."), Document(content=None)])
+
+        gc.collect()
+        assert not any("was never awaited" in str(warning.message) for warning in recwarn)
+
     def test_init(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(
