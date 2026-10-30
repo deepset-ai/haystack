@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Added `strip_reasoning_on_fallback` to `FallbackChatGenerator` to strip `ReasoningContent` from assistant messages when switching to fallback chat generators, preventing downstream providers from rejecting previous model reasoning blocks.
