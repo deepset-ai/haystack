@@ -1,0 +1,150 @@
+---
+title: "VLLMSparseDocumentEmbedder"
+id: vllmsparsedocumentembedder
+slug: "/vllmsparsedocumentembedder"
+description: "This component computes the sparse embeddings of a list of documents using SPLADE models served with vLLM."
+hep_available: false
+---
+
+# VLLMSparseDocumentEmbedder
+
+This component computes the sparse embeddings of a list of documents using SPLADE models served with [vLLM](https://docs.vllm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `model`: The name of the SPLADE model served by vLLM |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with sparse embeddings) |
+| **API reference** | [vLLM](/reference/integrations-vllm) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+[vLLM](https://docs.vllm.ai/) is an inference and serving engine for LLMs. It exposes an OpenAI-compatible HTTP server, which `VLLMSparseDocumentEmbedder` uses to compute sparse embeddings through the Embeddings API.
+
+`VLLMSparseDocumentEmbedder` computes the sparse embeddings of a list of documents and stores the obtained vectors in the `sparse_embedding` field of each document. It expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). To embed a string (such as a query), use the [`VLLMSparseTextEmbedder`](vllmsparsetextembedder.mdx).
+
+The vectors computed by this component are necessary to perform sparse embedding retrieval on a collection of documents. At retrieval time, the sparse vector that represents the query is compared with those of the documents to find the most similar or relevant ones.
+
+If the vLLM server was started with `--api-key`, provide the API key through the `VLLM_API_KEY` environment variable or the `api_key` init parameter using Haystack's [Secret](../../concepts/secret-management.mdx) API.
+
+### Compatible models
+
+`VLLMSparseDocumentEmbedder` works with SPLADE models that vLLM serves with its `BertSpladeSparseEmbeddingModel` architecture, such as [prithivida/Splade_PP_en_v1](https://huggingface.co/prithivida/Splade_PP_en_v1). For these models, vLLM returns one weight per vocabulary token, and the component keeps the nonzero weights as a `SparseEmbedding`.
+
+SPLADE checkpoints declare a masked language model architecture, so you must tell vLLM to serve them as sparse embedding models with `--hf-overrides` (see [Starting the vLLM server](#starting-the-vllm-server)). vLLM supports BERT-based SPLADE checkpoints.
+
+### vLLM-specific parameters
+
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+```python
+embedder = VLLMSparseDocumentEmbedder(
+    model="prithivida/Splade_PP_en_v1",
+    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+)
+```
+
+### Batching and failure handling
+
+`VLLMSparseDocumentEmbedder` encodes documents in batches. Use `batch_size` (default `32`) to control how many documents are sent in a single request to the vLLM server, and `progress_bar` to toggle the progress indicator.
+
+By default (`raise_on_failure=False`), failed embedding requests are logged and processing continues with the remaining documents. Set `raise_on_failure=True` to raise an exception instead.
+
+### Embedding metadata
+
+Documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval. Pass the relevant fields through `meta_fields_to_embed`; they are concatenated to the document text using `embedding_separator` (a newline by default):
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.vllm import VLLMSparseDocumentEmbedder
+
+doc = Document(content="some text", meta={"title": "relevant title", "page_number": 18})
+
+embedder = VLLMSparseDocumentEmbedder(
+    model="prithivida/Splade_PP_en_v1",
+    meta_fields_to_embed=["title"],
+)
+
+docs_with_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMSparseDocumentEmbedder`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with a SPLADE model:
+
+```bash
+vllm serve prithivida/Splade_PP_en_v1 --runner pooling \
+    --hf-overrides '{"architectures": ["BertSpladeSparseEmbeddingModel"]}'
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.vllm import VLLMSparseDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = VLLMSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1")
+
+result = document_embedder.run([doc])
+print(result["documents"][0].sparse_embedding)
+# >> SparseEmbedding(indices=[999, 1045, 2000, ...], values=[1.670898, 0.981445, 0.197265, ...])
+```
+
+### In a pipeline
+
+This indexing pipeline stores sparse embeddings in an in-memory Qdrant collection. Install the additional integration:
+
+```shell
+pip install qdrant-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.embedders.vllm import VLLMSparseDocumentEmbedder
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(location=":memory:", use_sparse_embeddings=True)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(
+    "sparse_document_embedder",
+    VLLMSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1"),
+)
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("sparse_document_embedder", "writer")
+
+result = indexing_pipeline.run(
+    {
+        "sparse_document_embedder": {
+            "documents": [
+                Document(content="My name is Wolfgang and I live in Berlin"),
+                Document(content="I saw a black horse running"),
+            ]
+        }
+    }
+)
+print(result["writer"]["documents_written"])
+# >> 2
+```
+
+To retrieve the indexed documents, embed the query with [`VLLMSparseTextEmbedder`](vllmsparsetextembedder.mdx) and pass its `sparse_embedding` to [`QdrantSparseEmbeddingRetriever`](../retrievers/qdrantsparseembeddingretriever.mdx).
