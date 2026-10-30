@@ -163,6 +163,9 @@ class InMemoryDocumentStore:
         self.return_embedding = return_embedding
         self.strict_datetime_comparison = strict_datetime_comparison
 
+        # (embedding lists, row index by id of each list, embeddings array), see `_get_document_embeddings`
+        self._embedding_cache: tuple[list[list[float] | None], dict[int, int], np.ndarray] | None = None
+
     def __del__(self) -> None:
         """
         Cleanup when the instance is being destroyed.
@@ -545,6 +548,8 @@ class InMemoryDocumentStore:
 
         :param document_ids: The document_ids to delete.
         """
+        # Drop the cached embeddings so they don't keep the deleted Documents' embeddings alive
+        self._embedding_cache = None
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
                 continue
@@ -587,6 +592,7 @@ class InMemoryDocumentStore:
             self._local_bm25_attr = {}
             self._local_avg_doc_len = 0.0
             self._local_freq_vocab_for_idf = Counter()
+        self._embedding_cache = None
 
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
@@ -905,6 +911,42 @@ class InMemoryDocumentStore:
 
         return top_documents
 
+    def _get_document_embeddings(self, documents: list[Document]) -> np.ndarray:
+        """
+        Returns the embeddings of the given Documents as a NumPy array, one row per Document.
+
+        Converting thousands of embedding lists to an array dominates the cost of an embedding retrieval, so the
+        array from the last conversion is cached. It's reused as long as every Document still holds one of the
+        embedding list objects it was built from, and rebuilt otherwise, for example after writing Documents or
+        assigning a new `embedding` to a Document. Editing an embedding list in place is not detected.
+
+        :param documents: A list of Documents with embeddings.
+        :returns: A NumPy array with the embeddings.
+        :raises DocumentStoreError: If the embeddings don't all have the same size.
+        """
+        embeddings = [doc.embedding for doc in documents]
+
+        # The cache keeps a reference to every embedding list it holds, so their ids can't be reused by other objects
+        if self._embedding_cache is not None:
+            cached_embeddings, row_by_id, matrix = self._embedding_cache
+            rows = [row_by_id.get(id(embedding), -1) for embedding in embeddings]
+            if -1 not in rows:
+                if len(rows) == len(cached_embeddings) and rows == list(range(len(rows))):
+                    return matrix
+                return matrix[rows]
+
+        try:
+            matrix = np.array(embeddings)
+        except ValueError as e:
+            if "inhomogeneous shape" in str(e):
+                raise DocumentStoreError(
+                    "The embedding size of all Documents should be the same. "
+                    "Please make sure that the Documents have been embedded with the same model."
+                ) from e
+            raise e
+        self._embedding_cache = (embeddings, {id(embedding): row for row, embedding in enumerate(embeddings)}, matrix)
+        return matrix
+
     def _compute_query_embedding_similarity_scores(
         self, embedding: list[float], documents: list[Document], scale_score: bool = False
     ) -> list[float]:
@@ -921,15 +963,7 @@ class InMemoryDocumentStore:
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(a=query_embedding, axis=0)
 
-        try:
-            document_embeddings = np.array([doc.embedding for doc in documents])
-        except ValueError as e:
-            if "inhomogeneous shape" in str(e):
-                raise DocumentStoreError(
-                    "The embedding size of all Documents should be the same. "
-                    "Please make sure that the Documents have been embedded with the same model."
-                ) from e
-            raise e
+        document_embeddings = self._get_document_embeddings(documents)
         if document_embeddings.ndim == 1:
             document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 
@@ -939,7 +973,8 @@ class InMemoryDocumentStore:
             query_norm = np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
             document_norms = np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
             query_embedding /= np.where(query_norm == 0.0, 1.0, query_norm)
-            document_embeddings /= np.where(document_norms == 0.0, 1.0, document_norms)
+            # not in place: the array may be the cached matrix
+            document_embeddings = document_embeddings / np.where(document_norms == 0.0, 1.0, document_norms)
 
         try:
             scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
