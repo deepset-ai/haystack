@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` with ``strip_docstrings=True`` no longer deletes code that shares a line with a docstring, such as ``"""Docs."""; return 1``.
+    Previously the whole line was removed along with the docstring, silently dropping the statement and possibly leaving an empty function body.
+    The docstring now stays in the chunk content in this case.
