@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``DocumentToImageContent`` now skips an image file that cannot be decoded instead of failing the whole
+    ``run()`` call. When resizing is enabled (``size=...``), a corrupt image previously raised
+    ``PIL.UnidentifiedImageError`` and discarded the entire batch; it now leaves ``None`` in that document's
+    ``image_contents`` slot, logs a warning naming the skipped document, and converts the remaining documents,
+    matching the component's existing per-document failure handling for PDFs and invalid metadata.
