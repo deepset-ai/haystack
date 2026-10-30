@@ -178,15 +178,17 @@ class StructuredOutputHook:
         """
         if not text:
             return None, "The reply has no text."
+        text = _strip_code_fence(text=text)
         try:
-            data = json.loads(_strip_code_fence(text=text))
+            data = json.loads(text)
         except json.JSONDecodeError as e:
             return None, f"The reply is not valid JSON: {e}"
 
         # self._model is not None when the schema is a Pydantic model
         if self._model is not None:
             try:
-                model = self._model.model_validate(data)
+                # Strict schemas still accept JSON representations of dates, UUIDs, and tuples in JSON mode.
+                model = self._model.model_validate_json(text)
             except ValidationError as e:
                 return None, f"The reply does not match the schema: {e}"
             return model.model_dump(mode="json"), None
