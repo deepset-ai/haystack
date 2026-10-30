@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from dataclasses import dataclass
 from typing import Annotated, Any, Optional, Union
 
 import pytest
@@ -381,6 +382,30 @@ def test_create_parameters_schema_haystack_dataclasses(python_type, description,
 
     property_schema = parameters_schema["properties"]["input_name"]
     assert property_schema == expected_schema
+
+
+@dataclass
+class TenantRecord:
+    """A tenant-scoped record."""
+
+    _tenant: str
+    name: str = "anon"
+
+
+def test_resolve_type_keeps_underscore_dataclass_fields():
+    resolved = _resolve_type(TenantRecord)
+    model = create_model("run", record=(resolved, ...))
+    schema = model.model_json_schema()
+    _remove_title_from_schema(schema)
+
+    assert schema["$defs"]["TenantRecord"] == {
+        "type": "object",
+        "properties": {
+            "_tenant": {"type": "string", "description": "Field '_tenant' of 'TenantRecord'."},
+            "name": {"type": "string", "description": "Field 'name' of 'TenantRecord'.", "default": "anon"},
+        },
+        "required": ["_tenant"],
+    }
 
 
 def test_resolve_type_pep_604():

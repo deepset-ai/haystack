@@ -73,6 +73,64 @@ def test_from_function_with_custom_name():
     assert tool.function == function_with_docstring
 
 
+def lookup_order_for_tenant(_tenant: str, order_id: str, _note: Annotated[str, "optional note"] = "n") -> str:
+    """Look up an order for a tenant."""
+    return f"{_tenant}/{order_id}/{_note}"
+
+
+def test_from_function_keeps_underscore_prefixed_parameters():
+    tool = create_tool_from_function(function=lookup_order_for_tenant)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "_tenant": {"type": "string"},
+            "order_id": {"type": "string"},
+            "_note": {"type": "string", "description": "optional note", "default": "n"},
+        },
+        "required": ["_tenant", "order_id"],
+    }
+    jsonschema.validate({"_tenant": "acme", "order_id": "A-1"}, tool.parameters)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({"order_id": "A-1"}, tool.parameters)
+
+    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1/n"
+    assert tool.invoke(_tenant="acme", order_id="A-1", _note="rush") == "acme/A-1/rush"
+
+    restored = Tool.from_dict(tool.to_dict())
+    assert restored.parameters == tool.parameters
+    assert restored.invoke(_tenant="acme", order_id="A-1", _note="rush") == "acme/A-1/rush"
+
+
+def test_tool_decorator_keeps_underscore_prefixed_parameters():
+    @tool
+    def lookup_order(_tenant: Annotated[str, "tenant id"], order_id: str) -> str:
+        """Look up an order for a tenant."""
+        return f"{_tenant}/{order_id}"
+
+    assert lookup_order.parameters == {
+        "type": "object",
+        "properties": {"_tenant": {"type": "string", "description": "tenant id"}, "order_id": {"type": "string"}},
+        "required": ["_tenant", "order_id"],
+    }
+    assert lookup_order.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
+
+
+def test_from_function_underscore_parameter_does_not_replace_unprefixed_name():
+    def lookup(tenant: str, _tenant: str) -> str:
+        """Look up by two tenant-like names."""
+        return f"{tenant}|{_tenant}"
+
+    tool = create_tool_from_function(function=lookup)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"tenant": {"type": "string"}, "_tenant": {"type": "string"}},
+        "required": ["tenant", "_tenant"],
+    }
+    assert tool.invoke(tenant="public", _tenant="acme") == "public|acme"
+
+
 def test_from_function_annotated():
     def function_with_annotations(
         city: Annotated[str, "the city for which to get the weather"] = "Munich",

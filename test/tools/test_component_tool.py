@@ -155,7 +155,76 @@ def output_handler(old, new):
     return old + new
 
 
+@component
+class OrderLookup:
+    """Look up an order for a tenant."""
+
+    @component.output_types(result=str)
+    def run(self, _tenant: str, order_id: str, _note: str = "n") -> dict[str, str]:
+        """
+        Look up an order.
+
+        :param _tenant: the tenant id
+        :param order_id: the order id
+        :param _note: optional note
+        :returns: The lookup result.
+        """
+        return {"result": f"{_tenant}/{order_id}/{_note}"}
+
+
+@dataclass
+class TenantRecord:
+    """A tenant-scoped record."""
+
+    _tenant: str
+    name: str = "anon"
+
+
+@component
+class TenantGreeter:
+    """Greet a tenant record."""
+
+    @component.output_types(message=str)
+    def run(self, record: TenantRecord) -> dict[str, str]:
+        """
+        Greet a tenant record.
+
+        :param record: the record to greet
+        :returns: A greeting.
+        """
+        return {"message": f"{record._tenant}:{record.name}"}
+
+
 class TestComponentTool:
+    def test_component_tool_keeps_underscore_prefixed_inputs(self):
+        tool = ComponentTool(component=OrderLookup())
+
+        assert tool.parameters == {
+            "type": "object",
+            "properties": {
+                "_tenant": {"type": "string", "description": "the tenant id"},
+                "order_id": {"type": "string", "description": "the order id"},
+                "_note": {"type": "string", "description": "optional note", "default": "n"},
+            },
+            "required": ["_tenant", "order_id"],
+        }
+        assert tool.invoke(_tenant="acme", order_id="A-1") == {"result": "acme/A-1/n"}
+        assert tool.invoke(_tenant="acme", order_id="A-1", _note="rush") == {"result": "acme/A-1/rush"}
+
+        restored = ComponentTool.from_dict(tool.to_dict())
+        assert restored.parameters == tool.parameters
+        assert restored.invoke(_tenant="acme", order_id="A-1", _note="rush") == {"result": "acme/A-1/rush"}
+
+    def test_component_tool_keeps_underscore_dataclass_fields(self):
+        tool = ComponentTool(component=TenantGreeter())
+
+        record_schema = tool.parameters["$defs"]["TenantRecord"]
+        assert record_schema["properties"]["_tenant"]["type"] == "string"
+        assert record_schema["properties"]["name"]["default"] == "anon"
+        assert record_schema["required"] == ["_tenant"]
+        assert "name" not in record_schema["required"]
+        assert tool.invoke(record={"_tenant": "acme", "name": "Ada"}) == {"message": "acme:Ada"}
+
     def test_from_component_basic(self):
         tool = ComponentTool(component=SimpleComponent())
 

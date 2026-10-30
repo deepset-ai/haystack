@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function``, the ``@tool`` decorator, and ``ComponentTool`` now keep parameters whose
+    names start with an underscore, such as ``_tenant``, in the tool JSON schema. Previously those names were
+    left out of the schema, or schema generation failed for a component input, so a required parameter could
+    not be supplied and invoking the tool failed with a missing argument. Defaults and descriptions, including
+    descriptions taken from ``Annotated`` metadata, are preserved, and the schema uses the real parameter name.
+    Dataclass fields with a leading underscore are included in nested parameter schemas the same way.
+    ``ChatMessage`` fields are unchanged and still use ``role``, ``content``, ``name``, and ``meta``.

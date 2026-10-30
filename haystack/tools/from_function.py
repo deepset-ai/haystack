@@ -11,7 +11,7 @@ from pydantic import create_model
 from haystack.core.type_utils import _resolve_parameter_types
 
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type, _is_state_annotation
+from .parameters_schema_utils import _contains_callable_type, _create_model_fields, _is_state_annotation
 from .tool import Tool
 
 
@@ -66,6 +66,7 @@ def create_tool_from_function(
         to `async_function`).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+        Parameters whose names start with an underscore are included in the schema under that name.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -138,8 +139,8 @@ def create_tool_from_function(
     param_types = _resolve_parameter_types(function, include_extras=True)
 
     # collect fields (types and defaults) and descriptions from function parameters
-    fields: dict[str, Any] = {}
     descriptions = {}
+    specs: list[tuple[str, Any, Any]] = []
 
     for param_name, param in signature.parameters.items():
         # Skip *args and **kwargs because the LLM passes arguments by name
@@ -166,10 +167,12 @@ def create_tool_from_function(
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
         default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (annotation, default)
+        specs.append((param_name, annotation, default))
 
         if hasattr(annotation, "__metadata__"):
             descriptions[param_name] = annotation.__metadata__[0]
+
+    fields = _create_model_fields(specs)
 
     # create Pydantic model and generate JSON schema
     try:
@@ -278,6 +281,7 @@ def tool(
         The function to decorate (when used without parameters).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+        Parameters whose names start with an underscore are included in the schema under that name.
     :param name: Optional custom name for the tool
     :param description: Optional custom description
     :param inputs_from_state:

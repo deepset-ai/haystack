@@ -5,7 +5,7 @@
 from collections.abc import Callable
 from typing import Any, get_args, get_origin
 
-from pydantic import Field, TypeAdapter, create_model
+from pydantic import TypeAdapter, create_model
 
 from haystack import logging
 from haystack.core.component import Component
@@ -15,6 +15,7 @@ from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
 from haystack.tools.parameters_schema_utils import (
     _contains_callable_type,
+    _create_model_fields,
     _get_component_param_descriptions,
     _is_state_annotation,
     _resolve_type,
@@ -38,6 +39,7 @@ class ComponentTool(Tool):
 
     ComponentTool automatically generates LLM-compatible tool schemas from component input sockets,
     which are derived from the component's `run` method signature and type hints.
+    Input names that start with an underscore are included in the schema under that name.
 
 
     Key features:
@@ -349,7 +351,8 @@ class ComponentTool(Tool):
         param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
-        fields: dict[str, Any] = {}
+        specs: list[tuple[str, Any, Any]] = []
+        descriptions: dict[str, str] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
@@ -370,7 +373,10 @@ class ComponentTool(Tool):
             # to explicitly indicate that the parameter is required
             default = ... if socket.is_mandatory else socket.default_value
             resolved_type = _resolve_type(input_type)
-            fields[input_name] = (resolved_type, Field(default=default, description=description))
+            specs.append((input_name, resolved_type, default))
+            descriptions[input_name] = description
+
+        fields = _create_model_fields(specs, descriptions=descriptions)
 
         parameters_schema: dict[str, Any] = {}
         try:
