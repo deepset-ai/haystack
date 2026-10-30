@@ -234,6 +234,12 @@ class TestMultiRetriever:
         with pytest.raises(ValueError, match="top_k_per_retriever must be greater than 0"):
             MultiRetriever(retrievers=retrievers, top_k_per_retriever=top_k_per_retriever)
 
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, max_workers):
+        retrievers: dict[str, TextRetriever] = {"mock": MockRetriever()}
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            MultiRetriever(retrievers=retrievers, max_workers=max_workers)
+
     @pytest.mark.parametrize("top_k", [-1, -2])
     def test_run_with_negative_top_k_raises(self, sample_documents, top_k):
         # Regression: a negative top_k was used as a negative slice on the merged list, silently dropping the

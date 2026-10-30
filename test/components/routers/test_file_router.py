@@ -134,9 +134,10 @@ class TestFileTypeRouter:
         assert len(output[r"audio/x-wav"]) == 1
         assert not output.get("unclassified")
 
-        for elements in output.values():
+        for mime_type, elements in output.items():
             for el in elements:
                 assert isinstance(el, ByteStream)
+                assert el.mime_type == mime_type
                 assert el.meta["meta_field"] == "meta_value"
 
     def test_run_with_meta_list(self, test_files_path):
@@ -182,6 +183,7 @@ class TestFileTypeRouter:
         assert not output.get("unclassified")
 
         assert isinstance(output[r"text/plain"][0], ByteStream)
+        assert output[r"text/plain"][0].mime_type == "text/plain"
         assert output[r"text/plain"][0].meta["foo"] == "bar"
         assert output[r"text/plain"][0].meta["another_key"] == "another_value"
 

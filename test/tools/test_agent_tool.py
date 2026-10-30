@@ -263,7 +263,7 @@ class TestAgentTool:
             return f"Order {order_id} shipped, tracking code ZX9-4471."
 
         order_lookup_agent = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
             tools=[order_status],
             system_prompt="Look up the order and report the tracking code exactly as the tool returned it.",
             max_agent_steps=3,

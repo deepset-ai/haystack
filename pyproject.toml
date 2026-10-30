@@ -46,7 +46,8 @@ dependencies = [
   "tenacity!=8.4.0",
   "lazy-imports",
   "openai>=3.26.0",
-  "pydantic",
+  "pydantic>=2.12.0",       # tool parameter JSON schemas differ below 2.11; 2.12 is the first with Python 3.14 wheels
+  "pydantic>=2.14.0; python_version >= '3.15'",  # first with Python 3.15 wheels
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
@@ -130,7 +131,9 @@ dependencies = [
   "azure-identity",
 
   # Test
-  "pytest",
+  # pytest 9.2 removed FixtureManager._arg2fixturedefs, which pytest-bdd<=9.0.0 relies on.
+  # Unpin once a pytest-bdd release includes https://github.com/pytest-dev/pytest-bdd/pull/851
+  "pytest<9.2",
   "pytest-bdd",
   "pytest-cov",
   "pytest-asyncio",
