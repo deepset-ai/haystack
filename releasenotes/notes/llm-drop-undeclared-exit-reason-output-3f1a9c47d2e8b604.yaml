@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The `LLM` component no longer returns an undeclared `exit_reason` output. Previously, each pipeline run logged a
+    warning that `exit_reason` was not declared in the component's output types and the value was silently dropped,
+    while `Pipeline.connect("llm.exit_reason", ...)` failed. `exit_reason` is Agent-specific bookkeeping; the `LLM`
+    component now removes it from its results like `step_count` and `tool_call_counts`, so its outputs are exactly
+    the declared `messages`, `last_message`, and `token_usage`.
