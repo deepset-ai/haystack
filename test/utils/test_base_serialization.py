@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from datetime import datetime
 from enum import Enum
 
@@ -449,6 +450,58 @@ class TestMixedTypeArrays:
                 {
                     "serialization_schema": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "string"}]},
                     "serialized_data": [1],
+                }
+            )
+
+
+class TestNonStringKeys:
+    """Dicts with non-string keys keep their key types across a JSON round-trip.
+
+    JSON object keys must be strings, so without the `entries` encoding an int
+    key would come back as a string (and keys that stringify alike would
+    collide). The JSON round-trip below is essential: an in-memory
+    serialize/deserialize keeps the keys by accident.
+    """
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param({1: "a", 2: "b"}, id="int-keys"),
+            pytest.param({1.5: "x", 2.5: "y"}, id="float-keys"),
+            pytest.param({True: "yes", False: "no"}, id="bool-keys"),
+            pytest.param({None: "nothing"}, id="none-key"),
+            pytest.param({1: "a", "x": "b"}, id="mixed-string-and-int-keys"),
+            pytest.param({"outer": {1: "a"}}, id="nested-int-keys"),
+            pytest.param({1: "int", "1": "str"}, id="stringified-collision-preserved"),
+        ],
+    )
+    def test_round_trip_through_json(self, value):
+        serialized = _serialize_value_with_schema(value)
+        through_json = json.loads(json.dumps(serialized))
+        deserialized = _deserialize_value_with_schema(through_json)
+        assert deserialized == value
+        assert [type(k) for k in deserialized] == [type(k) for k in value]
+
+    def test_string_keyed_dict_output_is_unchanged(self):
+        # Backward compatibility: dicts with only string keys keep the
+        # historical `properties` envelope, with no `entries` key.
+        assert _serialize_value_with_schema({"a": 1}) == {
+            "serialization_schema": {"type": "object", "properties": {"a": {"type": "integer"}}},
+            "serialized_data": {"a": 1},
+        }
+
+    def test_deserialize_entries_length_mismatch_raises(self):
+        with pytest.raises(DeserializationError, match="'entries' declares 2"):
+            _deserialize_value_with_schema(
+                {
+                    "serialization_schema": {
+                        "type": "object",
+                        "entries": [
+                            {"key": {"type": "integer"}, "value": {"type": "string"}},
+                            {"key": {"type": "integer"}, "value": {"type": "string"}},
+                        ],
+                    },
+                    "serialized_data": [{"key": 1, "value": "a"}],
                 }
             )
 

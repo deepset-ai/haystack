@@ -152,6 +152,37 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
     assert loaded_snapshot.break_point.visit_count == 0
 
 
+def test_resume_from_snapshot_file_preserves_int_dict_keys(tmp_path, monkeypatch):
+    # Regression test for #13492: a snapshot saved to a file stringified int dict
+    # keys (JSON object keys must be strings), so the resumed component received
+    # string keys where the run had int keys.
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+    @component
+    class IntKeySource:
+        @component.output_types(v=dict[int, str])
+        def run(self):
+            return {"v": {1: "a", 2: "b"}}
+
+    @component
+    class IntKeySink:
+        @component.output_types(v=dict[int, str])
+        def run(self, v: dict[int, str]):
+            return {"v": v}
+
+    pipeline = Pipeline()
+    pipeline.add_component("src", IntKeySource())
+    pipeline.add_component("sink", IntKeySink())
+    pipeline.connect("src.v", "sink.v")
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run({}, break_point=Breakpoint("sink", snapshot_file_path=str(tmp_path)))
+
+    result = pipeline.run({}, pipeline_snapshot=load_pipeline_snapshot(exc_info.value.pipeline_snapshot_file_path))
+    assert result["sink"]["v"] == {1: "a", 2: "b"}
+    assert [type(k) for k in result["sink"]["v"]] == [int, int]
+
+
 @component
 class _AppendingComponent:
     @component.output_types(result=str)
