@@ -134,6 +134,82 @@ class TestXLSXToDocument:
         assert rows[2] == expected_row
 
     @pytest.mark.parametrize(
+        ("table_format", "table_format_kwargs", "expected_content"),
+        [
+            pytest.param("csv", {}, ",A,B\n1,ordinary,hello\n2,na,NA\n3,n/a,N/A\n4,empty,\n", id="csv"),
+            pytest.param(
+                "csv",
+                {"na_rep": "<missing>"},
+                ",A,B\n1,ordinary,hello\n2,na,NA\n3,n/a,N/A\n4,empty,<missing>\n",
+                id="csv-missing-placeholder",
+            ),
+            pytest.param(
+                "markdown",
+                {},
+                "|    | A        | B     |\n"
+                "|---:|:---------|:------|\n"
+                "|  1 | ordinary | hello |\n"
+                "|  2 | na       | NA    |\n"
+                "|  3 | n/a      | N/A   |\n"
+                "|  4 | empty    |       |",
+                id="markdown",
+            ),
+            pytest.param(
+                "markdown",
+                {"missingval": "<missing>"},
+                "|    | A        | B         |\n"
+                "|---:|:---------|:----------|\n"
+                "|  1 | ordinary | hello     |\n"
+                "|  2 | na       | NA        |\n"
+                "|  3 | n/a      | N/A       |\n"
+                "|  4 | empty    | <missing> |",
+                id="markdown-missing-placeholder",
+            ),
+        ],
+    )
+    def test_run_keeps_na_text_and_empty_cells(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        table_format_kwargs: dict[str, str],
+        expected_content: str,
+    ) -> None:
+        """
+        Cell text such as "NA" or "N/A" is real content, while an empty cell is still a missing value.
+
+        The missing-value placeholder shows that the empty cell is read as missing, not as an empty string.
+        """
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["ordinary", "hello"])
+        sheet.append(["na", "NA"])
+        sheet.append(["n/a", "N/A"])
+        sheet.append(["empty", None])
+        path = tmp_path / "na_values.xlsx"
+        workbook.save(path)
+
+        converter = XLSXToDocument(table_format=table_format, table_format_kwargs=table_format_kwargs)
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected_content
+
+    def test_run_keep_default_na_can_be_restored(self, tmp_path: Path) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["na", "NA"])
+        sheet.append(["ordinary", "hello"])
+        path = tmp_path / "na_values.xlsx"
+        workbook.save(path)
+
+        converter = XLSXToDocument(read_excel_kwargs={"keep_default_na": True})
+        documents = converter.run(sources=[path])["documents"]
+
+        assert documents[0].content == ",A,B\n1,na,\n2,ordinary,hello\n"
+
+    @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
         [
             ("Basic Table", "Basic Table", ",A,B\n1,col_a,col_b\n2,1.5,test\n"),
