@@ -1,0 +1,10 @@
+upgrade:
+  - |
+    ``StructuredOutputHook`` now replaces its state value even when ``state_key``
+    has a custom handler. If you use that handler to accumulate structured results,
+    accumulate the returned Agent outputs separately.
+fixes:
+  - |
+    Fix ``StructuredOutputHook`` to replace its state value with the validated result
+    or ``None``. Array outputs now preserve their exact contents, clearing previous
+    values and placeholders from failed validation attempts.
