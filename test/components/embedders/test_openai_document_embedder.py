@@ -63,6 +63,11 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.client is None
         assert embedder.async_client is None
 
+    @pytest.mark.parametrize("batch_size", [0, -1])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(ValueError, match="batch_size must be greater than 0"):
+            OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), batch_size=batch_size)
+
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
