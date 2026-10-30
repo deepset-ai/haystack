@@ -67,10 +67,18 @@ class DocumentRecallEvaluator:
     print(result["score"])
     # 1.0
     ```
+
+    Set `include_diagnostics=True` to also return, for each question, which ground truth
+    documents were missed (`missing_documents`), the fraction of ground truth documents
+    retrieved (`support_coverage`), and the fraction of questions for which every ground
+    truth document was retrieved (`all_support_rate`).
     """
 
     def __init__(
-        self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"
+        self,
+        mode: str | RecallMode = RecallMode.SINGLE_HIT,
+        document_comparison_field: str = "content",
+        include_diagnostics: bool = False,
     ) -> None:
         """
         Create a DocumentRecallEvaluator component.
@@ -85,12 +93,20 @@ class DocumentRecallEvaluator:
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
               Values may also be lists or dictionaries.
+        :param include_diagnostics:
+            If `True`, `run` additionally returns per-query diagnostics: the comparison values of the
+            ground truth documents that were not retrieved (`missing_documents`), the fraction of ground
+            truth documents retrieved for each query (`support_coverage`), and the fraction of queries
+            for which every ground truth document was retrieved (`all_support_rate`). The diagnostics
+            use the same comparison values as the recall score, as configured by
+            `document_comparison_field`. Defaults to `False`, which preserves the original outputs.
         """
         if isinstance(mode, str):
             mode = RecallMode.from_str(mode)
 
         self.mode = mode
         self.document_comparison_field = document_comparison_field
+        self.include_diagnostics = include_diagnostics
 
     def _get_comparison_value(self, doc: Document) -> Any:
         """
@@ -144,6 +160,10 @@ class DocumentRecallEvaluator:
 
     def _recall_single_hit(self, ground_truth_documents: list[Document], retrieved_documents: list[Document]) -> float:
         unique_truths, unique_retrievals = self._comparison_sets(ground_truth_documents, retrieved_documents)
+        return self._recall_single_hit_from_sets(unique_truths, unique_retrievals)
+
+    @staticmethod
+    def _recall_single_hit_from_sets(unique_truths: set, unique_retrievals: set) -> float:
         if not unique_truths or not unique_retrievals:
             return 0.0
 
@@ -151,12 +171,39 @@ class DocumentRecallEvaluator:
 
     def _recall_multi_hit(self, ground_truth_documents: list[Document], retrieved_documents: list[Document]) -> float:
         unique_truths, unique_retrievals = self._comparison_sets(ground_truth_documents, retrieved_documents)
+        return self._recall_multi_hit_from_sets(unique_truths, unique_retrievals)
+
+    @staticmethod
+    def _recall_multi_hit_from_sets(unique_truths: set, unique_retrievals: set) -> float:
         if not unique_truths or not unique_retrievals:
             return 0.0
 
         return len(unique_truths.intersection(unique_retrievals)) / len(unique_truths)
 
-    @component.output_types(score=float, individual_scores=list[float])
+    def _missing_comparison_values(self, ground_truth_documents: list[Document], unique_retrievals: set) -> list[Any]:
+        """
+        Collect the comparison values of the ground truth documents absent from the retrieved documents.
+
+        Values are deduplicated and returned in ground truth order so the output is deterministic.
+        """
+        missing = []
+        seen = set()
+        for doc in ground_truth_documents:
+            value = self._get_comparison_value(doc)
+            if value in ("", None) or value in seen:
+                continue
+            seen.add(value)
+            if value not in unique_retrievals:
+                missing.append(value)
+        return missing
+
+    @component.output_types(
+        score=float,
+        individual_scores=list[float],
+        missing_documents=list[list[Any]],
+        support_coverage=list[float],
+        all_support_rate=float,
+    )
     def run(
         self, ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]
     ) -> dict[str, Any]:
@@ -173,6 +220,14 @@ class DocumentRecallEvaluator:
             - `score` - The average of calculated scores.
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
                 documents retrieved. If the mode is `single_hit`, the individual scores are 0 or 1.
+            - `missing_documents` - Only returned if `include_diagnostics` is `True`. A list with one entry
+                for each question, containing the comparison values of the ground truth documents that were
+                not retrieved, in ground truth order.
+            - `support_coverage` - Only returned if `include_diagnostics` is `True`. A list of numbers from
+                0.0 to 1.0 that represents the fraction of ground truth documents retrieved for each question,
+                regardless of the configured recall `mode`.
+            - `all_support_rate` - Only returned if `include_diagnostics` is `True`. The fraction of
+                questions for which every ground truth document was retrieved.
         """
         if len(ground_truth_documents) == 0 or len(retrieved_documents) == 0:
             msg = "ground_truth_documents and retrieved_documents must be provided."
@@ -183,13 +238,31 @@ class DocumentRecallEvaluator:
             raise ValueError(msg)
 
         if self.mode == RecallMode.SINGLE_HIT:
-            mode_function = self._recall_single_hit
+            mode_function_from_sets = self._recall_single_hit_from_sets
         elif self.mode == RecallMode.MULTI_HIT:
-            mode_function = self._recall_multi_hit
+            mode_function_from_sets = self._recall_multi_hit_from_sets
 
-        scores = [mode_function(gt, ret) for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=True)]
+        scores = []
+        missing_documents: list[list[Any]] = []
+        support_coverage: list[float] = []
+        all_support_count = 0
+        for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=True):
+            unique_truths, unique_retrievals = self._comparison_sets(gt, ret)
+            scores.append(mode_function_from_sets(unique_truths, unique_retrievals))
+            if self.include_diagnostics:
+                missing_documents.append(self._missing_comparison_values(gt, unique_retrievals))
+                support_coverage.append(
+                    len(unique_truths.intersection(unique_retrievals)) / len(unique_truths) if unique_truths else 0.0
+                )
+                if unique_truths and unique_truths.issubset(unique_retrievals):
+                    all_support_count += 1
 
-        return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
+        result: dict[str, Any] = {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
+        if self.include_diagnostics:
+            result["missing_documents"] = missing_documents
+            result["support_coverage"] = support_coverage
+            result["all_support_rate"] = all_support_count / len(retrieved_documents)
+        return result
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -198,4 +271,9 @@ class DocumentRecallEvaluator:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, mode=str(self.mode), document_comparison_field=self.document_comparison_field)
+        return default_to_dict(
+            self,
+            mode=str(self.mode),
+            document_comparison_field=self.document_comparison_field,
+            include_diagnostics=self.include_diagnostics,
+        )
