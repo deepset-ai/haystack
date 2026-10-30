@@ -84,7 +84,7 @@ Creates an AzureOpenAIDocumentEmbedder component.
   for more information.
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
-- **batch_size** (<code>int</code>) – Number of documents to embed at once.
+- **batch_size** (<code>int</code>) – Number of documents to embed at once. Must be a positive integer.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
@@ -100,6 +100,11 @@ Creates an AzureOpenAIDocumentEmbedder component.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+
+**Raises:**
+
+- <code>ValueError</code> – If `batch_size` is not a positive integer, if no Azure endpoint is provided, or if neither
+  `api_key` nor `azure_ad_token` is provided.
 
 #### warm_up
 
@@ -650,7 +655,7 @@ in the OpenAI client.
   for more information.
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
-- **batch_size** (<code>int</code>) – Number of documents to embed at once.
+- **batch_size** (<code>int</code>) – Number of documents to embed at once. Must be a positive integer.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
@@ -662,6 +667,10 @@ in the OpenAI client.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+
+**Raises:**
+
+- <code>ValueError</code> – If `batch_size` is not a positive integer.
 
 #### warm_up
 
