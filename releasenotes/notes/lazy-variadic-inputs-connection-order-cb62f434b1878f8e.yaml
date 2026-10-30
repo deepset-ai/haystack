@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Components with a ``Variadic`` input, or a ``list`` input connected to several senders, now receive the values
+    in the order the senders were connected with ``Pipeline.connect()``, in both ``Pipeline.run()`` and
+    ``Pipeline.run_async()``. Pipeline inputs passed directly to such a socket come first.
+    Before, ``Pipeline.run_async()`` passed the values in the order the senders finished, which could change between
+    runs, so ``DocumentJoiner`` could apply its ``weights`` to the wrong retriever. ``Pipeline.run()`` passed them in
+    the order the senders ran, so results of order-dependent components such as ``DocumentJoiner`` can change for
+    ``Pipeline.run()`` too: connect the senders in the order you want the values to arrive.
+    ``Pipeline.to_dict()`` now saves connections in the order they were made, so a pipeline loaded with
+    ``Pipeline.from_dict()`` keeps the same order.

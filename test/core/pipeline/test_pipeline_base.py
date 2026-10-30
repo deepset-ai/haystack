@@ -29,7 +29,7 @@ from haystack.core.serialization import DeserializationCallbacks
 from haystack.core.type_utils import ConversionStrategy
 from haystack.dataclasses import ChatMessage
 from haystack.testing.factory import component_class
-from haystack.testing.sample_components import AddFixedValue, Double, Greet
+from haystack.testing.sample_components import AddFixedValue, Double, Greet, Hello, StringJoiner
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -1514,8 +1514,22 @@ class TestPipelineBase:
                         {"sender": None, "value": 33},  # User input
                     ]
                 },
-                {"lazy": [42, 24, 33]},  # Takes all valid inputs
+                {"lazy": [33, 42, 24]},  # Takes all valid inputs, user input first
                 {"lazy": [{"sender": None, "value": 33}]},  # User input remains
+            ),
+            # Lazy variadic socket with several values from the same sender
+            (
+                {"lazy": InputSocket("lazy", Variadic[int], senders=["comp1", "comp2"])},
+                {
+                    "lazy": [
+                        {"sender": "comp2", "value": 1},
+                        {"sender": "comp1", "value": 2},
+                        {"sender": "comp2", "value": 3},
+                        {"sender": "comp1", "value": 4},
+                    ]
+                },
+                {"lazy": [2, 4, 1, 3]},  # Connection order, and each sender's values in the order they were written
+                {},  # All inputs consumed
             ),
             # Mixed socket types
             (
@@ -1551,6 +1565,7 @@ class TestPipelineBase:
             "regular-with-user-input",
             "greedy-variadic",
             "lazy-variadic",
+            "lazy-variadic-same-sender",
             "mixed-sockets",
             "no-output-filtering",
         ],
@@ -1820,6 +1835,26 @@ class TestPipelineBaseFromDict:
                 "mandatory": True,
             },
         )
+
+    def test_to_dict_from_dict_round_trip_keeps_variadic_connection_order(self):
+        pipe = Pipeline()
+        pipe.add_component("hello_a", Hello())
+        pipe.add_component("hello_b", Hello())
+        pipe.add_component("joiner", StringJoiner())
+        # Connected in the opposite order to add_component(), which is the order graph.edges lists the connections in
+        pipe.connect("hello_b.output", "joiner.input_str")
+        pipe.connect("hello_a.output", "joiner.input_str")
+
+        data = pipe.to_dict()
+        reloaded = Pipeline.from_dict(data)
+
+        assert data["connections"] == [
+            {"sender": "hello_b.output", "receiver": "joiner.input_str"},
+            {"sender": "hello_a.output", "receiver": "joiner.input_str"},
+        ]
+        assert reloaded.graph.nodes["joiner"]["input_sockets"]["input_str"].senders == ["hello_b", "hello_a"]
+        inputs = {"hello_a": {"word": "a"}, "hello_b": {"word": "b"}}
+        assert reloaded.run(inputs) == pipe.run(inputs) == {"joiner": {"output": "Hello, b! Hello, a!"}}
 
     # TODO: Remove this, this should be a component test.
     # The pipeline can't handle this in any case nor way.

@@ -6,12 +6,19 @@ import asyncio
 import contextvars
 import logging
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.joiners import BranchJoiner
+from haystack.components.converters import OutputAdapter
+from haystack.components.joiners import BranchJoiner, DocumentJoiner
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.routers import ConditionalRouter
+from haystack.components.routers.conditional_router import Route
+from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineRuntimeError
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
@@ -298,6 +305,223 @@ def test_async_pipeline_does_not_corrupt_outputs():
 
     assert result["producer"]["doc"].content == "original"
     assert result["mutator"]["doc"].content == "mutated"
+
+
+def test_run_async_passes_variadic_inputs_in_same_order_as_run():
+    @component
+    class Sender:
+        def __init__(self, value: str, delay: float):
+            self.value = value
+            self.delay = delay
+
+        @component.output_types(value=str)
+        def run(self) -> dict:
+            return {"value": self.value}
+
+        @component.output_types(value=str)
+        async def run_async(self) -> dict:
+            await asyncio.sleep(self.delay)
+            return {"value": self.value}
+
+    @component
+    class Collector:
+        @component.output_types(values=list[str])
+        def run(self, values: Variadic[str]) -> dict:
+            return {"values": list(values)}
+
+    pipe = Pipeline()
+    # "a" sorts first and runs first in run(), but finishes last in run_async()
+    pipe.add_component("a", Sender(value="a", delay=0.05))
+    pipe.add_component("b", Sender(value="b", delay=0))
+    pipe.add_component("collector", Collector())
+    pipe.connect("a.value", "collector.values")
+    pipe.connect("b.value", "collector.values")
+
+    sync_result = pipe.run({})
+    async_result = asyncio.run(pipe.run_async({}))
+
+    assert sync_result == {"collector": {"values": ["a", "b"]}}
+    assert async_result == sync_result
+
+
+def test_run_async_passes_variadic_inputs_in_connection_order_on_every_loop_iteration():
+    @component
+    class Tagger:
+        def __init__(self, tag: str, delay: float):
+            self.tag = tag
+            self.delay = delay
+
+        @component.output_types(tagged=str)
+        def run(self, count: int) -> dict:
+            return {"tagged": f"{self.tag}{count}"}
+
+        @component.output_types(tagged=str)
+        async def run_async(self, count: int) -> dict:
+            await asyncio.sleep(self.delay)
+            return {"tagged": f"{self.tag}{count}"}
+
+    @component
+    class RoundCollector:
+        def __init__(self, rounds: int):
+            self.rounds = rounds
+            self.collected: list[list[str]] = []
+
+        @component.output_types(next_count=int, collected=list[list[str]])
+        def run(self, tagged: Variadic[str], count: int) -> dict:
+            self.collected.append(list(tagged))
+            if count + 1 < self.rounds:
+                return {"next_count": count + 1}
+            return {"collected": self.collected}
+
+    def build_pipeline() -> Pipeline:
+        pipe = Pipeline()
+        pipe.add_component("start", BranchJoiner(int))
+        # "a" sorts first and runs first in run(), "b" finishes last in run_async(), and "b" is connected first
+        pipe.add_component("a", Tagger(tag="a", delay=0))
+        pipe.add_component("b", Tagger(tag="b", delay=0.05))
+        pipe.add_component("collector", RoundCollector(rounds=3))
+        pipe.connect("start.value", "a.count")
+        pipe.connect("start.value", "b.count")
+        pipe.connect("start.value", "collector.count")
+        pipe.connect("b.tagged", "collector.tagged")
+        pipe.connect("a.tagged", "collector.tagged")
+        pipe.connect("collector.next_count", "start.value")
+        return pipe
+
+    data = {"start": {"value": 0}}
+    sync_result = build_pipeline().run(data)
+    async_result = asyncio.run(build_pipeline().run_async(data))
+
+    expected = {"collector": {"collected": [["b0", "a0"], ["b1", "a1"], ["b2", "a2"]]}}
+    assert sync_result == expected
+    assert async_result == expected
+
+
+@component
+class _QueryEmbedder:
+    @component.output_types(embedding=list[float])
+    def run(self, text: str) -> dict:
+        return {"embedding": [1.0, 0.0, 0.0]}
+
+
+def _programming_document_store() -> InMemoryDocumentStore:
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents(
+        [
+            Document(
+                id="1", content="Python is a programming language", embedding=[1.0, 0.0, 0.0], meta={"year": 2024}
+            ),
+            Document(id="2", content="Java is a programming language", embedding=[0.0, 1.0, 0.0], meta={"year": 2023}),
+            Document(id="3", content="Pythons are large snakes", embedding=[0.8, 0.0, 0.6], meta={"year": 2024}),
+        ]
+    )
+    return document_store
+
+
+def _ids_and_scores(documents: list[Document]) -> list[tuple[str, float | None]]:
+    return [(doc.id, doc.score) for doc in documents]
+
+
+def _expected_joined_ids_and_scores(
+    result: dict, joiner: DocumentJoiner, retrievers: list[str]
+) -> list[tuple[str, float | None]]:
+    # Joins the retrievers' outputs directly, in the given order
+    return _ids_and_scores(joiner.run(documents=[result[name]["documents"] for name in retrievers])["documents"])
+
+
+@pytest.mark.parametrize(
+    "connection_order",
+    [["dense_retriever", "sparse_retriever"], ["sparse_retriever", "dense_retriever"]],
+    ids=["dense_first", "sparse_first"],
+)
+def test_run_async_applies_document_joiner_weights_to_the_retrievers_in_connection_order(connection_order):
+    @component
+    class SlowBM25Retriever(InMemoryBM25Retriever):
+        @component.output_types(documents=list[Document])
+        async def run_async(
+            self,
+            query: str,
+            filters: dict[str, Any] | None = None,
+            top_k: int | None = None,
+            scale_score: bool | None = None,
+        ) -> dict[str, list[Document]]:
+            await asyncio.sleep(0.05)
+            # @component rebuilds the class, which breaks a zero-argument super()
+            return await InMemoryBM25Retriever.run_async(
+                self, query=query, filters=filters, top_k=top_k, scale_score=scale_score
+            )
+
+    document_store = _programming_document_store()
+    pipe = Pipeline()
+    # "dense_retriever" sits one step deeper than "sparse_retriever", so it runs last in run(), and the sparse retriever
+    # finishes last in run_async(): in each connection order, one run mode finishes the retrievers in the other order
+    pipe.add_component("embedder", _QueryEmbedder())
+    pipe.add_component("dense_retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+    pipe.add_component("sparse_retriever", SlowBM25Retriever(document_store=document_store))
+    joiner = DocumentJoiner(join_mode="merge", weights=[0.7, 0.3])
+    pipe.add_component("joiner", joiner)
+    pipe.connect("embedder.embedding", "dense_retriever.query_embedding")
+    for retriever in connection_order:
+        pipe.connect(f"{retriever}.documents", "joiner.documents")
+
+    data = {"embedder": {"text": "python programming"}, "sparse_retriever": {"query": "python programming"}}
+    include_outputs_from = {"dense_retriever", "sparse_retriever"}
+    sync_result = pipe.run(data, include_outputs_from=include_outputs_from)
+    async_result = asyncio.run(pipe.run_async(data, include_outputs_from=include_outputs_from))
+
+    expected = _expected_joined_ids_and_scores(result=sync_result, joiner=joiner, retrievers=connection_order)
+    assert _ids_and_scores(sync_result["joiner"]["documents"]) == expected
+    assert _ids_and_scores(async_result["joiner"]["documents"]) == expected
+
+
+@pytest.mark.parametrize("year", [None, 2024], ids=["filter_branch_skipped", "filter_branch_runs"])
+def test_run_async_applies_document_joiner_weights_in_connection_order_when_an_optional_filter_branch_is_skipped(year):
+    routes: list[Route] = [
+        {"condition": "{{ year is not none }}", "output": "{{ year }}", "output_name": "year", "output_type": int},
+        {
+            "condition": "{{ year is none }}",
+            "output": "{{ year }}",
+            "output_name": "no_year",
+            "output_type": type(None),
+        },
+    ]
+
+    document_store = _programming_document_store()
+    pipe = Pipeline()
+    pipe.add_component("router", ConditionalRouter(routes=routes, optional_variables=["year"]))
+    pipe.add_component(
+        "filter_builder",
+        OutputAdapter(
+            template="{{ {'field': 'meta.year', 'operator': '==', 'value': year} }}", output_type=dict[str, Any]
+        ),
+    )
+    pipe.add_component("embedder", _QueryEmbedder())
+    pipe.add_component("embedding_retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+    pipe.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store))
+    joiner = DocumentJoiner(join_mode="merge", weights=[0.7, 0.3])
+    pipe.add_component("joiner", joiner)
+    pipe.connect("router.year", "filter_builder.year")
+    pipe.connect("filter_builder.output", "bm25_retriever.filters")
+    pipe.connect("embedder.embedding", "embedding_retriever.query_embedding")
+    pipe.connect("embedding_retriever.documents", "joiner.documents")
+    pipe.connect("bm25_retriever.documents", "joiner.documents")
+
+    # Without a year, filter_builder never runs, so run() defers bm25_retriever until after embedding_retriever even
+    # though bm25_retriever only consumes user input
+    data = {
+        "router": {"year": year} if year is not None else {},
+        "embedder": {"text": "python programming"},
+        "bm25_retriever": {"query": "python programming"},
+    }
+    include_outputs_from = {"embedding_retriever", "bm25_retriever"}
+    sync_result = pipe.run(data, include_outputs_from=include_outputs_from)
+    async_result = asyncio.run(pipe.run_async(data, include_outputs_from=include_outputs_from))
+
+    expected = _expected_joined_ids_and_scores(
+        result=sync_result, joiner=joiner, retrievers=["embedding_retriever", "bm25_retriever"]
+    )
+    assert _ids_and_scores(sync_result["joiner"]["documents"]) == expected
+    assert _ids_and_scores(async_result["joiner"]["documents"]) == expected
 
 
 @component
