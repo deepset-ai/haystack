@@ -26,6 +26,16 @@ logger = logging.getLogger(__name__)
 _FRONTMATTER_PATTERN = re.compile(r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n)---[ \t]*(?:\r?\n|$)", re.DOTALL)
 
 
+def _render_table_cell_open(tokens: list[Any], idx: int, _options: Any, _env: Any) -> str:
+    """
+    Renders the start of a table cell as the space that separates it from the cell before it.
+
+    `RendererPlain` has no rule for table tokens, so without this rule the cells of a table ran together.
+    """
+    first_cell = tokens[idx - 1].type == "tr_open" and tokens[idx - 2].type == "thead_open"
+    return "" if first_cell else " "
+
+
 @component
 class MarkdownToDocument:
     """
@@ -105,6 +115,9 @@ class MarkdownToDocument:
         parser = MarkdownIt(renderer_cls=RendererPlain)
         if self.table_to_single_line:
             parser.enable("table")
+            renderer: RendererPlain = parser.renderer
+            renderer.rules["th_open"] = _render_table_cell_open
+            renderer.rules["td_open"] = _render_table_cell_open
 
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))

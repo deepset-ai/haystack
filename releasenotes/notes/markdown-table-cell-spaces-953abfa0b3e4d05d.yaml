@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MarkdownToDocument`` with ``table_to_single_line=True`` now separates the cells of a
+    table with a space. The plain-text renderer has no rule for table cells, so the cells
+    ran together and a table with the cells ``Name``, ``Role``, ``Ada`` and ``Engineer``
+    became ``NameRoleAdaEngineer``, which no search for one of these words could match.

@@ -38,6 +38,16 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
+    def test_run_keeps_table_cells_apart_on_a_single_line(self):
+        converter = MarkdownToDocument(table_to_single_line=True)
+        source = ByteStream(
+            b"Team:\n\n| Name | Role |\n| --- | --- |\n| Ada | Engineer |\n| Grace | Admiral |\n\nThat is all.\n"
+        )
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "Team:\nName Role Ada Engineer Grace Admiral\nThat is all."
+
     def test_run_with_store_full_path_false(self, test_files_path):
         """
         Test if the component runs correctly with store_full_path=False
