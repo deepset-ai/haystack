@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    The experimental ``Compactor`` protocol's ``compact`` and ``compact_async`` methods take a new keyword-only
+    ``run_context: dict[str, Any] | None = None`` parameter. ``CompactionHook`` passes the Agent's ``hook_context``
+    as ``run_context``, so custom compactors must accept this parameter, even if they ignore it.
+enhancements:
+  - |
+    ``ToolResultOffloadCompactor`` now writes to a per-run store passed in the Agent's ``hook_context`` under
+    ``RESULT_STORE_CONTEXT_KEY``, the same key ``ToolResultOffloadHook`` reads. A single Agent can now serve several
+    users, with each run's offloaded results kept in its own store:
+
+    .. code-block:: python
+
+        from haystack.hooks.tool_result_offloading import RESULT_STORE_CONTEXT_KEY
+
+        agent.run(messages=messages, hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store})
