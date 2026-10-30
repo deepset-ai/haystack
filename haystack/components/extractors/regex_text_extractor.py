@@ -136,11 +136,12 @@ class RegexTextExtractor:
         :returns:
             The text captured by the first capturing group in the regex pattern.
             If the pattern has no capture groups, returns the entire match.
-            If no match is found, returns an empty string.
+            If no match is found, or the first capturing group does not
+            participate in the match, returns an empty string.
         """
         match = re.search(self.regex_pattern, text)
         if not match:
             return ""
         if match.groups():
-            return match.group(1)
+            return match.group(1) or ""
         return match.group(0)
