@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack.components.converters.markdown import MarkdownToDocument
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.dataclasses import ByteStream
 
 
@@ -25,6 +26,26 @@ class TestMarkdownToDocument:
         assert converter.table_to_single_line is True
         assert converter.progress_bar is False
         assert converter.store_full_path is False
+
+    @pytest.mark.parametrize("progress_bar", [True, False])
+    def test_progress_bar_override_is_resolved_for_each_run(self, monkeypatch, progress_bar):
+        converter = MarkdownToDocument(progress_bar=progress_bar)
+        source = ByteStream(data=b"# Example\nDocument text.")
+        with patch(
+            "haystack.components.converters.markdown.tqdm", side_effect=lambda iterable, **kwargs: iterable
+        ) as bar:
+            for value, expected in [("0", False), ("1", True), (None, progress_bar)]:
+                if value is None:
+                    monkeypatch.delenv("HAYSTACK_PROGRESS_BARS", raising=False)
+                else:
+                    monkeypatch.setenv("HAYSTACK_PROGRESS_BARS", value)
+                result = converter.run(sources=[source])
+                assert "Document text." in result["documents"][0].content
+                assert bar.call_args.kwargs["disable"] is not expected
+                assert converter.progress_bar is progress_bar
+                data = component_to_dict(obj=converter, name="converter")
+                restored = component_from_dict(cls=MarkdownToDocument, data=data, name="converter")
+                assert restored.progress_bar is progress_bar
 
     @pytest.mark.integration
     def test_run(self, test_files_path):
