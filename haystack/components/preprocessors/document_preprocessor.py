@@ -14,9 +14,11 @@ from haystack.utils import deserialize_callable, serialize_callable
 @super_component
 class DocumentPreprocessor:
     """
-    A SuperComponent that first splits and then cleans documents.
+    A SuperComponent that first cleans and then splits documents.
 
-    This component consists of a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
+    This component consists of a DocumentCleaner followed by a DocumentSplitter in a single pipeline.
+    Cleaning runs first so that the split metadata (`split_idx_start`, `_split_overlap`) refers to the
+    content of the returned chunks.
     It takes a list of documents as input and returns a processed list of documents.
 
     Usage example:
@@ -56,7 +58,7 @@ class DocumentPreprocessor:
         ascii_only: bool = False,
     ) -> None:
         """
-        Initialize a DocumentPreProcessor that first splits and then cleans documents.
+        Initialize a DocumentPreProcessor that first cleans and then splits documents.
 
         **Splitter Parameters**:
         :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line",
@@ -79,7 +81,8 @@ class DocumentPreprocessor:
         :param remove_empty_lines: If `True`, removes empty lines.
         :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
         :param remove_repeated_substrings: If `True`, removes repeated substrings like headers/footers across pages.
-        :param keep_id: If `True`, keeps the original document IDs.
+        :param keep_id: Has no effect. Chunk IDs are always computed by the splitter from the cleaned content,
+            and `source_id` always refers to the input document.
         :param remove_substrings: A list of strings to remove from the document content.
         :param remove_regex: A regex pattern whose matches will be removed from the document content.
         :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
@@ -124,7 +127,8 @@ class DocumentPreprocessor:
             remove_empty_lines=self.remove_empty_lines,
             remove_extra_whitespaces=self.remove_extra_whitespaces,
             remove_repeated_substrings=self.remove_repeated_substrings,
-            keep_id=self.keep_id,
+            # the cleaned document must keep the input ID so the splitter sets `source_id` to it
+            keep_id=True,
             remove_substrings=self.remove_substrings,
             remove_regex=self.remove_regex,
             unicode_normalization=self.unicode_normalization,
@@ -134,20 +138,14 @@ class DocumentPreprocessor:
         # Build the Pipeline
         pp = Pipeline()
 
-        pp.add_component("splitter", splitter)
         pp.add_component("cleaner", cleaner)
+        pp.add_component("splitter", splitter)
 
-        # Connect the splitter output to cleaner
-        pp.connect("splitter.documents", "cleaner.documents")
+        pp.connect("cleaner.documents", "splitter.documents")
         self.pipeline = pp
 
-        # Define how pipeline inputs/outputs map to sub-component inputs/outputs
-        self.input_mapping = {
-            # The pipeline input "documents" feeds into "splitter.documents"
-            "documents": ["splitter.documents"]
-        }
-        # The pipeline output "documents" comes from "cleaner.documents"
-        self.output_mapping = {"cleaner.documents": "documents"}
+        self.input_mapping = {"documents": ["cleaner.documents"]}
+        self.output_mapping = {"splitter.documents": "documents"}
 
     if TYPE_CHECKING:
         # fake method, never executed, but static analyzers will not complain about missing method
