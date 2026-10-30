@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import math
 import os
+from unittest.mock import Mock
 
 import pytest
 
@@ -350,6 +352,106 @@ class TestFaithfulnessEvaluator:
         assert "prompt_tokens" in result["meta"][0]["usage"]
         assert "completion_tokens" in result["meta"][0]["usage"]
         assert "total_tokens" in result["meta"][0]["usage"]
+
+
+class TestFaithfulnessEvaluatorStatementAlignment:
+    @pytest.fixture
+    def mock_judgments(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        mocked_run = Mock()
+
+        def run(self, **kwargs):
+            return mocked_run(**kwargs)
+
+        async def run_async(self, **kwargs):
+            return mocked_run(**kwargs)
+
+        monkeypatch.setattr(OpenAIChatGenerator, "run", run)
+        monkeypatch.setattr(OpenAIChatGenerator, "run_async", run_async)
+        return mocked_run
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_async", [False, True])
+    @pytest.mark.parametrize("raise_on_failure", [False, True])
+    @pytest.mark.parametrize(
+        ("statements", "statement_scores"),
+        [(["a", "b"], [1]), (["a"], [1, 0]), (["a"], []), ([], [1])],
+        ids=["missing-score", "extra-score", "no-scores", "no-statements"],
+    )
+    async def test_mismatched_counts_follow_failure_policy(
+        self, mock_judgments, use_async, raise_on_failure, statements, statement_scores
+    ):
+        mock_judgments.return_value = {
+            "replies": [
+                ChatMessage.from_assistant(json.dumps({"statements": statements, "statement_scores": statement_scores}))
+            ]
+        }
+        evaluator = FaithfulnessEvaluator(raise_on_failure=raise_on_failure, progress_bar=False)
+        inputs = {"questions": ["q"], "contexts": [["c"]], "predicted_answers": ["a"]}
+        if raise_on_failure:
+            message = (
+                f"FaithfulnessEvaluator expected one score per statement, but received "
+                f"{len(statements)} statements and {len(statement_scores)} scores."
+            )
+            with pytest.raises(ValueError, match=message):
+                if use_async:
+                    await evaluator.run_async(**inputs)
+                else:
+                    evaluator.run(**inputs)
+        else:
+            result = await evaluator.run_async(**inputs) if use_async else evaluator.run(**inputs)
+            assert result["results"][0]["status"] == "error"
+            assert result["results"][0]["statements"] == []
+            assert result["results"][0]["statement_scores"] == []
+            assert math.isnan(result["results"][0]["score"])
+            assert math.isnan(result["individual_scores"][0])
+            assert math.isnan(result["score"])
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_mismatched_counts_are_excluded_from_batch_score(self, mock_judgments, use_async, caplog):
+        mock_judgments.side_effect = [
+            {"replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1]}')]},
+            {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 0]}')]},
+        ]
+        evaluator = FaithfulnessEvaluator(raise_on_failure=False, progress_bar=False)
+        inputs = {"questions": ["q1", "q2"], "contexts": [["c1"], ["c2"]], "predicted_answers": ["a1", "a2"]}
+        result = await evaluator.run_async(**inputs) if use_async else evaluator.run(**inputs)
+
+        assert result["score"] == 0.5
+        assert math.isnan(result["individual_scores"][0])
+        assert result["individual_scores"][1] == 0.5
+        assert result["results"][0]["status"] == "error"
+        assert result["results"][1] == {
+            "statements": ["c", "d"],
+            "statement_scores": [1, 0],
+            "score": 0.5,
+            "status": "evaluated",
+        }
+        assert "2 statements and 1 scores" in caplog.text
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_async", [False, True])
+    @pytest.mark.parametrize(
+        ("payload", "score"),
+        [
+            ({"statements": ["a", "b"], "statement_scores": [1, 0]}, 0.5),
+            ({"statements": [], "statement_scores": []}, 0),
+        ],
+        ids=["aligned", "empty"],
+    )
+    async def test_aligned_counts_remain_valid(self, mock_judgments, use_async, payload, score):
+        mock_judgments.return_value = {"replies": [ChatMessage.from_assistant(json.dumps(payload))]}
+        evaluator = FaithfulnessEvaluator(progress_bar=False)
+        inputs = {"questions": ["q"], "contexts": [["c"]], "predicted_answers": ["a"]}
+        result = await evaluator.run_async(**inputs) if use_async else evaluator.run(**inputs)
+        assert result == {
+            "score": score,
+            "individual_scores": [score],
+            "results": [{**payload, "score": score, "status": "evaluated"}],
+            "meta": None,
+        }
 
 
 class TestFaithfulnessEvaluatorAsync:
