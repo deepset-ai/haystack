@@ -27,7 +27,9 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     The function handles:
     - Objects with to_dict() methods (e.g. dataclasses)
     - Objects with __dict__ attributes
-    - Dictionaries
+    - Dictionaries. Dicts with non-string keys record one key/value entry per pair under the
+      `entries` keyword, since JSON object keys must be strings and the key types would otherwise
+      be lost; dicts with only string keys keep the `properties` format.
     - Lists, tuples, and sets, including ones holding mixed types. A mixed-type array records one
       schema per position under the JSON Schema `prefixItems` keyword, while a homogeneous array
       keeps the single shared `items` schema.
@@ -50,6 +52,30 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
 
     # Handle dictionary case - iterate through fields
     if isinstance(payload, dict):
+        # JSON object keys must be strings, so a dict with non-string keys cannot
+        # round-trip through the `properties`/`data` mappings below: `json.dump`
+        # stringifies the keys and the original key types are lost on load (an int
+        # key comes back as a string, and keys that stringify alike collide).
+        # Serialize such dicts as an explicit list of key/value entries instead, so
+        # each key keeps its own schema and survives a JSON round-trip. Dicts with
+        # only string keys keep the historical `properties` envelope unchanged.
+        if any(not isinstance(field, str) for field in payload):
+            entries_schema: list[dict[str, Any]] = []
+            entries_data: list[dict[str, Any]] = []
+            for field, val in payload.items():
+                serialized_key = _serialize_value_with_schema(field)
+                serialized_value = _serialize_value_with_schema(val)
+                entries_schema.append(
+                    {"key": serialized_key["serialization_schema"], "value": serialized_value["serialization_schema"]}
+                )
+                entries_data.append(
+                    {"key": serialized_key["serialized_data"], "value": serialized_value["serialized_data"]}
+                )
+            return {
+                "serialization_schema": {"type": "object", "entries": entries_schema},
+                "serialized_data": entries_data,
+            }
+
         schema: dict[str, Any] = {}
         data: dict[str, Any] = {}
 
@@ -227,8 +253,28 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
+        # Dicts with non-string keys are stored as an explicit list of key/value
+        # entries (see `_serialize_value_with_schema`): each key is deserialized
+        # from its own schema, so int/float/bool/None keys survive the round-trip
+        # and keys that stringify alike no longer collide.
+        entries = schema.get("entries")
+        if entries is not None:
+            if len(entries) != len(data):
+                raise DeserializationError(
+                    f"Invalid object payload: 'entries' declares {len(entries)} key/value pairs "
+                    f"but 'serialized_data' holds {len(data)} entries."
+                )
+            result: dict[Any, Any] = {}
+            for entry_schema, entry_data in zip(entries, data, strict=True):
+                key = _deserialize_value_with_schema(
+                    {"serialization_schema": entry_schema["key"], "serialized_data": entry_data["key"]}
+                )
+                result[key] = _deserialize_value_with_schema(
+                    {"serialization_schema": entry_schema["value"], "serialized_data": entry_data["value"]}
+                )
+            return result
         properties = schema["properties"]
-        result: dict[str, Any] = {}
+        result = {}
         for field, raw_value in data.items():
             field_schema = properties[field]
             # Recursively deserialize each field - avoid creating temporary dict
