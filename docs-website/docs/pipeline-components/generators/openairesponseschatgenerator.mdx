@@ -78,6 +78,17 @@ OpenAI does not return the actual reasoning tokens, but you can view the summary
 If a provider returns the raw reasoning as `reasoning_text` content instead, it is mapped to `reasoning.reasoning_text` in the reply when no summary is returned.
 :::
 
+The generator combines reasoning summaries into a single `reply.reasoning`. Individual OpenAI reasoning items are preserved in `reply.reasoning.extra["reasoning_items"]`, including their IDs, encrypted content when returned, and output indices. Function calls keep their output indices in `ToolCall.extra` so reasoning items and function calls are sent back in their original order, in both streaming and non-streaming conversations.
+
+```python
+reply = response["replies"][0]
+if reply.reasoning is not None:
+    print(reply.reasoning.reasoning_text)
+    print([item["id"] for item in reply.reasoning.extra["reasoning_items"]])
+```
+
+Pass the original reply back in the conversation history to retain this metadata. Replies saved with the earlier single-item reasoning metadata format remain supported.
+
 ### Multi-turn Conversations
 
 The Responses API supports multi-turn conversations using `previous_response_id`. You can pass the response ID from a previous turn to maintain conversation context:
