@@ -29,6 +29,8 @@ Reorder the documents by grouping them based on metadata keys.
 The `MetaFieldGroupingRanker` component groups documents by a primary metadata key `group_by`, and subgroups them with an optional secondary key, `subgroup_by`.
 Within each group or subgroup, the component can also sort documents by a metadata key `sort_docs_by`.
 
+When `subgroup_by` is set, documents with a missing or `None` subgroup value share a subgroup that is separate from all named subgroups, including `"no_subgroup"`.
+
 The output is a flat list of documents ordered by `group_by` and `subgroup_by` values. Any documents without a group are placed at the end of the list.
 
 The component helps improve the efficiency and performance of subsequent processing by an LLM.
