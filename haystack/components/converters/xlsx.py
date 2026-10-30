@@ -63,6 +63,12 @@ class XLSXToDocument:
         :param table_format: The format to convert the Excel file to.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
+            When neither `keep_default_na` nor `na_values` is supplied, `keep_default_na=False` and
+            `na_values=[""]` preserve literal text like "NA" and "N/A" while treating empty cells as missing.
+            If either option is supplied, both follow pandas' semantics without adding converter defaults
+            or modifying the supplied values. Custom `na_values` alone supplement pandas' default NA strings;
+            explicit `keep_default_na=False` disables those strings without adding missing values.
+            Set `keep_default_na=True` to restore pandas' default NA parsing.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
@@ -169,6 +175,8 @@ class XLSXToDocument:
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
+        if "keep_default_na" not in self.read_excel_kwargs and "na_values" not in self.read_excel_kwargs:
+            resolved_read_excel_kwargs.update(keep_default_na=False, na_values=[""])
         sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}

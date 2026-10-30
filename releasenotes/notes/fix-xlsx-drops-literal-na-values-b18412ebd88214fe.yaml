@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Fixed an issue where ``XLSXToDocument`` dropped literal text values such as ``"NA"`` and ``"N/A"``,
+    converting them into empty cells. When neither ``keep_default_na`` nor ``na_values`` is supplied in
+    ``read_excel_kwargs``, the converter uses ``keep_default_na=False`` and ``na_values=[""]`` to preserve
+    literal text while still recognizing empty cells as missing.
+upgrade:
+  - |
+    If you do not configure ``keep_default_na`` or ``na_values``, ``XLSXToDocument`` now preserves strings
+    such as ``"NA"``, ``"N/A"``, ``"NULL"``, and ``"None"`` instead of treating them as missing values.
+    Pass ``read_excel_kwargs={"keep_default_na": True}`` to restore pandas' previous default NA parsing.
+    If either option is already supplied, the converter preserves pandas' existing behavior: custom
+    ``na_values`` alone supplement the built-in NA strings, while explicit ``keep_default_na=False``
+    disables those strings without adding ``""`` to the missing values or changing numeric formatting.

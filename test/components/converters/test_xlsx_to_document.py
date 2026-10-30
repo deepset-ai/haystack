@@ -5,8 +5,9 @@
 import csv
 import io
 import logging
+from copy import deepcopy
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 from openpyxl import Workbook
@@ -254,3 +255,195 @@ class TestXLSXToDocument:
         ]
         assert rows == [linked_values + ["1.23"], ["43", "4.5", "False", "2.35"]]
         assert documents[0].meta["xlsx"] == {"sheet_name": "Sheet"}
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize("read_excel_kwargs", [{}, {"skiprows": 0}], ids=["defaults", "unrelated-option"])
+    @pytest.mark.parametrize("missing_value", ["", "<missing>"])
+    def test_run_preserves_literal_na_strings(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        read_excel_kwargs: dict[str, Any],
+        missing_value: str,
+    ) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Code", "Status", "Blank"])
+        sheet.append(["NA", "OK", None])
+        sheet.append(["N/A", "pending", ""])
+        sheet.append(["NULL", "None", None])
+        sheet.append(["NaN", "null", ""])
+        sheet.append(["North America", "active", ""])
+        path = tmp_path / "literal_na.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        original_kwargs = deepcopy(read_excel_kwargs)
+        format_kwargs = {"na_rep": missing_value} if table_format == "csv" else {"missingval": missing_value}
+        converter = XLSXToDocument(
+            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        )
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+
+        if table_format == "csv":
+            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        else:
+            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+        assert rows == [
+            ["Code", "Status", "Blank"],
+            ["NA", "OK", missing_value],
+            ["N/A", "pending", missing_value],
+            ["NULL", "None", missing_value],
+            ["NaN", "null", missing_value],
+            ["North America", "active", missing_value],
+        ]
+        assert read_excel_kwargs == original_kwargs
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize(
+        ("na_values", "expected_custom_values"),
+        [
+            pytest.param(["foo"], ["<missing>", "<missing>"], id="list"),
+            pytest.param(["foo", ""], ["<missing>", "<missing>"], id="list-with-empty-string"),
+            pytest.param([], ["foo", "foo"], id="empty-list"),
+            pytest.param(("foo",), ["<missing>", "<missing>"], id="tuple"),
+            pytest.param({"foo"}, ["<missing>", "<missing>"], id="set"),
+            pytest.param("foo", ["<missing>", "<missing>"], id="string"),
+            pytest.param({0: ["foo"]}, ["<missing>", "foo"], id="column-dict"),
+            pytest.param(None, ["foo", "foo"], id="none"),
+        ],
+    )
+    def test_run_custom_na_values_preserves_empty_cells(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        na_values: Any,
+        expected_custom_values: list[str],
+    ) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Code", "Status", "Blank"])
+        sheet.append(["foo", "foo", None])
+        sheet.append(["NA", "N/A", "value"])
+        sheet.append(["NULL", "None", ""])
+        path = tmp_path / "custom_na.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        read_excel_kwargs = {"na_values": na_values}
+        original_kwargs = deepcopy(read_excel_kwargs)
+        format_kwargs = {"na_rep": "<missing>"} if table_format == "csv" else {"missingval": "<missing>"}
+        converter = XLSXToDocument(
+            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        )
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+        if table_format == "csv":
+            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        else:
+            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+        assert rows == [
+            ["Code", "Status", "Blank"],
+            [*expected_custom_values, "<missing>"],
+            ["<missing>", "<missing>", "value"],
+            ["<missing>", "<missing>", "<missing>"],
+        ]
+        assert read_excel_kwargs == original_kwargs
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_rows"),
+        [
+            pytest.param(
+                {"keep_default_na": True},
+                [["foo", "<missing>", "<missing>"], ["<missing>", "<missing>", "value"]],
+                id="keep-default-na-true",
+            ),
+            pytest.param(
+                {"keep_default_na": True, "na_values": ["foo"]},
+                [["<missing>", "<missing>", "<missing>"], ["<missing>", "<missing>", "value"]],
+                id="keep-default-na-true-with-custom-values",
+            ),
+            pytest.param(
+                {"keep_default_na": False}, [["foo", "NA", ""], ["N/A", "", "value"]], id="keep-default-na-false"
+            ),
+            pytest.param(
+                {"keep_default_na": False, "na_values": ["foo"]},
+                [["<missing>", "NA", ""], ["N/A", "", "value"]],
+                id="keep-default-na-false-with-custom-values",
+            ),
+            pytest.param(
+                {"keep_default_na": False, "na_values": ["foo", ""]},
+                [["<missing>", "NA", "<missing>"], ["N/A", "<missing>", "value"]],
+                id="explicit-empty-string",
+            ),
+            pytest.param({"na_filter": False}, [["foo", "NA", ""], ["N/A", "", "value"]], id="na-filter-false"),
+        ],
+    )
+    def test_run_na_parsing_overrides(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        read_excel_kwargs: dict[str, Any],
+        expected_rows: list[list[str]],
+    ) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Code", "Status", "Blank"])
+        sheet.append(["foo", "NA", None])
+        sheet.append(["N/A", "", "value"])
+        path = tmp_path / "override_na.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        original_kwargs = deepcopy(read_excel_kwargs)
+        format_kwargs = {"na_rep": "<missing>"} if table_format == "csv" else {"missingval": "<missing>"}
+        converter = XLSXToDocument(
+            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        )
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+        if table_format == "csv":
+            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        else:
+            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+        assert rows == [["Code", "Status", "Blank"], *expected_rows]
+        assert read_excel_kwargs == original_kwargs
+
+    @pytest.mark.parametrize("na_values", [None, ["foo"]], ids=["no-custom-values", "custom-values"])
+    def test_run_keep_default_na_false_preserves_numeric_formatting(self, tmp_path: Path, na_values: Any) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append([1, "x"])
+        sheet.append([None, "foo"])
+        sheet.append([2, "y"])
+        path = tmp_path / "numeric_gaps.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        read_excel_kwargs: dict[str, Any] = {"keep_default_na": False}
+        if na_values is not None:
+            read_excel_kwargs["na_values"] = na_values
+        converter = XLSXToDocument(read_excel_kwargs=read_excel_kwargs, table_format_kwargs={"na_rep": "<missing>"})
+        documents = converter.run(sources=[path])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+        rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        expected_foo = "foo" if na_values is None else "<missing>"
+        assert rows == [["1", "x"], ["", expected_foo], ["2", "y"]]
