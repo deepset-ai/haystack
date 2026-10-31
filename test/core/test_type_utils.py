@@ -180,6 +180,14 @@ def generate_strict_asymmetric_cases():
         [
             pytest.param(bool, int, id="different-primitives"),
             pytest.param((Literal["a", "b"]), (Literal["a", "b", "c"]), id="sending-subset-literal"),
+            pytest.param((Literal["b", "c"]), (Literal["a", "b", "c"]), id="sending-non-prefix-subset-literal"),
+            pytest.param((Optional[str]), (Union[int, str, None]), id="union-to-superset-union-in-other-order"),
+            pytest.param(str | None, str | int | None, id="union-to-superset-union-in-other-order-pep604"),
+            pytest.param(
+                list[Path | ByteStream],
+                list[str | Path | ByteStream],
+                id="list-of-union-to-list-of-superset-union-pep604",
+            ),
             pytest.param(int, int | str, id="primitive-to-union-pep604"),
             pytest.param(str, str | int | float, id="primitive-to-multi-union-pep604"),
         ]
@@ -544,6 +552,7 @@ incompatible_type_cases = [
     pytest.param((List[Class1]), (List[Class2]), id="different-lists-of-classes"),
     pytest.param((list[Class1]), (list[Class2]), id="different-lists-of-classes"),
     pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
+    pytest.param((Literal["a", "x"]), (Literal["a", "b", "c"]), id="partially-overlapping-literals"),
     pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
@@ -650,9 +659,9 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
 @pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
-        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
+        pytest.param((Union[(int, float)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-        pytest.param((int | bool), (int | str), id="partially-overlapping-unions-with-primitives-pep604"),
+        pytest.param((int | float), (int | str), id="partially-overlapping-unions-with-primitives-pep604"),
         pytest.param((int | Class1), (int | Class2), id="partially-overlapping-unions-with-classes-pep604"),
     ],
 )
