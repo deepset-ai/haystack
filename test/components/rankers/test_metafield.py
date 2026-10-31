@@ -217,10 +217,19 @@ class TestMetaFieldRanker:
         with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
             ranker.run(documents=documents, top_k=run_top_k)
 
-    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
+    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1, float("nan"), float("inf"), float("-inf")])
     def test_raises_component_error_if_wrong_weight(self, score):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"Parameter <weight> must be in range \[0,1\]"):
             MetaFieldRanker(meta_field="rating", weight=score)
+
+    @pytest.mark.parametrize("weight", [float("nan"), float("inf"), float("-inf")])
+    @pytest.mark.parametrize("ranking_mode", ["reciprocal_rank_fusion", "linear_score"])
+    def test_run_rejects_non_finite_weight(self, weight, ranking_mode):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode=ranking_mode)
+        documents = [Document(content="abc", meta={"rating": 1.3}, score=0.5)]
+
+        with pytest.raises(ValueError, match=r"Parameter <weight> must be in range \[0,1\]"):
+            ranker.run(documents=documents, weight=weight)
 
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):
