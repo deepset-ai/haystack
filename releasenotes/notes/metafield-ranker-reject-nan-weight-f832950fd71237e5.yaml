@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` now rejects a ``NaN`` weight in its constructor and in ``run()``
+    with a ``ValueError`` instead of returning documents with ``NaN`` scores.
