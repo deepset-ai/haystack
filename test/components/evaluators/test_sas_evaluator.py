@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -23,6 +24,19 @@ class TestSASEvaluator:
         assert evaluator._batch_size == 32
         assert evaluator._device is None
         assert evaluator._token.resolve_value() == "fake-token"
+
+    @pytest.mark.parametrize("batch_size", [0, -1, 0.5, 32.0, "32", None])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(
+            ValueError, match=re.escape(f"batch_size must be a positive integer, but got {batch_size!r}")
+        ):
+            SASEvaluator(batch_size=batch_size)
+
+    def test_from_dict_invalid_batch_size(self):
+        data = SASEvaluator().to_dict()
+        data["init_parameters"]["batch_size"] = 0
+        with pytest.raises(ValueError, match="batch_size must be a positive integer, but got 0"):
+            SASEvaluator.from_dict(data)
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("HF_API_TOKEN", "fake-token")
