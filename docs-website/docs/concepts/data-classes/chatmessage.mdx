@@ -314,6 +314,8 @@ print(assistant_message_w_tool_call.tool_call_results)
 
 ### from_tool
 
+The `tool_result` can be a string or a sequence of content parts, such as a list or tuple. When converting a tool message with `to_openai_dict_format()`, all parts must be `TextContent`; image and file parts are not supported by OpenAI Chat Completions tool messages.
+
 ```python
 from haystack.dataclasses import ChatMessage
 
