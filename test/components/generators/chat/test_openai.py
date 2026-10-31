@@ -47,6 +47,7 @@ from haystack.dataclasses import (
     FileContent,
     ImageContent,
     StreamingChunk,
+    TextContent,
     ToolCall,
     ToolCallDelta,
 )
@@ -479,6 +480,22 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
+
+    def test_run_with_tuple_tool_result(self, openai_mock_chat_completion: MagicMock) -> None:
+        origin = ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
+        messages = [
+            ChatMessage.from_user("What is the weather in Paris?"),
+            ChatMessage.from_assistant(tool_calls=[origin]),
+            ChatMessage.from_tool(tool_result=(TextContent(text="sunny"), TextContent(text="25 C")), origin=origin),
+        ]
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        generator.run(messages=messages)
+
+        assert openai_mock_chat_completion.call_args.kwargs["messages"][-1] == {
+            "role": "tool",
+            "content": [{"type": "text", "text": "sunny"}, {"type": "text", "text": "25 C"}],
+            "tool_call_id": "123",
+        }
 
     def test_run_with_params(self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock) -> None:
 

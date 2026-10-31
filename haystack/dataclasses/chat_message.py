@@ -639,6 +639,7 @@ class ChatMessage:
         The exception is a non-empty string in `meta["refusal"]` of an assistant message. It is sent as a refusal
         content part, or as the `refusal` field if the message also has text. If the message also has tool calls, the
         refusal is dropped with a warning, because OpenAI ignores the tool calls of a message with a refusal.
+        A tool result can be a string or a sequence of `TextContent` parts, including a tuple.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
@@ -701,11 +702,13 @@ class ChatMessage:
         if isinstance(tool_call_result.result, str):
             openai_fields["content"] = tool_call_result.result
         # OpenAI Chat Completions API does not support multimodal tool results
-        elif isinstance(tool_call_result.result, list) and all(
+        elif isinstance(tool_call_result.result, Sequence) and all(
             isinstance(haystack_part, TextContent) for haystack_part in tool_call_result.result
         ):
             openai_fields["content"] = [
-                {"type": "text", "text": haystack_part.text} for haystack_part in tool_call_result.result
+                {"type": "text", "text": haystack_part.text}
+                for haystack_part in tool_call_result.result
+                if isinstance(haystack_part, TextContent)
             ]
         else:
             raise ValueError(
