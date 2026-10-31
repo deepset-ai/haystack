@@ -218,3 +218,30 @@ def test_remove_empty_rows_and_columns_false() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",B,C\n,,4\n,,\n"
+
+
+def test_preserves_nonempty_missing_value_markers() -> None:
+    csv_content = "region,value\nNA,NULL\nN/A,NaN\nNone,null\n"
+    document = Document(content=csv_content)
+
+    result = CSVDocumentCleaner().run(documents=[document])
+
+    assert result["documents"][0].content == csv_content
+
+
+def test_preserves_missing_value_markers_when_cleaning_empty_rows_and_columns() -> None:
+    document = Document(content=",,\n,NA,\n,NULL,\n,,\n")
+
+    result = CSVDocumentCleaner().run(documents=[document])
+
+    assert result["documents"][0].content == "NA\nNULL\n"
+
+
+def test_preserves_missing_value_markers_when_cleaning_is_disabled() -> None:
+    csv_content = "NA,NULL\n,\n"
+    document = Document(content=csv_content)
+    cleaner = CSVDocumentCleaner(remove_empty_rows=False, remove_empty_columns=False)
+
+    result = cleaner.run(documents=[document])
+
+    assert result["documents"][0].content == csv_content
