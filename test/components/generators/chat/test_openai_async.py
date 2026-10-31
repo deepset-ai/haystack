@@ -24,7 +24,7 @@ from openai.types.chat.chat_completion_message_function_tool_call import Functio
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, TextContent, ToolCall
 from haystack.tools import Tool
 from haystack.utils.auth import Secret
 
@@ -157,6 +157,22 @@ class TestOpenAIChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    async def test_run_async_with_tuple_tool_result(self, openai_mock_async_chat_completion: MagicMock) -> None:
+        origin = ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
+        messages = [
+            ChatMessage.from_user("What is the weather in Paris?"),
+            ChatMessage.from_assistant(tool_calls=[origin]),
+            ChatMessage.from_tool(tool_result=(TextContent(text="sunny"), TextContent(text="25 C")), origin=origin),
+        ]
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        await generator.run_async(messages=messages)
+
+        assert openai_mock_async_chat_completion.call_args.kwargs["messages"][-1] == {
+            "role": "tool",
+            "content": [{"type": "text", "text": "sunny"}, {"type": "text", "text": "25 C"}],
+            "tool_call_id": "123",
+        }
 
     async def test_run_async_with_string_input(self, openai_mock_async_chat_completion: MagicMock) -> None:
 
