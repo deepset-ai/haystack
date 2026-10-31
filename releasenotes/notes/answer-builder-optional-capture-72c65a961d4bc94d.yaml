@@ -1,0 +1,4 @@
+fixes:
+  - |
+    ``AnswerBuilder`` now returns an empty answer when its pattern contains a capture group
+    that does not participate in the match, rather than returning the whole matched text.

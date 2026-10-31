@@ -88,6 +88,7 @@ class AnswerBuilder:
             The regular expression can have one capture group at most.
             If present, the capture group text
             is used as the answer. If no capture group is present, the whole match is used as the answer.
+            If the capture group does not participate in the match, the answer is an empty string.
             Examples:
                 `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
                 `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
@@ -159,6 +160,7 @@ class AnswerBuilder:
             The regular expression can have one capture group at most.
             If present, the capture group text
             is used as the answer. If no capture group is present, the whole match is used as the answer.
+            If the capture group does not participate in the match, the answer is an empty string.
                 Examples:
                     `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
                     `Answer: (.*)` finds "this is an answer" in a string
@@ -263,10 +265,10 @@ class AnswerBuilder:
 
         if match := re.search(pattern, reply):
             # No capture group in pattern -> use the whole match as answer
-            if not match.lastindex:
+            if not match.re.groups:
                 return match.group(0)
             # One capture group in pattern -> use the capture group as answer
-            return match.group(1)
+            return match.group(1) or ""
         return ""
 
     @staticmethod
