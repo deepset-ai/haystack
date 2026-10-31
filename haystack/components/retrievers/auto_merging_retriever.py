@@ -8,6 +8,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
 from haystack.utils.async_utils import _call_with_async_fallback
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -167,7 +168,7 @@ class AutoMergingRetriever:
             # Recursively try to merge the next level
             return _try_merge_level(merged_docs, docs_to_return)
 
-        return {"documents": _try_merge_level(documents, [])}
+        return {"documents": _try_merge_level(_deduplicate_documents(documents), [])}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -226,7 +227,7 @@ class AutoMergingRetriever:
             # Recursively try to merge the next level
             return await _try_merge_level(merged_docs, docs_to_return)
 
-        return {"documents": await _try_merge_level(documents, [])}
+        return {"documents": await _try_merge_level(_deduplicate_documents(documents), [])}
 
     def close(self) -> None:
         """

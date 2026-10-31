@@ -284,3 +284,47 @@ class TestAutoMergingRetriever:
         retriever = AutoMergingRetriever(document_store=nonclosable_document_store)
         retriever.close()
         assert nonclosable_document_store.mock_calls == []
+
+    def test_run_duplicate_leaf_documents(self, in_memory_doc_store):
+        parent = Document(
+            id="p", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        in_memory_doc_store.write_documents([parent])
+
+        leaf_low = Document(id="a", content="a", score=0.2, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+        leaf_high = Document(id="a", content="a", score=0.9, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        result = retriever.run([leaf_low, leaf_high])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]
+        assert result["documents"][0].score == 0.9
+
+    @pytest.mark.asyncio
+    async def test_run_async_duplicate_leaf_documents(self, in_memory_doc_store):
+        parent = Document(
+            id="p", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        in_memory_doc_store.write_documents([parent])
+
+        leaf_low = Document(id="a", content="a", score=0.2, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+        leaf_high = Document(id="a", content="a", score=0.9, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        result = await retriever.run_async([leaf_low, leaf_high])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]
+        assert result["documents"][0].score == 0.9
+
+    def test_run_duplicate_leaf_documents_below_threshold(self, in_memory_doc_store):
+        parent = Document(
+            id="p", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        in_memory_doc_store.write_documents([parent])
+
+        leaf = Document(id="a", content="a", score=0.4, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.9)
+        result = retriever.run([leaf, leaf])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]
