@@ -93,6 +93,21 @@ class TestAnswerBuilder:
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
+    @pytest.mark.parametrize(
+        "pattern, reply", [(r"Answer:(?: (.*))?", "Answer:"), (r"Answer: (.+)|No answer", "No answer")]
+    )
+    @pytest.mark.parametrize("runtime_pattern", [False, True])
+    def test_run_with_nonparticipating_capture_group(self, pattern, reply, runtime_pattern):
+        if runtime_pattern:
+            builder = AnswerBuilder()
+            result = builder.run(query="test query", replies=[reply], pattern=pattern)
+        else:
+            builder = AnswerBuilder(pattern=pattern)
+            result = builder.run(query="test query", replies=[reply])
+
+        assert len(result["answers"]) == 1
+        assert result["answers"][0].data == ""
+
     def test_run_with_pattern_with_more_than_one_capturing_group(self):
         with pytest.raises(ValueError, match="contains multiple capture groups"):
             AnswerBuilder(pattern=r"Answer: (.*), (.*)")

@@ -31,6 +31,8 @@ The `AnswerBuilder` works with both Chat and non-Chat Generators.
 
 The optional `pattern` parameter defines how to extract answer texts from replies. It needs to be a regular expression with a maximum of one capture group. If a capture group is present, the text matched by the capture group is used as the answer. If no capture group is present, the whole match is used as the answer. If no `pattern` is set, the whole reply is used as the answer text.
 
+If a capture group does not participate in a match, for example an optional group in `Answer:(?: (.*))?` matching `Answer:`, the answer is an empty string.
+
 The optional `reference_pattern` parameter can be set to a regular expression that parses referenced documents from the replies so that only those referenced documents are listed in the `GeneratedAnswer` objects. Haystack assumes that documents are referenced by their index in the list of input documents and that indices start at 1. For example, if you set the `reference_pattern` to _`\\[(\\d+)\\]`,_ it finds “1” in a string "This is an answer[1]". If `reference_pattern` is not set, all input documents are listed in the `GeneratedAnswer` objects.
 
 ## Usage
