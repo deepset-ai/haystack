@@ -198,6 +198,12 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # Stripping removes whole lines, so also skip it when the next statement
+        # starts on the docstring's last line (``"""Docs."""; return 5``); otherwise
+        # that statement would be silently dropped.
+        if len(body) > 1 and body[1].lineno == ds_end:
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         # Removing the only statement from a function or class would leave an
