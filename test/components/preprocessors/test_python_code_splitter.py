@@ -729,6 +729,38 @@ class TestDocstringStripping:
         for chunk in result["documents"]:
             ast.parse(chunk.content or "")
 
+    @pytest.mark.parametrize(
+        "source, kept_code",
+        [
+            ('def foo():\n    """Docs."""; return 5\n', "return 5"),
+            ('def foo():\n    """Line one.\n    Line two."""; x = 1\n    return x\n', "x = 1"),
+            ('class Foo:\n    def bar(self):\n        """Docs."""; return 5\n', "return 5"),
+            ('class Foo:\n    """Docs."""; x = 1\n\n    def bar(self):\n        return self.x\n', "x = 1"),
+        ],
+        ids=["function", "multi_line_docstring", "method", "class_header"],
+    )
+    def test_strip_docstrings_keeps_code_on_docstring_line(self, source, kept_code):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        joined_content = "\n".join(c.content or "" for c in result["documents"])
+        assert kept_code in joined_content
+        # The docstring can't be removed without the code next to it, so it stays in the content.
+        assert "Docs." in joined_content or "Line one." in joined_content
+        assert not any(c.meta.get("docstrings") for c in result["documents"])
+        for chunk in result["documents"]:
+            ast.parse(chunk.content or "")
+
+    def test_strip_docstrings_drops_trailing_comment_on_docstring_line(self):
+        source = 'def foo():\n    """Docs."""  # a comment\n    return 5\n'
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert len(result["documents"]) == 1
+        chunk = result["documents"][0]
+        assert chunk.content == "def foo():\n    return 5\n"
+        assert chunk.meta["docstrings"] == ["Docs."]
+
 
 class TestTopLevelStatements:
     @pytest.fixture
