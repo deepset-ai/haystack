@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` with ``strip_docstrings=True`` no longer deletes code that shares a line with a
+    docstring, such as ``"""Docs."""; return 5``. Such docstrings are now kept in the chunk content instead of
+    being stripped, so the code next to them is preserved and the chunk stays valid Python.
