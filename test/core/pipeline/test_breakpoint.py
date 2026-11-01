@@ -171,6 +171,13 @@ class _CountUpTo:
         return {"done": f"finished at {value}"}
 
 
+@component
+class _Greeter:
+    @component.output_types(result=str)
+    def run(self, greeting: str = "hi") -> dict[str, str]:
+        return {"result": greeting}
+
+
 def _three_component_pipeline(*, max_runs_per_component: int = 100) -> Pipeline:
     pipeline = Pipeline(max_runs_per_component=max_runs_per_component)
     pipeline.add_component("comp1", _AppendingComponent())
@@ -370,6 +377,52 @@ class TestResumeFromLegacyPipelineSnapshot:
         # The joiner is visited five more times after the resume.
         result = _looping_pipeline().run(data={}, pipeline_snapshot=legacy_snapshot)
         assert result == {"counter": {"done": "finished at 5"}}
+
+    def test_resume_from_legacy_snapshot_with_empty_socket(self):
+        """
+        A legacy snapshot may have nothing stored for the socket the paused component was waiting on.
+
+        That happens for a component with only optional inputs started without any input, or for any optional
+        socket left out when the snapshot was taken. There is no value to restore, so the component has to run
+        with the default the socket declares instead of failing on an empty list.
+        """
+        legacy_snapshot = PipelineSnapshot(
+            pipeline_state=PipelineState(
+                inputs=_serialize_value_with_schema({"greeter": {}}),
+                component_visits={"greeter": 0},
+                pipeline_outputs=_serialize_value_with_schema({}),
+                inputs_format=None,
+            ),
+            break_point=Breakpoint(component_name="greeter", visit_count=0),
+            original_input_data=_serialize_value_with_schema({}),
+            ordered_component_names=["greeter"],
+            include_outputs_from=set(),
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("greeter", _Greeter())
+
+        assert pipeline.run(data={}, pipeline_snapshot=legacy_snapshot) == {"greeter": {"result": "hi"}}
+
+    def test_resume_from_legacy_snapshot_with_one_empty_optional_socket(self):
+        """An optional socket without a stored value must not break the sockets next to it that do have one."""
+        legacy_snapshot = PipelineSnapshot(
+            pipeline_state=PipelineState(
+                inputs=_serialize_value_with_schema({"greeter": {"greeting": "hello"}}),
+                component_visits={"greeter": 0},
+                pipeline_outputs=_serialize_value_with_schema({}),
+                inputs_format=None,
+            ),
+            break_point=Breakpoint(component_name="greeter", visit_count=0),
+            original_input_data=_serialize_value_with_schema({}),
+            ordered_component_names=["greeter"],
+            include_outputs_from=set(),
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("greeter", _Greeter())
+
+        assert pipeline.run(data={}, pipeline_snapshot=legacy_snapshot) == {"greeter": {"result": "hello"}}
 
 
 class TestCreatePipelineSnapshot:

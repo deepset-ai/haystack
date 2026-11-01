@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When resuming a pipeline from a legacy breakpoint snapshot, a socket of the paused component that has no stored value no longer raises an `IndexError`. The component now runs with the default declared on that socket, so pipeline runs from snapshots written by older versions finish again.
