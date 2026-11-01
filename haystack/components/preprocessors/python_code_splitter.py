@@ -198,6 +198,11 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # Skip stripping when code follows the docstring on its closing line (e.g. `"""Docs."""; return 5`):
+        # stripping removes whole lines, so that code would be lost. A trailing comment is safe to drop.
+        trailing = source_lines[ds_end - 1][first.end_col_offset :].strip()
+        if trailing and not trailing.startswith("#"):
+            return self._slice_lines(source_lines, unit_start, unit_end), None
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         # Removing the only statement from a function or class would leave an
