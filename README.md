@@ -42,7 +42,7 @@
 | haystack/components/converters/pypdf.py                                    |      103 |        6 |     94% |192, 209-211, 267-271 |
 | haystack/components/converters/txt.py                                      |       34 |        3 |     91% |     88-92 |
 | haystack/components/converters/utils.py                                    |       37 |        0 |    100% |           |
-| haystack/components/converters/xlsx.py                                     |      148 |        4 |     97% |89, 170, 172, 195 |
+| haystack/components/converters/xlsx.py                                     |      150 |        4 |     97% |95, 176, 178, 201 |
 | haystack/components/embedders/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/embedders/azure\_document\_embedder.py                 |       71 |        2 |     97% |  126, 129 |
 | haystack/components/embedders/azure\_text\_embedder.py                     |       63 |        2 |     97% |  107, 110 |
@@ -275,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18370** |  **689** | **96%** |           |
+| **TOTAL**                                                                  | **18372** |  **689** | **96%** |           |
 
 
 ## Setup coverage badge
