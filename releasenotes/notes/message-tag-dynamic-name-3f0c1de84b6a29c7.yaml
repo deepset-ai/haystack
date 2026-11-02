@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Allow dynamic expressions in the ``name`` attribute of the ``{% message %}`` tag. Literal names are still validated at parse time, dynamic ones at render time, and a non-string value raises a clear ``ValueError`` instead of ``AttributeError: 'Name' object has no attribute 'value'``.

@@ -91,6 +91,28 @@ class TestChatMessageExtension:
         with pytest.raises(TemplateSyntaxError, match="name must be a string"):
             jinja_env.from_string(template).render()
 
+    def test_message_with_dynamic_name_attribute(self, jinja_env):
+        template = """
+        {% message role="user" name=speaker_name %}
+        Hello!
+        {% endmessage %}
+        """
+
+        rendered = jinja_env.from_string(template).render(speaker_name="Bob")
+
+        output = json.loads(rendered.strip())
+        assert output["name"] == "Bob"
+
+    def test_message_with_dynamic_name_not_str_raises_error(self, jinja_env):
+        template = """
+        {% message role="user" name=speaker_name %}
+        Hello!
+        {% endmessage %}
+        """
+
+        with pytest.raises(ValueError, match="name must be a string"):
+            jinja_env.from_string(template).render(speaker_name=123)
+
     def test_system_message(self, jinja_env):
         template = """
         {% message role="system" %}
