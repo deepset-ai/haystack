@@ -23,6 +23,7 @@ class JoinMode(Enum):
 
     CONCATENATE = "concatenate"
     MERGE = "merge"
+    MERGE_EMBEDDINGS = "merge_embeddings"
     RECIPROCAL_RANK_FUSION = "reciprocal_rank_fusion"
     DISTRIBUTION_BASED_RANK_FUSION = "distribution_based_rank_fusion"
 
@@ -49,6 +50,7 @@ class DocumentJoiner:
 
     It supports different join modes:
     - concatenate: Keeps the highest-scored document in case of duplicates.
+    - merge_embeddings: Combines the `embedding` and `sparse_embedding` fields of documents with the same ID.
     - merge: Calculates a weighted sum of scores for duplicates and merges them.
     - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
     - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
@@ -98,6 +100,7 @@ class DocumentJoiner:
         :param join_mode:
             Specifies the join mode to use. Available modes:
             - `concatenate`: Keeps the highest-scored document in case of duplicates.
+            - `merge_embeddings`: Combines the `embedding` and `sparse_embedding` fields of documents with the same ID.
             - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
             - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
             - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
@@ -105,7 +108,7 @@ class DocumentJoiner:
         :param weights:
             Assign importance to each list of documents to influence how they're joined.
             This parameter is ignored for
-            `concatenate` or `distribution_based_rank_fusion` join modes.
+            `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
             Each weight must be a non-negative number.
         :param top_k:
@@ -125,6 +128,7 @@ class DocumentJoiner:
         join_mode_functions = {
             JoinMode.CONCATENATE: DocumentJoiner._concatenate,
             JoinMode.MERGE: self._merge,
+            JoinMode.MERGE_EMBEDDINGS: DocumentJoiner._merge_embeddings,
             JoinMode.RECIPROCAL_RANK_FUSION: self._rrf,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION: DocumentJoiner._distribution_based_rank_fusion,
         }
@@ -158,7 +162,7 @@ class DocumentJoiner:
             - `documents`: Merged list of Documents
 
         :raises ValueError:
-            If `top_k` is negative.
+            If `top_k` is negative, or `merge_embeddings` encounters conflicting embeddings for the same document ID.
         """
         documents = list(documents)
         output_documents = self.join_mode_function(documents)
@@ -214,6 +218,28 @@ class DocumentJoiner:
                 documents_map[doc.id] = doc
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
+
+    @staticmethod
+    def _merge_embeddings(document_lists: list[list[Document]]) -> list[Document]:
+        merged: dict[str, Document] = {}
+
+        for doc in itertools.chain.from_iterable(document_lists):
+            if doc.id not in merged:
+                merged[doc.id] = doc
+                continue
+
+            current = merged[doc.id]
+            updates = {}
+
+            for field in ("embedding", "sparse_embedding"):
+                old, new = getattr(current, field), getattr(doc, field)
+                if old is not None and new is not None and old != new:
+                    raise ValueError(f"Conflicting {field} for document '{doc.id}'")
+                updates[field] = old if old is not None else new
+
+            merged[doc.id] = replace(current, **updates)
+
+        return list(merged.values())
 
     def _rrf(self, document_lists: list[list[Document]]) -> list[Document]:
         """
