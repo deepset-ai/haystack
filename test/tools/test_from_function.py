@@ -679,3 +679,58 @@ class TestToolDecoratorExport:
         env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
         assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("is_async", [False, True])
+@pytest.mark.parametrize("has_default", [False, True])
+def test_from_function_rejects_positional_only_parameters(is_async, has_default):
+    def required(query: str, /) -> str:
+        return query
+
+    def optional(query: str = "haystack", /) -> str:
+        return query
+
+    async def async_required(query: str, /) -> str:
+        return query
+
+    async def async_optional(query: str = "haystack", /) -> str:
+        return query
+
+    function: Callable[..., Any]
+    if is_async:
+        function = async_optional if has_default else async_required
+    else:
+        function = optional if has_default else required
+
+    with pytest.raises(ValueError, match="parameter 'query' is positional-only"):
+        create_tool_from_function(function=function)
+
+
+def test_tool_decorator_rejects_positional_only_parameters():
+    def search(query: str, /) -> str:
+        return query
+
+    with pytest.raises(
+        ValueError,
+        match="^Function 'search': parameter 'query' is positional-only. Tool arguments are passed by keyword.$",
+    ):
+        tool(search)
+
+
+def test_from_function_keeps_keyword_parameters_invocable():
+    def search(query: str, *, top_k: int = 3) -> str:
+        return f"{query}: {top_k}"
+
+    search_tool = create_tool_from_function(function=search)
+
+    assert search_tool.invoke(query="haystack", top_k=5) == "haystack: 5"
+
+
+def test_from_function_accepts_bound_method_with_positional_only_self():
+    class Searcher:
+        def search(self, /, query: str) -> str:
+            return query
+
+    search_tool = create_tool_from_function(function=Searcher().search)
+
+    assert search_tool.invoke(query="haystack") == "haystack"
