@@ -280,6 +280,14 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
             document_store.bm25_retrieval(query="", top_k=1)
 
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_bm25_retrieval_with_negative_top_k_raises(self, document_store: InMemoryDocumentStore, top_k: int) -> None:
+        # A negative top_k reached `[:top_k]` and silently returned fewer documents instead of raising.
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        document_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            document_store.bm25_retrieval(query="world languages", top_k=top_k)
+
     def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
         # based on the top_k parameter.
@@ -510,6 +518,20 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
 
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_embedding_retrieval_with_negative_top_k_raises(
+        self, in_memory_doc_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        # A negative top_k reached `[:top_k]` and silently returned fewer documents instead of raising.
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
+        ]
+        in_memory_doc_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
+
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
@@ -734,6 +756,29 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_bm25_retrieval_async_with_negative_top_k_raises(
+        self, document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        await document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await document_store.bm25_retrieval_async(query="world languages", top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_embedding_retrieval_async_with_negative_top_k_raises(
+        self, cosine_document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        await cosine_document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await cosine_document_store.embedding_retrieval_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
 
     @pytest.mark.asyncio
     async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore) -> None:
