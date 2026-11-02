@@ -843,6 +843,10 @@ Initialization will fail if neither `jq_schema` nor `content_key` are set.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
+**Raises:**
+
+- <code>ValueError</code> – If neither `jq_schema` nor `content_key` is set, or if `extra_meta_fields` is a string other than `"*"`.
+
 #### to_dict
 
 ```python
