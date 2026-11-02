@@ -194,7 +194,9 @@ class ChatMessageExtension(Extension):
             parser.stream.skip()
             parser.stream.expect("assign")
             name_expr = parser.parse_expression()
-            if not isinstance(name_expr.value, str):
+            # Only literal names can be validated at parse time; dynamic expressions (e.g.
+            # `name=speaker_name`) are validated at render time in `_build_chat_message_json`.
+            if isinstance(name_expr, nodes.Const) and not isinstance(name_expr.value, str):
                 raise TemplateSyntaxError("name must be a string", lineno)
 
         # Parse optional meta attribute
@@ -234,6 +236,9 @@ class ChatMessageExtension(Extension):
         :param caller: Callable that returns the rendered content
         :return: A JSON string representation of the ChatMessage object
         """
+
+        if name is not None and not isinstance(name, str):
+            raise ValueError(f"name must be a string, got {type(name).__name__}")
 
         content = caller()
         start_tag, end_tag = _sentinel_tags(getattr(self.environment, _NONCE_ATTR))
