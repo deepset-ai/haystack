@@ -5,6 +5,7 @@
 from collections.abc import Callable
 
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.token_counters import TokenCounter
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
@@ -19,11 +20,19 @@ def _leading_system_end(messages: list[ChatMessage]) -> int:
     return len(messages)
 
 
+def _is_real_user_message(message: ChatMessage) -> bool:
+    """Return whether a message is a user message not produced by compaction or by a system reminder."""
+    return (
+        message.is_from(role=ChatRole.USER)
+        and _COMPACTION_META_KEY not in message.meta
+        and _SYSTEM_REMINDER_META_KEY not in message.meta
+    )
+
+
 def _latest_user_index(messages: list[ChatMessage]) -> int | None:
-    """Return the latest user message not produced by compaction."""
+    """Return the latest user message not produced by compaction or by a system reminder."""
     for index in reversed(range(len(messages))):
-        message = messages[index]
-        if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
+        if _is_real_user_message(message=messages[index]):
             return index
     return None
 
@@ -103,13 +112,10 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
     """
     Return spans for complete real-user turns in a bounded section of conversation history.
 
-    Each turn begins with a user message not created by compaction and continues up to the next such message.
+    Each turn begins with a user message not created by compaction or by a system reminder and continues up to the next
+    such message.
     """
-    user_indices = [
-        index
-        for index in range(start, end)
-        if messages[index].is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in messages[index].meta
-    ]
+    user_indices = [index for index in range(start, end) if _is_real_user_message(message=messages[index])]
     return [
         (index, user_indices[position + 1] if position + 1 < len(user_indices) else end)
         for position, index in enumerate(user_indices)
@@ -125,7 +131,7 @@ def _historical_turn_groups(messages: list[ChatMessage], system_end: int, task_i
     :param task_index: The index of the user message anchoring the current task, where the history ends. None when
         there is no such message, in which case the history is empty and everything belongs to the current task.
     :returns: One group of message indices per turn, ordered oldest turn first. A turn is a user message that
-        compaction did not produce, together with everything that follows it up to the next one.
+        neither compaction nor a system reminder produced, together with everything that follows it up to the next one.
     """
     historical_end = task_index if task_index is not None else system_end
     return [

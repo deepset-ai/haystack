@@ -229,7 +229,7 @@ from_file_path(
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
     guess_mime_type: bool = False,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream from the contents read from a file.
@@ -249,7 +249,7 @@ from_string(
     encoding: str = "utf-8",
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream encoding a string.
@@ -296,7 +296,7 @@ Convert the ByteStream to a dictionary representation.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ByteStream
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a ByteStream from a dictionary representation.
@@ -307,7 +307,7 @@ Create a ByteStream from a dictionary representation.
 
 **Returns:**
 
-- <code>ByteStream</code> – A ByteStream instance.
+- <code>Self</code> – An instance of this class.
 
 ## chat_message
 

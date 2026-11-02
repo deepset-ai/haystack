@@ -925,6 +925,159 @@ Deserialize this component from a dictionary.
 
 - <code>MetadataRouter</code> – The deserialized component instance.
 
+## openai_decisions_image_router
+
+### OpenAIDecisionsImageRouter
+
+Routes an image to one of the configured label outputs using the OpenAI Decisions API.
+
+Pass an `ImageContent` to `run()` or `run_async()`. The model answers a single `choice` question using
+`instructions` and `labels`, and the component returns the image on the selected label's output.
+
+The returned image includes the decision in `meta["openai_decisions"]`.
+
+You can pass optional `text` alongside the image to provide context for the decision.
+
+If `min_confidence` is set and the answer's confidence is below it, the image goes to `low_confidence` instead. If
+the model declines to answer, the image goes to `refused`, regardless of the confidence threshold.
+
+### Usage example
+
+```python
+from haystack.components.routers import OpenAIDecisionsImageRouter
+from haystack.dataclasses import ImageContent
+
+# Set OPENAI_API_KEY in the environment.
+router = OpenAIDecisionsImageRouter(
+    labels={
+        "fruit": "Photographs of fruit",
+        "logo": "Company logos",
+    },
+)
+image = ImageContent.from_file_path(file_path="test/test_files/images/apple.jpg")
+result = router.run(image=image)
+# >> {"fruit": <ImageContent>}
+```
+
+#### __init__
+
+```python
+__init__(
+    labels: list[str] | dict[str, str | None],
+    *,
+    instructions: str = "Which category does this image belong to?",
+    model: str = "gpt-6-luna",
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
+    min_confidence: float | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
+) -> None
+```
+
+Creates an OpenAIDecisionsImageRouter.
+
+**Parameters:**
+
+- **labels** (<code>list\[str\] | dict\[str, str | None\]</code>) – The labels to route between, each becoming an output connection. Pass a dict of label to description to
+  tell the model what each label means. Requires between 2 and 255 unique, non-empty string labels.
+  `low_confidence` and `refused` are reserved output names.
+- **instructions** (<code>str</code>) – The question the model answers by picking one of the labels.
+  Defaults to "Which category does this image belong to?".
+- **model** (<code>str</code>) – Name of the Decisions model to use. Defaults to `gpt-6-luna`.
+- **api_key** (<code>Secret</code>) – OpenAI API key. Defaults to the `OPENAI_API_KEY` environment variable, resolved during warm-up.
+- **api_base_url** (<code>str | None</code>) – API base URL. If `None`, uses the SDK default or `OPENAI_BASE_URL` environment variable.
+- **min_confidence** (<code>float | None</code>) – Threshold between 0 and 1 for the answer's `confidence`. Images below it are sent to the `low_confidence`
+  output. If `None`, every non-refused image goes to a label output.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
+  `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+
+**Raises:**
+
+- <code>ValueError</code> – If labels are invalid, duplicated or reserved, or `min_confidence` is outside 0 to 1.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Creates the synchronous OpenAI client if needed.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Creates the asynchronous OpenAI client if needed.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous OpenAI client, if initialized.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client, if initialized.
+
+#### run
+
+```python
+run(image: ImageContent, *, text: str | None = None) -> dict[str, ImageContent]
+```
+
+Routes the image to the output of the label the model picks.
+
+**Parameters:**
+
+- **image** (<code>ImageContent</code>) – The image to route.
+- **text** (<code>str | None</code>) – Optional text context for the decision. Defaults to `None`.
+
+**Returns:**
+
+- <code>dict\[str, ImageContent\]</code> – A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+  with the answer in `meta["openai_decisions"]`.
+
+**Raises:**
+
+- <code>TypeError</code> – If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
+
+#### run_async
+
+```python
+run_async(
+    image: ImageContent, *, text: str | None = None
+) -> dict[str, ImageContent]
+```
+
+Asynchronously routes the image to the output of the label the model picks.
+
+**Parameters:**
+
+- **image** (<code>ImageContent</code>) – The image to route.
+- **text** (<code>str | None</code>) – Optional text context for the decision. Defaults to `None`.
+
+**Returns:**
+
+- <code>dict\[str, ImageContent\]</code> – A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+  with the answer in `meta["openai_decisions"]`.
+
+**Raises:**
+
+- <code>TypeError</code> – If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
+
 ## openai_decisions_text_router
 
 ### OpenAIDecisionsTextRouter

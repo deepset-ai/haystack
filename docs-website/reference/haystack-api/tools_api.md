@@ -440,7 +440,8 @@ print(tool)
 - **function** (<code>Callable</code>) – The function to be converted into a Tool. May be either a regular function (assigned to the
   resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
   to `async_function`).
-  The function must include type hints for all parameters.
+  Parameters exposed in the Tool's schema must have type hints.
+  Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
   The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
   Other input types may work but are not guaranteed.
   If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -508,7 +509,7 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If any parameter of the function lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ### tool
@@ -566,7 +567,9 @@ print(get_weather)
 
 **Parameters:**
 
-- **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters)
+- **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters).
+  Parameters exposed in the Tool's schema must have type hints.
+  Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
 - **name** (<code>str | None</code>) – Optional custom name for the tool
 - **description** (<code>str | None</code>) – Optional custom description
 - **inputs_from_state** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping state keys to tool parameter names.
@@ -627,6 +630,11 @@ Example:
 **Returns:**
 
 - <code>Tool | Callable\\[[Callable\], Tool\]</code> – Either a Tool instance or a decorator function that will create one
+
+**Raises:**
+
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
+- <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ## pipeline_tool
 
