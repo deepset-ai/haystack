@@ -63,11 +63,11 @@ class XLSXToDocument:
         :param table_format: The format to convert the Excel file to.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
-            When neither `keep_default_na` nor `na_values` is supplied, `keep_default_na=False` and
-            `na_values=[""]` preserve literal text like "NA" and "N/A" while treating empty cells as missing.
-            If either option is supplied, both follow pandas' semantics without adding converter defaults
-            or modifying the supplied values. Custom `na_values` alone supplement pandas' default NA strings;
-            explicit `keep_default_na=False` disables those strings without adding missing values.
+            By default, the converter passes `keep_default_na=False` and `na_values=[""]`, so literal text like
+            "NA" and "N/A" is kept and only empty cells are treated as missing.
+            If you set either `keep_default_na` or `na_values`, these defaults aren't applied and pandas' own
+            behavior is used: `na_values` alone adds to pandas' default NA strings, and `keep_default_na=False`
+            alone doesn't treat empty cells as missing unless `""` is in `na_values`.
             Set `keep_default_na=True` to restore pandas' default NA parsing.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.

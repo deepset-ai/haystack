@@ -16,6 +16,41 @@ from haystack.components.converters.xlsx import XLSXToDocument
 from haystack.dataclasses import ByteStream
 
 
+def _convert_rows(
+    tmp_path: Path,
+    sheet_rows: list[list[Any]],
+    table_format: Literal["csv", "markdown"] = "csv",
+    read_excel_kwargs: dict[str, Any] | None = None,
+    missing_value: str = "<missing>",
+) -> list[list[str]]:
+    """
+    Writes `sheet_rows` to an XLSX file, converts it, and returns the table cells without the row index column.
+    """
+    workbook = Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    for row in sheet_rows:
+        sheet.append(row)
+    path = tmp_path / "sheet.xlsx"
+    workbook.save(path)
+    workbook.close()
+
+    original_kwargs = deepcopy(read_excel_kwargs)
+    format_kwargs = {"na_rep": missing_value} if table_format == "csv" else {"missingval": missing_value}
+    converter = XLSXToDocument(
+        table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+    )
+    documents = converter.run(sources=[path])["documents"]
+    assert read_excel_kwargs == original_kwargs
+
+    assert len(documents) == 1
+    content = documents[0].content
+    assert content is not None
+    if table_format == "csv":
+        return [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+    return [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+
+
 class TestXLSXToDocument:
     def test_init(self) -> None:
         converter = XLSXToDocument()
@@ -266,34 +301,20 @@ class TestXLSXToDocument:
         read_excel_kwargs: dict[str, Any],
         missing_value: str,
     ) -> None:
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.append(["Code", "Status", "Blank"])
-        sheet.append(["NA", "OK", None])
-        sheet.append(["N/A", "pending", ""])
-        sheet.append(["NULL", "None", None])
-        sheet.append(["NaN", "null", ""])
-        sheet.append(["North America", "active", ""])
-        path = tmp_path / "literal_na.xlsx"
-        workbook.save(path)
-        workbook.close()
-
-        original_kwargs = deepcopy(read_excel_kwargs)
-        format_kwargs = {"na_rep": missing_value} if table_format == "csv" else {"missingval": missing_value}
-        converter = XLSXToDocument(
-            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        rows = _convert_rows(
+            tmp_path,
+            [
+                ["Code", "Status", "Blank"],
+                ["NA", "OK", None],
+                ["N/A", "pending", ""],
+                ["NULL", "None", None],
+                ["NaN", "null", ""],
+                ["North America", "active", ""],
+            ],
+            table_format=table_format,
+            read_excel_kwargs=read_excel_kwargs,
+            missing_value=missing_value,
         )
-        documents = converter.run(sources=[path])["documents"]
-
-        assert len(documents) == 1
-        content = documents[0].content
-        assert content is not None
-
-        if table_format == "csv":
-            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
-        else:
-            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
         assert rows == [
             ["Code", "Status", "Blank"],
             ["NA", "OK", missing_value],
@@ -302,7 +323,6 @@ class TestXLSXToDocument:
             ["NaN", "null", missing_value],
             ["North America", "active", missing_value],
         ]
-        assert read_excel_kwargs == original_kwargs
 
     @pytest.mark.parametrize("table_format", ["csv", "markdown"])
     @pytest.mark.parametrize(
@@ -325,39 +345,18 @@ class TestXLSXToDocument:
         na_values: Any,
         expected_custom_values: list[str],
     ) -> None:
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.append(["Code", "Status", "Blank"])
-        sheet.append(["foo", "foo", None])
-        sheet.append(["NA", "N/A", "value"])
-        sheet.append(["NULL", "None", ""])
-        path = tmp_path / "custom_na.xlsx"
-        workbook.save(path)
-        workbook.close()
-
-        read_excel_kwargs = {"na_values": na_values}
-        original_kwargs = deepcopy(read_excel_kwargs)
-        format_kwargs = {"na_rep": "<missing>"} if table_format == "csv" else {"missingval": "<missing>"}
-        converter = XLSXToDocument(
-            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        rows = _convert_rows(
+            tmp_path,
+            [["Code", "Status", "Blank"], ["foo", "foo", None], ["NA", "N/A", "value"], ["NULL", "None", ""]],
+            table_format=table_format,
+            read_excel_kwargs={"na_values": na_values},
         )
-        documents = converter.run(sources=[path])["documents"]
-
-        assert len(documents) == 1
-        content = documents[0].content
-        assert content is not None
-        if table_format == "csv":
-            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
-        else:
-            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
         assert rows == [
             ["Code", "Status", "Blank"],
             [*expected_custom_values, "<missing>"],
             ["<missing>", "<missing>", "value"],
             ["<missing>", "<missing>", "<missing>"],
         ]
-        assert read_excel_kwargs == original_kwargs
 
     @pytest.mark.parametrize("table_format", ["csv", "markdown"])
     @pytest.mark.parametrize(
@@ -396,54 +395,19 @@ class TestXLSXToDocument:
         read_excel_kwargs: dict[str, Any],
         expected_rows: list[list[str]],
     ) -> None:
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.append(["Code", "Status", "Blank"])
-        sheet.append(["foo", "NA", None])
-        sheet.append(["N/A", "", "value"])
-        path = tmp_path / "override_na.xlsx"
-        workbook.save(path)
-        workbook.close()
-
-        original_kwargs = deepcopy(read_excel_kwargs)
-        format_kwargs = {"na_rep": "<missing>"} if table_format == "csv" else {"missingval": "<missing>"}
-        converter = XLSXToDocument(
-            table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+        rows = _convert_rows(
+            tmp_path,
+            [["Code", "Status", "Blank"], ["foo", "NA", None], ["N/A", "", "value"]],
+            table_format=table_format,
+            read_excel_kwargs=read_excel_kwargs,
         )
-        documents = converter.run(sources=[path])["documents"]
-
-        assert len(documents) == 1
-        content = documents[0].content
-        assert content is not None
-        if table_format == "csv":
-            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
-        else:
-            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
         assert rows == [["Code", "Status", "Blank"], *expected_rows]
-        assert read_excel_kwargs == original_kwargs
 
     @pytest.mark.parametrize("na_values", [None, ["foo"]], ids=["no-custom-values", "custom-values"])
     def test_run_keep_default_na_false_preserves_numeric_formatting(self, tmp_path: Path, na_values: Any) -> None:
-        workbook = Workbook()
-        sheet = workbook.active
-        assert sheet is not None
-        sheet.append([1, "x"])
-        sheet.append([None, "foo"])
-        sheet.append([2, "y"])
-        path = tmp_path / "numeric_gaps.xlsx"
-        workbook.save(path)
-        workbook.close()
-
         read_excel_kwargs: dict[str, Any] = {"keep_default_na": False}
         if na_values is not None:
             read_excel_kwargs["na_values"] = na_values
-        converter = XLSXToDocument(read_excel_kwargs=read_excel_kwargs, table_format_kwargs={"na_rep": "<missing>"})
-        documents = converter.run(sources=[path])["documents"]
-
-        assert len(documents) == 1
-        content = documents[0].content
-        assert content is not None
-        rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        rows = _convert_rows(tmp_path, [[1, "x"], [None, "foo"], [2, "y"]], read_excel_kwargs=read_excel_kwargs)
         expected_foo = "foo" if na_values is None else "<missing>"
         assert rows == [["1", "x"], ["", expected_foo], ["2", "y"]]
