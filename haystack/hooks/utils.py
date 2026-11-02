@@ -8,6 +8,9 @@ from haystack.core.serialization import component_to_dict
 from haystack.hooks.protocol import Hook, HookPoint
 from haystack.utils.deserialization import deserialize_component_inplace
 
+# Meta key marking a user message that a system reminder hook added rather than the user.
+_SYSTEM_REMINDER_META_KEY = "system_reminder"
+
 
 # Hooks are (de)serialized with `component_to_dict` / `deserialize_component_inplace` even though they aren't
 # Components. Despite the name, those helpers aren't component-specific: they just produce/consume the standard

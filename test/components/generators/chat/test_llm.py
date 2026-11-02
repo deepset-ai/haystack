@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.agents.agent import Agent
+from haystack.components.agents.agent import _INTERNAL_STATE_KEYS, Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.branch import BranchJoiner
@@ -255,6 +255,7 @@ class TestLLM:
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             result = llm.run(query="What is 2+2?")
             assert result["last_message"].text == "Sync reply"
+            assert _INTERNAL_STATE_KEYS.keys().isdisjoint(result)
             user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
             assert any("What is 2+2?" in m.text for m in user_messages)
 

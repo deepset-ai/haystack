@@ -54,7 +54,7 @@ compaction_hook = CompactionHook(
 The compactor divides a conversation into protected context, historical turns, and the current task's Agent steps:
 
 1. It preserves all leading system messages as the Agent's instructions.
-2. It preserves the latest user message as the current task.
+2. It preserves the latest user message as the current task. Omission notes and [messages marked as system reminders](../compaction.mdx#messages-added-by-hooks) don't count.
 3. It groups the history before that task into complete historical turns, each running from one user message up to the next.
 4. It groups each assistant message and all immediately following tool-result messages into one complete Agent step.
 5. Working backwards from the newest, it keeps as many complete historical turns as fit within the target.

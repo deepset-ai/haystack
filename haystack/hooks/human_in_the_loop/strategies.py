@@ -23,7 +23,8 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
 MODIFICATION_FEEDBACK_TEMPLATE = (
-    "The parameters for tool '{tool_name}' were updated by the user to:\n{final_tool_params}"
+    "The user changed the arguments of '{tool_name}' to {final_tool_params} and wants that result used. "
+    "Don't call it again with the original arguments."
 )
 USER_FEEDBACK_TEMPLATE = "With user feedback: {feedback}"
 

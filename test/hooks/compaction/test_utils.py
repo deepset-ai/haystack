@@ -13,8 +13,10 @@ from haystack.hooks.compaction.utils import (
     _historical_turn_spans,
     _is_compaction_message,
     _last_assistant_index,
+    _latest_user_index,
     _replace_tool_results_until_target,
 )
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from test.hooks.compaction.helpers import FakeCounter, conversation, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
@@ -143,6 +145,16 @@ class TestIsCompactionMessage:
         assert _is_compaction_message(message=message, strategy="sliding_window") is False
 
 
+class TestLatestUserIndex:
+    def test_skips_compaction_and_system_reminder_messages(self):
+        messages = [
+            ChatMessage.from_user("current task"),
+            ChatMessage.from_user("summary", meta={_COMPACTION_META_KEY: {"strategy": "summarization"}}),
+            ChatMessage.from_user("<system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}),
+        ]
+        assert _latest_user_index(messages=messages) == 0
+
+
 class TestHistoricalTurnGroups:
     def test_basic(self):
         messages = [
@@ -152,6 +164,16 @@ class TestHistoricalTurnGroups:
             ChatMessage.from_user("current task"),
         ]
         assert _historical_turn_groups(messages=messages, system_end=1, task_index=3) == [[1, 2]]
+
+    def test_system_reminders_stay_inside_their_turn(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("old question"),
+            ChatMessage.from_user("<system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}),
+            ChatMessage.from_assistant("old answer"),
+            ChatMessage.from_user("current task"),
+        ]
+        assert _historical_turn_groups(messages=messages, system_end=1, task_index=4) == [[1, 2, 3]]
 
     def test_missing_task_anchor(self):
         # With no user message to anchor on, everything after the system block belongs to the current task instead.

@@ -149,6 +149,21 @@ The `target_tokens` value is a goal rather than a guarantee. When the target con
 
 `compact_async()` calls `compact()` by default. Override it when compaction performs I/O, such as calling an LLM, so asynchronous Agent runs are not blocked. Use `to_dict()` to serialize constructor settings. The protocol's default `from_dict()` handles plain constructor values; override it when serialized values must be reconstructed first, such as a `Secret` or nested component.
 
+## Messages added by hooks
+
+`SlidingWindowCompactor` and `SummarizationCompactor` treat the latest user message as the current task and keep it. Messages that compaction added itself, such as omission notes and summaries, don't count, and neither do user messages marked with `meta={"system_reminder": True}`, such as the reminders [`StepBudgetReminderHook`](./step-budget-reminder.mdx) adds.
+
+If your own hook adds a user message, mark it the same way so compaction doesn't mistake it for the user's task:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+reminder = ChatMessage.from_user(
+    "<system-reminder>\nCite a source URL for every claim.\n</system-reminder>",
+    meta={"system_reminder": True},
+)
+```
+
 ## Token counters
 
 The default `ApproximateTokenCounter` estimates tokens from text length and needs no extra dependency. You can configure another built-in or custom [`TokenCounter`](../../token-counters.mdx) when you need a model- or provider-specific estimate.

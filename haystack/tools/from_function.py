@@ -64,7 +64,8 @@ def create_tool_from_function(
         The function to be converted into a Tool. May be either a regular function (assigned to the
         resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
         to `async_function`).
-        The function must include type hints for all parameters.
+        Parameters exposed in the Tool's schema must have type hints.
+        Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -126,7 +127,7 @@ def create_tool_from_function(
         The Tool created from the function.
 
     :raises ValueError:
-        If any parameter of the function lacks a type hint.
+        If a parameter exposed in the Tool's schema lacks a type hint.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
@@ -141,6 +142,10 @@ def create_tool_from_function(
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
+        # Skip *args and **kwargs because the LLM passes arguments by name
+        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            continue
+
         annotation = param_types[param_name]
 
         # Skip adding parameter names that will be passed to the tool from State
@@ -269,7 +274,10 @@ def tool(
     # >> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
 
-    :param function: The function to decorate (when used without parameters)
+    :param function:
+        The function to decorate (when used without parameters).
+        Parameters exposed in the Tool's schema must have type hints.
+        Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
     :param name: Optional custom name for the tool
     :param description: Optional custom description
     :param inputs_from_state:
@@ -323,6 +331,11 @@ def tool(
            Note that `raw_result` is not supported in the multiple output format.
 
     :returns: Either a Tool instance or a decorator function that will create one
+
+    :raises ValueError:
+        If a parameter exposed in the Tool's schema lacks a type hint.
+    :raises SchemaGenerationError:
+        If there is an error generating the JSON schema for the Tool.
     """
 
     def decorator(func: Callable) -> Tool:
