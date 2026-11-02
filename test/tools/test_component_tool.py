@@ -185,15 +185,9 @@ class TestComponentTool:
         with pytest.raises(ValueError, match="requires the inputs.*text"):
             ComponentTool(component=SimpleComponent(), parameters=parameters)
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("async_call", [False, True])
-    async def test_unknown_arguments_are_skipped(self, caplog, async_call):
+    def test_unknown_arguments_are_skipped(self, caplog):
         tool = ComponentTool(component=DualModeComponent())
-        if async_call:
-            result = await tool.invoke_async(text="hi", unexpected=42)
-            assert result == {"reply": "async:hi"}
-        else:
-            assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
+        assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
         assert "unexpected" in caplog.text
 
     def test_custom_parameters_allow_mandatory_input_from_state(self):
@@ -943,6 +937,11 @@ def dual_tool():
 
 
 class TestComponentToolAsync:
+    @pytest.mark.asyncio
+    async def test_unknown_arguments_are_skipped(self, dual_tool, caplog):
+        assert await dual_tool.invoke_async(text="hi", unexpected=42) == {"reply": "async:hi"}
+        assert "unexpected" in caplog.text
+
     def test_async_function_is_wired_only_when_component_has_run_async(self, sync_tool, dual_tool):
         assert sync_tool.function is not None
         assert sync_tool.async_function is None
