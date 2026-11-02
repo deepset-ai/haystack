@@ -51,6 +51,7 @@ def _convert_rows(
         return [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
     return [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
 
+
 def _write_linked_workbook(path: Path) -> None:
     workbook = Workbook()
     sheet = workbook.active
