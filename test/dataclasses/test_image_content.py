@@ -5,6 +5,7 @@
 import base64
 import logging
 import warnings
+from dataclasses import dataclass
 from unittest.mock import Mock, patch
 
 import httpx
@@ -36,6 +37,17 @@ def test_image_content_to_dict(base64_image_string):
         "meta": {"key": "value"},
         "validation": True,
     }
+
+
+def test_image_content_subclass_from_dict(base64_image_string):
+    @dataclass
+    class MyImage(ImageContent):
+        pass
+
+    image_content = MyImage(base64_image=base64_image_string, mime_type="image/png")
+    result = MyImage.from_dict(image_content.to_dict())
+    assert type(result) is MyImage
+    assert result == image_content
 
 
 def test_image_content_from_dict(base64_image_string):
