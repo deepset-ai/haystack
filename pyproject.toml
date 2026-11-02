@@ -91,12 +91,13 @@ docs = "haystack-pydoc pydoc tmp_api_reference"
 dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
+  "openai<3", # openai 3.x rejects passing several Azure auth methods at once and adds usage fields the tests don't expect
 
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
   "transformers[torch, sentencepiece]>=4.57",         # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
+  "huggingface_hub>=0.27.0,<2",                       # Hugging Face API Generators and Embedders (2.x dropped stop_sequences)
   "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                         # LocalWhisperTranscriber
