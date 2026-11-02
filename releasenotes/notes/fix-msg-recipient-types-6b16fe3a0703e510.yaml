@@ -1,0 +1,15 @@
+fixes:
+  - |
+    Fix ``MSGToDocument`` listing Cc and Bcc recipients on the To line.
+    Cc and Bcc now fall back to the corresponding recipient-table entries when
+    transport headers are missing.
+upgrade:
+  - |
+    ``MSGToDocument`` now lists only explicitly typed To recipients on the To
+    line. Originator entries and recipients with missing or unsupported types
+    are no longer listed there. Cc and Bcc lines retain their transport-header
+    values when available and otherwise use the corresponding recipient-table
+    entries. Applications that previously read the To line as a list of all
+    recipients should read the To, Cc and Bcc lines separately. Reconvert source
+    messages to apply this correction to previously generated documents. There
+    is no configuration option to restore the previous recipient classification.
