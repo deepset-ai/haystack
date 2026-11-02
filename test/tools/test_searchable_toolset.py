@@ -768,7 +768,11 @@ class TestSearchableToolsetAgentIntegration:
         from haystack.dataclasses import ChatMessage
 
         toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            tools=toolset,
+            max_agent_steps=5,
+        )
 
         assert len(agent.tools) == 1
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])

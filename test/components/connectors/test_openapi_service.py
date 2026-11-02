@@ -244,7 +244,9 @@ class TestOpenAPIServiceConnector:
 
         pipe = Pipeline()
         pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
-        pipe.add_component("functions_llm", OpenAIChatGenerator(model="gpt-4.1-nano"))
+        pipe.add_component(
+            "functions_llm", OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
 
         pipe.add_component("openapi_container", OpenAPIServiceConnector())
         pipe.add_component(
@@ -256,7 +258,14 @@ class TestOpenAPIServiceConnector:
             "final_prompt_adapter",
             OutputAdapter("{{system_message + service_response}}", list[ChatMessage], unsafe=True),
         )
-        pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4.1-nano", streaming_callback=print_streaming_chunk))
+        pipe.add_component(
+            "llm",
+            OpenAIChatGenerator(
+                model="gpt-5.6-luna",
+                generation_kwargs={"reasoning_effort": "none"},
+                streaming_callback=print_streaming_chunk,
+            ),
+        )
 
         pipe.connect("spec_to_functions.functions", "prepare_fc_adapter.functions")
         pipe.connect("spec_to_functions.openapi_specs", "openapi_spec_adapter.specs")
