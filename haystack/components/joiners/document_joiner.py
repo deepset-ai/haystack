@@ -221,6 +221,7 @@ class DocumentJoiner:
 
     @staticmethod
     def _merge_embeddings(document_lists: list[list[Document]]) -> list[Document]:
+        """Combine `embedding` and `sparse_embedding` fields of documents with the same ID."""
         merged: dict[str, Document] = {}
 
         for doc in itertools.chain.from_iterable(document_lists):

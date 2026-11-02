@@ -224,14 +224,14 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 document_store = QdrantDocumentStore(location=":memory:", use_sparse_embeddings=True)
 
 pipeline = Pipeline()
-pipeline.add_component("dense", SentenceTransformersDocumentEmbedder())
-pipeline.add_component("sparse", SentenceTransformersSparseDocumentEmbedder())
+pipeline.add_component("dense_embedder", SentenceTransformersDocumentEmbedder())
+pipeline.add_component("sparse_embedder", SentenceTransformersSparseDocumentEmbedder())
 pipeline.add_component(
     "joiner", DocumentJoiner(join_mode="merge_embeddings", sort_by_score=False)
 )
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
-pipeline.connect("dense.documents", "joiner.documents")
-pipeline.connect("sparse.documents", "joiner.documents")
+pipeline.connect("dense_embedder.documents", "joiner.documents")
+pipeline.connect("sparse_embedder.documents", "joiner.documents")
 pipeline.connect("joiner.documents", "writer.documents")
 
 documents = [
@@ -240,7 +240,10 @@ documents = [
 ]
 result = asyncio.run(
     pipeline.run_async(
-        data={"dense": {"documents": documents}, "sparse": {"documents": documents}}
+        data={
+            "dense_embedder": {"documents": documents},
+            "sparse_embedder": {"documents": documents},
+        }
     )
 )
 print(result)
