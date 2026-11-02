@@ -1072,27 +1072,45 @@ class PipelineBase:  # noqa: PLW1641
         Release resources held by the pipeline's components by calling each component's `close` method.
 
         Only the synchronous side of each component is released here; use `close_async` to release async clients.
+        If a component raises an `Exception`, cleanup of the remaining components is still attempted before the first
+        error is re-raised.
         """
+        first_error: Exception | None = None
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
             if hasattr(instance, "close"):
                 logger.info("Closing component {component_name}...", component_name=component_name)
-                instance.close()
+                try:
+                    instance.close()
+                except Exception as error:
+                    if first_error is None:
+                        first_error = error
+        if first_error is not None:
+            raise first_error
 
     async def close_async(self) -> None:
         """
         Release resources held by the pipeline's components, using the async close path where available.
 
         Each component is closed with `close_async` if it has one, otherwise with its sync `close`.
+        If a component raises an `Exception`, cleanup of the remaining components is still attempted before the first
+        error is re-raised.
         """
+        first_error: Exception | None = None
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
-            if hasattr(instance, "close_async"):
-                logger.info("Closing component {component_name}...", component_name=component_name)
-                await instance.close_async()
-            elif hasattr(instance, "close"):
-                logger.info("Closing component {component_name}...", component_name=component_name)
-                instance.close()
+            try:
+                if hasattr(instance, "close_async"):
+                    logger.info("Closing component {component_name}...", component_name=component_name)
+                    await instance.close_async()
+                elif hasattr(instance, "close"):
+                    logger.info("Closing component {component_name}...", component_name=component_name)
+                    instance.close()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+        if first_error is not None:
+            raise first_error
 
     @staticmethod
     def _create_component_span(
