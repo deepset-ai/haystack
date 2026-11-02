@@ -173,6 +173,32 @@ class TestComponentTool:
         assert "reply" in result
         assert result["reply"] == "Hello, world!"
 
+    def test_custom_parameters_warn_unknown_component_input(self, caplog):
+        parameters = {"type": "object", "properties": {"text": {"type": "string"}, "unknown": {"type": "string"}}}
+        tool = ComponentTool(component=SimpleComponent(), parameters=parameters)
+        assert "unknown" in caplog.text
+        restored = ComponentTool.from_dict(tool.to_dict())
+        assert restored.invoke(text="world", unknown="ignored") == {"reply": "Hello, world!"}
+
+    @pytest.mark.parametrize("parameters", [{"type": "object"}, {"type": "object", "properties": {}}])
+    def test_custom_parameters_reject_missing_mandatory_input(self, parameters):
+        with pytest.raises(ValueError, match="requires the inputs.*text"):
+            ComponentTool(component=SimpleComponent(), parameters=parameters)
+
+    def test_unknown_arguments_are_skipped(self, caplog):
+        tool = ComponentTool(component=DualModeComponent())
+        assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
+        assert "unexpected" in caplog.text
+
+    def test_custom_parameters_allow_mandatory_input_from_state(self):
+        parameters = {"type": "object", "properties": {}}
+
+        tool = ComponentTool(
+            component=SimpleComponent(), parameters=parameters, inputs_from_state={"user_text": "text"}
+        )
+
+        assert tool.parameters == parameters
+
     def test_from_component_long_description(self):
         tool = ComponentTool(component=SimpleComponent(), description="".join(["A"] * 1024))
         assert len(tool.description) == 1024
@@ -531,6 +557,11 @@ class TestComponentTool:
         param_names = list(tool.parameters.get("properties", {}).keys())
         assert "state" not in param_names
         assert "query" in param_names
+
+        custom_tool = ComponentTool(
+            component=ComponentWithState(), parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+        )
+        assert custom_tool.invoke(query="hello", state=State(schema={})) == {"result": "hello"}
 
     def test_from_component_with_optional_state_param_excluded_from_schema(self):
         @component
@@ -916,6 +947,11 @@ def dual_tool():
 
 
 class TestComponentToolAsync:
+    @pytest.mark.asyncio
+    async def test_unknown_arguments_are_skipped(self, dual_tool, caplog):
+        assert await dual_tool.invoke_async(text="hi", unexpected=42) == {"reply": "async:hi"}
+        assert "unexpected" in caplog.text
+
     def test_async_function_is_wired_only_when_component_has_run_async(self, sync_tool, dual_tool):
         assert sync_tool.function is not None
         assert sync_tool.async_function is None
