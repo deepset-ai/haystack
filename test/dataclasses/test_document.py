@@ -17,6 +17,11 @@ from haystack.dataclasses.sparse_embedding import SparseEmbedding
 @pytest.mark.parametrize(
     "doc,doc_str",
     [
+        (Document(embedding=[0.1, 0.2, 0.3]), "embedding: vector of size 3"),
+        (
+            Document(sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.1, 0.3])),
+            "sparse_embedding: vector with 2 non-zero elements",
+        ),
         (Document(multivector_embedding=[[1.0, 0.0], [0.0, 1.0]]), "multivector_embedding: 2 vectors"),
         (Document(content="test text"), "content: 'test text'"),
         (Document(blob=ByteStream(b"hello, test string")), "blob: 18 bytes"),
