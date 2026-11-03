@@ -1,4 +1,12 @@
 ---
+upgrade:
+  - |
+    If you read ``id``, ``encrypted_content``, or ``status`` directly from
+    ``reply.reasoning.extra`` in ``OpenAIResponsesChatGenerator`` replies, read
+    them from entries in ``reply.reasoning.extra["reasoning_items"]`` instead.
+    For example, replace ``reply.reasoning.extra["id"]`` with
+    ``reply.reasoning.extra["reasoning_items"][0]["id"]`` for the first item,
+    or iterate over the list to handle all reasoning items.
 fixes:
   - |
     Preserve all reasoning items returned by ``OpenAIResponsesChatGenerator`` in both

@@ -161,7 +161,7 @@ class TestConfirmationHook:
             ConfirmationUIResult(action="reject"),
         ],
     )
-    def test_preserves_multiple_reasoning_items(self, tools, ui_result):
+    def test_preserves_reasoning_and_tool_call_extra(self, tools, ui_result):
         reasoning = ReasoningContent(
             reasoning_text="Use the tool",
             extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
@@ -355,7 +355,7 @@ class TestConfirmationHookAsync:
         ],
     )
     @pytest.mark.asyncio
-    async def test_preserves_multiple_reasoning_items(self, tools, ui_result):
+    async def test_preserves_reasoning_and_tool_call_extra(self, tools, ui_result):
         reasoning = ReasoningContent(
             reasoning_text="Use the tool",
             extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
