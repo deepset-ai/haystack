@@ -150,7 +150,7 @@
 | haystack/core/pipeline/component\_checks.py                                |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                     |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                             |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                         |      331 |       19 |     94% |174, 181, 427, 570, 605, 773, 968, 973, 990-994, 998-1010, 1051-1060, 1085 |
+| haystack/core/pipeline/pipeline.py                                         |      331 |       21 |     94% |174, 181, 427, 570, 605, 773, 965-969, 973, 990-994, 998-1010, 1051-1060, 1085 |
 | haystack/core/pipeline/utils.py                                            |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                             |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                   |      135 |        0 |    100% |           |
@@ -186,7 +186,7 @@
 | haystack/hooks/budget/hooks.py                                             |       57 |        0 |    100% |           |
 | haystack/hooks/compaction/\_\_init\_\_.py                                  |        5 |        0 |    100% |           |
 | haystack/hooks/compaction/hooks.py                                         |      111 |        1 |     99% |       296 |
-| haystack/hooks/compaction/sliding\_window.py                               |       67 |        0 |    100% |           |
+| haystack/hooks/compaction/sliding\_window.py                               |       80 |        0 |    100% |           |
 | haystack/hooks/compaction/summarization.py                                 |      171 |       16 |     91% |89, 314-317, 475-479, 483-484, 488-492 |
 | haystack/hooks/compaction/tool\_result\_offloading.py                      |       52 |        1 |     98% |       165 |
 | haystack/hooks/compaction/tool\_result\_pruning.py                         |       36 |        0 |    100% |           |
@@ -213,7 +213,7 @@
 | haystack/hooks/tool\_result\_offloading/types/\_\_init\_\_.py              |        2 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/types/protocol.py                  |       19 |        2 |     89% |    56, 61 |
 | haystack/hooks/tool\_result\_offloading/utils.py                           |       62 |        0 |    100% |           |
-| haystack/hooks/utils.py                                                    |       48 |        0 |    100% |           |
+| haystack/hooks/utils.py                                                    |       51 |        0 |    100% |           |
 | haystack/lazy\_imports.py                                                  |       13 |        0 |    100% |           |
 | haystack/logging.py                                                        |      191 |        6 |     97% |268-269, 363-364, 457-459 |
 | haystack/marshal/\_\_init\_\_.py                                           |        5 |        0 |    100% |           |
@@ -275,7 +275,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18389** |  **687** | **96%** |           |
+| **TOTAL**                                                                  | **18405** |  **689** | **96%** |           |
 
 
 ## Setup coverage badge

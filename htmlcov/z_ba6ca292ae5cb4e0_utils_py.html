@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_177ee90f6ce1b012_from_function_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-03 08:29 +0000
+            created at 2026-11-03 11:16 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -87,7 +87,7 @@
     <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">from</span> <span class="nam">collections</span><span class="op">.</span><span class="nam">abc</span> <span class="key">import</span> <span class="nam">Callable</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">dataclasses</span> <span class="key">import</span> <span class="nam">ChatMessage</span><span class="op">,</span> <span class="nam">ChatRole</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">hooks</span><span class="op">.</span><span class="nam">utils</span> <span class="key">import</span> <span class="nam">_SYSTEM_REMINDER_META_KEY</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">hooks</span><span class="op">.</span><span class="nam">utils</span> <span class="key">import</span> <span class="nam">_is_system_reminder</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">token_counters</span> <span class="key">import</span> <span class="nam">TokenCounter</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="com"># Meta key marking a message that a compactor produced. Its value records which strategy ran.</span>&nbsp;</span><span class="r"></span></p>
@@ -107,7 +107,7 @@
     <p class="run"><span class="n"><a id="t25" href="#t25">25</a></span><span class="t">    <span class="key">return</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t26" href="#t26">26</a></span><span class="t">        <span class="nam">message</span><span class="op">.</span><span class="nam">is_from</span><span class="op">(</span><span class="nam">role</span><span class="op">=</span><span class="nam">ChatRole</span><span class="op">.</span><span class="nam">USER</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t">        <span class="key">and</span> <span class="nam">_COMPACTION_META_KEY</span> <span class="key">not</span> <span class="key">in</span> <span class="nam">message</span><span class="op">.</span><span class="nam">meta</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t">        <span class="key">and</span> <span class="nam">_SYSTEM_REMINDER_META_KEY</span> <span class="key">not</span> <span class="key">in</span> <span class="nam">message</span><span class="op">.</span><span class="nam">meta</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t">        <span class="key">and</span> <span class="key">not</span> <span class="nam">_is_system_reminder</span><span class="op">(</span><span class="nam">message</span><span class="op">=</span><span class="nam">message</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t29" href="#t29">29</a></span><span class="t">    <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -284,7 +284,7 @@
             <a class="nav" href="z_177ee90f6ce1b012_from_function_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-03 08:29 +0000
+            created at 2026-11-03 11:16 +0000
         </p>
     </div>
 </footer>
