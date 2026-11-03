@@ -37,6 +37,26 @@ def _is_compaction_note(message: ChatMessage) -> bool:
     return _is_compaction_message(message=message, strategy=_STRATEGY, role=ChatRole.USER)
 
 
+def _is_protected_compaction_message(message: ChatMessage) -> bool:
+    """
+    Whether a message is another compaction strategy's user-role record this compactor must not delete.
+
+    A different strategy (for example ``SummarizationCompactor``) leaves a user message carrying the same
+    ``context_compaction`` marker but with its own strategy name. Such a message is the compressed record of history
+    that strategy deliberately preserved, not an omission note of ours, so removing it would silently undo that
+    compaction's work. Only user-role messages are protected here: a tool-role marker is a pruned/offloaded result
+    that is retained or released together with its Agent step, and our own omission notes stay foldable as before.
+    """
+    if not message.is_from(role=ChatRole.USER):
+        return False
+    marker = message.meta.get(_COMPACTION_META_KEY)
+    # A marker that is not a dict cannot name a strategy, so it cannot be another strategy's record.
+    if not isinstance(marker, dict):
+        return False
+    strategy = marker.get("strategy")
+    return isinstance(strategy, str) and strategy != _STRATEGY
+
+
 def _flatten(groups: list[list[int]]) -> list[int]:
     """Join index groups into a single ordered list of indices."""
     return [index for group in groups for index in group]
@@ -142,8 +162,10 @@ def _task_and_step_split(
     Split a conversation into the messages to keep and the messages to remove.
 
     Leading system messages and the latest real user message are always kept. Historical turns are kept in full when
-    they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed one at a time
-    while keeping each assistant message together with its tool results.
+    they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed one at a
+    time while keeping each assistant message together with its tool results. A user-role record another compaction
+    strategy produced (such as a ``SummarizationCompactor`` summary) is never part of a removable turn or step and is
+    retained in place.
 
     :param messages: The full conversation to split, ordered oldest to newest.
     :param target_tokens: The token budget for the messages that are kept.
@@ -154,8 +176,9 @@ def _task_and_step_split(
 
         1. The messages to keep, ordered oldest to newest.
         2. The position in that list where an omission note belongs, which is where the removed messages used to sit:
-           directly after the leading system messages when only historical turns were removed, and directly after the
-           user message anchoring the current task when the task's own steps were removed.
+           directly after the leading system messages and any preserved history when only historical turns were
+           removed, and directly after the current task (and any preserved record preceding the surviving steps) when
+           the task's own steps were removed.
         3. Every message selected for removal.
     """
     # The landmarks the split is built around: the Agent instructions, and the user message anchoring the current task.
@@ -163,13 +186,19 @@ def _task_and_step_split(
     task_index = _latest_user_index(messages=messages)
     task_indices = [task_index] if task_index is not None else []
 
+    # Records another strategy (e.g. summarization) left are not part of any turn or step this compactor may remove.
+    protected_indices = [
+        index for index in range(len(messages)) if _is_protected_compaction_message(message=messages[index])
+    ]
+
     # The two stretches compaction may remove. A group is the unit of removal, so a turn or a step is never split.
     historical_groups, agent_step_groups = _removable_groups(
         messages=messages, system_end=system_end, task_index=task_index
     )
 
-    # The instructions and the current task are never removed, so they come off the budget first.
-    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices])
+    # The instructions, the current task, and other strategies' records are never removed, so they come off the
+    # budget first.
+    protected = _messages_at(messages=messages, indices=[*range(system_end), *protected_indices, *task_indices])
     first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
         historical_groups=historical_groups,
@@ -179,14 +208,28 @@ def _task_and_step_split(
         min_keep_steps=min_keep_steps,
     )
 
-    # What survives, laid out in conversation order: the instructions, the turns that fit, the task, then its steps.
+    # What survives, laid out in conversation order: the instructions, the protected records, the turns that fit, the
+    # task, then its steps. Sorting restores conversation order since protected records are scattered among them.
     kept_turn_indices = _flatten(groups=historical_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=agent_step_groups[first_kept_step:])
-    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices]
+    kept_indices = sorted(
+        {*range(system_end), *protected_indices, *kept_turn_indices, *task_indices, *kept_step_indices}
+    )
 
-    # The note stands in for what was dropped, so it goes where those messages used to sit. Either right after the
-    # instructions when the historical turns were trimmed, or right after the task anchor when its own steps were.
-    note_index = system_end if first_kept_step == 0 else system_end + len(kept_turn_indices) + len(task_indices)
+    # The note stands in for what was dropped. When only historical turns were trimmed it goes right after the leading
+    # system messages and every surviving record that still precedes the current task. When the task's own steps were
+    # removed it goes immediately after the current task and every surviving record before the retained steps.
+    #
+    # `note_index` is an insertion point into the kept list (a count), while `boundary` is an index in the original
+    # conversation: the note is placed immediately after every kept message up to and including that boundary. A
+    # protected summary surviving in front of the history is therefore folded to the right side of the note.
+    if first_kept_step == 0:
+        boundary = system_end - 1
+    elif task_index is not None:
+        boundary = task_index
+    else:
+        boundary = system_end - 1
+    note_index = sum(index <= boundary for index in kept_indices)
     return (
         _messages_at(messages=messages, indices=kept_indices),
         note_index,
@@ -199,9 +242,13 @@ class SlidingWindowCompactor(Compactor):
     """
     Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-    Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
-    and the current task's history is kept in complete Agent steps, where a step is an assistant message together
-    with all immediately following tool results.
+    Leading system messages and the latest user message are protected. Historical turns are kept in full when they
+    fit, and the current task's history is kept in complete Agent steps, where a step is an assistant message
+    together with all immediately following tool results.
+
+    User-role records another compaction strategy leaves in place -- for example the summary a
+    ``SummarizationCompactor`` produced -- are never removed, since deleting them would discard the compressed memory
+    that strategy deliberately kept.
 
     An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
     only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -228,9 +275,9 @@ class SlidingWindowCompactor(Compactor):
         """
         Initialize the compactor.
 
-        :param min_keep_steps: The fewest complete recent Agent steps to keep even when they exceed the target. A step
-            is an assistant message and all immediately following tool results. `0` allows all completed steps to be
-            removed when none fit.
+        :param min_keep_steps: The fewest complete recent Agent steps to keep even when they exceed the target. A
+            step is an assistant message and all immediately following tool results. `0` allows all completed steps
+            to be removed when none fit.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
         :raises ValueError: If `min_keep_steps` is negative.

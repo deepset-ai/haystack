@@ -112,6 +112,8 @@ agent = Agent(
 
 If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes historical turns and then, if needed, the current task's oldest Agent steps. A result the pruning compactor already replaced with a placeholder stays with the historical turn it belongs to, so its tool call keeps an answer. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
 
+The same protection applies when a summarization compactor runs before a sliding window. The user-role `<conversation_summary>` record it leaves carries that strategy's `context_compaction` metadata, and the sliding window retains it as protected context instead of treating it as a removable turn or step; it removes only ordinary history and its own omission notes.
+
 ### Creating a custom compactor
 
 Implement the `Compactor` protocol when you need a different strategy, such as preserving application-specific messages or selectively shortening content using custom metadata.

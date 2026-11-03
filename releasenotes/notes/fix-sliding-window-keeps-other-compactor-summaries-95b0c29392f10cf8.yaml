@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``SlidingWindowCompactor`` deleting a user-role record another compaction strategy produced, such as the
+    summary a ``SummarizationCompactor`` leaves in place. That summary belongs to neither a removable historical
+    turn nor a current-task Agent step, so it is now retained and counted as protected context; only the sliding
+    window's own omission notes are folded into a fresh note.
