@@ -108,6 +108,17 @@ def test_init_with_non_string_content(content):
         Document("", content)
 
 
+def test_init_with_inconsistent_multivector_dimensions():
+    embedding = [[0.1, 0.9, 0.1], [0.8, 0.2]]
+    message = r"All vectors in `multivector_embedding` must have the same length\."
+
+    with pytest.raises(ValueError, match=message):
+        Document(multivector_embedding=embedding)
+
+    with pytest.raises(ValueError, match=message):
+        replace(Document(content="test"), multivector_embedding=embedding)
+
+
 def test_init_with_numpy_embedding():
     expected = Document(content="test text", embedding=[0.1, 0.2, 0.3])
 

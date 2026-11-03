@@ -57,10 +57,17 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
 
     def __post_init__(self) -> None:
         """
-        Checks content type, converts embedding from 1.x type and generates the ID based on the init parameters.
+        Validates content and multivector dimensions, converts legacy embeddings and generates the ID.
+
+        :raises ValueError: If content is not a string or multivector vectors have different lengths.
         """
         if self.content is not None and not isinstance(self.content, str):
             raise ValueError("The `content` field must be a string or None.")
+
+        if self.multivector_embedding:
+            dimension = len(self.multivector_embedding[0])
+            if any(len(vector) != dimension for vector in self.multivector_embedding):
+                raise ValueError("All vectors in `multivector_embedding` must have the same length.")
 
         # Embeddings were stored as NumPy arrays in 1.x, so we convert them to the new type
         if isinstance(self.embedding, ndarray):
