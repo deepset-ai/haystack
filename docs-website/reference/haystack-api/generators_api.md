@@ -715,6 +715,10 @@ Process messages and generate a response from the language model.
 - "last_message": The last message exchanged during the LLM's run.
 - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
   chat generator did not return usage data.
+- "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+  cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+  filter). Taken from the chat generator's `finish_reason`.
 
 #### run_async
 
@@ -749,6 +753,10 @@ Asynchronously process messages and generate a response from the language model.
 - "last_message": The last message exchanged during the LLM's run.
 - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
   chat generator did not return usage data.
+- "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+  cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+  filter). Taken from the chat generator's `finish_reason`.
 
 ## chat/mock
 
