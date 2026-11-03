@@ -825,6 +825,7 @@ to/from dictionary and JSON.
 - **score** (<code>float | None</code>) – Score of the document. Used for ranking, usually assigned by retrievers.
 - **embedding** (<code>list\[float\] | None</code>) – dense vector representation of the document.
 - **sparse_embedding** (<code>SparseEmbedding | None</code>) – sparse vector representation of the document.
+- **multivector_embedding** (<code>list\[list\[float\]\] | None</code>) – multi-vector representation of the document.
 
 #### to_dict
 
