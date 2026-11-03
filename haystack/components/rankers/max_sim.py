@@ -120,9 +120,9 @@ class MaxSimRanker:
         return {"documents": [replace(document, score=score) for document, score in scored_documents[:top_k]]}
 
     @staticmethod
-    def _prepare_vectors(*, multivector_embedding: list[list[float]] | None, input_name: str) -> NDArray[np.float32]:
+    def _prepare_vectors(*, multivector_embedding: list[list[float]] | None, input_name: str) -> NDArray[np.float64]:
         try:
-            matrix = np.asarray(multivector_embedding, dtype=np.float32)
+            matrix = np.asarray(multivector_embedding, dtype=np.float64)
         except (TypeError, ValueError) as error:
             raise ValueError(f"{input_name} must be a non-empty matrix of finite numbers.") from error
         if matrix.ndim != 2 or matrix.size == 0 or not np.isfinite(matrix).all():
