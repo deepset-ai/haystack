@@ -1,5 +1,5 @@
 ---
-upgrade:
+features:
   - |
     ``DocumentJoiner`` now supports ``join_mode="merge_embeddings"`` to combine the
     ``embedding`` and ``sparse_embedding`` fields of documents with the same ID.

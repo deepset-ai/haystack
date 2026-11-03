@@ -101,6 +101,8 @@ class DocumentJoiner:
             Specifies the join mode to use. Available modes:
             - `concatenate`: Keeps the highest-scored document in case of duplicates.
             - `merge_embeddings`: Combines the `embedding` and `sparse_embedding` fields of documents with the same ID.
+              All other fields, including `content`, `meta`, and `score`, are kept from the first document
+              received with that ID.
             - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
             - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
             - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
@@ -221,7 +223,11 @@ class DocumentJoiner:
 
     @staticmethod
     def _merge_embeddings(document_lists: list[list[Document]]) -> list[Document]:
-        """Combine `embedding` and `sparse_embedding` fields of documents with the same ID."""
+        """
+        Combine `embedding` and `sparse_embedding` fields of documents with the same ID.
+
+        Keep all other fields, including `content`, `meta`, and `score`, from the first document.
+        """
         merged: dict[str, Document] = {}
 
         for doc in itertools.chain.from_iterable(document_lists):
