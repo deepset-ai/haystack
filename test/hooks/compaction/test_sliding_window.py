@@ -218,24 +218,24 @@ class TestSlidingWindowCompactor:
         assert compacted == [messages[0], compacted[1], *messages[3:]]
         assert compacted[1].meta[_COMPACTION_META_KEY]["removed_messages"] == 2
 
-    def test_keeps_a_system_reminder_with_the_step_that_follows_it(self):
-        reminder = ChatMessage.from_user(
-            text="<system-reminder>\n2 steps remaining.\n</system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}
-        )
+    def test_keeps_or_removes_a_system_reminder_with_the_reply_after_it(self):
         messages = [
             ChatMessage.from_system(text="rules"),
             ChatMessage.from_user(text="current task"),
+            ChatMessage.from_user(text="3 steps remaining.", meta={_SYSTEM_REMINDER_META_KEY: True}),
             tool_call("c1"),
             tool_result(result="first result", call_id="c1"),
-            reminder,
+            ChatMessage.from_user(text="2 steps remaining.", meta={_SYSTEM_REMINDER_META_KEY: True}),
             tool_call("c2"),
             tool_result(result="second result", call_id="c2"),
+            # Added for the LLM call about to happen, so there is no reply to it yet.
+            ChatMessage.from_user(text="This is your last step.", meta={_SYSTEM_REMINDER_META_KEY: True}),
         ]
         compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         assert compacted is not None
-        # The oldest step is removed, while the reminder stays in front of the step the model took after reading it.
-        assert compacted == [*messages[:2], compacted[2], *messages[4:]]
-        assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 2
+        # The oldest reminder is removed together with the reply after it, and the other two reminders are kept.
+        assert compacted == [*messages[:2], compacted[2], *messages[5:]]
+        assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 3
 
     def test_keeps_a_pruned_tool_result_inside_a_kept_turn(self):
         messages = [
