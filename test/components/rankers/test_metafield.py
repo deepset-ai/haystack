@@ -28,6 +28,15 @@ class TestMetaFieldRanker:
         sorted_scores = sorted([doc.meta["rating"] for doc in docs_after], reverse=True)
         assert [doc.meta["rating"] for doc in docs_after] == sorted_scores
 
+    @pytest.mark.parametrize("weight", [float("nan"), float("inf"), float("-inf")])
+    def test_rejects_non_finite_weight(self, weight):
+        with pytest.raises(ValueError, match=r"range \[0,1\]"):
+            MetaFieldRanker(meta_field="rating", weight=weight)
+
+        ranker = MetaFieldRanker(meta_field="rating")
+        with pytest.raises(ValueError, match=r"range \[0,1\]"):
+            ranker.run(documents=[Document(content="abc", meta={"rating": 1})], weight=weight)
+
     def test_run_with_weight_equal_to_0(self):
         ranker = MetaFieldRanker(meta_field="rating", weight=0.0)
         docs_before = [Document(content="abc", meta={"rating": value}) for value in [1.1, 0.5, 2.3]]
