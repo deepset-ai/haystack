@@ -190,6 +190,28 @@ class TestDocumentCleaner:
         assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
         assert result.content == text
 
+    def test_remove_repeated_substrings_keeps_header_and_footer_text_in_body(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        bodies = [
+            "Summary of the year.",
+            "The ACME Corp Annual Report shows growth.",
+            "Revenue rose. Confidential - do not share outside the board.",
+            "Costs fell across regions.",
+            "Outlook remains positive.",
+        ]
+        # Pages need to be longer than the 300 characters searched for a header or footer,
+        # so the filler is unique to each page and the two regions do not overlap.
+        bodies = [f"{body} " + " ".join(f"word{page}x{n}" for n in range(60)) for page, body in enumerate(bodies)]
+        text = "\f".join(f"ACME Corp Annual Report\n{body}\nConfidential - do not share" for body in bodies)
+        result = cleaner.run(documents=[Document(content=text)])["documents"][0]
+
+        # The header and footer are removed from every page, but the same words
+        # inside the body text are kept.
+        assert result.content is not None
+        assert result.content.split("\f") == [f"\n{body}" for body in bodies]
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [

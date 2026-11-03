@@ -301,18 +301,42 @@ class DocumentCleaner:
         start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
         found_header = self._find_longest_common_ngram(start_of_pages)
         if found_header:
-            pages = [page.replace(found_header, "") for page in pages]
+            pages = [self._remove_header(page, found_header, n_chars) for page in pages]
 
         # footer
         end_of_pages = [p[-n_chars:] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
-            pages = [page.replace(found_footer, "") for page in pages]
+            pages = [self._remove_footer(page, found_footer, n_chars) for page in pages]
 
         logger.debug(
             "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
         )
         return "\f".join(pages)
+
+    @staticmethod
+    def _remove_header(page: str, header: str, n_chars: int) -> str:
+        """
+        Remove the first occurrence of the header if it lies within the first n_chars of the page.
+
+        Occurrences further down the page are body text and are kept.
+        """
+        index = page.find(header, 0, n_chars)
+        if index == -1:
+            return page
+        return page[:index] + page[index + len(header) :]
+
+    @staticmethod
+    def _remove_footer(page: str, footer: str, n_chars: int) -> str:
+        """
+        Remove the last occurrence of the footer if it lies within the last n_chars of the page.
+
+        Occurrences further up the page are body text and are kept.
+        """
+        index = page.rfind(footer, max(len(page) - n_chars, 0))
+        if index == -1:
+            return page
+        return page[:index] + page[index + len(footer) :]
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """

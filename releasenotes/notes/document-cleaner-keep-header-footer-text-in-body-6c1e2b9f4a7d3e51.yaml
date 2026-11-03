@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentCleaner`` with ``remove_repeated_substrings=True`` deleting body text.
+    After detecting a repeated header or footer, it removed every occurrence of that text on
+    each page, so a sentence such as "The ACME Corp Annual Report shows growth." lost the
+    header words. The header is now removed only from the start of each page and the footer
+    only from the end, and the same words elsewhere in the page are kept.
