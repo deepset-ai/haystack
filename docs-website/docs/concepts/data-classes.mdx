@@ -157,6 +157,7 @@ class Document(metaclass=_BackwardCompatible):
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None)
     sparse_embedding: Optional[SparseEmbedding] = field(default=None)
+    multivector_embedding: list[list[float]] | None = field(default=None)
 ```
 
 #### Example
