@@ -293,6 +293,7 @@ class TestLLM:
             llm = LLM(chat_generator=FinishReasonChatGenerator(finish_reason=finish_reason))
             result = llm.run(messages=[ChatMessage.from_user("Hi")])
             assert result["exit_reason"] == expected_exit_reason
+            assert result.keys() == llm.__haystack_output__._sockets_dict.keys() 
 
         @pytest.mark.asyncio
         @pytest.mark.parametrize(
