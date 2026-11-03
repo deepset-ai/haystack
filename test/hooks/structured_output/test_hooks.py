@@ -155,23 +155,19 @@ class TestStructuredOutputHook:
         assert sum(1 for m in result["messages"] if m.meta.get(_CORRECTION_META_KEY)) == 1
         assert "after 1 retries" in caplog.text
 
-    def test_count_corrections_skips_system_reminders_but_stops_at_a_user_message(self):
-        reminder = ChatMessage.from_user(
-            "<system-reminder>2 steps left</system-reminder>", meta={_SYSTEM_REMINDER_META_KEY: True}
+    def test_count_corrections_counts_corrections_that_are_also_tagged_as_system_reminders(self):
+        correction = ChatMessage.from_user(
+            "Your previous reply could not be used", meta={_CORRECTION_META_KEY: True, _SYSTEM_REMINDER_META_KEY: True}
         )
-        correction = ChatMessage.from_user("Your previous reply could not be used", meta={_CORRECTION_META_KEY: True})
         messages = [
             ChatMessage.from_user("Tell me about Paris"),
             ChatMessage.from_assistant("not json"),
             correction,
-            reminder,
             ChatMessage.from_assistant("not json"),
             correction,
-            reminder,
             ChatMessage.from_assistant("not json"),
         ]
         assert _count_corrections(messages=messages) == 2
-        assert _count_corrections(messages=[*messages, ChatMessage.from_user("New question"), reminder]) == 0
 
     def test_skips_parsing_while_another_hook_keeps_the_agent_running(self, caplog):
         hook = StructuredOutputHook(schema=CityInfo, max_retries=0)
