@@ -17,6 +17,12 @@ from haystack.dataclasses.sparse_embedding import SparseEmbedding
 @pytest.mark.parametrize(
     "doc,doc_str",
     [
+        (Document(embedding=[0.1, 0.2, 0.3]), "embedding: vector of size 3"),
+        (
+            Document(sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.1, 0.3])),
+            "sparse_embedding: vector with 2 non-zero elements",
+        ),
+        (Document(multivector_embedding=[[1.0, 0.0], [0.0, 1.0]]), "multivector_embedding: 2 vectors"),
         (Document(content="test text"), "content: 'test text'"),
         (Document(blob=ByteStream(b"hello, test string")), "blob: 18 bytes"),
         (Document(content="test text", blob=ByteStream(b"hello, test string")), "content: 'test text', blob: 18 bytes"),
@@ -35,6 +41,7 @@ def test_init():
     assert doc.score is None
     assert doc.embedding is None
     assert doc.sparse_embedding is None
+    assert doc.multivector_embedding is None
 
 
 def test_init_with_wrong_parameters():
@@ -52,8 +59,9 @@ def test_init_with_parameters():
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=sparse_embedding,
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
     )
-    assert doc.id == "c31efd4986b1f2424e5058482c6f668ccad2309043c2346524cd81d255e159fe"
+    assert doc.id == "de308ef20ea8a6ae1bb521bd2f45a55ee3ada37cb100e031ba736ba1e72e65c9"
     assert doc.content == "test text"
     assert doc.blob is not None
     assert doc.blob.data == blob_data
@@ -62,6 +70,7 @@ def test_init_with_parameters():
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
     assert doc.sparse_embedding == sparse_embedding
+    assert doc.multivector_embedding == [[1.0, 0.0], [0.0, 1.0]]
 
 
 @pytest.mark.parametrize(
@@ -97,6 +106,17 @@ def test_init_with_non_string_content(content):
 
     with pytest.raises(ValueError, match="must be a string or None"):
         Document("", content)
+
+
+def test_init_with_inconsistent_multivector_dimensions():
+    embedding = [[0.1, 0.9, 0.1], [0.8, 0.2]]
+    message = r"All vectors in `multivector_embedding` must have the same length\."
+
+    with pytest.raises(ValueError, match=message):
+        Document(multivector_embedding=embedding)
+
+    with pytest.raises(ValueError, match=message):
+        replace(Document(content="test"), multivector_embedding=embedding)
 
 
 def test_init_with_numpy_embedding():
@@ -156,6 +176,7 @@ def test_to_dict():
         "score": None,
         "embedding": None,
         "sparse_embedding": None,
+        "multivector_embedding": None,
     }
 
 
@@ -169,6 +190,7 @@ def test_to_dict_without_flattening():
         "score": None,
         "embedding": None,
         "sparse_embedding": None,
+        "multivector_embedding": None,
     }
 
 
@@ -180,6 +202,7 @@ def test_to_dict_with_custom_parameters():
         score=0.99,
         embedding=[10.0, 10.0],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
     )
 
     assert doc.to_dict() == {
@@ -191,6 +214,7 @@ def test_to_dict_with_custom_parameters():
         "score": 0.99,
         "embedding": [10.0, 10.0],
         "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "multivector_embedding": [[1.0, 0.0], [0.0, 1.0]],
     }
 
 
@@ -202,6 +226,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         score=0.99,
         embedding=[10.0, 10.0],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
     )
 
     assert doc.to_dict(flatten=False) == {
@@ -212,6 +237,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "score": 0.99,
         "embedding": [10.0, 10.0],
         "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "multivector_embedding": [[1.0, 0.0], [0.0, 1.0]],
     }
 
 
@@ -225,6 +251,7 @@ def test_to_dict_with_colliding_meta_keys():
         "score": 0.9,
         "embedding": None,
         "sparse_embedding": None,
+        "multivector_embedding": None,
         "source": "web",
         "meta": {"content": "from-meta", "score": 0.5},
     }
@@ -244,6 +271,7 @@ def test_from_dict_with_parameters():
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
             "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+            "multivector_embedding": [[1.0, 0.0], [0.0, 1.0]],
         }
     ) == Document(
         content="test text",
@@ -252,6 +280,7 @@ def test_from_dict_with_parameters():
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
     )
 
 
@@ -326,6 +355,7 @@ def test_from_dict_with_flat_meta():
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
             "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+            "multivector_embedding": [[1.0, 0.0], [0.0, 1.0]],
             "date": "10-10-2023",
             "type": "article",
         }
@@ -335,6 +365,7 @@ def test_from_dict_with_flat_meta():
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
         meta={"date": "10-10-2023", "type": "article"},
     )
 
@@ -346,6 +377,7 @@ def test_from_dict_with_flat_meta():
         {"meta": {"nested": "value"}, "author": "Alice"},
         {"id": "meta-id", "content": "meta-content", "source": "web"},
         {"dataframe": "not-a-dataframe"},
+        {"multivector_embedding": "metadata value"},
     ],
 )
 def test_flatten_roundtrip_with_colliding_meta_keys(meta):
@@ -402,6 +434,7 @@ def test_from_dict_with_dataframe():
     assert doc.score is None
     assert doc.embedding is None
     assert doc.sparse_embedding is None
+    assert doc.multivector_embedding is None
 
     assert not hasattr(doc, "dataframe")
 
