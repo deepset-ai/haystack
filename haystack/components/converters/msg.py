@@ -19,9 +19,6 @@ with LazyImport("Run 'pip install python-oxmsg'") as oxmsg_import:
 
 logger = logging.getLogger(__name__)
 
-_MAPI_TO = 1
-_MAPI_CC = 2
-_MAPI_BCC = 3
 _MAPI_RESEND_FLAGS = 0x10000000 | 0x80000000
 
 
@@ -33,11 +30,6 @@ class MSGToDocument:
     This component extracts email metadata (such as sender, recipients, CC, BCC, subject) and body content from .msg
     files and converts them into structured Haystack Documents. Additionally, any file attachments within the .msg
     file are extracted as ByteStream objects.
-
-    To recipients are listed separately from Cc and Bcc recipients. Cc and Bcc values come from transport headers
-    when available, otherwise from the corresponding entries in the recipient table. Header values replace rather
-    than supplement the corresponding recipient-table values. Originator entries and recipients with missing or
-    unsupported types are omitted from the recipient lines.
 
     ### Example Usage
 
@@ -107,34 +99,29 @@ class MSGToDocument:
         if msg.sender is not None:
             txt += f"From: {msg.sender}\n"
 
-        recipients_by_type: dict[int, list[str]] = {_MAPI_TO: [], _MAPI_CC: [], _MAPI_BCC: []}
-        for recip in msg.recipients:
-            recipient_type = recip.properties.int_prop_value(PID_RECIPIENT_TYPE)
-            if recipient_type is None:
+        # Extract To/Cc/Bcc from transport headers; fall back to Outlook recipients when headers are missing or blank.
+        headers = {name.lower(): value for name, value in msg.message_headers.items()}
+        recipients = msg.recipients
+        for recipient_type, label in ((1, "To"), (2, "Cc"), (3, "Bcc")):
+            header = headers.get(label.lower(), "")
+            if header.strip():
+                txt += f"{label}: {header}\n"
                 continue
-            # Resend flags affect delivery, not the recipient's To/Cc/Bcc classification.
-            recipient_type &= ~_MAPI_RESEND_FLAGS
-            if recipient_type in recipients_by_type:
-                recipients_by_type[recipient_type].append(self._create_recipient_str(recip))
 
-        # To
-        recipients_str = ",".join(recipients_by_type[_MAPI_TO])
-        if recipients_str != "":
-            txt += f"To: {recipients_str}\n"
+            addresses = []
+            for recip in recipients:
+                kind = recip.properties.int_prop_value(PID_RECIPIENT_TYPE)
+                if kind is None:
+                    continue
 
-        # CC
-        cc_header = msg.message_headers.get("Cc") or msg.message_headers.get("CC")
-        if cc_header is None and recipients_by_type[_MAPI_CC]:
-            cc_header = ",".join(recipients_by_type[_MAPI_CC])
-        if cc_header is not None:
-            txt += f"Cc: {cc_header}\n"
+                # Ignore resend flags when identifying the recipient type.
+                if (kind & ~_MAPI_RESEND_FLAGS) == recipient_type:
+                    address = self._create_recipient_str(recip)
+                    if address.strip():
+                        addresses.append(address)
 
-        # BCC
-        bcc_header = msg.message_headers.get("Bcc") or msg.message_headers.get("BCC")
-        if bcc_header is None and recipients_by_type[_MAPI_BCC]:
-            bcc_header = ",".join(recipients_by_type[_MAPI_BCC])
-        if bcc_header is not None:
-            txt += f"Bcc: {bcc_header}\n"
+            if addresses:
+                txt += f"{label}: {','.join(addresses)}\n"
 
         # Subject
         if msg.subject != "":

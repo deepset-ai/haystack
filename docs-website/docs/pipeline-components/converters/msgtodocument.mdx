@@ -27,8 +27,6 @@ Converts Microsoft Outlook .msg files to documents.
 
 The `MSGToDocument` component converts Microsoft Outlook `.msg` files into documents. This component extracts the email metadata (such as sender, recipients, CC, BCC, subject) and body content. Additionally, any file attachments within the `.msg` file are extracted as `ByteStream` objects.
 
-The document content lists To recipients separately from Cc and Bcc recipients. Cc and Bcc values use transport headers when available and fall back independently to the corresponding recipient-table entries when those headers are missing. A header value replaces the corresponding recipient-table values; the converter does not combine the two sources. Originator entries and recipients with missing or unsupported types are omitted from the recipient lines.
-
 ## Usage
 
 First, install the `python-oxmsg` package to start using this converter:
