@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``ToolResultOffloadHook`` no longer overwrites results offloaded by an earlier ``Agent`` run in the same
+    conversation. Store keys were built from the step count, tool name and tool call id, but the step count restarts
+    on every run and some providers omit or repeat call ids, so the next turn wrote to the same key and the earlier
+    turn's pointer then read the newer result. Each key now ends with a random suffix.
