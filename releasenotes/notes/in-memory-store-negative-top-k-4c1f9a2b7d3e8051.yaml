@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``InMemoryDocumentStore.bm25_retrieval()`` and ``embedding_retrieval()``, and their async variants,
+    now raise a ``ValueError`` for a negative ``top_k``. Previously, a negative value silently dropped
+    documents from the end of the results, for example ``top_k=-1`` returned 9 of 10 matches.
