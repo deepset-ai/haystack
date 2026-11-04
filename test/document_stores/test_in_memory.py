@@ -282,7 +282,6 @@ class TestMemoryDocumentStore(
 
     @pytest.mark.parametrize("top_k", [-1, -5])
     def test_bm25_retrieval_with_negative_top_k_raises(self, document_store: InMemoryDocumentStore, top_k: int) -> None:
-        # A negative top_k reached `[:top_k]` and silently returned fewer documents instead of raising.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         document_store.write_documents(docs)
         with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
@@ -522,7 +521,6 @@ class TestMemoryDocumentStore(
     def test_embedding_retrieval_with_negative_top_k_raises(
         self, in_memory_doc_store: InMemoryDocumentStore, top_k: int
     ) -> None:
-        # A negative top_k reached `[:top_k]` and silently returned fewer documents instead of raising.
         docs = [
             Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
             Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),

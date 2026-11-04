@@ -1,12 +1,6 @@
 ---
 fixes:
   - |
-    ``InMemoryDocumentStore.bm25_retrieval()`` and ``InMemoryDocumentStore.embedding_retrieval()`` now raise a
-    ``ValueError`` when a negative ``top_k`` is passed. Previously the value was forwarded straight into a
-    ``[:top_k]`` slice, so Python's negative slicing silently dropped documents from the end of the ranking
-    instead of failing fast; for example ``top_k=-1`` on a store with 10 matching documents returned 9 of them.
-    The async variants (``bm25_retrieval_async`` / ``embedding_retrieval_async``) delegate to the synchronous
-    methods and are therefore covered by the same guard.
-    This brings the document store in line with the guard that already exists at the retriever layer
-    (``InMemoryBM25Retriever`` / ``InMemoryEmbeddingRetriever``, added in #12719). A non-negative ``top_k``
-    behaves exactly as before, including ``top_k=0``, which still returns no documents.
+    ``InMemoryDocumentStore.bm25_retrieval()`` and ``embedding_retrieval()``, and their async variants,
+    now raise a ``ValueError`` for a negative ``top_k``. Previously, a negative value silently dropped
+    documents from the end of the results, for example ``top_k=-1`` returned 9 of 10 matches.
