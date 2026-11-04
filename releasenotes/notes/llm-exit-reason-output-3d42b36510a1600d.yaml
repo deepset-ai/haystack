@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LLM`` now declares ``exit_reason`` as an output, so it can be connected to other components in a Pipeline.
+    It is one of ``"text"`` (a complete reply), ``"length"`` (the reply was cut off by the token limit) or
+    ``"content_filter"`` (the reply was cut off by the provider's content filter), taken from the chat generator's
+    ``finish_reason``. For example, you can route a truncated reply to a retry with a higher ``max_tokens``.

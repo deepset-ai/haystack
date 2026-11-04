@@ -160,6 +160,31 @@ def test_from_function_with_callable_params_skipped():
     assert "query" in param_names
 
 
+def test_from_function_variadic_params_excluded_from_schema():
+    def search(query: str, *args: str, top_k: int = 3, **kwargs: str) -> str:
+        """Search the docs."""
+        return f"{query} {args} {top_k} {kwargs}"
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"query": {"type": "string"}, "top_k": {"type": "integer", "default": 3}},
+        "required": ["query"],
+    }
+    assert tool.invoke(query="haystack", lang="en") == "haystack () 3 {'lang': 'en'}"
+
+
+def test_from_function_untyped_variadic_params_excluded_from_schema():
+    def search(query: str, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
+        """Search the docs."""
+        return query
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+
+
 @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
 def test_from_function_state_param_excluded_from_schema(state_annotation: Any) -> None:
     def function_with_state(city: str, state: State) -> str:

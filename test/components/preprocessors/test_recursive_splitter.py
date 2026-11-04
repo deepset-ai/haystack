@@ -36,6 +36,12 @@ def test_init_with_invalid_separators():
         _ = RecursiveDocumentSplitter(separators=[".", 2])  # type: ignore[list-item]
 
 
+@pytest.mark.parametrize("split_unit", ["Word", "WORD", "words", "sentence", "", " token "])
+def test_init_with_invalid_split_unit(split_unit):
+    with pytest.raises(ValueError, match="split_unit .* is not recognized"):
+        RecursiveDocumentSplitter(split_unit=split_unit)
+
+
 def test_init_with_negative_split_length():
     with pytest.raises(ValueError):
         _ = RecursiveDocumentSplitter(split_length=-1, separators=["."])
