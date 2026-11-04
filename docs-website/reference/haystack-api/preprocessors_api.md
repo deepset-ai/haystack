@@ -199,6 +199,7 @@ Initialize DocumentCleaner.
   which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
 - **remove_substrings** (<code>list\[str\] | None</code>) – List of substrings to remove from the text.
 - **remove_regex** (<code>str | None</code>) – Regex to match and replace substrings by "".
+  Pages where the regex matches are also stripped of leading and trailing whitespace.
 - **keep_id** (<code>bool</code>) – If `True`, keeps the IDs of the original documents.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text.
   Note: This will run before any other steps.
@@ -834,6 +835,8 @@ Deserialize this component from a dictionary.
 ### MarkdownHeaderSplitter
 
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
+
+Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
 
 This component processes text documents by:
 

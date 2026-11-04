@@ -43,6 +43,7 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
     :param embedding: dense vector representation of the document.
     :param sparse_embedding: sparse vector representation of the document.
+    :param multivector_embedding: multi-vector representation of the document.
     """
 
     id: str = field(default="")
@@ -52,13 +53,21 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
     score: float | None = field(default=None)
     embedding: list[float] | None = field(default=None)
     sparse_embedding: SparseEmbedding | None = field(default=None)
+    multivector_embedding: list[list[float]] | None = field(default=None)
 
     def __post_init__(self) -> None:
         """
-        Checks content type, converts embedding from 1.x type and generates the ID based on the init parameters.
+        Validates content and multivector dimensions, converts legacy embeddings and generates the ID.
+
+        :raises ValueError: If content is not a string or multivector vectors have different lengths.
         """
         if self.content is not None and not isinstance(self.content, str):
             raise ValueError("The `content` field must be a string or None.")
+
+        if self.multivector_embedding:
+            dimension = len(self.multivector_embedding[0])
+            if any(len(vector) != dimension for vector in self.multivector_embedding):
+                raise ValueError("All vectors in `multivector_embedding` must have the same length.")
 
         # Embeddings were stored as NumPy arrays in 1.x, so we convert them to the new type
         if isinstance(self.embedding, ndarray):
@@ -83,6 +92,8 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
             fields.append(f"embedding: vector of size {len(self.embedding)}")
         if self.sparse_embedding is not None:
             fields.append(f"sparse_embedding: vector with {len(self.sparse_embedding.indices)} non-zero elements")
+        if self.multivector_embedding is not None:
+            fields.append(f"multivector_embedding: {len(self.multivector_embedding)} vectors")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
@@ -113,6 +124,8 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         embedding = self.embedding if self.embedding is not None else None
         sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
         data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
+        if self.multivector_embedding is not None:
+            data += str(self.multivector_embedding)
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self, flatten: bool = True) -> dict[str, Any]:

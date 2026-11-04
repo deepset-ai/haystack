@@ -203,7 +203,7 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         assert component.api_key.resolve_value() == "test-api-key"
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.timeout is None
@@ -240,7 +240,7 @@ class TestOpenAIChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         assert component.api_key.resolve_value() == "test-api-key"
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.timeout == 40.0
@@ -262,7 +262,7 @@ class TestOpenAIChatGenerator:
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.api_key.resolve_value() == "test-api-key"
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.timeout is None
@@ -279,7 +279,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -319,7 +319,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "max_retries": 10,
@@ -380,7 +380,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "api_base_url": None,
                 "organization": None,
                 "streaming_callback": None,
@@ -509,6 +509,37 @@ class TestOpenAIChatGenerator:
         component.run([ChatMessage.from_user("What's the capital of France?")], tools=[])
 
         assert "tools" not in openai_mock_chat_completion.call_args.kwargs
+
+    @pytest.mark.parametrize(
+        ("model", "generation_kwargs", "expected_reasoning_effort"),
+        [
+            ("gpt-5.6-terra", {}, "none"),
+            ("gpt-6-sol", {}, "none"),
+            ("gpt-5.6-terra", {"reasoning_effort": "low"}, "low"),
+            ("gpt-5.4", {}, None),
+        ],
+    )
+    def test_run_with_tools_sets_reasoning_effort_none_only_where_required(
+        self,
+        tools: list[Tool],
+        openai_mock_chat_completion: MagicMock,
+        model: str,
+        generation_kwargs: dict[str, Any],
+        expected_reasoning_effort: str | None,
+    ) -> None:
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), model=model, generation_kwargs=generation_kwargs
+        )
+        component.run([ChatMessage.from_user("What's the weather like in Paris?")], tools=tools[:1])
+
+        assert openai_mock_chat_completion.call_args.kwargs.get("reasoning_effort") == expected_reasoning_effort
+        assert component.generation_kwargs == generation_kwargs
+
+    def test_run_without_tools_does_not_set_reasoning_effort(self, openai_mock_chat_completion: MagicMock) -> None:
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        component.run([ChatMessage.from_user("What's the capital of France?")])
+
+        assert "reasoning_effort" not in openai_mock_chat_completion.call_args.kwargs
 
     def test_run_with_generation_kwargs(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock

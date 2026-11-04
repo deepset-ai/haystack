@@ -131,7 +131,9 @@ dependencies = [
   "azure-identity",
 
   # Test
-  "pytest",
+  # pytest 9.2 removed FixtureManager._arg2fixturedefs, which pytest-bdd<=9.0.0 relies on.
+  # Unpin once a pytest-bdd release includes https://github.com/pytest-dev/pytest-bdd/pull/851
+  "pytest<9.2",
   "pytest-bdd",
   "pytest-cov",
   "pytest-asyncio",

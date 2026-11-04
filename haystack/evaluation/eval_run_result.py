@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
+from collections import Counter
 from copy import deepcopy
 from typing import Any, Literal, Union
 
@@ -13,6 +14,20 @@ with LazyImport("Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
+
+
+def _row_keys(values: list[Any]) -> list[tuple[Any, int]]:
+    """
+    Build a key for each row from its value and how many times that value appeared before.
+
+    The occurrence number pairs repeated values in the order they appear.
+    """
+    seen: Counter = Counter()
+    keys = []
+    for value in values:
+        keys.append((value, seen[value]))
+        seen[value] += 1
+    return keys
 
 
 class EvaluationRunResult:
@@ -168,6 +183,8 @@ class EvaluationRunResult:
         keep_columns: list[str] | None = None,
         output_format: Literal["json", "csv", "df"] = "json",
         csv_file: str | None = None,
+        *,
+        align_on: str | None = None,
     ) -> Union[str, "DataFrame", None]:
         """
         Generates a report with detailed scores for each metric from two evaluation runs for comparison.
@@ -176,13 +193,20 @@ class EvaluationRunResult:
         :param keep_columns: List of common column names to keep from the inputs of the evaluation runs to compare.
         :param output_format: The output format for the report, "json", "csv", or "df", default to "json".
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
+        :param align_on: Name of an input column that identifies each row, such as a question ID or the question
+            itself. If set, rows of the two runs are matched by this column instead of by position, so runs that
+            evaluated the same questions in a different order are compared correctly. Values must match exactly.
+            Repeated values are paired in the order they appear. Rows without a match are kept, with `None` for the
+            other run, and rows only in `other` are added at the end. If not set, rows are matched by position and a
+            warning is logged when the runs have a different number of rows.
 
         :returns:
             JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
              a message confirming the successful write or an error message.
         :raises TypeError: If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
             dictionaries.
-        :raises ValueError: If the `other` parameter is missing required attributes.
+        :raises ValueError: If the `other` parameter is missing required attributes, or if `align_on` is not an input
+            column of both runs.
         """
 
         if not isinstance(other, EvaluationRunResult):
@@ -191,9 +215,16 @@ class EvaluationRunResult:
         if not hasattr(other, "run_name") or not hasattr(other, "inputs") or not hasattr(other, "results"):
             raise ValueError("The 'other' parameter must have 'run_name', 'inputs', and 'results' attributes.")
 
-        if self.run_name == other.run_name:
+        name_a, name_b = self.run_name, other.run_name
+        if name_a == name_b:
+            # Keep both runs' columns instead of letting the second run overwrite the first
+            name_a, name_b = f"{self.run_name}_first", f"{other.run_name}_second"
             logger.warning(
-                "The run names of the two evaluation results are the same ('{run_name}')", run_name=self.run_name
+                "The run names of the two evaluation results are the same ('{run_name}'); "
+                "their columns are named '{name_a}' and '{name_b}'",
+                run_name=self.run_name,
+                name_a=name_a,
+                name_b=name_b,
             )
 
         if self.inputs.keys() != other.inputs.keys():
@@ -210,22 +241,89 @@ class EvaluationRunResult:
         if not isinstance(detailed_a, dict) or not isinstance(detailed_b, dict):
             raise TypeError("Detailed reports must be dictionaries.")
 
+        # Pairs of (row in self, row in other); None where a row has no counterpart in the other run
+        rows = self._aligned_rows(other, align_on) if align_on is not None else self._positional_rows(other)
+
         # determine which columns to ignore
         if keep_columns is None:
             ignore = list(self.inputs.keys())
         else:
             ignore = [col for col in list(self.inputs.keys()) if col not in keep_columns]
 
-        # filter out ignored columns from pipe_b_dict
-        filtered_detailed_b = {
-            f"{other.run_name}_{key}": value for key, value in detailed_b.items() if key not in ignore
-        }
+        combined_results: dict[str, list[Any]] = {}
+        for key, values in detailed_a.items():
+            if key in ignore:
+                # Shared input columns are shown once; rows only in the other run take its values
+                values_b = detailed_b.get(key)
+                combined_results[key] = [
+                    values[i] if i is not None else (values_b[j] if values_b is not None and j is not None else None)
+                    for i, j in rows
+                ]
+            else:
+                combined_results[f"{name_a}_{key}"] = [values[i] if i is not None else None for i, _ in rows]
+        for key, values in detailed_b.items():
+            if key not in ignore:
+                combined_results[f"{name_b}_{key}"] = [values[j] if j is not None else None for _, j in rows]
 
-        # rename columns in pipe_a_dict based on ignore list
-        renamed_detailed_a = {
-            (key if key in ignore else f"{self.run_name}_{key}"): value for key, value in detailed_a.items()
-        }
-
-        # combine both detailed reports
-        combined_results = {**renamed_detailed_a, **filtered_detailed_b}
         return self._handle_output(combined_results, output_format, csv_file)
+
+    def _positional_rows(self, other: "EvaluationRunResult") -> list[tuple[int | None, int | None]]:
+        """
+        Pair rows by position and warn if the two runs have a different number of rows.
+        """
+        len_a = len(next(iter(self.inputs.values())))
+        len_b = len(next(iter(other.inputs.values())))
+        if len_a != len_b:
+            logger.warning(
+                "'{run_a}' has {len_a} rows and '{run_b}' has {len_b}, so scores could be compared with the wrong "
+                "rows. Pass `align_on` with a column that identifies each row to match them.",
+                run_a=self.run_name,
+                run_b=other.run_name,
+                len_a=len_a,
+                len_b=len_b,
+            )
+        rows: list[tuple[int | None, int | None]] = [(i, i) for i in range(min(len_a, len_b))]
+        rows.extend((i, None) for i in range(len_b, len_a))
+        rows.extend((None, j) for j in range(len_a, len_b))
+        return rows
+
+    def _aligned_rows(self, other: "EvaluationRunResult", align_on: str) -> list[tuple[int | None, int | None]]:
+        """
+        Pair rows that have the same value in the `align_on` column.
+        """
+        for run in (self, other):
+            if align_on not in run.inputs:
+                raise ValueError(f"'{align_on}' is not an input column of the evaluation run '{run.run_name}'.")
+        try:
+            keys_a = _row_keys(self.inputs[align_on])
+            keys_b = _row_keys(other.inputs[align_on])
+            position_b = {key: j for j, key in enumerate(keys_b)}
+            keys_a_set = set(keys_a)
+        except TypeError as error:
+            raise ValueError(
+                f"The values of the '{align_on}' column can't be used to match rows. Use a column with hashable "
+                "values, such as strings or numbers."
+            ) from error
+
+        rows: list[tuple[int | None, int | None]] = [(i, position_b.get(key)) for i, key in enumerate(keys_a)]
+        only_b = [j for j, key in enumerate(keys_b) if key not in keys_a_set]
+        rows.extend((None, j) for j in only_b)
+
+        missing_in_b = sum(1 for _, j in rows if j is None)
+        if missing_in_b:
+            logger.warning(
+                "{count} row(s) of '{run_a}' have no match in '{run_b}' on '{align_on}'",
+                count=missing_in_b,
+                run_a=self.run_name,
+                run_b=other.run_name,
+                align_on=align_on,
+            )
+        if only_b:
+            logger.warning(
+                "{count} row(s) of '{run_b}' have no match in '{run_a}' on '{align_on}' and are added at the end",
+                count=len(only_b),
+                run_a=self.run_name,
+                run_b=other.run_name,
+                align_on=align_on,
+            )
+        return rows
