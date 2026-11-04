@@ -56,15 +56,11 @@ def search(query: Annotated[str, "The search query"]) -> str:
 
 
 agent = Agent(
-    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(),
     tools=[search],
     max_agent_steps=2,
     hooks={
-        "after_run": [
-            BackupAnswerHook(
-                chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
-            )
-        ]
+        "after_run": [BackupAnswerHook(chat_generator=OpenAIResponsesChatGenerator())]
     },
 )
 
@@ -90,7 +86,7 @@ This example requires the `OPENAI_API_KEY` environment variable.
 
 ```python
 hook = BackupAnswerHook(
-    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(),
     system_prompt="Answer the user's question from the search results above. Keep it under 100 words.",
     exit_reasons=["max_agent_steps", "token_budget_exceeded"],
 )
