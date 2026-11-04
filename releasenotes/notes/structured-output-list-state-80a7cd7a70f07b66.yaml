@@ -1,10 +1,6 @@
-upgrade:
-  - |
-    ``StructuredOutputHook`` now replaces its state value even when ``state_key``
-    has a custom handler. If you use that handler to accumulate structured results,
-    accumulate the returned Agent outputs separately.
 fixes:
   - |
-    Fix ``StructuredOutputHook`` to replace its state value with the validated result
-    or ``None``. Array outputs now preserve their exact contents, clearing previous
-    values and placeholders from failed validation attempts.
+    Fix ``StructuredOutputHook`` for list-typed state keys, such as ``{"type": list[str]}``.
+    The hook now replaces the state value with the validated result, or ``None`` on failure,
+    instead of appending to it. Previously, a failed attempt followed by a successful retry
+    returned ``[None, "Paris"]`` instead of ``["Paris"]``.
