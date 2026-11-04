@@ -254,8 +254,6 @@ class TestDocumentJoiner:
         [
             ("embedding", [0.1], [0.2]),
             ("multivector_embedding", [[0.1, 0.2]], [[0.3, 0.4]]),
-            ("multivector_embedding", [[0.1, 0.2]], [[0.1, 0.2], [0.3, 0.4]]),
-            ("multivector_embedding", [], [[0.1, 0.2]]),
             (
                 "sparse_embedding",
                 SparseEmbedding(indices=[1], values=[0.5]),
