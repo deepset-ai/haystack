@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Document
@@ -33,21 +35,24 @@ class TestInitializationSerde:
 
 
 class TestRun:
-    def test_run(self):
+    def test_run(self, caplog):
         ranker = MaxSimRanker(top_k=2)
         documents = [
             Document(id="partial", multivector_embedding=[[0.5, 0.5]], score=0.9),
             Document(id="negative", multivector_embedding=[[-1.0, -2.0]]),
+            Document(id="missing_embedding"),
             Document(id="best", multivector_embedding=[[1.0, 0.0], [0.0, 2.0]], score=0.1),
         ]
         original_documents = [document.to_dict() for document in documents]
 
-        result = ranker.run(query_multivector_embedding=[[1.0, 0.0], [1.0, 1.0]], documents=documents)
+        with caplog.at_level(logging.WARNING):
+            result = ranker.run(query_multivector_embedding=[[1.0, 0.0], [1.0, 1.0]], documents=documents)
 
         assert list(result) == ["documents"]
         assert [document.id for document in result["documents"]] == ["best", "partial"]
         assert [document.score for document in result["documents"]] == pytest.approx([3.0, 1.5])
         assert [document.to_dict() for document in documents] == original_documents
+        assert "Skipping documents without multivector embeddings: ['missing_embedding']" in caplog.text
 
     def test_run_top_k_override(self):
         ranker = MaxSimRanker(top_k=1)
@@ -65,9 +70,8 @@ class TestRun:
     def test_run_no_documents(self):
         ranker = MaxSimRanker()
 
-        result = ranker.run(query_multivector_embedding=[[1.0, 0.0]], documents=[])
-
-        assert result == {"documents": []}
+        assert ranker.run(query_multivector_embedding=[[1.0, 0.0]], documents=[]) == {"documents": []}
+        assert ranker.run(query_multivector_embedding=[[1.0, 0.0]], documents=[Document()]) == {"documents": []}
 
     def test_run_non_positive_top_k(self):
         ranker = MaxSimRanker()
@@ -79,7 +83,7 @@ class TestRun:
     @pytest.mark.parametrize(
         "query_multivector_embedding", [[], [[]], [1.0, 2.0], [[float("nan")]], [[1.0], [1.0, 2.0]]]
     )
-    def test_run_invalid_vectors_matrix(self, query_multivector_embedding):
+    def test_run_invalid_query_embedding(self, query_multivector_embedding):
         ranker = MaxSimRanker()
         documents = [Document(multivector_embedding=[[1.0]])]
 
@@ -87,6 +91,17 @@ class TestRun:
             ValueError, match=r"^query_multivector_embedding must be a non-empty matrix of finite numbers\.$"
         ):
             ranker.run(query_multivector_embedding=query_multivector_embedding, documents=documents)
+
+    @pytest.mark.parametrize("multivector_embedding", [[], [[]]])
+    def test_run_invalid_document_embedding(self, multivector_embedding):
+        ranker = MaxSimRanker()
+        documents = [Document(id="invalid", multivector_embedding=multivector_embedding)]
+
+        with pytest.raises(
+            ValueError,
+            match=r"^multivector_embedding of document 'invalid' must be a non-empty matrix of finite numbers\.$",
+        ):
+            ranker.run(query_multivector_embedding=[[1.0, 0.0]], documents=documents)
 
     def test_run_query_documents_embedding_mismatch(self):
         ranker = MaxSimRanker()

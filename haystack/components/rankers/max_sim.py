@@ -7,8 +7,10 @@ from dataclasses import replace
 import numpy as np
 from numpy.typing import NDArray
 
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.utils.misc import _deduplicate_documents
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -72,13 +74,15 @@ class MaxSimRanker:
         """
         Returns documents ranked by their MaxSim score for the given query multivector embedding.
 
-        Before ranking, documents are deduplicated by their id, retaining only the document with the highest
-        existing score if a score is present.
+        Before ranking, documents without multivector embeddings are skipped with a warning. The remaining
+        documents are deduplicated by their id, retaining only the document with the highest existing score
+        if a score is present.
 
         :param query_multivector_embedding:
             The query multivector embedding. All vectors must have the same dimension as the document vectors.
         :param documents:
-            The documents to rank. Each document must have a non-empty `multivector_embedding` field.
+            The documents to rank. Documents whose `multivector_embedding` is `None` are skipped.
+            Present embeddings must be non-empty matrices of finite numbers.
         :param top_k:
             The maximum number of documents to return. Must be greater than 0.
             If `None`, the value provided at initialization is used.
@@ -98,11 +102,28 @@ class MaxSimRanker:
         if not documents:
             return {"documents": []}
 
+        documents_with_embeddings = []
+        document_ids_without_embeddings = []
+        for document in documents:
+            if document.multivector_embedding is None:
+                document_ids_without_embeddings.append(document.id)
+            else:
+                documents_with_embeddings.append(document)
+
+        if document_ids_without_embeddings:
+            logger.warning(
+                "Skipping documents without multivector embeddings: {document_ids}",
+                document_ids=document_ids_without_embeddings,
+            )
+
+        if not documents_with_embeddings:
+            return {"documents": []}
+
         query_vectors = self._prepare_vectors(
             multivector_embedding=query_multivector_embedding, input_name="query_multivector_embedding"
         )
         scored_documents = []
-        for document in _deduplicate_documents(documents):
+        for document in _deduplicate_documents(documents_with_embeddings):
             document_vectors = self._prepare_vectors(
                 multivector_embedding=document.multivector_embedding,
                 input_name=f"multivector_embedding of document {document.id!r}",
