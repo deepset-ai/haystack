@@ -1,0 +1,99 @@
+---
+title: "Backup Answer"
+id: backup-answer
+slug: "/backup-answer"
+description: "Use BackupAnswerHook to write a final answer when an Agent stops at max_agent_steps without one."
+---
+
+# Backup Answer
+
+`BackupAnswerHook` writes a final answer when an Agent run stops without one. When an Agent reaches `max_agent_steps` in the middle of its research, the run ends on a tool call or tool result and `last_message` has no text answer. The hook makes one extra call to its own chat generator over the conversation so far and appends the reply, so the user always gets an answer.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on**       | The [`Agent`](./agent.mdx) component, as a `BackupAnswerHook` registered under the `after_run` [hook point](./hooks.mdx) |
+| **Key classes**         | `BackupAnswerHook` |
+| **Import path**         | `haystack.hooks.backup_answer` |
+| **API reference**       | [Hooks](/reference/hooks-api) |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/backup_answer/ |
+| **Package name**        | `haystack-ai` |
+
+</div>
+
+:::warning
+`BackupAnswerHook` is experimental. Its API can change in any release, without following the usual deprecation policy.
+:::
+
+## Overview
+
+`BackupAnswerHook` runs once, after the Agent loop ends. When the run's `exit_reason` is one of the hook's `exit_reasons` (by default only `"max_agent_steps"`), it:
+
+1. Takes the conversation so far and replaces its system messages with the hook's `system_prompt`.
+2. Calls its own chat generator with that conversation and no tools.
+3. Appends the reply to `messages`, so it becomes the Agent's `last_message`.
+
+The `exit_reason` stays unchanged, so you can still tell a backup answer from a normal one. The hook's chat generator is warmed up and closed together with the Agent. It can differ from the Agent's chat generator, for example to use a cheaper model.
+
+## Usage
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.backup_answer import BackupAnswerHook
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web."""
+    # Placeholder: would call a real search API
+    return f"Some facts about {query}."
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[search],
+    max_agent_steps=2,
+    hooks={
+        "after_run": [
+            BackupAnswerHook(
+                chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+            )
+        ]
+    },
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Research capybaras: size, diet, social life and predators."
+        )
+    ]
+)
+
+print(result["exit_reason"])
+# >> max_agent_steps
+print(result["last_message"].text)
+# >> Based on what I found, capybaras are ...
+```
+
+This example requires the `OPENAI_API_KEY` environment variable.
+
+### Customizing the prompt and exit reasons
+
+`system_prompt` replaces the default prompt, which asks for a best-effort final answer from the gathered information. `exit_reasons` controls which exits trigger a backup answer. For example, to also cover runs stopped by [`TokenBudgetHook`](./token-budget.mdx):
+
+```python
+hook = BackupAnswerHook(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    system_prompt="Answer the user's question from the search results above. Keep it under 100 words.",
+    exit_reasons=["max_agent_steps", "token_budget_exceeded"],
+)
+```
+
+Combine it with [`StepBudgetReminderHook`](./step-budget-reminder.mdx), which nudges the model to answer before the limit, so the backup answer is only needed when the reminder is ignored.

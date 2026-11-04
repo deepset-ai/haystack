@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Added the experimental ``BackupAnswerHook`` to ``haystack.hooks.backup_answer``. Registered under ``after_run``,
+    it writes a final answer when an ``Agent`` run stops with ``exit_reason`` ``"max_agent_steps"``, where the run
+    would otherwise end on a tool call or tool result with no text answer. The hook makes one extra call to its own
+    chat generator, without tools, over the conversation so far and appends the reply to ``messages``. The
+    ``exit_reason`` is left unchanged. Use ``system_prompt`` to override the default prompt and ``exit_reasons`` to
+    also cover other exits, such as ``"token_budget_exceeded"``.
+
+    .. code:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.hooks.backup_answer import BackupAnswerHook
+
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(),
+            tools=[...],
+            max_agent_steps=10,
+            hooks={"after_run": [BackupAnswerHook(chat_generator=OpenAIResponsesChatGenerator())]},
+        )

@@ -177,6 +177,7 @@ export default {
                 'pipeline-components/agents-1/token-budget',
                 'pipeline-components/agents-1/step-budget-reminder',
                 'pipeline-components/agents-1/structured-output',
+                'pipeline-components/agents-1/backup-answer',
               ],
             },
             'pipeline-components/agents-1/state',
