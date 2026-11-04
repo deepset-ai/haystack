@@ -478,6 +478,7 @@ class TestDOCXToDocument:
             "score": None,
             "embedding": None,
             "sparse_embedding": None,
+            "multivector_embedding": None,
             "meta": {
                 "test": 1,
                 "docx": {

@@ -977,6 +977,39 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     )
 
 
+def _get_call_id(tool_call: ToolCall) -> str | None:
+    """
+    Get the Responses API `call_id` of a tool call.
+
+    :param tool_call: The tool call.
+    :returns: The `call_id` stored in `extra` by the Responses API, or the tool call `id` for tool calls from other
+        providers.
+    """
+    if tool_call.extra and tool_call.extra.get("call_id"):
+        return tool_call.extra["call_id"]
+    return tool_call.id
+
+
+def _convert_tool_call_to_responses_api_format(tool_call: ToolCall) -> dict[str, Any]:
+    """
+    Convert a ToolCall to a Responses API `function_call` input item.
+
+    :param tool_call: The tool call.
+    :returns: The `function_call` item. It includes the tool call `id` only for tool calls from the Responses API.
+    """
+    openai_tool_call = {
+        "type": "function_call",
+        "name": tool_call.tool_name,
+        # We disable ensure_ascii so special chars like emojis are not converted
+        "arguments": json.dumps(tool_call.arguments, ensure_ascii=False),
+        "call_id": _get_call_id(tool_call),
+    }
+    # Only tool calls from the Responses API carry a `call_id` and an item id the API accepts
+    if tool_call.extra and tool_call.extra.get("call_id"):
+        openai_tool_call["id"] = tool_call.id
+    return openai_tool_call
+
+
 def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:
     """
     Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
@@ -1051,7 +1084,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
                     raise ValueError(f"Unsupported tool result: {result.result}")
                 tool_result = {
                     "type": "function_call_output",
-                    "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
+                    "call_id": _get_call_id(result.origin),
                     "output": output_content,
                 }
                 formatted_tool_results.append(tool_result)
@@ -1062,6 +1095,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
+            # Reasoning from other providers has no reasoning item id and the API rejects it, so it is dropped
+            if reasoning.extra.get("type") != "reasoning" or not reasoning.extra.get("id"):
+                continue
             # Streaming events (e.g. response.reasoning_summary_text.delta) store event-level
             # fields like item_id, output_index, summary_index, event_id, sequence_number into
             # reasoning.extra. Those are not valid reasoning input item fields and the API
@@ -1077,17 +1113,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
 
-    for tc in tool_calls:
-        openai_tool_call = {
-            "type": "function_call",
-            # We disable ensure_ascii so special chars like emojis are not converted
-            "name": tc.tool_name,
-            "arguments": json.dumps(tc.arguments, ensure_ascii=False),
-            "id": tc.id,
-            "call_id": tc.extra.get("call_id") if tc.extra else "",
-        }
-
-        formatted_messages.append(openai_tool_call)
+    formatted_messages.extend(_convert_tool_call_to_responses_api_format(tc) for tc in tool_calls)
 
     # system and assistant messages
     refusal = message.meta.get("refusal")
