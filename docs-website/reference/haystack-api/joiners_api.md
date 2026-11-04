@@ -310,7 +310,8 @@ Joins multiple lists of documents into a single list.
 It supports different join modes:
 
 - concatenate: Keeps the highest-scored document in case of duplicates.
-- merge_embeddings: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields of documents with the same ID.
+- merge_embeddings: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+  of documents with the same ID.
 - merge: Calculates a weighted sum of scores for duplicates and merges them.
 - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
 - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
@@ -363,7 +364,8 @@ Creates a DocumentJoiner component.
 
 - **join_mode** (<code>str | JoinMode</code>) – Specifies the join mode to use. Available modes:
 - `concatenate`: Keeps the highest-scored document in case of duplicates.
-- `merge_embeddings`: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields of documents with the same ID.
+- `merge_embeddings`: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+  of documents with the same ID.
   All other fields, including `content`, `meta`, and `score`, are kept from the first document
   received with that ID.
 - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
