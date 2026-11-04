@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Documented that ``LostInTheMiddleRanker.word_count_threshold`` is a budget of whitespace-separated words
+    counted with ``str.split()``, not a budget of model tokens. A URL, a hash, or a code expression counts as a
+    single word no matter how many tokens a model splits it into, so code-heavy text and non-Latin scripts use
+    noticeably more tokens per word. A threshold chosen for a model's context window can therefore still
+    overflow it.

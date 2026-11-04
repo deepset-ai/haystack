@@ -44,9 +44,16 @@ class LostInTheMiddleRanker:
         If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
         another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
         be breached will be included in the resulting list of documents, but all subsequent documents will be
-        discarded.
+        discarded. Words are counted with `str.split()`, so the threshold is a budget of whitespace-separated
+        chunks, not a budget of model tokens.
 
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold:
+            The maximum total number of whitespace-separated words across all documents selected by the ranker.
+            Words are counted with `str.split()`, so a URL, a hash, or a code expression counts as one word no
+            matter how many tokens a model splits it into. Code-heavy text and non-Latin scripts therefore use
+            noticeably more tokens per word than English prose, and a threshold chosen for a model's context
+            window can still overflow it. Treat the value as an approximate budget rather than as a guarantee
+            that the selected documents fit in a given context window.
         :param top_k: The maximum number of documents to return.
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
@@ -71,7 +78,9 @@ class LostInTheMiddleRanker:
 
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold:
+            The maximum total number of whitespace-separated words across all documents selected by the ranker.
+            See the `__init__` documentation for how words are counted and why this is not a token budget.
         :returns:
             A dictionary with the following keys:
             - `documents`: Reranked list of Documents
