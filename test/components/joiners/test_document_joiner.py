@@ -228,17 +228,55 @@ class TestDocumentJoiner:
         sparse_embedding = SparseEmbedding(indices=[1], values=[0.5])
         first = Document(id="a", embedding=[0.1])
         second = Document(id="a", sparse_embedding=sparse_embedding)
+        third = Document(id="a", multivector_embedding=[[0.1, 0.2], [0.3, 0.4]])
 
-        output = joiner.run(documents=[[first], [second]])
+        output = joiner.run(documents=[[first], [second], [third]])
 
-        assert output == {"documents": [Document(id="a", embedding=[0.1], sparse_embedding=sparse_embedding)]}
+        assert output == {
+            "documents": [
+                Document(
+                    id="a",
+                    embedding=[0.1],
+                    sparse_embedding=sparse_embedding,
+                    multivector_embedding=[[0.1, 0.2], [0.3, 0.4]],
+                )
+            ]
+        }
         assert first.sparse_embedding is None
+        assert first.multivector_embedding is None
         assert second.embedding is None
+        assert second.multivector_embedding is None
+        assert third.embedding is None
+        assert third.sparse_embedding is None
+
+    @pytest.mark.parametrize("multivector_embedding", [[], [[0.1, 0.2], [0.3, 0.4]]])
+    def test_merge_embeddings_preserves_multivectors(self, multivector_embedding):
+        joiner = DocumentJoiner(join_mode="merge_embeddings")
+        first = Document(id="a", content="first", meta={"source": "first"}, score=0.5)
+        second = Document(id="a", multivector_embedding=multivector_embedding)
+        duplicate = Document(id="a", content="later", multivector_embedding=multivector_embedding)
+
+        output = joiner.run(documents=[[first], [second], [duplicate], [Document(id="a")]])
+
+        assert output == {
+            "documents": [
+                Document(
+                    id="a",
+                    content="first",
+                    meta={"source": "first"},
+                    score=0.5,
+                    multivector_embedding=multivector_embedding,
+                )
+            ]
+        }
 
     @pytest.mark.parametrize(
         "field,first,second",
         [
             ("embedding", [0.1], [0.2]),
+            ("multivector_embedding", [[0.1, 0.2]], [[0.3, 0.4]]),
+            ("multivector_embedding", [[0.1, 0.2]], [[0.1, 0.2], [0.3, 0.4]]),
+            ("multivector_embedding", [], [[0.1, 0.2]]),
             (
                 "sparse_embedding",
                 SparseEmbedding(indices=[1], values=[0.5]),
