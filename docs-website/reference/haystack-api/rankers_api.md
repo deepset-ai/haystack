@@ -261,14 +261,13 @@ __init__(
 
 Initialize the LostInTheMiddleRanker.
 
-If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
-another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
-be breached will be included in the resulting list of documents, but all subsequent documents will be
-discarded.
-
 **Parameters:**
 
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
 
 #### run
@@ -290,7 +289,11 @@ if a score is present.
 
 - **documents** (<code>list\[Document\]</code>) – List of Documents to reorder.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 
 **Returns:**
 
