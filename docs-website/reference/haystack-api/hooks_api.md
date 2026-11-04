@@ -91,6 +91,92 @@ Create a hook from its serialized representation.
 
 - <code>TokenBudgetHook</code> – The deserialized hook.
 
+### StepBudgetReminderHook
+
+Tells the Agent how many steps it has left once it gets close to `max_agent_steps`.
+
+This `before_llm` hook adds a reminder before each of the Agent's last `remind_within_steps` LLM calls, telling
+the model how many steps are left and asking it to wrap up. On the last step, it asks for the final answer
+directly.
+
+The reminder is a user message wrapped in `<system-reminder>` tags and marked with
+`meta={"system_reminder": True}`, so compaction hooks don't mistake it for the user's task. Reminders stay in the
+conversation and appear in the Agent's `messages` output.
+
+The model can still ignore the reminder. Pair it with an `after_run` hook if a run that ends on `max_agent_steps`
+needs a final answer.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.budget import StepBudgetReminderHook
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    max_agent_steps=10,
+    hooks={"before_llm": [StepBudgetReminderHook()]},
+)
+```
+
+#### __init__
+
+```python
+__init__(*, remind_within_steps: int = 3) -> None
+```
+
+Create a step budget reminder hook.
+
+**Parameters:**
+
+- **remind_within_steps** (<code>int</code>) – Number of remaining steps at which reminders start.
+
+**Raises:**
+
+- <code>ValueError</code> – If `remind_within_steps` is less than 1.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Add a reminder if no more than `remind_within_steps` steps are left.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state containing `step_count` and `max_agent_steps`.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> StepBudgetReminderHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>StepBudgetReminderHook</code> – The deserialized hook.
+
 ## compaction/hooks
 
 ### CompactionHook
@@ -264,9 +350,10 @@ Bases: <code>Compactor</code>
 
 Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
-and the current task's history is kept in complete Agent steps, where a step is an assistant message together
-with all immediately following tool results.
+Leading system messages, the latest user message, and system reminders after the last assistant message are
+protected. Historical turns are kept in full when they fit, and the current task's history is kept in complete
+Agent steps, where a step is an assistant message together with all immediately following tool results. A system
+reminder in the current task is kept or removed together with the next assistant message and its tool results.
 
 An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
 only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -304,8 +391,8 @@ Initialize the compactor.
 **Parameters:**
 
 - **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep even when they exceed the target. A step
-  is an assistant message and all immediately following tool results. `0` allows all completed steps to be
-  removed when none fit.
+  is an assistant message, all immediately following tool results, and the system reminders right before it.
+  `0` allows all completed steps to be removed when none fit.
 - **omission_note** (<code>str | None</code>) – The user message left in place of what was removed, or None to remove the messages
   silently. Include `{num_removed}` to have the number of removed messages substituted in.
 
