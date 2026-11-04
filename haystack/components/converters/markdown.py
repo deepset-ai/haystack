@@ -27,13 +27,14 @@ _FRONTMATTER_PATTERN = re.compile(r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n
 
 
 def _render_table_cell_open(tokens: list[Any], idx: int, _options: Any, _env: Any) -> str:
-    """
-    Renders the start of a table cell as the space that separates it from the cell before it.
+    """Insert a space before every table cell except the first."""
+    is_first_table_cell = tokens[idx - 1].type == "tr_open" and tokens[idx - 2].type == "thead_open"
+    return "" if is_first_table_cell else " "
 
-    `RendererPlain` has no rule for table tokens, so without this rule the cells of a table ran together.
-    """
-    first_cell = tokens[idx - 1].type == "tr_open" and tokens[idx - 2].type == "thead_open"
-    return "" if first_cell else " "
+
+def _render_table_boundary(_tokens: list[Any], _idx: int, _options: Any, _env: Any) -> str:
+    """Separate the table from surrounding content with a newline."""
+    return "\n"
 
 
 @component
@@ -116,6 +117,8 @@ class MarkdownToDocument:
         if self.table_to_single_line:
             parser.enable("table")
             renderer: RendererPlain = parser.renderer
+            renderer.rules["table_open"] = _render_table_boundary
+            renderer.rules["table_close"] = _render_table_boundary
             renderer.rules["th_open"] = _render_table_cell_open
             renderer.rules["td_open"] = _render_table_cell_open
 

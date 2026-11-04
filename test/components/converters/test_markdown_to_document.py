@@ -38,6 +38,14 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
+    def test_run_preserves_markdown_table_by_default(self):
+        source = ByteStream(data=b"| A | B |\n| --- | --- |\n| one | two |")
+        converter = MarkdownToDocument()
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "| A | B |\n| --- | --- |\n| one | two |"
+
     def test_run_keeps_table_cells_apart_on_a_single_line(self):
         converter = MarkdownToDocument(table_to_single_line=True)
         source = ByteStream(
@@ -46,7 +54,17 @@ class TestMarkdownToDocument:
 
         documents = converter.run(sources=[source])["documents"]
 
-        assert documents[0].content == "Team:\nName Role Ada Engineer Grace Admiral\nThat is all."
+        assert documents[0].content == "Team:\n\nName Role Ada Engineer Grace Admiral\n\nThat is all."
+
+    def test_run_keeps_consecutive_tables_apart(self):
+        source = ByteStream(
+            data=(b"| A | B |\n| --- | --- |\n| one | two |\n\n| C | D |\n| --- | --- |\n| three | four |")
+        )
+        converter = MarkdownToDocument(table_to_single_line=True)
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "A B one two\n\nC D three four"
 
     def test_run_with_store_full_path_false(self, test_files_path):
         """
