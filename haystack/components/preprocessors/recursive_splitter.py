@@ -89,8 +89,8 @@ class RecursiveDocumentSplitter:
         :param tokenizer_encoding: The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
             (current OpenAI models). Only used when `split_unit="token"`.
 
-        :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-                            if any separator is not a string.
+        :raises ValueError: If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+                            equal to the chunk size, if the overlap is negative, or if any separator is not a string.
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
@@ -136,6 +136,8 @@ class RecursiveDocumentSplitter:
         )
 
     def _check_params(self) -> None:
+        if self.split_units not in ("word", "char", "token"):
+            raise ValueError(f"split_unit '{self.split_units}' is not recognized. Choose one of: word, char, token.")
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:

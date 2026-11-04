@@ -72,8 +72,8 @@ class TestBlockingConfirmationStrategy:
                     "init_parameters": {},
                 },
                 "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
-                "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
-                "\n{final_tool_params}",
+                "modify_template": "The user changed the arguments of '{tool_name}' to {final_tool_params} and "
+                "wants that result used. Don't call it again with the original arguments.",
                 "user_feedback_template": "With user feedback: {feedback}",
             },
         }
@@ -129,7 +129,8 @@ class TestBlockingConfirmationStrategy:
         assert decision.execute is True
         assert decision.final_tool_params == {"param1": "new_value"}
         assert decision.feedback == (
-            "The parameters for tool 'test_tool' were updated by the user to:\n{'param1': 'new_value'}"
+            "The user changed the arguments of 'test_tool' to {'param1': 'new_value'} and wants that result used. "
+            "Don't call it again with the original arguments."
         )
 
     def test_run_reject(self, monkeypatch):
