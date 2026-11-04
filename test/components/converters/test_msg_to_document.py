@@ -2,6 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import PropertyMock, patch
+
+import pytest
+from oxmsg import Message
+
 from haystack import Document
 from haystack.components.converters.msg import MSGToDocument
 from haystack.dataclasses import ByteStream
@@ -30,7 +35,7 @@ class TestMSGToDocument:
         document = result["documents"][0]
         assert isinstance(document, Document)
         assert document.content is not None
-        assert document.content.startswith('From: "Sebastian Lee"')
+        assert document.content.startswith('From: "Example Alice"')
         assert result["documents"][0].meta == {
             "date_added": "2021-09-01T00:00:00",
             "file_path": str(test_files_path / "msg" / "sample.msg"),
@@ -44,6 +49,43 @@ class TestMSGToDocument:
             "parent_file_path": str(test_files_path / "msg" / "sample.msg"),
             "file_path": "sample_pdf_1.pdf",
         }
+
+    @pytest.mark.parametrize(
+        ("headers", "expected_lines"),
+        [
+            (
+                {"To": "custom to", "Cc": "custom cc", "Bcc": "custom bcc"},
+                ["To: custom to", "Cc: custom cc", "Bcc: custom bcc"],
+            ),
+            (
+                {},
+                [
+                    "To: Example Alice alice.tester@example.com",
+                    "Cc: bob.recipient01@example.com bob.recipient01@example.com",
+                    "Bcc: carol.receiver01@example.com carol.receiver01@example.com",
+                ],
+            ),
+            (
+                {"To": "", "cC": "custom cc", "Bcc": " \t"},
+                [
+                    "To: Example Alice alice.tester@example.com",
+                    "Cc: custom cc",
+                    "Bcc: carol.receiver01@example.com carol.receiver01@example.com",
+                ],
+            ),
+        ],
+        ids=["headers", "missing-headers", "strange-headers"],
+    )
+    def test_run_recipients_from_headers_or_table(self, test_files_path, headers, expected_lines):
+        with patch.object(Message, "message_headers", new_callable=PropertyMock, return_value=headers):
+            result = MSGToDocument().run(sources=[test_files_path / "msg" / "sample.msg"])
+
+        document = result["documents"][0]
+        assert isinstance(document, Document)
+        assert document.content is not None
+        assert [
+            line for line in document.content.splitlines() if line.startswith(("To:", "Cc:", "Bcc:"))
+        ] == expected_lines
 
     def test_run_wrong_file_type(self, test_files_path, caplog):
         converter = MSGToDocument(store_full_path=False)

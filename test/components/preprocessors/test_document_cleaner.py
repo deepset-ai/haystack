@@ -285,6 +285,7 @@ class TestDocumentCleaner:
             score=0.1,
             embedding=[0.1, 0.2, 0.3],
             sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+            multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
         )
         res = cleaner.run(documents=[document])
 
@@ -299,6 +300,7 @@ class TestDocumentCleaner:
         assert res["documents"][0].score == document.score
         assert res["documents"][0].embedding == document.embedding
         assert res["documents"][0].sparse_embedding == document.sparse_embedding
+        assert res["documents"][0].multivector_embedding == document.multivector_embedding
 
     def test_strip_whitespaces(self):
         """Test that strip_whitespaces removes only leading and trailing whitespace."""

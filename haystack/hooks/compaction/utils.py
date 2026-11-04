@@ -5,7 +5,7 @@
 from collections.abc import Callable
 
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
+from haystack.hooks.utils import _is_system_reminder
 from haystack.token_counters import TokenCounter
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
@@ -25,7 +25,7 @@ def _is_real_user_message(message: ChatMessage) -> bool:
     return (
         message.is_from(role=ChatRole.USER)
         and _COMPACTION_META_KEY not in message.meta
-        and _SYSTEM_REMINDER_META_KEY not in message.meta
+        and not _is_system_reminder(message=message)
     )
 
 
