@@ -34,7 +34,7 @@
 | haystack/components/converters/image/pdf\_to\_image.py                     |       46 |        3 |     93% |   137-141 |
 | haystack/components/converters/json.py                                     |       96 |       11 |     89% |237-238, 240-243, 247-248, 263-264, 295-297 |
 | haystack/components/converters/markdown.py                                 |       71 |       10 |     86% |107, 120-122, 128-134, 152, 173-178 |
-| haystack/components/converters/msg.py                                      |       77 |        5 |     94% |91, 165-167, 179 |
+| haystack/components/converters/msg.py                                      |       88 |        5 |     94% |94, 115, 177-179 |
 | haystack/components/converters/multi\_file\_converter.py                   |       50 |        0 |    100% |           |
 | haystack/components/converters/output\_adapter.py                          |       71 |        1 |     99% |       133 |
 | haystack/components/converters/pdfminer.py                                 |      105 |        0 |    100% |           |
@@ -108,6 +108,7 @@
 | haystack/components/rankers/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/rankers/llm\_ranker.py                                 |      154 |        5 |     97% |342, 376, 404, 413, 417 |
 | haystack/components/rankers/lost\_in\_the\_middle.py                       |       43 |        2 |     95% |   88, 122 |
+| haystack/components/rankers/max\_sim.py                                    |       49 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field.py                                 |      124 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py               |       39 |        0 |    100% |           |
 | haystack/components/retrievers/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
@@ -275,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18420** |  **685** | **96%** |           |
+| **TOTAL**                                                                  | **18480** |  **685** | **96%** |           |
 
 
 ## Setup coverage badge
