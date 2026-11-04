@@ -209,9 +209,9 @@ class PythonCodeSplitter:
         return "".join(before + after), docstring
 
     @staticmethod
-    def _definition_start(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef, source_lines: list[str]) -> int:
+    def _definition_start(node: ast.stmt, source_lines: list[str]) -> int:
         """Include the decorator marker, which may precede the AST expression's first line."""
-        if not node.decorator_list:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) or not node.decorator_list:
             return node.lineno
         start = node.decorator_list[0].lineno
         while start > 1 and not source_lines[start - 1].lstrip().startswith("@"):
@@ -237,13 +237,7 @@ class PythonCodeSplitter:
         # ``preserve_class_definition`` to prefix later chunks of the same class.
         class_signature: str | None = None
         if cls.body:
-            first_statement = cls.body[0]
-            body_start = first_statement.lineno
-            if (
-                isinstance(first_statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-                and first_statement.decorator_list
-            ):
-                body_start = self._definition_start(first_statement, source_lines)
+            body_start = self._definition_start(cls.body[0], source_lines)
             if body_start > class_start:
                 class_signature = self._slice_lines(source_lines, class_start, body_start - 1)
 
@@ -269,14 +263,7 @@ class PythonCodeSplitter:
             return class_end + 1
 
         # Class header: from outer cursor up to (but excluding) the first split child.
-        first_child = cls.body[split_children_idx[0]]
-        if (
-            isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-            and first_child.decorator_list
-        ):
-            first_child_start = self._definition_start(first_child, source_lines)
-        else:
-            first_child_start = first_child.lineno
+        first_child_start = self._definition_start(cls.body[split_children_idx[0]], source_lines)
         header_end = first_child_start - 1
         header_slice = self._slice_lines(source_lines, cursor, header_end)
         header_docstring: str | None = None

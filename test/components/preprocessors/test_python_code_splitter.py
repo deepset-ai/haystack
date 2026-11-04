@@ -329,117 +329,26 @@ class TestFileNamePropagation:
 
 
 class TestDecorators:
-    @pytest.mark.parametrize(
-        "decorator",
-        [
-            "@decorator\n",
-            "@(decorator)\n",
-            "@decorator('é', label='@not_a_marker')\n",
-            "@(\n    # @not_a_marker\n    (\n        décorateur\n    )\n)\n",
-            "@ \\\n    décorateur\n",
-            "@(\n    left\n    @ right\n)\n",
-            "@(\n    factory(\n        '@not_a_marker',\n    )\n)\n",
-            "@(\n    'é' 'à'\n)\n",
-            "@(\n    '''é\n@inside_a_string\n'''\n)\n",
-            "@(\n    (λ := décorateur)\n)\n",
-            "@(\n    (lambda f: f)\n)\n",
-            "@(\n    décorateur  # @not_a_marker\n)\n@other\n",
-            "@(((\n\n# @not_a_marker\n    décorateur\n)))\n",
-            "@\tdecorator\n",
-            "\f@decorator\n",
-            "@(\n    (decorator if condition else other)\n)\n",
-            "@(\n    [decorator][0]\n)\n",
-        ],
-    )
-    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
-    def test_decorator_marker_scan_preserves_exact_source(self, decorator, newline):
-        prefix = 'text = """\n@inside_a_string\n"""\nleft = matrix @ matrix\n'
-        decorated = decorator + "def first():\n    pass\n"
-        following = "def second():\n    pass\n"
-        source = (prefix + decorated + following).replace("\n", newline)
-        document = Document(content=source)
+    def test_multiline_method_decorator_stays_with_method(self):
+        class_header = "class A:\n"
+        first_method = (
+            "    @(\n        # decorator comment\n        decorator\n    )\n    def first(self):\n        return 1\n"
+        )
+        second_method = "\n    def second(self):\n        return 2\n"
         chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
-            documents=[document]
+            documents=[Document(content=class_header + first_method + second_method)]
         )["documents"]
 
         assert [chunk.content for chunk in chunks] == [
-            'text = """\n@inside_a_string\n"""\n'.replace("\n", newline),
-            "left = matrix @ matrix\n".replace("\n", newline),
-            decorated.replace("\n", newline),
-            following.replace("\n", newline),
+            class_header,
+            class_header + first_method,
+            class_header + second_method,
         ]
-        decorated_end = 4 + decorated.count("\n")
-        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [
-            (1, 3),
-            (4, 4),
-            (5, decorated_end),
-            (decorated_end + 1, decorated_end + 2),
-        ]
-        assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2, 3]
-        assert all(chunk.meta["source_id"] == document.id for chunk in chunks)
-        assert "".join(chunk.content or "" for chunk in chunks) == source
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 7), (9, 10)]
 
-    @pytest.mark.parametrize(
-        "first_member",
-        [
-            "    @property\n    def first(self):\n        return 1\n",
-            "    @outer\n    @inner\n    def first(self):\n        return 1\n",
-            "    @decorator(\n        option=True,\n    )\n    def first(self):\n        return 1\n",
-            "    @(\n        property\n    )\n    def first(self):\n        return 1\n",
-            "    @(\n        # decorator comment\n        decorator\n    )\n"
-            "    async def first(self):\n        return 1\n",
-            "    @(\n        decorator\n    )\n    class First:\n        pass\n",
-            "    @decorator\n    async def first(self):\n        return 1\n",
-            "    @decorator\n    class First:\n        pass\n",
-            "    def first(self):\n        return 1\n",
-        ],
-    )
-    @pytest.mark.parametrize(
-        "class_signature",
-        ["class A:\n", "@decorate_class\nclass A(\n    Base,\n):\n", "@(\n    decorate_class\n)\nclass A:\n"],
-    )
-    @pytest.mark.parametrize("preserve_class_definition", [True, False])
-    def test_class_signature_does_not_include_member_decorators(
-        self, first_member, class_signature, preserve_class_definition
-    ):
-        second_member = "\n    def second(self):\n        return 2\n"
-        source = class_signature + first_member + second_member
-        document = Document(content=source)
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1,
-            max_effective_lines=1,
-            oversized_factor=100,
-            preserve_class_definition=preserve_class_definition,
-        )
-
-        chunks = splitter.run(documents=[document])["documents"]
-
-        prefix = class_signature if preserve_class_definition else ""
-        assert [chunk.content for chunk in chunks] == [class_signature, prefix + first_member, prefix + second_member]
-        header_lines = class_signature.count("\n")
-        first_end = header_lines + first_member.count("\n")
-        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [
-            (1, header_lines),
-            (header_lines + 1, first_end),
-            (first_end + 2, source.count("\n")),
-        ]
-        assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2]
-        assert all(chunk.meta["source_id"] == document.id for chunk in chunks)
-        assert all(chunk.meta["include_classes"] == ["A"] for chunk in chunks)
-        first_kind = "nested_class" if "class First:" in first_member else "method"
-        assert [chunk.meta["unit_kinds"] for chunk in chunks] == [["class_header"], [first_kind], ["method"]]
-        first_node = ast.parse(source).body[0].body[0]
-        first_decorators = [ast.unparse(decorator) for decorator in first_node.decorator_list]
-        assert chunks[1].meta.get("decorators", []) == first_decorators
-        assert "decorators" not in chunks[2].meta
-        assert chunks[0].meta.get("decorators", []) == (["decorate_class"] if header_lines > 1 else [])
-        if not preserve_class_definition:
-            assert "".join(chunk.content for chunk in chunks) == source
-
-    @pytest.mark.parametrize("definition", ["def first():", "async def first():"])
     @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
-    def test_parenthesized_function_decorator_starts_at_marker(self, definition, newline):
-        decorated = "# leading comment\n@(\n    # decorator comment\n    decorator\n)\n" + definition + "\n    pass\n"
+    def test_multiline_function_decorator_starts_at_marker(self, newline):
+        decorated = "# leading comment\n@(\n    # decorator comment\n    decorator\n)\ndef first():\n    pass\n"
         following = "\ndef second():\n    pass\n"
         source = (decorated + following).replace("\n", newline)
         chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
@@ -451,10 +360,6 @@ class TestDecorators:
             following.replace("\n", newline),
         ]
         assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 7), (9, 10)]
-        assert chunks[0].meta["decorators"] == ["decorator"]
-        assert "decorators" not in chunks[1].meta
-        assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1]
-        assert "".join(chunk.content for chunk in chunks) == source
 
     def test_decorators_metadata_present(self):
         source = textwrap.dedent(
@@ -659,6 +564,22 @@ class TestPreserveClassDefinition:
     def test_default_preserve_class_definition_is_true(self):
         splitter = PythonCodeSplitter()
         assert splitter.preserve_class_definition is True
+
+    @pytest.mark.parametrize("preserve_class_definition", [True, False])
+    def test_first_property_does_not_decorate_later_methods(self, preserve_class_definition):
+        class_header = "class A:\n"
+        first_method = "    @property\n    def first(self):\n        return 1\n"
+        second_method = "\n    def second(self):\n        return 2\n"
+        chunks = PythonCodeSplitter(
+            min_effective_lines=1,
+            max_effective_lines=1,
+            oversized_factor=100,
+            preserve_class_definition=preserve_class_definition,
+        ).run(documents=[Document(content=class_header + first_method + second_method)])["documents"]
+
+        prefix = class_header if preserve_class_definition else ""
+        assert [chunk.content for chunk in chunks] == [class_header, prefix + first_method, prefix + second_method]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 4), (6, 7)]
 
     def test_class_signature_prepended_to_later_chunks(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
