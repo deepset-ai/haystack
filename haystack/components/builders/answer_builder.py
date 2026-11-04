@@ -95,6 +95,8 @@ class AnswerBuilder:
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
             If not specified, no parsing is done, and all documents are returned.
+            The effective pattern is validated in `run()` and must contain exactly one capture group
+            matching the document index.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
             If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
@@ -166,6 +168,7 @@ class AnswerBuilder:
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
             If not specified, no parsing is done, and all documents are returned.
+            Must contain exactly one capture group matching the document index.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
         :param expand_reference_ranges:
@@ -174,6 +177,9 @@ class AnswerBuilder:
 
         :returns: A dictionary with the following keys:
             - `answers`: The answers received from the output of the Generator.
+        :raises ValueError:
+            If the effective reference pattern is invalid, does not contain exactly one capture group,
+            or captures a value that cannot be parsed as a document index.
         """
         if not meta:
             meta = [{}] * len(replies)
@@ -191,6 +197,16 @@ class AnswerBuilder:
         reference_pattern = AnswerBuilder._resolve_reference_pattern(
             reference_pattern=reference_pattern, expand_reference_ranges=expand_reference_ranges
         )
+        if reference_pattern:
+            try:
+                num_groups = re.compile(reference_pattern).groups
+            except re.error as exc:
+                raise ValueError(f"Reference pattern '{reference_pattern}' is invalid: {exc}") from exc
+            if num_groups != 1:
+                raise ValueError(
+                    f"Reference pattern '{reference_pattern}' contains {num_groups} capture groups. "
+                    "Please specify a pattern with exactly one capture group that matches the document index."
+                )
 
         replies_to_iterate = replies[-1:] if self.last_message_only and replies else replies
         meta_to_iterate = meta[-1:] if self.last_message_only and meta else meta
@@ -284,25 +300,32 @@ class AnswerBuilder:
         matches = re.findall(reference_pattern, reply)
         idxs: set[int] = set()
         for match in matches:
-            if expand_ranges:
-                for part in match.split(","):
-                    part = part.strip()
-                    if not part:
-                        continue
-                    if "-" in part:
-                        start_str, end_str = part.split("-", 1)
-                        start, end = int(start_str), int(end_str)
-                        if start > end:
+            if not match:
+                raise ValueError(f"Reference pattern '{reference_pattern}' matched an empty document index.")
+            try:
+                if expand_ranges:
+                    for part in match.split(","):
+                        part = part.strip()
+                        if not part:
                             continue
-                        # Clamp the range end to the number of documents to avoid materializing a huge
-                        # set from an out-of-range citation like `[1-999999999]` in the Generator output.
-                        if num_documents is not None:
-                            end = min(end, num_documents)
-                        idxs.update(range(start - 1, end))
-                    else:
-                        idxs.add(int(part) - 1)
-            else:
-                idxs.add(int(match) - 1)
+                        if "-" in part:
+                            start_str, end_str = part.split("-", 1)
+                            start, end = int(start_str), int(end_str)
+                            if start > end:
+                                continue
+                            # Clamp the range end to the number of documents to avoid materializing a huge
+                            # set from an out-of-range citation like `[1-999999999]` in the Generator output.
+                            if num_documents is not None:
+                                end = min(end, num_documents)
+                            idxs.update(range(start - 1, end))
+                        else:
+                            idxs.add(int(part) - 1)
+                else:
+                    idxs.add(int(match) - 1)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Reference pattern '{reference_pattern}' captured '{match}', which is not a valid document index."
+                ) from exc
         return idxs
 
     @staticmethod

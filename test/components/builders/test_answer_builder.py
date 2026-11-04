@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import re
 
 import pytest
 
@@ -228,8 +229,9 @@ class TestAnswerBuilder:
         assert answers[0].documents[0].meta["referenced"] is True
         assert "Document index '0' referenced in Generator output is out of range." in caplog.text
 
-    def test_run_with_reference_pattern_set_at_runtime(self):
-        component = AnswerBuilder(reference_pattern="unused pattern")
+    @pytest.mark.parametrize("initial_pattern", ["unused pattern", "["])
+    def test_run_with_reference_pattern_set_at_runtime(self, initial_pattern):
+        component = AnswerBuilder(reference_pattern=initial_pattern)
         output = component.run(
             query="test query",
             replies=["Answer: AnswerString[2][3]"],
@@ -246,6 +248,40 @@ class TestAnswerBuilder:
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 2"
         assert answers[0].documents[1].content == "test doc 3"
+
+    @pytest.mark.parametrize("reference_pattern", [r"\[\d+\]", r"\[(\d+)\]\[(\d+)\]", "["])
+    @pytest.mark.parametrize("at_runtime", [False, True])
+    def test_run_rejects_invalid_reference_pattern_without_citations(self, reference_pattern, at_runtime):
+        component = AnswerBuilder(reference_pattern=None if at_runtime else reference_pattern)
+        kwargs = {"reference_pattern": reference_pattern} if at_runtime else {}
+        with pytest.raises(ValueError, match="Reference pattern"):
+            component.run(query="query", replies=["No citations."], documents=[Document(content="doc")], **kwargs)
+
+    def test_run_reference_pattern_requires_exactly_one_capture_group(self):
+        reference_pattern = r"\[\d+\]"
+        message = (
+            f"Reference pattern '{reference_pattern}' contains 0 capture groups. "
+            "Please specify a pattern with exactly one capture group that matches the document index."
+        )
+        with pytest.raises(ValueError, match=f"^{re.escape(message)}$"):
+            AnswerBuilder(reference_pattern=reference_pattern).run(query="query", replies=["See [1]."])
+
+    @pytest.mark.parametrize("expand_reference_ranges", [False, True])
+    @pytest.mark.parametrize("reference_pattern, reply", [(r"\[(\d+)?\]", "See []."), (r"\[(.*?)\]", "See [abc].")])
+    def test_run_rejects_reference_captures_that_are_not_indices(
+        self, reference_pattern, reply, expand_reference_ranges
+    ):
+        component = AnswerBuilder(reference_pattern=reference_pattern, expand_reference_ranges=expand_reference_ranges)
+        with pytest.raises(ValueError, match="Reference pattern.*document index"):
+            component.run(query="query", replies=[reply], documents=[Document(content="doc")])
+
+    @pytest.mark.parametrize("reference_pattern", [r"\[(\d+)?\]", r"(?:Document\[)(?P<index>\d+)\]"])
+    def test_run_accepts_single_capture_reference_patterns(self, reference_pattern):
+        component = AnswerBuilder(reference_pattern=reference_pattern)
+        output = component.run(
+            query="query", replies=["See Document[2]."], documents=[Document(content="one"), Document(content="two")]
+        )
+        assert [doc.content for doc in output["answers"][0].documents] == ["two"]
 
     def test_run_with_chat_message_replies_without_pattern(self):
         component = AnswerBuilder()

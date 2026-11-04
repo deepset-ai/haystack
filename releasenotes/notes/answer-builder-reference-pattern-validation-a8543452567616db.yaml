@@ -1,0 +1,11 @@
+fixes:
+  - |
+    ``AnswerBuilder.run()`` now raises a clear ``ValueError`` for invalid reference
+    patterns and empty or non-numeric document-index captures instead of leaking
+    regex or integer-conversion errors.
+upgrade:
+  - |
+    ``AnswerBuilder`` reference patterns must contain exactly one capture group.
+    The effective pattern is checked in ``run()``, so a runtime override can still
+    replace an invalid initialization value. Patterns without a capture group
+    should wrap the document index in parentheses, for example ``\[(\d+)\]``.
