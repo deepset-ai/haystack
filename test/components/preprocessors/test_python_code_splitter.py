@@ -330,6 +330,56 @@ class TestFileNamePropagation:
 
 class TestDecorators:
     @pytest.mark.parametrize(
+        "decorator",
+        [
+            "@decorator\n",
+            "@(decorator)\n",
+            "@decorator('é', label='@not_a_marker')\n",
+            "@(\n    # @not_a_marker\n    (\n        décorateur\n    )\n)\n",
+            "@ \\\n    décorateur\n",
+            "@(\n    left\n    @ right\n)\n",
+            "@(\n    factory(\n        '@not_a_marker',\n    )\n)\n",
+            "@(\n    'é' 'à'\n)\n",
+            "@(\n    '''é\n@inside_a_string\n'''\n)\n",
+            "@(\n    (λ := décorateur)\n)\n",
+            "@(\n    (lambda f: f)\n)\n",
+            "@(\n    décorateur  # @not_a_marker\n)\n@other\n",
+            "@(((\n\n# @not_a_marker\n    décorateur\n)))\n",
+            "@\tdecorator\n",
+            "\f@decorator\n",
+            "@(\n    (decorator if condition else other)\n)\n",
+            "@(\n    [decorator][0]\n)\n",
+        ],
+    )
+    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+    def test_decorator_marker_scan_preserves_exact_source(self, decorator, newline):
+        prefix = 'text = """\n@inside_a_string\n"""\nleft = matrix @ matrix\n'
+        decorated = decorator + "def first():\n    pass\n"
+        following = "def second():\n    pass\n"
+        source = (prefix + decorated + following).replace("\n", newline)
+        document = Document(content=source)
+        chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
+            documents=[document]
+        )["documents"]
+
+        assert [chunk.content for chunk in chunks] == [
+            'text = """\n@inside_a_string\n"""\n'.replace("\n", newline),
+            "left = matrix @ matrix\n".replace("\n", newline),
+            decorated.replace("\n", newline),
+            following.replace("\n", newline),
+        ]
+        decorated_end = 4 + decorated.count("\n")
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [
+            (1, 3),
+            (4, 4),
+            (5, decorated_end),
+            (decorated_end + 1, decorated_end + 2),
+        ]
+        assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2, 3]
+        assert all(chunk.meta["source_id"] == document.id for chunk in chunks)
+        assert "".join(chunk.content or "" for chunk in chunks) == source
+
+    @pytest.mark.parametrize(
         "first_member",
         [
             "    @property\n    def first(self):\n        return 1\n",
