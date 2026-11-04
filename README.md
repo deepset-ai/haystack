@@ -206,7 +206,7 @@
 | haystack/hooks/invocation.py                                               |       40 |        0 |    100% |           |
 | haystack/hooks/protocol.py                                                 |       15 |        0 |    100% |           |
 | haystack/hooks/structured\_output/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
-| haystack/hooks/structured\_output/hooks.py                                 |       96 |        1 |     99% |       180 |
+| haystack/hooks/structured\_output/hooks.py                                 |       97 |        1 |     99% |       182 |
 | haystack/hooks/tool\_result\_offloading/\_\_init\_\_.py                    |        5 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/hooks.py                           |       77 |        2 |     97% |  184, 255 |
 | haystack/hooks/tool\_result\_offloading/policies.py                        |       17 |        0 |    100% |           |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18489** |  **685** | **96%** |           |
+| **TOTAL**                                                                  | **18490** |  **685** | **96%** |           |
 
 
 ## Setup coverage badge
