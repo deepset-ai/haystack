@@ -69,6 +69,23 @@ def _serialize_type_arg(arg: Any) -> str:
     return serialize_type(arg)
 
 
+def _serialize_annotated_meta(meta: Any) -> str:
+    """
+    Serialize a single metadata value of a ``typing.Annotated[...]``.
+
+    Literal values (str, int, bool, None, bytes) are rendered with ``repr()`` so they keep their
+    quotes and round-trip cleanly through ``ast.literal_eval`` on the deserialize side. Type-like
+    values (classes, typing forms) are rendered through ``serialize_type`` so the full module path
+    is preserved and the deserialize side can resolve them back to the same object. ``repr`` on a
+    class produces ``<class 'foo.Bar'>`` which is not a valid Python literal and would not round-trip.
+    """
+    try:
+        ast.literal_eval(repr(meta))
+    except (ValueError, SyntaxError):
+        return serialize_type(meta)
+    return repr(meta)
+
+
 def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation, including the module name.
@@ -95,6 +112,18 @@ def serialize_type(target: Any) -> str:
     # strings keep their quotes.
     if typing.get_origin(target) is typing.Literal:
         return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
+
+    # Annotated[T, m1, m2, ...] holds a type T followed by metadata values. Python normalizes the bare
+    # `Annotated[T]` form back to `T` (no metadata), so the metadata list is always non-empty here.
+    # Render the type through serialize_type (so nested generics and module paths are preserved) and
+    # each metadata value with repr() so strings keep their quotes — same approach as the Literal
+    # branch above, since metadata values are not types and would otherwise be misread as type names on
+    # deserialize (e.g. Annotated[str, "int"] silently corrupting to Annotated[str, int]).
+    if typing.get_origin(target) is typing.Annotated:
+        ann_args = get_args(target)
+        type_str = serialize_type(ann_args[0])
+        meta_str = ", ".join(_serialize_annotated_meta(m) for m in ann_args[1:])
+        return f"typing.Annotated[{type_str}, {meta_str}]"
 
     args = get_args(target)
 
@@ -206,7 +235,66 @@ def _deserialize_type_arg(arg_str: str) -> Any:
 
 
 @mark_deserialization_internal
-def deserialize_type(type_str: str) -> Any:
+def _split_annotated_args(args_str: str) -> tuple[str, str]:
+    """
+    Split the inside of a serialized ``typing.Annotated[...]`` into ``(type_str, metadata_str)``.
+
+    Splits on the first comma at the top level — outside any ``[...]`` brackets and outside any string
+    literal — so a comma inside a string metadata value (``Annotated[int, "a, b"]``) is not treated as a
+    separator. ``_parse_generic_args`` is bracket-aware but not quote-aware and would mis-split such a
+    payload. If no top-level comma is found the whole string is the type and the metadata is empty
+    (defensive: ``Annotated`` always has at least one metadata value in practice because Python
+    normalizes ``Annotated[T]`` back to ``T``).
+
+    :param args_str: The contents between the brackets of a serialized ``typing.Annotated[...]``.
+    :returns: A ``(type_str, metadata_str)`` tuple. Both are stripped. ``metadata_str`` is empty when no
+        top-level comma is present.
+    """
+    bracket_count = 0
+    in_string = False
+    string_char: str | None = None
+    i = 0
+    while i < len(args_str):
+        c = args_str[i]
+        if in_string:
+            if c == "\\" and i + 1 < len(args_str):
+                # Skip the escaped character so a backslash-escaped quote does not end the string.
+                i += 2
+                continue
+            if c == string_char:
+                in_string = False
+        elif c in ('"', "'"):
+            in_string = True
+            string_char = c
+        elif c == "[":
+            bracket_count += 1
+        elif c == "]":
+            bracket_count -= 1
+        elif c == "," and bracket_count == 0:
+            return args_str[:i].strip(), args_str[i + 1 :].strip()
+        i += 1
+    return args_str.strip(), ""
+
+
+@mark_deserialization_internal
+def _deserialize_annotated_metadata(arg_str: str) -> Any:
+    """
+    Deserialize a single metadata value from a serialized ``typing.Annotated[...]``.
+
+    Tries ``ast.literal_eval`` first (which safely parses Python literals — str, int, bool, None, bytes —
+    and is quote-aware). Falls back to ``deserialize_type`` for non-literal metadata such as a validator
+    class (``Annotated[int, MyValidator]``), which is rendered with its full module path by
+    ``serialize_type``. Ellipsis (``...``) is parsed through the fallback to ``_SPECIAL_LITERALS``.
+    """
+    stripped = arg_str.strip()
+    try:
+        return ast.literal_eval(stripped)
+    except (ValueError, SyntaxError):
+        return deserialize_type(stripped)
+
+
+@mark_deserialization_internal
+def deserialize_type(type_str: str) -> Any:  # noqa: PLR0911 - dispatch on wire-form (PEP 604 / generic / Annotated / module path / builtin / typing)
     """
     Deserializes a type given its full import path as a string, including nested generic types.
 
@@ -251,6 +339,30 @@ def deserialize_type(type_str: str) -> Any:
         # arguments.
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+
+        # Annotated[T, m1, m2, ...] has a type as the first argument and metadata values (typically
+        # Python literals) as the rest. The split is quote-aware because a string metadata value can
+        # contain a comma — `_parse_generic_args` is bracket-aware but not quote-aware and would
+        # mis-split such a payload. The first chunk is the type and is resolved via deserialize_type;
+        # each metadata chunk is resolved via `_deserialize_annotated_metadata` (literal_eval with a
+        # deserialize_type fallback for type metadata like validators).
+        if main_type is typing.Annotated:
+            type_str, meta_str = _split_annotated_args(generics_str)
+            deserialized_type = deserialize_type(type_str)
+            if not meta_str:
+                raise DeserializationError(
+                    f"Annotated requires at least one metadata value: typing.Annotated[{generics_str}]"
+                )
+            # Try the all-literals path first (the common case): wrap the metadata in `(...)` with a
+            # trailing comma so `ast.literal_eval` parses it as a tuple. This is quote-aware, so a
+            # comma inside a string metadata value is not treated as a separator. If any metadata is
+            # a type (e.g. `Annotated[int, MyValidator]`), `ast.literal_eval` raises and we fall back
+            # to the per-arg path that mixes literal_eval with deserialize_type.
+            try:
+                deserialized_metadata = list(ast.literal_eval(f"({meta_str},)"))
+            except (ValueError, SyntaxError):
+                deserialized_metadata = [_deserialize_annotated_metadata(a) for a in _parse_generic_args(meta_str)]
+            return typing.Annotated[(deserialized_type, *deserialized_metadata)]
 
         generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
