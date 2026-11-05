@@ -5,6 +5,7 @@
 import re
 from collections.abc import Generator
 from copy import deepcopy
+from dataclasses import replace
 from functools import partial, reduce
 from itertools import chain
 from typing import Literal
@@ -165,15 +166,7 @@ class DocumentCleaner:
                     )
                     continue
 
-            clean_doc = Document(
-                id=doc.id if self.keep_id else "",
-                content=text,
-                blob=doc.blob,
-                meta=deepcopy(doc.meta),
-                score=doc.score,
-                embedding=doc.embedding,
-                sparse_embedding=doc.sparse_embedding,
-            )
+            clean_doc = replace(doc, id=doc.id if self.keep_id else "", content=text, meta=deepcopy(doc.meta))
             cleaned_docs.append(clean_doc)
 
         return {"documents": cleaned_docs}
