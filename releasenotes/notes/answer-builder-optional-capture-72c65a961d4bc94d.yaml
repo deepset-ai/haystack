@@ -2,3 +2,6 @@ fixes:
   - |
     ``AnswerBuilder`` now returns an empty answer when its pattern contains a capture group
     that does not participate in the match, rather than returning the whole matched text.
+upgrade:
+  - |
+    ``AnswerBuilder`` patterns with an alternation like ``Answer: (.+)|I don't know`` now return an empty answer when the capture group does not participate (e.g. the reply ``"I don't know"`` returns ``""`` instead of the whole match ``"I don't know"``).
