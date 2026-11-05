@@ -41,8 +41,7 @@ class BackupAnswerHook:
     If the chat generator raises or returns no text, a warning is logged and `messages` is left unchanged, unless
     `raise_on_failure` is set.
 
-    The hook's chat generator is warmed up and closed together with the Agent. The Agent's `streaming_callback` is
-    not used for the backup answer. To stream it, set a `streaming_callback` on the hook's chat generator.
+    The hook's chat generator is warmed up and closed together with the Agent.
 
     <!-- test-ignore -->
     ```python

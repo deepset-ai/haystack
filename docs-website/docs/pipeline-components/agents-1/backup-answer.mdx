@@ -38,8 +38,6 @@ The `exit_reason` stays unchanged, so you can still tell a backup answer from a 
 
 If the backup call fails or returns no text, the hook logs a warning and the Agent returns the conversation without a backup answer. Set `raise_on_failure=True` to raise the error instead.
 
-The backup answer is not streamed through the Agent's `streaming_callback`. To stream it, set a `streaming_callback` on the hook's chat generator.
-
 ## Usage
 
 ```python
