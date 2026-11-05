@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_212816d856a30b8b_list_joiner_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-05 13:43 +0000
+            created at 2026-11-05 14:00 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -88,7 +88,7 @@
     <p class="run"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t"><span class="key">from</span> <span class="nam">collections</span> <span class="key">import</span> <span class="nam">defaultdict</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t"><span class="key">from</span> <span class="nam">dataclasses</span> <span class="key">import</span> <span class="nam">replace</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">enum</span> <span class="key">import</span> <span class="nam">Enum</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t"><span class="key">from</span> <span class="nam">math</span> <span class="key">import</span> <span class="nam">inf</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t"><span class="key">from</span> <span class="nam">math</span> <span class="key">import</span> <span class="nam">inf</span><span class="op">,</span> <span class="nam">isfinite</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">Any</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span> <span class="key">import</span> <span class="nam">Document</span><span class="op">,</span> <span class="nam">component</span><span class="op">,</span> <span class="nam">default_from_dict</span><span class="op">,</span> <span class="nam">default_to_dict</span><span class="op">,</span> <span class="nam">logging</span>&nbsp;</span><span class="r"></span></p>
@@ -205,7 +205,7 @@
     <p class="pln"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t"><span class="str">        :raises ValueError:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t"><span class="str">            If `top_k` is not `None` and is less than or equal to 0,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t"><span class="str">            or if any value in `weights` is negative.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t"><span class="str">            or if any value in `weights` is negative, NaN, or infinite.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t"><span class="str">        &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">        <span class="key">if</span> <span class="nam">top_k</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span> <span class="key">and</span> <span class="nam">top_k</span> <span class="op">&lt;=</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&quot;top_k must be greater than 0.&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -221,8 +221,8 @@
     <p class="run"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">join_mode_function</span> <span class="op">=</span> <span class="nam">join_mode_functions</span><span class="op">[</span><span class="nam">join_mode</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">join_mode</span> <span class="op">=</span> <span class="nam">join_mode</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t">        <span class="key">if</span> <span class="nam">weights</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">            <span class="key">if</span> <span class="nam">any</span><span class="op">(</span><span class="nam">weight</span> <span class="op">&lt;</span> <span class="num">0</span> <span class="key">for</span> <span class="nam">weight</span> <span class="key">in</span> <span class="nam">weights</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">                <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&quot;The provided `weights` must not be negative.&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">            <span class="key">if</span> <span class="nam">any</span><span class="op">(</span><span class="key">not</span> <span class="nam">isfinite</span><span class="op">(</span><span class="nam">weight</span><span class="op">)</span> <span class="key">or</span> <span class="nam">weight</span> <span class="op">&lt;</span> <span class="num">0</span> <span class="key">for</span> <span class="nam">weight</span> <span class="key">in</span> <span class="nam">weights</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">                <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&quot;The provided `weights` must be finite and must not be negative.&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">            <span class="nam">weight_sum</span> <span class="op">=</span> <span class="nam">sum</span><span class="op">(</span><span class="nam">weights</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">            <span class="key">if</span> <span class="nam">weight_sum</span> <span class="op">==</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">                <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&quot;The provided `weights` must not sum to zero.&quot;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -411,7 +411,7 @@
             <a class="nav" href="z_212816d856a30b8b_list_joiner_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-05 13:43 +0000
+            created at 2026-11-05 14:00 +0000
         </p>
     </div>
 </footer>
