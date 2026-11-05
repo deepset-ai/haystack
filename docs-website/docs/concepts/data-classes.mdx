@@ -157,6 +157,7 @@ class Document(metaclass=_BackwardCompatible):
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None)
     sparse_embedding: Optional[SparseEmbedding] = field(default=None)
+    multivector_embedding: list[list[float]] | None = field(default=None)
 ```
 
 #### Example
@@ -209,7 +210,7 @@ from haystack.dataclasses import StreamingChunk, ToolCallDelta, ReasoningContent
 chunk = StreamingChunk(
     content="Hello world",
     start=True,
-    meta={"model": "gpt-5-mini"},
+    meta={"model": "gpt-5.6-terra"},
 )
 
 # Tool call chunk

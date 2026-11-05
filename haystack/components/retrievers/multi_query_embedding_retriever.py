@@ -83,7 +83,10 @@ class MultiQueryEmbeddingRetriever:
         :param query_embedder: The query embedder to convert text queries to embeddings.
         :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
             `run_async`.
+        :raises ValueError: If `max_workers` is not greater than 0.
         """
+        if max_workers <= 0:
+            raise ValueError(f"max_workers must be greater than 0, but got {max_workers}")
         self.retriever = retriever
         self.query_embedder = query_embedder
         self.max_workers = max_workers
@@ -173,7 +176,7 @@ class MultiQueryEmbeddingRetriever:
         await self.warm_up_async()
 
         # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
-        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+        semaphore = asyncio.Semaphore(self.max_workers)
 
         async def _bounded_run_one(query: str) -> list[Document] | None:
             async with semaphore:

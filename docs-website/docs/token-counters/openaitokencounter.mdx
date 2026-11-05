@@ -15,7 +15,7 @@ Because it calls a remote API, it requires an OpenAI API key and adds network la
 from haystack.dataclasses import ChatMessage
 from haystack.token_counters import OpenAITokenCounter
 
-counter = OpenAITokenCounter("gpt-5-mini")
+counter = OpenAITokenCounter("gpt-5.6-terra")
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
 token_count = counter.count(messages)
