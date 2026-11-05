@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 
 import pytest
 
@@ -221,6 +222,19 @@ class TestMetaFieldRanker:
     def test_raises_component_error_if_wrong_weight(self, score):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", weight=score)
+
+    @pytest.mark.parametrize("weight", [math.nan, math.inf, -math.inf])
+    def test_raises_value_error_if_weight_is_not_finite(self, weight):
+        with pytest.raises(ValueError, match="Parameter <weight> must be in range \\[0,1\\]"):
+            MetaFieldRanker(meta_field="rating", weight=weight)
+
+    @pytest.mark.parametrize("ranking_mode", ["reciprocal_rank_fusion", "linear_score"])
+    def test_run_raises_value_error_if_weight_is_not_finite(self, ranking_mode):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode=ranking_mode)
+        documents = [Document(content="abc", meta={"rating": 1.3}, score=0.5)]
+
+        with pytest.raises(ValueError, match="Parameter <weight> must be in range \\[0,1\\]"):
+            ranker.run(documents=documents, weight=math.nan)
 
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):

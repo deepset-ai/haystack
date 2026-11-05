@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` now rejects a ``weight`` of ``NaN`` or infinity with the same ``ValueError`` it raises for
+    weights outside ``[0, 1]``, instead of silently returning documents with ``NaN`` scores.

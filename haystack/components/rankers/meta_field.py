@@ -120,7 +120,7 @@ class MetaFieldRanker:
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        if weight < 0 or weight > 1:
+        if not 0 <= weight <= 1:
             raise ValueError(
                 f"Parameter <weight> must be in range [0,1] but is currently set to '{weight}'.\n'0' disables sorting "
                 "by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and "
