@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LLMRanker`` now skips boolean, fractional, and non-finite response indices
+    instead of selecting the wrong document or raising an uncaught ``OverflowError``.
+    If no valid indices remain in a nonempty ranking, the existing ``raise_on_failure``
+    policy applies. Integer strings and integer-valued numbers remain supported.

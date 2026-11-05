@@ -287,14 +287,52 @@ def test_run_preserves_duplicate_indices():
     assert [document.id for document in result["documents"]] == ["2", "2", "1"]
 
 
-def test_run_numeric_string_index_is_accepted():
+@pytest.mark.parametrize("index_json", ['"2"', "2.0"])
+def test_run_numeric_index_is_accepted(index_json):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    chat_generator = MockChatGenerator('{"documents": [{"index": "2"}]}')
+    chat_generator = MockChatGenerator('{"documents": [{"index": ' + index_json + "}]}")
     ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": [documents[1]]}
+
+
+@pytest.mark.parametrize("index_json", ["true", "1.9", "1e400", "-1e400"])
+@pytest.mark.parametrize("run_async", [False, True])
+async def test_run_skips_invalid_numeric_indices(index_json, run_async):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    chat_generator = MockChatGenerator('{"documents": [{"index": ' + index_json + '}, {"index": 2}]}')
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=1)
+
+    if run_async:
+        result = await ranker.run_async(query="test query", documents=documents)
+    else:
+        result = ranker.run(query="test query", documents=documents)
+
+    assert result == {"documents": [documents[1]]}
+
+
+@pytest.mark.parametrize("index_json", ["true", "1.9", "1e400", "-1e400"])
+@pytest.mark.parametrize("run_async", [False, True])
+@pytest.mark.parametrize("raise_on_failure", [False, True])
+async def test_run_invalid_numeric_indices_follow_failure_policy(index_json, run_async, raise_on_failure):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    chat_generator = MockChatGenerator('{"documents": [{"index": ' + index_json + "}]}")
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=1, raise_on_failure=raise_on_failure)
+
+    if raise_on_failure:
+        with pytest.raises(ValueError, match="^Ranking response did not contain any valid document indices\\.$"):
+            if run_async:
+                await ranker.run_async(query="test query", documents=documents)
+            else:
+                ranker.run(query="test query", documents=documents)
+    else:
+        if run_async:
+            result = await ranker.run_async(query="test query", documents=documents)
+        else:
+            result = ranker.run(query="test query", documents=documents)
+        assert result == {"documents": documents}
 
 
 def test_run_invalid_index_type_falls_back():

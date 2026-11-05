@@ -88,6 +88,8 @@ class LLMRanker:
 
     The LLM is expected to return a JSON object containing ranked document indices. Only the documents the LLM returns
     are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
+    Boolean, fractional, and non-finite indices are skipped. Integer strings and integer-valued numbers are accepted.
+    If a nonempty ranking contains no valid indices, it is treated as a parsing failure.
 
     If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
     to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
@@ -414,6 +416,11 @@ class LLMRanker:
 
             document_index = entry.get("index")
             if document_index is None:
+                continue
+
+            if isinstance(document_index, bool) or (
+                isinstance(document_index, float) and not document_index.is_integer()
+            ):
                 continue
 
             try:
