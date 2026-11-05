@@ -39,6 +39,12 @@ class TestDocumentJoiner:
         with pytest.raises(ValueError, match="must not be negative"):
             DocumentJoiner(join_mode="merge", weights=weights)
 
+    @pytest.mark.parametrize("weights", [[float("nan"), 1.0], [float("inf"), 1.0], [1.0, float("-inf")]])
+    def test_init_with_non_finite_weights_raises(self, weights):
+        # NaN passed the negative check, and both NaN and inf turned the normalized weights and all scores into NaN
+        with pytest.raises(ValueError, match="must be finite"):
+            DocumentJoiner(join_mode="merge", weights=weights)
+
     def test_init_with_zero_weight_is_allowed(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[0.0, 1.0])
         assert joiner.weights == [0.0, 1.0]
@@ -228,17 +234,32 @@ class TestDocumentJoiner:
         sparse_embedding = SparseEmbedding(indices=[1], values=[0.5])
         first = Document(id="a", embedding=[0.1])
         second = Document(id="a", sparse_embedding=sparse_embedding)
+        third = Document(id="a", multivector_embedding=[[0.1, 0.2], [0.3, 0.4]])
 
-        output = joiner.run(documents=[[first], [second]])
+        output = joiner.run(documents=[[first], [second], [third]])
 
-        assert output == {"documents": [Document(id="a", embedding=[0.1], sparse_embedding=sparse_embedding)]}
+        assert output == {
+            "documents": [
+                Document(
+                    id="a",
+                    embedding=[0.1],
+                    sparse_embedding=sparse_embedding,
+                    multivector_embedding=[[0.1, 0.2], [0.3, 0.4]],
+                )
+            ]
+        }
         assert first.sparse_embedding is None
+        assert first.multivector_embedding is None
         assert second.embedding is None
+        assert second.multivector_embedding is None
+        assert third.embedding is None
+        assert third.sparse_embedding is None
 
     @pytest.mark.parametrize(
         "field,first,second",
         [
             ("embedding", [0.1], [0.2]),
+            ("multivector_embedding", [[0.1, 0.2]], [[0.3, 0.4]]),
             (
                 "sparse_embedding",
                 SparseEmbedding(indices=[1], values=[0.5]),

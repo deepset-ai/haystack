@@ -1277,7 +1277,8 @@ select_streaming_callback(
 
 Picks the correct streaming callback given an optional initial and runtime callback.
 
-The runtime callback takes precedence over the initial callback.
+The runtime callback takes precedence over the initial callback. Only the selected callback is checked for
+compatibility with the execution context.
 
 In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
 the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because
