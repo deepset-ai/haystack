@@ -329,6 +329,38 @@ class TestFileNamePropagation:
 
 
 class TestDecorators:
+    def test_multiline_method_decorator_stays_with_method(self):
+        class_header = "class A:\n"
+        first_method = (
+            "    @(\n        # decorator comment\n        decorator\n    )\n    def first(self):\n        return 1\n"
+        )
+        second_method = "\n    def second(self):\n        return 2\n"
+        chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
+            documents=[Document(content=class_header + first_method + second_method)]
+        )["documents"]
+
+        assert [chunk.content for chunk in chunks] == [
+            class_header,
+            class_header + first_method,
+            class_header + second_method,
+        ]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 7), (9, 10)]
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+    def test_multiline_function_decorator_starts_at_marker(self, newline):
+        decorated = "# leading comment\n@(\n    # decorator comment\n    decorator\n)\ndef first():\n    pass\n"
+        following = "\ndef second():\n    pass\n"
+        source = (decorated + following).replace("\n", newline)
+        chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
+            documents=[Document(content=source)]
+        )["documents"]
+
+        assert [chunk.content for chunk in chunks] == [
+            decorated.replace("\n", newline),
+            following.replace("\n", newline),
+        ]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 7), (9, 10)]
+
     def test_decorators_metadata_present(self):
         source = textwrap.dedent(
             """
@@ -532,6 +564,22 @@ class TestPreserveClassDefinition:
     def test_default_preserve_class_definition_is_true(self):
         splitter = PythonCodeSplitter()
         assert splitter.preserve_class_definition is True
+
+    @pytest.mark.parametrize("preserve_class_definition", [True, False])
+    def test_first_property_does_not_decorate_later_methods(self, preserve_class_definition):
+        class_header = "class A:\n"
+        first_method = "    @property\n    def first(self):\n        return 1\n"
+        second_method = "\n    def second(self):\n        return 2\n"
+        chunks = PythonCodeSplitter(
+            min_effective_lines=1,
+            max_effective_lines=1,
+            oversized_factor=100,
+            preserve_class_definition=preserve_class_definition,
+        ).run(documents=[Document(content=class_header + first_method + second_method)])["documents"]
+
+        prefix = class_header if preserve_class_definition else ""
+        assert [chunk.content for chunk in chunks] == [class_header, prefix + first_method, prefix + second_method]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 4), (6, 7)]
 
     def test_class_signature_prepended_to_later_chunks(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)

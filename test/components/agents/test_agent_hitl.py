@@ -80,7 +80,7 @@ class TestAgent:
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": "gpt-5-mini",
+                        "model": "gpt-5.6-terra",
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,

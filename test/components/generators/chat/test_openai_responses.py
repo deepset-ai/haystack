@@ -118,7 +118,7 @@ class TestInitialization:
         assert component.client is None
         assert component.async_client is None
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.timeout is None
@@ -195,7 +195,7 @@ class TestSerDe:
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,

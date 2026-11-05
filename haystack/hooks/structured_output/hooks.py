@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 
 from haystack import logging
 from haystack.components.agents.state.state import State
+from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils.type_serialization import deserialize_type, serialize_type
@@ -32,7 +33,7 @@ class StructuredOutputHook:
     The hook runs at the `on_exit` hook point. When the Agent stops with a text reply (`exit_reason` is `"text"`),
     the hook parses the reply as JSON, validates it against `schema`, and stores the result under `state_key`.
     A markdown code fence around the whole reply (for example ```` ```json ````) is removed before parsing.
-    With a Pydantic model as `schema`, the stored value is the validated model dumped to a dict.
+    With a Pydantic model as `schema`, the stored value is its JSON-compatible model dump.
 
     When the reply is not valid JSON or does not match the schema, and retries are left, the hook adds a user
     message describing the error and keeps the Agent running so the model can correct its reply. Retries count
@@ -47,6 +48,7 @@ class StructuredOutputHook:
     `result.get("structured_output")`.
 
     `state_key` must be declared in the Agent's `state_schema`, which also makes it an output of the Agent.
+    The parsed result replaces the previous value, overriding the state field's handler.
 
     The hook works with any chat generator. When the chat generator supports native structured output (for example
     `text_format` on `OpenAIResponsesChatGenerator`), pass the same schema there as well so the model is constrained
@@ -142,16 +144,16 @@ class StructuredOutputHook:
                 exit_reason=exit_reason,
                 state_key=self.state_key,
             )
-            state.set(self.state_key, None)
+            state.set(self.state_key, None, handler_override=replace_values)
             return
 
         messages = state.data["messages"]
         parsed, error = self._parse(text=messages[-1].text)
         if error is None:
-            state.set(self.state_key, parsed)
+            state.set(self.state_key, parsed, handler_override=replace_values)
             return
 
-        state.set(self.state_key, None)
+        state.set(self.state_key, None, handler_override=replace_values)
         retries_used = _count_corrections(messages=messages)
         if retries_used >= self.max_retries:
             logger.warning(
