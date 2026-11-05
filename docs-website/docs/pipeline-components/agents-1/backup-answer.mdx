@@ -7,7 +7,7 @@ description: "Use BackupAnswerHook to write a final answer when an Agent stops a
 
 # Backup Answer
 
-`BackupAnswerHook` writes a final answer when an Agent run stops without one. When an Agent reaches `max_agent_steps` in the middle of its research, the run ends on a tool call or tool result and `last_message` has no text answer. The hook makes one extra call to its own chat generator over the conversation so far and appends the reply, so the user always gets an answer.
+`BackupAnswerHook` writes a final answer when an Agent run stops without one. When an Agent reaches `max_agent_steps` in the middle of its research, the run ends on a tool call or tool result and `last_message` has no text answer. The hook makes one extra call to its own chat generator over the conversation so far and appends the reply, so the user gets an answer built from the work the Agent already did.
 
 <div className="key-value-table">
 
@@ -35,6 +35,10 @@ description: "Use BackupAnswerHook to write a final answer when an Agent stops a
 3. Appends the reply to `messages`, so it becomes the Agent's `last_message`.
 
 The `exit_reason` stays unchanged, so you can still tell a backup answer from a normal one. The hook's chat generator is warmed up and closed together with the Agent. It can differ from the Agent's chat generator, for example to use a cheaper model.
+
+If the backup call fails or returns no text, the hook logs a warning and the Agent returns the conversation without a backup answer. Set `raise_on_failure=True` to raise the error instead.
+
+The backup answer is not streamed through the Agent's `streaming_callback`. To stream it, set a `streaming_callback` on the hook's chat generator.
 
 ## Usage
 

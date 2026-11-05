@@ -38,7 +38,11 @@ class BackupAnswerHook:
     The system messages of the conversation are replaced by `system_prompt`. The `exit_reason` is left unchanged, so
     downstream components can tell a backup answer from a normal one.
 
-    The hook's chat generator is warmed up and closed together with the Agent.
+    If the chat generator raises or returns no text, a warning is logged and `messages` is left unchanged, unless
+    `raise_on_failure` is set.
+
+    The hook's chat generator is warmed up and closed together with the Agent. The Agent's `streaming_callback` is
+    not used for the backup answer. To stream it, set a `streaming_callback` on the hook's chat generator.
 
     <!-- test-ignore -->
     ```python
@@ -69,6 +73,7 @@ class BackupAnswerHook:
         *,
         system_prompt: str = _DEFAULT_SYSTEM_PROMPT,
         exit_reasons: Sequence[str] = ("max_agent_steps",),
+        raise_on_failure: bool = False,
     ) -> None:
         """
         Create a backup answer hook.
@@ -79,10 +84,13 @@ class BackupAnswerHook:
             information.
         :param exit_reasons: The `exit_reason` values that trigger a backup answer. Defaults to `("max_agent_steps",)`.
             Add other values, such as `"token_budget_exceeded"` from `TokenBudgetHook`, to also cover those exits.
+        :param raise_on_failure: Whether to raise an exception if the chat generator fails or returns no text. By
+            default the failure is logged and `messages` is left unchanged.
         """
         self.chat_generator = chat_generator
         self.system_prompt = system_prompt
         self.exit_reasons = tuple(exit_reasons)
+        self.raise_on_failure = raise_on_failure
 
     def warm_up(self) -> None:
         """Warm up the hook's chat generator. The Agent calls this from its own `warm_up`."""
@@ -115,14 +123,22 @@ class BackupAnswerHook:
         Append a backup answer to the conversation when the run stopped with one of the configured exit reasons.
 
         :param state: Agent state holding the conversation and the `exit_reason`.
+        :raises RuntimeError: If `raise_on_failure` is set and the chat generator returns no text. Errors raised by
+            the chat generator itself are re-raised when `raise_on_failure` is set.
         """
         prompt = self._build_prompt(state=state)
         if prompt is None:
             return
-        with _trace_chat_generator_run(self.chat_generator, {"messages": prompt}) as span:
-            result = self.chat_generator.run(messages=prompt)
-            span.set_content_tag("haystack.component.output", result)
-        self._store_reply(state=state, result=result)
+        try:
+            with _trace_chat_generator_run(self.chat_generator, {"messages": prompt}) as span:
+                result = self.chat_generator.run(messages=prompt)
+                span.set_content_tag("haystack.component.output", result)
+            reply = _reply_from_result(result=result)
+        except Exception as error:
+            self._report_failure(error=error)
+            return
+        # The `messages` handler appends the reply, so it becomes the last message
+        state.set("messages", [reply])
 
     async def run_async(self, state: State) -> None:
         """
@@ -131,14 +147,22 @@ class BackupAnswerHook:
         Uses the chat generator's `run_async` when it has one, and otherwise runs its `run` in a worker thread.
 
         :param state: Agent state holding the conversation and the `exit_reason`.
+        :raises RuntimeError: If `raise_on_failure` is set and the chat generator returns no text. Errors raised by
+            the chat generator itself are re-raised when `raise_on_failure` is set.
         """
         prompt = self._build_prompt(state=state)
         if prompt is None:
             return
-        with _trace_chat_generator_run(self.chat_generator, {"messages": prompt}) as span:
-            result = await _execute_component_async(component_instance=self.chat_generator, messages=prompt)
-            span.set_content_tag("haystack.component.output", result)
-        self._store_reply(state=state, result=result)
+        try:
+            with _trace_chat_generator_run(self.chat_generator, {"messages": prompt}) as span:
+                result = await _execute_component_async(component_instance=self.chat_generator, messages=prompt)
+                span.set_content_tag("haystack.component.output", result)
+            reply = _reply_from_result(result=result)
+        except Exception as error:
+            self._report_failure(error=error)
+            return
+        # The `messages` handler appends the reply, so it becomes the last message
+        state.set("messages", [reply])
 
     def _build_prompt(self, state: State) -> list[ChatMessage] | None:
         """Return the messages for the backup answer call, or `None` when no backup answer is needed."""
@@ -153,10 +177,13 @@ class BackupAnswerHook:
         )
         return [ChatMessage.from_system(self.system_prompt), *transcript]
 
-    @staticmethod
-    def _store_reply(state: State, result: dict[str, Any]) -> None:
-        # The `messages` handler appends the reply, so it becomes the last message
-        state.set("messages", [result["replies"][0]])
+    def _report_failure(self, error: Exception) -> None:
+        """Re-raise a failed backup answer call or log it, so the Agent still returns the conversation so far."""
+        if self.raise_on_failure:
+            raise error
+        logger.warning(
+            "Writing a backup answer failed; returning the conversation without one. Error: {error}", error=error
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -169,6 +196,7 @@ class BackupAnswerHook:
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
             system_prompt=self.system_prompt,
             exit_reasons=list(self.exit_reasons),
+            raise_on_failure=self.raise_on_failure,
         )
 
     @classmethod
@@ -183,3 +211,15 @@ class BackupAnswerHook:
         deserialize_component_inplace(data=init_params, key="chat_generator")
         data = {**data, "init_parameters": init_params}
         return default_from_dict(cls, data=data)
+
+
+def _reply_from_result(result: dict[str, Any]) -> ChatMessage:
+    """
+    Return the first reply of a chat generator result.
+
+    :raises RuntimeError: If the result has no reply or the reply has no text.
+    """
+    replies = result.get("replies") or []
+    if not replies or not (replies[0].text or "").strip():
+        raise RuntimeError(f"The Chat Generator returned no usable text for the backup answer. Output: {result}.")
+    return replies[0]
