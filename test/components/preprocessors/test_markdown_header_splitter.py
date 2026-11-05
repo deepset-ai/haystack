@@ -96,6 +96,56 @@ def test_basic_split(sample_text):
     assert reconstructed_doc == sample_text
 
 
+@pytest.mark.parametrize("indent", ["", " ", "  ", "   "])
+@pytest.mark.parametrize("keep_headers", [True, False])
+@pytest.mark.parametrize("secondary_split", [None, "line"])
+def test_indented_headers(indent, keep_headers, secondary_split):
+    sections = [f"{indent}# Guide\nIntroduction.\n\f\n", f"{indent}## Install\nSetup instructions.\n"]
+    text = "".join(sections)
+    source = Document(content=text)
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split=secondary_split, split_length=10)
+
+    docs = splitter.run(documents=[source])["documents"]
+
+    assert [doc.content for doc in docs] == (
+        sections if keep_headers else ["\nIntroduction.\n\f\n", "\nSetup instructions.\n"]
+    )
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in docs] == [("Guide", []), ("Install", ["Guide"])]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2]
+    assert [doc.meta["split_id"] for doc in docs] == [0, 1]
+    assert all(doc.meta["source_id"] == source.id for doc in docs)
+    if keep_headers:
+        assert "".join(doc.content or "" for doc in docs) == text
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+def test_indented_code_is_not_a_header(indent):
+    text = f"# Guide\nIntroduction.\n\n{indent}## Code comment\n\n## Install\nSetup instructions.\n"
+
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.meta["header"] for doc in docs] == ["Guide", "Install"]
+    assert docs[0].content == f"# Guide\nIntroduction.\n\n{indent}## Code comment\n\n"
+    assert docs[1].content == "## Install\nSetup instructions.\n"
+    assert "".join(doc.content or "" for doc in docs) == text
+
+
+def test_indented_headers_respect_selected_levels_and_code_fences():
+    text = (
+        " # Guide\nIntroduction.\n"
+        "  ## Unsplit section\nMore text.\n"
+        "```python\n   ### Code comment\n```\n"
+        "   ### Details\nDetails text.\n"
+    )
+
+    docs = MarkdownHeaderSplitter(header_split_levels=[1, 3]).run(documents=[Document(content=text)])["documents"]
+
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in docs] == [("Guide", []), ("Details", ["Guide"])]
+    assert docs[0].content == text[: text.index("   ### Details")]
+    assert docs[1].content == "   ### Details\nDetails text.\n"
+    assert "".join(doc.content or "" for doc in docs) == text
+
+
 def test_keep_headers_preserves_parent_headers_for_first_child():
     text = (
         "# Header 1\n"
