@@ -116,7 +116,7 @@ class DocumentJoiner:
 
         :raises ValueError:
             If `top_k` is not `None` and is less than or equal to 0,
-            or if any value in `weights` is negative.
+            or if any value in `weights` is negative, NaN, or infinite.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be greater than 0.")
