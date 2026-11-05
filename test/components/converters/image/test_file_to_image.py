@@ -120,9 +120,7 @@ class TestImageFileToImageContent:
         # A file that exists but is not an image must be skipped like any other conversion failure,
         # instead of failing the whole batch when ImageContent rejects its MIME type.
         converter = ImageFileToImageContent()
-        sources = ["./test/test_files/images/apple.jpg", "./test/test_files/txt/doc_1.txt"]
-
-        results = converter.run(sources=sources)
+        results = converter.run(sources=["./test/test_files/images/apple.jpg", "./test/test_files/txt/doc_1.txt"])
 
         assert len(results["image_contents"]) == 1
         assert results["image_contents"][0].mime_type == "image/jpeg"
