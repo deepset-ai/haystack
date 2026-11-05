@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``ListJoiner.from_dict`` mutating the caller's ``data`` in place: the serialized ``list_type_``
+    string was replaced inside the caller's own dictionary with the deserialized type object, so reusing
+    the same serialized data afterwards yielded an already-deserialized value. A second ``from_dict`` call
+    on that dictionary then failed with ``TypeError: can only concatenate str (not "types.GenericAlias") to
+    str``, and the dictionary could no longer be dumped to JSON or YAML. ``from_dict`` now works on a copy
+    and the caller's data is left untouched, the way ``BranchJoiner.from_dict`` and
+    ``ConditionalRouter.from_dict`` already behave.

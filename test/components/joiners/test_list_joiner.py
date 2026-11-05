@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from typing import List
 
 import pytest
@@ -15,6 +16,19 @@ from haystack.core.errors import PipelineConnectError
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.answer import GeneratedAnswer
 from haystack.utils.auth import Secret
+
+
+class TestListJoinerDeserialization:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        data = ListJoiner(list[ChatMessage]).to_dict()
+        serialized_type = data["init_parameters"]["list_type_"]
+        assert isinstance(serialized_type, str)
+
+        ListJoiner.from_dict(data)
+
+        assert data["init_parameters"]["list_type_"] == serialized_type
+        assert json.loads(json.dumps(data)) == data
+        assert ListJoiner.from_dict(data).list_type_ == list[ChatMessage]
 
 
 class TestListJoiner:
