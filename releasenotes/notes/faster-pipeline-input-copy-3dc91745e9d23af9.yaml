@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Deep copies of ``Document`` objects and pipeline inputs are now faster, with the same results as before.
+    ``Document`` now implements ``__deepcopy__``, which copies the ``embedding`` list in one step instead of element
+    by element. ``Pipeline`` also returns immutable values such as strings and numbers unchanged when copying
+    component inputs, without running the more expensive checks meant for other objects. Pipelines that pass
+    embeddings or many embedded documents between components benefit most.

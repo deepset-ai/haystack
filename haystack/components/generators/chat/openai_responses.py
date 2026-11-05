@@ -96,26 +96,27 @@ class OpenAIResponsesChatGenerator:
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
-        "gpt-5-mini",
-        "gpt-5-nano",
-        "gpt-5",
-        "gpt-5.1",
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.4",
         "gpt-5.2",
         "gpt-5.2-pro",
-        "gpt-5.4",
+        "gpt-5.1",
+        "gpt-5",
         "gpt-5-pro",
+        "gpt-5-mini",
+        "gpt-5-nano",
         "gpt-4.1",
         "gpt-4.1-mini",
-        "gpt-4.1-nano",
         "gpt-4o",
         "gpt-4o-mini",
-        "o1",
-        "o1-mini",
-        "o1-pro",
         "o3",
-        "o3-mini",
         "o3-pro",
-        "o4-mini",
     ]
     """A non-exhaustive list of chat models supported by this component.
     See https://platform.openai.com/docs/models for the full list and snapshot IDs."""
@@ -124,7 +125,7 @@ class OpenAIResponsesChatGenerator:
         self,
         *,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-5-mini",
+        model: str = "gpt-5.6-terra",
         streaming_callback: StreamingCallbackT | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -136,7 +137,7 @@ class OpenAIResponsesChatGenerator:
         http_client_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
-        Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
+        Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -996,6 +997,39 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     )
 
 
+def _get_call_id(tool_call: ToolCall) -> str | None:
+    """
+    Get the Responses API `call_id` of a tool call.
+
+    :param tool_call: The tool call.
+    :returns: The `call_id` stored in `extra` by the Responses API, or the tool call `id` for tool calls from other
+        providers.
+    """
+    if tool_call.extra and tool_call.extra.get("call_id"):
+        return tool_call.extra["call_id"]
+    return tool_call.id
+
+
+def _convert_tool_call_to_responses_api_format(tool_call: ToolCall) -> dict[str, Any]:
+    """
+    Convert a ToolCall to a Responses API `function_call` input item.
+
+    :param tool_call: The tool call.
+    :returns: The `function_call` item. It includes the tool call `id` only for tool calls from the Responses API.
+    """
+    openai_tool_call = {
+        "type": "function_call",
+        "name": tool_call.tool_name,
+        # We disable ensure_ascii so special chars like emojis are not converted
+        "arguments": json.dumps(tool_call.arguments, ensure_ascii=False),
+        "call_id": _get_call_id(tool_call),
+    }
+    # Only tool calls from the Responses API carry a `call_id` and an item id the API accepts
+    if tool_call.extra and tool_call.extra.get("call_id"):
+        openai_tool_call["id"] = tool_call.id
+    return openai_tool_call
+
+
 def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:
     """
     Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
@@ -1070,7 +1104,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
                     raise ValueError(f"Unsupported tool result: {result.result}")
                 tool_result = {
                     "type": "function_call_output",
-                    "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
+                    "call_id": _get_call_id(result.origin),
                     "output": output_content,
                 }
                 formatted_tool_results.append(tool_result)
@@ -1080,16 +1114,8 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(_reasoning_items_from_content(reasoning))
 
     for tc in tool_calls:
-        openai_tool_call = {
-            "type": "function_call",
-            # We disable ensure_ascii so special chars like emojis are not converted
-            "name": tc.tool_name,
-            "arguments": json.dumps(tc.arguments, ensure_ascii=False),
-            "id": tc.id,
-            "call_id": tc.extra.get("call_id") if tc.extra else "",
-            "output_index": tc.extra.get("output_index") if tc.extra else None,
-        }
-
+        openai_tool_call = _convert_tool_call_to_responses_api_format(tc)
+        openai_tool_call["output_index"] = tc.extra.get("output_index") if tc.extra else None
         formatted_messages.append(openai_tool_call)
 
     # Indices are Haystack metadata, not valid Responses API input fields.

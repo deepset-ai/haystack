@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.joiners.document_joiner import DocumentJoiner, JoinMode
+from haystack.dataclasses import SparseEmbedding
 
 
 class TestDocumentJoiner:
@@ -96,6 +97,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -110,6 +112,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -124,6 +127,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -218,6 +222,51 @@ class TestDocumentJoiner:
             ]
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
+
+    def test_run_with_merge_embeddings_join_mode(self):
+        joiner = DocumentJoiner(join_mode="merge_embeddings", sort_by_score=False)
+        sparse_embedding = SparseEmbedding(indices=[1], values=[0.5])
+        first = Document(id="a", embedding=[0.1])
+        second = Document(id="a", sparse_embedding=sparse_embedding)
+        third = Document(id="a", multivector_embedding=[[0.1, 0.2], [0.3, 0.4]])
+
+        output = joiner.run(documents=[[first], [second], [third]])
+
+        assert output == {
+            "documents": [
+                Document(
+                    id="a",
+                    embedding=[0.1],
+                    sparse_embedding=sparse_embedding,
+                    multivector_embedding=[[0.1, 0.2], [0.3, 0.4]],
+                )
+            ]
+        }
+        assert first.sparse_embedding is None
+        assert first.multivector_embedding is None
+        assert second.embedding is None
+        assert second.multivector_embedding is None
+        assert third.embedding is None
+        assert third.sparse_embedding is None
+
+    @pytest.mark.parametrize(
+        "field,first,second",
+        [
+            ("embedding", [0.1], [0.2]),
+            ("multivector_embedding", [[0.1, 0.2]], [[0.3, 0.4]]),
+            (
+                "sparse_embedding",
+                SparseEmbedding(indices=[1], values=[0.5]),
+                SparseEmbedding(indices=[2], values=[0.5]),
+            ),
+        ],
+    )
+    def test_merge_embeddings_rejects_conflicting_embeddings(self, field, first, second):
+        joiner = DocumentJoiner(join_mode="merge_embeddings")
+        documents = [[Document(id="a", **{field: first})], [Document(id="a", **{field: second})]]
+
+        with pytest.raises(ValueError, match=f"Conflicting {field}"):
+            joiner.run(documents=documents)
 
     def test_run_with_reciprocal_rank_fusion_join_mode(self):
         joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion")

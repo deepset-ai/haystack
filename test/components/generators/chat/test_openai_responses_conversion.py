@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Literal
+from typing import Any, Literal
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -2008,6 +2008,37 @@ class TestResponseToChatMessage:
             }
         ]
 
+    @pytest.mark.parametrize(
+        "reasoning_extra",
+        [
+            {},
+            # reasoning produced by AmazonBedrockChatGenerator
+            {"signature": "EqQBCkYIBxgC"},
+        ],
+    )
+    def test_convert_messages_from_other_providers(self, reasoning_extra: dict[str, Any]) -> None:
+        tool_call = ToolCall(id="tooluse_abc123", tool_name="weather", arguments={"location": "Berlin"})
+        assistant_message = ChatMessage.from_assistant(
+            tool_calls=[tool_call], reasoning=ReasoningContent(reasoning_text="Let me think.", extra=reasoning_extra)
+        )
+        tool_message = ChatMessage.from_tool(tool_result="sunny", origin=tool_call)
+
+        assert _convert_chat_message_to_responses_api_format(assistant_message) == [
+            {
+                "type": "function_call",
+                "name": "weather",
+                "arguments": '{"location": "Berlin"}',
+                "call_id": "tooluse_abc123",
+            }
+        ]
+        assert _convert_chat_message_to_responses_api_format(tool_message) == [
+            {
+                "type": "function_call_output",
+                "call_id": "tooluse_abc123",
+                "output": [{"type": "input_text", "text": "sunny"}],
+            }
+        ]
+
     def test_convert_tool_message(self) -> None:
 
         tool_call_result = ChatMessage(
@@ -2096,9 +2127,11 @@ class TestResponseToChatMessage:
 
     def test_convert_reasoning_only_message_adds_no_empty_message(self) -> None:
         # Reasoning already produces an input item, so no empty assistant message is appended alongside it.
-        message = ChatMessage.from_assistant(reasoning="thinking")
+        message = ChatMessage.from_assistant(
+            reasoning=ReasoningContent(reasoning_text="thinking", extra={"id": "rs_1", "type": "reasoning"})
+        )
         assert _convert_chat_message_to_responses_api_format(message) == [
-            {"summary": [{"text": "thinking", "type": "summary_text"}]}
+            {"id": "rs_1", "type": "reasoning", "summary": [{"text": "thinking", "type": "summary_text"}]}
         ]
 
     def test_convert_invalid(self) -> None:

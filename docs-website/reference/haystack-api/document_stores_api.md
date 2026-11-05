@@ -366,6 +366,10 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
 
+**Raises:**
+
+- <code>ValueError</code> – if top_k is negative.
+
 #### embedding_retrieval
 
 ```python
@@ -396,7 +400,7 @@ Retrieves documents that are most similar to the query embedding using a vector 
 
 **Raises:**
 
-- <code>ValueError</code> – if filters have invalid syntax.
+- <code>ValueError</code> – if top_k is negative or filters have invalid syntax.
 
 #### count_documents_async
 
