@@ -75,11 +75,10 @@ class XLSXToDocument:
             behavior is used: `na_values` alone adds to pandas' default NA strings, and `keep_default_na=False`
             alone doesn't treat empty cells as missing unless `""` is in `na_values`.
             Set `keep_default_na=True` to restore pandas' default NA parsing.
-            The converter also numbers the rows of the output table from 1 to match the Excel row numbers, which
-            assumes that pandas assigns the positional index. Options that shift the rows or replace the index,
-            such as `skiprows` or `index_col`, make that numbering inaccurate, and a source whose `index_col`
-            holds non-numeric values is skipped. Validate the conversion output on representative inputs when you
-            customize these options.
+            Custom parsing options may cause conversion errors or unexpected output.
+            For example, `skiprows` can produce incorrect row numbers, and `index_col`
+            can cause values to change or the entire file to be skipped.
+            Validate the output on representative inputs when using these options.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
