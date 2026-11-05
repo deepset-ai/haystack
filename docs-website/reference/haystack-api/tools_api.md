@@ -276,6 +276,7 @@ Create a Tool instance from a Haystack component.
 - **name** (<code>str | None</code>) – Optional name for the tool (defaults to snake_case of component class name).
 - **description** (<code>str | None</code>) – Optional description (defaults to component's docstring).
 - **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
+  Unknown top-level properties produce a warning; unknown invocation arguments are skipped with a warning.
   Will fall back to the parameters defined in the component's run method signature if not provided.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is converted to a string using a default handler.
@@ -334,7 +335,8 @@ Example:
 **Raises:**
 
 - <code>TypeError</code> – If the object passed is not a Haystack Component instance.
-- <code>ValueError</code> – If the component has already been added to a pipeline, or if schema generation fails.
+- <code>ValueError</code> – If the component has already been added to a pipeline, schema generation fails,
+  or custom parameters omit mandatory inputs not supplied through state.
 
 #### warm_up
 
