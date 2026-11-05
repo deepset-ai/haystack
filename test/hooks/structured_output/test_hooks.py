@@ -5,7 +5,7 @@
 import logging
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State
@@ -19,6 +19,10 @@ from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY
 class CityInfo(BaseModel):
     city: str
     population: int
+
+
+class CityNames(RootModel[list[str]]):
+    pass
 
 
 CITY_JSON_SCHEMA = {
@@ -49,6 +53,30 @@ def _agent(responses: list[str | ChatMessage], hook: StructuredOutputHook, max_a
 
 
 class TestStructuredOutputHook:
+    @pytest.mark.parametrize("schema", [CityNames, {"type": "array", "items": {"type": "string"}}])
+    @pytest.mark.parametrize(
+        ("responses", "expected", "steps"),
+        [
+            (['["Paris"]'], ["Paris"], 1),
+            (["invalid", '["Paris"]'], ["Paris"], 2),
+            (["invalid"], None, 2),
+            ([ChatMessage.from_assistant('["Paris"', meta={"finish_reason": "length"})], None, 1),
+        ],
+        ids=["success", "successful-retry", "exhausted-retries", "truncated-reply"],
+    )
+    def test_replaces_list_state_with_the_final_result(self, schema, responses, expected, steps):
+        agent = Agent(
+            chat_generator=MockChatGenerator(responses=responses),
+            state_schema={"structured_output": {"type": list[str]}},
+            hooks={"on_exit": [StructuredOutputHook(schema=schema, max_retries=1)]},
+        )
+        agent.warm_up()
+
+        result = agent.run(messages=[ChatMessage.from_user("List cities")], structured_output=["previous"])
+
+        assert result["structured_output"] == expected
+        assert result["step_count"] == steps
+
     @pytest.mark.parametrize(
         "reply",
         [
@@ -180,6 +208,20 @@ class TestStructuredOutputHook:
 
 
 class TestStructuredOutputHookAsync:
+    @pytest.mark.asyncio
+    async def test_array_retry_preserves_the_validated_result(self):
+        agent = Agent(
+            chat_generator=MockChatGenerator(responses=["invalid", '["Paris"]']),
+            state_schema={"structured_output": {"type": list[str]}},
+            hooks={"on_exit": [StructuredOutputHook(schema=CityNames, max_retries=1)]},
+        )
+        agent.warm_up()
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("List cities")])
+
+        assert result["structured_output"] == ["Paris"]
+        assert result["step_count"] == 2
+
     @pytest.mark.asyncio
     async def test_retries_with_a_correction_message(self):
         agent = _agent(responses=["not json", VALID_REPLY], hook=StructuredOutputHook(schema=CityInfo, max_retries=1))

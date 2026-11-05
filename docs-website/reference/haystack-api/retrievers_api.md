@@ -115,7 +115,8 @@ continuing up the hierarchy until no more merges are possible.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
@@ -134,7 +135,8 @@ continuing up the hierarchy until no more merges are possible.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
