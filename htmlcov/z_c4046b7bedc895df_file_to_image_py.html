@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_c4046b7bedc895df_image_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-05 15:18 +0000
+            created at 2026-11-05 16:30 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -217,19 +217,22 @@
     <p class="pln"><span class="n"><a id="t135" href="#t135">135</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t136" href="#t136">136</a></span><span class="t">            <span class="key">try</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t137" href="#t137">137</a></span><span class="t">                <span class="nam">inferred_mime_type</span><span class="op">,</span> <span class="nam">base64_image</span> <span class="op">=</span> <span class="nam">_encode_image_to_base64</span><span class="op">(</span><span class="nam">bytestream</span><span class="op">=</span><span class="nam">bytestream</span><span class="op">,</span> <span class="nam">size</span><span class="op">=</span><span class="nam">resolved_size</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t">            <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t">                <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">                    <span class="str">&quot;Could not convert file {source}. Skipping it. Error message: {error}&quot;</span><span class="op">,</span> <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">,</span> <span class="nam">error</span><span class="op">=</span><span class="nam">e</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">            <span class="nam">merged_metadata</span> <span class="op">=</span> <span class="op">{</span><span class="op">**</span><span class="nam">bytestream</span><span class="op">.</span><span class="nam">meta</span><span class="op">,</span> <span class="op">**</span><span class="nam">metadata</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">            <span class="nam">image_content</span> <span class="op">=</span> <span class="nam">ImageContent</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">                <span class="nam">base64_image</span><span class="op">=</span><span class="nam">base64_image</span><span class="op">,</span> <span class="nam">mime_type</span><span class="op">=</span><span class="nam">inferred_mime_type</span><span class="op">,</span> <span class="nam">meta</span><span class="op">=</span><span class="nam">merged_metadata</span><span class="op">,</span> <span class="nam">detail</span><span class="op">=</span><span class="nam">resolved_detail</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">            <span class="nam">image_contents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">image_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">&quot;image_contents&quot;</span><span class="op">:</span> <span class="nam">image_contents</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t">                <span class="nam">merged_metadata</span> <span class="op">=</span> <span class="op">{</span><span class="op">**</span><span class="nam">bytestream</span><span class="op">.</span><span class="nam">meta</span><span class="op">,</span> <span class="op">**</span><span class="nam">metadata</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t">                <span class="nam">image_content</span> <span class="op">=</span> <span class="nam">ImageContent</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">                    <span class="nam">base64_image</span><span class="op">=</span><span class="nam">base64_image</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t">                    <span class="nam">mime_type</span><span class="op">=</span><span class="nam">inferred_mime_type</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">                    <span class="nam">meta</span><span class="op">=</span><span class="nam">merged_metadata</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">                    <span class="nam">detail</span><span class="op">=</span><span class="nam">resolved_detail</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">            <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">                <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">                    <span class="str">&quot;Could not convert file {source}. Skipping it. Error message: {error}&quot;</span><span class="op">,</span> <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">,</span> <span class="nam">error</span><span class="op">=</span><span class="nam">e</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t">            <span class="nam">image_contents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">image_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t152" href="#t152">152</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t153" href="#t153">153</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">&quot;image_contents&quot;</span><span class="op">:</span> <span class="nam">image_contents</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -239,7 +242,7 @@
             <a class="nav" href="z_c4046b7bedc895df_image_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-05 15:18 +0000
+            created at 2026-11-05 16:30 +0000
         </p>
     </div>
 </footer>
