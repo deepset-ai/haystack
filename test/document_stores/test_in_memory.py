@@ -706,6 +706,24 @@ class TestMemoryDocumentStore(
         assert total_count == counts["source"] == 2
         assert {value["section"]["id"] for value in values} == {1, 2}
 
+    def test_get_metadata_field_unique_values_sorts_numbers_numerically(
+        self, document_store: InMemoryDocumentStore
+    ) -> None:
+        """Numbers must sort numerically, otherwise `from_`/`size` pages return the wrong values."""
+        document_store.write_documents(
+            [Document(content=f"doc{i}", meta={"n": n}) for i, n in enumerate([2, 10, 1, 33])]
+        )
+
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="n", size=10)
+        assert values == [1, 2, 10, 33]
+        assert total_count == 4
+
+        first_page, _ = document_store.get_metadata_field_unique_values(metadata_field="n", from_=0, size=2)
+        second_page, _ = document_store.get_metadata_field_unique_values(metadata_field="n", from_=2, size=2)
+
+        assert first_page == [1, 2]
+        assert second_page == [10, 33]
+
     @pytest.mark.asyncio
     async def test_count_unique_metadata_by_filter_async_with_unhashable_values(
         self, document_store: InMemoryDocumentStore, documents_with_composite_metadata: list[Document]

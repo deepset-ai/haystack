@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `InMemoryDocumentStore.get_metadata_field_unique_values` now sorts numeric metadata values
+    numerically instead of by their string form. With string ordering, a field holding `2` and `10`
+    returned `10` first, so `from_`/`size` pagination handed back pages that skipped values which
+    should have appeared on an earlier page.

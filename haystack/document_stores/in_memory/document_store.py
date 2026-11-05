@@ -59,6 +59,24 @@ _CJK_CHAR_CLASS = (
 _DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
 
 
+def _metadata_value_sort_key(value: Any, type_name: str) -> tuple[int, float, str, str]:
+    """
+    Build a sort key that orders numbers numerically and every other metadata value by its string form.
+
+    Values are keyed by type when they are collected (see `_make_metadata_value_hashable`), so `1`, `1.0`
+    and `"1"` are separate entries. Sorting them all by `str(value)` would place `10` before `2`, which makes
+    `from_`/`size` pagination skip values that should have been on an earlier page. The type name breaks ties
+    between values that compare equal (`1` and `1.0`) so the ordering stays stable across calls.
+
+    :param value: The metadata value to sort.
+    :param type_name: The value's type name, used only to break ties.
+    :returns: A tuple that sorts numbers ahead of non-numbers, numerically within each group.
+    """
+    if not isinstance(value, bool) and isinstance(value, (int, float)):
+        return (0, float(value), "", type_name)
+    return (1, 0.0, str(value), type_name)
+
+
 @dataclass
 class BM25DocumentStats:
     """
@@ -765,7 +783,7 @@ class InMemoryDocumentStore:
             search_term_lower = search_term.lower()
             unique_values = {k: v for k, v in unique_values.items() if search_term_lower in str(v).lower()}
 
-        sorted_keys = sorted(unique_values, key=lambda k: (str(unique_values[k]), k[0]))
+        sorted_keys = sorted(unique_values, key=lambda k: _metadata_value_sort_key(unique_values[k], k[0]))
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
