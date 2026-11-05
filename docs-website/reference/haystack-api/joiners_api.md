@@ -384,7 +384,7 @@ Creates a DocumentJoiner component.
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0,
-  or if any value in `weights` is negative.
+  or if any value in `weights` is negative, NaN, or infinite.
 
 #### run
 
