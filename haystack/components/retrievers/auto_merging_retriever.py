@@ -122,7 +122,8 @@ class AutoMergingRetriever:
         Recursively groups documents by their parents and merges them if they meet the threshold,
         continuing up the hierarchy until no more merges are possible.
 
-        :param documents: List of leaf documents that were matched by a retriever
+        :param documents: List of leaf documents that were matched by a retriever. Documents with the same ID are
+            counted once, keeping the one with the highest score.
         :returns:
             List of documents (could be a mix of different hierarchy levels)
         """
@@ -178,7 +179,8 @@ class AutoMergingRetriever:
         Recursively groups documents by their parents and merges them if they meet the threshold,
         continuing up the hierarchy until no more merges are possible.
 
-        :param documents: List of leaf documents that were matched by a retriever
+        :param documents: List of leaf documents that were matched by a retriever. Documents with the same ID are
+            counted once, keeping the one with the highest score.
         :returns:
             List of documents (could be a mix of different hierarchy levels)
         """
