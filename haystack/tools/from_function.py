@@ -11,7 +11,7 @@ from pydantic import create_model
 from haystack.core.type_utils import _resolve_parameter_types
 
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type, _create_model_fields, _is_state_annotation
+from .parameters_schema_utils import _contains_callable_type, _is_state_annotation
 from .tool import Tool
 
 
@@ -66,7 +66,8 @@ def create_tool_from_function(
         to `async_function`).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
-        Parameters whose names start with an underscore are included in the schema under that name.
+        Parameters whose names start with an underscore are not exposed to the LLM.
+        A required parameter with such a name must be provided through `inputs_from_state` or given a default.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -128,7 +129,8 @@ def create_tool_from_function(
         The Tool created from the function.
 
     :raises ValueError:
-        If a parameter exposed in the Tool's schema lacks a type hint.
+        If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+        starts with an underscore is not covered by `inputs_from_state`.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
@@ -139,8 +141,8 @@ def create_tool_from_function(
     param_types = _resolve_parameter_types(function, include_extras=True)
 
     # collect fields (types and defaults) and descriptions from function parameters
+    fields: dict[str, Any] = {}
     descriptions = {}
-    specs: list[tuple[str, Any, Any]] = []
 
     for param_name, param in signature.parameters.items():
         # Skip *args and **kwargs because the LLM passes arguments by name
@@ -164,15 +166,20 @@ def create_tool_from_function(
         if _contains_callable_type(annotation):
             continue
 
+        # Pydantic treats leading-underscore names as private attributes and leaves them out of the schema
+        if param_name.startswith("_") and param.default is param.empty:
+            raise ValueError(
+                f"Function '{function.__name__}': required parameter '{param_name}' starts with an underscore and "
+                "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+            )
+
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
         default = param.default if param.default is not param.empty else ...
-        specs.append((param_name, annotation, default))
+        fields[param_name] = (annotation, default)
 
         if hasattr(annotation, "__metadata__"):
             descriptions[param_name] = annotation.__metadata__[0]
-
-    fields = _create_model_fields(specs)
 
     # create Pydantic model and generate JSON schema
     try:
@@ -281,7 +288,8 @@ def tool(
         The function to decorate (when used without parameters).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
-        Parameters whose names start with an underscore are included in the schema under that name.
+        Parameters whose names start with an underscore are not exposed to the LLM.
+        A required parameter with such a name must be provided through `inputs_from_state` or given a default.
     :param name: Optional custom name for the tool
     :param description: Optional custom description
     :param inputs_from_state:
@@ -337,7 +345,8 @@ def tool(
     :returns: Either a Tool instance or a decorator function that will create one
 
     :raises ValueError:
-        If a parameter exposed in the Tool's schema lacks a type hint.
+        If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+        starts with an underscore is not covered by `inputs_from_state`.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """

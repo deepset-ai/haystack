@@ -73,62 +73,43 @@ def test_from_function_with_custom_name():
     assert tool.function == function_with_docstring
 
 
-def lookup_order_for_tenant(_tenant: str, order_id: str, _note: Annotated[str, "optional note"] = "n") -> str:
+def lookup_order(_tenant: str, order_id: str) -> str:
     """Look up an order for a tenant."""
-    return f"{_tenant}/{order_id}/{_note}"
+    return f"{_tenant}/{order_id}"
 
 
-def test_from_function_keeps_underscore_prefixed_parameters():
-    tool = create_tool_from_function(function=lookup_order_for_tenant)
+def test_from_function_required_underscore_parameter_raises():
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Function 'lookup_order': required parameter '_tenant' starts with an underscore and "
+            "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+        ),
+    ):
+        create_tool_from_function(function=lookup_order)
+
+
+def test_from_function_required_underscore_parameter_covered_by_inputs_from_state():
+    tool = create_tool_from_function(function=lookup_order, inputs_from_state={"tenant": "_tenant"})
 
     assert tool.parameters == {
         "type": "object",
-        "properties": {
-            "_tenant": {"type": "string"},
-            "order_id": {"type": "string"},
-            "_note": {"type": "string", "description": "optional note", "default": "n"},
-        },
-        "required": ["_tenant", "order_id"],
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"],
     }
-    jsonschema.validate({"_tenant": "acme", "order_id": "A-1"}, tool.parameters)
-    with pytest.raises(jsonschema.ValidationError):
-        jsonschema.validate({"order_id": "A-1"}, tool.parameters)
-
-    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1/n"
-    assert tool.invoke(_tenant="acme", order_id="A-1", _note="rush") == "acme/A-1/rush"
-
-    restored = Tool.from_dict(tool.to_dict())
-    assert restored.parameters == tool.parameters
-    assert restored.invoke(_tenant="acme", order_id="A-1", _note="rush") == "acme/A-1/rush"
+    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
 
 
-def test_tool_decorator_keeps_underscore_prefixed_parameters():
-    @tool
-    def lookup_order(_tenant: Annotated[str, "tenant id"], order_id: str) -> str:
+def test_from_function_defaulted_underscore_parameter_omitted_from_schema():
+    def lookup_with_default(_tenant: str = "acme", order_id: str = "A-1") -> str:
         """Look up an order for a tenant."""
         return f"{_tenant}/{order_id}"
 
-    assert lookup_order.parameters == {
-        "type": "object",
-        "properties": {"_tenant": {"type": "string", "description": "tenant id"}, "order_id": {"type": "string"}},
-        "required": ["_tenant", "order_id"],
-    }
-    assert lookup_order.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
+    tool = create_tool_from_function(function=lookup_with_default)
 
-
-def test_from_function_underscore_parameter_does_not_replace_unprefixed_name():
-    def lookup(tenant: str, _tenant: str) -> str:
-        """Look up by two tenant-like names."""
-        return f"{tenant}|{_tenant}"
-
-    tool = create_tool_from_function(function=lookup)
-
-    assert tool.parameters == {
-        "type": "object",
-        "properties": {"tenant": {"type": "string"}, "_tenant": {"type": "string"}},
-        "required": ["tenant", "_tenant"],
-    }
-    assert tool.invoke(tenant="public", _tenant="acme") == "public|acme"
+    assert "_tenant" not in tool.parameters["properties"]
+    assert tool.parameters == {"type": "object", "properties": {"order_id": {"type": "string", "default": "A-1"}}}
+    assert tool.invoke() == "acme/A-1"
 
 
 def test_from_function_annotated():
