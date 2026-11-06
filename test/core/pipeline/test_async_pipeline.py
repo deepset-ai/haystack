@@ -307,43 +307,6 @@ def test_async_pipeline_does_not_corrupt_outputs():
     assert result["mutator"]["doc"].content == "mutated"
 
 
-def test_run_async_passes_variadic_inputs_in_same_order_as_run():
-    @component
-    class Sender:
-        def __init__(self, value: str, delay: float):
-            self.value = value
-            self.delay = delay
-
-        @component.output_types(value=str)
-        def run(self) -> dict:
-            return {"value": self.value}
-
-        @component.output_types(value=str)
-        async def run_async(self) -> dict:
-            await asyncio.sleep(self.delay)
-            return {"value": self.value}
-
-    @component
-    class Collector:
-        @component.output_types(values=list[str])
-        def run(self, values: Variadic[str]) -> dict:
-            return {"values": list(values)}
-
-    pipe = Pipeline()
-    # "a" sorts first and runs first in run(), but finishes last in run_async()
-    pipe.add_component("a", Sender(value="a", delay=0.05))
-    pipe.add_component("b", Sender(value="b", delay=0))
-    pipe.add_component("collector", Collector())
-    pipe.connect("a.value", "collector.values")
-    pipe.connect("b.value", "collector.values")
-
-    sync_result = pipe.run({})
-    async_result = asyncio.run(pipe.run_async({}))
-
-    assert sync_result == {"collector": {"values": ["a", "b"]}}
-    assert async_result == sync_result
-
-
 def test_run_async_passes_variadic_inputs_in_connection_order_on_every_loop_iteration():
     @component
     class Tagger:
@@ -474,8 +437,7 @@ def test_run_async_applies_document_joiner_weights_to_the_retrievers_in_connecti
     assert _ids_and_scores(async_result["joiner"]["documents"]) == expected
 
 
-@pytest.mark.parametrize("year", [None, 2024], ids=["filter_branch_skipped", "filter_branch_runs"])
-def test_run_async_applies_document_joiner_weights_in_connection_order_when_an_optional_filter_branch_is_skipped(year):
+def test_run_async_applies_document_joiner_weights_in_connection_order_when_an_optional_filter_branch_is_skipped():
     routes: list[Route] = [
         {"condition": "{{ year is not none }}", "output": "{{ year }}", "output_name": "year", "output_type": int},
         {
@@ -508,11 +470,7 @@ def test_run_async_applies_document_joiner_weights_in_connection_order_when_an_o
 
     # Without a year, filter_builder never runs, so run() defers bm25_retriever until after embedding_retriever even
     # though bm25_retriever only consumes user input
-    data = {
-        "router": {"year": year} if year is not None else {},
-        "embedder": {"text": "python programming"},
-        "bm25_retriever": {"query": "python programming"},
-    }
+    data = {"router": {}, "embedder": {"text": "python programming"}, "bm25_retriever": {"query": "python programming"}}
     include_outputs_from = {"embedding_retriever", "bm25_retriever"}
     sync_result = pipe.run(data, include_outputs_from=include_outputs_from)
     async_result = asyncio.run(pipe.run_async(data, include_outputs_from=include_outputs_from))

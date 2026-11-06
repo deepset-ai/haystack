@@ -37,7 +37,7 @@ Use this component in hybrid retrieval pipelines or indexing pipelines with mult
 
 ### On its own
 
-Below is an example where we are using the `DocumentJoiner` to merge two lists of documents. We run the `DocumentJoiner` and provide the documents. It returns a list of documents ranked by combined scores. By default, equal weight is given to each Retriever score. You could also use custom weights by setting the weights parameter to a list of floats with one weight per input component.
+Below is an example where we are using the `DocumentJoiner` to merge two lists of documents. We run the `DocumentJoiner` and provide the documents. It returns a list of documents ranked by combined scores. By default, equal weight is given to each Retriever score. You could also use custom weights by setting the weights parameter to a list of floats with one weight per input component. In a pipeline, `weights[i]` applies to the i-th connection made to `documents` with `Pipeline.connect()`.
 
 ```python
 from haystack import Document

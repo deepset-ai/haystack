@@ -1506,7 +1506,7 @@ class TestPipelineBase:
             ),
             # Lazy variadic socket
             (
-                {"lazy": InputSocket("lazy", Variadic[int])},
+                {"lazy": InputSocket("lazy", Variadic[int], senders=["comp1", "comp2"])},
                 {
                     "lazy": [
                         {"sender": "comp1", "value": 42},
@@ -1536,7 +1536,7 @@ class TestPipelineBase:
                 {
                     "regular": InputSocket("regular", int),
                     "greedy": InputSocket("greedy", GreedyVariadic[int]),
-                    "lazy": InputSocket("lazy", Variadic[int]),
+                    "lazy": InputSocket("lazy", Variadic[int], senders=["comp3", "comp4"]),
                 },
                 {
                     "regular": [{"sender": "comp1", "value": 42}, {"sender": None, "value": 24}],

@@ -1985,7 +1985,7 @@ def _connection_index(socket: InputSocket, sender: str | None) -> int:
     """
     Returns the position of a sender in the order senders were connected to a socket.
 
-    User inputs (`sender` is None) sort before every sender, and senders the socket doesn't list sort after them.
+    User inputs (`sender` is None) sort before every sender.
 
     :param socket: The input socket.
     :param sender: The name of the sending component, or None for a user input.
@@ -1993,8 +1993,6 @@ def _connection_index(socket: InputSocket, sender: str | None) -> int:
     """
     if sender is None:
         return -1
-    if sender not in socket.senders:
-        return len(socket.senders)
     return socket.senders.index(sender)
 
 
