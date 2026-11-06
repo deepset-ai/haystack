@@ -1,5 +1,21 @@
 {
+  "headers": [
+    {
+      "source": "/(docs|reference)/:path*",
+      "headers": [{ "key": "Vary", "value": "Accept" }]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/:section(docs|reference)/:path(.+)/",
+      "has": [{ "type": "header", "key": "accept", "value": ".*text/markdown.*" }],
+      "destination": "/:section/:path.md"
+    },
+    {
+      "source": "/:section(docs|reference)/:path((?!.*\\.(?:md|txt|png|jpe?g|svg|gif|webp|json|xml|js|css|ico|pdf)$).+)",
+      "has": [{ "type": "header", "key": "accept", "value": ".*text/markdown.*" }],
+      "destination": "/:section/:path.md"
+    },
     {
       "source": "/.well-known/:path*",
       "destination": "/api/well-known"
