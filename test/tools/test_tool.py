@@ -216,6 +216,39 @@ class TestTool:
         assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
 
+    def test_from_dict_does_not_mutate_the_caller_dictionary(self):
+        # https://github.com/deepset-ai/haystack/issues/13606 — from_dict used
+        # to deserialize into the caller's dictionary, leaving callables where
+        # the serialized handles were: the dict became unserializable and a
+        # second from_dict failed. Same defect previously fixed for
+        # MetadataRouter (#13421), MockChatGenerator (#13471) and ListJoiner
+        # (#13563).
+        tool_dict = {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"location": "city"},
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+            },
+        }
+
+        Tool.from_dict(tool_dict)
+
+        assert isinstance(tool_dict["data"]["function"], str)
+        assert tool_dict["data"]["outputs_to_string"] == {"handler": "test_tool.format_string"}
+        assert tool_dict["data"]["outputs_to_state"] == {
+            "documents": {"source": "docs", "handler": "test_tool.get_weather_report"}
+        }
+        import json
+
+        json.dumps(tool_dict)  # still serializable
+        tool = Tool.from_dict(tool_dict)  # a second deserialization works
+        assert tool.function == get_weather_report
+
     def test_serialize_outputs_to_string(self):
         config = {"handler": format_string, "source": "result", "raw_result": False}
         serialized = _serialize_outputs_to_string(config)
