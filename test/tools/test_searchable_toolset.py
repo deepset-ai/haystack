@@ -126,6 +126,7 @@ class TestSearchableToolset:
                     await toolset.warm_up_async()
                 else:
                     toolset.warm_up()
+            assert toolset.get_selectable_tools() == []
 
     @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
     def test_passthrough_allows_catalog_name_matching_unused_search_tool(self, search_tool_name):

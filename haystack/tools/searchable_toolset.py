@@ -183,14 +183,15 @@ class SearchableToolset(Toolset):
         """
         if self._passthrough is not None:
             return
-        self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
-        _check_duplicate_tool_names(self._catalog)
-        passthrough = len(self._catalog) < self._search_threshold
-        if not passthrough and any(tool.name == self._search_tool_name for tool in self._catalog):
+        catalog = flatten_tools_or_toolsets(self._raw_catalog)
+        _check_duplicate_tool_names(catalog)
+        passthrough = len(catalog) < self._search_threshold
+        if not passthrough and any(tool.name == self._search_tool_name for tool in catalog):
             raise ValueError(
                 f"Catalog tool name '{self._search_tool_name}' conflicts with the bootstrap search tool. "
                 "Choose a different `search_tool_name`."
             )
+        self._catalog = catalog
         self._passthrough = passthrough
 
         # Build the BM25 search index only when the catalog is large enough to need discovery.
