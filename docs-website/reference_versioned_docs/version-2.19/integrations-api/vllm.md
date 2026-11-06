@@ -492,7 +492,7 @@ Creates an instance of VLLMChatGenerator.
 warm_up() -> None
 ```
 
-Create the synchronous OpenAI client and warm up tools.
+Create the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -500,7 +500,7 @@ Create the synchronous OpenAI client and warm up tools.
 warm_up_async() -> None
 ```
 
-Create the asynchronous OpenAI client and warm up tools.
+Create the asynchronous OpenAI client.
 
 #### close
 

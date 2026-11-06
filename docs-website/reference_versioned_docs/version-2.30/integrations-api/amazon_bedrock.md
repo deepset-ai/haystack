@@ -569,6 +569,9 @@ __init__(
     root_path: str | None = None,
     image_size: tuple[int, int] | None = None,
     progress_bar: bool = True,
+    include_content: bool = False,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
     boto3_config: dict[str, Any] | None = None,
     **kwargs: Any
 ) -> None
@@ -597,6 +600,10 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
+- **include_content** (<code>bool</code>) – Whether to embed `Document.content` together with the image. Currently supported only
+  for models whose identifier contains `cohere.embed-v4`.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Metadata fields to include with `Document.content` when `include_content=True`.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate metadata values and `Document.content`.
 - **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.

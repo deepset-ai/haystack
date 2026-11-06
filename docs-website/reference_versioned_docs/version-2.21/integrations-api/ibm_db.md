@@ -133,7 +133,14 @@ __init__(
     connection_options: dict[str, Any] | None = None,
     table_name: str = "haystack_documents",
     embedding_dim: int = 768,
-    distance_metric: Literal["EUCLIDEAN", "COSINE", "MANHATTAN"] = "COSINE",
+    distance_metric: Literal[
+        "COSINE",
+        "DOT",
+        "EUCLIDEAN",
+        "EUCLIDEAN_SQUARED",
+        "HAMMING",
+        "MANHATTAN",
+    ] = "COSINE",
     recreate_table: bool = False
 )
 ```
@@ -154,7 +161,8 @@ Initialize the IBM Db2 Document Store.
 - **connection_options** (<code>dict\[str, Any\] | None</code>) – Additional connection options as dict (optional)
 - **table_name** (<code>str</code>) – Name of the table to store documents (default: "haystack_documents")
 - **embedding_dim** (<code>int</code>) – Dimension of embedding vectors (default: 768)
-- **distance_metric** (<code>Literal['EUCLIDEAN', 'COSINE', 'MANHATTAN']</code>) – Distance metric for similarity search (default: "COSINE")
+- **distance_metric** (<code>Literal['COSINE', 'DOT', 'EUCLIDEAN', 'EUCLIDEAN_SQUARED', 'HAMMING', 'MANHATTAN']</code>) – Distance metric for similarity search (default: "COSINE"). Supported metrics in Db2:
+  "COSINE", "DOT", "EUCLIDEAN", "EUCLIDEAN_SQUARED", "HAMMING", "MANHATTAN".
 - **recreate_table** (<code>bool</code>) – If True, drop and recreate the table (default: False)
 
 #### close

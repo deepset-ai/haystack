@@ -7,7 +7,7 @@ import datetime
 import json
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 from unittest.mock import patch
 
 import pytest
@@ -582,13 +582,15 @@ class TestRunTool:
         )
         assert len(tool_messages_2) == 3
 
-    def test_run_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_run_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -606,13 +608,15 @@ class TestRunTool:
         assert received_state["state"] is state
 
     @pytest.mark.asyncio
-    async def test_run_async_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    async def test_run_async_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -996,12 +1000,13 @@ def _writer_tool(state_key: str = "documents", value: str = "written") -> Tool:
     )
 
 
-def _state_param_tool():
+def _state_param_tool(state_annotation: Any = State) -> Tool:
     """A tool that receives the live State object, so it may read/write any key."""
 
     def fn(state: State) -> str:
         return "done"
 
+    fn.__annotations__["state"] = state_annotation
     return Tool(
         name="state_tool",
         description="Receives the live State.",
@@ -1053,7 +1058,8 @@ class TestScheduleToolCalls:
         tools = [_make_retrieval_tool(), _make_retrieval_tool()]
         assert _schedule_tool_calls(calls, tools) == [[0], [1]]
 
-    def test_state_param_tool_is_a_barrier(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_state_param_tool_is_a_barrier(self, state_annotation: Any) -> None:
         # A State-typed tool reads/writes every key, so it serializes everything around it even when the other
         # calls touch disjoint keys ("a" and "b"): writer("b") must run before the state tool (which reads "b"),
         # and reader("a") must run after it (the state tool may write "a").
@@ -1062,7 +1068,7 @@ class TestScheduleToolCalls:
             ToolCall(tool_name="state_tool", arguments={}),
             ToolCall(tool_name="writer_tool", arguments={}),
         ]
-        tools = [_reader_tool("a"), _state_param_tool(), _writer_tool("b")]
+        tools = [_reader_tool("a"), _state_param_tool(state_annotation=state_annotation), _writer_tool("b")]
         assert _schedule_tool_calls(calls, tools) == [[2], [1], [0]]
 
     def test_llm_supplied_arg_is_not_a_state_read(self):

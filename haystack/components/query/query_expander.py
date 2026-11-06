@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.component import component
@@ -26,13 +26,14 @@ semantically similar to improve retrieval recall.
 
 Structure:
 Follow the structure shown below in examples to generate expanded queries.
+These examples show the output when 3 queries are requested.
 
 Examples:
 1.  Query: "climate change effects"
     {"queries": ["impact of climate change", "consequences of global warming", "effects of environmental changes"]}
 
 2.  Query: "machine learning algorithms"
-    {"queries": ["neural networks", "clustering techniques", "supervised learning methods", "deep learning models"]}
+    {"queries": ["neural networks", "clustering techniques", "supervised learning methods"]}
 
 3.  Query: "open source NLP frameworks"
     {"queries": ["natural language processing tools", "free nlp libraries", "open-source NLP platforms"]}
@@ -48,8 +49,7 @@ Guidelines:
 Your Task:
 Query: "{{ query }}"
 
-You *must* respond with a JSON object containing a "queries" array with the expanded queries.
-Example: {"queries": ["query1", "query2", "query3"]}"""
+You *must* respond with a JSON object containing a "queries" array with exactly {{ n_expansions }} expanded queries."""
 
 
 @component
@@ -66,13 +66,29 @@ class QueryExpander:
     ### Usage example
 
     ```python
-    from haystack.components.generators.chat.openai import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.query import QueryExpander
 
-    expander = QueryExpander(
-        chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
-        n_expansions=3
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5.6-luna",
+        generation_kwargs={
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "query_expansion",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["queries"],
+                        "additionalProperties": False,
+                    },
+                }
+            }
+        },
     )
+
+    expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
 
     result = expander.run(query="green energy sources")
     print(result["queries"])
@@ -98,7 +114,8 @@ class QueryExpander:
         Initialize the QueryExpander component.
 
         :param chat_generator: The chat generator component to use for query expansion.
-            If None, a default OpenAIChatGenerator with gpt-4.1-mini model is used.
+            If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model and `store` set to `False`
+            is used.
         :param prompt_template: Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
             template for query expansion. The template should instruct the LLM to return a JSON response with the
             structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and
@@ -113,13 +130,14 @@ class QueryExpander:
         self.include_original_query = include_original_query
 
         if chat_generator is None:
-            self.chat_generator: ChatGenerator = OpenAIChatGenerator(
+            self.chat_generator: ChatGenerator = OpenAIResponsesChatGenerator(
                 model="gpt-4.1-mini",
                 generation_kwargs={
                     "temperature": 0.7,
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "store": False,
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "query_expansion",
                             "schema": {
                                 "type": "object",
@@ -127,9 +145,8 @@ class QueryExpander:
                                 "required": ["queries"],
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
-                    "seed": 42,
                 },
             )
         else:

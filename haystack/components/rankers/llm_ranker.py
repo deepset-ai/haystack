@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
@@ -19,13 +19,14 @@ logger = logging.getLogger(__name__)
 
 
 def _default_openai_chat_generator() -> ChatGenerator:
-    return OpenAIChatGenerator(
+    return OpenAIResponsesChatGenerator(
         model="gpt-4.1-mini",
         generation_kwargs={
             "temperature": 0.0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
+            "store": False,
+            "text": {
+                "format": {
+                    "type": "json_schema",
                     "name": "document_ranking",
                     "schema": {
                         "type": "object",
@@ -43,7 +44,7 @@ def _default_openai_chat_generator() -> ChatGenerator:
                         "required": ["documents"],
                         "additionalProperties": False,
                     },
-                },
+                }
             },
         },
     )
@@ -152,8 +153,8 @@ class LLMRanker:
         Initialize the LLMRanker component.
 
         :param chat_generator:
-            The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-            output is used.
+            The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+            JSON output and with `store` set to `False` is used.
         :param prompt:
             Custom prompt template for reranking. The prompt must include exactly the variables `query` and
             `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
@@ -412,13 +413,17 @@ class LLMRanker:
                 raise TypeError("Expected each ranked document entry to be a JSON object.")
 
             document_index = entry.get("index")
-            if document_index is None:
+            if not (
+                type(document_index) is int
+                or type(document_index) is str
+                or (isinstance(document_index, float) and document_index.is_integer())
+            ):
                 continue
 
             try:
                 # LLMs can return numeric indices as strings even when asked for integers.
                 document_index = int(document_index)
-            except (TypeError, ValueError):
+            except ValueError:
                 continue
 
             # Jinja's `loop.index` is 1-based:

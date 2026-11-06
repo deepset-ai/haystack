@@ -56,6 +56,15 @@ const config = {
   headTags: [
     {
       tagName: "script",
+      attributes: {
+        id: "usercentrics-cmp",
+        src: "https://web.cmp.usercentrics.eu/ui/loader.js",
+        "data-ruleset-id": "LxbKaInvO8Ncwr",
+        async: "true",
+      },
+    },
+    {
+      tagName: "script",
       attributes: {},
       innerHTML: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -81,12 +90,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.4-unstable',
+              label: '3.5-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.3',
+          lastVersion: '3.4',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -134,12 +143,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.4-unstable',
+            label: '3.5-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.3',
+        lastVersion: '3.4',
       },
     ],
     [

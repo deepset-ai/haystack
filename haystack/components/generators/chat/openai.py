@@ -53,6 +53,10 @@ from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
+# These models reason by default, but Chat Completions accepts function tools for them only with
+# `reasoning_effort="none"` and returns HTTP 400 otherwise.
+_NO_REASONING_TOOL_CALL_MODEL_PREFIXES = ("gpt-5.6", "gpt-6-sol", "gpt-6-luna")
+
 
 @component
 class OpenAIChatGenerator:
@@ -90,7 +94,7 @@ class OpenAIChatGenerator:
             that focuses on enabling computers to understand, interpret, and generate human language in
             a way that is meaningful and useful.")],
          _name=None,
-         _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5.6-terra', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
         ]
     }
@@ -98,22 +102,25 @@ class OpenAIChatGenerator:
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
-        "gpt-5-mini",
-        "gpt-5-nano",
-        "gpt-5",
-        "gpt-5.1",
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.4",
         "gpt-5.2",
         "gpt-5.2-pro",
-        "gpt-5.4",
+        "gpt-5.1",
+        "gpt-5",
         "gpt-5-pro",
+        "gpt-5-mini",
+        "gpt-5-nano",
         "gpt-4.1",
         "gpt-4.1-mini",
-        "gpt-4.1-nano",
         "gpt-4o",
         "gpt-4o-mini",
-        "gpt-4-turbo",
-        "gpt-4",
-        "gpt-3.5-turbo",
     ]
     """A non-exhaustive list of chat models supported by this component.
     See https://developers.openai.com/api/docs/models for the full list and snapshot IDs."""
@@ -121,7 +128,7 @@ class OpenAIChatGenerator:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-5-mini",
+        model: str = "gpt-5.6-terra",
         streaming_callback: StreamingCallbackT | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -133,7 +140,7 @@ class OpenAIChatGenerator:
         http_client_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
-        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -153,8 +160,14 @@ class OpenAIChatGenerator:
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
             Some of the supported parameters:
+            - `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+                when streaming. Set `{"include_usage": False}` to disable requesting token usage.
             - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
                 including visible output tokens and reasoning tokens.
+            - `reasoning_effort`: How much effort a reasoning model spends on reasoning, for example `"none"`,
+                `"low"`, or `"high"`. Over Chat Completions, gpt-5.6, gpt-6-sol, and gpt-6-luna models accept tools
+                only with `"none"`, so when you pass tools to these models without setting `reasoning_effort`, the
+                component sends `"none"`. To combine reasoning with tools, use `OpenAIResponsesChatGenerator`.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -399,7 +412,8 @@ class OpenAIChatGenerator:
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
-                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices
+                self._convert_chat_completion_to_chat_message(completion=chat_completion, choice=choice)
+                for choice in chat_completion.choices
             ]
 
         # before returning, do post-processing of the completions
@@ -483,7 +497,8 @@ class OpenAIChatGenerator:
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
-                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices
+                self._convert_chat_completion_to_chat_message(completion=chat_completion, choice=choice)
+                for choice in chat_completion.choices
             ]
 
         # before returning, do post-processing of the completions
@@ -491,6 +506,17 @@ class OpenAIChatGenerator:
             _check_finish_reason(message.meta)
 
         return {"replies": completions}
+
+    def _convert_chat_completion_to_chat_message(
+        self, completion: ChatCompletion | ParsedChatCompletion, choice: Choice
+    ) -> ChatMessage:
+        """
+        Convert a non-streaming completion choice to a ChatMessage.
+
+        Subclasses can override this method to include additional response fields, such as reasoning, in the
+        ChatMessage.
+        """
+        return _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
 
     def _prepare_api_call(  # noqa: PLR0913
         self,
@@ -505,6 +531,8 @@ class OpenAIChatGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         is_streaming = streaming_callback is not None
+        if is_streaming:
+            generation_kwargs.setdefault("stream_options", {"include_usage": True})
         num_responses = generation_kwargs.pop("n", 1)
 
         if is_streaming and num_responses > 1:
@@ -512,7 +540,7 @@ class OpenAIChatGenerator:
         response_format = generation_kwargs.pop("response_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
+        openai_formatted_messages = [self._convert_message_to_api_format(message=message) for message in messages]
 
         resolved_tools = tools if tools is not None else self.tools
         flattened_tools = flatten_tools_or_toolsets(resolved_tools)
@@ -529,13 +557,15 @@ class OpenAIChatGenerator:
                     function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
+            if self.model.startswith(_NO_REASONING_TOOL_CALL_MODEL_PREFIXES):
+                generation_kwargs.setdefault("reasoning_effort", "none")
 
         base_args = {
             "model": self.model,
             "messages": openai_formatted_messages,
             "n": num_responses,
             **openai_tools,
-            **generation_kwargs,
+            **self._adapt_generation_kwargs(generation_kwargs=generation_kwargs),
         }
 
         if response_format and not is_streaming:
@@ -555,17 +585,33 @@ class OpenAIChatGenerator:
             final_args["response_format"] = response_format
         return final_args
 
+    def _convert_message_to_api_format(self, message: ChatMessage) -> dict[str, Any]:
+        """Convert a ChatMessage to the provider-specific message format."""
+        return message.to_openai_dict_format()
+
+    def _adapt_generation_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
+        """
+        Customize how generation kwargs are passed to the API.
+
+        Subclasses can, for example, override this method to wrap parameters in `extra_body` or add `extra_headers`.
+
+        This method receives the merged initialization and runtime generation kwargs, excluding `n` and
+        `response_format`, which are handled by `_prepare_api_call`. Subclasses that also need to customize how these
+        parameters or other parts of the request are handled can override `_prepare_api_call` instead.
+        """
+        return generation_kwargs
+
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
         for chunk in chat_completion:
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
             )
             chunks.append(chunk_delta)
             callback(chunk_delta)
-        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: StreamingCallbackT
@@ -575,7 +621,7 @@ class OpenAIChatGenerator:
         try:
             async for chunk in chat_completion:
                 assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-                chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
                 )
                 chunks.append(chunk_delta)
@@ -588,7 +634,31 @@ class OpenAIChatGenerator:
             # https://docs.python.org/3/library/asyncio-task.html#shielding-from-cancellation
             raise  # Re-raise to propagate cancellation
 
-        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
+
+    def _convert_chat_completion_chunk_to_streaming_chunk(
+        self,
+        chunk: ChatCompletionChunk,
+        previous_chunks: list[StreamingChunk],
+        component_info: ComponentInfo | None = None,
+    ) -> StreamingChunk:
+        """
+        Convert an API response chunk to a StreamingChunk.
+
+        Subclasses can override this method to extract additional content, such as reasoning.
+        """
+        return _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk=chunk, previous_chunks=previous_chunks, component_info=component_info
+        )
+
+    def _convert_streaming_chunks_to_chat_message(self, chunks: list[StreamingChunk]) -> ChatMessage:
+        """
+        Combine streaming chunks into the final ChatMessage.
+
+        Subclasses can override this method to preserve additional fields, such as reasoning details, when combining
+        chunks into the final message.
+        """
+        return _convert_streaming_chunks_to_chat_message(chunks=chunks)
 
 
 def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
@@ -681,6 +751,8 @@ def _convert_chat_completion_to_chat_message(
     }
     if logprobs:
         meta["logprobs"] = logprobs
+    if message.refusal:
+        meta["refusal"] = message.refusal
 
     return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
@@ -781,6 +853,9 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
     if logprobs:
         meta["logprobs"] = logprobs
+
+    if choice.delta and choice.delta.refusal:
+        meta["refusal"] = choice.delta.refusal
 
     content = ""
     if choice.delta and choice.delta.content:

@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import subprocess
+import sys
 from collections.abc import Callable
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import jsonschema
 import pytest
@@ -68,6 +71,45 @@ def test_from_function_with_custom_name():
     assert tool.description == "Get weather report for a city."
     assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
     assert tool.function == function_with_docstring
+
+
+def lookup_order(_tenant: str, order_id: str) -> str:
+    """Look up an order for a tenant."""
+    return f"{_tenant}/{order_id}"
+
+
+def test_from_function_required_underscore_parameter_raises():
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Function 'lookup_order': required parameter '_tenant' starts with an underscore and "
+            "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+        ),
+    ):
+        create_tool_from_function(function=lookup_order)
+
+
+def test_from_function_required_underscore_parameter_covered_by_inputs_from_state():
+    tool = create_tool_from_function(function=lookup_order, inputs_from_state={"tenant": "_tenant"})
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"],
+    }
+    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
+
+
+def test_from_function_defaulted_underscore_parameter_omitted_from_schema():
+    def lookup_with_default(_tenant: str = "acme", order_id: str = "A-1") -> str:
+        """Look up an order for a tenant."""
+        return f"{_tenant}/{order_id}"
+
+    tool = create_tool_from_function(function=lookup_with_default)
+
+    assert "_tenant" not in tool.parameters["properties"]
+    assert tool.parameters == {"type": "object", "properties": {"order_id": {"type": "string", "default": "A-1"}}}
+    assert tool.invoke() == "acme/A-1"
 
 
 def test_from_function_annotated():
@@ -157,11 +199,38 @@ def test_from_function_with_callable_params_skipped():
     assert "query" in param_names
 
 
-def test_from_function_state_param_excluded_from_schema():
+def test_from_function_variadic_params_excluded_from_schema():
+    def search(query: str, *args: str, top_k: int = 3, **kwargs: str) -> str:
+        """Search the docs."""
+        return f"{query} {args} {top_k} {kwargs}"
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"query": {"type": "string"}, "top_k": {"type": "integer", "default": 3}},
+        "required": ["query"],
+    }
+    assert tool.invoke(query="haystack", lang="en") == "haystack () 3 {'lang': 'en'}"
+
+
+def test_from_function_untyped_variadic_params_excluded_from_schema():
+    def search(query: str, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
+        """Search the docs."""
+        return query
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+
+
+@pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+def test_from_function_state_param_excluded_from_schema(state_annotation: Any) -> None:
     def function_with_state(city: str, state: State) -> str:
         """Get weather for a city, with access to agent state."""
         return f"Weather in {city}: sunny"
 
+    function_with_state.__annotations__["state"] = state_annotation
     tool = create_tool_from_function(function=function_with_state)
 
     assert tool.name == "function_with_state"
@@ -623,3 +692,29 @@ class TestFromFunctionAsync:
         decorated = tool(async_function_with_docstring)
 
         assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+
+class TestToolDecoratorExport:
+    """`haystack.tools.tool` must be the decorator, although the package also has a `tool` submodule."""
+
+    def test_tool_is_bound_in_package_namespace(self):
+        # A fresh interpreter, since other tests may already have cached the attribute on the package.
+        code = (
+            "import haystack.tools\n"
+            "from haystack.tools.from_function import tool\n"
+            "assert vars(haystack.tools)['tool'] is tool, vars(haystack.tools).get('tool')\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.skipif(sys.version_info < (3, 15), reason="lazy imports (PEP 810) need Python 3.15")
+    @pytest.mark.parametrize("lazy_imports_mode", ["normal", "all"])
+    def test_lazy_import_resolves_to_decorator(self, lazy_imports_mode):
+        code = (
+            "lazy from haystack.tools import tool\n"
+            "from haystack.tools.from_function import tool as decorator\n"
+            "assert tool is decorator, tool\n"
+        )
+        env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
+        assert result.returncode == 0, result.stderr

@@ -118,7 +118,7 @@ class TestInitialization:
         assert component.client is None
         assert component.async_client is None
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.timeout is None
@@ -195,7 +195,7 @@ class TestSerDe:
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -738,18 +738,39 @@ class TestIntegration:
         # It serializes with empty content, so this also checks the API accepts that, not just the converter.
         chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
+
+    def test_live_run_with_web_search_annotations(self) -> None:
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4.1-mini",
+            tools=[{"type": "web_search", "search_context_size": "low", "external_web_access": False}],
+            generation_kwargs={"tool_choice": "required", "max_tool_calls": 1, "max_output_tokens": 128},
+        )
+        results = component.run(
+            messages="Search for the Python 3.13 release date. Reply with only the date and one citation."
+        )
+        component.close()
+
+        reply = results["replies"][0]
+        assert reply.text
+        assert reply.meta["status"] == "completed"
+        annotations = reply.meta["annotations"]
+        offsets = reply.meta["annotation_offsets"]
+        assert len(annotations) == len(offsets) > 0
+        assert annotations[0]["type"] == "url_citation"
+        assert annotations[0]["url"]
 
     def test_live_run_with_reasoning(self) -> None:
 
@@ -842,9 +863,9 @@ class TestIntegration:
 
         callback = RecordingCallback()
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             streaming_callback=callback,
-            generation_kwargs={"include": ["message.output_text.logprobs"]},
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -858,7 +879,7 @@ class TestIntegration:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4.1-nano" in metadata["model"]
+        assert "gpt-5.6-luna" in metadata["model"]
         assert metadata["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -972,7 +993,9 @@ class TestIntegration:
             )
         ]
 
-        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+        )
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1
@@ -1139,7 +1162,9 @@ class TestIntegration:
         )
 
         agent = Agent(
-            chat_generator=OpenAIResponsesChatGenerator(model="gpt-4.1-nano"),
+            chat_generator=OpenAIResponsesChatGenerator(
+                model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+            ),
             system_prompt="You are an Agent that can retrieve documents and answer questions about them.",
             tools=[document_retriever_tool],
         )
@@ -1222,14 +1247,15 @@ class TestOpenAIResponsesChatGeneratorAsync:
 
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None

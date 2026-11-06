@@ -45,7 +45,7 @@ hatch run test:integration
 ### Type checking with mypy
 hatch run test:types
 
-Type checking targets Python 3.12, above the 3.10 floor in `requires-python`, because numpy's stubs use PEP 695 `type` statements that mypy rejects below 3.12. So mypy will not catch code that breaks on 3.10; the unit test matrix runs on 3.10 and covers that.
+Type checking targets Python 3.12, above the 3.11 floor in `requires-python`, because numpy's stubs use PEP 695 `type` statements that mypy rejects below 3.12. So mypy will not catch code that breaks on 3.11; the unit test matrix runs on 3.11 and covers that.
 
 To fix type issues, avoid `type: ignore`, casts, or assertions when possible. If they are necessary, explain why.
 
@@ -94,7 +94,8 @@ Also see directory-specific guidelines:
 - Keep inline comments and private-helper docs to what is non-obvious — remove restatements, keep durable caveats and rationale
 - Keep docstrings current with signatures and behavior, in the existing Haystack style: each public `:param` by meaning, default, and constraints; `:returns:` contracts; exceptions in the existing `:raises ValueError:` style; aliases like `ToolsType` reflected — stale docs mislead users and assistants
 - Keep doc examples minimal, runnable, and local: default constructors with required env vars like `OPENAI_API_KEY` noted nearby, only the imports the snippet uses, no restated defaults (name a model only for model-specific behavior), expected output as comments, generally `# >> ...`
-- When behavior, fields, or names change, update every surface in the same PR: `haystack/components/` docstrings and examples, `docs-website/docs/` plus the current `versioned_docs/version-*/` page (e.g. `concepts/data-classes.mdx`), and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
+- When behavior, fields, or names change, update every relevant surface in the same PR: `haystack/components/` docstrings and examples, documentation pages, and `experimental` wording, `pydoc` IDs, and generated markdown filenames when promoting features
+- Choose which documentation versions to update: update `docs-website/docs/` by default; also update the latest stable `versioned_docs/version-X.Y/` pages for corrections to stable docs or already-released core integration features.
 
 ## Code Style
 

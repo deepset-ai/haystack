@@ -17,7 +17,7 @@ from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.parameters_schema_utils import _unwrap_optional
+from haystack.tools.parameters_schema_utils import _is_state_annotation
 from haystack.tracing.utils import _serializable_value
 
 logger = logging.getLogger(__name__)
@@ -187,7 +187,7 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span
     "execute tool" span per invocation
     (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span),
     and tracing backends such as Langfuse follow the same model. The span is tagged with the tool's identity; the caller
-    adds the call arguments and result as content tags.
+    adds the call arguments and result as content tags, and sets `haystack.tool.error` to `True` when the call fails.
 
     The parent is passed in rather than read from the tracer here: the calls of a step run concurrently, so a tracer
     that tracks the active span globally would report a sibling tool span as current and the spans would end up chained
@@ -218,6 +218,7 @@ def _make_context_bound_invoke(
             try:
                 result = tool.invoke(**args)
             except ToolInvocationError as e:
+                span.set_tag("haystack.tool.error", True)
                 span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                 return e
             span.set_content_tag("haystack.agent.step.tool.output", result)
@@ -255,6 +256,7 @@ def _make_bounded_invoke_async(
                 try:
                     result = await tool.invoke_async(**args)
                 except ToolInvocationError as e:
+                    span.set_tag("haystack.tool.error", True)
                     span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                     return e
                 span.set_content_tag("haystack.agent.step.tool.output", result)
@@ -307,7 +309,7 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
 
     # We also inject the full State object for any parameter annotated as State
     for param_name, param_type in func_params.items():
-        if _unwrap_optional(param_type) is State:
+        if _is_state_annotation(param_type):
             final_args[param_name] = state
 
     return final_args
@@ -424,7 +426,7 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
     """
     func_params = _get_func_params(tool)
     # Check if State is in func_params
-    if any(_unwrap_optional(param_type) is State for param_type in func_params.values()):
+    if any(_is_state_annotation(param_type) for param_type in func_params.values()):
         return _ALL_STATE_KEYS, _ALL_STATE_KEYS
 
     # Calculate reads

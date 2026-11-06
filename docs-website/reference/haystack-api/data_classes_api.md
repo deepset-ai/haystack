@@ -229,7 +229,7 @@ from_file_path(
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
     guess_mime_type: bool = False,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream from the contents read from a file.
@@ -249,7 +249,7 @@ from_string(
     encoding: str = "utf-8",
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream encoding a string.
@@ -296,7 +296,7 @@ Convert the ByteStream to a dictionary representation.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ByteStream
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a ByteStream from a dictionary representation.
@@ -307,7 +307,7 @@ Create a ByteStream from a dictionary representation.
 
 **Returns:**
 
-- <code>ByteStream</code> – A ByteStream instance.
+- <code>Self</code> – An instance of this class.
 
 ## chat_message
 
@@ -344,7 +344,7 @@ Convert TextContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> TextContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a TextContent from a dictionary.
@@ -744,8 +744,8 @@ Creates a new ChatMessage object from a dictionary.
 
 **Raises:**
 
-- <code>ValueError</code> – If the `role` field is missing from the dictionary.
-- <code>TypeError</code> – If the `content` field is not a list or string.
+- <code>ValueError</code> – If the role or content is missing, or the role is invalid.
+- <code>TypeError</code> – If the content is not a string or a sequence of content-part dictionaries.
 
 #### to_openai_dict_format
 
@@ -780,18 +780,18 @@ refusal is dropped with a warning, because OpenAI ignores the tool calls of a me
 from_openai_dict_format(message: dict[str, Any]) -> ChatMessage
 ```
 
-Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat Completions API.
 
 `content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
 `image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
 `FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
 into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
-`meta["refusal"]` instead of the text.
+`meta["refusal"]` instead of the text. Assistant messages with tool calls or a refusal can omit `content`
+or set it to None.
 
-NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
-accepts messages without it to support shallow OpenAI-compatible APIs.
-If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
-encounter validation errors.
+NOTE: This method accepts tool calls without `id` and tool messages without `tool_call_id` to support
+shallow OpenAI-compatible APIs. Include these IDs when using the resulting ChatMessage with
+OpenAI Chat Completions to avoid validation errors.
 
 **Parameters:**
 
@@ -803,9 +803,9 @@ encounter validation errors.
 
 **Raises:**
 
-- <code>ValueError</code> – If the message dictionary is missing required fields, if `content` is neither a string nor a list, or if
-  it contains content parts that can't be converted, such as image URLs that are not base64 data URLs or
-  files referenced by `file_id`.
+- <code>ValueError</code> – If the message dictionary is missing required fields, if non-null `content` is neither a string nor a
+  list, or if it contains content parts that can't be converted, such as image URLs that are not base64
+  data URLs or files referenced by `file_id`.
 
 ## document
 
@@ -825,6 +825,7 @@ to/from dictionary and JSON.
 - **score** (<code>float | None</code>) – Score of the document. Used for ranking, usually assigned by retrievers.
 - **embedding** (<code>list\[float\] | None</code>) – dense vector representation of the document.
 - **sparse_embedding** (<code>SparseEmbedding | None</code>) – sparse vector representation of the document.
+- **multivector_embedding** (<code>list\[list\[float\]\] | None</code>) – multi-vector representation of the document.
 
 #### to_dict
 
@@ -892,7 +893,7 @@ Convert FileContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> FileContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an FileContent from a dictionary.
@@ -990,7 +991,7 @@ Convert ImageContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ImageContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an ImageContent from a dictionary.
@@ -1025,6 +1026,11 @@ use the `PDFToImageContent` component.
 **Returns:**
 
 - <code>ImageContent</code> – An ImageContent object.
+
+**Raises:**
+
+- <code>ValueError</code> – If the file cannot be read or converted to an image, for example because it does not exist or is not
+  an image.
 
 #### from_url
 
@@ -1276,7 +1282,8 @@ select_streaming_callback(
 
 Picks the correct streaming callback given an optional initial and runtime callback.
 
-The runtime callback takes precedence over the initial callback.
+The runtime callback takes precedence over the initial callback. Only the selected callback is checked for
+compatibility with the execution context.
 
 In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
 the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because

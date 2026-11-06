@@ -32,9 +32,9 @@ Monty runs in-process on your machine, with no container or cloud service to set
 
 Monty supports a subset of Python and a subset of the standard library. The default tool description tells the LLM what is available, so it writes code that runs:
 
-- **Supported**: Functions, lambdas, closures, comprehensions, simple classes, dataclasses, `try`/`except`, f-strings, and `async`/`await`.
-- **Not supported**: Class inheritance (including custom exception classes), generators (`yield`), `match`, `del`, method decorators such as `@property` or `@staticmethod`, and third-party packages.
-- **Importable modules**, some of them partially: `asyncio`, `base64`, `binascii`, `collections`, `copy`, `dataclasses`, `datetime`, `functools`, `itertools`, `json`, `math`, `random`, `re`, `sys`, `time`, `typing`, `unicodedata`.
+- **Supported**: Functions, lambdas, closures, comprehensions, simple classes, dataclasses, `try`/`except`, f-strings, `match`, and `async`/`await`.
+- **Not supported**: Class inheritance (including custom exception classes), generators (`yield`), `del`, method decorators such as `@property` or `@staticmethod`, and third-party packages.
+- **Importable modules**, some of them partially: `asyncio`, `base64`, `binascii`, `bisect`, `collections`, `copy`, `dataclasses`, `datetime`, `decimal`, `functools`, `itertools`, `json`, `math`, `random`, `re`, `sys`, `time`, `typing`, `unicodedata`.
 
 Variables, functions, and imports don't persist between calls, so each snippet must be self-contained.
 
