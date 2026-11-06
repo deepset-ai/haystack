@@ -15,7 +15,7 @@ Use AutoMergingRetriever to improve search results by returning complete parent 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Used after the main Retriever component that returns hierarchical documents.                                                                                                                                                                                                                        |
-| **Mandatory init variables**           | `document_store`: Document Store from which to retrieve the parent documents                                                                                                                                                                                                                        |
+| **Mandatory init variables**           | `document_store`: Document Store holding the root and parent documents                                                                                                                                                                                                                              |
 | **Mandatory run variables**            | `documents`: A list of leaf documents that were matched by a Retriever                                                                                                                                                                                                                              |
 | **Output variables**                   | `documents`: A list resulting documents                                                                                                                                                                                                                                                             |
 | **API reference**                      | [Retrievers](/reference/retrievers-api)                                                                                                                                                                                                                                                                    |
@@ -32,7 +32,11 @@ This can be particularly useful when working with paragraphs split into multiple
 
 Here is how this Retriever works:
 
-1. It requires documents to be organized in a tree structure, with leaf nodes stored in a document index - see [`HierarchicalDocumentSplitter`](../preprocessors/hierarchicaldocumentsplitter.mdx) documentation.
+1. It requires documents to be organized in a tree structure created by [`HierarchicalDocumentSplitter`](../preprocessors/hierarchicaldocumentsplitter.mdx), split across two Document Stores:
+   - The leaf documents go in the Document Store searched by the Retriever that runs before `AutoMergingRetriever`.
+   - The root and parent documents go in the Document Store you pass to `AutoMergingRetriever`.
+
+   `AutoMergingRetriever` only accepts leaf documents. Don't index the root or parent documents in the Document Store your Retriever searches. If the root is matched, `AutoMergingRetriever` raises a `ValueError`, since the root has no `__parent_id`.
 2. When searching, it counts how many leaf documents under the same parent match your query.
 3. If this count exceeds your defined threshold, it returns the parent document instead of the individual leaves.
 
