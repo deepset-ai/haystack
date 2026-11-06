@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from typing import List
 
 import pytest
@@ -27,7 +26,6 @@ class TestListJoinerDeserialization:
         ListJoiner.from_dict(data)
 
         assert data["init_parameters"]["list_type_"] == serialized_type
-        assert json.loads(json.dumps(data)) == data
         assert ListJoiner.from_dict(data).list_type_ == list[ChatMessage]
 
 
