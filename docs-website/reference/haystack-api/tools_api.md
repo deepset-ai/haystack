@@ -444,6 +444,8 @@ print(tool)
   to `async_function`).
   Parameters exposed in the Tool's schema must have type hints.
   Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
   The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
   Other input types may work but are not guaranteed.
   If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -511,7 +513,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ### tool
@@ -572,6 +575,8 @@ print(get_weather)
 - **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters).
   Parameters exposed in the Tool's schema must have type hints.
   Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
 - **name** (<code>str | None</code>) – Optional custom name for the tool
 - **description** (<code>str | None</code>) – Optional custom description
 - **inputs_from_state** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping state keys to tool parameter names.
@@ -635,7 +640,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ## pipeline_tool
