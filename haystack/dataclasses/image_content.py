@@ -191,12 +191,18 @@ class ImageContent:
 
         :returns:
             An ImageContent object.
+
+        :raises ValueError:
+            If the file cannot be read or converted to an image, for example because it does not exist or is not
+            an image.
         """
         # to avoid a circular import
         from haystack.components.converters.image import ImageFileToImageContent
 
         converter = ImageFileToImageContent(size=size, detail=detail)
         result = converter.run(sources=[file_path], meta=[meta] if meta else None)
+        if not result["image_contents"]:
+            raise ValueError(f"Could not convert {file_path} to an image. See the logged warning for details.")
         return result["image_contents"][0]
 
     @classmethod
