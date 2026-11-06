@@ -3,5 +3,4 @@ fixes:
   - |
     ``PythonCodeSplitter`` with ``strip_docstrings=True`` no longer drops code that follows a docstring on the same line,
     such as ``"""Docs."""; return 5``. Previously the whole line was removed, silently deleting the statement and
-    possibly leaving a chunk that fails to parse. In this case the docstring is now kept in the chunk content,
-    as already done when the docstring shares a line with the ``def`` or ``class``.
+    possibly leaving a chunk that fails to parse. In this case the docstring is now kept in the chunk content.
