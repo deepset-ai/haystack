@@ -933,6 +933,7 @@ Initialize the SearchableToolset.
 - **search_threshold** (<code>int</code>) – Minimum catalog size to activate search. If catalog has fewer tools, acts as
   passthrough (all tools visible). Default is 8.
 - **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
+  Must differ from every catalog tool name when the catalog has at least `search_threshold` tools.
 - **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool. If not provided, uses a
   default description.
 - **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
@@ -955,6 +956,11 @@ warm_up() -> None
 
 Warm up the catalog tools and initialize tool discovery.
 
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
+
 #### warm_up_async
 
 ```python
@@ -962,6 +968,11 @@ warm_up_async() -> None
 ```
 
 Warm up the catalog tools asynchronously and initialize tool discovery.
+
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
 
 #### get_selectable_tools
 
