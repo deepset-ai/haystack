@@ -38,6 +38,8 @@ The remaining columns become metadata, and `meta["row_number"]` records the zero
 ### On its own
 
 ```python
+from datetime import datetime
+
 from haystack.components.converters.csv import CSVToDocument
 
 converter = CSVToDocument()
