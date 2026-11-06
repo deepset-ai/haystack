@@ -97,7 +97,7 @@ class SearchableToolset(Toolset):
         :param search_threshold: Minimum catalog size to activate search. If catalog has fewer tools, acts as
             passthrough (all tools visible). Default is 8.
         :param search_tool_name: Custom name for the bootstrap search tool. Default is "search_tools".
-            Must differ from catalog tool names when discovery is active.
+            Must differ from every catalog tool name when the catalog has at least `search_threshold` tools.
         :param search_tool_description: Custom description for the bootstrap search tool. If not provided, uses a
             default description.
         :param search_tool_parameters_description: Custom descriptions for the bootstrap search tool's parameters.
@@ -178,8 +178,8 @@ class SearchableToolset(Toolset):
         Catalogs below the search threshold use passthrough mode. Otherwise, build the BM25 index
         and create the search_tools bootstrap tool.
 
-        :raises ValueError: If the catalog contains duplicate tool names, or a catalog tool shares the search tool's
-            name when discovery is active.
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         if self._passthrough is not None:
             return
