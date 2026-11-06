@@ -106,7 +106,10 @@ Embedding models and LLMs limit their input in tokens, not words. Code, URLs, an
 from haystack import Document
 from haystack.components.preprocessors import MarkdownHeaderSplitter
 
-text = "# Section\n" + "Some long body text with `code` and https://example.com links. " * 50
+text = (
+    "# Section\n"
+    + "Some long body text with `code` and https://example.com links. " * 50
+)
 doc = Document(content=text)
 splitter = MarkdownHeaderSplitter(
     secondary_split="token",

@@ -1330,6 +1330,7 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     assert "# Top Level" in first_content
     assert "Top content." in first_content
 
+
 # Secondary split by token
 @pytest.fixture
 def mock_tiktoken_encoding(monkeypatch):
@@ -1645,4 +1646,3 @@ class TestSecondarySplitByTokenIntegration:
         assert {doc.meta["header"] for doc in docs} == {"Install", "Usage"}
         assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
         assert docs[-1].meta["page_number"] == 2
-        

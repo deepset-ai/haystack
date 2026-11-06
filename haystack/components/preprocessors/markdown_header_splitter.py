@@ -127,7 +127,7 @@ class MarkdownHeaderSplitter:
     def warm_up(self) -> None:
         """
         Warm up the MarkdownHeaderSplitter.
-        
+
         Loads the tiktoken encoding when `secondary_split="token"`.
         """
         if self.secondary_split and not self._is_warmed_up:
