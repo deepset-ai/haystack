@@ -663,6 +663,7 @@ def _extract_annotations(output: list[dict[str, Any]]) -> tuple[list[dict[str, A
 
 
 def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningContent | None:
+    """Return a single ReasoningContent from OpenAI reasoning items, or None when there are no items."""
     if not items:
         return None
 
@@ -677,6 +678,7 @@ def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningConte
 
 
 def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str, Any]]:
+    """Convert ReasoningContent back to OpenAI reasoning items, including legacy single-item extra."""
     items = reasoning.extra.get("reasoning_items")
     if items is None:
         # Continue accepting messages serialized with the legacy single-item extra.
@@ -684,6 +686,7 @@ def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str,
         if reasoning.reasoning_text and not item.get("content"):
             item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
         items = [item]
+    # Streaming adds event fields like item_id and sequence_number to extra; the API rejects them as input.
     valid_fields = {"id", "type", "summary", "encrypted_content", "status", "content", "output_index"}
     return [{"summary": [], **{key: value for key, value in item.items() if key in valid_fields}} for item in items]
 
@@ -977,11 +980,14 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     for index in sorted(reasoning_chunks):
         item_chunks = reasoning_chunks[index]
         reasoning_extra = {}
+        # added/done events carry the full item, deltas only add item_id; later chunks win
         for item_chunk in item_chunks:
             reasoning_extra.update(item_chunk.extra)
         reasoning_id = reasoning_extra.get("id") or reasoning_extra.get("item_id")
+        # The API rejects reasoning input without an id, so items without one are dropped
         if reasoning_id:
             reasoning_extra.update({"id": reasoning_id, "type": "reasoning", "output_index": index})
+            # No done event supplied the text, so rebuild the summary from the streamed deltas
             if not reasoning_extra.get("summary") and not reasoning_extra.get("content"):
                 reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks)
                 reasoning_extra["summary"] = (
@@ -1118,8 +1124,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         openai_tool_call["output_index"] = tc.extra.get("output_index") if tc.extra else None
         formatted_messages.append(openai_tool_call)
 
-    # Indices are Haystack metadata, not valid Responses API input fields.
+    # Restore the original order of reasoning items and function calls; items without an index go last
     formatted_messages.sort(key=lambda item: (item.get("output_index") is None, item.get("output_index")))
+    # output_index is not a valid Responses API input field
     for item in formatted_messages:
         item.pop("output_index", None)
 

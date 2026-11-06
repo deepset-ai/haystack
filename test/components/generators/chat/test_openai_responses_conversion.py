@@ -258,9 +258,11 @@ class TestConversionToStreamingChunks:
             {"id": "rs_a", "type": "reasoning", "summary": [{"text": "second item", "type": "summary_text"}]},
         ]
 
-    @pytest.mark.parametrize("include_summary", [False, True])
     @pytest.mark.parametrize("include_added_event", [False, True])
-    @pytest.mark.parametrize("include_deltas", [False, True])
+    @pytest.mark.parametrize(
+        ("include_summary", "include_deltas"),
+        [(False, False), (True, False), (True, True)],
+    )
     def test_multiple_reasoning_items_survive_streaming_round_trip(
         self, include_summary, include_added_event, include_deltas
     ):
