@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``SASEvaluator`` now checks ``batch_size`` when the component is created and raises a ``ValueError`` if it is
+    not a positive integer, such as ``0``, ``-1``, or ``0.5``
+    (for example ``ValueError: batch_size must be a positive integer, but got 0``).
+    Before this fix, an invalid ``batch_size`` was accepted and the problem only appeared when ``run`` was called.
+    With Sentence Transformers versions before 5.4, ``run`` then failed with errors that do not mention
+    ``batch_size``, or, for a negative value with a cross-encoder model, returned a ``nan`` score without raising
+    an error.
