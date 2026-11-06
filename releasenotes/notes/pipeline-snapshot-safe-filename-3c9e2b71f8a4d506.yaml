@@ -2,5 +2,5 @@
 fixes:
   - |
     Pipeline snapshots now use a file name that is valid on every platform. Component names containing characters
-    a file system rejects (for example `:` or `|`) no longer make saving a snapshot fail on Windows, and no longer
+    a file system rejects (for example ``:`` or ``|``) no longer make saving a snapshot fail on Windows, and no longer
     write the snapshot into an NTFS alternate data stream where it cannot be found.
