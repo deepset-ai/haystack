@@ -15,7 +15,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.hooks.utils import _is_system_reminder
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY, _is_system_reminder
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
@@ -164,11 +164,12 @@ class StructuredOutputHook:
             )
             return
 
-        # Ask the model to correct its reply and keep the Agent running
+        # Ask the model to correct its reply and keep the Agent running. The correction is also marked as a system
+        # reminder so compaction doesn't take it for the user's task.
         correction = ChatMessage.from_user(
             f"Your previous reply could not be used: {error}\n\n"
             f"Reply again with only JSON that matches this JSON schema:\n{self._schema_text}",
-            meta={_CORRECTION_META_KEY: True},
+            meta={_CORRECTION_META_KEY: True, _SYSTEM_REMINDER_META_KEY: True},
         )
         state.set("messages", [correction])
         state.set("continue_run", True)

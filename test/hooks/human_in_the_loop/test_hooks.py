@@ -22,6 +22,7 @@ from haystack.hooks.human_in_the_loop import (
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationUI
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -107,7 +108,7 @@ class TestConfirmationHook:
         )
         assert state.get("messages") == [
             ChatMessage.from_user("add"),
-            ChatMessage.from_user(explanation),
+            ChatMessage.from_user(explanation, meta={_SYSTEM_REMINDER_META_KEY: True}),
             ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 10, "b": 20})]),
         ]
 

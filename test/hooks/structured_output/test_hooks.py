@@ -15,7 +15,7 @@ from haystack.hooks import hook
 from haystack.hooks.budget import StepBudgetReminderHook
 from haystack.hooks.structured_output import StructuredOutputHook
 from haystack.hooks.structured_output.hooks import _CORRECTION_META_KEY, _count_corrections
-from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY, _is_system_reminder
 
 
 class CityInfo(BaseModel):
@@ -114,6 +114,7 @@ class TestStructuredOutputHook:
         assert result["step_count"] == 2
         correction = result["messages"][-2]
         assert correction.meta[_CORRECTION_META_KEY] is True
+        assert _is_system_reminder(message=correction)
         assert expected_error in correction.text
         assert '"population"' in correction.text
 
