@@ -80,13 +80,6 @@ If a provider returns the raw reasoning as `reasoning_text` content instead, it 
 
 When a response contains several reasoning items, their summaries are joined into a single `reply.reasoning.reasoning_text`. The individual items, including their IDs and encrypted content, are kept in `reply.reasoning.extra["reasoning_items"]`. Pass the reply back in the conversation history unchanged so these items are sent back to OpenAI.
 
-```python
-reply = response["replies"][0]
-if reply.reasoning is not None:
-    print(reply.reasoning.reasoning_text)
-    print([item["id"] for item in reply.reasoning.extra["reasoning_items"]])
-```
-
 ### Multi-turn Conversations
 
 The Responses API supports multi-turn conversations using `previous_response_id`. You can pass the response ID from a previous turn to maintain conversation context:
