@@ -5,6 +5,7 @@
 import json
 import logging
 import warnings
+from collections import UserList
 from collections.abc import Sequence
 from typing import Any
 
@@ -1042,8 +1043,9 @@ class TestToOpenaiDictFormat:
         )
         assert message.to_openai_dict_format() == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
 
-    def test_to_openai_dict_format_tool_message_list(self):
-        tool_result = [TextContent(text="first result"), TextContent(text="second result")]
+    @pytest.mark.parametrize("sequence_type", [list, tuple, UserList])
+    def test_to_openai_dict_format_tool_message_sequence(self, sequence_type):
+        tool_result = sequence_type([TextContent(text="first result"), TextContent(text="second result")])
         message = ChatMessage.from_tool(
             tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
         )
@@ -1053,11 +1055,13 @@ class TestToOpenaiDictFormat:
             "tool_call_id": "123",
         }
 
-    def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
-        tool_result: Sequence[TextContent | ImageContent] = [
-            TextContent(text="first result"),
-            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
-        ]
+    @pytest.mark.parametrize("sequence_type", [list, tuple, UserList])
+    def test_to_openai_dict_format_tool_message_sequence_with_unsupported_image(
+        self, base64_image_string, sequence_type
+    ):
+        tool_result: Sequence[TextContent | ImageContent] = sequence_type(
+            [TextContent(text="first result"), ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+        )
         message = ChatMessage.from_tool(
             tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
         )

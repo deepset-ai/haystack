@@ -1,0 +1,5 @@
+fixes:
+  - |
+    ``ChatMessage.to_openai_dict_format()`` now accepts text-only tool results
+    supplied as tuples or other sequences, matching ``ChatMessage.from_tool()``.
+    These results no longer raise ``ValueError`` before an OpenAI chat request.
