@@ -265,7 +265,7 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert docs_after[0].score == pytest.approx(0.016261, abs=1e-5)
 
-    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
+    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1, float("nan")])
     def test_linear_score_raises_warning_if_doc_wrong_score(self, score, caplog):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
