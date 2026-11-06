@@ -14,6 +14,10 @@ from haystack.core.component import Component
 
 logger = logging.getLogger(__name__)
 
+# Immutable built-in types that `deepcopy` returns unchanged. Matching the exact type (not `isinstance`) keeps
+# subclasses, which can customize copying, on the regular path.
+_IMMUTABLE_ATOMIC_TYPES = frozenset({type(None), bool, int, float, complex, str, bytes})
+
 
 def _deepcopy_with_exceptions(obj: Any) -> Any:
     """
@@ -29,6 +33,11 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     :returns:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
+    # Skips the `Component` protocol check below, which is slow and would otherwise run on every leaf value,
+    # such as each float of an embedding.
+    if type(obj) in _IMMUTABLE_ATOMIC_TYPES:
+        return obj
+
     # Import here to avoid circular imports
     from haystack.tools.tool import Tool
     from haystack.tools.toolset import Toolset

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``StructuredOutputHook`` now honors ``max_retries`` when ``StepBudgetReminderHook`` (or another hook adding
+    ``system_reminder`` messages) is registered. The hook counts its corrections since the last user message, and it
+    treated each reminder as a new user turn, so the count reset every step: the Agent kept asking for corrections
+    until ``max_agent_steps`` and stopped with ``exit_reason="max_agent_steps"``. Reminders are now skipped when
+    counting.
