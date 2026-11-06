@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                   |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                        |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                        |      398 |        2 |     99% |  210, 812 |
+| haystack/components/agents/agent.py                                        |      398 |        2 |     99% |  210, 814 |
 | haystack/components/agents/state/\_\_init\_\_.py                           |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                  |       77 |        2 |     97% |    76, 80 |
 | haystack/components/agents/state/state\_utils.py                           |       18 |        0 |    100% |           |
@@ -199,14 +199,14 @@
 | haystack/hooks/human\_in\_the\_loop/dataclasses.py                         |       16 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/hooks.py                               |       30 |        1 |     97% |       117 |
 | haystack/hooks/human\_in\_the\_loop/policies.py                            |       17 |        0 |    100% |           |
-| haystack/hooks/human\_in\_the\_loop/strategies.py                          |      188 |        5 |     97% |339, 387, 431, 500, 694 |
+| haystack/hooks/human\_in\_the\_loop/strategies.py                          |      189 |        5 |     97% |340, 388, 432, 501, 698 |
 | haystack/hooks/human\_in\_the\_loop/types/\_\_init\_\_.py                  |        2 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/types/protocol.py                      |       25 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/user\_interfaces.py                    |       96 |        2 |     98% |   65, 103 |
 | haystack/hooks/invocation.py                                               |       40 |        0 |    100% |           |
 | haystack/hooks/protocol.py                                                 |       15 |        0 |    100% |           |
 | haystack/hooks/structured\_output/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
-| haystack/hooks/structured\_output/hooks.py                                 |      101 |        1 |     99% |       183 |
+| haystack/hooks/structured\_output/hooks.py                                 |      101 |        1 |     99% |       184 |
 | haystack/hooks/tool\_result\_offloading/\_\_init\_\_.py                    |        5 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/hooks.py                           |       77 |        2 |     97% |  184, 255 |
 | haystack/hooks/tool\_result\_offloading/policies.py                        |       17 |        0 |    100% |           |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18531** |  **684** | **96%** |           |
+| **TOTAL**                                                                  | **18532** |  **684** | **96%** |           |
 
 
 ## Setup coverage badge
