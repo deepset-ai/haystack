@@ -240,7 +240,7 @@ run(
 ) -> dict[str, list[ImageContent]]
 ```
 
-Converts files to ImageContent objects.
+Converts files to ImageContent objects. Sources that fail conversion or validation are logged and skipped.
 
 **Parameters:**
 
@@ -261,7 +261,7 @@ Converts files to ImageContent objects.
 **Returns:**
 
 - <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
-- `image_contents`: A list of ImageContent objects.
+- `image_contents`: Successfully converted images in source order, or an empty list if none succeed.
 
 ## pdf_to_image
 

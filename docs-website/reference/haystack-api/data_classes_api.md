@@ -1027,6 +1027,11 @@ use the `PDFToImageContent` component.
 
 - <code>ImageContent</code> – An ImageContent object.
 
+**Raises:**
+
+- <code>ValueError</code> – If the file cannot be read or converted to an image, for example because it does not exist or is not
+  an image.
+
 #### from_url
 
 ```python
