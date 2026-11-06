@@ -111,11 +111,13 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 Run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
@@ -130,11 +132,13 @@ run_async(documents: list[Document]) -> dict[str, list[Document]]
 Asynchronously run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
@@ -675,6 +679,10 @@ Initialize MultiQueryEmbeddingRetriever.
 - **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
   `run_async`.
 
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
+
 #### warm_up
 
 ```python
@@ -837,6 +845,10 @@ Initialize MultiQueryTextRetriever.
 - **retriever** (<code>TextRetriever</code>) – The text-based retriever to use for document retrieval.
 - **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent retriever calls in
   `run_async`. Default is 3.
+
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
 
 #### warm_up
 
@@ -1037,7 +1049,8 @@ Create the MultiRetriever component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0.
+- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
+  greater than 0.
 
 #### warm_up
 
