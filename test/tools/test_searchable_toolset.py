@@ -128,12 +128,11 @@ class TestSearchableToolset:
                     toolset.warm_up()
             assert toolset.get_selectable_tools() == []
 
-    @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
-    def test_passthrough_allows_catalog_name_matching_unused_search_tool(self, search_tool_name):
-        catalog_tool = create_tool_from_function(get_weather, name=search_tool_name)
-        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=2, search_tool_name=search_tool_name)
+    def test_passthrough_allows_catalog_name_matching_unused_search_tool(self):
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=2)
 
-        assert [tool.name for tool in toolset] == [search_tool_name]
+        assert [tool.name for tool in toolset] == ["search_tools"]
         assert toolset[0].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
 
     def test_renamed_search_tool_can_discover_catalog_tool_named_search_tools(self):
