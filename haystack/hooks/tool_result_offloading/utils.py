@@ -78,9 +78,12 @@ def _offloaded_message(
     key_prefix: str,
     preview_chars: int,
     additional_meta: dict[str, Any] | None = None,
-) -> ChatMessage:
+) -> ChatMessage | None:
     """
     Write a tool result to the store and return a message with the same origin and error flag that points to it.
+
+    If any store write fails, a warning is logged and None is returned so the result stays in context. Blocks
+    written before the failure stay in the store but are not referenced.
 
     :param message: The tool-result message being offloaded. Must carry a tool result.
     :param content_blocks: The result's content blocks, as returned by `_offloadable_content_blocks`.
@@ -88,15 +91,26 @@ def _offloaded_message(
     :param key_prefix: The result's store key prefix, unique within the run.
     :param preview_chars: Number of leading characters of each offloaded text to include in the pointer.
     :param additional_meta: Extra metadata to record on the offloaded message, such as a compaction marker.
-    :returns: A new tool-result message whose content points at the stored result.
+    :returns: A new tool-result message whose content points at the stored result, or None when a store write fails.
     """
     result = message.tool_call_result
     if result is None:
         raise ValueError("Only tool-result messages can be offloaded.")
 
-    references, pointer = _offload_content_blocks(
-        content_blocks=content_blocks, store=store, prefix=key_prefix, preview_chars=preview_chars
-    )
+    # Offloading only saves context, so a store that fails to write (a bad key, a full disk, a network error in a
+    # custom store) must not end the Agent run.
+    try:
+        references, pointer = _offload_content_blocks(
+            content_blocks=content_blocks, store=store, prefix=key_prefix, preview_chars=preview_chars
+        )
+    except Exception as error:
+        logger.warning(
+            "Failed to offload the result of tool '{tool}' to {store}; leaving the result in context. Error: {error}",
+            tool=result.origin.tool_name,
+            store=type(store).__name__,
+            error=error,
+        )
+        return None
     return ChatMessage.from_tool(
         tool_result=pointer,
         origin=result.origin,

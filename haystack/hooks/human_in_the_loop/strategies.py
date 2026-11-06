@@ -17,13 +17,15 @@ from haystack.core.serialization import (
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.human_in_the_loop import ToolExecutionDecision
 from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
 MODIFICATION_FEEDBACK_TEMPLATE = (
-    "The parameters for tool '{tool_name}' were updated by the user to:\n{final_tool_params}"
+    "The user changed the arguments of '{tool_name}' to {final_tool_params} and wants that result used. "
+    "Don't call it again with the original arguments."
 )
 USER_FEEDBACK_TEMPLATE = "With user feedback: {feedback}"
 
@@ -554,7 +556,8 @@ def _apply_tool_execution_decisions(
         - A list of rejection messages for rejected tool calls. These are pairs of tool call and tool call result
           messages.
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
-          a user message explaining the modification is included before the tool call message.
+          a user message explaining the modification, marked as a system reminder, is included before the tool call
+          message.
     """
     tool_calls = [tc for message in tool_call_messages for tc in (message.tool_calls or [])]
     if len(tool_calls) != len(tool_execution_decisions):
@@ -611,11 +614,13 @@ def _apply_tool_execution_decisions(
             if classified_decision == "modify":
                 # In the modify case we add a user message explaining the modification otherwise the LLM won't know
                 # why the tool parameters changed and will likely just try and call the tool again with the
-                # original parameters.
+                # original parameters. It is marked as a system reminder so compaction doesn't take it for the task.
                 user_text = ted.feedback or MODIFICATION_FEEDBACK_TEMPLATE.format(
                     tool_name=tc.tool_name, final_tool_params=final_args
                 )
-                new_tool_call_messages.append(ChatMessage.from_user(text=user_text))
+                new_tool_call_messages.append(
+                    ChatMessage.from_user(text=user_text, meta={_SYSTEM_REMINDER_META_KEY: True})
+                )
             new_tool_calls.append(replace(tc, arguments=final_args))
 
         # Only add the tool call message if there are any tool calls left (i.e. not all were rejected)

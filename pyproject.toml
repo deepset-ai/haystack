@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,28 +34,29 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  "openai>=2.6.0",
-  "pydantic",
+  "openai>=3.26.0",
+  "pydantic>=2.12.0",       # tool parameter JSON schemas differ below 2.11; 2.12 is the first with Python 3.14 wheels
+  "pydantic>=2.14.0; python_version >= '3.15'",  # first with Python 3.15 wheels
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
   "more-itertools",         # DocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
   "anyio>=4.14.2",          # transitive via httpx and openai; floor for CVE-2026-63374 (GHSA-82r6-8w77-94w6)
+  "certifi>=2026.10.19",    # transitive via httpx and posthog; floor for GHSA-6q48-6c7w-9gw2
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
@@ -130,7 +131,9 @@ dependencies = [
   "azure-identity",
 
   # Test
-  "pytest",
+  # pytest 9.2 removed FixtureManager._arg2fixturedefs, which pytest-bdd<=9.0.0 relies on.
+  # Unpin once a pytest-bdd release includes https://github.com/pytest-dev/pytest-bdd/pull/851
+  "pytest<9.2",
   "pytest-bdd",
   "pytest-cov",
   "pytest-asyncio",
@@ -193,9 +196,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-# Deliberately above the 3.10 floor in `requires-python`: numpy's stubs use PEP 695 `type`
+# Deliberately above the 3.11 floor in `requires-python`: numpy's stubs use PEP 695 `type`
 # statements, which mypy rejects as a syntax error below 3.12. The floor stays covered by the
-# unit test matrix, which runs on 3.10.
+# unit test matrix, which runs on 3.11.
 python_version = "3.12"
 check_untyped_defs = true
 disallow_incomplete_defs = true

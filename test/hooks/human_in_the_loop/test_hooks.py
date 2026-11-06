@@ -22,6 +22,7 @@ from haystack.hooks.human_in_the_loop import (
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationUI
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -101,10 +102,13 @@ class TestConfirmationHook:
         hook = _confirm_hook(ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}))
         hook.run(state)
         # The original call is dropped; an explanation user message precedes the rebuilt call with the new arguments.
-        explanation = "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 10, 'b': 20}"
+        explanation = (
+            "The user changed the arguments of 'addition_tool' to {'a': 10, 'b': 20} and wants that result used. "
+            "Don't call it again with the original arguments."
+        )
         assert state.get("messages") == [
             ChatMessage.from_user("add"),
-            ChatMessage.from_user(explanation),
+            ChatMessage.from_user(explanation, meta={_SYSTEM_REMINDER_META_KEY: True}),
             ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 10, "b": 20})]),
         ]
 
@@ -199,8 +203,9 @@ class TestConfirmationHook:
                                 "init_parameters": {},
                             },
                             "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
-                            "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
-                            "\n{final_tool_params}",
+                            "modify_template": "The user changed the arguments of '{tool_name}' to "
+                            "{final_tool_params} and wants that result used. Don't call it again with the original "
+                            "arguments.",
                             "user_feedback_template": "With user feedback: {feedback}",
                         },
                     }
@@ -385,7 +390,8 @@ class TestConfirmationHookTracing:
                     "tool_name": "modified_tool",
                     "execute": True,
                     "tool_call_id": "tc-modify",
-                    "feedback": "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
+                    "feedback": "The user changed the arguments of 'modified_tool' to {'x': 99} and wants that "
+                    "result used. Don't call it again with the original arguments. "
                     "With user feedback: sensitive modification feedback",
                     "final_tool_params": {"x": 99},
                 },

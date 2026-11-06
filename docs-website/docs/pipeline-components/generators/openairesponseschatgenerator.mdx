@@ -26,7 +26,7 @@ hep_available: true
 
 ## Overview
 
-`OpenAIResponsesChatGenerator` uses OpenAI's Responses API to generate chat completions. It supports OpenAI's chat completion and reasoning models, such as `gpt-4o-mini`, `gpt-4.1-mini`, and the GPT-5 and o-series families. The default model is `gpt-5-mini`.
+`OpenAIResponsesChatGenerator` uses OpenAI's Responses API to generate chat completions. It supports OpenAI's chat completion and reasoning models, such as `gpt-4o-mini`, `gpt-4.1-mini`, and the GPT-5 and o-series families. The default model is `gpt-5.6-terra`.
 
 The Responses API is designed for reasoning-capable models and supports features like reasoning summaries, multi-turn conversations with previous response IDs, and structured outputs.
 
@@ -241,6 +241,27 @@ Streaming works only with a single response. If a provider supports multiple can
 See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+### Annotations
+
+The Responses API can attach annotations, such as URL and file citations, to text blocks. The generator preserves their original fields in `reply.meta["annotations"]`.
+
+A response can contain multiple text blocks, which Haystack concatenates into `reply.text`. Each annotation's indices refer to its original block. The aligned `reply.meta["annotation_offsets"]` list gives that block's starting position in the concatenated text. For example, for URL citations, add the offset to `start_index` and `end_index` to locate the cited span in `reply.text`.
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+
+generator = OpenAIResponsesChatGenerator(tools=[{"type": "web_search"}])
+reply = generator.run(
+    messages="Search the web: when was Python 3.13 released? Cite your sources."
+)["replies"][0]
+for annotation, offset in zip(
+    reply.meta["annotations"], reply.meta["annotation_offsets"]
+):
+    start = offset + annotation["start_index"]
+    end = offset + annotation["end_index"]
+    print(reply.text[start:end], annotation["url"])
+```
 
 ## Usage
 

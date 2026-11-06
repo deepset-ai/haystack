@@ -136,6 +136,24 @@ class TestToolResultOffloadCompactor:
         assert compacted is None
         assert not list(tmp_path.iterdir())
 
+    def test_failed_write_leaves_result_in_context_and_offloads_the_rest(self, tmp_path, caplog):
+        # A tool name with `..` makes the key resolve outside the store root, so that write raises.
+        messages = [
+            ChatMessage.from_user("task"),
+            tool_call("escape", name="../../../escape"),
+            tool_result("e" * 400, call_id="escape", name="../../../escape"),
+            *conversation("v" * 400, "newest")[1:],
+        ]
+        store = FileSystemToolResultStore(root=tmp_path)
+        compacted = ToolResultOffloadCompactor(store=store, min_tokens=0, preview_chars=0).compact(
+            messages=messages, target_tokens=1, token_counter=COUNTER
+        )
+
+        assert compacted is not None
+        assert compacted[2] == messages[2]
+        assert store.read(compacted[4].meta["tool_result_offloaded"][0]) == "v" * 400
+        assert "Failed to offload the result of tool '../../../escape' to FileSystemToolResultStore" in caplog.text
+
     @pytest.mark.parametrize(
         ("kwargs", "message"),
         [

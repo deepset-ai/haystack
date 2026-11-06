@@ -476,8 +476,9 @@ into ImageContent objects.
 - <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
 - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
   data and metadata. The order corresponds to the order of the input documents. A document that is
-  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
-  to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
+  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, has an
+  image file that cannot be decoded, or points to a PDF page that cannot be converted gets None in its
+  position and a logged warning with the reason.
 
 ## image/file_to_document
 
@@ -842,6 +843,10 @@ Initialization will fail if neither `jq_schema` nor `content_key` are set.
   If `jq_schema` is specified, all keys will be extracted from that object.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+
+**Raises:**
+
+- <code>ValueError</code> – If neither `jq_schema` nor `content_key` is set, or if `extra_meta_fields` is a string other than `"*"`.
 
 #### to_dict
 
@@ -1660,6 +1665,16 @@ Creates a XLSXToDocument component.
 - **table_format** (<code>Literal['csv', 'markdown']</code>) – The format to convert the Excel file to.
 - **sheet_name** (<code>str | int | list\[str | int\] | None</code>) – The name of the sheet to read. If None, all sheets are read.
 - **read_excel_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional arguments to pass to `pandas.read_excel`.
+  By default, the converter passes `keep_default_na=False` and `na_values=[""]`, so literal text like
+  "NA" and "N/A" is kept and only empty cells are treated as missing.
+  If you set either `keep_default_na` or `na_values`, these defaults aren't applied and pandas' own
+  behavior is used: `na_values` alone adds to pandas' default NA strings, and `keep_default_na=False`
+  alone doesn't treat empty cells as missing unless `""` is in `na_values`.
+  Set `keep_default_na=True` to restore pandas' default NA parsing.
+  Custom parsing options may cause conversion errors or unexpected output.
+  For example, `skiprows` can produce incorrect row numbers, and `index_col`
+  can cause values to change or the entire file to be skipped.
+  Validate the output on representative inputs when using these options.
   See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
 - **table_format_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to the table format function.
 - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.

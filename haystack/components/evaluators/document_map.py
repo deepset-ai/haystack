@@ -4,7 +4,9 @@
 
 from typing import Any
 
-from haystack import Document, component, default_to_dict
+from haystack import Document, component, default_to_dict, logging
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -108,6 +110,10 @@ class DocumentMAPEvaluator:
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents
                 are ranked.
         """
+        if len(ground_truth_documents) == 0 or len(retrieved_documents) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
@@ -124,10 +130,18 @@ class DocumentMAPEvaluator:
             uncredited_ground_truth_values: list[Any] = []
             for doc in ground_truth:
                 value = self._get_comparison_value(doc)
-                if value is not None and value not in uncredited_ground_truth_values:
+                # Missing or empty values can't identify a relevant document, so they never match
+                if value in ("", None):
+                    continue
+                if value not in uncredited_ground_truth_values:
                     uncredited_ground_truth_values.append(value)
 
             total_relevant_documents = len(uncredited_ground_truth_values)
+            if not total_relevant_documents:
+                logger.warning(
+                    "There are no ground truth documents or none of them contain a valid comparison value. "
+                    "Score will be set to 0."
+                )
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
