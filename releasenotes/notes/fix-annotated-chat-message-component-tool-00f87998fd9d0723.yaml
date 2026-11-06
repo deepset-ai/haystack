@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``ComponentTool`` handling of ``Annotated`` wrappers around lists of Haystack dataclasses,
+    including optional ``list[ChatMessage]`` inputs. Serialized chat messages are converted correctly
+    while annotation constraints and public message fields in generated schemas are preserved.

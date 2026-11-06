@@ -221,6 +221,9 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
     origin = get_origin(_type)
     args = get_args(_type)
 
+    if origin is Annotated:
+        return Annotated[_resolve_type(args[0]), *args[1:]]
+
     if origin is list:
         return list[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
