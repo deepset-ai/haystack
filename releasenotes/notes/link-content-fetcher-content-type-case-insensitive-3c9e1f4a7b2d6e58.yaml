@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `LinkContentFetcher` now treats the `Content-Type` response header case-insensitively.
+    Previously a header such as `Application/PDF` or `IMAGE/PNG` did not match the binary handlers on Linux and macOS,
+    so the body was decoded as text and the returned `ByteStream` held corrupted data.
+    The content type is now lowercased and stripped of whitespace before it is matched and stored in the metadata.
