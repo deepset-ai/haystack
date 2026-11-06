@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added an opt-in ``include_diagnostics`` parameter to ``DocumentRecallEvaluator``. When enabled, the
+    evaluator also returns ``missing_documents`` (the comparison values of the ground truth documents that
+    were not retrieved, per query), ``support_coverage`` (the fraction of ground truth documents retrieved
+    for each query), and ``all_support_rate`` (the fraction of queries for which every ground truth
+    document was retrieved), making it possible to diagnose retrieval failures for individual queries
+    instead of relying on aggregate recall scores alone. The default behaviour and outputs of
+    ``DocumentRecallEvaluator`` are unchanged.

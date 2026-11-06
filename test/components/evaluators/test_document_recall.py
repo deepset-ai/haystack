@@ -181,7 +181,11 @@ class TestDocumentRecallEvaluatorSingleHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "single_hit", "document_comparison_field": "content"},
+            "init_parameters": {
+                "mode": "single_hit",
+                "document_comparison_field": "content",
+                "include_diagnostics": False,
+            },
         }
 
     def test_from_dict(self):
@@ -311,7 +315,11 @@ class TestDocumentRecallEvaluatorMultiHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "multi_hit", "document_comparison_field": "content"},
+            "init_parameters": {
+                "mode": "multi_hit",
+                "document_comparison_field": "content",
+                "include_diagnostics": False,
+            },
         }
 
     def test_from_dict(self):
@@ -361,3 +369,128 @@ class TestDocumentRecallEvaluatorMultiHit:
             retrieved_documents=[[Document(meta={"file_id": "f1"})]],
         )
         assert result == {"individual_scores": [1.0], "score": 1.0}
+
+
+class TestDocumentRecallEvaluatorDiagnostics:
+    def test_diagnostics_not_returned_by_default(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT)
+        result = evaluator.run(
+            ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[[Document(content="London")]]
+        )
+        assert result == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_missing_documents_and_coverage_multi_hit(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="a"), Document(content="b"), Document(content="c")],
+                [Document(content="x")],
+            ],
+            retrieved_documents=[[Document(content="a"), Document(content="b")], [Document(content="y")]],
+        )
+        assert result == {
+            "individual_scores": [2 / 3, 0.0],
+            "score": (2 / 3) / 2,
+            "missing_documents": [["c"], ["x"]],
+            "support_coverage": [2 / 3, 0.0],
+            "all_support_rate": 0.0,
+        }
+
+    def test_coverage_is_reported_independently_of_single_hit_score(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[[Document(content="a"), Document(content="b")]],
+            retrieved_documents=[[Document(content="a")]],
+        )
+        assert result == {
+            "individual_scores": [1.0],
+            "score": 1.0,
+            "missing_documents": [["b"]],
+            "support_coverage": [0.5],
+            "all_support_rate": 0.0,
+        }
+
+    def test_all_support_rate_when_everything_is_retrieved(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[[Document(content="a"), Document(content="b")], [Document(content="x")]],
+            retrieved_documents=[
+                [Document(content="b"), Document(content="a"), Document(content="extra")],
+                [Document(content="x")],
+            ],
+        )
+        assert result["missing_documents"] == [[], []]
+        assert result["support_coverage"] == [1.0, 1.0]
+        assert result["all_support_rate"] == 1.0
+
+    def test_all_support_rate_with_mixed_queries(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="a"), Document(content="b")],
+                [Document(content="x"), Document(content="y")],
+            ],
+            retrieved_documents=[[Document(content="a"), Document(content="b")], [Document(content="x")]],
+        )
+        assert result["missing_documents"] == [[], ["y"]]
+        assert result["support_coverage"] == [1.0, 0.5]
+        assert result["all_support_rate"] == 0.5
+
+    def test_missing_documents_uses_configured_comparison_field(self):
+        evaluator = DocumentRecallEvaluator(
+            mode=RecallMode.MULTI_HIT, document_comparison_field="id", include_diagnostics=True
+        )
+        result = evaluator.run(
+            ground_truth_documents=[[Document(id="doc1", content="foo"), Document(id="doc2", content="bar")]],
+            retrieved_documents=[[Document(id="doc1", content="different")]],
+        )
+        assert result["missing_documents"] == [["doc2"]]
+        assert result["support_coverage"] == [0.5]
+
+    def test_missing_documents_are_deduplicated_in_ground_truth_order(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="c"), Document(content="a"), Document(content="c"), Document(content="b")]
+            ],
+            retrieved_documents=[[Document(content="a")]],
+        )
+        assert result["missing_documents"] == [["c", "b"]]
+        assert result["support_coverage"] == [1 / 3]
+
+    def test_diagnostics_with_empty_ground_truth_and_retrieved_documents(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        result = evaluator.run(
+            ground_truth_documents=[[], [Document(content="a")]], retrieved_documents=[[Document(content="a")], []]
+        )
+        assert result["missing_documents"] == [[], ["a"]]
+        assert result["support_coverage"] == [0.0, 0.0]
+        assert result["all_support_rate"] == 0.0
+
+    def test_to_dict_with_diagnostics(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, include_diagnostics=True)
+        data = evaluator.to_dict()
+        assert data == {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {
+                "mode": "multi_hit",
+                "document_comparison_field": "content",
+                "include_diagnostics": True,
+            },
+        }
+
+    def test_from_dict_with_diagnostics(self):
+        data = {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "multi_hit", "include_diagnostics": True},
+        }
+        new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
+        assert new_evaluator.include_diagnostics is True
+
+    def test_from_dict_without_diagnostics_defaults_to_false(self):
+        data = {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "multi_hit"},
+        }
+        new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
+        assert new_evaluator.include_diagnostics is False
