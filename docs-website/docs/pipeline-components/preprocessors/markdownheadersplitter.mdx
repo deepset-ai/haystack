@@ -52,7 +52,7 @@ Each output document's metadata includes:
 - `header`: The header text for this chunk.
 - `parent_headers`: List of parent header texts in hierarchy order.
 
-The component only works with text documents. Documents with `None` or non-string content raise a `ValueError`.
+The component only works with text documents. Documents with `None` content raise a `ValueError`; documents with non-string content raise a `TypeError`.
 
 ## Usage
 
