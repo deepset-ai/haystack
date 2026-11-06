@@ -46,6 +46,8 @@ class CSVDocumentSplitter:
             - `header=None`
             - `skip_blank_lines=False` to preserve blank lines
             - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
+            - `keep_default_na=False` and `na_values=[""]` so that only empty fields count as missing values,
+              while literal strings such as `N/A`, `NA`, or `NULL` are kept as cell content.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
             Customizing CSV parsing options may cause splitting errors or inaccurate position metadata.
             Validate the split content and metadata on representative inputs when customizing these options.
@@ -104,7 +106,14 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
-        resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
+        resolved_read_csv_kwargs = {
+            "header": None,
+            "skip_blank_lines": False,
+            "dtype": object,
+            "keep_default_na": False,
+            "na_values": [""],
+            **self.read_csv_kwargs,
+        }
 
         split_documents = []
         split_dfs = []

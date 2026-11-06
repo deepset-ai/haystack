@@ -283,6 +283,19 @@ E,F,,,G,H
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
+    def test_literal_na_strings_are_kept_as_cell_content(self) -> None:
+        splitter = CSVDocumentSplitter(split_mode="row-wise")
+        doc = Document(content="Code,Status,Note\nA1,N/A,keep\nA2,NULL,keep\nA3,NA,keep\n")
+        result = splitter.run([doc])["documents"]
+        assert [d.content for d in result] == ["Code,Status,Note\n", "A1,N/A,keep\n", "A2,NULL,keep\n", "A3,NA,keep\n"]
+
+    def test_row_of_literal_na_strings_is_not_a_split_boundary(self) -> None:
+        csv_data = "Code,Status\nA1,ok\nN/A,N/A\nA3,ok\n,\nB1,ok\n"
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=None)
+        result = splitter.run([Document(content=csv_data)])["documents"]
+        assert [d.content for d in result] == ["Code,Status\nA1,ok\nN/A,N/A\nA3,ok\n", "B1,ok\n"]
+        assert [d.meta["row_idx_start"] for d in result] == [0, 5]
+
     def test_sub_table_with_one_row(self):
         splitter = CSVDocumentSplitter(row_split_threshold=1)
         doc = Document(content="""A,B,C\n1,2,3\n,,\n4,5,6""")
