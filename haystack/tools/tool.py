@@ -343,7 +343,12 @@ class Tool:
         :returns:
             Deserialized Tool.
         """
-        init_parameters = data["data"]
+        # Deserialize into a copy: mutating the caller's dictionary would
+        # leave callables where the serialized handles were, making it
+        # unserializable and a second from_dict fail (same defect previously
+        # fixed for MetadataRouter #13421, MockChatGenerator #13471 and
+        # ListJoiner #13563; see issue #13606).
+        init_parameters = dict(data["data"])
         init_parameters["function"] = (
             deserialize_callable(init_parameters["function"]) if init_parameters.get("function") is not None else None
         )
