@@ -687,10 +687,12 @@ def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str,
             item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
         items = [item]
     # Streaming adds event fields like item_id and sequence_number to extra; the API rejects them as input.
+    # output_index is kept for ordering and removed by the caller.
     valid_fields = {"id", "type", "summary", "encrypted_content", "status", "content", "output_index"}
     return [
         {"summary": [], **{key: value for key, value in item.items() if key in valid_fields}}
         for item in items
+        # Reasoning from other providers has no reasoning item id and the API rejects it, so it is dropped
         if item.get("type") == "reasoning" and item.get("id")
     ]
 
