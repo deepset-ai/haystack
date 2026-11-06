@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``ConfirmationHook`` now marks the user message it adds when the user modifies a tool call's arguments with
+    ``meta={"system_reminder": True}``. ``SlidingWindowCompactor`` and ``SummarizationCompactor`` took that message
+    for the user's task, so compaction could remove the real request. They now skip it when finding the task.
+    ``StructuredOutputHook`` marks its correction messages the same way.

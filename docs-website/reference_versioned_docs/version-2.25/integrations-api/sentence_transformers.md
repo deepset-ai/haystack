@@ -97,6 +97,9 @@ Creates a SentenceTransformersDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -250,6 +253,9 @@ Creates a SentenceTransformersDocumentEmbedder component.
   truncating embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -401,6 +407,9 @@ Creates a SentenceTransformersSparseDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -524,6 +533,9 @@ Create a SentenceTransformersSparseTextEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -665,6 +677,9 @@ Create a SentenceTransformersTextEmbedder component.
   truncation of embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -872,6 +887,9 @@ Initialize a SentenceTransformersDiversityRanker.
   "maximum_margin_relevance".
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -1022,6 +1040,9 @@ Creates an instance of SentenceTransformersSimilarityRanker.
   If `True`, allows custom models and scripts.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)

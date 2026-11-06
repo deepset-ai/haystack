@@ -111,11 +111,13 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 Run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
@@ -130,11 +132,13 @@ run_async(documents: list[Document]) -> dict[str, list[Document]]
 Asynchronously run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score.
 
 **Returns:**
 
