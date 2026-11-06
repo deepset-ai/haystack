@@ -151,14 +151,14 @@
 | haystack/core/pipeline/component\_checks.py                                |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                     |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                             |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                         |      331 |       21 |     94% |174, 181, 427, 570, 605, 773, 965-969, 973, 990-994, 998-1010, 1051-1060, 1085 |
+| haystack/core/pipeline/pipeline.py                                         |      331 |       19 |     94% |174, 181, 427, 570, 605, 773, 968, 973, 990-994, 998-1010, 1051-1060, 1085 |
 | haystack/core/pipeline/utils.py                                            |       74 |        1 |     99% |       215 |
 | haystack/core/serialization.py                                             |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                   |      135 |        0 |    100% |           |
 | haystack/core/super\_component/\_\_init\_\_.py                             |        2 |        0 |    100% |           |
 | haystack/core/super\_component/super\_component.py                         |      195 |        7 |     96% |67, 199, 212, 250, 304, 346, 599 |
 | haystack/core/super\_component/utils.py                                    |       95 |        4 |     96% |77, 112, 124, 181 |
-| haystack/core/type\_utils.py                                               |      173 |        6 |     97% |94, 96, 101, 166, 210, 305 |
+| haystack/core/type\_utils.py                                               |      177 |        6 |     97% |94, 96, 101, 166, 216, 311 |
 | haystack/dataclasses/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
 | haystack/dataclasses/answer.py                                             |       57 |        0 |    100% |           |
 | haystack/dataclasses/breakpoints.py                                        |       39 |        0 |    100% |           |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18555** |  **684** | **96%** |           |
+| **TOTAL**                                                                  | **18559** |  **682** | **96%** |           |
 
 
 ## Setup coverage badge
