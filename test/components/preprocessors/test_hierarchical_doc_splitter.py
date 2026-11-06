@@ -304,6 +304,7 @@ class TestHierarchicalDocumentSplitter:
 
         assert any(doc.meta["__level"] == 2 for doc in documents)
         for doc in documents[1:]:
+            assert doc.content is not None
             start = doc.meta["split_idx_start"]
             assert text[start:].startswith(doc.content)
             first_word = doc.content.strip("\f\n ").split()[0]
