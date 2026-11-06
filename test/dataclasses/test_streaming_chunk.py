@@ -4,6 +4,7 @@
 
 import logging
 import warnings
+from dataclasses import dataclass
 
 import pytest
 
@@ -440,3 +441,25 @@ class TestInvokeStreamingCallback:
         chunk = StreamingChunk(content="world")
         await _invoke_streaming_callback(callback, chunk)
         assert captured == [chunk]
+
+
+def test_tool_call_delta_subclass_from_dict():
+    @dataclass
+    class MyToolCallDelta(ToolCallDelta):
+        pass
+
+    original = MyToolCallDelta(index=0, tool_name="get_weather", arguments='{"city": "Paris"}', id="1")
+    result = MyToolCallDelta.from_dict(original.to_dict())
+    assert type(result) is MyToolCallDelta
+    assert result == original
+
+
+def test_component_info_subclass_from_dict():
+    @dataclass
+    class MyComponentInfo(ComponentInfo):
+        pass
+
+    original = MyComponentInfo(type="haystack.components.generators.chat.openai.OpenAIChatGenerator", name="gen")
+    result = MyComponentInfo.from_dict(original.to_dict())
+    assert type(result) is MyComponentInfo
+    assert result == original
