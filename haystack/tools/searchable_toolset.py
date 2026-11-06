@@ -151,6 +151,9 @@ class SearchableToolset(Toolset):
     def warm_up(self) -> None:
         """
         Warm up the catalog tools and initialize tool discovery.
+
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         # Warm up the catalog first (triggers lazy connections like MCPToolset), then flatten — lazy toolsets will
         # have their real tools available.
@@ -160,6 +163,9 @@ class SearchableToolset(Toolset):
     async def warm_up_async(self) -> None:
         """
         Warm up the catalog tools asynchronously and initialize tool discovery.
+
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         await warm_up_tools_async(self._raw_catalog)
         self._build_catalog()
