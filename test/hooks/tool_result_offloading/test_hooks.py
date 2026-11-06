@@ -157,6 +157,22 @@ class TestToolResultOffloadHookBehavior:
         assert store.read(refs[1]) == "SECOND" * 20
         assert len(list(Path(tmp_path).iterdir())) == 2
 
+    @pytest.mark.parametrize("call_id", [None, "functions.search:0"])
+    def test_later_run_does_not_overwrite_earlier_run_results(self, tmp_path, call_id):
+        # Each Agent run restarts the step count, and some providers omit or repeat call ids, so the next turn of the
+        # same conversation reaches the same step, tool and id as the turn before it.
+        store = FileSystemToolResultStore(root=tmp_path)
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        first_turn = _state_with_messages([_tool_message("search", "PARIS" * 20, call_id=call_id)])
+        hook.run(first_turn)
+        second_turn = _state_with_messages([_tool_message("search", "TOKYO" * 20, call_id=call_id)])
+        hook.run(second_turn)
+        first_ref = first_turn.data["messages"][0].meta["tool_result_offloaded"][0]
+        second_ref = second_turn.data["messages"][0].meta["tool_result_offloaded"][0]
+        assert first_ref != second_ref
+        assert store.read(first_ref) == "PARIS" * 20
+        assert store.read(second_ref) == "TOKYO" * 20
+
     def test_only_trailing_tool_results_are_offloaded(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path)
         hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})

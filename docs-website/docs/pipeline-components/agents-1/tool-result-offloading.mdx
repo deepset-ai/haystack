@@ -36,7 +36,7 @@ The system is composed of these layers:
 When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. For example:
 
 ```
-Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123.txt'. Preview: Fusion startups reported...
+Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b.txt'. Preview: Fusion startups reported...
 ```
 
 The pointer carries the store reference, the original size, and, for text, a preview of the first `preview_chars` characters (200 by default, configurable on the hook), so the model knows roughly what was offloaded and where to find it.
@@ -45,9 +45,9 @@ A result made of several parts — any mix of text, images, and files — gets o
 
 ```
 Tool result offloaded to 3 files:
-1. text (412 characters) at '/abs/path/tool_results/2_fetch_call-123_0.txt'. Preview: Quarterly report attached...
-2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_1.png'
-3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
+1. text (412 characters) at '/abs/path/tool_results/2_fetch_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b_0.txt'. Preview: Quarterly report attached...
+2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b_1.png'
+3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b_2.pdf'
 ```
 
 Images and files are stored as raw bytes, decoded from their base64 payload. A base64 payload is a costly way to carry a file through a conversation, so moving one out can free up a substantial part of the context window.
@@ -163,7 +163,7 @@ The protocol provides default `to_dict` / `from_dict` implementations, so a poli
 
 ### `FileSystemToolResultStore`
 
-`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), plus the position of the part within the result when it spans several entries (`2_search_call-123_1.png`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
+`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, tool call ID, and a random suffix (for example `2_search_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b.txt`), plus the position of the part within the result when it spans several entries (`2_search_call-123_3f2a9c1e5b7d4e8a9c0f1b2d3e4f5a6b_1.png`). The step count restarts on every run and some providers omit or repeat tool call IDs, so the suffix keeps a later run in the same conversation from overwriting results an earlier run still points to. A key that would resolve outside the root directory is rejected.
 
 Text is written UTF-8 encoded and read back as a string; images and files are written as raw bytes and read back as `bytes`.
 
