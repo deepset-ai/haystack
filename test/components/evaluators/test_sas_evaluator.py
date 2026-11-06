@@ -111,6 +111,7 @@ class TestSASEvaluator:
         # Use the mocked model below instead of loading a real one
         monkeypatch.setattr(SASEvaluator, "warm_up", lambda self: None)
         model = MagicMock(spec=CrossEncoder)
+        model.num_labels = 1
         model.activation_fn = activation_fn
         model.predict.side_effect = lambda pairs, **kwargs: np.array([model_scores[pred] for pred, _ in pairs])
         evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
@@ -121,6 +122,19 @@ class TestSASEvaluator:
 
         assert wrong_only["individual_scores"] == pytest.approx([expected_scores["Lyon"]])
         assert mixed["individual_scores"] == pytest.approx([expected_scores["Lyon"], expected_scores["Paris"]])
+
+    def test_run_with_multi_label_cross_encoder_raises(self, monkeypatch):
+        # The mocked model has a length of 0, so run would try to load the real model without this
+        monkeypatch.setattr(SASEvaluator, "warm_up", lambda self: None)
+        evaluator = SASEvaluator(model="cross-encoder/nli-deberta-v3-xsmall")
+        model = MagicMock(spec=CrossEncoder)
+        model.num_labels = 3
+        model.predict.return_value = np.array([[2.0, -1.0, 0.0]])
+        evaluator._similarity_model = model
+
+        with pytest.raises(ValueError, match="3"):
+            evaluator.run(ground_truth_answers=["Paris"], predicted_answers=["Lyon"])
+        model.predict.assert_not_called()
 
     @pytest.mark.integration
     @pytest.mark.slow

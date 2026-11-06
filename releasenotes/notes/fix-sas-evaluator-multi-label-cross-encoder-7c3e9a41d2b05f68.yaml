@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``SASEvaluator`` now raises a ``ValueError`` when it uses a Cross Encoder with more than one output label, such as
+    an NLI model. Previously, it returned a list of per-label scores for each answer and averaged all labels into
+    the final ``score``, which has no meaning as a semantic answer similarity.

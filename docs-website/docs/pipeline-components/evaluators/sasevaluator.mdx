@@ -28,7 +28,7 @@ The `SASEvaluator` evaluates answers predicted by Haystack pipelines using groun
 
 You can use the `SASEvaluator` component to evaluate answers predicted by a Haystack pipeline, such as a RAG pipeline, against ground truth labels.
 
-You can provide a bi-encoder or cross-encoder model to initialize a `SASEvaluator`. By default, `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` model is used.
+You can provide a bi-encoder or cross-encoder model to initialize a `SASEvaluator`. By default, `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` model is used. A cross-encoder must have a single output label: `SASEvaluator` raises a `ValueError` for cross-encoders with more labels, such as NLI models.
 
 Note that only _one_ predicted answer is compared to _one_ ground truth answer at a time. The component does not support multiple ground truth answers for the same question or multiple answers predicted for the same question.
 
