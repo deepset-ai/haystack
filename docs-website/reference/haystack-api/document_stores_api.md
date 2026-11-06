@@ -451,6 +451,27 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
 
+#### delete_by_filter_async
+
+```python
+delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see filter_documents.
+
+**Returns:**
+
+- <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>ValueError</code> – if filters have invalid syntax.
+
 #### update_by_filter_async
 
 ```python
