@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentCleaner`` with ``remove_repeated_substrings=True`` removing body text. Header/footer detection
+    picked the longest word n-gram shared by all pages anywhere in their first/last 300 characters and then removed
+    every occurrence of it from every page. Now a header must be a common prefix of the pages and a footer a common
+    suffix (ignoring surrounding whitespace and a page number line above a header or below a footer), and they are
+    removed only at the start/end of each page.
