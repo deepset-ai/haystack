@@ -21,6 +21,20 @@ logger = logging.getLogger(__name__)
 # Environment variable to control pipeline snapshot file saving (disabled by default)
 HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED"
 
+# Characters that are not valid in a file name on every platform. On Windows they either
+# raise OSError or, for ':', silently create an NTFS alternate data stream on a file named
+# after the part before the colon, so the snapshot ends up somewhere the user cannot see.
+_UNSAFE_FILENAME_CHARACTERS = '<>:"/\\|?*'
+_CONTROL_CHARACTERS = "".join(chr(code) for code in range(32))
+
+
+def _safe_filename_part(name: str) -> str:
+    """Return a file-name-safe version of a pipeline component name."""
+    replaced = name.translate({ord(ch): "_" for ch in _UNSAFE_FILENAME_CHARACTERS + _CONTROL_CHARACTERS})
+    # Windows strips trailing dots and spaces, which would silently rename the file we log.
+    return replaced.rstrip(" .") or "_"
+
+
 # Type alias for snapshot callback function
 # The callback receives a PipelineSnapshot and optionally returns a file path string
 SnapshotCallback = Callable[[PipelineSnapshot], str | None]
@@ -203,7 +217,7 @@ def _save_pipeline_snapshot(
     component_name = break_point.component_name
     visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
     timestamp = dt.strftime("%Y_%m_%d_%H_%M_%S")
-    file_name = f"{component_name}_{visit_nr}_{timestamp}.json"
+    file_name = f"{_safe_filename_part(component_name)}_{visit_nr}_{timestamp}.json"
     full_path = snapshot_dir / file_name
 
     try:

@@ -858,3 +858,32 @@ class TestSnapshotSaveEnabled:
         assert exc_info.value.pipeline_snapshot is not None
         assert isinstance(exc_info.value.pipeline_snapshot.break_point, Breakpoint)
         assert exc_info.value.pipeline_snapshot.break_point.component_name == "comp2"
+
+
+@pytest.mark.parametrize(
+    "component_name,expected_stem",
+    [("ns:component", "ns_component"), ("a|b", "a_b"), ('a"b<c>d', "a_b_c_d"), ("a/b", "a_b"), ("plain", "plain")],
+)
+def test_snapshot_file_name_can_be_created_on_any_filesystem(tmp_path, monkeypatch, component_name, expected_stem):
+    """Component names are accepted with characters a file system rejects, so the snapshot
+    file name has to come from a sanitized version of the name (a raw ':' writes an NTFS
+    alternate data stream on Windows instead of a file, and '|' raises OSError)."""
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+    @component
+    class SimpleComponent:
+        @component.output_types(result=str)
+        def run(self, input_value: str) -> dict[str, str]:
+            return {"result": input_value}
+
+    pipeline = Pipeline()
+    pipeline.add_component(component_name, SimpleComponent())
+
+    break_point = Breakpoint(component_name=component_name, snapshot_file_path=str(tmp_path))
+    with pytest.raises(BreakpointException):
+        pipeline.run(data={component_name: {"input_value": "x"}}, break_point=break_point)
+
+    snapshot_files = [path for path in tmp_path.iterdir() if path.is_file()]
+    assert len(snapshot_files) == 1, f"expected one snapshot file, found {[p.name for p in snapshot_files]}"
+    assert snapshot_files[0].name.startswith(f"{expected_stem}_")
+    assert snapshot_files[0].suffix == ".json"
