@@ -6,7 +6,7 @@ import base64
 from dataclasses import asdict, dataclass, field
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import filetype
 
@@ -156,11 +156,11 @@ class ImageContent:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ImageContent":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Create an ImageContent from a dictionary.
         """
-        return ImageContent(**data)
+        return cls(**data)
 
     @classmethod
     def from_file_path(

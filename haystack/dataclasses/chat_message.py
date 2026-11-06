@@ -7,7 +7,7 @@ import reprlib
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
@@ -70,11 +70,11 @@ class TextContent:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TextContent":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Create a TextContent from a dictionary.
         """
-        return TextContent(**data)
+        return cls(**data)
 
 
 @_warn_on_inplace_mutation
