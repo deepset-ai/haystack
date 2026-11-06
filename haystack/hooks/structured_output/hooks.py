@@ -15,6 +15,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.hooks.utils import _is_system_reminder
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
@@ -226,7 +227,7 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
     Count the correction messages the hook added since the last message from the user.
 
     Only the current turn is counted, so corrections from earlier turns of a multi-turn conversation don't use up
-    the retries of the current one.
+    the retries of the current one. System reminders added by other hooks are not user turns, so they are skipped.
     """
     count = 0
     # Walk back from the newest message
@@ -234,10 +235,15 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
         # Skip all non-user messages, including the assistant's reply and any tool results
         if not message.is_from(ChatRole.USER):
             continue
-        # The first untagged user message is the start of the current turn, so stop counting
-        if not message.meta.get(_CORRECTION_META_KEY):
-            break
-        count += 1
+        # Count the corrections this hook added. Check this first: a correction may also carry the system reminder tag
+        if message.meta.get(_CORRECTION_META_KEY):
+            count += 1
+            continue
+        # Reminders that hooks such as `StepBudgetReminderHook` add as user messages don't start a new turn
+        if _is_system_reminder(message=message):
+            continue
+        # Any other user message is the start of the current turn, so stop counting
+        break
     return count
 
 
