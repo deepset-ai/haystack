@@ -210,13 +210,7 @@ class OpenAIDecisionsDocumentClassifier:
 
     def _text_to_classify(self, document: Document) -> str | None:
         """
-        Gets the text to send for a document.
-
-        :param document:
-            The document to classify.
-        :returns:
-            The document's `content`, or the value of `meta[classification_field]` if `classification_field` is set.
-            `None` if that value is missing, empty, or not a string.
+        Returns `content`, or `meta[classification_field]` if set; `None` if missing, empty, or not a string.
         """
         text = document.content if self.classification_field is None else document.meta.get(self.classification_field)
         return text if isinstance(text, str) and text else None
