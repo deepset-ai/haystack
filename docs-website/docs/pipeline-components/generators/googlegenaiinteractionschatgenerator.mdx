@@ -31,10 +31,10 @@ Both components ship in the same package and take the same init parameters, exce
 
 The component supports Gemini 2.5 and newer models, such as `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-pro-preview`, `gemini-2.5-pro`, and `gemini-2.5-flash`. For the full list, see the [Interactions API documentation](https://aistudio.google.com/docs/interactions-overview#supported-models-agents).
 
-Like other Haystack Chat Generators, the component is stateless: every call sends the full chat history to the API. If a string is passed instead of a list of `ChatMessage` objects, it's converted into a single user message. A leading system message becomes the system instruction of the interaction.
+Like other Haystack Chat Generators, the component is stateless: every call sends the full chat history to the API. If a string is passed instead of a list of `ChatMessage` objects, it's converted into a single user message. A leading system message becomes the system instruction of the interaction. Server-side conversation state through `previous_interaction_id` isn't supported.
 
 :::note
-By default, the Interactions API stores interactions on Google's servers. To opt out, pass `generation_kwargs={"store": False}`.
+By default, the Interactions API stores interactions on Google's servers (1 day on the free tier, 55 days on paid tiers). To opt out, pass `generation_kwargs={"store": False}`.
 :::
 
 ### Authentication
@@ -104,7 +104,7 @@ In multi-turn conversations with tools, the Interactions API requires the model'
 
 `GoogleGenAIInteractionsChatGenerator` supports function calling through the `tools` parameter, which accepts a list of `Tool` objects, a `Toolset`, or a mix of both. Tools passed to `run()` replace the ones set at initialization. For more details, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
-You can also pass built-in Google tools, such as Google Search, in the Interactions API format through `generation_kwargs["tools"]`. They are sent along with your Haystack tools. The model uses their results in its answer, but the component doesn't add the steps they produce to the reply.
+You can also pass built-in Google tools, such as Google Search, in the Interactions API format through `generation_kwargs["tools"]`. They are sent along with your Haystack tools. Combining built-in tools with Haystack tools requires Gemini 3 or newer. The model uses the results of built-in tools in its answer, but the steps they produce aren't converted into reply content. The component keeps them in the reply's `meta["raw_steps_for_builtin_tools"]` and sends them back on later turns, so pass previous replies back into the chat history unchanged.
 
 ```python
 from haystack_integrations.components.generators.google_genai import (
@@ -192,6 +192,7 @@ The `meta` of each reply contains:
 - `status`: The interaction status, such as `completed` or `requires_action`.
 - `finish_reason`: The status mapped to a Haystack finish reason: `completed` becomes `stop`, or `tool_calls` if the reply contains tool calls; `requires_action` becomes `tool_calls`; `incomplete` and `budget_exceeded` become `length`.
 - `usage`: Token counts in `prompt_tokens`, `completion_tokens`, and `total_tokens`, plus `thoughts_token_count`, `cached_content_token_count`, and `tool_use_prompt_token_count` when the API reports them.
+- `raw_steps_for_builtin_tools`: Only present if built-in tools ran in this turn. All steps of the turn, exactly as received, so that the component can send them back on later turns.
 
 If an interaction ends with status `failed`, the component raises a `RuntimeError`.
 
