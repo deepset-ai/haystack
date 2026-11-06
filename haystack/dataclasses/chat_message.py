@@ -104,7 +104,7 @@ class ToolCall:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolCall":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Creates a new ToolCall object from a dictionary.
 
@@ -113,7 +113,7 @@ class ToolCall:
         :returns:
             The created object.
         """
-        return ToolCall(**data)
+        return cls(**data)
 
 
 ToolCallResultContentT = str | Sequence[TextContent | ImageContent | FileContent]
@@ -165,7 +165,7 @@ class ToolCallResult:
         return {"result": result, "origin": self.origin.to_dict(), "error": self.error}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Creates a ToolCallResult from a dictionary.
 
@@ -184,7 +184,7 @@ class ToolCallResult:
         if isinstance(result, list):
             result = [_deserialize_content_part(serialized_part) for serialized_part in result]
 
-        return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
+        return cls(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
 @_warn_on_inplace_mutation
@@ -210,7 +210,7 @@ class ReasoningContent:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ReasoningContent":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Creates a new ReasoningContent object from a dictionary.
 
@@ -219,7 +219,7 @@ class ReasoningContent:
         :returns:
             The created object.
         """
-        return ReasoningContent(**data)
+        return cls(**data)
 
 
 ChatMessageContentT = TextContent | ToolCall | ToolCallResult | ImageContent | ReasoningContent | FileContent
