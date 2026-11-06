@@ -1,9 +1,6 @@
 ---
 fixes:
   - |
-    ``MultiRetriever`` now rejects an unsupported ``join_mode`` with a ``ValueError`` when it is
-    initialized. Previously any value other than ``"reciprocal_rank_fusion"`` - for example a typo
-    such as ``"Concatenate"``, ``"rrf"`` or ``"reciprocal_rank_fusion "`` - was accepted silently and
-    fell through to the ``concatenate`` branch of the merge step, so the merged documents came back
-    with different scores and in a different order without any error being raised. This also covers
-    pipelines deserialized from YAML, where a wrong value could not be caught by a type checker.
+    ``MultiRetriever`` now raises a ``ValueError`` at initialization if ``join_mode`` is not
+    ``"concatenate"`` or ``"reciprocal_rank_fusion"``. Previously, unsupported values such as ``"rrf"``
+    were silently treated as ``"concatenate"`` when ``top_k`` was not set.
