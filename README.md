@@ -174,7 +174,7 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                 |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                    |      445 |       15 |     97% |453-454, 463, 572, 653, 704, 706, 733-734, 793, 937, 939, 957, 962-963 |
+| haystack/document\_stores/in\_memory/document\_store.py                    |      447 |       15 |     97% |453-454, 463, 572, 653, 704, 706, 733-734, 793, 937, 939, 957, 962-963 |
 | haystack/document\_stores/types/\_\_init\_\_.py                            |        4 |        0 |    100% |           |
 | haystack/document\_stores/types/filter\_policy.py                          |       65 |       10 |     85% |25, 38-39, 190, 198-204, 250-255, 259-265 |
 | haystack/document\_stores/types/policy.py                                  |        6 |        0 |    100% |           |
@@ -240,7 +240,7 @@
 | haystack/tools/component\_tool.py                                          |      122 |        3 |     98% |407-408, 452 |
 | haystack/tools/errors.py                                                   |        6 |        0 |    100% |           |
 | haystack/tools/from\_function.py                                           |       67 |        0 |    100% |           |
-| haystack/tools/parameters\_schema\_utils.py                                |      105 |        3 |     97% |108, 148-149 |
+| haystack/tools/parameters\_schema\_utils.py                                |      107 |        3 |     97% |111, 151-152 |
 | haystack/tools/pipeline\_tool.py                                           |       30 |        2 |     93% |  240, 243 |
 | haystack/tools/searchable\_toolset.py                                      |      124 |        0 |    100% |           |
 | haystack/tools/serde\_utils.py                                             |       43 |        3 |     93% |33, 35, 57 |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18559** |  **682** | **96%** |           |
+| **TOTAL**                                                                  | **18563** |  **682** | **96%** |           |
 
 
 ## Setup coverage badge
