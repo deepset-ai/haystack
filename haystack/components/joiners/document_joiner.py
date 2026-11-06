@@ -16,6 +16,17 @@ from haystack.utils.misc import _reciprocal_rank_fusion
 logger = logging.getLogger(__name__)
 
 
+def _finite_score(score: float | None) -> float:
+    """
+    Return the score to use in the arithmetic of a join mode.
+
+    A score that is missing and a score that is not finite (NaN or infinity) both carry no ranking information,
+    so they are treated as 0. A non-finite score that reaches the arithmetic of a join mode does not stay local
+    to its own Document, it turns the scores of the other Documents into NaN as well.
+    """
+    return score if score is not None and isfinite(score) else 0.0
+
+
 class JoinMode(Enum):
     """
     Enum for join mode.
@@ -270,7 +281,15 @@ class DocumentJoiner:
                 rescaled_lists.append(documents)
                 continue
 
-            scores_list = [doc.score if doc.score is not None else 0 for doc in documents]
+            scores_list = [_finite_score(doc.score) for doc in documents]
+            non_finite_scores = [doc.id for doc in documents if doc.score is not None and not isfinite(doc.score)]
+            if non_finite_scores:
+                logger.warning(
+                    "Some of the Documents DocumentJoiner got have a non-finite score. They were treated as if their "
+                    "score was 0 while rescaling the scores of the list, otherwise every score in the list would "
+                    "become NaN. Documents with IDs: {document_ids}",
+                    document_ids=",".join(non_finite_scores),
+                )
 
             mean_score = sum(scores_list) / len(scores_list)
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
@@ -280,17 +299,12 @@ class DocumentJoiner:
             scores_vary = min(scores_list) != max(scores_list)
 
             # If all docs have the same score, rescaling cannot add information; preserve their original scores.
-            rescaled_lists.append(
-                [
-                    replace(
-                        doc,
-                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
-                        if scores_vary and delta_score != 0.0
-                        else (doc.score if doc.score is not None else 0.0),
-                    )
-                    for doc in documents
-                ]
-            )
+            rescaled_documents = []
+            for doc, score in zip(documents, scores_list, strict=True):
+                if scores_vary and delta_score != 0.0:
+                    score = (score - min_score) / delta_score
+                rescaled_documents.append(replace(doc, score=score))
+            rescaled_lists.append(rescaled_documents)
 
         return DocumentJoiner._concatenate(document_lists=rescaled_lists)
 
