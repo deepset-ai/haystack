@@ -4,6 +4,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from math import inf
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -65,7 +66,10 @@ class MultiQueryTextRetriever:
         :param retriever: The text-based retriever to use for document retrieval.
         :param max_workers: Maximum number of worker threads in `run` and of concurrent retriever calls in
             `run_async`. Default is 3.
+        :raises ValueError: If `max_workers` is not greater than 0.
         """
+        if max_workers <= 0:
+            raise ValueError(f"max_workers must be greater than 0, but got {max_workers}")
         self.retriever = retriever
         self.max_workers = max_workers
 
@@ -126,7 +130,7 @@ class MultiQueryTextRetriever:
 
         # de-duplicate and sort
         docs = _deduplicate_documents(docs)
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     @component.output_types(documents=list[Document])
@@ -150,7 +154,7 @@ class MultiQueryTextRetriever:
         await self.warm_up_async()
 
         # Bound concurrency to max_workers, mirroring the ThreadPoolExecutor in the sync `run`.
-        semaphore = asyncio.Semaphore(max(1, self.max_workers))
+        semaphore = asyncio.Semaphore(self.max_workers)
 
         async def _bounded_run_one(query: str) -> list[Document] | None:
             async with semaphore:
@@ -160,7 +164,7 @@ class MultiQueryTextRetriever:
         results = await _gather_tasks_with_cancel(tasks)
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        docs.sort(key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True)
         return {"documents": docs}
 
     def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:

@@ -73,6 +73,45 @@ def test_from_function_with_custom_name():
     assert tool.function == function_with_docstring
 
 
+def lookup_order(_tenant: str, order_id: str) -> str:
+    """Look up an order for a tenant."""
+    return f"{_tenant}/{order_id}"
+
+
+def test_from_function_required_underscore_parameter_raises():
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Function 'lookup_order': required parameter '_tenant' starts with an underscore and "
+            "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+        ),
+    ):
+        create_tool_from_function(function=lookup_order)
+
+
+def test_from_function_required_underscore_parameter_covered_by_inputs_from_state():
+    tool = create_tool_from_function(function=lookup_order, inputs_from_state={"tenant": "_tenant"})
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"],
+    }
+    assert tool.invoke(_tenant="acme", order_id="A-1") == "acme/A-1"
+
+
+def test_from_function_defaulted_underscore_parameter_omitted_from_schema():
+    def lookup_with_default(_tenant: str = "acme", order_id: str = "A-1") -> str:
+        """Look up an order for a tenant."""
+        return f"{_tenant}/{order_id}"
+
+    tool = create_tool_from_function(function=lookup_with_default)
+
+    assert "_tenant" not in tool.parameters["properties"]
+    assert tool.parameters == {"type": "object", "properties": {"order_id": {"type": "string", "default": "A-1"}}}
+    assert tool.invoke() == "acme/A-1"
+
+
 def test_from_function_annotated():
     def function_with_annotations(
         city: Annotated[str, "the city for which to get the weather"] = "Munich",
@@ -158,6 +197,31 @@ def test_from_function_with_callable_params_skipped():
     param_names = list(tool.parameters.get("properties", {}).keys())
     assert "callback" not in param_names
     assert "query" in param_names
+
+
+def test_from_function_variadic_params_excluded_from_schema():
+    def search(query: str, *args: str, top_k: int = 3, **kwargs: str) -> str:
+        """Search the docs."""
+        return f"{query} {args} {top_k} {kwargs}"
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"query": {"type": "string"}, "top_k": {"type": "integer", "default": 3}},
+        "required": ["query"],
+    }
+    assert tool.invoke(query="haystack", lang="en") == "haystack () 3 {'lang': 'en'}"
+
+
+def test_from_function_untyped_variadic_params_excluded_from_schema():
+    def search(query: str, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
+        """Search the docs."""
+        return query
+
+    tool = create_tool_from_function(function=search)
+
+    assert tool.parameters == {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
 
 
 @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])

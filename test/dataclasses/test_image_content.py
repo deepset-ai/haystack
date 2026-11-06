@@ -5,6 +5,7 @@
 import base64
 import logging
 import warnings
+from dataclasses import dataclass
 from unittest.mock import Mock, patch
 
 import httpx
@@ -36,6 +37,17 @@ def test_image_content_to_dict(base64_image_string):
         "meta": {"key": "value"},
         "validation": True,
     }
+
+
+def test_image_content_subclass_from_dict(base64_image_string):
+    @dataclass
+    class MyImage(ImageContent):
+        pass
+
+    image_content = MyImage(base64_image=base64_image_string, mime_type="image/png")
+    result = MyImage.from_dict(image_content.to_dict())
+    assert type(result) is MyImage
+    assert result == image_content
 
 
 def test_image_content_from_dict(base64_image_string):
@@ -150,7 +162,7 @@ def test_image_content_from_file_path(test_files_path):
 
 
 def test_image_content_from_file_path_pdf_unsupported(test_files_path, caplog):
-    with pytest.raises(IndexError):
+    with pytest.raises(ValueError, match="Could not convert .*sample_pdf_1.pdf to an image"):
         ImageContent.from_file_path(
             file_path=test_files_path / "pdf" / "sample_pdf_1.pdf",
             size=(100, 100),
@@ -165,7 +177,7 @@ def test_image_content_from_file_path_pdf_unsupported(test_files_path, caplog):
 def test_image_content_from_file_path_non_existing(test_files_path, caplog):
     caplog.set_level(logging.WARNING)
 
-    with pytest.raises(IndexError):
+    with pytest.raises(ValueError, match="Could not convert .*non_existing.jpg to an image"):
         ImageContent.from_file_path(file_path=test_files_path / "images" / "non_existing.jpg")
     assert "No such file" in caplog.text
 
@@ -246,3 +258,9 @@ def test_image_content_to_trace_dict(base64_image_string):
     assert data["mime_type"] == "image/png"
     assert data["detail"] == "auto"
     assert data["meta"] == {"key": "value"}
+
+
+def test_image_content_from_file_path_non_image(test_files_path, caplog):
+    with pytest.raises(ValueError, match="Could not convert .*doc_1.txt to an image"):
+        ImageContent.from_file_path(file_path=test_files_path / "txt" / "doc_1.txt")
+    assert "text/plain is not a valid image MIME type." in caplog.text

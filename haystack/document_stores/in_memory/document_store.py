@@ -780,9 +780,12 @@ class InMemoryDocumentStore:
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
+        :raises ValueError: if top_k is negative.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
@@ -857,10 +860,12 @@ class InMemoryDocumentStore:
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises ValueError: if filters have invalid syntax.
+        :raises ValueError: if top_k is negative or filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         if filters:
             InMemoryDocumentStore._validate_filters(filters)

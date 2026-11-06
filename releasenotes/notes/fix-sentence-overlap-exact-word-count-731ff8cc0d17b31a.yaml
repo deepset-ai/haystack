@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentSplitter`` sentence-boundary overlap keeping one extra sentence when a
+    sentence already contained exactly ``split_overlap`` words. The next chunk now stops at
+    that word count instead of pulling in the sentence before it.
