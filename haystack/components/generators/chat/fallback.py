@@ -10,7 +10,8 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _normalize_messages, _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk, SyncStreamingCallbackT
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import ToolsType
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -122,14 +123,30 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
+        # Buffer streaming chunks from this attempt and only forward them to
+        # the caller's callback if the attempt succeeds.  A failed generator
+        # may have already streamed partial content; those chunks must not
+        # leak into the caller's stream, otherwise the streamed text and the
+        # returned reply disagree (issue #13579).
+        buffered_chunks: list[StreamingChunk] | None = [] if streaming_callback is not None else None
+        effective_callback: SyncStreamingCallbackT | None = (
+            buffered_chunks.append if buffered_chunks is not None else None  # type: ignore[assignment]
+        )
         generator_inputs = {
             "messages": messages,
             "generation_kwargs": generation_kwargs,
             "tools": tools,
-            "streaming_callback": streaming_callback,
+            "streaming_callback": effective_callback,
         }
         with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs):
-            return gen.run(**generator_inputs)
+            result = gen.run(**generator_inputs)
+
+        # Flush the buffered chunks to the real callback only after success.
+        if buffered_chunks is not None:
+            for chunk in buffered_chunks:
+                streaming_callback(chunk)  # type: ignore[misc]
+
+        return result
 
     async def _run_single_async(
         self,
@@ -139,14 +156,27 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
+        # Same buffering as the sync path: discard partial chunks from a
+        # failed attempt so the caller's stream matches the successful reply.
+        buffered_chunks: list[StreamingChunk] | None = [] if streaming_callback is not None else None
+        effective_callback: SyncStreamingCallbackT | None = (
+            buffered_chunks.append if buffered_chunks is not None else None  # type: ignore[assignment]
+        )
         generator_inputs = {
             "messages": messages,
             "generation_kwargs": generation_kwargs,
             "tools": tools,
-            "streaming_callback": streaming_callback,
+            "streaming_callback": effective_callback,
         }
         with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs):
-            return await _execute_component_async(component_instance=gen, **generator_inputs)
+            result = await _execute_component_async(component_instance=gen, **generator_inputs)
+
+        # Flush the buffered chunks to the real callback only after success.
+        if buffered_chunks is not None:
+            for chunk in buffered_chunks:
+                await _invoke_streaming_callback(streaming_callback, chunk)  # type: ignore[arg-type]
+
+        return result
 
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     def run(

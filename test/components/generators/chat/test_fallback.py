@@ -13,7 +13,7 @@ import pytest
 from haystack import Pipeline, component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
 from haystack.core.errors import SerializationError
-from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk
 from haystack.tools import ToolsType
 
 
@@ -99,6 +99,40 @@ class _DummyFailGen:
     ) -> dict[str, Any]:
         if self.delay:
             await asyncio.sleep(self.delay)
+        raise self.exc
+
+
+@component
+class _FlakyStreamGen:
+    """A generator that streams partial content and then raises, simulating a provider drop mid-stream."""
+
+    def __init__(self, partial_chunks: list[str] | None = None, exc: Exception | None = None):
+        self.partial_chunks = partial_chunks or ["PARTIAL-from-A ", "still-A "]
+        self.exc = exc or RuntimeError("provider dropped the connection after streaming")
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        if streaming_callback:
+            for text in self.partial_chunks:
+                streaming_callback(StreamingChunk(content=text))
+        raise self.exc
+
+    async def run_async(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        if streaming_callback:
+            for text in self.partial_chunks:
+                await asyncio.sleep(0)
+                streaming_callback(StreamingChunk(content=text))
         raise self.exc
 
 
@@ -202,6 +236,44 @@ async def test_streaming_callback_forwarding_async():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     _ = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
     assert calls
+
+
+def test_streaming_partial_chunks_from_failed_attempt_are_discarded_sync():
+    """A failed attempt that already streamed partial content must not leak into the caller's stream.
+
+    The streamed text and the returned reply must agree (issue #13579).
+    """
+    received: list[Any] = []
+
+    def cb(x: Any) -> None:
+        received.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_FlakyStreamGen(), _DummySuccessGen(text="FULL-answer-from-B")])
+    res = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
+
+    # The reply comes from the backup generator.
+    assert res["replies"][0].text == "FULL-answer-from-B"
+
+    # No partial chunks from the failed attempt should reach the caller.
+    partial_contents = [getattr(chunk, "content", "") for chunk in received]
+    assert not any("PARTIAL" in c or "still-A" in c for c in partial_contents)
+
+
+@pytest.mark.asyncio
+async def test_streaming_partial_chunks_from_failed_attempt_are_discarded_async():
+    """Same as sync but for the async path (issue #13579)."""
+    received: list[Any] = []
+
+    def cb(x: Any) -> None:
+        received.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_FlakyStreamGen(), _DummySuccessGen(text="FULL-answer-from-B")])
+    res = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
+
+    assert res["replies"][0].text == "FULL-answer-from-B"
+
+    partial_contents = [getattr(chunk, "content", "") for chunk in received]
+    assert not any("PARTIAL" in c or "still-A" in c for c in partial_contents)
 
 
 def test_serialization_roundtrip():
