@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Reciprocal rank fusion now counts each document once per input list. Repeated document IDs within one source no
+    longer inflate scores in ``DocumentJoiner`` and ``MultiRetriever``; appearances in different sources still accumulate.

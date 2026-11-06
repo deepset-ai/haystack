@@ -197,8 +197,11 @@ def _reciprocal_rank_fusion(
     resolved_weights = weights if weights else [1 / len(document_lists)] * len(document_lists)
 
     for documents, weight in zip(document_lists, resolved_weights, strict=True):
+        seen_ids: set[str] = set()
         for rank, doc in enumerate(documents):
-            scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
+            if doc.id not in seen_ids:
+                scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
+                seen_ids.add(doc.id)
             documents_map[doc.id] = doc
 
     for _id in scores_map:
