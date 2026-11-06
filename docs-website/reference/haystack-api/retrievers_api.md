@@ -111,7 +111,8 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 Run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
@@ -131,7 +132,8 @@ run_async(documents: list[Document]) -> dict[str, list[Document]]
 Asynchronously run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
