@@ -1049,8 +1049,8 @@ Create the MultiRetriever component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
-  greater than 0.
+- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, if `max_workers` is not
+  greater than 0, or if `join_mode` is not one of the available modes.
 
 #### warm_up
 
