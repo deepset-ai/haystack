@@ -414,7 +414,8 @@ class LLMRanker:
 
             document_index = entry.get("index")
             if not (
-                type(document_index) in (int, str)
+                type(document_index) is int
+                or type(document_index) is str
                 or (isinstance(document_index, float) and document_index.is_integer())
             ):
                 continue
