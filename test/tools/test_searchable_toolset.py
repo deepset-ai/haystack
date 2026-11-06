@@ -121,10 +121,7 @@ class TestSearchableToolset:
 
         # A failed warm-up must not leave the toolset initialized on a subsequent attempt.
         for _ in range(2):
-            with pytest.raises(
-                ValueError,
-                match="Catalog tool name .* conflicts with the search tool. Choose a different search_tool_name.",
-            ):
+            with pytest.raises(ValueError, match="conflicts with the bootstrap search tool"):
                 if async_warm_up:
                     await toolset.warm_up_async()
                 else:

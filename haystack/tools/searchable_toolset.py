@@ -188,8 +188,8 @@ class SearchableToolset(Toolset):
         passthrough = len(self._catalog) < self._search_threshold
         if not passthrough and any(tool.name == self._search_tool_name for tool in self._catalog):
             raise ValueError(
-                f"Catalog tool name '{self._search_tool_name}' conflicts with the search tool. "
-                "Choose a different search_tool_name."
+                f"Catalog tool name '{self._search_tool_name}' conflicts with the bootstrap search tool. "
+                "Choose a different `search_tool_name`."
             )
         self._passthrough = passthrough
 
