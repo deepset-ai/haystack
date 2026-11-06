@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Resuming a pipeline from a snapshot file no longer converts non-string
+    dictionary keys to strings. Values such as ``dict[int, str]`` passed
+    between components now come back with their original key types (``int``,
+    ``float``, ``bool`` or ``None``) instead of stringified keys, and keys
+    that stringify alike no longer overwrite each other.
