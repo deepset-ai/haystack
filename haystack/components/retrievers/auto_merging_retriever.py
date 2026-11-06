@@ -144,12 +144,12 @@ class AutoMergingRetriever:
 
         def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
             parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
-            deepest_level = max((doc.meta["__level"] for doc in docs_to_merge), default=0)
+            deepest_level = max((doc.meta.get("__level", 0) for doc in docs_to_merge), default=0)
             pending_docs = []
 
             for doc in docs_to_merge:
                 # Shorter branches can have shallower leaves whose siblings have not been merged yet.
-                if doc.meta["__level"] < deepest_level:
+                if doc.meta.get("__level", 0) < deepest_level:
                     pending_docs.append(doc)
                 elif doc.meta.get("__parent_id"):  # only docs that have parents
                     parent_doc_id_to_child_docs[doc.meta["__parent_id"]].append(doc)
@@ -209,12 +209,12 @@ class AutoMergingRetriever:
 
         async def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
             parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
-            deepest_level = max((doc.meta["__level"] for doc in docs_to_merge), default=0)
+            deepest_level = max((doc.meta.get("__level", 0) for doc in docs_to_merge), default=0)
             pending_docs = []
 
             for doc in docs_to_merge:
                 # Shorter branches can have shallower leaves whose siblings have not been merged yet.
-                if doc.meta["__level"] < deepest_level:
+                if doc.meta.get("__level", 0) < deepest_level:
                     pending_docs.append(doc)
                 elif doc.meta.get("__parent_id"):  # only docs that have parents
                     parent_doc_id_to_child_docs[doc.meta["__parent_id"]].append(doc)

@@ -316,6 +316,17 @@ class TestAutoMergingRetriever:
         expected = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven eight"}]
         assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
 
+    def test_run_merges_into_parent_without_level(self, in_memory_doc_store):
+        parent = Document(id="p", content="ab", meta={"__children_ids": ["a", "b"]})
+        in_memory_doc_store.write_documents([parent])
+        leaves = [
+            Document(id=leaf_id, content=leaf_id, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+            for leaf_id in ["a", "b"]
+        ]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=0.5)
+
+        assert retriever.run(documents=leaves) == {"documents": [parent]}
+
     def test_close(self):
         closable_document_store = Mock(spec=["close"])
         retriever = AutoMergingRetriever(document_store=closable_document_store)
