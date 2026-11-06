@@ -79,7 +79,7 @@ class ImageFileToImageContent:
         size: tuple[int, int] | None = None,
     ) -> dict[str, list[ImageContent]]:
         """
-        Converts files to ImageContent objects.
+        Converts files to ImageContent objects. Sources that fail conversion or validation are logged and skipped.
 
         :param sources:
             List of file paths or ByteStream objects to convert.
@@ -100,7 +100,7 @@ class ImageFileToImageContent:
 
         :returns:
             A dictionary with the following keys:
-            - `image_contents`: A list of ImageContent objects.
+            - `image_contents`: Successfully converted images in source order, or an empty list if none succeed.
         """
         if not sources:
             return {"image_contents": []}

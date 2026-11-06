@@ -151,7 +151,11 @@ The `target_tokens` value is a goal rather than a guarantee. When the target con
 
 ## Messages added by hooks
 
-`SlidingWindowCompactor` and `SummarizationCompactor` treat the latest user message as the current task and keep it. Messages that compaction added itself, such as omission notes and summaries, don't count, and neither do user messages marked with `meta={"system_reminder": True}`, such as the reminders [`StepBudgetReminderHook`](./step-budget-reminder.mdx) adds.
+`SlidingWindowCompactor` and `SummarizationCompactor` treat the latest user message as the current task and keep it. Messages that compaction added itself, such as omission notes and summaries, don't count, and neither do user messages marked with `meta={"system_reminder": True}`. Haystack's hooks mark every user message they add this way:
+
+- the reminders [`StepBudgetReminderHook`](./step-budget-reminder.mdx) adds,
+- the correction [`StructuredOutputHook`](./structured-output.mdx) sends when a reply doesn't match the schema,
+- the message [`ConfirmationHook`](./human-in-the-loop.mdx) adds when the user modifies a tool call's arguments.
 
 `SlidingWindowCompactor` also keeps these reminders, and removes one only together with the model's reply to it. See [How the sliding window is selected](compaction/sliding-window-compactor.mdx#how-the-sliding-window-is-selected).
 
