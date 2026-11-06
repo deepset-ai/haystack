@@ -688,7 +688,11 @@ def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str,
         items = [item]
     # Streaming adds event fields like item_id and sequence_number to extra; the API rejects them as input.
     valid_fields = {"id", "type", "summary", "encrypted_content", "status", "content", "output_index"}
-    return [{"summary": [], **{key: value for key, value in item.items() if key in valid_fields}} for item in items]
+    return [
+        {"summary": [], **{key: value for key, value in item.items() if key in valid_fields}}
+        for item in items
+        if item.get("type") == "reasoning" and item.get("id")
+    ]
 
 
 def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> ChatMessage:

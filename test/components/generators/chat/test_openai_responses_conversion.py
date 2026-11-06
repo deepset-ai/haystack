@@ -259,10 +259,7 @@ class TestConversionToStreamingChunks:
         ]
 
     @pytest.mark.parametrize("include_added_event", [False, True])
-    @pytest.mark.parametrize(
-        ("include_summary", "include_deltas"),
-        [(False, False), (True, False), (True, True)],
-    )
+    @pytest.mark.parametrize(("include_summary", "include_deltas"), [(False, False), (True, False), (True, True)])
     def test_multiple_reasoning_items_survive_streaming_round_trip(
         self, include_summary, include_added_event, include_deltas
     ):
@@ -2016,6 +2013,8 @@ class TestResponseToChatMessage:
             {},
             # reasoning produced by AmazonBedrockChatGenerator
             {"signature": "EqQBCkYIBxgC"},
+            {"type": "reasoning"},
+            {"type": "thinking", "id": "foreign_id"},
         ],
     )
     def test_convert_messages_from_other_providers(self, reasoning_extra: dict[str, Any]) -> None:
