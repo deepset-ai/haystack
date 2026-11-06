@@ -139,7 +139,7 @@ chat_generator = GoogleGenAIInteractionsChatGenerator(
 )
 response = chat_generator.run(messages=[ChatMessage.from_user("Tell me about Paris")])
 print(response["replies"][0].text)
-# >> {"name": "Paris", "country": "France", "population": 2102650}
+# >> '{"name": "Paris", "country": "France", "population": 2102650}'
 ```
 
 ### Multimodal Inputs
