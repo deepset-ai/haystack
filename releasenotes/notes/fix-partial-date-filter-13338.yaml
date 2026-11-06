@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``Filter`` range operators (``>``, ``>=``, ``<``, ``<=``) incorrectly
+    completing partial dates (e.g. ``"2024"``) with the current month and day,
+    which silently dropped matching documents. Partial dates are now completed
+    to the start of the period.
