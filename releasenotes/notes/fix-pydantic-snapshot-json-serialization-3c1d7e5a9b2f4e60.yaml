@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed saving a pipeline snapshot when a breakpoint or failure snapshot contains a pydantic model with
+    ``datetime``, ``date``, ``UUID`` or ``Decimal`` fields. Such models are now serialized with
+    ``model_dump(mode="json")``, so the snapshot file is written and the breakpoint raises ``BreakpointException``
+    instead of ``TypeError: Object of type datetime is not JSON serializable``. Resuming from the saved file
+    restores the model with its original field types.
