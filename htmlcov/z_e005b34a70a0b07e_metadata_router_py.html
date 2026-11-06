@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_e005b34a70a0b07e_openai_decisions_image_router_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-06 13:12 +0000
+            created at 2026-11-06 13:15 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -256,11 +256,11 @@
     <p class="pln"><span class="n"><a id="t174" href="#t174">174</a></span><span class="t"><span class="str">        :returns:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t175" href="#t175">175</a></span><span class="t"><span class="str">            The deserialized component instance.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t176" href="#t176">176</a></span><span class="t"><span class="str">        &quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t177" href="#t177">177</a></span><span class="t">        <span class="nam">init_params</span> <span class="op">=</span> <span class="nam">data</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;init_parameters&quot;</span><span class="op">,</span> <span class="op">{</span><span class="op">}</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t177" href="#t177">177</a></span><span class="t">        <span class="nam">init_params</span> <span class="op">=</span> <span class="nam">dict</span><span class="op">(</span><span class="nam">data</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">&quot;init_parameters&quot;</span><span class="op">,</span> <span class="op">{</span><span class="op">}</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t178" href="#t178">178</a></span><span class="t">        <span class="key">if</span> <span class="str">&quot;output_type&quot;</span> <span class="key">in</span> <span class="nam">init_params</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t179" href="#t179">179</a></span><span class="t">            <span class="com"># Deserialize the output_type to its original type</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t180" href="#t180">180</a></span><span class="t">            <span class="nam">init_params</span><span class="op">[</span><span class="str">&quot;output_type&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="nam">deserialize_type</span><span class="op">(</span><span class="nam">init_params</span><span class="op">[</span><span class="str">&quot;output_type&quot;</span><span class="op">]</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t181" href="#t181">181</a></span><span class="t">        <span class="key">return</span> <span class="nam">default_from_dict</span><span class="op">(</span><span class="nam">cls</span><span class="op">,</span> <span class="nam">data</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t181" href="#t181">181</a></span><span class="t">        <span class="key">return</span> <span class="nam">default_from_dict</span><span class="op">(</span><span class="nam">cls</span><span class="op">,</span> <span class="op">{</span><span class="op">**</span><span class="nam">data</span><span class="op">,</span> <span class="str">&quot;init_parameters&quot;</span><span class="op">:</span> <span class="nam">init_params</span><span class="op">}</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -270,7 +270,7 @@
             <a class="nav" href="z_e005b34a70a0b07e_openai_decisions_image_router_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-06 13:12 +0000
+            created at 2026-11-06 13:15 +0000
         </p>
     </div>
 </footer>
