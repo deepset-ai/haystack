@@ -1009,3 +1009,16 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
 .img-full-width {
   max-width: 100% !important;
 }
+
+/* Visually hidden but still present in the HTML for screen readers and AI agents */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

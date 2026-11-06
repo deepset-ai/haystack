@@ -4,6 +4,7 @@
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Head from '@docusaurus/Head';
 import OriginalContent from '@theme-original/DocItem/Content';
 import { useDoc } from '@docusaurus/plugin-content-docs/client';
 import CopyDropdown from '@site/src/components/CopyDropdown';
@@ -37,8 +38,18 @@ export default function ContentWrapper(props) {
     };
   }, [frontMatter.hep_available, metadata.permalink]);
 
+  const markdownPath = `${metadata.permalink.replace(/\/+$/, '')}.md`;
+
   return (
     <>
+      <Head>
+        <link rel="alternate" type="text/markdown" href={markdownPath} />
+      </Head>
+      {/* Visually hidden pointer for AI agents reading the page; stripped when the .md copy is generated. */}
+      <p className="agent-markdown-notice sr-only">
+        For the complete documentation index, see <a href="/llms.txt">llms.txt</a>. This page is also available as
+        Markdown at <a href={markdownPath}>{markdownPath}</a>.
+      </p>
       <div className="copy-dropdown-sticky">
         <CopyDropdown />
       </div>
