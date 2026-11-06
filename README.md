@@ -97,7 +97,7 @@
 | haystack/components/preprocessors/document\_preprocessor.py                |       47 |        2 |     96% |  168, 204 |
 | haystack/components/preprocessors/document\_splitter.py                    |      280 |        2 |     99% |  213, 239 |
 | haystack/components/preprocessors/embedding\_based\_document\_splitter.py  |      230 |       12 |     95% |300-301, 432, 484-496, 514, 531, 600-601 |
-| haystack/components/preprocessors/hierarchical\_document\_splitter.py      |       64 |        0 |    100% |           |
+| haystack/components/preprocessors/hierarchical\_document\_splitter.py      |       70 |        0 |    100% |           |
 | haystack/components/preprocessors/markdown\_header\_splitter.py            |      174 |        6 |     97% |287-288, 303-304, 363, 426 |
 | haystack/components/preprocessors/python\_code\_splitter.py                |      301 |       14 |     95% |152, 164, 192, 199, 291, 319-321, 423-425, 427, 540, 608 |
 | haystack/components/preprocessors/recursive\_splitter.py                   |      269 |       20 |     93% |171-174, 215-217, 256-258, 271-273, 306, 345, 479, 485-488 |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18536** |  **684** | **96%** |           |
+| **TOTAL**                                                                  | **18542** |  **684** | **96%** |           |
 
 
 ## Setup coverage badge
