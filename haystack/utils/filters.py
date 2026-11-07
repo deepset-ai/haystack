@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
 from dataclasses import fields
 from datetime import datetime
+from operator import ge, gt, le, lt
 from typing import Any
 
 import dateutil.parser
@@ -156,6 +158,17 @@ def _prepare_ordering_comparison(
     return value, filter_value, True
 
 
+def _compare(compare: Callable[[Any, Any], bool], value: Any, filter_value: Any) -> bool:
+    try:
+        return compare(value, filter_value)
+    except TypeError as exc:
+        msg = (
+            f"Can't compare a value of type '{type(value).__name__}' with a value of type "
+            f"'{type(filter_value).__name__}' using operators '>', '>=', '<', '<='"
+        )
+        raise FilterError(msg) from exc
+
+
 def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
     if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
@@ -166,7 +179,7 @@ def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: boo
     )
     if not comparable:
         return False
-    return value > filter_value
+    return _compare(compare=gt, value=value, filter_value=filter_value)
 
 
 def _parse_date(value: str) -> datetime:
@@ -212,7 +225,7 @@ def _greater_than_equal(value: Any, filter_value: Any, strict_datetime_compariso
     )
     if not comparable:
         return False
-    return value >= filter_value
+    return _compare(compare=ge, value=value, filter_value=filter_value)
 
 
 def _less_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
@@ -225,7 +238,7 @@ def _less_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) 
     )
     if not comparable:
         return False
-    return value < filter_value
+    return _compare(compare=lt, value=value, filter_value=filter_value)
 
 
 def _less_than_equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
@@ -238,7 +251,7 @@ def _less_than_equal(value: Any, filter_value: Any, strict_datetime_comparison: 
     )
     if not comparable:
         return False
-    return value <= filter_value
+    return _compare(compare=le, value=value, filter_value=filter_value)
 
 
 def _in(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
