@@ -290,3 +290,39 @@ def test_merge_two_logical_filters_with_non_and_operator_matches_the_intersectio
         if document_matches_filter(init_filters, doc) and document_matches_filter(runtime_filters, doc)
     ]
     assert selected == intersection
+
+
+LANG_EN = {"field": "meta.lang", "operator": "==", "value": "en"}
+LANG_DE = {"field": "meta.lang", "operator": "==", "value": "de"}
+
+
+def _logical_and(*conditions):
+    return {"operator": "AND", "conditions": list(conditions)}
+
+
+class TestMergeTwoLogicalFiltersWithSameField:
+    """Under FilterPolicy.MERGE, a field constrained by both the init and the runtime
+    filters must resolve the same way regardless of how the filters are wrapped, with the
+    runtime condition overwriting the init condition (see issue #13208)."""
+
+    @pytest.mark.parametrize(
+        ("init_filters", "runtime_filters"),
+        [
+            (LANG_EN, LANG_DE),
+            (LANG_EN, _logical_and(LANG_DE)),
+            (_logical_and(LANG_EN), LANG_DE),
+            (_logical_and(LANG_EN), _logical_and(LANG_DE)),
+        ],
+    )
+    def test_runtime_condition_overwrites_init_condition_on_same_field(self, init_filters, runtime_filters):
+        result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert result is not None
+        assert document_matches_filter(result, Document(content="hello welt", meta={"lang": "de"}))
+        assert not document_matches_filter(result, Document(content="hello world", meta={"lang": "en"}))
+
+    def test_init_conditions_on_other_fields_are_kept(self):
+        init_filters = _logical_and(LANG_EN, {"field": "meta.kind", "operator": "==", "value": "article"})
+        runtime_filters = _logical_and(LANG_DE)
+        result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+        assert result is not None
+        assert result["conditions"] == [{"field": "meta.kind", "operator": "==", "value": "article"}, LANG_DE]
