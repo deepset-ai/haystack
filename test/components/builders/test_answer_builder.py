@@ -247,6 +247,36 @@ class TestAnswerBuilder:
         assert answers[0].documents[0].content == "test doc 2"
         assert answers[0].documents[1].content == "test doc 3"
 
+    @pytest.mark.parametrize(
+        "init_pattern,runtime_pattern", [(r"\[\d+\]", None), (r"\[(\d+)\]\[(\d+)\]", None), (r"\[(\d+)\]", r"\[\d+\]")]
+    )
+    def test_run_with_invalid_reference_pattern(self, init_pattern, runtime_pattern):
+        component = AnswerBuilder(reference_pattern=init_pattern)
+        kwargs = {}
+        if runtime_pattern is not None:
+            kwargs["reference_pattern"] = runtime_pattern
+        with pytest.raises(ValueError, match="capture group"):
+            component.run(
+                query="test query",
+                replies=["Answer without citation"],
+                documents=[Document(content="test doc 1")],
+                **kwargs,
+            )
+
+    def test_run_with_valid_custom_reference_pattern(self):
+        component = AnswerBuilder(reference_pattern=r"ref:(\d+)")
+        output = component.run(
+            query="test query",
+            replies=["Answer: see ref:2"],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert len(answers[0].documents) == 1
+        assert answers[0].documents[0].content == "test doc 2"
+        assert answers[0].documents[0].meta["referenced"] is True
+        assert answers[0].documents[0].meta["source_index"] == 2
+
     def test_run_with_chat_message_replies_without_pattern(self):
         component = AnswerBuilder()
 
