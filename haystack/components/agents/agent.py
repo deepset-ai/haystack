@@ -719,7 +719,11 @@ class Agent:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized agent.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
 
         deserialize_component_inplace(init_params, key="chat_generator")
 
@@ -734,7 +738,7 @@ class Agent:
         if init_params.get("hooks") is not None:
             init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
 
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     def _create_agent_span(self, tools: ToolsType) -> Any:
         """

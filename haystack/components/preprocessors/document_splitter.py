@@ -524,13 +524,17 @@ class DocumentSplitter:
         """
         Deserializes the component from a dictionary.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
 
         splitting_function = init_params.get("splitting_function", None)
         if splitting_function:
             init_params["splitting_function"] = deserialize_callable(splitting_function)
 
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     @staticmethod
     def _concatenate_sentences_based_on_word_amount(

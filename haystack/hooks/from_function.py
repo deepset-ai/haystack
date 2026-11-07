@@ -112,12 +112,16 @@ class FunctionHook:
         :param data: The serialized hook dictionary produced by `to_dict`.
         :returns: The reconstructed `FunctionHook`.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
         if init_params.get("function") is not None:
             init_params["function"] = deserialize_callable(init_params["function"])
         if init_params.get("async_function") is not None:
             init_params["async_function"] = deserialize_callable(init_params["async_function"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
 
 def hook(function: Callable[[State], None | Awaitable[None]]) -> FunctionHook:

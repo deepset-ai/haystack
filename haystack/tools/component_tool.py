@@ -345,7 +345,10 @@ class ComponentTool(Tool):
         """
         Deserializes the ComponentTool from a dictionary.
         """
-        inner_data = data["data"]
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects.
+        inner_data = dict(data["data"])
         deserialize_component_inplace(data=inner_data, key="component")
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
