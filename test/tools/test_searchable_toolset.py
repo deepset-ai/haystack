@@ -206,6 +206,14 @@ class TestSearchableToolsetPassthrough:
         assert toolset._passthrough is True
         assert len(list(toolset)) == 8
 
+    def test_passthrough_allows_catalog_name_matching_unused_search_tool(self):
+        """Test that passthrough mode accepts a catalog tool named like the bootstrap tool, since it isn't exposed."""
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=2)
+
+        assert [tool.name for tool in toolset] == ["search_tools"]
+        assert toolset[0].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
+
 
 class TestSearchableToolsetBM25Mode:
     """Tests for BM25 discovery mode."""
@@ -564,6 +572,22 @@ class TestSearchableToolsetLifecycle:
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             toolset.warm_up()
 
+    @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
+    @pytest.mark.parametrize("async_warm_up", [False, True])
+    async def test_warm_up_rejects_catalog_name_matching_search_tool(self, search_tool_name, async_warm_up):
+        """Test that warm_up raises when a catalog tool collides with the bootstrap tool in search mode."""
+        catalog_tool = create_tool_from_function(get_weather, name=search_tool_name)
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name=search_tool_name)
+
+        # A failed warm-up must not leave the toolset initialized on a subsequent attempt.
+        for _ in range(2):
+            with pytest.raises(ValueError, match="conflicts with the bootstrap search tool"):
+                if async_warm_up:
+                    await toolset.warm_up_async()
+                else:
+                    toolset.warm_up()
+            assert toolset.get_selectable_tools() == []
+
     async def test_spawn_and_iteration_do_not_repeat_warm_up_after_async_warm_up(self, large_catalog, monkeypatch):
         catalog = Toolset(large_catalog)
         catalog_warm_up_async = AsyncMock()
@@ -821,6 +845,16 @@ class TestSearchableToolsetCustomSearchTool:
         result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
         assert "get_weather" in result
         assert "get_weather" in toolset._discovered_tools
+
+    def test_renamed_search_tool_can_discover_catalog_tool_named_search_tools(self):
+        """Test that renaming the bootstrap tool lets a catalog tool named `search_tools` be discovered and used."""
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name="find_tools")
+
+        toolset[0].invoke(tool_keywords="weather")
+
+        assert [tool.name for tool in toolset] == ["find_tools", "search_tools"]
+        assert toolset[1].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
 
     def test_serialization(self, large_catalog):
         """Test to_dict includes all fields and serde roundtrip preserves settings."""

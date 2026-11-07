@@ -67,6 +67,8 @@ def create_tool_from_function(
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
         Positional-only parameters are not supported because Tool arguments are passed by keyword.
+        Parameters whose names start with an underscore are not exposed to the LLM.
+        A required parameter with such a name must be provided through `inputs_from_state` or given a default.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -128,7 +130,9 @@ def create_tool_from_function(
         The Tool created from the function.
 
     :raises ValueError:
-        If a parameter exposed in the Tool's schema lacks a type hint, or the function has a positional-only parameter.
+        If a parameter exposed in the Tool's schema lacks a type hint, if the function has a positional-only
+        parameter, or if a required parameter whose name starts with an underscore is not covered by
+        `inputs_from_state`.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
@@ -169,6 +173,13 @@ def create_tool_from_function(
         # Skip Callable types since Pydantic cannot generate JSON schemas for them
         if _contains_callable_type(annotation):
             continue
+
+        # Pydantic treats leading-underscore names as private attributes and leaves them out of the schema
+        if param_name.startswith("_") and param.default is param.empty:
+            raise ValueError(
+                f"Function '{function.__name__}': required parameter '{param_name}' starts with an underscore and "
+                "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+            )
 
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
@@ -285,6 +296,8 @@ def tool(
         The function to decorate (when used without parameters).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+        Parameters whose names start with an underscore are not exposed to the LLM.
+        A required parameter with such a name must be provided through `inputs_from_state` or given a default.
     :param name: Optional custom name for the tool
     :param description: Optional custom description
     :param inputs_from_state:
@@ -340,7 +353,8 @@ def tool(
     :returns: Either a Tool instance or a decorator function that will create one
 
     :raises ValueError:
-        If a parameter exposed in the Tool's schema lacks a type hint.
+        If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+        starts with an underscore is not covered by `inputs_from_state`.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """

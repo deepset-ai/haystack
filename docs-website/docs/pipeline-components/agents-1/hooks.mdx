@@ -105,7 +105,11 @@ def audit_tool_calls(state: State) -> None:
 def require_search(state: State) -> None:
     # on_exit: keep going until the agent has actually searched.
     if state.get("tool_call_counts", {}).get("search", 0) == 0:
-        state.set("messages", [ChatMessage.from_user("Search before answering.")])
+        # Marked as a system reminder so context compaction doesn't take it for the user's task.
+        nudge = ChatMessage.from_user(
+            "Search before answering.", meta={"system_reminder": True}
+        )
+        state.set("messages", [nudge])
         state.set("continue_run", True)
 
 
@@ -128,6 +132,8 @@ print(result["last_message"].text)
 ```
 
 Add mid-run nudges like this one as user messages. Some chat generators, such as `AnthropicChatGenerator`, move every system message into the request's system prompt, so a system message added mid-run doesn't stay where it was added in the conversation.
+
+Mark every user message a hook adds with `meta={"system_reminder": True}`. [Context compaction](./compaction.mdx#messages-added-by-hooks) treats the latest unmarked user message as the user's task and always keeps it. An unmarked nudge would be taken for the task, and the real request could be removed.
 
 ### Class-based hooks
 
@@ -181,6 +187,7 @@ class GradeFinalAnswer:
                 [
                     ChatMessage.from_user(
                         "Your answer was incomplete. Please improve it.",
+                        meta={"system_reminder": True},
                     ),
                 ],
             )
@@ -242,7 +249,12 @@ def require_submit_report(state: State) -> None:
     state.set("submit_nudges", nudges + 1)
     state.set(
         "messages",
-        [ChatMessage.from_user("Call submit_report with your final report to finish.")],
+        [
+            ChatMessage.from_user(
+                "Call submit_report with your final report to finish.",
+                meta={"system_reminder": True},
+            )
+        ],
     )
     state.set("continue_run", True)
 
