@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    Users whose chat generators return different numbers of ``statements`` and
+    ``statement_scores`` to ``FaithfulnessEvaluator`` will now receive an error
+    instead of a score derived from incomplete or extra judgments. Ensure that
+    each extracted statement has exactly one score, or set
+    ``raise_on_failure=False`` to report malformed rows as errors and continue
+    evaluating the remaining inputs.
+fixes:
+  - |
+    ``FaithfulnessEvaluator`` now rejects mismatched statement and score counts
+    consistently in synchronous and asynchronous evaluation. With
+    ``raise_on_failure=False``, these rows have ``status="error"`` and a NaN score
+    and are excluded from the overall mean. Aligned lists, including two empty
+    lists, retain their existing behavior.
