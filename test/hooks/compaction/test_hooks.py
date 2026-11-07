@@ -59,14 +59,24 @@ class _RecordingCompactor(Compactor):
         self.targets: list[int] = []
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         self.calls.append("compact")
         self.targets.append(target_tokens)
         return self.result
 
     async def compact_async(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         self.calls.append("compact_async")
         self.targets.append(target_tokens)

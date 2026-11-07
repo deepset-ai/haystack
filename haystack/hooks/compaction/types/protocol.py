@@ -35,7 +35,12 @@ class Compactor(Protocol):
     """
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         """
         Return a shorter replacement for `messages`, or None to leave it unchanged.
@@ -44,12 +49,19 @@ class Compactor(Protocol):
         :param target_tokens: The size the compacted conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with. The same one the caller sized the context
             with, so a compactor's measurements are consistent with the decision to compact.
+        :param run_context: Request-scoped resources for the current run, such as a store, or None when there are
+            none. `CompactionHook` passes the Agent's `hook_context`.
         :returns: The replacement conversation, or None when this compactor has nothing to change.
         """
         ...
 
     async def compact_async(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         """
         Asynchronously return a shorter replacement for `messages`, or None to leave it unchanged.
@@ -61,9 +73,13 @@ class Compactor(Protocol):
         :param target_tokens: The size the compacted conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with. The same one the caller sized the context
             with, so a compactor's measurements are consistent with the decision to compact.
+        :param run_context: Request-scoped resources for the current run, such as a store, or None when there are
+            none. `CompactionHook` passes the Agent's `hook_context`.
         :returns: The replacement conversation, or None when this compactor has nothing to change.
         """
-        return self.compact(messages, target_tokens, token_counter)
+        return self.compact(
+            messages=messages, target_tokens=target_tokens, token_counter=token_counter, run_context=run_context
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the compactor to a dictionary."""

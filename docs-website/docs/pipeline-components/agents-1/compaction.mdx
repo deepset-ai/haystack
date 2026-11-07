@@ -131,6 +131,8 @@ class CustomCompactor(Compactor):
         messages: list[ChatMessage],
         target_tokens: int,
         token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         # Return a shorter, valid conversation or None when nothing should change.
         ...
@@ -146,6 +148,8 @@ A compactor must follow these rules:
 3. Keep tool calls together with all their result messages. Chat-completion APIs reject incomplete tool-call exchanges.
 
 The `target_tokens` value is a goal rather than a guarantee. When the target conflicts with context the Agent must retain, preserve the required context and get as close to the target as possible.
+
+`CompactionHook` passes the `hook_context` given to the Agent's `run()` or `run_async()` to the compactor as `run_context`, so a compactor can read request-scoped resources, such as a per-run store, from it.
 
 `compact_async()` calls `compact()` by default. Override it when compaction performs I/O, such as calling an LLM, so asynchronous Agent runs are not blocked. Use `to_dict()` to serialize constructor settings. The protocol's default `from_dict()` handles plain constructor values; override it when serialized values must be reconstructed first, such as a `Secret` or nested component.
 

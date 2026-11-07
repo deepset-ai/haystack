@@ -86,6 +86,9 @@ class CompactionHook:
 
     Compaction is lossy by nature, so the Agent works from a shorter record of the run afterwards. What survives is up
     to the compactor.
+
+    The `hook_context` passed to the Agent's `run` or `run_async` reaches the compactor as its `run_context`, which
+    is how `ToolResultOffloadCompactor` receives a per-run store.
     """
 
     allowed_hook_points = ("before_llm",)
@@ -143,7 +146,10 @@ class CompactionHook:
             return
         target_tokens, estimated_overhead = target
         compacted = self.compactor.compact(
-            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+            messages=messages,
+            target_tokens=target_tokens,
+            token_counter=self.token_counter,
+            run_context=state.data.get("hook_context"),
         )
         self._apply(
             state=state,
@@ -169,7 +175,10 @@ class CompactionHook:
             return
         target_tokens, estimated_overhead = target
         compacted = await self.compactor.compact_async(
-            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+            messages=messages,
+            target_tokens=target_tokens,
+            token_counter=self.token_counter,
+            run_context=state.data.get("hook_context"),
         )
         self._apply(
             state=state,
