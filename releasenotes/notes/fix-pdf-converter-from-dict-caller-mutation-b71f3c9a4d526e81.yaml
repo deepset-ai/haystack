@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``PyPDFToDocument.from_dict`` and ``PDFMinerToDocument.from_dict`` replaced the
+    serialized ``link_format`` string inside the dictionary passed by the caller with a
+    ``LinkFormat`` enum member. The caller dictionary was therefore modified in place and
+    could no longer be serialized or deserialized again. The enum conversion now happens
+    on a copy.

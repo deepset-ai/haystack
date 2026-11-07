@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 from unittest.mock import Mock, patch
 
@@ -314,3 +315,18 @@ class TestPyPDFToDocument:
             "structure, allowing structure to emerge according to the\nneeds of the users.[1]\n\n"
         )
         assert docs["documents"][2].content == expected
+
+
+class TestFromDictDoesNotMutateCallerData:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        data = {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {"link_format": "markdown"},
+        }
+        original = json.loads(json.dumps(data))
+
+        component = PyPDFToDocument.from_dict(data)
+
+        assert component.link_format == LinkFormat.MARKDOWN
+        assert data == original
+        assert PyPDFToDocument.from_dict(data).link_format == LinkFormat.MARKDOWN
