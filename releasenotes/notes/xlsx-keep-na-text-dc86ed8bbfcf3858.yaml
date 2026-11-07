@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``XLSXToDocument`` dropping cells whose text pandas reads as a missing value by default,
+    such as ``NA``, ``N/A``, ``n/a``, ``NULL``, ``None``, or ``nan``. These cells were written out as empty,
+    the same as a truly empty cell. ``XLSXToDocument`` now passes ``keep_default_na=False`` and
+    ``na_values=[""]`` to ``pandas.read_excel``, so only empty cells are read as missing values.
+    To restore the previous behavior, pass ``read_excel_kwargs={"keep_default_na": True}``.
