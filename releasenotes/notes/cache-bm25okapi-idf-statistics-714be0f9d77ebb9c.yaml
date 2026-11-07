@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Speed up repeated ``InMemoryDocumentStore.bm25_retrieval`` queries using
+    ``BM25Okapi`` by computing IDF values only for query terms and reusing the
+    corpus-wide IDF sum needed for common terms. The statistic is refreshed
+    after documents change, including changes made through another store
+    sharing the same index. Scores and ranking remain unchanged.

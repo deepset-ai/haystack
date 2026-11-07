@@ -78,6 +78,7 @@ _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
+_BM25_IDF_SUM_STORAGES: dict[str, float | None] = {}
 
 
 class InMemoryDocumentStore:
@@ -142,11 +143,13 @@ class InMemoryDocumentStore:
                 _BM25_STATS_STORAGES[self.index] = {}
                 _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
                 _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+                _BM25_IDF_SUM_STORAGES[self.index] = None
         else:
             self._local_storage: dict[str, Document] = {}
             self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
             self._local_avg_doc_len: float = 0.0
             self._local_freq_vocab_for_idf: Counter = Counter()
+            self._local_bm25_idf_sum: float | None = None
 
         self.bm25_algorithm = bm25_algorithm
         self.bm25_algorithm_inst = self._dispatch_bm25()
@@ -202,6 +205,17 @@ class InMemoryDocumentStore:
     @property
     def _freq_vocab_for_idf(self) -> Counter:
         return _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] if self._shared else self._local_freq_vocab_for_idf
+
+    @property
+    def _bm25_idf_sum(self) -> float | None:
+        return _BM25_IDF_SUM_STORAGES[self.index] if self._shared else self._local_bm25_idf_sum
+
+    @_bm25_idf_sum.setter
+    def _bm25_idf_sum(self, value: float | None) -> None:
+        if self._shared:
+            _BM25_IDF_SUM_STORAGES[self.index] = value
+        else:
+            self._local_bm25_idf_sum = value
 
     def _dispatch_bm25(self) -> "Callable[[str, list[Document]], list[tuple[Document, float]]]":
         """
@@ -301,24 +315,28 @@ class InMemoryDocumentStore:
         epsilon = self.bm25_parameters.get("epsilon", 0.25)
 
         def _compute_idf(tokens: list[str]) -> dict[str, float]:
-            """Per-token IDF computation for all tokens."""
-            sum_idf = 0.0
-            neg_idf_tokens = []
-
-            # Although this is a global statistic, we compute it here
-            # to make the computation more self-contained. And the
-            # complexity is O(vocab_size), which is acceptable.
+            """Compute IDF values for query terms, reusing the corpus-wide statistic for common terms."""
+            n_corpus = len(self._bm25_attr)
             idf = {}
-            for tok, n in self._freq_vocab_for_idf.items():
-                idf[tok] = math.log((len(self._bm25_attr) - n + 0.5) / (n + 0.5))
-                sum_idf += idf[tok]
+            neg_idf_tokens = []
+            for tok in dict.fromkeys(tokens):
+                n = self._freq_vocab_for_idf.get(tok, 0)
+                idf[tok] = math.log((n_corpus - n + 0.5) / (n + 0.5)) if n else 0.0
                 if idf[tok] < 0:
                     neg_idf_tokens.append(tok)
 
-            eps = epsilon * sum_idf / len(self._freq_vocab_for_idf)
-            for tok in neg_idf_tokens:
-                idf[tok] = eps
-            return {tok: idf.get(tok, 0.0) for tok in tokens}
+            if neg_idf_tokens:
+                sum_idf = self._bm25_idf_sum
+                if sum_idf is None:
+                    # Only common query terms need the corpus-wide average. Reuse it until the corpus changes.
+                    sum_idf = 0.0
+                    for n in self._freq_vocab_for_idf.values():
+                        sum_idf += math.log((n_corpus - n + 0.5) / (n + 0.5))
+                    self._bm25_idf_sum = sum_idf
+                eps = epsilon * sum_idf / len(self._freq_vocab_for_idf)
+                for tok in neg_idf_tokens:
+                    idf[tok] = eps
+            return idf
 
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25Okapi computation."""
@@ -532,6 +550,7 @@ class InMemoryDocumentStore:
                 continue
 
             tokens = self._tokenize_bm25(document.content)
+            self._bm25_idf_sum = None
             self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
             self._freq_vocab_for_idf.update(set(tokens))
             # Update avg doc len based on the new document and the previous average
@@ -554,6 +573,7 @@ class InMemoryDocumentStore:
             doc_stats = self._bm25_attr.pop(doc_id, None)
             if doc_stats is None:
                 continue
+            self._bm25_idf_sum = None
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 
@@ -587,6 +607,7 @@ class InMemoryDocumentStore:
             self._local_bm25_attr = {}
             self._local_avg_doc_len = 0.0
             self._local_freq_vocab_for_idf = Counter()
+        self._bm25_idf_sum = None
 
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
