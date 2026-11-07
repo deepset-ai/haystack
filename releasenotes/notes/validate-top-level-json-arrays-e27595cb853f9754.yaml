@@ -1,0 +1,7 @@
+fixes:
+  - |
+    ``JsonSchemaValidator`` now validates complete JSON arrays when the schema
+    declares an array type, including nullable arrays. Valid arrays are no longer
+    rejected as individual items, and array constraints such as ``minItems``,
+    ``maxItems``, and ``uniqueItems`` are enforced. Existing per-item validation
+    for other schemas and OpenAI function-call lists is preserved.
