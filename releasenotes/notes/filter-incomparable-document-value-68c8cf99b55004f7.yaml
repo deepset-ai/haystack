@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``filter_documents()`` on ``InMemoryDocumentStore`` (and any code using ``document_matches_filter``) raised a
+    raw ``TypeError`` for ``>``, ``>=``, ``<`` and ``<=`` filters when a document stored a list or dict in the
+    filtered field, for example ``{"field": "meta.page", "operator": ">", "value": 1}`` with a document whose
+    ``meta["page"]`` is ``[1, 2]``. It now raises ``FilterError``, like other incomparable values.
