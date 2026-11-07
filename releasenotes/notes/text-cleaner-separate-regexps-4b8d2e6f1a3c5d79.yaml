@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    ``TextCleaner`` now runs one pass over each text per pattern in ``remove_regexps``, so cleaning with a long list
+    of patterns is slower than before. If you pass many patterns that use no backreferences, group names or inline
+    flags, you can keep the previous single-pass behavior by joining them yourself, for example
+    ``remove_regexps=["|".join(patterns)]``.
+    Patterns that overlap can also give a different result, because each pattern now sees the text left by the
+    patterns before it. For example, ``["bc", "ab"]`` on ``"abc"`` used to return ``"c"`` and now returns ``"a"``.
+fixes:
+  - |
+    ``TextCleaner`` now applies each pattern in ``remove_regexps`` on its own instead of joining them into a single
+    regular expression. Previously, a backreference such as ``\1`` in any pattern after the first pointed at another
+    pattern's group, two patterns using the same group name raised ``re.error``, and a global inline flag such as
+    ``(?m)`` was rejected unless it was in the first pattern. The docstring now also states that the patterns match
+    case-insensitively.
