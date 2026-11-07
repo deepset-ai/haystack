@@ -74,7 +74,11 @@ class FallbackChatGenerator:
     def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator:
         """Rebuild the component from a serialized representation, restoring nested chat generators."""
         # Reconstruct nested chat generators from their serialized dicts
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
         serialized = init_params.get("chat_generators") or []
         deserialized: list[Any] = []
         for g in serialized:
@@ -84,7 +88,7 @@ class FallbackChatGenerator:
             deserialized.append(holder["component"])
         init_params["chat_generators"] = deserialized
         data["init_parameters"] = init_params
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     def warm_up(self) -> None:
         """Warm up all underlying chat generators."""

@@ -343,7 +343,11 @@ class ChatPromptBuilder:
         :returns:
             The deserialized component.
         """
-        init_parameters = data["init_parameters"]
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_parameters = dict(data["init_parameters"])
         template = init_parameters.get("template")
         if template:
             if isinstance(template, list):
@@ -351,4 +355,4 @@ class ChatPromptBuilder:
             elif isinstance(template, str):
                 init_parameters["template"] = template
 
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_parameters})

@@ -294,9 +294,13 @@ class ToolResultOffloadHook:
         :param data: A dictionary representation produced by `to_dict`.
         :returns: The deserialized `ToolResultOffloadHook`.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
         if init_params.get("store") is not None:
             deserialize_component_inplace(init_params, key="store")
         if init_params.get("offload_strategies") is not None:
             init_params["offload_strategies"] = _deserialize_offload_strategies(data=init_params["offload_strategies"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})

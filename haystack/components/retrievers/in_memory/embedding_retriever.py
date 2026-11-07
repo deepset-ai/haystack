@@ -128,10 +128,14 @@ class InMemoryEmbeddingRetriever:
         :returns:
             The deserialized component.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
         if "filter_policy" in init_params:
             init_params["filter_policy"] = FilterPolicy.from_str(init_params["filter_policy"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     @component.output_types(documents=list[Document])
     def run(

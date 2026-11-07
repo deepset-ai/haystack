@@ -175,7 +175,11 @@ class OutputAdapter:
         :returns:
             The deserialized component.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
 
         # `unsafe=True` swaps the Jinja sandbox for a NativeEnvironment that executes arbitrary code.
         # Honor it from serialized data only when the whole pipeline is being loaded in unsafe mode;
@@ -201,4 +205,4 @@ class OutputAdapter:
                 name: deserialize_callable(filter_func) if filter_func else None
                 for name, filter_func in custom_filters.items()
             }
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})

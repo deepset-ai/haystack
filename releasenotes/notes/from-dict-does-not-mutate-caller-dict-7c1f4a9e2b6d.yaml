@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``from_dict`` in several components writing deserialized objects back into the mapping passed in by the caller.
+    ``DocumentWriter``, ``InMemoryBM25Retriever``, ``InMemoryEmbeddingRetriever``, ``DocumentSplitter``, ``ChatPromptBuilder``,
+    ``Agent``, ``LLM``, ``FallbackChatGenerator``, ``MockTextEmbedder``, ``MockDocumentEmbedder``, ``OutputAdapter``,
+    ``FunctionHook``, ``ConfirmationHook``, ``ToolResultOffloadHook``, ``ComponentTool`` and ``PipelineTool`` now deserialize
+    into a copy. ``default_from_dict`` already copies ``init_parameters`` for that reason, but these components replaced the
+    serialized handles in the caller's dictionary before calling it, so the copy protected nothing. The caller's mapping was
+    left holding live callables, enums or components: it could no longer be serialized with ``json.dumps`` and deserializing
+    it a second time failed.

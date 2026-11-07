@@ -133,9 +133,13 @@ class ConfirmationHook:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ConfirmationHook":
         """Deserialize the hook, reconstructing its confirmation strategies."""
-        init_params = data.get("init_parameters", {})
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects. default_from_dict
+        # already copies (see its comment); this write happens before that copy.
+        init_params = dict(data.get("init_parameters", {}))
         if init_params.get("confirmation_strategies") is not None:
             init_params["confirmation_strategies"] = _deserialize_confirmation_strategies(
                 init_params["confirmation_strategies"]
             )
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})

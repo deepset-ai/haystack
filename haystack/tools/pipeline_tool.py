@@ -231,7 +231,10 @@ class PipelineTool(ComponentTool):
         :returns:
             The deserialized PipelineTool instance.
         """
-        inner_data = data["data"]
+        # Copy before deserializing: writing into the caller's mapping destroys the
+        # serialized handles, so the payload can no longer be JSON-serialized and a
+        # second from_dict() receives already-parsed objects.
+        inner_data = dict(data["data"])
         # `is_pipeline_async` is a legacy key kept only for backward compatibility
         inner_data.pop("is_pipeline_async", None)
         pipeline = Pipeline.from_dict(inner_data["pipeline"])
