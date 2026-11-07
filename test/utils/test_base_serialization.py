@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
+import json
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from enum import Enum
+from uuid import UUID
 
 import pydantic
 import pytest
@@ -53,6 +56,29 @@ def simple_calc_function(x: int) -> int:
 def test_serialize_and_deserialize_primitive_types(value, result):
     assert _serialize_value_with_schema(value) == result
     assert _deserialize_value_with_schema(result) == value
+
+
+def test_serialize_document_with_typed_metadata_as_json() -> None:
+    document = Document(
+        content="content",
+        meta={
+            "created_at": datetime(2026, 11, 3, 12, 30, tzinfo=UTC),
+            "created_on": date(2026, 11, 3),
+            "request_id": UUID("12345678-1234-5678-1234-567812345678"),
+            "cost": Decimal("0.125"),
+            "nested": {"dates": [date(2026, 11, 4)]},
+        },
+    )
+
+    serialized = _serialize_value_with_schema(document)
+    serialized_json = json.dumps(serialized)
+    restored = _deserialize_value_with_schema(json.loads(serialized_json))
+
+    assert restored == document
+    assert isinstance(restored.meta["created_at"], datetime)
+    assert isinstance(restored.meta["created_on"], date)
+    assert isinstance(restored.meta["request_id"], UUID)
+    assert isinstance(restored.meta["cost"], Decimal)
 
 
 @pytest.mark.parametrize(
@@ -461,7 +487,6 @@ class TestErrorHandling:
     @pytest.mark.parametrize(
         "value",
         [
-            pytest.param(datetime(2024, 1, 1), id="datetime"),
             pytest.param(b"some bytes", id="bytes"),
             pytest.param(3 + 4j, id="complex"),
             pytest.param(PlainObject(1), id="object-without-to_dict"),
@@ -474,7 +499,7 @@ class TestErrorHandling:
     def test_serialize_unsupported_nested_value_raises(self):
         # An unsupported value nested inside a supported container must not be silently passed through.
         with pytest.raises(SerializationError, match="Cannot serialize value of type"):
-            _serialize_value_with_schema({"good": 1, "bad": datetime(2024, 1, 1)})
+            _serialize_value_with_schema({"good": 1, "bad": b"some bytes"})
 
     def test_deserialize_value_with_wrong_value(self):
         with pytest.raises(DeserializationError, match="Value 'NOT_VALID' is not a valid member of Enum"):
