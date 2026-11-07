@@ -22,7 +22,7 @@ class MarkdownHeaderSplitter:
 
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+    - Optionally applying a secondary split (by word, passage, period, line, or token) to each chunk
       (using haystack's DocumentSplitter).
     - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
     """
@@ -33,10 +33,11 @@ class MarkdownHeaderSplitter:
         page_break_character: str = "\f",
         keep_headers: bool = True,
         header_split_levels: list[int] | None = None,
-        secondary_split: Literal["word", "passage", "period", "line"] | None = None,
+        secondary_split: Literal["word", "passage", "period", "line", "token"] | None = None,
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
+        tokenizer_encoding: str = "o200k_base",
         skip_empty_documents: bool = True,
     ) -> None:
         """
@@ -49,11 +50,16 @@ class MarkdownHeaderSplitter:
             on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
             all levels `[1, 2, 3, 4, 5, 6]`.
         :param secondary_split: Optional secondary split condition after header splitting.
-            Options are None, "word", "passage", "period", "line". Defaults to None.
+            Options are None, "word", "passage", "period", "line", "token". `token` splits by token count using
+            tiktoken (requires `pip install tiktoken`), which is what an embedding model or an LLM actually
+            limits; a word count does not map reliably onto it for code, URLs or non-English text.
+            Defaults to None.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
         :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
+        :param tokenizer_encoding: The tiktoken encoding to use when `secondary_split="token"`. Defaults to
+            `"o200k_base"` (current OpenAI models). Only used when `secondary_split="token"`.
         :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
@@ -76,6 +82,7 @@ class MarkdownHeaderSplitter:
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
+        self.tokenizer_encoding = tokenizer_encoding
         self.skip_empty_documents = skip_empty_documents
         self.keep_headers = keep_headers
         self.header_split_levels = header_split_levels
@@ -115,6 +122,7 @@ class MarkdownHeaderSplitter:
                 split_length=self.split_length,
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
+                tokenizer_encoding=self.tokenizer_encoding,
             )
 
     def warm_up(self) -> None:
