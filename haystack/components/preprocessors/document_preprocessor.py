@@ -45,6 +45,7 @@ class DocumentPreprocessor:
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
         tokenizer_encoding: str = "o200k_base",
+        skip_empty_documents: bool = True,
         # --- DocumentCleaner arguments ---
         remove_empty_lines: bool = True,
         remove_extra_whitespaces: bool = True,
@@ -54,6 +55,9 @@ class DocumentPreprocessor:
         remove_regex: str | None = None,
         unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         ascii_only: bool = False,
+        strip_whitespaces: bool = False,
+        replace_regexes: dict[str, str] | None = None,
+        min_content_length: int = 0,
     ) -> None:
         """
         Initialize a DocumentPreProcessor that first splits and then cleans documents.
@@ -74,6 +78,10 @@ class DocumentPreprocessor:
             languages.
         :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to
             `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+        :param skip_empty_documents: If `True`, skips input documents with empty content. Set to `False` when a
+            downstream component can extract text from non-textual documents, such as `LLMDocumentContentExtractor`.
+            With `False`, text ending in a separator can also produce an empty chunk. Empty documents are still
+            dropped with `split_by="sentence"` or `respect_sentence_boundary=True`.
 
         **Cleaner Parameters**:
         :param remove_empty_lines: If `True`, removes empty lines.
@@ -84,6 +92,11 @@ class DocumentPreprocessor:
         :param remove_regex: A regex pattern whose matches will be removed from the document content.
         :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
         :param ascii_only: If `True`, converts text to ASCII only.
+        :param strip_whitespaces: If `True`, removes leading and trailing whitespace from the document content.
+        :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
+        :param min_content_length: Minimum length of each cleaned chunk after stripping leading and trailing
+            whitespace. Shorter chunks are dropped, including empty documents kept by
+            `skip_empty_documents=False`. A value of `0` keeps all chunks.
         """
         # Store arguments for serialization
         self.remove_empty_lines = remove_empty_lines
@@ -94,6 +107,9 @@ class DocumentPreprocessor:
         self.remove_regex = remove_regex
         self.unicode_normalization = unicode_normalization
         self.ascii_only = ascii_only
+        self.strip_whitespaces = strip_whitespaces
+        self.replace_regexes = replace_regexes
+        self.min_content_length = min_content_length
 
         self.split_by = split_by
         self.split_length = split_length
@@ -105,6 +121,7 @@ class DocumentPreprocessor:
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
         self.tokenizer_encoding = tokenizer_encoding
+        self.skip_empty_documents = skip_empty_documents
 
         # Instantiate sub-components
         splitter = DocumentSplitter(
@@ -118,6 +135,7 @@ class DocumentPreprocessor:
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
             tokenizer_encoding=self.tokenizer_encoding,
+            skip_empty_documents=self.skip_empty_documents,
         )
 
         cleaner = DocumentCleaner(
@@ -129,6 +147,9 @@ class DocumentPreprocessor:
             remove_regex=self.remove_regex,
             unicode_normalization=self.unicode_normalization,
             ascii_only=self.ascii_only,
+            strip_whitespaces=self.strip_whitespaces,
+            replace_regexes=self.replace_regexes,
+            min_content_length=self.min_content_length,
         )
 
         # Build the Pipeline
@@ -177,6 +198,9 @@ class DocumentPreprocessor:
             remove_regex=self.remove_regex,
             unicode_normalization=self.unicode_normalization,
             ascii_only=self.ascii_only,
+            strip_whitespaces=self.strip_whitespaces,
+            replace_regexes=self.replace_regexes,
+            min_content_length=self.min_content_length,
             split_by=self.split_by,
             split_length=self.split_length,
             split_overlap=self.split_overlap,
@@ -187,6 +211,7 @@ class DocumentPreprocessor:
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
             tokenizer_encoding=self.tokenizer_encoding,
+            skip_empty_documents=self.skip_empty_documents,
         )
 
     @classmethod
