@@ -684,7 +684,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
         if output.type == "reasoning":
             extra = output.to_dict()
-            # we dont need the summary in the extra
+            # we don't need the summary in the extra
             extra.pop("summary")
             # OpenAI returns reasoning summaries, other providers may return raw reasoning as `reasoning_text` content
             reasoning_text = "\n".join(summary.text for summary in output.summary)
