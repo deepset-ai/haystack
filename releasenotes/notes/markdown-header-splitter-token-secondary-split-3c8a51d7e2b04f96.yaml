@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    ``MarkdownHeaderSplitter`` can now split large header sections by token count, with
+    ``secondary_split="token"``. ``split_length`` and ``split_overlap`` are counted in tokens
+    (via tiktoken) instead of words, which is the unit an embedding model or an LLM actually
+    limits. The encoding is configurable with the new ``tokenizer_encoding`` init parameter
+    (defaults to ``"o200k_base"``) and is loaded in ``warm_up()``. Header metadata, ``split_id``
+    and ``page_number`` behave as they do for the other secondary split modes.

@@ -455,6 +455,40 @@ def test_secondary_split_keeps_header_when_input_meta_has_header_key():
     assert "Beta" in combined
 
 
+@pytest.mark.integration
+def test_secondary_split_by_token():
+    """The secondary split can measure chunks in tokens, so split_length means what the embedding model sees."""
+    tiktoken = pytest.importorskip("tiktoken")
+    encoding = tiktoken.get_encoding("o200k_base")
+
+    text = "# Install\n" + " ".join(["word"] * 400) + "\n\n## Usage\n" + "機能テスト。" * 40
+    splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=64, split_overlap=8)
+    splitter.warm_up()
+    docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert len(docs) > 1
+    assert all(len(encoding.encode(doc.content)) <= 64 for doc in docs)
+    # header metadata keeps following the header each chunk came from
+    assert {doc.meta["header"] for doc in docs} == {"Install", "Usage"}
+    assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
+
+
+@pytest.mark.integration
+def test_secondary_split_by_token_uses_the_given_encoding():
+    pytest.importorskip("tiktoken")
+    splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=5, tokenizer_encoding="cl100k_base")
+
+    assert splitter.secondary_splitter.tokenizer_encoding == "cl100k_base"
+
+
+def test_tokenizer_encoding_is_unused_without_token_split():
+    # Nothing should touch tiktoken when the secondary split isn't by token.
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, tokenizer_encoding="cl100k_base")
+    docs = splitter.run(documents=[Document(content="# A\none two three four")])["documents"]
+
+    assert [doc.content for doc in docs] == ["# A\none two ", "three four"]
+
+
 # Error and edge case handling
 def test_non_text_document():
     """Test that the component correctly handles non-text documents."""
