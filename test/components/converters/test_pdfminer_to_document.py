@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 from pathlib import Path
 from unittest.mock import patch
@@ -346,3 +347,18 @@ class TestPDFMinerToDocument:
             text_md = converter_md._convert_page(mock_lt_page, mock_pdf_page)
             assert "Page content" in text_md
             assert "[https://example.com](https://example.com)" in text_md
+
+
+class TestFromDictDoesNotMutateCallerData:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        data = {
+            "type": "haystack.components.converters.pdfminer.PDFMinerToDocument",
+            "init_parameters": {"link_format": "markdown"},
+        }
+        original = json.loads(json.dumps(data))
+
+        component = PDFMinerToDocument.from_dict(data)
+
+        assert component.link_format == LinkFormat.MARKDOWN
+        assert data == original
+        assert PDFMinerToDocument.from_dict(data).link_format == LinkFormat.MARKDOWN

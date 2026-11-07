@@ -168,7 +168,10 @@ class PyPDFToDocument:
             Deserialized component.
         """
         if "link_format" in data.get("init_parameters", {}):
-            data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
+            # Copy so the caller's data keeps the serialized string and can be deserialized again
+            init_parameters = dict(data["init_parameters"])
+            init_parameters["link_format"] = LinkFormat.from_str(init_parameters["link_format"])
+            data = {**data, "init_parameters": init_parameters}
         return default_from_dict(cls, data)
 
     def _extract_links(self, page: Any, page_number: int) -> list[str]:
