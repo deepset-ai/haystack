@@ -77,6 +77,8 @@ class CSVToDocument:
         self.quotechar = quotechar
 
         # Basic validation
+        if conversion_mode not in ("file", "row"):
+            raise ValueError(f"CSVToDocument: unsupported conversion_mode {conversion_mode!r}. Choose 'file' or 'row'.")
         if len(self.delimiter) != 1:
             raise ValueError("CSVToDocument: delimiter must be a single character.")
         if len(self.quotechar) != 1:
