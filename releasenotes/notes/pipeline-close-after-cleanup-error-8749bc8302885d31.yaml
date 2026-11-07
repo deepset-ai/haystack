@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``Pipeline.close()`` and ``Pipeline.close_async()`` now attempt cleanup of remaining components when an earlier
+    component raises an ordinary ``Exception``, then re-raise the first cleanup error. Cancellation and other
+    ``BaseException`` subclasses still interrupt cleanup immediately.
+upgrade:
+  - |
+    Applications catching a pipeline cleanup error now receive it after later component cleanup has been attempted.
+    Keep handling the same exception type; callers no longer need to close later components individually after an
+    ordinary cleanup failure. A component whose own cleanup failed remains responsible for its resources.

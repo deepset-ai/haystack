@@ -189,6 +189,15 @@ query = "Here comes the query text"
 results = query_pipeline.run({"text_embedder": {"text": query}})
 ```
 
+### 7. Release resources
+
+When you have finished using the pipeline, call `query_pipeline.close()` to release synchronous component resources,
+or `await query_pipeline.close_async()` for asynchronous resources. Running a pipeline does not close its components
+automatically.
+
+If a component's cleanup raises an `Exception`, the pipeline still attempts cleanup of the remaining components and
+then re-raises the first error. Cancellation and other `BaseException` subclasses still interrupt cleanup immediately.
+
 ## Pipeline Inputs
 
 If you need to understand what component inputs are expected to run your pipeline, Haystack features a useful pipeline function `.inputs()` that lists all the required inputs for the components.
