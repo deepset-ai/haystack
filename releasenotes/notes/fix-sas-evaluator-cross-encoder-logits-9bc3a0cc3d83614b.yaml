@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``SASEvaluator`` now normalizes Cross Encoder scores based on the model instead of the scores in the batch.
+    Previously, raw logits were only passed through a sigmoid if at least one score in the batch was above 1, so the
+    same answer could get a different score depending on the other answers in the batch, and batches of only wrong
+    answers returned negative scores. This affected models that return raw logits, such as
+    ``cross-encoder/ms-marco-MiniLM-L-6-v2``.

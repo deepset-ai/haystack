@@ -24,6 +24,8 @@ description: "`MCPToolset` connects to an MCP-compliant server and automatically
 
 MCPToolset is a subclass of `Toolset` that dynamically discovers and loads tools from any MCP-compliant server.
 
+The Agent warms up the toolset automatically before a run. When using it directly with a Chat Generator, first call `warm_up_tools(toolset)` from `haystack.tools` to load its tools.
+
 It supports:
 
 - **Streamable HTTP** for connecting to HTTP servers

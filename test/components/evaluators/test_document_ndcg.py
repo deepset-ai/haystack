@@ -2,10 +2,45 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from math import log2
+from typing import Any
+
 import pytest
 
 from haystack import Document, default_from_dict
 from haystack.components.evaluators.document_ndcg import DocumentNDCGEvaluator
+
+
+@pytest.mark.parametrize(
+    "truth, matching, different",
+    [
+        (["a", "b"], ["a", "b"], ["b", "a"]),
+        ({"a": 1, "b": 2}, {"b": 2, "a": 1}, {"a": 2, "b": 1}),
+        ({"ids": ["a", "b"]}, {"ids": ["a", "b"]}, {"ids": ["b", "a"]}),
+        ([], [], {}),
+        ([], [], ()),
+        ("a", "a", "b"),
+    ],
+)
+def test_container_metadata_comparison(truth: Any, matching: Any, different: Any) -> None:
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.source_ids")
+    ground_truth = [
+        Document(meta={"source_ids": truth}, score=1.0),
+        Document(meta={"source_ids": truth}, score=3.0),
+        Document(meta={"source_ids": different}, score=2.0),
+    ]
+    retrieved = [
+        Document(meta={"source_ids": matching}),
+        Document(meta={"source_ids": matching}),
+        Document(meta={"source_ids": different}),
+    ]
+
+    result = evaluator.run(ground_truth_documents=[ground_truth], retrieved_documents=[retrieved])
+
+    # Duplicate truths use the highest relevance; duplicate retrievals receive no extra credit.
+    expected = (3.0 + 2.0 / log2(4)) / (3.0 + 2.0 / log2(3))
+    assert result["score"] == pytest.approx(expected)
+    assert result["individual_scores"] == pytest.approx([expected])
 
 
 def test_run_with_scores():
@@ -275,6 +310,23 @@ def test_run_with_meta_comparison():
     )
     assert result["individual_scores"][0] == pytest.approx(0.9197, abs=1e-4)
     assert result["score"] == pytest.approx(0.9197, abs=1e-4)
+
+
+def test_run_with_empty_comparison_values_does_not_match():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="Strasbourg", meta={"file_id": ""})],
+            [Document(content="Paris", meta={"file_id": "a"})],
+        ],
+        retrieved_documents=[
+            [Document(content="pasta", meta={"file_id": ""})],
+            [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+        ],
+    )
+    # The real match is at rank 2, so its gain is 1 / log2(3)
+    assert result["individual_scores"] == pytest.approx([0.0, 0.6309], abs=1e-4)
+    assert result["score"] == pytest.approx(0.3155, abs=1e-4)
 
 
 def test_run_with_nested_meta_comparison():

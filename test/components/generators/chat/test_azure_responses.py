@@ -417,42 +417,6 @@ class TestSerDe:
 
 
 class TestComponentLifecycle:
-    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        component = AzureOpenAIResponsesChatGenerator(
-            azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
-        )
-        assert not component._tools_warmed_up
-
-        component.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-        assert component._tools_warmed_up
-
-        component.warm_up()
-        assert sorted(warm_up_calls) == ["tool1", "tool2"]
-
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
-        component.warm_up()
-        assert component._tools_warmed_up
-
     def test_sync_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")

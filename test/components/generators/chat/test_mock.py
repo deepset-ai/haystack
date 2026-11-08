@@ -263,11 +263,16 @@ class TestMockChatGenerator:
     )
     def test_serialization_roundtrip(self, generator: MockChatGenerator) -> None:
 
-        restored = MockChatGenerator.from_dict(generator.to_dict())
+        data = generator.to_dict()
+        restored = MockChatGenerator.from_dict(data)
         assert isinstance(restored, MockChatGenerator)
+        assert data == generator.to_dict()
+        restored_again = MockChatGenerator.from_dict(data)
         # behavior is preserved across the roundtrip
         messages = [ChatMessage.from_user("hi")]
-        assert restored.run(messages)["replies"][0].text == generator.run(messages)["replies"][0].text
+        expected = generator.run(messages)["replies"][0].text
+        assert restored.run(messages)["replies"][0].text == expected
+        assert restored_again.run(messages)["replies"][0].text == expected
 
     def test_in_pipeline(self) -> None:
 

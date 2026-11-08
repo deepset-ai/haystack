@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    When a tool call made by ``Agent`` fails, its ``haystack.agent.step.tool`` tracing span now carries the tag
+    ``haystack.tool.error`` set to ``True``. Tracers can use it to mark the span as failed, so a failed call is no
+    longer indistinguishable from a tool that returns an ``{"error": ...}`` dict. The tag is set even when content
+    tracing is disabled.

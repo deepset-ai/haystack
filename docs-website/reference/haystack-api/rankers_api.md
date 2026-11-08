@@ -12,23 +12,28 @@ slug: "/rankers-api"
 
 Ranks documents for a query using a Large Language Model.
 
-The LLM is expected to return a JSON object containing ranked document indices.
+The LLM is expected to return a JSON object containing ranked document indices. Only the documents the LLM returns
+are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
+
+If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
+to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
+cutting off unranked documents could drop relevant ones.
 
 Usage example:
 
 ```python
 from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.rankers import LLMRanker
 
-chat_generator = OpenAIChatGenerator(
-    model="gpt-4.1-mini",
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
     generation_kwargs={
-        "temperature": 0.0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
+        "text": {
+            "format": {
+                "type": "json_schema",
                 "name": "document_ranking",
+                "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -45,8 +50,8 @@ chat_generator = OpenAIChatGenerator(
                     "required": ["documents"],
                     "additionalProperties": False,
                 },
-            },
-        },
+            }
+        }
     },
 )
 
@@ -77,13 +82,19 @@ Initialize the LLMRanker component.
 
 **Parameters:**
 
-- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-  output is used.
+- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+  JSON output and with `store` set to `False` is used.
 - **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
   `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
-- **top_k** (<code>int</code>) – The maximum number of documents to return.
-- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
-  input documents in fallback order.
+- **top_k** (<code>int</code>) – The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
+  documents.
+- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
+  deduplicated input documents unranked, in their original order, without applying `top_k`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0 or if `prompt` doesn't include exactly the variables `query` and
+  `documents`.
 
 #### warm_up
 
@@ -159,13 +170,21 @@ Before ranking, duplicate documents are removed.
 
 **Parameters:**
 
-- **query** (<code>str</code>) – The query used for reranking.
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
 - **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents unranked, in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 #### run_async
 
@@ -185,13 +204,21 @@ but can be used with `await` in an async code. If the chat generator only implem
 
 **Parameters:**
 
-- **query** (<code>str</code>) – The query used for reranking.
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
 - **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents unranked, in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 ## lost_in_the_middle
 
@@ -234,14 +261,13 @@ __init__(
 
 Initialize the LostInTheMiddleRanker.
 
-If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
-another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
-be breached will be included in the resulting list of documents, but all subsequent documents will be
-discarded.
-
 **Parameters:**
 
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
 
 #### run
@@ -263,7 +289,11 @@ if a score is present.
 
 - **documents** (<code>list\[Document\]</code>) – List of Documents to reorder.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 
 **Returns:**
 
@@ -273,6 +303,99 @@ if a score is present.
 **Raises:**
 
 - <code>ValueError</code> – If any of the documents is not textual.
+
+## max_sim
+
+### MaxSimRanker
+
+Ranks documents by their similarity to a query using precomputed multivector embeddings.
+
+It computes a MaxSim score by selecting the highest dot product with a document vector for each query vector,
+then summing these values.
+
+This component is typically used in two-stage retrieval. Separate dense and multivector embedders prepare
+the document representations, which are saved to a document store. At query time, the corresponding query
+embedders generate both representations. An embedding retriever quickly selects candidates using dense
+similarity. This ranker then uses the multivector embeddings for a more fine-grained comparison of the query
+and each candidate's content.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack.components.rankers import MaxSimRanker
+
+# Representative multivector embedding for ""How do solar panels work?""
+query_multivector_embedding = [[1.0, 0.0], [0.0, 1.0]]
+
+documents = [
+    Document(content="Wind turbines generate electricity.", multivector_embedding=[[1.0, 0.0], [0.0, 0.2]]),
+    Document(content="Solar panels turn sunlight into power.", multivector_embedding=[[0.95, 0.05], [0.15, 0.9]]),
+    Document(content="Batteries store energy.", multivector_embedding=[[0.3, 0.1], [0.1, 0.3]]),
+    Document(content="Solar cells absorb light.", multivector_embedding=[[0.9, 0.1], [0.1, 0.9]]),
+    Document(content="Trees absorb carbon dioxide.", multivector_embedding=[[0.1, 0.0], [0.0, 0.2]]),
+    Document(content="Rain falls from clouds.", multivector_embedding=[[0.0, 0.1], [0.1, 0.0]]),
+]
+
+ranker = MaxSimRanker(top_k=2)
+result = ranker.run(query_multivector_embedding=query_multivector_embedding, documents=documents)
+for document in result["documents"]:
+    print(f"{document.score:.2f}: {document.content}")
+# >> 1.85: Solar panels turn sunlight into power.
+# >> 1.80: Solar cells absorb light.
+```
+
+#### __init__
+
+```python
+__init__(*, top_k: int = 10) -> None
+```
+
+Initialize the MaxSimRanker component.
+
+**Parameters:**
+
+- **top_k** (<code>int</code>) – The maximum number of documents to return.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
+
+#### run
+
+```python
+run(
+    query_multivector_embedding: list[list[float]],
+    documents: list[Document],
+    *,
+    top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Returns documents ranked by their MaxSim score for the given query multivector embedding.
+
+Before ranking, documents without multivector embeddings are skipped with a warning. The remaining
+documents are deduplicated by their id, retaining only the document with the highest existing score
+if a score is present.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – The query multivector embedding. All vectors must have the same dimension as the document vectors.
+- **documents** (<code>list\[Document\]</code>) – The documents to rank. Documents whose `multivector_embedding` is `None` are skipped.
+  Present embeddings must be non-empty matrices of finite numbers.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be greater than 0.
+  If `None`, the value provided at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents sorted by descending MaxSim score,
+  with their `score` fields updated.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0, a multivector embedding is not a non-empty matrix of finite numbers,
+  or query and document vectors have different dimensions.
 
 ## meta_field
 

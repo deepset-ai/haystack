@@ -30,7 +30,10 @@ class SpyingSpan(Span):
 
     def set_content_tag(self, key: str, value: Any) -> None:
         """
-        Set a content tag, but only if content tracing is enabled in the tracer.
+        Record the content tag unconditionally, ignoring the global content tracing flag.
+
+        Tests that need content tracing to be gated use `EagerSpyingTracer`, whose spans inherit
+        `Span.set_content_tag`.
         """
         self.set_tag(key, value)
 

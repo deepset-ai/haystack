@@ -168,6 +168,32 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][1].content == "none value"
         assert result["documents"][2].content == "missing"
 
+    def test_run_none_group_value_is_treated_as_missing(self) -> None:
+        docs = [
+            Document(content="group None", meta={"group": None}),
+            Document(content="group 42", meta={"group": "42"}),
+            Document(content="no group key", meta={}),
+            Document(content="group 'None'", meta={"group": "None"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group")
+        result = ranker.run(documents=docs)
+        assert [doc.content for doc in result["documents"]] == [
+            "group 42",
+            "group 'None'",
+            "group None",
+            "no group key",
+        ]
+
+    def test_run_none_subgroup_value_is_treated_as_missing(self) -> None:
+        docs = [
+            Document(content="subgroup None", meta={"group": "g", "subgroup": None}),
+            Document(content="subgroup 'None'", meta={"group": "g", "subgroup": "None"}),
+            Document(content="no subgroup key", meta={"group": "g"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup")
+        result = ranker.run(documents=docs)
+        assert [doc.content for doc in result["documents"]] == ["subgroup None", "no subgroup key", "subgroup 'None'"]
+
     def test_run_metadata_with_different_data_types(self) -> None:
         """
         Test the behavior of the MetaFieldGroupingRanker component when the metadata values have different data types.

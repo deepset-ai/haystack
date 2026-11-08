@@ -4,6 +4,7 @@
 
 import contextlib
 import os
+import re
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -20,7 +21,7 @@ class TestOpenAIDocumentEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
         assert embedder.api_key.resolve_value() == "fake-api-key"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -63,6 +64,20 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.client is None
         assert embedder.async_client is None
 
+    @pytest.mark.parametrize("batch_size", [0, -1, 0.5, 32.0, "32", None])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(
+            ValueError, match=re.escape(f"batch_size must be a positive integer, but got {batch_size!r}")
+        ):
+            OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), batch_size=batch_size)
+
+    def test_from_dict_invalid_batch_size(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        data = OpenAIDocumentEmbedder().to_dict()
+        data["init_parameters"]["batch_size"] = 0
+        with pytest.raises(ValueError, match="batch_size must be a positive integer, but got 0"):
+            OpenAIDocumentEmbedder.from_dict(data)
+
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
@@ -100,7 +115,7 @@ class TestOpenAIDocumentEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api_base_url": None,
-                "model": "text-embedding-ada-002",
+                "model": "text-embedding-3-small",
                 "dimensions": None,
                 "organization": None,
                 "http_client_kwargs": None,

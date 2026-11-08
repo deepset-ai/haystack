@@ -5,6 +5,7 @@
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import Mock
 
 import pytest
 
@@ -53,7 +54,8 @@ class TestSkillToolset:
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         _write_skill(tmp_path, "excel", description="Use to edit spreadsheets.")
 
-        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        store = FileSystemSkillStore(tmp_path)
+        toolset = SkillToolset(store)
 
         # The catalog is only scanned on warm_up.
         assert toolset._is_warmed_up is False
@@ -61,6 +63,7 @@ class TestSkillToolset:
         toolset.warm_up()
 
         assert toolset._is_warmed_up is True
+        assert store._is_warmed_up is True
         assert set(toolset.skills) == {"pdf-forms", "excel"}
         assert toolset.skills["pdf-forms"].description == "Use to fill PDF forms."
 
@@ -71,19 +74,39 @@ class TestSkillToolset:
         assert set(toolset.skills) == {"pdf-forms"}
         assert toolset._is_warmed_up is True
 
-    def test_warm_up_is_idempotent(self, tmp_path):
+    def test_warm_up_is_idempotent(self, tmp_path, monkeypatch):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        list_skills = Mock(wraps=toolset._store.list_skills)
+        monkeypatch.setattr(toolset._store, "list_skills", list_skills)
         toolset.warm_up()
         toolset.warm_up()
         assert set(toolset.skills) == {"pdf-forms"}
+        list_skills.assert_called_once_with()
 
-    def test_warm_up_warms_up_the_store(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+    def test_close_is_safe_before_warm_up_and_when_repeated(self):
+        store = Mock(spec=FileSystemSkillStore, close=Mock())
+        toolset = SkillToolset(store)
+        toolset.close()
+        store.close.assert_called_once_with()
+        toolset.close()
+        assert store.close.call_count == 2
+
+    def test_close_releases_store_and_invalidates_catalog(self, tmp_path, monkeypatch):
+        _write_skill(tmp_path, "first", description="First skill")
         store = FileSystemSkillStore(tmp_path)
+        store_close, list_skills = Mock(), Mock(wraps=store.list_skills)
+        monkeypatch.setattr(store, "close", store_close, raising=False)
+        monkeypatch.setattr(store, "list_skills", list_skills)
         toolset = SkillToolset(store)
         toolset.warm_up()
-        assert store._is_warmed_up is True
+        list_skills.assert_called_once_with()
+        toolset.close()
+        store_close.assert_called_once_with()
+        assert toolset._skills == {}
+        toolset.warm_up()
+        assert "first" in toolset.skills
+        assert list_skills.call_count == 2
 
     def test_concurrent_warm_up(self, tmp_path):
         # Concurrent first use (e.g. parallel requests hitting a shared Agent) must produce a complete,

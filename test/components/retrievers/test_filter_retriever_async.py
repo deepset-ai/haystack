@@ -11,6 +11,7 @@ from haystack import Pipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.factory import document_store_class
 
 
 @pytest.fixture()
@@ -112,6 +113,16 @@ class TestFilterRetrieverAsync:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["all_docs"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_sync_only_docstore(self):
+        doc = Document(content="Python is a popular programming language", meta={"lang": "en"})
+        mocked_docstore_class = document_store_class("MockedDocumentStore", documents=[doc])
+        retriever = FilterRetriever(document_store=mocked_docstore_class())
+
+        result = await retriever.run_async(filters={"field": "lang", "operator": "==", "value": "en"})
+
+        assert result["documents"] == [doc]
 
     @pytest.mark.asyncio
     async def test_close_async(self):

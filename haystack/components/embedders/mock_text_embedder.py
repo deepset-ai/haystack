@@ -70,13 +70,13 @@ class MockTextEmbedder:
         :param meta: Additional metadata merged into the output `meta`.
         :param prefix: A string to add at the beginning of the text before embedding.
         :param suffix: A string to add at the end of the text before embedding.
-        :raises ValueError: If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-            if `embedding` is an empty list.
+        :raises ValueError: If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+            or if neither is provided and `dimension` is not positive.
         :raises TypeError: If `embedding` is not a sequence of numbers.
         """
         if embedding is not None and embedding_fn is not None:
             raise ValueError("Pass either 'embedding' or 'embedding_fn', not both.")
-        if dimension <= 0:
+        if embedding is None and embedding_fn is None and dimension <= 0:
             raise ValueError("'dimension' must be a positive integer.")
 
         self.embedding = _coerce_embedding(embedding, name="'embedding'") if embedding is not None else None

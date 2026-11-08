@@ -21,7 +21,7 @@ Usage example:
 ```python
 from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
 user_message = [ChatMessage.from_user("Who is the best American actor?")]
-generator = LlamaCppGenerator(model="zephyr-7b-beta.Q4_0.gguf", n_ctx=2048, n_batch=512)
+generator = LlamaCppChatGenerator(model="zephyr-7b-beta.Q4_0.gguf", n_ctx=2048, n_batch=512)
 
 print(generator.run(user_message, generation_kwargs={"max_tokens": 128}))
 # {"replies": [ChatMessage(content="John Cusack", role=<ChatRole.ASSISTANT: "assistant">, name=None, meta={...})}
@@ -101,6 +101,14 @@ warm_up() -> None
 
 Load and initialize the llama.cpp model.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the llama.cpp model.
+
 #### to_dict
 
 ```python
@@ -148,6 +156,8 @@ Run the text generation model on the given list of ChatMessages.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary containing keyword arguments to customize text generation.
+  These are merged per key with the `generation_kwargs` passed at initialization: keys provided here
+  take precedence, keys set only at initialization are kept.
   For more information on the available kwargs, see
   [llama.cpp documentation](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.create_chat_completion).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -183,6 +193,8 @@ only synchronous inference.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary containing keyword arguments to customize text generation.
+  These are merged per key with the `generation_kwargs` passed at initialization: keys provided here
+  take precedence, keys set only at initialization are kept.
   For more information on the available kwargs, see
   [llama.cpp documentation](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.create_chat_completion).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -195,82 +207,3 @@ only synchronous inference.
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: The responses from the model
-
-## haystack_integrations.components.generators.llama_cpp.generator
-
-### LlamaCppGenerator
-
-Provides an interface to generate text using LLM via llama.cpp.
-
-[llama.cpp](https://github.com/ggml-org/llama.cpp) is a project written in C/C++ for efficient inference of LLMs.
-It employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs).
-
-Usage example:
-
-```python
-from haystack_integrations.components.generators.llama_cpp import LlamaCppGenerator
-generator = LlamaCppGenerator(model="zephyr-7b-beta.Q4_0.gguf", n_ctx=2048, n_batch=512)
-
-print(generator.run("Who is the best American actor?", generation_kwargs={"max_tokens": 128}))
-# {'replies': ['John Cusack'], 'meta': [{"object": "text_completion", ...}]}
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str,
-    n_ctx: int | None = 0,
-    n_batch: int | None = 512,
-    model_kwargs: dict[str, Any] | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-) -> None
-```
-
-Initialize LlamaCppGenerator.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The path of a quantized model for text generation, for example, "zephyr-7b-beta.Q4_0.gguf".
-  If the model path is also specified in the `model_kwargs`, this parameter will be ignored.
-- **n_ctx** (<code>int | None</code>) – The number of tokens in the context. When set to 0, the context will be taken from the model.
-- **n_batch** (<code>int | None</code>) – Prompt processing maximum batch size.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing keyword arguments used to initialize the LLM for text generation.
-  These keyword arguments provide fine-grained control over the model loading.
-  In case of duplication, these kwargs override `model`, `n_ctx`, and `n_batch` init parameters.
-  For more information on the available kwargs, see
-  [llama.cpp documentation](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.__init__).
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary containing keyword arguments to customize text generation.
-  For more information on the available kwargs, see
-  [llama.cpp documentation](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.create_completion).
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Load and initialize the llama.cpp model.
-
-#### run
-
-```python
-run(
-    prompt: str, generation_kwargs: dict[str, Any] | None = None
-) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Run the text generation model on the given prompt.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – the prompt to be sent to the generative model.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary containing keyword arguments to customize text generation.
-  For more information on the available kwargs, see
-  [llama.cpp documentation](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.create_completion).
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary with the following keys:
-- `replies`: the list of replies generated by the model.
-- `meta`: metadata about the request.

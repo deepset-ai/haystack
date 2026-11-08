@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MultiRetriever``, ``MultiQueryTextRetriever``, ``MultiQueryEmbeddingRetriever``, ``LLMMetadataExtractor``
+    and ``LLMDocumentContentExtractor`` now raise a ``ValueError`` at initialization when ``max_workers`` is
+    smaller than 1. Previously the invalid value was accepted, ``run`` failed later inside ``ThreadPoolExecutor``,
+    and ``run_async`` silently treated it as 1.

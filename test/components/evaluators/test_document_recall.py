@@ -2,11 +2,42 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack import default_from_dict
 from haystack.components.evaluators.document_recall import DocumentRecallEvaluator, RecallMode
 from haystack.dataclasses import Document
+
+
+@pytest.mark.parametrize("mode", [RecallMode.SINGLE_HIT, RecallMode.MULTI_HIT])
+@pytest.mark.parametrize(
+    "truth, matching, different",
+    [
+        (["a", "b"], ["a", "b"], ["b", "a"]),
+        ({"a": 1, "b": 2}, {"b": 2, "a": 1}, {"a": 2, "b": 1}),
+        ({"ids": ["a", "b"]}, {"ids": ["a", "b"]}, {"ids": ["b", "a"]}),
+        ([], [], {}),
+        ([], [], ()),
+        ("a", "a", "b"),
+    ],
+)
+def test_container_metadata_comparison(mode: RecallMode, truth: Any, matching: Any, different: Any) -> None:
+    evaluator = DocumentRecallEvaluator(mode=mode, document_comparison_field="meta.source_ids")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [
+                Document(meta={"source_ids": truth}),
+                Document(meta={"source_ids": truth}),
+                Document(meta={"source_ids": different}),
+            ]
+        ],
+        retrieved_documents=[[Document(meta={"source_ids": matching}), Document(meta={"source_ids": matching})]],
+    )
+
+    expected = 1.0 if mode == RecallMode.SINGLE_HIT else 0.5
+    assert result == {"score": expected, "individual_scores": [expected]}
 
 
 def test_init_with_unknown_mode_string():
@@ -66,6 +97,15 @@ def test_run_with_nested_meta_comparison():
         ],
     )
     assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
+def test_run_with_empty_inputs():
+    evaluator = DocumentRecallEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
 
 
 class TestDocumentRecallEvaluatorSingleHit:

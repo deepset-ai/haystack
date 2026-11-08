@@ -68,13 +68,13 @@ class ChatPromptBuilder:
 
     ```python
     from haystack.components.builders import ChatPromptBuilder
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
-    llm = OpenAIChatGenerator(model="gpt-5-mini")
+    llm = OpenAIResponsesChatGenerator(model="gpt-5.6-luna")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -88,26 +88,18 @@ class ChatPromptBuilder:
 
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
                                         "template": messages}})
-    print(res)
-    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    # "Berlin is the capital city of Germany and one of the most vibrant
-    # and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    # capital of Germany!")], _name=None, _meta={'model': 'gpt-5-mini',
-    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
-    # 708}})]}}
+    print(res["llm"]["replies"][0].text)
+    # >> Berlin is the capital city of Germany and one of the most vibrant and diverse cities in Europe. Here are some
+    # >> key things to know...Enjoy your time exploring the vibrant and dynamic capital of Germany!
 
     messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
 
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
                                         "template": messages}})
 
-    print(res)
-    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    # "Here is the weather forecast for Berlin in the next 5
-    # days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    # closer to your visit.")], _name=None, _meta={'model': 'gpt-5-mini',
-    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
-    # 'total_tokens': 238}})]}}
+    print(res["llm"]["replies"][0].text)
+    # >> Here is the weather forecast for Berlin in the next 5 days: Day 1: Mostly cloudy with a high of 22°C (72°F)
+    # >> and...so it's always a good idea to check for updates closer to your visit.
     ```
 
     #### String prompt template
@@ -176,12 +168,13 @@ class ChatPromptBuilder:
                         # infer variables from template
                         if message.text is None:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                        if message.text and "templatize_part" in message.text:
-                            raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                        assigned_variables, template_variables = _extract_template_variables_and_assignments(
-                            env=self._env, template=message.text
-                        )
-                        extracted_variables += list(template_variables - assigned_variables)
+                        for text in message.texts:
+                            if "templatize_part" in text:
+                                raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                                env=self._env, template=text
+                            )
+                            extracted_variables += list(template_variables - assigned_variables)
             elif isinstance(template, str):
                 assigned_variables, template_variables = _extract_template_variables_and_assignments(
                     env=self._env, template=template
@@ -263,12 +256,15 @@ class ChatPromptBuilder:
                     self._validate_variables(set(template_variables_combined.keys()))
                     if message.text is None:
                         raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                    if message.text and "templatize_part" in message.text:
-                        raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                    compiled_template = self._env.from_string(message.text)
-                    rendered_text = compiled_template.render(template_variables_combined)
+                    rendered_content = list(message._content)
+                    for index, part in enumerate(rendered_content):
+                        if isinstance(part, TextContent):
+                            if "templatize_part" in part.text:
+                                raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                            rendered_text = self._env.from_string(part.text).render(template_variables_combined)
+                            rendered_content[index] = TextContent(text=rendered_text)
                     # use dataclasses.replace to avoid in-place mutation of the original message
-                    rendered_message: ChatMessage = replace(message, _content=[TextContent(text=rendered_text)])
+                    rendered_message: ChatMessage = replace(message, _content=rendered_content)
                     processed_messages.append(rendered_message)
                 else:
                     processed_messages.append(message)

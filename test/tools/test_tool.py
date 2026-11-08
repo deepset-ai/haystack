@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+import threading
+from datetime import timedelta
 from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -139,12 +142,17 @@ class TestTool:
 
         assert tool.tool_spec == {"name": "weather", "description": "Get weather report", "parameters": parameters}
 
-    def test_invoke(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
-        )
+    def test_invoke(self, monkeypatch):
+        calls = []
 
+        def invoke(city):
+            calls.append("invoke")
+            return get_weather_report(city)
+
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, function=invoke)
+        monkeypatch.setattr(tool, "warm_up", lambda: calls.append("warm_up"), raising=False)
         assert tool.invoke(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert calls == ["warm_up", "invoke"]
 
     def test_invoke_fail(self):
         tool = Tool(
@@ -296,6 +304,43 @@ class TestTool:
                 inputs_from_state={"state_key": "nonexistent"},
             )
 
+    @pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
+    def test_inputs_from_state_rejects_parameters_for_no_input_callable(self, is_async):
+        def no_args_function() -> str:
+            return "12:00"
+
+        async def async_no_args_function() -> str:
+            return "12:00"
+
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "inputs_from_state maps 'city' to unknown parameter 'nonexistent'. Valid parameters are: set()."
+            ),
+        ):
+            Tool(
+                name="clock",
+                description="What time is it?",
+                parameters={"type": "object", "properties": {}},
+                function=None if is_async else no_args_function,
+                async_function=async_no_args_function if is_async else None,
+                inputs_from_state={"city": "nonexistent"},
+            )
+
+    @pytest.mark.parametrize(
+        "properties", [{}, {"seconds": {"type": "number"}}], ids=["empty-schema", "partial-schema"]
+    )
+    def test_inputs_from_state_with_uninspectable_callable(self, properties):
+        tool = Tool(
+            name="duration",
+            description="Return the duration from state",
+            parameters={"type": "object", "properties": properties},
+            function=timedelta,
+            inputs_from_state={"duration_days": "days"},
+        )
+
+        assert tool.invoke(days=3) == timedelta(days=3)
+
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""
         with pytest.raises(TypeError, match=re.escape("inputs_from_state values must be str, not dict")):
@@ -376,19 +421,33 @@ def sync_tool():
 
 class TestToolAsync:
     @pytest.mark.asyncio
-    async def test_invoke_async_awaits_async_function(self, async_tool):
+    async def test_invoke_async_awaits_async_function(self, async_tool, monkeypatch):
+        warm_up_async = AsyncMock()
+        monkeypatch.setattr(async_tool, "warm_up", Mock(side_effect=AssertionError), raising=False)
+        monkeypatch.setattr(async_tool, "warm_up_async", warm_up_async, raising=False)
         assert async_tool.function is None
         assert async_tool.async_function is async_get_weather
         assert await async_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        warm_up_async.assert_awaited_once_with()
+
+    async def test_async_invocation_falls_back_to_sync_warm_up(self, async_tool, monkeypatch):
+        warm_up = Mock()
+        monkeypatch.setattr(async_tool, "warm_up", warm_up, raising=False)
+        await async_tool.invoke_async(city="Berlin")
+        warm_up.assert_called_once_with()
 
     def test_invoke_on_async_only_tool_raises(self, async_tool):
         with pytest.raises(ToolInvocationError, match=re.escape("has no sync `function`")):
             async_tool.invoke(city="Berlin")
 
     @pytest.mark.asyncio
-    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool):
+    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool, monkeypatch):
+        threads = []
+        monkeypatch.setattr(sync_tool, "warm_up", lambda: threads.append(threading.get_ident()), raising=False)
         # Sync-only tool: invoke_async dispatches to a worker thread via asyncio.to_thread.
         assert await sync_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert len(threads) == 1
+        assert threads[0] != threading.get_ident()
 
     @pytest.mark.asyncio
     async def test_async_function_is_preferred_when_both_set(self):
@@ -418,6 +477,11 @@ class TestToolAsync:
 
         with pytest.raises(ToolInvocationError, match="kaboom"):
             await tool.invoke_async(city="Berlin")
+
+    async def test_warm_up_error_is_wrapped(self, sync_tool, monkeypatch):
+        monkeypatch.setattr(sync_tool, "warm_up", Mock(side_effect=ValueError("setup failed")), raising=False)
+        with pytest.raises(ToolInvocationError, match="setup failed"):
+            await sync_tool.invoke_async(city="Berlin")
 
     @pytest.mark.parametrize(
         "kwargs, expected_function, expected_async_function",

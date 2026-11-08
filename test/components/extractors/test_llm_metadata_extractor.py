@@ -4,6 +4,7 @@
 
 import asyncio
 import os
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -14,6 +15,19 @@ from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGen
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+
+class ErrorKeyChatGenerator:
+    """Wrapper-style generator whose output dict always includes an "error" field."""
+
+    def __init__(self, response: str) -> None:
+        self._response = response
+
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant(self._response)], "error": None}
+
+    async def run_async(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return self.run(messages, **kwargs)
 
 
 @pytest.fixture
@@ -93,6 +107,16 @@ class TestLLMMetadataExtractor:
 
         with pytest.raises(ValueError, match="exactly one variable called 'document'"):
             _ = LLMMetadataExtractor(prompt="prompt {{ document.content }} {{ extra }}", chat_generator=chat_generator)
+
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, monkeypatch, max_workers):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            _ = LLMMetadataExtractor(
+                prompt="prompt {{ document.content }}", chat_generator=chat_generator, max_workers=max_workers
+            )
 
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -288,6 +312,23 @@ class TestLLMMetadataExtractor:
         assert result["failed_documents"] == []
         assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
 
+    def test_run_generator_output_with_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["topic"],
+            chat_generator=ErrorKeyChatGenerator(response='{"topic": "physics"}'),
+        )
+
+        result = extractor.run(documents=[Document(content="content"), Document(content="")])
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta == {"topic": "physics"}
+        assert len(result["failed_documents"]) == 1
+        assert result["failed_documents"][0].meta == {
+            "metadata_extraction_error": "Document has no content, skipping LLM call.",
+            "metadata_extraction_response": None,
+        }
+
     def test_run_raises_parse_error_when_raise_on_failure_is_true(self, caplog: pytest.LogCaptureFixture) -> None:
         extractor = LLMMetadataExtractor(
             prompt="prompt {{document.content}}",
@@ -312,6 +353,24 @@ class TestLLMMetadataExtractor:
 
         assert result["failed_documents"] == []
         assert result["documents"][0].meta == {"error": "timeout", "severity": "high"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_output_with_error_key_is_not_treated_as_failure(self) -> None:
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["topic"],
+            chat_generator=ErrorKeyChatGenerator(response='{"topic": "physics"}'),
+        )
+
+        result = await extractor.run_async(documents=[Document(content="content"), Document(content="")])
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta == {"topic": "physics"}
+        assert len(result["failed_documents"]) == 1
+        assert result["failed_documents"][0].meta == {
+            "metadata_extraction_error": "Document has no content, skipping LLM call.",
+            "metadata_extraction_response": None,
+        }
 
     @pytest.mark.asyncio
     async def test_run_async_raises_parse_error_when_raise_on_failure_is_true(self) -> None:
@@ -466,8 +525,9 @@ class TestLLMMetadataExtractor:
             prompt=ner_prompt,
             expected_keys=["entities"],
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -492,7 +552,7 @@ class TestLLMMetadataExtractor:
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )
@@ -526,8 +586,9 @@ class TestLLMMetadataExtractor:
             prompt=ner_prompt,
             expected_keys=["entities"],
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -552,7 +613,7 @@ class TestLLMMetadataExtractor:
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )

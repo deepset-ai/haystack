@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Fixed an issue where ``XLSXToDocument`` dropped literal text values such as ``"NA"`` and ``"N/A"``,
+    converting them into empty cells. When neither ``keep_default_na`` nor ``na_values`` is supplied in
+    ``read_excel_kwargs``, the converter uses ``keep_default_na=False`` and ``na_values=[""]`` to preserve
+    literal text while still recognizing empty cells as missing.
+upgrade:
+  - |
+    If you don't set ``keep_default_na`` or ``na_values`` in ``read_excel_kwargs``, ``XLSXToDocument`` now
+    keeps cell text such as ``"NA"``, ``"N/A"``, ``"NULL"``, and ``"None"`` instead of treating it as missing.
+    A numeric column that contains such text is therefore no longer converted to floats, so in CSV output
+    its whole numbers render as ``1`` instead of ``1.0``.
+    To restore the previous behavior, pass ``read_excel_kwargs={"keep_default_na": True}``.

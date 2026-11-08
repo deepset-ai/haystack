@@ -4,9 +4,10 @@
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
-from unittest.mock import patch
+from typing import Annotated, Any
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
@@ -173,6 +174,32 @@ class TestComponentTool:
         assert "reply" in result
         assert result["reply"] == "Hello, world!"
 
+    def test_custom_parameters_warn_unknown_component_input(self, caplog):
+        parameters = {"type": "object", "properties": {"text": {"type": "string"}, "unknown": {"type": "string"}}}
+        tool = ComponentTool(component=SimpleComponent(), parameters=parameters)
+        assert "unknown" in caplog.text
+        restored = ComponentTool.from_dict(tool.to_dict())
+        assert restored.invoke(text="world", unknown="ignored") == {"reply": "Hello, world!"}
+
+    @pytest.mark.parametrize("parameters", [{"type": "object"}, {"type": "object", "properties": {}}])
+    def test_custom_parameters_reject_missing_mandatory_input(self, parameters):
+        with pytest.raises(ValueError, match="requires the inputs.*text"):
+            ComponentTool(component=SimpleComponent(), parameters=parameters)
+
+    def test_unknown_arguments_are_skipped(self, caplog):
+        tool = ComponentTool(component=DualModeComponent())
+        assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
+        assert "unexpected" in caplog.text
+
+    def test_custom_parameters_allow_mandatory_input_from_state(self):
+        parameters = {"type": "object", "properties": {}}
+
+        tool = ComponentTool(
+            component=SimpleComponent(), parameters=parameters, inputs_from_state={"user_text": "text"}
+        )
+
+        assert tool.parameters == parameters
+
     def test_from_component_long_description(self):
         tool = ComponentTool(component=SimpleComponent(), description="".join(["A"] * 1024))
         assert len(tool.description) == 1024
@@ -193,6 +220,16 @@ class TestComponentTool:
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
         with pytest.raises(TypeError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})  # type: ignore[dict-item]
+
+    def test_inputs_from_state_rejects_parameters_for_component_without_inputs(self):
+        @component
+        class NoInputComponent:
+            @component.output_types(reply=str)
+            def run(self) -> dict[str, str]:
+                return {"reply": "Hello!"}
+
+        with pytest.raises(ValueError, match="unknown parameter 'text'. Valid parameters are: set\\(\\)\\."):
+            ComponentTool(component=NoInputComponent(), inputs_from_state={"state_text": "text"})
 
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
@@ -471,22 +508,19 @@ class TestComponentTool:
         assert result["output_a"] == "A processed: test input"
         assert result["output_b"] == "B processed: test input"
 
-    def test_warm_up_is_idempotent(self):
-        """Test that calling warm_up multiple times only warms up the component once."""
-        from unittest.mock import MagicMock, patch
-
+    def test_warm_up_delegates_to_component(self):
         component = SimpleComponent()
-
         tool = ComponentTool(component=component)
+        with patch.object(component, "warm_up") as component_warm_up:
+            tool.warm_up()
+            tool.warm_up()
+            assert component_warm_up.call_count == 2
 
-        with patch.object(component, "warm_up", MagicMock()) as mock_warm_up:
-            # Call warm_up multiple times
-            tool.warm_up()
-            tool.warm_up()
-            tool.warm_up()
-
-            # Component's warm_up should only be called once
-            mock_warm_up.assert_called_once()
+    def test_close_delegates_to_component(self):
+        component = SimpleComponent()
+        with patch.object(component, "close", create=True) as component_close:
+            ComponentTool(component=component).close()
+            component_close.assert_called_once_with()
 
     def test_from_component_with_callable_params_skipped(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -507,7 +541,30 @@ class TestComponentTool:
         assert "streaming_callback" not in param_names
         assert "messages" in param_names
 
-    def test_from_component_with_state_param_excluded_from_schema(self):
+    @pytest.mark.parametrize(
+        "callback_type",
+        [
+            Annotated[Callable[[str], str], "Format the output"],
+            Annotated[Callable[[str], str] | None, "Format the output"],
+            Annotated[Callable[[str], str], "Format the output"] | None,
+        ],
+    )
+    def test_from_component_with_annotated_callable_params_skipped(self, callback_type):
+        class FormatQuery:
+            @component.output_types(result=str)
+            def run(self, query: str, callback: Callable[[str], str] | None = str.upper) -> dict[str, str]:
+                return {"result": callback(query) if callback else query}
+
+        FormatQuery.run.__annotations__["callback"] = callback_type
+        formatter = component(FormatQuery)()
+        tool = ComponentTool(component=formatter)
+
+        assert set(tool.parameters["properties"]) == {"query"}
+        assert tool.parameters["required"] == ["query"]
+        assert tool.invoke(query="hello") == {"result": "HELLO"}
+
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_from_component_with_state_param_excluded_from_schema(self, state_annotation: Any) -> None:
         @component
         class ComponentWithState:
             """A component that takes State as a direct input."""
@@ -516,11 +573,18 @@ class TestComponentTool:
             def run(self, query: str, state: State) -> dict:
                 return {"result": query}
 
+            run.__annotations__["state"] = state_annotation
+
         tool = ComponentTool(component=ComponentWithState(), name="state_comp", description="test")
 
         param_names = list(tool.parameters.get("properties", {}).keys())
         assert "state" not in param_names
         assert "query" in param_names
+
+        custom_tool = ComponentTool(
+            component=ComponentWithState(), parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+        )
+        assert custom_tool.invoke(query="hello", state=State(schema={})) == {"result": "hello"}
 
     def test_from_component_with_optional_state_param_excluded_from_schema(self):
         @component
@@ -906,6 +970,11 @@ def dual_tool():
 
 
 class TestComponentToolAsync:
+    @pytest.mark.asyncio
+    async def test_unknown_arguments_are_skipped(self, dual_tool, caplog):
+        assert await dual_tool.invoke_async(text="hi", unexpected=42) == {"reply": "async:hi"}
+        assert "unexpected" in caplog.text
+
     def test_async_function_is_wired_only_when_component_has_run_async(self, sync_tool, dual_tool):
         assert sync_tool.function is not None
         assert sync_tool.async_function is None
@@ -922,3 +991,23 @@ class TestComponentToolAsync:
 
     def test_invoke_uses_run_on_dual_mode_component(self, dual_tool):
         assert dual_tool.invoke(text="hi") == {"reply": "sync:hi"}
+
+    async def test_async_lifecycle_delegates_to_component(self, dual_tool, monkeypatch):
+        component_warm_up_async, component_close_async = AsyncMock(), AsyncMock()
+        monkeypatch.setattr(dual_tool._component, "warm_up_async", component_warm_up_async, raising=False)
+        monkeypatch.setattr(dual_tool._component, "close_async", component_close_async, raising=False)
+        await dual_tool.warm_up_async()
+        await dual_tool.close_async()
+        component_warm_up_async.assert_awaited_once_with()
+        component_close_async.assert_awaited_once_with()
+
+    async def test_sync_component_uses_sync_lifecycle(self, sync_tool, monkeypatch):
+        component_warm_up, component_close = Mock(), Mock()
+        monkeypatch.setattr(sync_tool._component, "warm_up", component_warm_up, raising=False)
+        monkeypatch.setattr(sync_tool._component, "close", component_close, raising=False)
+        monkeypatch.setattr(sync_tool._component, "warm_up_async", AsyncMock(side_effect=AssertionError), raising=False)
+        monkeypatch.setattr(sync_tool._component, "close_async", AsyncMock(side_effect=AssertionError), raising=False)
+        await sync_tool.warm_up_async()
+        await sync_tool.close_async()
+        component_warm_up.assert_called_once_with()
+        component_close.assert_called_once_with()

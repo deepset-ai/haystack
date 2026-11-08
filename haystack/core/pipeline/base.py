@@ -10,10 +10,9 @@ from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar, Union, get_args
+from typing import Any, Self, TextIO, TypeVar, Union, get_args
 
 import networkx
-from typing_extensions import Self
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -764,7 +763,8 @@ class PipelineBase:  # noqa: PLW1641
             receiver_socket_name=receiver_socket.name,
         )
 
-        if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
+        edge_key = f"{sender_socket.name}/{receiver_socket.name}"
+        if self.graph.has_edge(sender_component_name, receiver_component_name, key=edge_key):
             # This is already connected, nothing to do
             return self
 
@@ -1237,6 +1237,15 @@ class PipelineBase:  # noqa: PLW1641
         # check whether the data is a nested dictionary of component inputs where each key is a component name
         # and each value is a dictionary of input parameters for that component
         is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if data and is_nested_component_input and not any(name in self.graph.nodes for name in data):
+            # Dictionary values can also be flat inputs. Include connected sockets so the input format does not
+            # depend on the value type, but require every key to name a socket to preserve unknown-component errors.
+            socket_names = {
+                socket_name
+                for sockets in self.inputs(include_components_with_connected_inputs=True).values()
+                for socket_name in sockets
+            }
+            is_nested_component_input = not data.keys() <= socket_names
         if not is_nested_component_input:
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
@@ -1784,9 +1793,7 @@ class PipelineBase:  # noqa: PLW1641
 
         :returns:
             A tuple containing:
-            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
-            - A dictionary mapping component names to boolean indicating that this component was part of a
-              SuperComponent
+            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all its SuperComponents
             - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()

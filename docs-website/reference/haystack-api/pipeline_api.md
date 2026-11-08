@@ -72,7 +72,7 @@ Usage:
 from haystack import Pipeline, Document
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -105,7 +105,7 @@ prompt_builder = ChatPromptBuilder(
     variables=["question", "documents"]
 )
 
-llm = OpenAIChatGenerator()
+llm = OpenAIResponsesChatGenerator()
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
 rag_pipeline.add_component("prompt_builder", prompt_builder)
@@ -198,7 +198,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack import Pipeline
 import asyncio
@@ -227,7 +227,7 @@ prompt_template = [
 # Create and connect pipeline components
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template)
-llm = OpenAIChatGenerator()
+llm = OpenAIResponsesChatGenerator()
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
@@ -303,7 +303,7 @@ import asyncio
 
 from haystack import Document
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
@@ -332,7 +332,7 @@ prompt_template = [
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template)
-llm = OpenAIChatGenerator()
+llm = OpenAIResponsesChatGenerator()
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
@@ -354,13 +354,8 @@ data = {
 
 results = asyncio.run(run_inner(data, include_outputs_from={"retriever", "llm"}))
 
-print(results["llm"]["replies"])
-# [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
-# _name=None, _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage':
-# {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75,
-# 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0,
-# audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details':
-# PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]
+print(results["llm"]["replies"][0].text)
+# >> Jean lives in Paris.
 ```
 
 **Parameters:**
@@ -434,7 +429,7 @@ Usage:
 import asyncio
 
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
 
@@ -443,7 +438,7 @@ pipe.add_component(
     "prompt_builder",
     ChatPromptBuilder(template=[ChatMessage.from_user("Tell me about {{topic}}")]),
 )
-pipe.add_component("llm", OpenAIChatGenerator())
+pipe.add_component("llm", OpenAIResponsesChatGenerator())
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
 async def main():

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``XLSXToDocument`` now escapes pipe characters and replaces in-cell line breaks
+    with spaces in the default Markdown pipe table output. This keeps cell content
+    from being interpreted as additional table columns or rows.

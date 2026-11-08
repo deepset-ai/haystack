@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``OpenAIChatGenerator`` and ``OpenAIResponsesChatGenerator`` no longer drop a tool call whose arguments are an
+    empty string, and no longer raise ``TypeError`` when they are ``null``, in non-streaming responses.
+    OpenAI-compatible servers such as vLLM send these for a tool with no parameters. Both now become empty
+    arguments, as they already did in streaming responses and in ``ChatMessage.from_openai_dict_format``.

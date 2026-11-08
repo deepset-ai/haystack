@@ -1,0 +1,4 @@
+enhancements:
+  - |
+    ``OpenAIChatGenerator`` and ``OpenAIResponsesChatGenerator`` now preserve OpenAI API refusals in
+    ``ChatMessage.meta["refusal"]``. Applications can inspect this metadata to detect and handle refusals.

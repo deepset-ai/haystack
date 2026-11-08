@@ -51,3 +51,9 @@ If you want to reuse pipelines, you can save them to disk in YAML format or shar
 
 Here is a short Haystack pipeline, illustrated:
 <ClickableImage src="/img/00f5fe8-Pipeline_Illustrations_2.png" alt="RAG architecture overview showing query flow through retrieval and generation stages, with document stores providing context for the language model" />
+
+### Agents
+
+A pipeline runs the same graph every time - predictable, but fixed. An [Agent](agents.mdx) hands step-by-step control to the LLM instead: it decides which tool to call next based on what the previous step returned, which suits open-ended tasks where the right sequence of steps isn't known upfront.
+
+An `Agent` is itself a component, so you can use one inside a pipeline, or wrap a whole pipeline as a tool for an agent to call. See [Choosing Between Pipelines and Agents](agents/choosing-between-pipelines-and-agents.mdx) for how to decide, and [Multi-Agent Systems](agents/multi-agent-systems.mdx) for composing several agents together.

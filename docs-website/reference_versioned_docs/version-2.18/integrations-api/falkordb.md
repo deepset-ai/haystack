@@ -111,6 +111,33 @@ set during initialisation.
 
 - <code>ValueError</code> – If no query string is provided (both here and at init).
 
+#### run_async
+
+```python
+run_async(
+    query: str | None = None, parameters: dict[str, Any] | None = None
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents asynchronously by executing an OpenCypher query.
+
+If a `query` is provided here, it overrides the `custom_cypher_query`
+set during initialisation.
+
+**Parameters:**
+
+- **query** (<code>str | None</code>) – Optional OpenCypher query string.
+- **parameters** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of query parameters (referenced as
+  `$param_name` in the Cypher string).
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary containing a `"documents"` key with the retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If no query string is provided (both here and at init).
+
 #### close
 
 ```python
@@ -118,6 +145,14 @@ close() -> None
 ```
 
 Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 ## haystack_integrations.components.retrievers.falkordb.embedding_retriever
 
@@ -223,6 +258,30 @@ Retrieve documents by vector similarity.
 
 - <code>dict\[str, list\[Document\]\]</code> – Dictionary containing a `"documents"` key with the retrieved documents.
 
+#### run_async
+
+```python
+run_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents asynchronously by vector similarity.
+
+**Parameters:**
+
+- **query_embedding** (<code>list\[float\]</code>) – Query embedding vector.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional Haystack filters to be combined with the init filters based
+  on the configured filter policy.
+- **top_k** (<code>int | None</code>) – Maximum number of documents to return. If not provided, the default
+  top_k from initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary containing a `"documents"` key with the retrieved documents.
+
 #### close
 
 ```python
@@ -230,6 +289,212 @@ close() -> None
 ```
 
 Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
+## haystack_integrations.components.retrievers.falkordb.text_to_cypher_retriever
+
+### FalkorDBTextToCypherRetriever
+
+Retrieve documents from FalkorDB using natural-language queries and a chat generator.
+
+The generator translates the user query into read-only Cypher using a sampled graph schema
+cached during warm-up. Configure it for structured output using `RESPONSE_SCHEMA`. Query results
+must return document nodes or mappings in the first column.
+
+Schema sampling may miss rare patterns; close and warm up again to refresh it after graph changes.
+The user query and schema are sent to the generator's provider. Read-only queries can still expose
+sensitive data or be expensive: use least-privilege access and `recreate_graph=False` for existing graphs.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import FalkorDBTextToCypherRetriever
+
+store = FalkorDBDocumentStore()
+store.write_documents([Document(content="Haystack supports GraphRAG")])
+generator = OpenAIResponsesChatGenerator(generation_kwargs={
+    "text": {
+        "format": {
+            "type": "json_schema",
+            "name": "cypher_query",
+            "strict": True,
+            "schema": FalkorDBTextToCypherRetriever.RESPONSE_SCHEMA,
+        },
+    }
+})
+retriever = FalkorDBTextToCypherRetriever(
+    document_store=store,
+    chat_generator=generator,
+    schema_sample_size=100,
+)
+result = retriever.run(query="Find documents mentioning GraphRAG")
+print(result["documents"])  # Documents matching the generated query
+```
+
+#### __init__
+
+```python
+__init__(
+    document_store: FalkorDBDocumentStore,
+    chat_generator: ChatGenerator,
+    *,
+    schema_sample_size: int = 100,
+    top_k: int = 10,
+    timeout: int | None = None,
+    system_prompt: str | None = None
+) -> None
+```
+
+Initialize the retriever without opening connections.
+
+**Parameters:**
+
+- **document_store** (<code>FalkorDBDocumentStore</code>) – Store against which generated read-only queries are executed.
+- **chat_generator** (<code>ChatGenerator</code>) – Haystack chat generator configured for `RESPONSE_SCHEMA` structured output.
+- **schema_sample_size** (<code>int</code>) – Positive number of nodes sampled per label and of relationships sampled per type
+  at warm-up.
+- **top_k** (<code>int</code>) – Positive maximum number of unique documents to return. The generator is asked to add a matching
+  `LIMIT`, and results are deduplicated by document ID and truncated in case it does not.
+- **timeout** (<code>int | None</code>) – Positive maximum query runtime in milliseconds, enforced by the FalkorDB server; `None` uses
+  the server default. Bounds the cost of expensive generated queries, which `top_k` alone cannot.
+- **system_prompt** (<code>str | None</code>) – Template for the system prompt sent to the generator; `None` uses
+  `DEFAULT_SYSTEM_PROMPT`. Must contain a `{graph_schema}` placeholder, which is replaced with the sampled
+  graph schema as JSON at warm-up. Other braces are kept as-is, so Cypher examples need no escaping. A
+  `LIMIT` instruction based on `top_k` is appended on every run.
+
+**Raises:**
+
+- <code>ValueError</code> – `document_store` is not a `FalkorDBDocumentStore`, `schema_sample_size`, `top_k`, or
+  `timeout` is not positive, or `system_prompt` lacks the `{graph_schema}` placeholder.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the chat generator, then discover the sampled graph schema and cache the system prompt once.
+
+Called lazily by `run()`.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the chat generator, then discover the sampled graph schema asynchronously and cache the prompt once.
+
+Called lazily by `run_async()`. Uses the generator's `warm_up_async()` when available, otherwise
+its `warm_up()`. Concurrent async calls share a single schema discovery.
+
+#### close
+
+```python
+close() -> None
+```
+
+Clear the cached prompt and release the document store's synchronous resources.
+
+The next warm-up discovers the schema again. The caller owns the generator's lifecycle.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Clear the cached prompt and release the document store's asynchronous resources.
+
+The next warm-up discovers the schema again. The caller owns the generator's lifecycle.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the retriever and its nested components.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary containing the component type and constructor parameters.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> FalkorDBTextToCypherRetriever
+```
+
+Deserialize the retriever using Haystack's generator deserialization allowlist.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized component dictionary.
+
+**Returns:**
+
+- <code>FalkorDBTextToCypherRetriever</code> – Reconstructed retriever.
+
+#### run
+
+```python
+run(query: str, *, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Generate a Cypher query and execute it through FalkorDB's read-only command.
+
+Graph traversal can be expensive even when the query returns few documents.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Natural-language retrieval request.
+- **top_k** (<code>int | None</code>) – Positive maximum number of unique documents to return; overrides the init value.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Mapping with `documents` (list of at most `top_k` unique retrieved Documents).
+
+**Raises:**
+
+- <code>ValueError</code> – `top_k` is not positive, or the generator reply violates the structured-output contract.
+- <code>DocumentStoreError</code> – Database retrieval or document conversion fails, or the query exceeds `timeout`.
+
+#### run_async
+
+```python
+run_async(query: str, *, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Generate and execute a read-only Cypher query asynchronously.
+
+Warms up lazily and reuses the cached schema. Database operations use native async I/O. Generators
+without `run_async()` run in a worker thread; cancelling the await does not stop that thread.
+Graph traversal can be expensive even when few documents are returned.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Natural-language retrieval request.
+- **top_k** (<code>int | None</code>) – Positive maximum number of unique documents to return; overrides the init value.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Mapping with `documents` (list of at most `top_k` unique retrieved Documents).
+
+**Raises:**
+
+- <code>ValueError</code> – `top_k` is not positive, or the generator reply violates the structured-output contract.
+- <code>DocumentStoreError</code> – Database retrieval or document conversion fails, or the query exceeds `timeout`.
 
 ## haystack_integrations.document_stores.falkordb.document_store
 
@@ -347,6 +612,36 @@ close() -> None
 
 Release the associated synchronous resources.
 
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Lazily open the FalkorDB connection and set up the graph schema.
+
+Called at the start of every public method so the store remains
+serialisable without an active database connection.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Lazily open the asynchronous FalkorDB connection and set up the graph schema.
+
+Called at the start of every asynchronous public method so the store remains
+serialisable without an active database connection.
+
 #### count_documents
 
 ```python
@@ -379,7 +674,7 @@ Retrieve all documents that match the provided Haystack filters.
 
 **Raises:**
 
-- <code>ValueError</code> – If the filter dict is malformed.
+- <code>FilterError</code> – If the filter dict is malformed.
 
 #### write_documents
 
@@ -543,6 +838,224 @@ get_metadata_field_unique_values(
 ```
 
 Return distinct values for the given metadata field with optional filtering and pagination.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: Cypher's `DISTINCT` treats a whole-number float (e.g. `1.0`) as identical to a
+numerically equal int (`1`), so those two collapse into a single value. Floats with a fractional
+part (e.g. `1.5`) are unaffected.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – Metadata field name. May include or omit the `meta.` prefix.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata
+  field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – Maximum number of values to return per page. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
+
+**Returns:**
+
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of `(values, total_count)`. Values are returned in their original type.
+  `total_count` is the number of distinct values matching the filter, independent of
+  pagination.
+
+#### count_documents_async
+
+```python
+count_documents_async() -> int
+```
+
+Return the number of documents currently stored in the graph asynchronously.
+
+**Returns:**
+
+- <code>int</code> – Integer count of document nodes.
+
+#### filter_documents_async
+
+```python
+filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
+```
+
+Retrieve all documents that match the provided Haystack filters asynchronously.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional Haystack filter dict. When `None` all documents are
+  returned. For filter syntax see
+  [Metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns:**
+
+- <code>list\[Document\]</code> – List of matching Documents.
+
+**Raises:**
+
+- <code>FilterError</code> – If the filter dict is malformed.
+
+#### write_documents_async
+
+```python
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
+```
+
+Write documents to the FalkorDB graph asynchronously using `UNWIND` + `MERGE` for batching.
+
+Document `meta` fields are stored **flat** at the same level as `id` and
+`content` — no prefix is added. This matches the layout used by the
+`neo4j-haystack` reference integration.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – List of :class:`haystack.dataclasses.Document` objects.
+- **policy** (<code>DuplicatePolicy</code>) – How to handle documents whose `id` already exists.
+  Defaults to :attr:`DuplicatePolicy.NONE` (treated as FAIL).
+
+**Returns:**
+
+- <code>int</code> – Number of documents written or updated.
+
+**Raises:**
+
+- <code>ValueError</code> – If `documents` contains non-Document elements.
+- <code>DuplicateDocumentError</code> – If `policy` is FAIL / NONE and a duplicate
+  ID is encountered.
+- <code>DocumentStoreError</code> – If any other DB error occurs.
+
+#### delete_documents_async
+
+```python
+delete_documents_async(document_ids: list[str]) -> None
+```
+
+Delete documents by their IDs asynchronously.
+
+**Parameters:**
+
+- **document_ids** (<code>list\[str\]</code>) – List of document IDs to remove from the graph.
+
+#### delete_all_documents_async
+
+```python
+delete_all_documents_async() -> None
+```
+
+Delete all documents from the graph asynchronously.
+
+#### delete_by_filter_async
+
+```python
+delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Delete all documents that match the provided filters asynchronously.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict.
+
+**Returns:**
+
+- <code>int</code> – Number of documents deleted.
+
+#### update_by_filter_async
+
+```python
+update_by_filter_async(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Update metadata fields on matching documents asynchronously.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict selecting which documents to update.
+- **meta** (<code>dict\[str, Any\]</code>) – Metadata fields to set. Keys may include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>int</code> – Number of documents updated.
+
+#### count_documents_by_filter_async
+
+```python
+count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Return the number of documents that match the provided filters asynchronously.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict.
+
+**Returns:**
+
+- <code>int</code> – Integer count of matching document nodes.
+
+#### count_unique_metadata_by_filter_async
+
+```python
+count_unique_metadata_by_filter_async(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
+```
+
+Return the number of unique values for each metadata field among matching documents asynchronously.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict. Pass an empty dict to count across all documents.
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names. May include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>dict\[str, int\]</code> – Dict mapping each field name (without `meta.` prefix) to its unique value count.
+
+#### get_metadata_fields_info_async
+
+```python
+get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Return type information for each metadata field present on document nodes asynchronously.
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, str\]\]</code> – Dict mapping field names to a `{"type": <typename>}` dict.
+  Type names are `"str"`, `"int"`, `"float"`, or `"bool"`.
+
+#### get_metadata_field_min_max_async
+
+```python
+get_metadata_field_min_max_async(metadata_field: str) -> dict[str, Any]
+```
+
+Return the minimum and maximum values for the given metadata field asynchronously.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – Metadata field name. May include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dict with keys `"min"` and `"max"`. Values are `None` when no documents
+  have a non-null value for the field.
+
+#### get_metadata_field_unique_values_async
+
+```python
+get_metadata_field_unique_values_async(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
+```
+
+Return distinct values for the given metadata field with optional filtering and pagination asynchronously.
 
 **Note**: values of different types are kept distinct even when they compare equal in Python
 (e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with

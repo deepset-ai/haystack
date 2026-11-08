@@ -3,6 +3,7 @@ title: "DocumentJoiner"
 id: documentjoiner
 slug: "/documentjoiner"
 description: "Use this component in hybrid retrieval pipelines or indexing pipelines with multiple file converters to join lists of documents."
+hep_available: true
 ---
 
 # DocumentJoiner
@@ -24,9 +25,10 @@ Use this component in hybrid retrieval pipelines or indexing pipelines with mult
 
 ## Overview
 
-`DocumentJoiner` joins input lists of documents from multiple connections and outputs them as one list. You can choose how you want the lists to be joined by specifying the `join_mode`. There are four options available:
+`DocumentJoiner` joins input lists of documents from multiple connections and outputs them as one list. You can choose how you want the lists to be joined by specifying the `join_mode`. There are five options available:
 
 - `concatenate` - Combines document from multiple components, discarding any duplicates. documents get their scores from the last component in the pipeline that assigns scores. This mode doesn’t influence document scores.
+- `merge_embeddings` - Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields of documents with the same ID. All other fields, including `content`, `meta`, and `score`, are kept from the first document received with that ID.
 - `merge` - Merges the scores of duplicate documents coming from multiple components. You can also assign a weight to the scores to influence how they’re merged and set the top_k limit to specify how many documents you want `DocumentJoiner` to return.
 - `reciprocal_rank_fusion`- Combines documents into a single list based on their ranking received from multiple components. It then calculates a new score based on the ranks of documents in the input lists. If the same Document appears in more than one list (was returned by multiple components), it gets a higher score.
 - `distribution_based_rank_fusion` – Combines rankings from multiple sources into a single, unified ranking. It analyzes how scores are spread out and normalizes them, ensuring that each component's scoring method is taken into account. This normalization helps to balance the influence of each component, resulting in a more robust and fair combined ranking. If a document appears in multiple lists, its final score is adjusted based on the distribution of scores from all lists.
@@ -193,6 +195,59 @@ preprocessing_pipeline.connect("document_embedder", "document_writer")
 preprocessing_pipeline.run(
     {"file_type_router": {"sources": list(Path(output_dir).glob("**/*"))}},
 )
+```
+
+#### Indexing with dense and sparse embeddings
+
+This pipeline runs the Sentence Transformers dense and sparse document embedders
+concurrently. `DocumentJoiner` combines their embedding fields by document ID,
+then `DocumentWriter` saves the combined documents to Qdrant.
+
+Install the integrations:
+
+```shell
+pip install sentence-transformers-haystack qdrant-haystack
+```
+
+```python
+import asyncio
+
+from haystack import Document, Pipeline
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersSparseDocumentEmbedder,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(location=":memory:", use_sparse_embeddings=True)
+
+pipeline = Pipeline()
+pipeline.add_component("dense_embedder", SentenceTransformersDocumentEmbedder())
+pipeline.add_component("sparse_embedder", SentenceTransformersSparseDocumentEmbedder())
+pipeline.add_component(
+    "joiner", DocumentJoiner(join_mode="merge_embeddings", sort_by_score=False)
+)
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("dense_embedder.documents", "joiner.documents")
+pipeline.connect("sparse_embedder.documents", "joiner.documents")
+pipeline.connect("joiner.documents", "writer.documents")
+
+documents = [
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+]
+result = asyncio.run(
+    pipeline.run_async(
+        data={
+            "dense_embedder": {"documents": documents},
+            "sparse_embedder": {"documents": documents},
+        }
+    )
+)
+print(result)
+# >> {"writer": {"documents_written": 2}}
 ```
 
 <br />

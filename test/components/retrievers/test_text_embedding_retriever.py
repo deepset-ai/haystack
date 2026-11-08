@@ -13,6 +13,7 @@ from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedd
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.document_stores.types import DuplicatePolicy
 
 
@@ -77,6 +78,28 @@ class TestTextEmbeddingRetriever:
             scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
+    def test_run_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
+
+        result = retriever.run(query="query")
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
+
     def test_to_dict(self):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
@@ -92,7 +115,7 @@ class TestTextEmbeddingRetriever:
                         "document_store": {
                             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                             "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                                 "bm25_algorithm": "BM25L",
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",

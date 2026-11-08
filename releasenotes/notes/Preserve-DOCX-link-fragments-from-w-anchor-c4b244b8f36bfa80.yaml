@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``DOCXToDocument`` dropping the fragment of an external link when Word stores it separately in the
+    ``w:anchor`` attribute instead of the hyperlink address. For example, a link to
+    ``https://example.org/manual#refund-policy`` was converted to ``https://example.org/manual`` with both the
+    ``markdown`` and the ``plain`` ``link_format`` option. The complete link target, including the fragment,
+    is now preserved.

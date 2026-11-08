@@ -3,6 +3,7 @@ title: "BranchJoiner"
 id: branchjoiner
 slug: "/branchjoiner"
 description: "Use this component to join different branches of a pipeline into a single output."
+hep_available: true
 ---
 
 import ClickableImage from "@site/src/components/ClickableImage";
@@ -41,6 +42,8 @@ bj.run(value=[3, 4, 5])
 
 # ValueError: BranchJoiner expects only one input, but 3 were received.
 ```
+
+Only one of the connected branches should produce output in each pipeline run, for example, the branch chosen by a router or the branch that continues a loop. `BranchJoiner` runs as soon as it receives a value, so if several branches produce output at different times, it runs once per value and every component after it runs multiple times too. To collect the outputs of several branches, use a joiner that waits for all of them, such as [`ListJoiner`](listjoiner.mdx) or [`DocumentJoiner`](documentjoiner.mdx).
 
 ## Usage
 

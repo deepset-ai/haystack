@@ -2,7 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
+
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.hooks.utils import _is_system_reminder
+from haystack.token_counters import TokenCounter
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
 _COMPACTION_META_KEY = "context_compaction"
@@ -16,11 +20,19 @@ def _leading_system_end(messages: list[ChatMessage]) -> int:
     return len(messages)
 
 
+def _is_real_user_message(message: ChatMessage) -> bool:
+    """Return whether a message is a user message not produced by compaction or by a system reminder."""
+    return (
+        message.is_from(role=ChatRole.USER)
+        and _COMPACTION_META_KEY not in message.meta
+        and not _is_system_reminder(message=message)
+    )
+
+
 def _latest_user_index(messages: list[ChatMessage]) -> int | None:
-    """Return the latest user message not produced by compaction."""
+    """Return the latest user message not produced by compaction or by a system reminder."""
     for index in reversed(range(len(messages))):
-        message = messages[index]
-        if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
+        if _is_real_user_message(message=messages[index]):
             return index
     return None
 
@@ -100,13 +112,10 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
     """
     Return spans for complete real-user turns in a bounded section of conversation history.
 
-    Each turn begins with a user message not created by compaction and continues up to the next such message.
+    Each turn begins with a user message not created by compaction or by a system reminder and continues up to the next
+    such message.
     """
-    user_indices = [
-        index
-        for index in range(start, end)
-        if messages[index].is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in messages[index].meta
-    ]
+    user_indices = [index for index in range(start, end) if _is_real_user_message(message=messages[index])]
     return [
         (index, user_indices[position + 1] if position + 1 < len(user_indices) else end)
         for position, index in enumerate(user_indices)
@@ -122,10 +131,65 @@ def _historical_turn_groups(messages: list[ChatMessage], system_end: int, task_i
     :param task_index: The index of the user message anchoring the current task, where the history ends. None when
         there is no such message, in which case the history is empty and everything belongs to the current task.
     :returns: One group of message indices per turn, ordered oldest turn first. A turn is a user message that
-        compaction did not produce, together with everything that follows it up to the next one.
+        neither compaction nor a system reminder produced, together with everything that follows it up to the next one.
     """
     historical_end = task_index if task_index is not None else system_end
     return [
         list(range(start, end))
         for start, end in _historical_turn_spans(messages=messages, start=system_end, end=historical_end)
     ]
+
+
+def _replace_tool_results_until_target(
+    messages: list[ChatMessage],
+    *,
+    target_tokens: int,
+    token_counter: TokenCounter,
+    min_keep_steps: int,
+    replace: Callable[[ChatMessage, int], tuple[ChatMessage, int] | None],
+) -> list[ChatMessage] | None:
+    """
+    Replace tool results oldest first until the conversation fits within `target_tokens`.
+
+    Results from the most recent `min_keep_steps` tool-calling Agent steps are never passed to `replace`. After
+    measuring the initial conversation, the running total is updated with each replacement's saved tokens to avoid
+    recounting the full context.
+
+    :param messages: The conversation to compact, oldest to newest.
+    :param target_tokens: The token count the compacted conversation should fit within.
+    :param token_counter: The `TokenCounter` used to measure the initial conversation.
+    :param min_keep_steps: Number of most recent tool-calling Agent steps whose results are left unchanged.
+    :param replace: Called with a tool-result message and its position. Returns the replacement and the tokens it
+        saves, or None to leave the message unchanged.
+    :returns: The conversation with replaced tool results, or None when nothing was replaced.
+    """
+    current_tokens = token_counter.count(messages=messages)
+    if current_tokens <= target_tokens:
+        return None
+
+    # Filter the shared Agent-step spans to tool-calling steps; parallel results remain grouped in one span.
+    result_steps = [
+        list(range(start + 1, end))
+        for start, end in _agent_step_spans(messages=messages, start=0)
+        # An assistant-only span has no result to protect and must not consume one of `min_keep_steps`.
+        if end > start + 1
+    ]
+    protected_positions = {position for step in result_steps[-min_keep_steps:] for position in step}
+
+    # Replace entries in a new list so the caller-owned input list remains unchanged.
+    compacted = list(messages)
+    changed = False
+    # Go oldest first and stop at the target, so as much recent output as possible stays in context.
+    for index, message in enumerate(messages):
+        if message.tool_call_result is None or index in protected_positions:
+            continue
+        replacement = replace(message, index)
+        if replacement is None:
+            continue
+        compacted[index], saved_tokens = replacement
+        current_tokens -= saved_tokens
+        changed = True
+        if current_tokens <= target_tokens:
+            break
+
+    return compacted if changed else None

@@ -107,6 +107,7 @@
         "document-stores/arcadedbdocumentstore",
         "document-stores/astradocumentstore",
         "document-stores/azureaisearchdocumentstore",
+        "document-stores/azuredocumentdbdocumentstore",
         "document-stores/chromadocumentstore",
         "document-stores/dynamodbdocumentstore",
         {
@@ -285,6 +286,7 @@
             "pipeline-components/converters/documenttoimagecontent",
             "pipeline-components/converters/docxtodocument",
             "pipeline-components/converters/filetofilecontent",
+            "pipeline-components/converters/gotenbergfileconverter",
             "pipeline-components/converters/htmltodocument",
             "pipeline-components/converters/imagefiletodocument",
             "pipeline-components/converters/imagefiletoimagecontent",
@@ -603,6 +605,8 @@
             "pipeline-components/retrievers/azureaisearchbm25retriever",
             "pipeline-components/retrievers/azureaisearchembeddingretriever",
             "pipeline-components/retrievers/azureaisearchhybridretriever",
+            "pipeline-components/retrievers/azuredocumentdbembeddingretriever",
+            "pipeline-components/retrievers/azuredocumentdbfulltextretriever",
             "pipeline-components/retrievers/chromaembeddingretriever",
             "pipeline-components/retrievers/chromaqueryretriever",
             "pipeline-components/retrievers/dynamodbembeddingretriever",
@@ -759,6 +763,7 @@
             "tools/ready-made-tools/githubrepoviewertool",
             "tools/ready-made-tools/mem0memorytools",
             "tools/ready-made-tools/mirageshelltool",
+            "tools/ready-made-tools/montypythontool",
             "tools/ready-made-tools/tavilywebsearchtool"
           ]
         }

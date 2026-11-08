@@ -290,24 +290,24 @@ class CompactionHook:
         """Warm up the token counter and the compactor on the serving event loop."""
         if hasattr(self.token_counter, "warm_up"):
             self.token_counter.warm_up()
-        warm_up_async = getattr(self.compactor, "warm_up_async", None)
-        if warm_up_async is not None:
-            await warm_up_async()
+        if hasattr(self.compactor, "warm_up_async"):
+            await self.compactor.warm_up_async()
         elif hasattr(self.compactor, "warm_up"):
             self.compactor.warm_up()
 
     def close(self) -> None:
-        """Release the compactor's resources."""
-        if hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's resources."""
+        for resource in (self.token_counter, self.compactor):
+            if hasattr(resource, "close"):
+                resource.close()
 
     async def close_async(self) -> None:
-        """Release the compactor's async resources."""
-        close_async = getattr(self.compactor, "close_async", None)
-        if close_async is not None:
-            await close_async()
-        elif hasattr(self.compactor, "close"):
-            self.compactor.close()
+        """Release the token counter's and the compactor's async resources."""
+        for resource in (self.token_counter, self.compactor):
+            if hasattr(resource, "close_async"):
+                await resource.close_async()
+            elif hasattr(resource, "close"):
+                resource.close()
 
     def to_dict(self) -> dict[str, Any]:
         """

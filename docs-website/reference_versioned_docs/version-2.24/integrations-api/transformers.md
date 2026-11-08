@@ -446,7 +446,7 @@ Initializes the TransformersChatGenerator component.
 warm_up() -> None
 ```
 
-Initializes the component and warms up tools if provided.
+Initializes the Transformers pipeline and the executor owned by the component.
 
 #### close
 

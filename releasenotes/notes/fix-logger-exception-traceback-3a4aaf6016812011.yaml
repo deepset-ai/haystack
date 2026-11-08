@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``logger.exception()`` on loggers from ``haystack.logging.getLogger`` now logs the active traceback, as the
+    standard library does. Previously it logged only the message, without the stack trace, in both JSON and console
+    output. Passing ``exc_info`` explicitly still works.

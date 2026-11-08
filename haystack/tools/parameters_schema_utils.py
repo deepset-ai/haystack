@@ -9,12 +9,13 @@ from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from types import NoneType
-from typing import Any, Union, get_args, get_origin
+from typing import Annotated, Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
+from haystack.components.agents.state.state import State
 from haystack.dataclasses import ChatMessage
 from haystack.utils.type_serialization import _is_union_type
 
@@ -36,9 +37,21 @@ def _unwrap_optional(type_hint: Any) -> Any:
     return type_hint
 
 
+def _is_state_annotation(annotation: Any) -> bool:
+    """Recognize State through Annotated and optional wrappers."""
+    if get_origin(annotation) is Annotated:
+        return _is_state_annotation(get_args(annotation)[0])
+
+    unwrapped = _unwrap_optional(annotation)
+    if unwrapped is not annotation:
+        return _is_state_annotation(unwrapped)
+
+    return annotation is State
+
+
 def _contains_callable_type(type_hint: Any) -> bool:
     """
-    Check if a type hint contains a Callable type, including within Union types.
+    Check if a type hint contains a Callable type, including within Union and Annotated types.
 
     The purpose of this function is to help identify Callable types so they can
     be skipped during schema generation.
@@ -51,6 +64,9 @@ def _contains_callable_type(type_hint: Any) -> bool:
     # Check if it's a Callable type (direct or parameterized)
     if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
         return True
+
+    if origin is Annotated:
+        return _contains_callable_type(get_args(type_hint)[0])
 
     # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
     if origin in (Union, types.UnionType):
