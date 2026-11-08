@@ -270,7 +270,20 @@ class DocumentJoiner:
                 rescaled_lists.append(documents)
                 continue
 
-            scores_list = [doc.score if doc.score is not None else 0 for doc in documents]
+            # A score of NaN or infinity carries no ranking information, and it
+            # propagates: one such score makes the mean and the deviation
+            # non-finite, which turns the rescaled score of every Document in
+            # the list into NaN. Treat it like a missing score (0) so the other
+            # Documents keep a usable score.
+            scores_list = [
+                doc.score if doc.score is not None and isfinite(doc.score) else 0.0 for doc in documents
+            ]
+            if any(doc.score is not None and not isfinite(doc.score) for doc in documents):
+                logger.warning(
+                    "Some of the Documents DocumentJoiner got have a non-finite score (NaN or infinity). "
+                    "It was configured with `distribution_based_rank_fusion`, so those Documents were treated as if "
+                    "their score were 0 to keep the scores of the other Documents usable."
+                )
 
             mean_score = sum(scores_list) / len(scores_list)
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
@@ -284,11 +297,11 @@ class DocumentJoiner:
                 [
                     replace(
                         doc,
-                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
+                        score=(scores_list[index] - min_score) / delta_score
                         if scores_vary and delta_score != 0.0
-                        else (doc.score if doc.score is not None else 0.0),
+                        else scores_list[index],
                     )
-                    for doc in documents
+                    for index, doc in enumerate(documents)
                 ]
             )
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 import re
 
 import pytest
@@ -382,6 +383,59 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         assert all(doc.score is not None for doc in output["documents"])
+
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_nan_score(self):
+        # A NaN score poisons the mean and the deviation of the whole list, so every
+        # Document in it came back with score=NaN. A score that carries no ranking
+        # information is treated like a missing one, so the others stay usable.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [
+            Document(content="a", score=0.9),
+            Document(content="b", score=0.5),
+            Document(content="c", score=float("nan")),
+            Document(content="d", score=0.2),
+        ]
+        output = joiner.run([documents])
+
+        scores = {doc.content: doc.score for doc in output["documents"]}
+        assert all(score is not None and math.isfinite(score) for score in scores.values()), scores
+        assert scores["a"] == pytest.approx(0.74572, abs=1e-4)
+        assert scores["b"] == pytest.approx(0.54911, abs=1e-4)
+        assert scores["d"] == pytest.approx(0.40170, abs=1e-4)
+        assert scores["c"] == pytest.approx(0.30340, abs=1e-4)
+
+    @pytest.mark.parametrize("bad_score", [float("nan"), float("inf"), float("-inf")])
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_non_finite_score(self, bad_score):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [
+            Document(content="a", score=0.9),
+            Document(content="b", score=0.5),
+            Document(content="c", score=bad_score),
+        ]
+        output = joiner.run([documents])
+
+        scores = {doc.content: doc.score for doc in output["documents"]}
+        assert all(score is not None and math.isfinite(score) for score in scores.values()), scores
+        assert scores["a"] > scores["b"] > scores["c"]
+
+    def test_run_with_distribution_based_rank_fusion_join_mode_keeps_finite_scores(self):
+        # the non-finite handling must not move the rescaled scores of a list that has none
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [Document(content="a", score=0.9), Document(content="b", score=0.5), Document(content="c", score=0.2)]
+        output = joiner.run([documents])
+
+        scores = {doc.content: doc.score for doc in output["documents"]}
+        assert scores["a"] == pytest.approx(0.71312, abs=1e-4)
+        assert scores["b"] == pytest.approx(0.48063, abs=1e-4)
+        assert scores["c"] == pytest.approx(0.30625, abs=1e-4)
+
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_only_non_finite_scores(self):
+        # nothing in the list carries a score, so there is nothing to rescale
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [Document(content="a", score=float("nan")), Document(content="b", score=float("inf"))]
+        output = joiner.run([documents])
+
+        assert [doc.score for doc in output["documents"]] == [0.0, 0.0]
 
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
