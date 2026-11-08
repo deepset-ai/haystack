@@ -404,6 +404,30 @@ class TestDocumentJoiner:
             scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"] > scores_by_content["non-finite"]
         )
 
+    def test_distribution_based_rank_fusion_non_finite_score_outranks_negative_scores(self):
+        # A non-finite score is read as 0, exactly like a missing score. In a list of negative
+        # scores that 0 is the highest value, so the Document with the non-finite score ends up
+        # first. This pins the "missing/0" reading so the behavior stays explicit and does not
+        # silently change when every other score is negative.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=-0.1),
+            Document(content="b", score=-0.5),
+            Document(content="non-finite", score=float("nan")),
+            Document(content="d", score=-0.9),
+        ]
+
+        output = joiner.run([documents])
+
+        assert all(math.isfinite(doc.score) for doc in output["documents"])
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert (
+            scores_by_content["non-finite"]
+            > scores_by_content["a"]
+            > scores_by_content["b"]
+            > scores_by_content["d"]
+        )
+
     def test_distribution_based_rank_fusion_handles_a_list_of_non_finite_scores(self):
         joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
 
