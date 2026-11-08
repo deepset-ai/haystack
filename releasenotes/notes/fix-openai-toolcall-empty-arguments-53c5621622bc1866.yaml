@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``ChatMessage.from_openai_dict_format`` crashing on zero-argument tool
+    calls. OpenAI-compatible servers (vLLM, llama.cpp, Ollama, LM Studio, ...) may
+    send an empty string or omit the ``arguments`` field for a tool call that takes
+    no arguments; this previously raised ``json.JSONDecodeError`` or ``KeyError``.
+    Such tool calls are now parsed into a ``ToolCall`` with empty ``arguments``.

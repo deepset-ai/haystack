@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Harden ``FileSystemToolResultStore.read()`` so it only reads references that
+    resolve within the configured store root. This closes a boundary gap where
+    callers could previously pass an arbitrary filesystem path to ``read()``
+    instead of a store-scoped reference returned by ``write()``.

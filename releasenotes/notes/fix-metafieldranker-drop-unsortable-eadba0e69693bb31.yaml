@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` now applies ``missing_meta`` when the meta values can't be sorted together, for example
+    ``1`` and ``"x"``. In this case the Documents keep their original order, but Documents missing the meta field
+    are dropped with ``"drop"``, placed first with ``"top"``, and placed last with ``"bottom"``. Previously, all
+    Documents were returned in their original order and ``missing_meta`` was ignored.

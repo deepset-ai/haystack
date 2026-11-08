@@ -6,7 +6,8 @@
 # Builds the Atheris fuzz targets for ClusterFuzzLite / OSS-Fuzz.
 # `compile_python_fuzzer` is provided by the base-builder-python image.
 
-pip3 install .
+python3 -m pip install --upgrade pip
+pip3 install . --uploaded-prior-to=P1D
 
 for harness in "$SRC"/haystack/test/fuzz/fuzz_*.py; do
   name=$(basename "$harness" .py)

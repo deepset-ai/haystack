@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    ``before_run`` hooks can now read ``state.data["tools"]``. The key was previously written only once the first step
+    had started, so a ``before_run`` hook hit a ``KeyError``. It holds a snapshot of the tools available at that point,
+    refreshed before every LLM call, so with a dynamic toolset such as ``SearchableToolset`` a ``before_run`` hook sees
+    only the tools discovered so far.

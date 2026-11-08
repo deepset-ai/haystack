@@ -3,6 +3,7 @@ title: "FalkorDBCypherRetriever"
 id: falkordbcypherretriever
 slug: "/falkordbcypherretriever"
 description: "A Retriever that executes arbitrary OpenCypher queries against a FalkorDB Document Store."
+hep_available: true
 ---
 
 # FalkorDBCypherRetriever
@@ -25,7 +26,7 @@ A Retriever that executes arbitrary OpenCypher queries against a FalkorDB Docume
 
 ## Overview
 
-The `FalkorDBCypherRetriever` executes arbitrary OpenCypher queries against a `FalkorDBDocumentStore`, making it suitable for graph traversal and multi-hop queries in GraphRAG pipelines. The query must return nodes or dictionaries that map to Haystack `Document` fields.
+The `FalkorDBCypherRetriever` executes arbitrary OpenCypher queries against a `FalkorDBDocumentStore`, making it suitable for graph traversal and multi-hop queries in GraphRAG pipelines. The query must return nodes or dictionaries that map to Haystack `Document` fields in its first column; other results raise a `DocumentStoreError`.
 
 A `custom_cypher_query` can be set at initialization and optionally overridden at runtime by passing `query` to `run()`. Use parameterized queries (`$param_name` in Cypher, passed via `parameters`) rather than string interpolation to avoid injection vulnerabilities.
 
@@ -43,6 +44,12 @@ Ensure FalkorDB is running, for example via Docker:
 
 ```shell
 docker run -d -p 6379:6379 falkordb/falkordb:latest
+```
+
+The examples on this page use Transformers components from the `transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install transformers-haystack
 ```
 
 ## Usage
@@ -85,7 +92,9 @@ print(result["documents"][0].content)
 ```python
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+from haystack_integrations.components.generators.transformers import (
+    TransformersChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
 from haystack_integrations.components.retrievers.falkordb import FalkorDBCypherRetriever
@@ -130,7 +139,7 @@ pipeline.add_component(
 pipeline.add_component("prompt_builder", ChatPromptBuilder(template=prompt_template))
 pipeline.add_component(
     "llm",
-    HuggingFaceLocalChatGenerator(model="HuggingFaceTB/SmolLM2-135M-Instruct"),
+    TransformersChatGenerator(model="HuggingFaceTB/SmolLM2-135M-Instruct"),
 )
 pipeline.connect("retriever.documents", "prompt_builder.documents")
 pipeline.connect("prompt_builder.prompt", "llm.messages")

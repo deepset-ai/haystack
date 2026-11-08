@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``LLMMessagesRouter`` now raises a ``ValueError`` when ``output_names`` contains ``"chat_generator_text"`` or
+    ``"unmatched"``. Those two outputs are always created by the router, so reusing either name used to be accepted
+    and then silently broke the component: ``"chat_generator_text"`` had its socket retyped to
+    ``list[ChatMessage]`` and lost the LLM reply at run time, while ``"unmatched"`` made a matched decision
+    indistinguishable from an unmatched one.

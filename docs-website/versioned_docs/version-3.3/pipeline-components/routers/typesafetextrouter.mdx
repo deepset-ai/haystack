@@ -1,0 +1,147 @@
+---
+title: "TypeSafeTextRouter"
+id: typesafetextrouter
+slug: "/typesafetextrouter"
+description: "Routes a text to the output of the label a TypeSafe System One model, such as Jev, picks for it."
+hep_available: false
+---
+
+# TypeSafeTextRouter
+
+Routes a text to the output of the label a TypeSafe System One model, such as Jev, picks for it.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory init variables** | `labels`: The labels to route between <br /> <br />`api_key`: The TypeSafe API key. Can be set with the `TYPESAFE_API_KEY` env var. |
+| **Mandatory run variables** | `text`: The text to route |
+| **Output variables** | `<label>`: The input text, on the output named after the label the model picked. There's one output per label. <br /> <br />`low_confidence`: The input text when the answer's confidence is below `min_confidence`. Only present if `min_confidence` is set. |
+| **API reference** | [TypeSafe](/reference/integrations-typesafe) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/typesafe |
+| **Package name** | `typesafe-haystack` |
+
+</div>
+
+## Overview
+
+`TypeSafeTextRouter` asks a [TypeSafe](https://typesafe.ai) System One model a single `choice` question over `labels` and sends the text to the output of the label it picks. System One models such as Jev don't generate text. They answer in one request and return calibrated probabilities.
+
+Pass `labels` as a list of label names, or as a dict of label to description to tell the model what each label means. `instructions` sets the question the model answers, for example "Which team should handle this support request?".
+
+When you set `min_confidence`, the component gets an extra `low_confidence` output. Texts whose answer has a `confidence` below the threshold go there instead, so you can send uncertain texts to a fallback such as an LLM or a human. Good thresholds depend on the model and the labels, so pick one based on your own data. See TypeSafe's guide to [confidence-gated routing](https://docs.typesafe.ai/patterns/confidence-routing).
+
+### Authentication
+
+The component reads the API key from the `TYPESAFE_API_KEY` environment variable by default. You can also pass it at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.routers.typesafe import TypeSafeTextRouter
+
+router = TypeSafeTextRouter(
+    labels=["billing", "technical"], api_key=Secret.from_token("<your-api-key>")
+)
+```
+
+### Running models locally with Ollaya
+
+The component works with any server that implements the TypeSafe API, such as [Ollaya](https://ollaya.dev), which runs open decision models on your own machine. Set `api_base_url` to the server and `model` to one of its models. Ollaya accepts any non-empty API key unless it is configured with one.
+
+```shell
+docker run -d --name ollaya -p 11435:11435 -v ollaya:/home/ollaya/.ollaya ghcr.io/ollaya-dev/ollaya
+docker exec ollaya ollaya pull laya:en
+```
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.routers.typesafe import TypeSafeTextRouter
+
+router = TypeSafeTextRouter(
+    labels=["billing", "technical"],
+    model="laya:en",
+    api_key=Secret.from_token("local"),
+    api_base_url="http://localhost:11435",
+)
+```
+
+## Usage
+
+Install the `typesafe-haystack` package to use the `TypeSafeTextRouter`:
+
+```shell
+pip install typesafe-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.routers.typesafe import TypeSafeTextRouter
+
+router = TypeSafeTextRouter(
+    labels={
+        "billing": "Payments, invoices, refunds and charges",
+        "technical": "Bugs, crashes and errors in the product",
+    },
+    instructions="Which team should handle this support request?",
+    min_confidence=0.6,
+)
+
+print(router.run(text="I was charged twice for my subscription."))
+# {'billing': 'I was charged twice for my subscription.'}
+```
+
+### In a pipeline
+
+The following pipeline routes a support question to the help articles of the team that handles it. Each label's output goes to its own retriever:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.routers.typesafe import TypeSafeTextRouter
+
+billing_store = InMemoryDocumentStore()
+billing_store.write_documents(
+    [
+        Document(
+            content="If you were charged twice, contact support and we refund the duplicate charge within 5 business days."
+        )
+    ]
+)
+technical_store = InMemoryDocumentStore()
+technical_store.write_documents(
+    [
+        Document(
+            content="If the app crashes on startup, update to the latest version and clear the app cache."
+        )
+    ]
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "router",
+    TypeSafeTextRouter(
+        labels={
+            "billing": "Payments, invoices, refunds and charges",
+            "technical": "Bugs, crashes and errors in the product",
+        },
+        instructions="Which team should handle this support request?",
+    ),
+)
+pipeline.add_component(
+    "billing_retriever", InMemoryBM25Retriever(document_store=billing_store)
+)
+pipeline.add_component(
+    "technical_retriever", InMemoryBM25Retriever(document_store=technical_store)
+)
+pipeline.connect("router.billing", "billing_retriever.query")
+pipeline.connect("router.technical", "technical_retriever.query")
+
+result = pipeline.run(
+    {"router": {"text": "I was charged twice, how do I get my money back?"}}
+)
+print(result["billing_retriever"]["documents"][0].content)
+# If you were charged twice, contact support and we refund the duplicate charge within 5 business days.
+```

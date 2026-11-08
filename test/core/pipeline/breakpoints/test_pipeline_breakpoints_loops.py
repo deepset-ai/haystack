@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 
 from haystack import component
 from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
@@ -34,16 +35,6 @@ class OutputValidator:
             return {"invalid_replies": replies, "error_message": str(e)}
 
 
-@component
-class FakeChatGenerator:
-    def __init__(self, response: str):
-        self.response = response
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant(self.response)]}
-
-
 class City(BaseModel):
     name: str
     country: str
@@ -54,6 +45,53 @@ class CitiesData(BaseModel):
     cities: list[City]
 
 
+VALID_CITIES_JSON = json.dumps(
+    {
+        "cities": [
+            {"name": "Berlin", "country": "Germany", "population": 3850809},
+            {"name": "Paris", "country": "France", "population": 2161000},
+            {"name": "Lisbon", "country": "Portugal", "population": 504718},
+        ]
+    }
+)
+
+
+def build_validation_loop_pipeline(llm: MockChatGenerator) -> Pipeline:
+    """Build a pipeline that sends invalid replies back to the prompt builder for another attempt."""
+    prompt_template = [
+        ChatMessage.from_user(
+            """
+            Create a JSON object from the information present in this passage: {{passage}}.
+            Only use information that is present in the passage. Follow this JSON schema, but only return the
+             actual instances without any additional schema definition:
+            {{schema}}
+            Make sure your response is a dict and not a list.
+            {% if invalid_replies and error_message %}
+              You already created the following output in a previous attempt: {{invalid_replies}}
+              However, this doesn't comply with the format requirements from above and triggered this
+               Python exception: {{error_message}}
+              Correct the output and try again. Just return the corrected output without any extra explanations.
+            {% endif %}
+            """
+        )
+    ]
+
+    pipeline = Pipeline(max_runs_per_component=5)
+    pipeline.add_component(
+        instance=ChatPromptBuilder(template=prompt_template, required_variables=["passage", "schema"]),
+        name="prompt_builder",
+    )
+    pipeline.add_component(instance=llm, name="llm")
+    pipeline.add_component(instance=OutputValidator(pydantic_model=CitiesData), name="output_validator")
+
+    pipeline.connect("prompt_builder.prompt", "llm.messages")
+    pipeline.connect("llm.replies", "output_validator")
+    pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
+    pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
+
+    return pipeline
+
+
 class TestPipelineBreakpointsLoops:
     """
     This class contains tests for pipelines with validation loops and breakpoints.
@@ -61,46 +99,13 @@ class TestPipelineBreakpointsLoops:
 
     @pytest.fixture
     def validation_loop_pipeline(self):
-        """Create a pipeline with validation loops for testing."""
-        prompt_template = [
-            ChatMessage.from_user(
-                """
-                Create a JSON object from the information present in this passage: {{passage}}.
-                Only use information that is present in the passage. Follow this JSON schema, but only return the
-                 actual instances without any additional schema definition:
-                {{schema}}
-                Make sure your response is a dict and not a list.
-                {% if invalid_replies and error_message %}
-                  You already created the following output in a previous attempt: {{invalid_replies}}
-                  However, this doesn't comply with the format requirements from above and triggered this
-                   Python exception: {{error_message}}
-                  Correct the output and try again. Just return the corrected output without any extra explanations.
-                {% endif %}
-                """
-            )
-        ]
+        """The first reply already validates, so every component runs exactly once."""
+        return build_validation_loop_pipeline(MockChatGenerator(VALID_CITIES_JSON))
 
-        response_json = json.dumps(
-            {
-                "cities": [
-                    {"name": "Berlin", "country": "Germany", "population": 3850809},
-                    {"name": "Paris", "country": "France", "population": 2161000},
-                    {"name": "Lisbon", "country": "Portugal", "population": 504718},
-                ]
-            }
-        )
-
-        pipeline = Pipeline(max_runs_per_component=5)
-        pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template), name="prompt_builder")
-        pipeline.add_component(instance=FakeChatGenerator(response=response_json), name="llm")
-        pipeline.add_component(instance=OutputValidator(pydantic_model=CitiesData), name="output_validator")
-
-        pipeline.connect("prompt_builder.prompt", "llm.messages")
-        pipeline.connect("llm.replies", "output_validator")
-        pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
-        pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
-
-        return pipeline
+    @pytest.fixture
+    def retrying_validation_loop_pipeline(self):
+        """The first reply fails validation, so the loop closes and every component runs twice."""
+        return build_validation_loop_pipeline(MockChatGenerator(["this is not JSON", VALID_CITIES_JSON]))
 
     BREAKPOINT_COMPONENTS = ["prompt_builder", "llm", "output_validator"]
 
@@ -140,3 +145,31 @@ class TestPipelineBreakpointsLoops:
         assert cities_data.cities[0].name == "Berlin"
         assert cities_data.cities[1].name == "Paris"
         assert cities_data.cities[2].name == "Lisbon"
+
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
+    @pytest.mark.integration
+    def test_pipeline_breakpoints_second_visit_of_validation_loop(
+        self, retrying_validation_loop_pipeline, output_directory, component, load_and_resume_pipeline_snapshot
+    ):
+        """
+        Test that a pipeline paused on a component's second visit of a loop resumes and runs to completion.
+
+        `pytest.raises` also asserts that the loop really closes: if it did not, the component would never reach a
+        second visit and the breakpoint would not trigger.
+        """
+        data = {"prompt_builder": {"passage": "Berlin, Paris, Lisbon...", "schema": "CitiesData schema"}}
+
+        break_point = Breakpoint(component_name=component, visit_count=1, snapshot_file_path=str(output_directory))
+
+        with pytest.raises(BreakpointException):
+            retrying_validation_loop_pipeline.run(data, break_point=break_point)
+
+        result = load_and_resume_pipeline_snapshot(
+            pipeline=retrying_validation_loop_pipeline,
+            output_directory=output_directory,
+            component_name=break_point.component_name,
+            data=data,
+        )
+
+        cities_data = CitiesData.model_validate(json.loads(result["output_validator"]["valid_replies"][0].text))
+        assert [city.name for city in cities_data.cities] == ["Berlin", "Paris", "Lisbon"]

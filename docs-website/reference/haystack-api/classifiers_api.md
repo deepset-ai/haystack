@@ -1,192 +1,117 @@
 ---
 title: "Classifiers"
 id: classifiers-api
-description: "Classify documents based on the provided labels."
+description: "Classifiers answer questions about documents and store the answers in their metadata."
 slug: "/classifiers-api"
 ---
 
 
-## document_language_classifier
+## openai_decisions_document_classifier
 
-### DocumentLanguageClassifier
+### OpenAIDecisionsDocumentClassifier
 
-Classifies the language of each document and adds it to its metadata.
+Answers typed questions about each document with an OpenAI Decisions model and stores the answers in its metadata.
 
-Provide a list of languages during initialization. If the document's text doesn't match any of the
-specified languages, the metadata value is set to "unmatched".
-To route documents based on their language, use the MetadataRouter component after DocumentLanguageClassifier.
-For routing plain text, use the TextLanguageRouter component instead.
+Each question has one of three types:
 
-### Usage example
+- `choice`: picks one value from `choices`, a list of objects with a `value` and an optional `description`.
+- `score`: rates the text on the ordered `levels`, a list of objects with a `label` and an optional `description`.
+- `predicate`: returns the probability that the yes/no question in `instructions` is true.
 
-```python
-from haystack import Document, Pipeline
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.classifiers import DocumentLanguageClassifier
-from haystack.components.routers import MetadataRouter
-from haystack.components.writers import DocumentWriter
+Answers are stored under `meta[metadata_field]`, keyed by question name. Questions are dicts in the OpenAI format.
+See the [OpenAI documentation](https://developers.openai.com/api/docs/guides/decisions) for the full question and
+answer format. A refusal is stored with `type="refusal"`, preserving the answers to the other questions.
 
-docs = [Document(id="1", content="This is an English document"),
-        Document(id="2", content="Este es un documento en español")]
-
-document_store = InMemoryDocumentStore()
-
-p = Pipeline()
-p.add_component(instance=DocumentLanguageClassifier(languages=["en"]), name="language_classifier")
-p.add_component(
-instance=MetadataRouter(rules={
-    "en": {
-        "field": "meta.language",
-        "operator": "==",
-        "value": "en"
-    }
-}),
-name="router")
-p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-p.connect("language_classifier.documents", "router.documents")
-p.connect("router.en", "writer.documents")
-
-p.run({"language_classifier": {"documents": docs}})
-
-written_docs = document_store.filter_documents()
-assert len(written_docs) == 1
-assert written_docs[0] == Document(id="1", content="This is an English document", meta={"language": "en"})
-```
-
-#### __init__
-
-```python
-__init__(languages: list[str] | None = None) -> None
-```
-
-Initializes the DocumentLanguageClassifier component.
-
-**Parameters:**
-
-- **languages** (<code>list\[str\] | None</code>) – A list of ISO language codes.
-  See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-  If not specified, defaults to ["en"].
-
-#### run
-
-```python
-run(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Classifies the language of each document and adds it to its metadata.
-
-If the document's text doesn't match any of the languages specified at initialization,
-sets the metadata value to "unmatched".
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – A list of documents for language classification.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
-- `documents`: A list of documents with an added `language` metadata field.
-
-**Raises:**
-
-- <code>TypeError</code> – if the input is not a list of Documents.
-
-## zero_shot_document_classifier
-
-### TransformersZeroShotDocumentClassifier
-
-Performs zero-shot classification of documents based on given labels and adds the predicted label to their metadata.
-
-The component uses a Hugging Face pipeline for zero-shot classification.
-Provide the model and the set of labels to be used for categorization during initialization.
-Additionally, you can configure the component to allow multiple labels to be true.
-
-Classification is run on the document's content field by default. If you want it to run on another field, set the
-`classification_field` to one of the document's metadata fields.
-
-Available models for the task of zero-shot-classification include:
-\- `valhalla/distilbart-mnli-12-3`
-\- `cross-encoder/nli-distilroberta-base`
-\- `cross-encoder/nli-deberta-v3-xsmall`
+Documents without text to classify are returned in `failed_documents` with the reason in
+`meta["classification_error"]`. So are documents whose request failed, unless `raise_on_failure` is `True`.
 
 ### Usage example
-
-The following is a pipeline that classifies documents based on predefined classification labels
-retrieved from a search pipeline:
 
 ```python
 from haystack import Document
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.core.pipeline import Pipeline
-from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
+from haystack.components.classifiers import OpenAIDecisionsDocumentClassifier
 
-documents = [Document(id="0", content="Today was a nice day!"),
-             Document(id="1", content="Yesterday was a bad day!")]
-
-document_store = InMemoryDocumentStore()
-retriever = InMemoryBM25Retriever(document_store=document_store)
-document_classifier = TransformersZeroShotDocumentClassifier(
-    model="cross-encoder/nli-deberta-v3-xsmall",
-    labels=["positive", "negative"],
+# Set OPENAI_API_KEY in the environment.
+classifier = OpenAIDecisionsDocumentClassifier(
+    questions=[
+        {
+            "name": "department",
+            "type": "choice",
+            "instructions": "Which department should handle this ticket?",
+            "choices": [{"value": "billing"}, {"value": "technical"}, {"value": "sales"}],
+        },
+        {
+            "name": "urgency",
+            "type": "score",
+            "instructions": "How urgent is this ticket?",
+            "levels": [{"label": "can wait"}, {"label": "this week"}, {"label": "today"}],
+        },
+        {"name": "refund", "type": "predicate", "instructions": "Is the customer asking for a refund?"},
+    ]
 )
 
-document_store.write_documents(documents)
-
-pipeline = Pipeline()
-pipeline.add_component(instance=retriever, name="retriever")
-pipeline.add_component(instance=document_classifier, name="document_classifier")
-pipeline.connect("retriever", "document_classifier")
-
-queries = ["How was your day today?", "How was your day yesterday?"]
-expected_predictions = ["positive", "negative"]
-
-for idx, query in enumerate(queries):
-    result = pipeline.run({"retriever": {"query": query, "top_k": 1}})
-    assert result["document_classifier"]["documents"][0].to_dict()["id"] == str(idx)
-    assert (result["document_classifier"]["documents"][0].to_dict()["classification"]["label"]
-            == expected_predictions[idx])
+result = classifier.run(documents=[Document(content="I was charged twice, please refund me today.")])
+print(result["documents"][0].meta["openai_decisions"])
+# Example response (values may vary):
+# >> {
+#     "department": {"type": "choice", "choice": "billing", "confidence": 0.95,
+#      "probabilities": [{"value": "billing", "probability": 0.97},
+#                        {"value": "technical", "probability": 0.02},
+#                        {"value": "sales", "probability": 0.01}]},
+#     "urgency": {"type": "score", "score": 1.95, "confidence": 0.94,
+#      "probabilities": [{"label": "can wait", "value": 0, "probability": 0.01},
+#                        {"label": "this week", "value": 1, "probability": 0.03},
+#                        {"label": "today", "value": 2, "probability": 0.96}]},
+#     "refund": {"type": "predicate", "probability": 0.95},
+# }
+print(result["failed_documents"])
+# >> []
 ```
 
 #### __init__
 
 ```python
 __init__(
-    model: str,
-    labels: list[str],
-    multi_label: bool = False,
+    questions: list[Question],
+    *,
+    model: str = "gpt-6-luna",
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
     classification_field: str | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    metadata_field: str = "openai_decisions",
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    max_workers: int = 3,
+    raise_on_failure: bool = False
 ) -> None
 ```
 
-Initializes the TransformersZeroShotDocumentClassifier.
-
-See the Hugging Face [website](https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli)
-for the full list of zero-shot classification models (NLI) models.
+Creates an OpenAIDecisionsDocumentClassifier.
 
 **Parameters:**
 
-- **model** (<code>str</code>) – The name or path of a Hugging Face model for zero shot document classification.
-- **labels** (<code>list\[str\]</code>) – The set of possible class labels to classify each document into, for example,
-  ["positive", "negative"]. The labels depend on the selected model.
-- **multi_label** (<code>bool</code>) – Whether or not multiple candidate labels can be true.
-  If `False`, the scores are normalized such that
-  the sum of the label likelihoods for each sequence is 1. If `True`, the labels are considered
-  independent and probabilities are normalized for each candidate by doing a softmax of the entailment
-  score vs. the contradiction score.
-- **classification_field** (<code>str | None</code>) – Name of document's meta field to be used for classification.
-  If not set, `Document.content` is used by default.
-- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically
-  selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
-  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing keyword arguments used to initialize the
-  Hugging Face pipeline for text classification.
+- **questions** (<code>list\[Question\]</code>) – Questions to answer for every document. Each item is a dict in the OpenAI format with a `type` (`choice`,
+  `score` or `predicate`), `instructions`, and for `choice` and `score` questions, `choices` or `levels`,
+  respectively. Each question must have a non-empty, unique string `name`, used as its answer's metadata key.
+- **model** (<code>str</code>) – The name of the Decisions model to use.
+- **api_key** (<code>Secret</code>) – The OpenAI API key. You can set it with an environment variable `OPENAI_API_KEY`, or pass with this
+  parameter during initialization.
+- **api_base_url** (<code>str | None</code>) – Overrides the default base URL for all HTTP requests.
+- **classification_field** (<code>str | None</code>) – Name of the document's metadata field to classify. If `None`, `Document.content` is classified.
+- **metadata_field** (<code>str</code>) – Name of the metadata field the answers are written to.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
+  `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent requests in `run_async`. Must be at least 1.
+- **raise_on_failure** (<code>bool</code>) – If `True`, the first failed request raises its error. If `False`, documents whose request failed are
+  returned in `failed_documents`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `questions` is empty, a question has a missing, empty, non-string or duplicate `name`, an unknown
+  `type`, a `choice` or `score` question has no `choices` or `levels`, respectively, or `max_workers` is
+  smaller than 1.
 
 #### warm_up
 
@@ -194,54 +119,81 @@ for the full list of zero-shot classification models (NLI) models.
 warm_up() -> None
 ```
 
-Initializes the component.
+Creates the synchronous OpenAI client.
 
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
+#### warm_up_async
 
 ```python
-from_dict(data: dict[str, Any]) -> TransformersZeroShotDocumentClassifier
+warm_up_async() -> None
 ```
 
-Deserializes the component from a dictionary.
+Creates the asynchronous OpenAI client.
 
-**Parameters:**
+#### close
 
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+```python
+close() -> None
+```
 
-**Returns:**
+Releases the synchronous OpenAI client.
 
-- <code>TransformersZeroShotDocumentClassifier</code> – Deserialized component.
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client.
 
 #### run
 
 ```python
-run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
-Classifies the documents based on the provided labels and adds them to their metadata.
+Answers the questions for each document and adds the answers to its metadata.
 
-The classification results are stored in the `classification` dict within
-each document's metadata. If `multi_label` is set to `True`, the scores for each label are available under
-the `details` key within the `classification` dictionary.
+Each document is sent as its own request, with up to `max_workers` requests running at once.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – Documents to process.
-- **batch_size** (<code>int</code>) – Batch size used for processing the content in each document.
+- **documents** (<code>list\[Document\]</code>) – Documents to classify.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with the following key:
-- `documents`: A list of documents with an added metadata field called `classification`.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: The classified documents. Each has a `metadata_field` entry mapping each question name
+  to its answer.
+- `failed_documents`: The documents that have no text to classify or whose request failed, with the
+  reason in `meta["classification_error"]`.
+
+**Raises:**
+
+- <code>APIError</code> – If a request fails and `raise_on_failure` is `True`.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously answers the questions for each document and adds the answers to its metadata.
+
+This is the asynchronous version of the `run` method with the same parameters and return values. Up to
+`max_workers` requests run concurrently.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to classify.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: The classified documents. Each has a `metadata_field` entry mapping each question name
+  to its answer.
+- `failed_documents`: The documents that have no text to classify or whose request failed, with the
+  reason in `meta["classification_error"]`.
+
+**Raises:**
+
+- <code>APIError</code> – If a request fails and `raise_on_failure` is `True`.

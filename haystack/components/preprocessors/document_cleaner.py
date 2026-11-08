@@ -5,6 +5,7 @@
 import re
 from collections.abc import Generator
 from copy import deepcopy
+from dataclasses import replace
 from functools import partial, reduce
 from itertools import chain
 from typing import Literal
@@ -51,6 +52,7 @@ class DocumentCleaner:
         ascii_only: bool = False,
         strip_whitespaces: bool = False,
         replace_regexes: dict[str, str] | None = None,
+        min_content_length: int = 0,
     ) -> None:
         """
         Initialize DocumentCleaner.
@@ -62,6 +64,7 @@ class DocumentCleaner:
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
+            Pages where the regex matches are also stripped of leading and trailing whitespace.
         :param keep_id: If `True`, keeps the IDs of the original documents.
         :param unicode_normalization: Unicode normalization form to apply to the text.
             Note: This will run before any other steps.
@@ -75,9 +78,13 @@ class DocumentCleaner:
         :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
             For example, `{r'\\n\\n+': '\\n'}` replaces multiple consecutive newlines with a single newline.
             This is applied after `remove_regex` and allows custom replacements instead of just removal.
+        :param min_content_length: Minimum length of the cleaned document content after stripping leading and trailing
+            whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
         """
 
         self._validate_params(unicode_normalization=unicode_normalization)
+        if min_content_length < 0:
+            raise ValueError("min_content_length must be greater than or equal to 0.")
 
         self.remove_empty_lines = remove_empty_lines
         self.remove_extra_whitespaces = remove_extra_whitespaces
@@ -89,6 +96,7 @@ class DocumentCleaner:
         self.ascii_only = ascii_only
         self.strip_whitespaces = strip_whitespaces
         self.replace_regexes = replace_regexes
+        self.min_content_length = min_content_length
 
     def _validate_params(self, unicode_normalization: str | None) -> None:
         """
@@ -146,15 +154,19 @@ class DocumentCleaner:
             if self.strip_whitespaces:
                 text = text.strip()
 
-            clean_doc = Document(
-                id=doc.id if self.keep_id else "",
-                content=text,
-                blob=doc.blob,
-                meta=deepcopy(doc.meta),
-                score=doc.score,
-                embedding=doc.embedding,
-                sparse_embedding=doc.sparse_embedding,
-            )
+            if self.min_content_length:
+                cleaned_content = text.strip()
+                if len(cleaned_content) < self.min_content_length:
+                    logger.debug(
+                        "Document ID {doc_id} has cleaned content shorter than min_content_length "
+                        "({content_length} < {min_content_length}). Skipping this document.",
+                        doc_id=doc.id,
+                        content_length=len(cleaned_content),
+                        min_content_length=self.min_content_length,
+                    )
+                    continue
+
+            clean_doc = replace(doc, id=doc.id if self.keep_id else "", content=text, meta=deepcopy(doc.meta))
             cleaned_docs.append(clean_doc)
 
         return {"documents": cleaned_docs}
@@ -213,11 +225,15 @@ class DocumentCleaner:
 
         :param text: Text to clean.
         :param regex: Regex to match and replace substrings by "".
-        :returns: The text without the substrings that match the regex.
+        :returns: The text without the substrings that match the regex. Pages with at least one match are also
+            stripped of leading and trailing whitespace; other pages are left unchanged.
         """
-        texts = text.split("\f")
-        cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
-        return "\f".join(cleaned_text)
+        pages = text.split("\f")
+        cleaned_pages = []
+        for page in pages:
+            cleaned_page, n_matches = re.subn(regex, "", page)
+            cleaned_pages.append(cleaned_page.strip() if n_matches > 0 else cleaned_page)
+        return "\f".join(cleaned_pages)
 
     def _replace_regexes(self, text: str, replace_regexes: dict[str, str]) -> str:
         """
@@ -270,6 +286,8 @@ class DocumentCleaner:
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
          but won't detect "Page 3 of 4" or similar.
 
+        :param text: The text to remove headers and footers from, with pages separated by the
+            form feed character described above.
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
         :param n_first_pages_to_ignore: The number of first pages to ignore
             (e.g. TOCs often don't contain footer/header).
@@ -341,7 +359,9 @@ class DocumentCleaner:
         :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
-        if not sequences:
+        if len(sequences) < 2:
+            # a single sequence has no ngram "in common" with any other; treating
+            # its own longest ngram as a repeated header/footer would wipe it
             return ""
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)

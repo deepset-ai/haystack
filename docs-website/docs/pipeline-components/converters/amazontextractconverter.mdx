@@ -3,6 +3,7 @@ title: "AmazonTextractConverter"
 id: amazontextractconverter
 slug: "/amazontextractconverter"
 description: "`AmazonTextractConverter` converts images and single-page PDFs to documents using AWS Textract. It supports plain text OCR, structured analysis of tables, forms, signatures, and layout, as well as natural-language queries over the document."
+hep_available: true
 ---
 
 # AmazonTextractConverter
@@ -72,7 +73,6 @@ from haystack_integrations.components.converters.amazon_textract import (
 )
 
 converter = AmazonTextractConverter(feature_types=["TABLES", "FORMS"])
-converter.warm_up()
 result = converter.run(sources=["invoice.pdf"])
 documents = result["documents"]
 raw_responses = result["raw_textract_response"]

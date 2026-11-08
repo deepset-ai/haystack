@@ -36,11 +36,11 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
     ```
     """
 
-    def __init__(  # noqa: PLR0913 (too-many-arguments)
+    def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",
-        azure_deployment: str = "text-embedding-ada-002",
+        azure_deployment: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -67,7 +67,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+            The name of the model deployed on Azure. The default is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only supported in text-embedding-3
             and later models.
@@ -90,7 +90,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param suffix:
             A string to add at the end of each text.
         :param batch_size:
-            Number of documents to embed at once.
+            Number of documents to embed at once. Must be a positive integer.
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
@@ -111,7 +111,12 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param raise_on_failure:
             Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
             and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+        :raises ValueError:
+            If `batch_size` is not a positive integer, if no Azure endpoint is provided, or if neither
+            `api_key` nor `azure_ad_token` is provided.
         """
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
 
@@ -137,32 +142,75 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
         self.raise_on_failure = raise_on_failure
 
-        client_args: dict[str, Any] = {
-            "api_version": api_version,
-            "azure_endpoint": azure_endpoint,
-            "azure_deployment": azure_deployment,
-            "azure_ad_token_provider": azure_ad_token_provider,
-            "api_key": api_key.resolve_value() if api_key is not None else None,
-            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            "organization": organization,
-            "timeout": self.timeout,
-            "max_retries": self.max_retries,
+        self.client: AzureOpenAI | None = None
+        self.async_client: AsyncAzureOpenAI | None = None
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_version": self.api_version,
+            "azure_endpoint": self.azure_endpoint,
+            "azure_deployment": self.azure_deployment,
+            "azure_ad_token_provider": self.azure_ad_token_provider,
+            "api_key": self.api_key.resolve_value() if self.api_key is not None else None,
+            "azure_ad_token": self.azure_ad_token.resolve_value() if self.azure_ad_token is not None else None,
+            "organization": self.organization,
+            "timeout": timeout,
+            "max_retries": max_retries,
             "default_headers": self.default_headers,
         }
 
-        self.client = AzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_args
-        )
-        self.async_client = AsyncAzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
-        )
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous AzureOpenAI client.
+        """
+        if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            self.client = AzureOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous AzureOpenAI client on the serving event loop.
+        """
+        if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            self.async_client = AsyncAzureOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous AzureOpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous AzureOpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def to_dict(self) -> dict[str, Any]:
         """

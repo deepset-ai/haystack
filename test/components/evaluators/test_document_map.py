@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Document, default_from_dict
@@ -50,6 +52,26 @@ def test_run_with_meta_comparison():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+def test_run_with_empty_comparison_values_does_not_match(caplog):
+    evaluator = DocumentMAPEvaluator(document_comparison_field="meta.file_id")
+    with caplog.at_level(logging.WARNING):
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="Strasbourg", meta={"file_id": ""})],
+                [Document(content="Paris", meta={"file_id": "a"})],
+                # The empty value must not count as a relevant document, otherwise the score would be 0.5
+                [Document(content="Lyon", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+            ],
+            retrieved_documents=[
+                [Document(content="pasta", meta={"file_id": ""})],
+                [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+                [Document(content="Paris", meta={"file_id": "a"})],
+            ],
+        )
+    assert result == {"individual_scores": [0.0, 0.5, 1.0], "score": 0.5}
+    assert "none of them contain a valid comparison value" in caplog.text
+
+
 def test_run_with_nested_meta_comparison():
     evaluator = DocumentMAPEvaluator(document_comparison_field="meta.source.url")
     result = evaluator.run(
@@ -63,6 +85,18 @@ def test_run_with_nested_meta_comparison():
         ],
     )
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
+def test_run_with_unhashable_meta_comparison():
+    evaluator = DocumentMAPEvaluator(document_comparison_field="meta.tags")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="x", meta={"tags": ["a"]}), Document(content="y", meta={"tags": ["b"]})]
+        ],
+        retrieved_documents=[[Document(content="z", meta={"tags": ["a"]})]],
+    )
+
+    assert result == {"individual_scores": [0.5], "score": 0.5}
 
 
 def test_run_with_all_matching():
@@ -95,6 +129,19 @@ def test_run_with_partial_matching():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+@pytest.mark.parametrize(
+    "retrieved_documents", [[Document(content="A")], [Document(content="A"), Document(content="A")]]
+)
+def test_run_with_missed_and_duplicate_relevant_documents(retrieved_documents):
+    evaluator = DocumentMAPEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="A"), Document(content="B")]],
+        retrieved_documents=[retrieved_documents],
+    )
+
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
 def test_run_with_complex_data():
     evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
@@ -124,12 +171,12 @@ def test_run_with_complex_data():
         "individual_scores": [
             1.0,
             pytest.approx(0.8333333333333333),
-            1.0,
+            0.5,  # Only one of two relevant documents was retrieved.
             pytest.approx(0.5833333333333333),
             0.0,
-            pytest.approx(0.8055555555555555),
+            pytest.approx(0.8333333333333333),  # The duplicate retrieval is not credited again.
         ],
-        "score": pytest.approx(0.7037037037037037),
+        "score": pytest.approx(0.625),
     }
 
 
@@ -147,3 +194,12 @@ def test_run_with_different_lengths():
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
         )
+
+
+def test_run_with_empty_inputs():
+    evaluator = DocumentMAPEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])

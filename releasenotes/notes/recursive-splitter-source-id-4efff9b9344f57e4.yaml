@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` not setting the ``source_id`` meta field on the chunks
+    it produces. It wrote only ``parent_id``, while every other splitter in the library
+    (``DocumentSplitter``, ``CSVDocumentSplitter``, ``EmbeddingBasedDocumentSplitter``,
+    ``HierarchicalDocumentSplitter``, ``MarkdownHeaderSplitter`` and ``PythonCodeSplitter``)
+    writes ``source_id``. Components that follow that convention therefore rejected its output:
+    ``SentenceWindowRetriever`` reads ``source_id`` by default and raises when it is absent, so
+    it failed with "The retrieved documents must have 'source_id' in their metadata." on a
+    pipeline that worked with any other splitter. Chunks now carry ``source_id`` as well as
+    ``parent_id``, which keeps its previous value for callers already reading it.

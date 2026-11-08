@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``CSVToDocument`` in ``conversion_mode="row"`` crashing the entire batch when a CSV row
+    has more fields than the header (ragged rows, e.g. an unquoted comma inside a value). Surplus
+    values are now stored under an explicit ``extra_columns`` metadata key instead of the ``None``
+    key, which previously broke Document id generation and discarded results from all sources.

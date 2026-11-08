@@ -64,11 +64,11 @@ def combine_two_logical_filters(
     init_logical_filter: dict[str, Any], runtime_logical_filter: dict[str, Any]
 ) -> dict[str, Any]:
     """
-    Combine two logical filters, they must have the same operator.
+    Combine two logical filters.
 
-    If `init_logical_filter["operator"]` and `runtime_logical_filter["operator"]` are the same, the conditions
-    of both filters are combined. Otherwise, the `init_logical_filter` is ignored and `
-    runtime_logical_filter` is returned.
+    If both operators are `"AND"`, a single `"AND"` holding the conditions of both is returned. If both use the
+    same other operator, both filters are nested under an `"AND"`. Otherwise, `init_logical_filter` is ignored and
+    `runtime_logical_filter` is returned.
 
         __Example__:
 
@@ -87,9 +87,7 @@ def combine_two_logical_filters(
                 {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
             ]
         }
-        new_filters = combine_two_logical_filters(
-            init_logical_filter, runtime_logical_filter, "AND"
-        )
+        new_filters = combine_two_logical_filters(init_logical_filter, runtime_logical_filter)
         # Output:
         {
             "operator": "AND",
@@ -101,11 +99,35 @@ def combine_two_logical_filters(
             ]
         }
         ```
+
+        With `"OR"` on both sides the filters are nested instead of concatenated:
+
+        ```python
+        init_logical_filter = {
+            "operator": "OR",
+            "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}],
+        }
+        runtime_logical_filter = {
+            "operator": "OR",
+            "conditions": [{"field": "meta.genre", "operator": "==", "value": "economy"}],
+        }
+        new_filters = combine_two_logical_filters(init_logical_filter, runtime_logical_filter)
+        # Output:
+        {"operator": "AND", "conditions": [init_logical_filter, runtime_logical_filter]}
+        ```
     """
     if init_logical_filter["operator"] == runtime_logical_filter["operator"]:
+        if init_logical_filter["operator"] == "AND":
+            return {
+                "operator": "AND",
+                "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
+            }
         return {
-            "operator": str(init_logical_filter["operator"]),
-            "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
+            "operator": "AND",
+            "conditions": [
+                {**init_logical_filter, "conditions": list(init_logical_filter["conditions"])},
+                {**runtime_logical_filter, "conditions": list(runtime_logical_filter["conditions"])},
+            ],
         }
 
     logger.warning(
@@ -117,8 +139,10 @@ def combine_two_logical_filters(
         init_logical_filter=init_logical_filter,
         runtime_logical_filter=runtime_logical_filter,
     )
-    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
-    return runtime_logical_filter
+    return {
+        "operator": str(runtime_logical_filter["operator"]),
+        "conditions": list(runtime_logical_filter["conditions"]),
+    }
 
 
 def combine_init_comparison_and_runtime_logical_filters(
@@ -158,7 +182,7 @@ def combine_init_comparison_and_runtime_logical_filters(
     ```
     """
     if runtime_logical_filter["operator"] == logical_operator:
-        conditions = runtime_logical_filter["conditions"]
+        conditions = list(runtime_logical_filter["conditions"])
         fields = {c.get("field") for c in conditions}
         if init_comparison_filter["field"] not in fields:
             conditions.append(init_comparison_filter)
@@ -177,8 +201,10 @@ def combine_init_comparison_and_runtime_logical_filters(
         logical_operator=logical_operator,
         filters_logical_operator=runtime_logical_filter["operator"],
     )
-    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
-    return runtime_logical_filter
+    return {
+        "operator": str(runtime_logical_filter["operator"]),
+        "conditions": list(runtime_logical_filter["conditions"]),
+    }
 
 
 def combine_runtime_comparison_and_init_logical_filters(
@@ -218,7 +244,7 @@ def combine_runtime_comparison_and_init_logical_filters(
     ```
     """
     if init_logical_filter["operator"] == logical_operator:
-        conditions = init_logical_filter["conditions"]
+        conditions = list(init_logical_filter["conditions"])
         fields = {c.get("field") for c in conditions}
         if runtime_comparison_filter["field"] in fields:
             logger.warning(

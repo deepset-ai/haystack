@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``normalize_metadata`` (used by all file converters) returning the same dictionary object
+    for every source when ``meta`` is ``None`` or a single dictionary. Each source now receives an
+    independent copy, so mutating one source's metadata downstream no longer leaks into the others.

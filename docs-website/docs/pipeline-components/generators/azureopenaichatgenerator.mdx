@@ -3,6 +3,7 @@ title: "AzureOpenAIChatGenerator"
 id: azureopenaichatgenerator
 slug: "/azureopenaichatgenerator"
 description: "This component enables chat completion using OpenAI’s large language models (LLMs) through Azure services."
+hep_available: true
 ---
 
 # AzureOpenAIChatGenerator
@@ -25,7 +26,7 @@ This component enables chat completion using OpenAI’s large language models (L
 
 ## Overview
 
-`AzureOpenAIChatGenerator` supports OpenAI models deployed through Azure services. To see the list of supported models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model used with the component is `gpt-4o-mini`.
+`AzureOpenAIChatGenerator` supports OpenAI models deployed through Azure services. To see the list of supported models, head over to Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?source=recommendations). The default model used with the component is `gpt-4.1-mini`.
 
 To work with Azure components, you will need an Azure OpenAI API key, as well as an Azure OpenAI Endpoint. You can learn more about them in Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
 
@@ -55,7 +56,7 @@ client = AzureOpenAIChatGenerator(
 )
 ```
 
-Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. See the [usage](#usage) section for an example.
+Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. See the [usage](#usage) section for an example.
 
 You can pass any chat completion parameters that are valid for the `openai.ChatCompletion.create` method directly to `AzureOpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the supported parameters, refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
 
@@ -121,15 +122,12 @@ You can stream output as it’s generated. Pass a callback to `streaming_callbac
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
-# Configure any `Generator` or `ChatGenerator` with a streaming callback
-component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
+# Configure any `ChatGenerator` with a streaming callback
+component = SomeChatGenerator(streaming_callback=print_streaming_chunk)
 
-# If this is a `ChatGenerator`, pass a list of messages:
+# Pass a list of messages:
 # from haystack.dataclasses import ChatMessage
 # component.run([ChatMessage.from_user("Your question here")])
-
-# If this is a (non-chat) `Generator`, pass a prompt:
-# component.run({"prompt": "Your prompt here"})
 ```
 
 :::info

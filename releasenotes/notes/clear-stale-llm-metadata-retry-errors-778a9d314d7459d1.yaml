@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``LLMMetadataExtractor`` now removes the ``metadata_extraction_error`` and
+    ``metadata_extraction_response`` keys from a document's metadata on every successful
+    extraction, in both ``run`` and ``run_async``. Previously, when a document from
+    ``failed_documents`` was re-run and the LLM returned an empty JSON object ``{}``, the
+    document ended up in ``documents`` still carrying both keys from the earlier failed attempt.

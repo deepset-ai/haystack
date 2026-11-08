@@ -30,6 +30,22 @@ CUSTOM_MIMETYPES = {
 logger = logging.getLogger(__name__)
 
 
+def _make_metadata_value_hashable(value: Any) -> Any:
+    """Convert nested metadata values into values that can be used for deduplication."""
+    if isinstance(value, list):
+        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, dict):
+        return (
+            "dict",
+            frozenset(
+                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
+            ),
+        )
+    return value
+
+
 def expand_page_range(page_range: list[str | int]) -> list[int]:
     """
     Takes a list of page numbers and ranges and expands them into a list of page numbers.
@@ -61,8 +77,11 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
             if not parts[0].isdigit() or not parts[1].isdigit():
                 msg = "range must be a string in the format 'start-end'"
                 raise ValueError(f"Invalid page range: {page} - {msg}")
-            start, end = parts
-            expanded_page_range.extend(range(int(start), int(end) + 1))
+            start, end = int(parts[0]), int(parts[1])
+            if start > end:
+                msg = "start must be less than or equal to end"
+                raise ValueError(f"Invalid page range: '{parts[0]}-{parts[1]}' - {msg}")
+            expanded_page_range.extend(range(start, end + 1))
 
         else:
             msg = "range must be a string in the format 'start-end' or an integer"

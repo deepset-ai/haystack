@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from typing import Union
+from typing import Annotated, Any, Optional, Union
 
 import pytest
 from pydantic import Field, create_model
 
+from haystack.components.agents import State
 from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
 from haystack.tools.from_function import _remove_title_from_schema
-from haystack.tools.parameters_schema_utils import _resolve_type
+from haystack.tools.parameters_schema_utils import _is_state_annotation, _resolve_type
 
 BYTE_STREAM_SCHEMA = {
     "type": "object",
@@ -89,6 +90,11 @@ DOCUMENT_SCHEMA = {
             "default": None,
             "description": "sparse vector representation of the document.",
         },
+        "multivector_embedding": {
+            "anyOf": [{"type": "array", "items": {"type": "array", "items": {"type": "number"}}}, {"type": "null"}],
+            "default": None,
+            "description": "multi-vector representation of the document.",
+        },
     },
 }
 
@@ -131,7 +137,13 @@ TOOL_CALL_RESULT_SCHEMA = {
             "anyOf": [
                 {"type": "string"},
                 {
-                    "items": {"anyOf": [{"$ref": "#/$defs/TextContent"}, {"$ref": "#/$defs/ImageContent"}]},
+                    "items": {
+                        "anyOf": [
+                            {"$ref": "#/$defs/TextContent"},
+                            {"$ref": "#/$defs/ImageContent"},
+                            {"$ref": "#/$defs/FileContent"},
+                        ]
+                    },
                     "type": "array",
                 },
             ],
@@ -313,6 +325,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCall": TOOL_CALL_SCHEMA,
                 "TextContent": TEXT_CONTENT_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
         ),
         (
@@ -390,3 +403,19 @@ def test_resolve_type_pep_604():
 
     resolved = _resolve_type(dict[str, int] | list[str])
     assert resolved == Union[dict[str, int], list[str]]
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    [
+        (State, True),
+        (Annotated[State, "state"], True),
+        (Annotated[State | None, "state"], True),
+        (Optional[Annotated[State, "state"]], True),  # noqa: UP045 - exercise typing.Optional compatibility
+        (Annotated[str, "description"], False),
+        (list[State], False),
+        (State | str, False),
+    ],
+)
+def test_is_state_annotation(annotation: Any, expected: bool) -> None:
+    assert _is_state_annotation(annotation) is expected

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``EmbeddingBasedDocumentSplitter`` emitting a final split shorter than ``min_length``. Small splits
+    were only merged forward, so the last one had nothing left to absorb and was returned as its own document.
+    It is now merged into the preceding split, unless doing so would reach ``max_length``, the same limit that
+    already governs forward merges.

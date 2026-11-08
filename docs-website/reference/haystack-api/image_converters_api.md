@@ -72,7 +72,11 @@ Initialize the DocumentToImageContent component.
 
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+  document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+  file paths are treated as absolute paths with no containment check.
+  Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+  document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+  that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
 - **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
   This will be passed to the created ImageContent objects.
 - **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
@@ -100,12 +104,10 @@ into ImageContent objects.
 
 - <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
 - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-  data and metadata. The order corresponds to order of input documents.
-
-**Raises:**
-
-- <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-  MIME type. The error message will specify which document and what information is missing or incorrect.
+  data and metadata. The order corresponds to the order of the input documents. A document that is
+  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, has an
+  image file that cannot be decoded, or points to a PDF page that cannot be converted gets None in its
+  position and a logged warning with the reason.
 
 ## file_to_document
 
@@ -114,7 +116,8 @@ into ImageContent objects.
 Converts image file references into empty Document objects with associated metadata.
 
 This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be
-processed by downstream components such as the `SentenceTransformersImageDocumentEmbedder`.
+processed by downstream components such as the `LLMDocumentContentExtractor` or the
+`SentenceTransformersDocumentImageEmbedder` (available in the `sentence-transformers-haystack` integration).
 
 It does **not** extract any content from the image files, instead it creates `Document` objects with `None` as
 their content and attaches metadata such as file path and any user-provided values.
@@ -237,7 +240,7 @@ run(
 ) -> dict[str, list[ImageContent]]
 ```
 
-Converts files to ImageContent objects.
+Converts files to ImageContent objects. Sources that fail conversion or validation are logged and skipped.
 
 **Parameters:**
 
@@ -258,7 +261,7 @@ Converts files to ImageContent objects.
 **Returns:**
 
 - <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
-- `image_contents`: A list of ImageContent objects.
+- `image_contents`: Successfully converted images in source order, or an empty list if none succeed.
 
 ## pdf_to_image
 

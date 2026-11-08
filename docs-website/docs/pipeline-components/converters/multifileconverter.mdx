@@ -3,6 +3,7 @@ title: "MultiFileConverter"
 id: multifileconverter
 slug: "/multifileconverter"
 description: "Converts CSV, DOCX, HTML, JSON, MD, PPTX, PDF, TXT, and XSLX files to documents."
+hep_available: true
 ---
 
 # MultiFileConverter
@@ -15,7 +16,7 @@ Converts CSV, DOCX, HTML, JSON, MD, PPTX, PDF, TXT, and XSLX files to documents.
 | --- | --- |
 | **Most common position in a pipeline** | Before PreProcessors , or right at the beginning of an indexing pipeline |
 | **Mandatory run variables** | `sources`: A list of file paths or ByteStream objects |
-| **Output variables** | `documents`: A list of converted documents  <br /> <br />`unclassified`: A list of uncategorized file paths or byte streams |
+| **Output variables** | `documents`: A list of converted documents  <br /> <br />`unclassified`: A list of file paths or byte streams whose MIME type isn't supported  <br /> <br />`failed`: A list of file paths or byte streams that couldn't be processed, for example a path that doesn't exist |
 | **API reference** | [Converters](/reference/converters-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/multi_file_converter.py |
 | **Package name** | `haystack-ai` |
@@ -34,14 +35,14 @@ To initialize `MultiFileConverter`, there are no mandatory parameters. Optional
 
 The `json_content_key` parameter lets you specify for the JSON files which key in the extracted data will be the document's content. The parameter is passed on to the underlying [`JSONConverter`](jsonconverter.mdx) component.
 
-The `encoding` parameter lets you specify the default encoding of the TXT, CSV, and MD files. If you don't provide any value, the component uses `utf-8` by default. Note that if the encoding is specified in the metadata of an input ByteStream, it will override this parameter's setting. The parameter is passed on to the underlying [`TextFileToDocument`](textfiletodocument.mdx) and [`CSVToDocument`](csvtodocument.mdx) components.
+The `encoding` parameter lets you specify the default encoding of the TXT, CSV, and MD files. If you don't provide any value, the component uses `utf-8-sig` by default, which decodes plain UTF-8 identically and additionally strips a byte order mark (BOM) if the file has one. Note that if the encoding is specified in the metadata of an input ByteStream, it will override this parameter's setting. The parameter is passed on to the underlying [`TextFileToDocument`](textfiletodocument.mdx) and [`CSVToDocument`](csvtodocument.mdx) components.
 
 ## Usage
 
 Install dependencies for all supported file types to use the `MultiFileConverter`:
 
 ```shell
-pip install pypdf markdown-it-py  mdit_plain trafilatura python-pptx python-docx jq openpyxl tabulate pandas
+pip install pypdf trafilatura python-pptx python-docx jq openpyxl tabulate pandas
 ```
 
 ### On its own

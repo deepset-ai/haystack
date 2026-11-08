@@ -8,7 +8,7 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.evaluators import (
     ContextRelevanceEvaluator,
     DocumentMAPEvaluator,
@@ -26,14 +26,14 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.evaluation import EvaluationRunResult
 from haystack.dataclasses import ChatMessage
 
-EMBEDDINGS_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDINGS_MODEL = "text-embedding-3-small"
 
 
 def indexing_pipeline(documents: list[Document]):
     """Indexing the documents"""
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False)
+    doc_embedder = OpenAIDocumentEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False)
     ingestion_pipe = Pipeline()
     ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
     ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
@@ -58,7 +58,7 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
         ),
     ]
     rag = Pipeline()
-    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False))
+    rag.add_component("embedder", OpenAITextEmbedder(model=EMBEDDINGS_MODEL))
     rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
     rag.add_component("prompt_builder", ChatPromptBuilder(template=template))
     rag.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
@@ -86,7 +86,7 @@ def evaluation_pipeline():
     eval_pipeline = Pipeline()
     eval_pipeline.add_component("doc_mrr", DocumentMRREvaluator())
     eval_pipeline.add_component("groundedness", FaithfulnessEvaluator())
-    eval_pipeline.add_component("sas", SASEvaluator(model=EMBEDDINGS_MODEL))
+    eval_pipeline.add_component("sas", SASEvaluator())
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
     eval_pipeline.add_component("doc_recall_multi_hit", DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT))

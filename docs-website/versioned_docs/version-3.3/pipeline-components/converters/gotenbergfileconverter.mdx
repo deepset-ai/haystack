@@ -1,0 +1,138 @@
+---
+title: "GotenbergFileConverter"
+id: gotenbergfileconverter
+slug: "/gotenbergfileconverter"
+description: "A component that converts Office, OpenDocument, HTML, and Markdown files, and web pages to PDF using a Gotenberg server."
+hep_available: false
+---
+
+# GotenbergFileConverter
+
+A component that converts Office, OpenDocument, HTML, and Markdown files, and web pages to PDF using a [Gotenberg](https://gotenberg.dev/) server.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a PDF converter (e.g. [`PyPDFToDocument`](./pypdftodocument.mdx)) at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: File paths, HTTP(S) URLs, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables**                   | `output`: A list of PDF [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects, one per source |
+| **API reference**                      | [Gotenberg](/reference/integrations-gotenberg) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/gotenberg |
+| **Package name** | `gotenberg-haystack` |
+
+</div>
+
+## Overview
+
+`GotenbergFileConverter` sends files to a [Gotenberg](https://gotenberg.dev/) server and returns the converted PDFs. Gotenberg is a Docker-based API that wraps LibreOffice and Chromium, so you can run and scale document conversion as a separate service instead of installing LibreOffice next to your pipeline.
+
+Each source is routed to a Gotenberg conversion endpoint on its own, so one batch can mix source types:
+
+| Source | Gotenberg route |
+| --- | --- |
+| Local `.md` or `.markdown` file | Chromium Markdown |
+| Local `.html`, `.htm`, or `.xhtml` file | Chromium HTML |
+| Any other local file with a [supported extension](https://gotenberg.dev/docs/convert-with-libreoffice/convert-to-pdf) (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.rtf`, ...) | LibreOffice |
+| String starting with `http://` or `https://` | Chromium URL. Gotenberg fetches the page and prints it to PDF. |
+| `ByteStream` | Routed by its `mime_type`, which is required |
+
+Like [`LibreOfficeFileConverter`](./libreofficefileconverter.mdx), this component outputs `ByteStream` objects rather than Haystack Documents. Chain it with a PDF converter such as [`PyPDFToDocument`](./pypdftodocument.mdx) to get Documents.
+
+Formats that Haystack can already read, such as `.docx`, `.pptx`, `.xlsx`, `.md`, and `.html`, are usually best converted directly with their own converters, for example [`DOCXToDocument`](./docxtodocument.mdx) or [`MarkdownToDocument`](./markdowntodocument.mdx). Gotenberg only outputs PDF, so use this component for formats without a native Haystack converter, such as legacy Office files (`.doc`, `.ppt`, `.xls`), OpenDocument files (`.odt`, `.ods`, `.odp`), RTF, and Apple iWork files. It is also useful when you want a PDF rendering of a document or web page.
+
+The output metadata keeps the local source path under `file_path` and any metadata of a source `ByteStream`. Metadata you pass through the `meta` run parameter takes precedence. HTML and Markdown sources can reference local assets such as images and stylesheets: pass them through the `resources` run parameter.
+
+Use `run_async` to convert sources concurrently. `concurrency_limit` sets how many requests are sent to Gotenberg at once.
+
+### Running Gotenberg
+
+The component needs a running Gotenberg server. The easiest way to start one is with Docker:
+
+```shell
+docker run --rm -p 3000:3000 gotenberg/gotenberg:8
+```
+
+By default, the component connects to `http://localhost:3000`. Use the `url` init parameter to point it to another server. See the [Gotenberg documentation](https://gotenberg.dev/docs/getting-started/installation) for more deployment options.
+
+## Usage
+
+Install the Gotenberg integration:
+
+```shell
+pip install gotenberg-haystack
+```
+
+### On its own
+
+```python
+from pathlib import Path
+
+from haystack_integrations.components.converters.gotenberg import (
+    GotenbergFileConverter,
+)
+
+converter = GotenbergFileConverter(url="http://localhost:3000")
+result = converter.run(
+    sources=[Path("report.docx"), Path("notes.md"), "https://haystack.deepset.ai"],
+)
+pdfs = result["output"]
+```
+
+To convert an HTML `ByteStream` together with the stylesheet it links to:
+
+```python
+from pathlib import Path
+
+from haystack.dataclasses import ByteStream
+from haystack_integrations.components.converters.gotenberg import (
+    GotenbergFileConverter,
+)
+
+converter = GotenbergFileConverter()
+html = ByteStream.from_file_path(Path("invoice.html"), mime_type="text/html")
+result = converter.run(
+    sources=[html],
+    meta={"customer": "ACME"},
+    resources=[Path("style.css")],
+)
+```
+
+### In a pipeline
+
+The pipeline below converts a legacy Word document and an OpenDocument text file to PDF, extracts their text, splits it, and writes the Documents to a Document Store.
+
+`PyPDFToDocument` and sentence splitting in `DocumentSplitter` need extra dependencies:
+
+```shell
+pip install gotenberg-haystack pypdf nltk
+```
+
+```python
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.components.converters import PyPDFToDocument
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.gotenberg import (
+    GotenbergFileConverter,
+)
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("gotenberg", GotenbergFileConverter())
+pipeline.add_component("pdf_converter", PyPDFToDocument())
+pipeline.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=5),
+)
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("gotenberg.output", "pdf_converter.sources")
+pipeline.connect("pdf_converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"gotenberg": {"sources": [Path("report.doc"), Path("notes.odt")]}})
+```

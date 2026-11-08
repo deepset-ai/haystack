@@ -431,7 +431,7 @@ Initialize the DocumentTypeRouter component.
 **Parameters:**
 
 - **mime_types** (<code>list\[str\]</code>) – A list of MIME types or regex patterns to classify the input documents.
-  (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+  (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`). `"unclassified"` is reserved.
 - **mime_type_meta_field** (<code>str | None</code>) – Optional name of the metadata field that holds the MIME type.
 - **file_path_meta_field** (<code>str | None</code>) – Optional name of the metadata field that holds the file path. Used to infer the MIME type if
   `mime_type_meta_field` is not provided or missing in a document.
@@ -441,8 +441,8 @@ Initialize the DocumentTypeRouter component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `mime_types` is empty or if both `mime_type_meta_field` and `file_path_meta_field` are
-  not provided.
+- <code>ValueError</code> – If `mime_types` is empty, uses the reserved name `"unclassified"`, or if both
+  `mime_type_meta_field` and `file_path_meta_field` are not provided.
 
 #### run
 
@@ -471,10 +471,11 @@ Categorizes files or byte streams by their MIME types, helping in context-based 
 
 FileTypeRouter supports both exact MIME type matching and regex patterns.
 
-For file paths, MIME types come from extensions, while byte streams use metadata.
-You can use regex patterns in the `mime_types` parameter to set broad categories
-(such as 'audio/*' or 'text/*') or specific types.
-MIME types without regex patterns are treated as exact matches.
+For file paths, MIME types come from extensions; byte streams use metadata.
+Each entry in `mime_types` is matched against a source's MIME type by exact equality first,
+falling back to regex `fullmatch` if equality misses. So `"image/svg+xml"` routes
+`image/svg+xml` streams correctly via the equality check (without `+` being interpreted as a
+regex quantifier), and patterns like `"audio/.*"` keep matching every audio subtype.
 
 ### Usage example
 
@@ -482,10 +483,10 @@ MIME types without regex patterns are treated as exact matches.
 from haystack.components.routers import FileTypeRouter
 from pathlib import Path
 
-# For exact MIME type matching
-router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+# Exact MIME matching — `+`-containing IANA types like image/svg+xml work correctly
+router = FileTypeRouter(mime_types=["text/plain", "application/pdf", "image/svg+xml"])
 
-# For flexible matching using regex, to handle all audio types
+# Regex matching — catch every audio subtype
 router_with_regex = FileTypeRouter(mime_types=[r"audio/.*", r"text/plain"])
 
 sources = [Path("file.txt"), Path("document.pdf"), Path("song.mp3")]
@@ -517,11 +518,17 @@ Initialize the FileTypeRouter component.
 
 - **mime_types** (<code>list\[str\]</code>) – A list of MIME types or regex patterns to classify the input files or byte streams.
   (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+  `"unclassified"` and `"failed"` are reserved output names and cannot be used here.
 - **additional_mimetypes** (<code>dict\[str, str\] | None</code>) – A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
   packages from being unclassified.
   (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
 - **raise_on_failure** (<code>bool</code>) – If True, raises FileNotFoundError when a file path doesn't exist.
   If False (default), only emits a warning when a file path doesn't exist.
+
+**Raises:**
+
+- <code>ValueError</code> – If `mime_types` is empty, contains an invalid regex, or uses the reserved names
+  `"unclassified"` or `"failed"`.
 
 #### to_dict
 
@@ -592,7 +599,7 @@ This component can be used with general-purpose LLMs and with specialized LLMs f
 ### Usage example
 
 ```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
 from haystack.components.routers.llm_messages_router import LLMMessagesRouter
 from haystack.dataclasses import ChatMessage
 
@@ -639,7 +646,7 @@ Initialize the LLMMessagesRouter component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator instance which represents the LLM.
 - **output_names** (<code>list\[str\]</code>) – A list of output connection names. These can be used to connect the router to other
-  components.
+  components. `"chat_generator_text"` and `"unmatched"` are reserved output names and cannot be used here.
 - **output_patterns** (<code>list\[str\]</code>) – A list of regular expressions to be matched against the output of the LLM. Each pattern
   corresponds to an output name. Patterns are evaluated in order.
   When using moderation models, refer to the model card to understand the expected outputs.
@@ -648,7 +655,8 @@ Initialize the LLMMessagesRouter component.
 
 **Raises:**
 
-- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length.
+- <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length, or if
+  output_names uses the reserved names `"chat_generator_text"` or `"unmatched"`.
 
 #### warm_up
 
@@ -656,7 +664,31 @@ Initialize the LLMMessagesRouter component.
 warm_up() -> None
 ```
 
-Warm up the underlying LLM.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### run
 
@@ -665,6 +697,33 @@ run(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
 ```
 
 Classify the messages based on LLM output and route them to the appropriate output connection.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessages to be routed. Only user and assistant messages are supported.
+
+**Returns:**
+
+- <code>dict\[str, str | list\[ChatMessage\]\]</code> – A dictionary with the following keys:
+- "chat_generator_text": The text output of the LLM, useful for debugging.
+- "output_names": Each contains the list of messages that matched the corresponding pattern.
+- "unmatched": The messages that did not match any of the output patterns.
+
+**Raises:**
+
+- <code>ValueError</code> – If messages is an empty list or contains messages with unsupported roles.
+
+#### run_async
+
+```python
+run_async(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
+```
+
+Asynchronously classify the messages based on LLM output and route them to the appropriate output connection.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. If the chat generator only implements a synchronous
+`run` method, it is executed in a thread to avoid blocking the event loop.
 
 **Parameters:**
 
@@ -759,7 +818,12 @@ result = router.run(documents=streams)
 #### __init__
 
 ```python
-__init__(rules: dict[str, dict], output_type: type = list[Document]) -> None
+__init__(
+    rules: dict[str, dict],
+    output_type: type = list[Document],
+    *,
+    strict_datetime_comparison: bool = False
+) -> None
 ```
 
 Initializes the MetadataRouter component.
@@ -767,7 +831,7 @@ Initializes the MetadataRouter component.
 **Parameters:**
 
 - **rules** (<code>dict\[str, dict\]</code>) – A dictionary defining how to route documents or byte streams to output connections based on their
-  metadata. Keys are output connection names, and values are dictionaries of
+  metadata. Keys are output connection names (`"unmatched"` is reserved), and values are dictionaries of
   [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
   For example:
 
@@ -804,7 +868,13 @@ Initializes the MetadataRouter component.
 }
 ```
 
-:param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+- **output_type** (<code>type</code>) – The type of the output produced. Lists of Documents or ByteStreams can be specified.
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
+
+**Raises:**
+
+- <code>ValueError</code> – If `rules` contains the reserved output name `"unmatched"` or an invalid filter.
 
 #### run
 
@@ -855,159 +925,78 @@ Deserialize this component from a dictionary.
 
 - <code>MetadataRouter</code> – The deserialized component instance.
 
-## text_language_router
+## openai_decisions_image_router
 
-### TextLanguageRouter
+### OpenAIDecisionsImageRouter
 
-Routes text strings to different output connections based on their language.
+Routes an image to one of the configured label outputs using the OpenAI Decisions API.
 
-Provide a list of languages during initialization. If the document's text doesn't match any of the
-specified languages, the metadata value is set to "unmatched".
-For routing documents based on their language, use the DocumentLanguageClassifier component,
-followed by the MetaDataRouter.
+Pass an `ImageContent` to `run()` or `run_async()`. The model answers a single `choice` question using
+`instructions` and `labels`, and the component returns the image on the selected label's output.
 
-### Usage example
+The returned image includes the decision in `meta["openai_decisions"]`.
 
-```python
-from haystack import Pipeline, Document
-from haystack.components.routers import TextLanguageRouter
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+You can pass optional `text` alongside the image to provide context for the decision.
 
-document_store = InMemoryDocumentStore()
-document_store.write_documents([Document(content="Elvis Presley was an American singer and actor.")])
-
-p = Pipeline()
-p.add_component(instance=TextLanguageRouter(languages=["en"]), name="text_language_router")
-p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
-p.connect("text_language_router.en", "retriever.query")
-
-result = p.run({"text_language_router": {"text": "Who was Elvis Presley?"}})
-assert result["retriever"]["documents"][0].content == "Elvis Presley was an American singer and actor."
-
-result = p.run({"text_language_router": {"text": "ένα ελληνικό κείμενο"}})
-assert result["text_language_router"]["unmatched"] == "ένα ελληνικό κείμενο"
-```
-
-#### __init__
-
-```python
-__init__(languages: list[str] | None = None) -> None
-```
-
-Initialize the TextLanguageRouter component.
-
-**Parameters:**
-
-- **languages** (<code>list\[str\] | None</code>) – A list of ISO language codes.
-  See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-  If not specified, defaults to ["en"].
-
-#### run
-
-```python
-run(text: str) -> dict[str, str]
-```
-
-Routes the text strings to different output connections based on their language.
-
-If the document's text doesn't match any of the specified languages, the metadata value is set to "unmatched".
-
-**Parameters:**
-
-- **text** (<code>str</code>) – A text string to route.
-
-**Returns:**
-
-- <code>dict\[str, str\]</code> – A dictionary in which the key is the language (or `"unmatched"`),
-  and the value is the text.
-
-**Raises:**
-
-- <code>TypeError</code> – If the input is not a string.
-
-## transformers_text_router
-
-### TransformersTextRouter
-
-Routes the text strings to different connections based on a category label.
-
-The labels are specific to each model and can be found it its description on Hugging Face.
+If `min_confidence` is set and the answer's confidence is below it, the image goes to `low_confidence` instead. If
+the model declines to answer, the image goes to `refused`, regardless of the confidence threshold.
 
 ### Usage example
 
-<!-- test-ignore -->
-
 ```python
-from haystack.core.pipeline import Pipeline
-from haystack.components.routers import TransformersTextRouter
-from haystack.components.builders import PromptBuilder
-from haystack.components.generators import HuggingFaceLocalGenerator
+from haystack.components.routers import OpenAIDecisionsImageRouter
+from haystack.dataclasses import ImageContent
 
-p = Pipeline()
-p.add_component(
-    instance=TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection"),
-    name="text_router"
+# Set OPENAI_API_KEY in the environment.
+router = OpenAIDecisionsImageRouter(
+    labels={
+        "fruit": "Photographs of fruit",
+        "logo": "Company logos",
+    },
 )
-p.add_component(
-    instance=PromptBuilder(template="Answer the question: {{query}}\nAnswer:"),
-    name="english_prompt_builder"
-)
-p.add_component(
-    instance=PromptBuilder(template="Beantworte die Frage: {{query}}\nAntwort:"),
-    name="german_prompt_builder"
-)
-
-p.add_component(
-    instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
-    name="german_llm"
-)
-p.add_component(
-    instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
-    name="english_llm"
-)
-
-p.connect("text_router.en", "english_prompt_builder.query")
-p.connect("text_router.de", "german_prompt_builder.query")
-p.connect("english_prompt_builder.prompt", "english_llm.prompt")
-p.connect("german_prompt_builder.prompt", "german_llm.prompt")
-
-# English Example
-print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))
-
-# German Example
-print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}))
+image = ImageContent.from_file_path(file_path="test/test_files/images/apple.jpg")
+result = router.run(image=image)
+# >> {"fruit": <ImageContent>}
 ```
 
 #### __init__
 
 ```python
 __init__(
-    model: str,
-    labels: list[str] | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    labels: list[str] | dict[str, str | None],
+    *,
+    instructions: str = "Which category does this image belong to?",
+    model: str = "gpt-6-luna",
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
+    min_confidence: float | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
-Initializes the TransformersTextRouter component.
+Creates an OpenAIDecisionsImageRouter.
 
 **Parameters:**
 
-- **model** (<code>str</code>) – The name or path of a Hugging Face model for text classification.
-- **labels** (<code>list\[str\] | None</code>) – The list of labels. If not provided, the component fetches the labels
-  from the model configuration file hosted on the Hugging Face Hub using
-  `transformers.AutoConfig.from_pretrained`.
-- **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
-  If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- **token** (<code>Secret | None</code>) – The API token used to download private models from Hugging Face.
-  If `True`, uses either `HF_API_TOKEN` or `HF_TOKEN` environment variables.
-  To generate these tokens, run `transformers-cli login`.
-- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
-  text classification pipeline.
+- **labels** (<code>list\[str\] | dict\[str, str | None\]</code>) – The labels to route between, each becoming an output connection. Pass a dict of label to description to
+  tell the model what each label means. Requires between 2 and 255 unique, non-empty string labels.
+  `low_confidence` and `refused` are reserved output names.
+- **instructions** (<code>str</code>) – The question the model answers by picking one of the labels.
+  Defaults to "Which category does this image belong to?".
+- **model** (<code>str</code>) – Name of the Decisions model to use. Defaults to `gpt-6-luna`.
+- **api_key** (<code>Secret</code>) – OpenAI API key. Defaults to the `OPENAI_API_KEY` environment variable, resolved during warm-up.
+- **api_base_url** (<code>str | None</code>) – API base URL. If `None`, uses the SDK default or `OPENAI_BASE_URL` environment variable.
+- **min_confidence** (<code>float | None</code>) – Threshold between 0 and 1 for the answer's `confidence`. Images below it are sent to the `low_confidence`
+  output. If `None`, every non-refused image goes to a label output.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
+  `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+
+**Raises:**
+
+- <code>ValueError</code> – If labels are invalid, duplicated or reserved, or `min_confidence` is outside 0 to 1.
 
 #### warm_up
 
@@ -1015,160 +1004,149 @@ Initializes the TransformersTextRouter component.
 warm_up() -> None
 ```
 
-Initializes the component.
+Creates the synchronous OpenAI client if needed.
 
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
+#### warm_up_async
 
 ```python
-from_dict(data: dict[str, Any]) -> TransformersTextRouter
+warm_up_async() -> None
 ```
 
-Deserializes the component from a dictionary.
+Creates the asynchronous OpenAI client if needed.
 
-**Parameters:**
+#### close
 
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+```python
+close() -> None
+```
 
-**Returns:**
+Releases the synchronous OpenAI client, if initialized.
 
-- <code>TransformersTextRouter</code> – Deserialized component.
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client, if initialized.
 
 #### run
 
 ```python
-run(text: str) -> dict[str, str]
+run(image: ImageContent, *, text: str | None = None) -> dict[str, ImageContent]
 ```
 
-Routes the text strings to different connections based on a category label.
+Routes the image to the output of the label the model picks.
 
 **Parameters:**
 
-- **text** (<code>str</code>) – A string of text to route.
+- **image** (<code>ImageContent</code>) – The image to route.
+- **text** (<code>str | None</code>) – Optional text context for the decision. Defaults to `None`.
 
 **Returns:**
 
-- <code>dict\[str, str\]</code> – A dictionary with the label as key and the text as value.
+- <code>dict\[str, ImageContent\]</code> – A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+  with the answer in `meta["openai_decisions"]`.
 
 **Raises:**
 
-- <code>TypeError</code> – If the input is not a str.
+- <code>TypeError</code> – If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
 
-## zero_shot_text_router
+#### run_async
 
-### TransformersZeroShotTextRouter
+```python
+run_async(
+    image: ImageContent, *, text: str | None = None
+) -> dict[str, ImageContent]
+```
 
-Routes the text strings to different connections based on a category label.
+Asynchronously routes the image to the output of the label the model picks.
 
-Specify the set of labels for categorization when initializing the component.
+**Parameters:**
+
+- **image** (<code>ImageContent</code>) – The image to route.
+- **text** (<code>str | None</code>) – Optional text context for the decision. Defaults to `None`.
+
+**Returns:**
+
+- <code>dict\[str, ImageContent\]</code> – A dictionary mapping the picked label, `low_confidence`, or `refused` to the image
+  with the answer in `meta["openai_decisions"]`.
+
+**Raises:**
+
+- <code>TypeError</code> – If `image` is not an `ImageContent`, or `text` is neither a string nor `None`.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
+
+## openai_decisions_text_router
+
+### OpenAIDecisionsTextRouter
+
+Routes a text to the connection of the label an OpenAI Decisions model picks for it.
+
+The model answers a single `choice` question over `labels`. The component has one output per label.
+When `min_confidence` is set, it also has a `low_confidence` output that receives the text whenever the
+answer's `confidence` is below the threshold, so uncertain texts can go to a fallback such as an LLM or a human.
+
+OpenAI can decline to answer a question. In that case, the text goes to the `refused` output,
+independently of `min_confidence`.
 
 ### Usage example
 
 ```python
-from haystack import Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.core.pipeline import Pipeline
-from haystack.components.routers import TransformersZeroShotTextRouter
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.components.routers import OpenAIDecisionsTextRouter
 
-document_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
-docs = [
-    Document(
-        content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
-        "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
-        "is Frankfurt; the largest urban area is the Ruhr."
-    ),
-    Document(
-        content="France, officially the French Republic, is a country located primarily in Western Europe. "
-        "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
-        "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
-        "Lille, Bordeaux, Strasbourg, Nantes and Nice."
-    )
-]
-docs_with_embeddings = doc_embedder.run(docs)
-document_store.write_documents(docs_with_embeddings["documents"])
-
-p = Pipeline()
-p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
-p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
-    name="passage_embedder"
+# Set OPENAI_API_KEY in the environment.
+router = OpenAIDecisionsTextRouter(
+    labels={
+        "billing": "Payments, invoices, refunds and charges",
+        "technical": "Bugs, crashes and errors in the product",
+    },
+    instructions="Which team should handle this support request?",
+    min_confidence=0.6,
 )
-p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
-    name="query_embedder"
-)
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="query_retriever"
-)
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="passage_retriever"
-)
-
-p.connect("text_router.passage", "passage_embedder.text")
-p.connect("passage_embedder.embedding", "passage_retriever.query_embedding")
-p.connect("text_router.query", "query_embedder.text")
-p.connect("query_embedder.embedding", "query_retriever.query_embedding")
-
-# Query Example
-p.run({"text_router": {"text": "What is the capital of Germany?"}})
-
-# Passage Example
-p.run({
-    "text_router":{
-        "text": "The United Kingdom of Great Britain and Northern Ireland, commonly known as the "            "United Kingdom (UK) or Britain, is a country in Northwestern Europe, off the north-western coast of "            "the continental mainland."
-    }
-})
+result = router.run(text="I was charged twice for my subscription.")
+# >> {"billing": "I was charged twice for my subscription."}
 ```
 
 #### __init__
 
 ```python
 __init__(
-    labels: list[str],
-    multi_label: bool = False,
-    model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    labels: list[str] | dict[str, str | None],
+    *,
+    instructions: str = "Which category does this text belong to?",
+    model: str = "gpt-6-luna",
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
+    min_confidence: float | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
-Initializes the TransformersZeroShotTextRouter component.
+Creates an OpenAIDecisionsTextRouter.
 
 **Parameters:**
 
-- **labels** (<code>list\[str\]</code>) – The set of labels to use for classification. Can be a single label,
-  a string of comma-separated labels, or a list of labels.
-- **multi_label** (<code>bool</code>) – Indicates if multiple labels can be true.
-  If `False`, label scores are normalized so their sum equals 1 for each sequence.
-  If `True`, the labels are considered independent and probabilities are normalized for each candidate by
-  doing a softmax of the entailment score vs. the contradiction score.
-- **model** (<code>str</code>) – The name or path of a Hugging Face model for zero-shot text classification.
-- **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
-  If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- **token** (<code>Secret | None</code>) – The API token used to download private models from Hugging Face.
-  If `True`, uses either `HF_API_TOKEN` or `HF_TOKEN` environment variables.
-  To generate these tokens, run `transformers-cli login`.
-- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
-  zero shot text classification.
+- **labels** (<code>list\[str\] | dict\[str, str | None\]</code>) – The labels to route between, each becoming an output connection. Pass a dict of label to description to
+  tell the model what each label means. Requires between 2 and 255 unique, non-empty string labels.
+  `low_confidence` and `refused` are reserved output names.
+- **instructions** (<code>str</code>) – The question the model answers by picking one of the labels.
+  Defaults to "Which category does this text belong to?".
+- **model** (<code>str</code>) – Name of the Decisions model to use. Defaults to `gpt-6-luna`.
+- **api_key** (<code>Secret</code>) – OpenAI API key. Defaults to the `OPENAI_API_KEY` environment variable, resolved during warm-up.
+- **api_base_url** (<code>str | None</code>) – API base URL. If `None`, uses the SDK default or `OPENAI_BASE_URL` environment variable.
+- **min_confidence** (<code>float | None</code>) – Threshold between 0 and 1 for the answer's `confidence`. Texts below it are sent to the `low_confidence`
+  output. If `None`, every non-refused text goes to a label output.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
+  `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+
+**Raises:**
+
+- <code>ValueError</code> – If labels are invalid, duplicated or reserved, or `min_confidence` is outside 0 to 1.
 
 #### warm_up
 
@@ -1176,35 +1154,31 @@ Initializes the TransformersZeroShotTextRouter component.
 warm_up() -> None
 ```
 
-Initializes the component.
+Creates the synchronous OpenAI client if needed.
 
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
+#### warm_up_async
 
 ```python
-from_dict(data: dict[str, Any]) -> TransformersZeroShotTextRouter
+warm_up_async() -> None
 ```
 
-Deserializes the component from a dictionary.
+Creates the asynchronous OpenAI client if needed.
 
-**Parameters:**
+#### close
 
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+```python
+close() -> None
+```
 
-**Returns:**
+Releases the synchronous OpenAI client, if initialized.
 
-- <code>TransformersZeroShotTextRouter</code> – Deserialized component.
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client, if initialized.
 
 #### run
 
@@ -1212,16 +1186,40 @@ Deserializes the component from a dictionary.
 run(text: str) -> dict[str, str]
 ```
 
-Routes the text strings to different connections based on a category label.
+Routes the text to the output of the label the model picks.
 
 **Parameters:**
 
-- **text** (<code>str</code>) – A string of text to route.
+- **text** (<code>str</code>) – The text to route.
 
 **Returns:**
 
-- <code>dict\[str, str\]</code> – A dictionary with the label as key and the text as value.
+- <code>dict\[str, str\]</code> – A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input text.
 
 **Raises:**
 
-- <code>TypeError</code> – If the input is not a str.
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.
+
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, str]
+```
+
+Asynchronously routes the text to the output of the label the model picks.
+
+This is the asynchronous version of the `run` method with the same parameters and return values.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The text to route.
+
+**Returns:**
+
+- <code>dict\[str, str\]</code> – A dictionary with a single key, the picked label, `low_confidence`, or `refused`, mapped to the input text.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the API returns an unexpected answer instead of a configured label or refusal.

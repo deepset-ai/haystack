@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add a content-free ``haystack.agent.hook`` tracing span for every Agent hook invocation. Each span identifies the
+    hook point, hook name, and hook type, allowing hook latency and failures to be attributed without tracing the
+    potentially large Agent ``State``. ``CompactionHook`` also adds its configured compaction strategy, estimated
+    context size, whether compaction was triggered, its token target, and whether the compactor returned a replacement.

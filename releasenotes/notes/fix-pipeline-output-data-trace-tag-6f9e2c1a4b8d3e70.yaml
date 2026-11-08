@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the ``haystack.pipeline.output_data`` tracing tag being empty. The tag was set at the start of
+    ``Pipeline.run``/``run_async`` from the still-empty outputs, and since tracing backends coerce a tag value
+    when it is set, the recorded output was always an empty dictionary. It is now set once the run completes so
+    it reflects the final pipeline outputs. The tag is also gated behind content tracing
+    (``HAYSTACK_CONTENT_TRACING_ENABLED``), consistent with the component-level input/output tags.

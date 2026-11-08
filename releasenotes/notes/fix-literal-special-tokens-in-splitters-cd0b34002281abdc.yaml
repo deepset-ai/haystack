@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fix token-based splitting in ``DocumentSplitter`` and ``RecursiveDocumentSplitter``
+    failing on documents containing strings such as ``<|endoftext|>``.
+    These strings are now preserved and counted as ordinary text, including when
+    splitting with overlap.

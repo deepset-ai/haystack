@@ -6,204 +6,34 @@ slug: "/rankers-api"
 ---
 
 
-## hugging_face_tei
-
-### TruncationDirection
-
-Bases: <code>str</code>, <code>Enum</code>
-
-Defines the direction to truncate text when input length exceeds the model's limit.
-
-Attributes:
-LEFT: Truncate text from the left side (start of text).
-RIGHT: Truncate text from the right side (end of text).
-
-### HuggingFaceTEIRanker
-
-Ranks documents based on their semantic similarity to the query.
-
-It can be used with a Text Embeddings Inference (TEI) API endpoint:
-
-- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
-- [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
-
-Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack import Document
-from haystack.components.rankers import HuggingFaceTEIRanker
-from haystack.utils import Secret
-
-reranker = HuggingFaceTEIRanker(
-    url="http://localhost:8080",
-    top_k=5,
-    timeout=30,
-    token=Secret.from_token("my_api_token")
-)
-
-docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
-
-result = reranker.run(query="What is the capital of France?", documents=docs)
-
-ranked_docs = result["documents"]
-print(ranked_docs)
-# >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
-# >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    url: str,
-    top_k: int = 10,
-    raw_scores: bool = False,
-    timeout: int | None = 30,
-    max_retries: int = 3,
-    retry_status_codes: list[int] | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    )
-) -> None
-```
-
-Initializes the TEI reranker component.
-
-**Parameters:**
-
-- **url** (<code>str</code>) – Base URL of the TEI reranking service (for example, "https://api.example.com").
-- **top_k** (<code>int</code>) – Maximum number of top documents to return.
-- **raw_scores** (<code>bool</code>) – If True, include raw relevance scores in the API payload.
-- **timeout** (<code>int | None</code>) – Request timeout in seconds.
-- **max_retries** (<code>int</code>) – Maximum number of retry attempts for failed requests.
-- **retry_status_codes** (<code>list\[int\] | None</code>) – List of HTTP status codes that will trigger a retry.
-  When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization. Not always required
-  depending on your TEI server configuration.
-  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> HuggingFaceTEIRanker
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>HuggingFaceTEIRanker</code> – Deserialized component.
-
-#### run
-
-```python
-run(
-    query: str,
-    documents: list[Document],
-    top_k: int | None = None,
-    truncation_direction: TruncationDirection | None = None,
-) -> dict[str, list[Document]]
-```
-
-Reranks the provided documents by relevance to the query using the TEI API.
-
-Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
-if a score is present.
-
-**Parameters:**
-
-- **query** (<code>str</code>) – The user query string to guide reranking.
-- **documents** (<code>list\[Document\]</code>) – List of `Document` objects to rerank.
-- **top_k** (<code>int | None</code>) – Optional override for the maximum number of documents to return.
-- **truncation_direction** (<code>TruncationDirection | None</code>) – If set, enables text truncation in the specified direction.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: A list of reranked documents.
-
-**Raises:**
-
-- <code>RuntimeError</code> – - If the API request fails.
-- <code>RuntimeError</code> – - If the API returns an error response.
-- <code>TypeError</code> – - If the API response is not in the expected list format.
-
-#### run_async
-
-```python
-run_async(
-    query: str,
-    documents: list[Document],
-    top_k: int | None = None,
-    truncation_direction: TruncationDirection | None = None,
-) -> dict[str, list[Document]]
-```
-
-Asynchronously reranks the provided documents by relevance to the query using the TEI API.
-
-Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
-if a score is present.
-
-**Parameters:**
-
-- **query** (<code>str</code>) – The user query string to guide reranking.
-- **documents** (<code>list\[Document\]</code>) – List of `Document` objects to rerank.
-- **top_k** (<code>int | None</code>) – Optional override for the maximum number of documents to return.
-- **truncation_direction** (<code>TruncationDirection | None</code>) – If set, enables text truncation in the specified direction.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: A list of reranked documents.
-
-**Raises:**
-
-- <code>httpx.RequestError</code> – - If the API request fails.
-- <code>RuntimeError</code> – - If the API returns an error response.
-- <code>TypeError</code> – - If the API response is not in the expected list format.
-
 ## llm_ranker
 
 ### LLMRanker
 
 Ranks documents for a query using a Large Language Model.
 
-The LLM is expected to return a JSON object containing ranked document indices.
+The LLM is expected to return a JSON object containing ranked document indices. Only the documents the LLM returns
+are kept, so the output can contain fewer than `top_k` documents, or none if the LLM considers none relevant.
+
+If the query is empty, or if generation or parsing fails and `raise_on_failure` is `False`, the ranker falls back
+to the deduplicated input documents, unranked and in their original order. `top_k` is not applied to them, since
+cutting off unranked documents could drop relevant ones.
 
 Usage example:
 
 ```python
 from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.rankers import LLMRanker
 
-chat_generator = OpenAIChatGenerator(
-    model="gpt-4.1-mini",
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
     generation_kwargs={
-        "temperature": 0.0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
+        "text": {
+            "format": {
+                "type": "json_schema",
                 "name": "document_ranking",
+                "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -220,8 +50,8 @@ chat_generator = OpenAIChatGenerator(
                     "required": ["documents"],
                     "additionalProperties": False,
                 },
-            },
-        },
+            }
+        }
     },
 )
 
@@ -252,13 +82,19 @@ Initialize the LLMRanker component.
 
 **Parameters:**
 
-- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
-  output is used.
+- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIResponsesChatGenerator` configured for
+  JSON output and with `store` set to `False` is used.
 - **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
   `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
-- **top_k** (<code>int</code>) – The maximum number of documents to return.
-- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
-  input documents in fallback order.
+- **top_k** (<code>int</code>) – The maximum number of ranked documents to return. Not applied when the ranker falls back to the input
+  documents.
+- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return all
+  deduplicated input documents unranked, in their original order, without applying `top_k`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0 or if `prompt` doesn't include exactly the variables `query` and
+  `documents`.
 
 #### warm_up
 
@@ -267,6 +103,30 @@ warm_up() -> None
 ```
 
 Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### to_dict
 
@@ -310,13 +170,55 @@ Before ranking, duplicate documents are removed.
 
 **Parameters:**
 
-- **query** (<code>str</code>) – The query used for reranking.
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
 - **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents unranked, in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously rank documents for a query using an LLM.
+
+Before ranking, duplicate documents are removed.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. If the chat generator only implements a synchronous
+`run` method, it is executed in a thread to avoid blocking the event loop.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query used for reranking. If empty, the documents are returned without ranking.
+- **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
+- **top_k** (<code>int | None</code>) – The maximum number of ranked documents to return. Overrides the instance's `top_k` if provided. Not
+  applied when the ranker falls back to the input documents.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents the LLM considers relevant, from most to least relevant. If
+  `query` is empty, or if generation or parsing fails and `raise_on_failure` is `False`, all deduplicated
+  input documents unranked, in their original order.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
 
 ## lost_in_the_middle
 
@@ -359,14 +261,13 @@ __init__(
 
 Initialize the LostInTheMiddleRanker.
 
-If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
-another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
-be breached will be included in the resulting list of documents, but all subsequent documents will be
-discarded.
-
 **Parameters:**
 
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
 
 #### run
@@ -388,7 +289,11 @@ if a score is present.
 
 - **documents** (<code>list\[Document\]</code>) – List of Documents to reorder.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
-- **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
+- **word_count_threshold** (<code>int | None</code>) – The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+  reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+  filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+  in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+  Words are counted using `str.split()`, not model tokens.
 
 **Returns:**
 
@@ -398,6 +303,99 @@ if a score is present.
 **Raises:**
 
 - <code>ValueError</code> – If any of the documents is not textual.
+
+## max_sim
+
+### MaxSimRanker
+
+Ranks documents by their similarity to a query using precomputed multivector embeddings.
+
+It computes a MaxSim score by selecting the highest dot product with a document vector for each query vector,
+then summing these values.
+
+This component is typically used in two-stage retrieval. Separate dense and multivector embedders prepare
+the document representations, which are saved to a document store. At query time, the corresponding query
+embedders generate both representations. An embedding retriever quickly selects candidates using dense
+similarity. This ranker then uses the multivector embeddings for a more fine-grained comparison of the query
+and each candidate's content.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack.components.rankers import MaxSimRanker
+
+# Representative multivector embedding for ""How do solar panels work?""
+query_multivector_embedding = [[1.0, 0.0], [0.0, 1.0]]
+
+documents = [
+    Document(content="Wind turbines generate electricity.", multivector_embedding=[[1.0, 0.0], [0.0, 0.2]]),
+    Document(content="Solar panels turn sunlight into power.", multivector_embedding=[[0.95, 0.05], [0.15, 0.9]]),
+    Document(content="Batteries store energy.", multivector_embedding=[[0.3, 0.1], [0.1, 0.3]]),
+    Document(content="Solar cells absorb light.", multivector_embedding=[[0.9, 0.1], [0.1, 0.9]]),
+    Document(content="Trees absorb carbon dioxide.", multivector_embedding=[[0.1, 0.0], [0.0, 0.2]]),
+    Document(content="Rain falls from clouds.", multivector_embedding=[[0.0, 0.1], [0.1, 0.0]]),
+]
+
+ranker = MaxSimRanker(top_k=2)
+result = ranker.run(query_multivector_embedding=query_multivector_embedding, documents=documents)
+for document in result["documents"]:
+    print(f"{document.score:.2f}: {document.content}")
+# >> 1.85: Solar panels turn sunlight into power.
+# >> 1.80: Solar cells absorb light.
+```
+
+#### __init__
+
+```python
+__init__(*, top_k: int = 10) -> None
+```
+
+Initialize the MaxSimRanker component.
+
+**Parameters:**
+
+- **top_k** (<code>int</code>) – The maximum number of documents to return.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0.
+
+#### run
+
+```python
+run(
+    query_multivector_embedding: list[list[float]],
+    documents: list[Document],
+    *,
+    top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Returns documents ranked by their MaxSim score for the given query multivector embedding.
+
+Before ranking, documents without multivector embeddings are skipped with a warning. The remaining
+documents are deduplicated by their id, retaining only the document with the highest existing score
+if a score is present.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – The query multivector embedding. All vectors must have the same dimension as the document vectors.
+- **documents** (<code>list\[Document\]</code>) – The documents to rank. Documents whose `multivector_embedding` is `None` are skipped.
+  Present embeddings must be non-empty matrices of finite numbers.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be greater than 0.
+  If `None`, the value provided at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: Up to `top_k` documents sorted by descending MaxSim score,
+  with their `score` fields updated.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not greater than 0, a multivector embedding is not a non-empty matrix of finite numbers,
+  or query and document vectors have different dimensions.
 
 ## meta_field
 
@@ -457,7 +455,7 @@ Creates an instance of MetaFieldRanker.
   Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
 - **sort_order** (<code>Literal['ascending', 'descending']</code>) – Whether to sort the meta field by ascending or descending order.
   Possible values are `descending` (default) and `ascending`.
-- **missing_meta** (<code>Literal['drop', 'top', 'bottom']</code>) – What to do with documents that are missing the sorting metadata field.
+- **missing_meta** (<code>Literal['drop', 'top', 'bottom']</code>) – What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
   Possible values are:
   - 'drop' will drop the documents entirely.
   - 'top' will place the documents at the top of the metadata-sorted list
@@ -512,12 +510,12 @@ if a score is present.
   If not provided, the weight provided at initialization time is used.
 - **ranking_mode** (<code>Literal['reciprocal_rank_fusion', 'linear_score'] | None</code>) – (optional) The mode used to combine the Retriever's and Ranker's scores.
   Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-  Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+  Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
   If not provided, the ranking_mode provided at initialization time is used.
 - **sort_order** (<code>Literal['ascending', 'descending'] | None</code>) – Whether to sort the meta field by ascending or descending order.
   Possible values are `descending` (default) and `ascending`.
   If not provided, the sort_order provided at initialization time is used.
-- **missing_meta** (<code>Literal['drop', 'top', 'bottom'] | None</code>) – What to do with documents that are missing the sorting metadata field.
+- **missing_meta** (<code>Literal['drop', 'top', 'bottom'] | None</code>) – What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
   Possible values are:
 - 'drop' will drop the documents entirely.
 - 'top' will place the documents at the top of the metadata-sorted list
@@ -637,522 +635,3 @@ The output is a list of documents reordered based on how they were grouped.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
-
-## sentence_transformers_diversity
-
-### DiversityRankingStrategy
-
-Bases: <code>Enum</code>
-
-The strategy to use for diversity ranking.
-
-#### from_str
-
-```python
-from_str(string: str) -> DiversityRankingStrategy
-```
-
-Convert a string to a Strategy enum.
-
-### DiversityRankingSimilarity
-
-Bases: <code>Enum</code>
-
-The similarity metric to use for comparing embeddings.
-
-#### from_str
-
-```python
-from_str(string: str) -> DiversityRankingSimilarity
-```
-
-Convert a string to a Similarity enum.
-
-### SentenceTransformersDiversityRanker
-
-A Diversity Ranker based on Sentence Transformers.
-
-Applies a document ranking algorithm based on one of the two strategies:
-
-1. Greedy Diversity Order:
-
-   Implements a document ranking algorithm that orders documents in a way that maximizes the overall diversity
-   of the documents based on their similarity to the query.
-
-   It uses a pre-trained Sentence Transformers model to embed the query and
-   the documents.
-
-1. Maximum Margin Relevance:
-
-   Implements a document ranking algorithm that orders documents based on their Maximum Margin Relevance (MMR)
-   scores.
-
-   MMR scores are calculated for each document based on their relevance to the query and diversity from already
-   selected documents. The algorithm iteratively selects documents based on their MMR scores, balancing between
-   relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
-   trade-off between relevance and diversity.
-
-Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
-if a score is present.
-
-### Usage example
-
-```python
-from haystack import Document
-from haystack.components.rankers import SentenceTransformersDiversityRanker
-
-ranker = SentenceTransformersDiversityRanker(
-    model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order"
-)
-
-docs = [Document(content="Paris"), Document(content="Berlin")]
-query = "What is the capital of germany?"
-output = ranker.run(query=query, documents=docs)
-docs = output["documents"]
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str = "sentence-transformers/all-MiniLM-L6-v2",
-    top_k: int = 10,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    similarity: str | DiversityRankingSimilarity = "cosine",
-    query_prefix: str = "",
-    query_suffix: str = "",
-    document_prefix: str = "",
-    document_suffix: str = "",
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    strategy: str | DiversityRankingStrategy = "greedy_diversity_order",
-    lambda_threshold: float = 0.5,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-) -> None
-```
-
-Initialize a SentenceTransformersDiversityRanker.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – Local path or name of the model in Hugging Face's model hub,
-  such as `'sentence-transformers/all-MiniLM-L6-v2'`.
-- **top_k** (<code>int</code>) – The maximum number of Documents to return per query.
-- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically
-  selected.
-- **token** (<code>Secret | None</code>) – The API token used to download private models from Hugging Face.
-- **similarity** (<code>str | DiversityRankingSimilarity</code>) – Similarity metric for comparing embeddings. Can be set to "dot_product" (default) or
-  "cosine".
-- **query_prefix** (<code>str</code>) – A string to add to the beginning of the query text before ranking.
-  Can be used to prepend the text with an instruction, as required by some embedding models,
-  such as E5 and BGE.
-- **query_suffix** (<code>str</code>) – A string to add to the end of the query text before ranking.
-- **document_prefix** (<code>str</code>) – A string to add to the beginning of each Document text before ranking.
-  Can be used to prepend the text with an instruction, as required by some embedding models,
-  such as E5 and BGE.
-- **document_suffix** (<code>str</code>) – A string to add to the end of each Document text before ranking.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document content.
-- **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document content.
-- **strategy** (<code>str | DiversityRankingStrategy</code>) – The strategy to use for diversity ranking. Can be either "greedy_diversity_order" or
-  "maximum_margin_relevance".
-- **lambda_threshold** (<code>float</code>) – The trade-off parameter between relevance and diversity. Only used when strategy is
-  "maximum_margin_relevance".
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersDiversityRanker
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersDiversityRanker</code> – The deserialized component.
-
-#### run
-
-```python
-run(
-    query: str,
-    documents: list[Document],
-    top_k: int | None = None,
-    lambda_threshold: float | None = None,
-) -> dict[str, list[Document]]
-```
-
-Rank the documents based on their diversity.
-
-**Parameters:**
-
-- **query** (<code>str</code>) – The search query.
-- **documents** (<code>list\[Document\]</code>) – List of Document objects to be ranker.
-- **top_k** (<code>int | None</code>) – Optional. An integer to override the top_k set during initialization.
-- **lambda_threshold** (<code>float | None</code>) – Override the trade-off parameter between relevance and diversity. Only used when
-  strategy is "maximum_margin_relevance".
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
-- `documents`: List of Document objects that have been selected based on the diversity ranking.
-
-**Raises:**
-
-- <code>ValueError</code> – If the top_k value is less than or equal to 0.
-
-## sentence_transformers_similarity
-
-### SentenceTransformersSimilarityRanker
-
-Ranks documents based on their semantic similarity to the query.
-
-It uses a pre-trained cross-encoder model from Hugging Face to embed the query and the documents.
-
-### Usage example
-
-```python
-from haystack import Document
-from haystack.components.rankers import SentenceTransformersSimilarityRanker
-
-ranker = SentenceTransformersSimilarityRanker()
-docs = [Document(content="Paris"), Document(content="Berlin")]
-query = "City in Germany"
-result = ranker.run(query=query, documents=docs)
-docs = result["documents"]
-print(docs[0].content)
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    top_k: int = 10,
-    query_prefix: str = "",
-    query_suffix: str = "",
-    document_prefix: str = "",
-    document_suffix: str = "",
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    scale_score: bool = True,
-    score_threshold: float | None = None,
-    trust_remote_code: bool = False,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-    batch_size: int = 16
-) -> None
-```
-
-Creates an instance of SentenceTransformersSimilarityRanker.
-
-**Parameters:**
-
-- **model** (<code>str | Path</code>) – The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.
-- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically selected.
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-- **top_k** (<code>int</code>) – The maximum number of documents to return per query.
-- **query_prefix** (<code>str</code>) – A string to add at the beginning of the query text before ranking.
-  Use it to prepend the text with an instruction, as required by reranking models like `bge`.
-- **query_suffix** (<code>str</code>) – A string to add at the end of the query text before ranking.
-  Use it to append the text with an instruction, as required by reranking models like `qwen`.
-- **document_prefix** (<code>str</code>) – A string to add at the beginning of each document before ranking. You can use it to prepend the document
-  with an instruction, as required by embedding models like `bge`.
-- **document_suffix** (<code>str</code>) – A string to add at the end of each document before ranking. You can use it to append the document
-  with an instruction, as required by embedding models like `qwen`.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed with the document.
-- **embedding_separator** (<code>str</code>) – Separator to concatenate metadata fields to the document.
-- **scale_score** (<code>bool</code>) – If `True`, scales the raw logit predictions using a Sigmoid activation function.
-  If `False`, disables scaling of the raw logit predictions.
-- **score_threshold** (<code>float | None</code>) – Use it to return documents with a score above this threshold only.
-- **trust_remote_code** (<code>bool</code>) – If `False`, allows only Hugging Face verified model architectures.
-  If `True`, allows custom models and scripts.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-- **batch_size** (<code>int</code>) – The batch size to use for inference. The higher the batch size, the more memory is required.
-  If you run into memory issues, reduce the batch size.
-
-**Raises:**
-
-- <code>ValueError</code> – If `top_k` is not > 0.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersSimilarityRanker
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersSimilarityRanker</code> – Deserialized component.
-
-#### run
-
-```python
-run(
-    *,
-    query: str,
-    documents: list[Document],
-    top_k: int | None = None,
-    scale_score: bool | None = None,
-    score_threshold: float | None = None
-) -> dict[str, list[Document]]
-```
-
-Returns a list of documents ranked by their similarity to the given query.
-
-Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
-if a score is present.
-
-**Parameters:**
-
-- **query** (<code>str</code>) – The input query to compare the documents to.
-- **documents** (<code>list\[Document\]</code>) – A list of documents to be ranked.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
-- **scale_score** (<code>bool | None</code>) – If `True`, scales the raw logit predictions using a Sigmoid activation function.
-  If `False`, disables scaling of the raw logit predictions.
-  If set, overrides the value set at initialization.
-- **score_threshold** (<code>float | None</code>) – Use it to return documents only with a score above this threshold.
-  If set, overrides the value set at initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: A list of documents closest to the query, sorted from most similar to least similar.
-
-**Raises:**
-
-- <code>ValueError</code> – If `top_k` is not > 0.
-
-## transformers_similarity
-
-### TransformersSimilarityRanker
-
-Ranks documents based on their semantic similarity to the query.
-
-It uses a pre-trained cross-encoder model from Hugging Face to embed the query and the documents.
-
-Note:
-This component is considered legacy and will no longer receive updates. It may be deprecated in a future release,
-with removal following after a deprecation period.
-Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality along with
-additional features.
-
-### Usage example
-
-```python
-from haystack import Document
-from haystack.components.rankers import TransformersSimilarityRanker
-
-ranker = TransformersSimilarityRanker()
-docs = [Document(content="Paris"), Document(content="Berlin")]
-query = "City in Germany"
-result = ranker.run(query=query, documents=docs)
-docs = result["documents"]
-print(docs[0].content)
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    top_k: int = 10,
-    query_prefix: str = "",
-    document_prefix: str = "",
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    scale_score: bool = True,
-    calibration_factor: float | None = 1.0,
-    score_threshold: float | None = None,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    batch_size: int = 16,
-) -> None
-```
-
-Creates an instance of TransformersSimilarityRanker.
-
-**Parameters:**
-
-- **model** (<code>str | Path</code>) – The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.
-- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, overrides the default device.
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-- **top_k** (<code>int</code>) – The maximum number of documents to return per query.
-- **query_prefix** (<code>str</code>) – A string to add at the beginning of the query text before ranking.
-  Use it to prepend the text with an instruction, as required by reranking models like `bge`.
-- **document_prefix** (<code>str</code>) – A string to add at the beginning of each document before ranking. You can use it to prepend the document
-  with an instruction, as required by embedding models like `bge`.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed with the document.
-- **embedding_separator** (<code>str</code>) – Separator to concatenate metadata fields to the document.
-- **scale_score** (<code>bool</code>) – If `True`, scales the raw logit predictions using a Sigmoid activation function.
-  If `False`, disables scaling of the raw logit predictions.
-- **calibration_factor** (<code>float | None</code>) – Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
-  Used only if `scale_score` is `True`.
-- **score_threshold** (<code>float | None</code>) – Use it to return documents with a score above this threshold only.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **batch_size** (<code>int</code>) – The batch size to use for inference. The higher the batch size, the more memory is required.
-  If you run into memory issues, reduce the batch size.
-
-**Raises:**
-
-- <code>ValueError</code> – If `top_k` is not > 0.
-  If `scale_score` is True and `calibration_factor` is not provided.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> TransformersSimilarityRanker
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>TransformersSimilarityRanker</code> – Deserialized component.
-
-#### run
-
-```python
-run(
-    query: str,
-    documents: list[Document],
-    top_k: int | None = None,
-    scale_score: bool | None = None,
-    calibration_factor: float | None = None,
-    score_threshold: float | None = None,
-) -> dict[str, Any]
-```
-
-Returns a list of documents ranked by their similarity to the given query.
-
-Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
-if a score is present.
-
-**Parameters:**
-
-- **query** (<code>str</code>) – The input query to compare the documents to.
-- **documents** (<code>list\[Document\]</code>) – A list of documents to be ranked.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
-- **scale_score** (<code>bool | None</code>) – If `True`, scales the raw logit predictions using a Sigmoid activation function.
-  If `False`, disables scaling of the raw logit predictions.
-- **calibration_factor** (<code>float | None</code>) – Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
-  Used only if `scale_score` is `True`.
-- **score_threshold** (<code>float | None</code>) – Use it to return documents only with a score above this threshold.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `documents`: A list of documents closest to the query, sorted from most similar to least similar.
-
-**Raises:**
-
-- <code>ValueError</code> – If `top_k` is not > 0.
-  If `scale_score` is True and `calibration_factor` is not provided.

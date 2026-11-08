@@ -20,6 +20,11 @@ class TestDocumentCleaner:
         assert cleaner.remove_substrings is None
         assert cleaner.remove_regex is None
         assert cleaner.keep_id is False
+        assert cleaner.min_content_length == 0
+
+    def test_init_rejects_negative_min_content_length(self):
+        with pytest.raises(ValueError, match="min_content_length must be greater than or equal to 0"):
+            DocumentCleaner(min_content_length=-1)
 
     def test_non_text_document(self, caplog):
         with caplog.at_level(logging.WARNING):
@@ -27,10 +32,41 @@ class TestDocumentCleaner:
             cleaner.run(documents=[Document()])
             assert "DocumentCleaner only cleans text documents but document.content for document ID" in caplog.text
 
+    def test_min_content_length_drops_short_cleaned_documents(self, caplog):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            remove_substrings=["remove me"],
+            keep_id=True,
+            min_content_length=3,
+        )
+        documents = [
+            Document(content="  remove me  ", id="empty-after-cleaning"),
+            Document(content="  ab  ", id="short"),
+            Document(content="  abc  ", id="at-threshold"),
+            Document(content="  abcd  ", id="long"),
+        ]
+
+        with caplog.at_level(logging.DEBUG):
+            result = cleaner.run(documents=documents)
+
+        assert [doc.id for doc in result["documents"]] == ["at-threshold", "long"]
+        assert [doc.content for doc in result["documents"]] == ["  abc  ", "  abcd  "]
+        assert "empty-after-cleaning" in caplog.text
+        assert "short" in caplog.text
+
+    def test_min_content_length_preserves_documents_with_none_content(self):
+        document = Document(content=None, id="non-text")
+        cleaner = DocumentCleaner(min_content_length=100)
+
+        result = cleaner.run(documents=[document])
+
+        assert result["documents"] == [document]
+
     def test_single_document(self):
         with pytest.raises(TypeError, match="DocumentCleaner expects a List of Documents as input."):
             cleaner = DocumentCleaner()
-            cleaner.run(documents=Document())
+            cleaner.run(documents=Document())  # type: ignore[arg-type]
 
     def test_empty_list(self):
         cleaner = DocumentCleaner()
@@ -86,6 +122,27 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "This is a text\fwith some words."
 
+    @pytest.mark.parametrize(
+        "content, expected",
+        [
+            ("    def f():\n        return 1\n", "    def f():\n        return 1\n"),
+            ("    keep indent [TODO] here\n", "keep indent  here"),
+            ("\n# Page 1 [TODO]\n\f\n## Page 2\n    indented\n", "# Page 1\f\n## Page 2\n    indented\n"),
+        ],
+        ids=["no-match", "match", "multi-page"],
+    )
+    def test_remove_regex_strips_only_matching_pages(self, content, expected):
+        cleaner = DocumentCleaner(remove_empty_lines=False, remove_extra_whitespaces=False, remove_regex=r"\[TODO\]")
+        result = cleaner.run(documents=[Document(content=content)])
+        assert result["documents"][0].content == expected
+
+    def test_remove_regex_with_strip_whitespaces(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_regex=r"Page \d$", strip_whitespaces=True
+        )
+        result = cleaner.run(documents=[Document(content="\n  Body 1\nPage 1\f  Body 2  \n")])
+        assert result["documents"][0].content == "Body 1\f  Body 2"
+
     def test_remove_repeated_substrings(self):
         cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
@@ -120,6 +177,18 @@ class TestDocumentCleaner:
         Sed do eiusmod tempor."""
         result = cleaner.run(documents=[Document(content=text)])
         assert result["documents"][0].content == expected_text
+
+    def test_remove_repeated_substrings_preserves_unique_middle_page(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        text = "PAGE ONE\fThe quick brown fox jumps high\fPAGE THREE"
+        result = cleaner.run(documents=[Document(content=text)])["documents"][0]
+        assert result.content is not None
+        assert result.content.split("\f")[1] == "The quick brown fox jumps high"
+        # With no genuine repeated header/footer, all three pages must round-trip unchanged and in order.
+        assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
+        assert result.content == text
 
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
@@ -216,6 +285,7 @@ class TestDocumentCleaner:
             score=0.1,
             embedding=[0.1, 0.2, 0.3],
             sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+            multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
         )
         res = cleaner.run(documents=[document])
 
@@ -230,6 +300,7 @@ class TestDocumentCleaner:
         assert res["documents"][0].score == document.score
         assert res["documents"][0].embedding == document.embedding
         assert res["documents"][0].sparse_embedding == document.sparse_embedding
+        assert res["documents"][0].multivector_embedding == document.multivector_embedding
 
     def test_strip_whitespaces(self):
         """Test that strip_whitespaces removes only leading and trailing whitespace."""

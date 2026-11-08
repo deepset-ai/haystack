@@ -5,6 +5,7 @@
 import csv
 import io
 import os
+import re
 from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
@@ -12,16 +13,42 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_MARKUP_COMPATIBILITY_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+# A text box keeps its paragraphs here, nested under the drawing inside a run.
+_TEXT_BOX_CONTENT_TAG = f"{{{_WORD_NS}}}txbxContent"
+# Word writes a text box twice inside `mc:AlternateContent`: a `wps:txbx` under
+# `mc:Choice` and the same text as a VML text box under `mc:Fallback`.
+_FALLBACK_TAG = f"{{{_MARKUP_COMPATIBILITY_NS}}}Fallback"
+_RUN_TAG = f"{{{_WORD_NS}}}r"
+_HYPERLINK_TAG = f"{{{_WORD_NS}}}hyperlink"
+_CONTENT_CONTROL_TAG = f"{{{_WORD_NS}}}sdt"
+_CONTENT_CONTROL_CONTENT_TAG = f"{{{_WORD_NS}}}sdtContent"
+_PLACEHOLDER_TAG = f"{{{_WORD_NS}}}showingPlcHdr"
+# Runs a paragraph shows can sit inside these wrappers, which python-docx's `Paragraph.text`
+# and `iter_inner_content()` do not enter: a tracked insertion, the new place of moved
+# text, a smart tag, a custom XML element and a simple field such as a page number.
+# A tracked deletion (`w:del`) and the old place of moved text (`w:moveFrom`) are not
+# shown, so they are left out.
+_RUN_CONTAINER_TAGS = frozenset(
+    f"{{{_WORD_NS}}}{name}" for name in ("ins", "moveTo", "smartTag", "customXml", "fldSimple")
+)
+
+# A Markdown table row ends at a line break and its columns are separated by pipes, so
+# neither can survive inside a cell.
+_MARKDOWN_CELL_BREAK_PATTERN = re.compile(r"\s*(?:\r\n|\r|\n)\s*")
+_MARKDOWN_CELL_PIPE_PATTERN = re.compile(r"(?<!\\)(\\*)\|")
+
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
-    from docx.table import Table
+    from docx.table import Table, _Cell
     from docx.text.hyperlink import Hyperlink
     from docx.text.paragraph import Paragraph
     from docx.text.run import Run
@@ -91,29 +118,7 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
-class DOCXLinkFormat(Enum):
-    """
-    Supported formats for storing DOCX link information in a Document.
-    """
-
-    MARKDOWN = "markdown"
-    PLAIN = "plain"
-    NONE = "none"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @staticmethod
-    def from_str(string: str) -> "DOCXLinkFormat":
-        """
-        Convert a string to a DOCXLinkFormat enum.
-        """
-        enum_map = {e.value: e for e in DOCXLinkFormat}
-        link_format = enum_map.get(string.lower())
-        if link_format is None:
-            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
-            raise ValueError(msg)
-        return link_format
+DOCXLinkFormat = LinkFormat
 
 
 @component
@@ -267,6 +272,7 @@ class DOCXToDocument:
                 else:
                     para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
+                elements.extend(self._extract_text_boxes(element, document))
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
                 table_str = (
@@ -276,6 +282,34 @@ class DOCXToDocument:
                 )
                 elements.append(table_str)
 
+        return elements
+
+    def _extract_text_boxes(self, element: Any, document: "DocxDocument") -> list[str]:
+        """
+        Extracts the text of any text box anchored to a paragraph.
+
+        A text box holds its own paragraphs and tables under `w:txbxContent`, nested in
+        the drawing inside a run, so the anchoring paragraph's text never reaches them.
+
+        :param element: The `w:p` element to look under.
+        :param document: The DOCX Document object.
+        :returns: List of strings, one per paragraph or table found inside a text box.
+        """
+        elements = []
+        for text_box in element.iter(_TEXT_BOX_CONTENT_TAG):
+            # Skip the `mc:Fallback` copy, or the same text is emitted twice.
+            if any(ancestor.tag == _FALLBACK_TAG for ancestor in text_box.iterancestors()):
+                continue
+            for child in text_box:
+                if child.tag.endswith("p"):
+                    elements.append(self._process_links_in_paragraph(Paragraph(child, document)))
+                elif child.tag.endswith("tbl"):
+                    table = docx.table.Table(child, document)
+                    elements.append(
+                        self._table_to_markdown(table)
+                        if self.table_format == DOCXTableFormat.MARKDOWN
+                        else self._table_to_csv(table)
+                    )
         return elements
 
     def _process_paragraph_with_page_breaks(self, paragraph: "Paragraph") -> str:
@@ -310,22 +344,83 @@ class DOCXToDocument:
         :param paragraph: The DOCX paragraph to process.
         :returns: A string with links formatted according to the specified format.
         """
-        if self.link_format == DOCXLinkFormat.NONE:
-            return paragraph.text
         text = ""
-        # Iterate over all hyperlinks and other content in the paragraph
-        # https://python-docx.readthedocs.io/en/latest/api/text.html#docx.text.paragraph.Paragraph.iter_inner_content
-        for content in paragraph.iter_inner_content():
-            if isinstance(content, Run):
+        for content in self._inline_content(paragraph._p, paragraph):
+            if isinstance(content, Run) or self.link_format == DOCXLinkFormat.NONE:
                 text += content.text
-            elif isinstance(content, Hyperlink):
+            else:
+                # Use `.url` instead of `.address` so a URL fragment stored
+                # separately by Word (in `w:anchor`) is not dropped.
                 if self.link_format == DOCXLinkFormat.MARKDOWN:
-                    formatted_link = f"[{content.text}]({content.address})"
+                    formatted_link = f"[{content.text}]({content.url})"
                 else:  # PLAIN format
-                    formatted_link = f"{content.text} ({content.address})"
+                    formatted_link = f"{content.text} ({content.url})"
                 text += formatted_link
 
         return text
+
+    @staticmethod
+    def _shows_placeholder(content_control: Any) -> bool:
+        """
+        Tells whether a content control still shows its placeholder prompt.
+
+        :param content_control: The `w:sdt` element.
+        :returns: True if its properties hold `w:showingPlcHdr` and the flag is not turned off.
+        """
+        properties = content_control.find(f"{{{_WORD_NS}}}sdtPr")
+        flag = properties.find(_PLACEHOLDER_TAG) if properties is not None else None
+        return flag is not None and flag.get(f"{{{_WORD_NS}}}val", "true").lower() not in ("0", "false", "off")
+
+    def _inline_content(self, element: Any, paragraph: "Paragraph") -> list["Run | Hyperlink"]:
+        """
+        Lists the runs and hyperlinks a paragraph shows, in reading order.
+
+        Unlike `Paragraph.iter_inner_content()`, this also enters tracked insertions, moved
+        text, smart tags, custom XML, simple fields and inline content controls. A content
+        control that still shows its placeholder prompt is skipped, as its text is not
+        part of the document.
+
+        :param element: The `w:p` element, or a wrapper inside it.
+        :param paragraph: The paragraph the runs belong to.
+        :returns: List of `Run` and `Hyperlink` objects.
+        """
+        content: list[Run | Hyperlink] = []
+        for child in element:
+            if child.tag == _RUN_TAG:
+                content.append(Run(child, paragraph))
+            elif child.tag == _HYPERLINK_TAG:
+                content.append(Hyperlink(child, paragraph))
+            elif child.tag in _RUN_CONTAINER_TAGS:
+                content.extend(self._inline_content(child, paragraph))
+            elif child.tag == _CONTENT_CONTROL_TAG and not self._shows_placeholder(child):
+                for control_content in child.iterchildren(_CONTENT_CONTROL_CONTENT_TAG):
+                    content.extend(self._inline_content(control_content, paragraph))
+        return content
+
+    @staticmethod
+    def _escape_markdown_cell(text: str) -> str:
+        """
+        Makes a cell's text safe to put between the pipes of a Markdown table row.
+
+        A cell spanning several paragraphs arrives with newlines in it, which would end
+        the row in the middle, and a pipe in a cell would be read as a column separator.
+
+        :param text: The cell text.
+        :returns: The text with line breaks collapsed and pipes escaped.
+        """
+        text = _MARKDOWN_CELL_BREAK_PATTERN.sub(" ", text)
+        # The backslash run in front of the pipe is doubled first, so a backslash the
+        # cell already contains cannot consume the escape.
+        return _MARKDOWN_CELL_PIPE_PATTERN.sub(lambda match: match.group(1) * 2 + r"\|", text)
+
+    def _cell_text(self, cell: "_Cell") -> str:
+        """
+        Returns a table cell's text with links formatted like links in body paragraphs.
+
+        :param cell: The DOCX table cell.
+        :returns: The cell's paragraphs joined by newlines, as `cell.text` joins them.
+        """
+        return "\n".join(self._process_links_in_paragraph(paragraph) for paragraph in cell.paragraphs)
 
     def _table_to_markdown(self, table: "Table") -> str:
         """
@@ -337,10 +432,10 @@ class DOCXToDocument:
         markdown: list[str] = []
         max_col_widths: list[int] = []
 
-        # Calculate max width for each column
+        # Calculate max width for each column, on the escaped text that is written out
         for row in table.rows:
             for i, cell in enumerate(row.cells):
-                cell_text = cell.text.strip()
+                cell_text = self._escape_markdown_cell(self._cell_text(cell).strip())
                 if i >= len(max_col_widths):
                     max_col_widths.append(len(cell_text))
                 else:
@@ -348,7 +443,10 @@ class DOCXToDocument:
 
         # Process rows
         for i, row in enumerate(table.rows):
-            md_row = [cell.text.strip().ljust(max_col_widths[j]) for j, cell in enumerate(row.cells)]
+            md_row = [
+                self._escape_markdown_cell(self._cell_text(cell).strip()).ljust(max_col_widths[j])
+                for j, cell in enumerate(row.cells)
+            ]
             markdown.append("| " + " | ".join(md_row) + " |")
 
             # Add separator after header row
@@ -370,7 +468,7 @@ class DOCXToDocument:
 
         # Process rows
         for row in table.rows:
-            csv_row = [cell.text.strip() for cell in row.cells]
+            csv_row = [self._cell_text(cell).strip() for cell in row.cells]
             csv_writer.writerow(csv_row)
 
         # Get the CSV as a string and strip any trailing newlines

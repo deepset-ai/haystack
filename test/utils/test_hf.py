@@ -2,33 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
-
 import pytest
 
 from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ReasoningContent, TextContent, ToolCall
 from haystack.dataclasses.chat_message import ToolCallResult
-from haystack.utils.device import ComponentDevice
-from haystack.utils.hf import convert_message_to_hf_format, resolve_hf_device_map
-
-
-def test_resolve_hf_device_map_only_device():
-    model_kwargs = resolve_hf_device_map(device=None, model_kwargs={})
-    assert model_kwargs["device_map"] == ComponentDevice.resolve_device(None).to_hf()
-
-
-def test_resolve_hf_device_map_only_device_map():
-    model_kwargs = resolve_hf_device_map(device=None, model_kwargs={"device_map": "cpu"})
-    assert model_kwargs["device_map"] == "cpu"
-
-
-def test_resolve_hf_device_map_device_and_device_map(caplog):
-    with caplog.at_level(logging.WARNING):
-        model_kwargs = resolve_hf_device_map(
-            device=ComponentDevice.from_str("cpu"), model_kwargs={"device_map": "cuda:0"}
-        )
-        assert "The parameters `device` and `device_map` from `model_kwargs` are both provided." in caplog.text
-    assert model_kwargs["device_map"] == "cuda:0"
+from haystack.utils.hf import convert_message_to_hf_format
 
 
 def test_convert_message_to_hf_format():
@@ -59,7 +37,7 @@ def test_convert_message_to_hf_format():
         "tool_calls": [{"type": "function", "function": {"name": "weather", "arguments": {"city": "Paris"}}}],
     }
 
-    tool_result = {"weather": "sunny", "temperature": "25"}
+    tool_result = '{"weather": "sunny", "temperature": "25"}'
     message = ChatMessage.from_tool(
         tool_result=tool_result, origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
     )
@@ -71,8 +49,22 @@ def test_convert_message_to_hf_format():
     assert convert_message_to_hf_format(message) == {"role": "tool", "content": tool_result}
 
 
+def test_convert_contentless_assistant_message_to_hf_format():
+    # A Chat Generator that discards a malformed tool call returns a reply with no content parts. This format always
+    # carries a content field, so the reply is sent with it empty.
+    message = ChatMessage.from_assistant(text=None)
+    assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
+
+
+def test_convert_reasoning_only_assistant_message_to_hf_format():
+    # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the same
+    # as a reply carrying reasoning alongside text.
+    message = ChatMessage.from_assistant(reasoning="only reasoning")
+    assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
+
+
 def test_convert_message_to_hf_invalid():
-    message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+    message = ChatMessage(_role=ChatRole.USER, _content=[])
     with pytest.raises(ValueError):
         convert_message_to_hf_format(message)
 
@@ -83,7 +75,7 @@ def test_convert_message_to_hf_invalid():
             ToolCallResult(
                 result="result!",
                 origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
-                error=None,
+                error=None,  # type: ignore[arg-type]
             ),
         ],
     )

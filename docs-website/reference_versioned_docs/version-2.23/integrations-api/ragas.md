@@ -90,6 +90,11 @@ configuration. Only the `openai` provider is supported for automatic
 deserialization; the API key is read from the `OPENAI_API_KEY` environment
 variable at load time.
 
+With `haystack-ai` >= 3.0, the module a metric class lives in must be on the deserialization
+allowlist. Metrics shipped by ragas are trusted automatically; a custom metric class from
+your own package has to be trusted explicitly, e.g. via
+`Pipeline.load(..., allowed_modules=["mypackage.*"])`.
+
 **Parameters:**
 
 - **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
@@ -97,6 +102,10 @@ variable at load time.
 **Returns:**
 
 - <code>RagasEvaluator</code> – Deserialized component.
+
+**Raises:**
+
+- <code>DeserializationError</code> – If a metric class is not on the deserialization allowlist.
 
 #### run
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import threading
 
 import pytest
 
@@ -47,6 +48,42 @@ class TestLoggingTracer:
         assert caplog.records[0].operation_name == "test"  # type: ignore[attr-defined]
         assert caplog.records[1].tag_name == "key"  # type: ignore[attr-defined]
         assert caplog.records[1].tag_value == "value"  # type: ignore[attr-defined]
+
+    def test_concurrent_spans_do_not_interleave(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Spans closing from parallel threads keep each span's operation-name and tag records contiguous."""
+        tracer = LoggingTracer()
+        caplog.set_level(logging.DEBUG)
+
+        num_threads = 4
+        num_tags = 3
+        # Line every thread up so their span-exit emissions race, maximizing the chance of interleaving without a lock.
+        barrier = threading.Barrier(num_threads)
+
+        def emit_span(idx: int) -> None:
+            with tracer.trace(f"op-{idx}") as span:
+                barrier.wait()
+                for tag_i in range(num_tags):
+                    span.set_tag(f"tag-{tag_i}", str(idx))
+
+        threads = [threading.Thread(target=emit_span, args=(i,)) for i in range(num_threads)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Bucket each tag record under the operation record that precedes it.
+        groups: list[tuple[str, list[str]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                groups.append((record.operation_name, []))
+            elif hasattr(record, "tag_name") and groups:
+                groups[-1][1].append(record.tag_value)  # type: ignore[attr-defined]
+
+        # One contiguous group per span, and every tag inside a group belongs to that span (no interleaving).
+        assert len(groups) == num_threads
+        for operation_name, tag_values in groups:
+            idx = operation_name.removeprefix("op-")
+            assert tag_values == [idx] * num_tags
 
     def test_tracing_complex_values(self, caplog: pytest.LogCaptureFixture) -> None:
         tracer = LoggingTracer()

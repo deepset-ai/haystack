@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
 import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
@@ -29,14 +29,6 @@ class InvalidOutputEmbeddingRetriever:
         # Return an int instead of the expected dict with 'documents' key
         # This will cause the pipeline to crash when trying to pass it to the next component
         return 42  # type: ignore[return-value]
-
-
-@component
-class MockTextEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        embedding = np.ones(384).tolist()  # Mock embedding of size 384
-        return {"embedding": embedding}
 
 
 class TestPipelineOutputsRaisedInException:

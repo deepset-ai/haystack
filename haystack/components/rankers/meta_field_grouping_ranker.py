@@ -4,8 +4,10 @@
 
 from collections import defaultdict
 
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.utils.misc import _deduplicate_documents
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -95,7 +97,9 @@ class MetaFieldGroupingRanker:
 
         deduplicated_documents = _deduplicate_documents(documents)
         for doc in deduplicated_documents:
-            group_value = str(doc.meta.get(self.group_by, ""))
+            # A value of None counts as missing, as it does for `sort_docs_by`
+            raw_group_value = doc.meta.get(self.group_by)
+            group_value = "" if raw_group_value is None else str(raw_group_value)
 
             # If no group value, add to no_group_docs and continue
             if not group_value:
@@ -104,16 +108,34 @@ class MetaFieldGroupingRanker:
 
             # Get subgroup value or use a default if not specified
             subgroup_value = "no_subgroup"
-            if self.subgroup_by and self.subgroup_by in doc.meta:
+            if self.subgroup_by and doc.meta.get(self.subgroup_by) is not None:
                 subgroup_value = str(doc.meta[self.subgroup_by])
 
             document_groups[group_value][subgroup_value].append(doc)
 
+        # use a non-optional key for type checking; "" disables sorting.
+        sort_field = self.sort_docs_by or ""
+
         ordered_docs = []
         for subgroups in document_groups.values():
             for docs in subgroups.values():
-                if self.sort_docs_by:
-                    docs.sort(key=lambda d: d.meta.get(self.sort_docs_by or "", float("inf")))
+                if sort_field:
+                    # Sort by the field value, placing documents with a missing value last.
+                    # The (is_missing, value) tuple keeps documents with a missing value out of the
+                    # value comparison, but two present values of mutually non-comparable types
+                    # (e.g. an int and a str) would still raise a TypeError. In that case we keep the
+                    # group's insertion order instead of crashing, mirroring MetaFieldRanker.
+                    try:
+                        docs = sorted(docs, key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                    except TypeError as error:
+                        logger.warning(
+                            "Tried to sort Documents with IDs {document_ids}, but got TypeError with the "
+                            "message: {error}\nKeeping the original order of the Documents in this group "
+                            "since sorting by '{sort_field}' is not possible.",
+                            document_ids=",".join([doc.id for doc in docs]),
+                            error=error,
+                            sort_field=sort_field,
+                        )
                 ordered_docs.extend(docs)
 
         ordered_docs.extend(no_group_docs)

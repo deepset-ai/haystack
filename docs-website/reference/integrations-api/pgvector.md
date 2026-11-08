@@ -17,7 +17,9 @@ Example usage:
 ```python
 from haystack.document_stores import DuplicatePolicy
 from haystack import Document, Pipeline
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 
 from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
 from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever
@@ -36,7 +38,6 @@ documents = [Document(content="There are over 7,000 languages spoken around the 
              Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 
 document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
@@ -117,6 +118,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>PgvectorEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -266,6 +283,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>PgvectorKeywordRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -430,6 +463,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>PgvectorDocumentStore</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### delete_table
 
@@ -631,6 +680,10 @@ Deletes all documents that match the provided filters.
 
 - <code>int</code> – The number of documents deleted.
 
+**Raises:**
+
+- <code>FilterError</code> – If `filters` is empty. Use `delete_all_documents()` to delete everything.
+
 #### delete_by_filter_async
 
 ```python
@@ -647,6 +700,10 @@ Asynchronously deletes all documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>FilterError</code> – If `filters` is empty. Use `delete_all_documents_async()` to delete everything.
 
 #### update_by_filter
 
@@ -846,46 +903,68 @@ Asynchronously returns the minimum and maximum values for a given metadata field
 
 ```python
 get_metadata_field_unique_values(
-    metadata_field: str, search_term: str | None, from_: int, size: int
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Returns unique values for a given metadata field, optionally filtered by a search term.
 
+**Note**: values of different JSON type categories are kept distinct - a string, a number and
+a boolean never collapse into each other, even when they share a textual form (e.g. the string
+`"1"` and the number `1`). One exception: the `meta` column is JSONB, whose equality treats a
+whole-number float (`1.0`) as identical to a numerically equal int (`1`), so those two collapse
+into a single value. Floats with a fractional part (e.g. `1.5`) are unaffected.
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
-  If None, all documents are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter unique values by a case-insensitive substring
+  match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
-- A list of unique values (as strings)
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing:
+- A list of unique values in their original type
 - The total count of unique values
 
 #### get_metadata_field_unique_values_async
 
 ```python
 get_metadata_field_unique_values_async(
-    metadata_field: str, search_term: str | None, from_: int, size: int
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously returns unique values for a given metadata field, optionally filtered by a search term.
 
+**Note**: values of different JSON type categories are kept distinct - a string, a number and
+a boolean never collapse into each other, even when they share a textual form (e.g. the string
+`"1"` and the number `1`). One exception: the `meta` column is JSONB, whose equality treats a
+whole-number float (`1.0`) as identical to a numerically equal int (`1`), so those two collapse
+into a single value. Floats with a fractional part (e.g. `1.5`) are unaffected.
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
-  If None, all documents are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter unique values by a case-insensitive substring
+  match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
-- A list of unique values (as strings)
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing:
+- A list of unique values in their original type
 - The total count of unique values

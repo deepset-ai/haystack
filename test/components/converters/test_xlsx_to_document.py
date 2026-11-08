@@ -2,11 +2,69 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
+import io
 import logging
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Literal
 
 import pytest
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 from haystack.components.converters.xlsx import XLSXToDocument
+from haystack.dataclasses import ByteStream
+
+
+def _convert_rows(
+    tmp_path: Path,
+    sheet_rows: list[list[Any]],
+    table_format: Literal["csv", "markdown"] = "csv",
+    read_excel_kwargs: dict[str, Any] | None = None,
+    missing_value: str = "<missing>",
+) -> list[list[str]]:
+    """
+    Writes `sheet_rows` to an XLSX file, converts it, and returns the table cells without the row index column.
+    """
+    workbook = Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    for row in sheet_rows:
+        sheet.append(row)
+    path = tmp_path / "sheet.xlsx"
+    workbook.save(path)
+    workbook.close()
+
+    original_kwargs = deepcopy(read_excel_kwargs)
+    format_kwargs = {"na_rep": missing_value} if table_format == "csv" else {"missingval": missing_value}
+    converter = XLSXToDocument(
+        table_format=table_format, read_excel_kwargs=read_excel_kwargs, table_format_kwargs=format_kwargs
+    )
+    documents = converter.run(sources=[path])["documents"]
+    assert read_excel_kwargs == original_kwargs
+
+    assert len(documents) == 1
+    content = documents[0].content
+    assert content is not None
+    if table_format == "csv":
+        return [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+    return [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+
+
+def _write_linked_workbook(path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    sheet.title = "Data"
+    sheet.append(["Name", "Email", "Reference"])
+    sheet.append(["Alice", "alice@example.com", "A"])
+    sheet.append(["Bob", "bob@example.com", "B"])
+    sheet["A2"].hyperlink = "https://example.com/alice"
+    sheet["B2"].hyperlink = "#Data!A2"
+    sheet["C2"].hyperlink = "#Data!A1:C2"
+    workbook.save(path)
+    workbook.close()
 
 
 class TestXLSXToDocument:
@@ -18,9 +76,9 @@ class TestXLSXToDocument:
         assert converter.link_format == "none"
         assert converter.table_format_kwargs == {}
 
-    def test_run_basic_tables(self, test_files_path) -> None:
+    def test_run_basic_tables(self, test_files_path: Path) -> None:
         converter = XLSXToDocument(store_full_path=True)
-        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 2
@@ -37,9 +95,9 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": "Table Missing Value"},
         }
 
-    def test_run_table_empty_rows_and_columns(self, test_files_path) -> None:
+    def test_run_table_empty_rows_and_columns(self, test_files_path: Path) -> None:
         converter = XLSXToDocument(store_full_path=False)
-        paths = [test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 1
@@ -50,9 +108,9 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": "Sheet1"},
         }
 
-    def test_run_multiple_tables_in_one_sheet(self, test_files_path) -> None:
+    def test_run_multiple_tables_in_one_sheet(self, test_files_path: Path) -> None:
         converter = XLSXToDocument(store_full_path=True)
-        paths = [test_files_path / "xlsx" / "multiple_tables.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "multiple_tables.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 1
@@ -66,9 +124,9 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": "Sheet1"},
         }
 
-    def test_run_markdown(self, test_files_path) -> None:
+    def test_run_markdown(self, test_files_path: Path) -> None:
         converter = XLSXToDocument(table_format="markdown", store_full_path=True)
-        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 2
@@ -83,13 +141,49 @@ class TestXLSXToDocument:
         }
         assert (
             documents[1].content
-            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | nan   |"
+            # The empty cell reads as empty, the way the CSV format already writes it.
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  |       |"
         )
         assert documents[1].meta == {
             "date_added": "2022-01-01T00:00:00",
             "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
             "xlsx": {"sheet_name": "Table Missing Value"},
         }
+
+    def test_run_markdown_missing_value(self, test_files_path: Path) -> None:
+        """table_format_kwargs["missingval"] reaches tabulate for an empty cell."""
+        converter = XLSXToDocument(table_format="markdown", table_format_kwargs={"missingval": "N/A"})
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        results = converter.run(sources=paths)
+        assert (
+            results["documents"][1].content
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | N/A   |"
+        )
+
+    @pytest.mark.parametrize(
+        ("cell_value", "expected_row"),
+        [
+            pytest.param("a|b", "|  1 | a\\|b |", id="pipe"),
+            pytest.param(r"a\|b", r"|  1 | a\\\|b |", id="backslash-before-pipe"),
+            pytest.param("first\r\nsecond", "|  1 | first second |", id="windows-line-break"),
+            pytest.param("first line\nsecond line", "|  1 | first line second line |", id="line-break"),
+        ],
+    )
+    def test_run_markdown_escapes_cell_content(self, tmp_path: Path, cell_value: str, expected_row: str) -> None:
+        """A pipe would be read as a column separator, and a line break would end the row in the middle."""
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet["A1"] = cell_value
+        path = tmp_path / "cell.xlsx"
+        workbook.save(path)
+
+        content = XLSXToDocument(table_format="markdown").run(sources=[path])["documents"][0].content
+        assert content is not None
+        rows = content.split("\n")
+
+        assert len(rows) == 3
+        assert rows[2] == expected_row
 
     @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
@@ -101,10 +195,10 @@ class TestXLSXToDocument:
         ],
     )
     def test_run_sheet_name(
-        self, sheet_name: int | str, expected_sheet_name: str, expected_content: str, test_files_path
+        self, sheet_name: int | str, expected_sheet_name: str, expected_content: str, test_files_path: Path
     ) -> None:
         converter = XLSXToDocument(sheet_name=sheet_name, store_full_path=True)
-        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths)
         documents = results["documents"]
         assert len(documents) == 1
@@ -114,9 +208,9 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": expected_sheet_name},
         }
 
-    def test_run_with_read_excel_kwargs(self, test_files_path) -> None:
+    def test_run_with_read_excel_kwargs(self, test_files_path: Path) -> None:
         converter = XLSXToDocument(sheet_name="Basic Table", read_excel_kwargs={"skiprows": 1}, store_full_path=True)
-        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 1
@@ -127,9 +221,9 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": "Basic Table"},
         }
 
-    def test_run_error_wrong_file_type(self, caplog: pytest.LogCaptureFixture, test_files_path) -> None:
+    def test_run_error_wrong_file_type(self, caplog: pytest.LogCaptureFixture, test_files_path: Path) -> None:
         converter = XLSXToDocument()
-        sources = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
+        sources: list[str | Path | ByteStream] = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
             assert "sample_pdf_1.pdf and convert it" in caplog.text
@@ -137,21 +231,22 @@ class TestXLSXToDocument:
 
     def test_run_error_non_existent_file(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = XLSXToDocument()
-        paths = ["non_existing_file.docx"]
+        paths: list[str | Path | ByteStream] = ["non_existing_file.docx"]
         with caplog.at_level(logging.WARNING):
             converter.run(sources=paths)
             assert "Could not read non_existing_file.docx" in caplog.text
 
     def test_link_format_invalid(self) -> None:
         with pytest.raises(ValueError, match="Unknown link format"):
-            XLSXToDocument(link_format="invalid")
+            XLSXToDocument(link_format="invalid")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
-    def test_link_extraction(self, test_files_path, link_format) -> None:
+    def test_link_extraction(self, test_files_path: Path, link_format: Literal["markdown", "plain"]) -> None:
         converter = XLSXToDocument(link_format=link_format)
-        paths = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
         results = converter.run(sources=paths)
         content = results["documents"][0].content
+        assert content is not None
 
         if link_format == "markdown":
             assert "[Click here](https://example.com)" in content
@@ -160,11 +255,282 @@ class TestXLSXToDocument:
             assert "Click here (https://example.com)" in content
             assert "Docs (https://python.org)" in content
 
-    def test_no_link_extraction(self, test_files_path) -> None:
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_content"),
+        [
+            pytest.param(
+                {"skiprows": 1},
+                ",A,B,C\n"
+                "1,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
+                "2,Bob,bob@example.com,B\n",
+                id="skiprows",
+            ),
+            pytest.param(
+                {"usecols": "B:C"},
+                ",A,B\n1,Email,Reference\n2,[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n3,bob@example.com,B\n",
+                id="usecols",
+            ),
+            pytest.param(
+                {"names": ["Name", "Email", "Reference"]},
+                ",A,B,C\n"
+                "1,Name,Email,Reference\n"
+                "2,[Alice](https://example.com/alice),[alice@example.com](#Data!A2),[A](#Data!A1:C2)\n"
+                "3,Bob,bob@example.com,B\n",
+                id="names",
+            ),
+            pytest.param(
+                {"names": ["Name", "Email", "Reference"], "usecols": ["Name", "Reference"]},
+                ",A,B\n1,Name,Reference\n2,[Alice](https://example.com/alice),[A](#Data!A1:C2)\n3,Bob,B\n",
+                id="names-and-usecols",
+            ),
+        ],
+    )
+    def test_link_extraction_with_read_excel_kwargs(
+        self, tmp_path: Path, read_excel_kwargs: dict[str, Any], expected_content: str
+    ) -> None:
+        """A positional read_excel_kwargs option must move the hyperlinks along with their cells."""
+        path = tmp_path / "links_with_read_excel_kwargs.xlsx"
+        _write_linked_workbook(path)
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs=read_excel_kwargs).run(sources=[path])[
+            "documents"
+        ]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected_content
+
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_content"),
+        [
+            pytest.param(
+                {},
+                ",A,B\n"
+                "1,Team,\n"
+                "2,Alice,[Profile](https://example.com/alice)\n"
+                "3,Bob,[Profile](https://example.com/bob)\n",
+                id="no-selection",
+            ),
+            pytest.param(
+                {"skiprows": 1},
+                ",A,B\n1,Alice,[Profile](https://example.com/alice)\n2,Bob,[Profile](https://example.com/bob)\n",
+                id="skiprows",
+            ),
+        ],
+    )
+    def test_link_extraction_with_merged_cells(
+        self, tmp_path: Path, read_excel_kwargs: dict[str, Any], expected_content: str
+    ) -> None:
+        path = tmp_path / "links_with_merged_cells.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Team", None])
+        sheet.append(["Alice", "Profile"])
+        sheet.append(["Bob", "Profile"])
+        sheet.merge_cells("A1:B1")
+        sheet["B2"].hyperlink = "https://example.com/alice"
+        sheet["B3"].hyperlink = "https://example.com/bob"
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs=read_excel_kwargs).run(sources=[path])[
+            "documents"
+        ]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected_content
+
+    def test_link_extraction_with_names_and_formatted_empty_cell(self, tmp_path: Path) -> None:
+        path = tmp_path / "links_with_names_and_formatted_empty_cell.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Alice", "Bob"])
+        sheet.append(["Carol", "Dave"])
+        sheet["A1"].hyperlink = "https://example.com/alice"
+        sheet["B1"].hyperlink = "https://example.com/bob"
+        # A formatted cell without a value is stored in the file, but pandas does not count it as a column.
+        sheet["C1"].font = Font(bold=True)
+        workbook.save(path)
+        workbook.close()
+
+        documents = XLSXToDocument(link_format="markdown", read_excel_kwargs={"names": ["first", "second"]}).run(
+            sources=[path]
+        )["documents"]
+
+        assert documents[0].content == (
+            ",A,B\n1,[Alice](https://example.com/alice),[Bob](https://example.com/bob)\n2,Carol,Dave\n"
+        )
+
+    def test_no_link_extraction(self, test_files_path: Path) -> None:
         converter = XLSXToDocument()
-        paths = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
+        paths: list[str | Path | ByteStream] = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
         results = converter.run(sources=paths)
         content = results["documents"][0].content
+        assert content is not None
 
         assert "https://example.com" not in content
         assert "Click here" in content
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize("use_bytestream", [False, True])
+    def test_link_extraction_from_typed_columns(
+        self,
+        tmp_path: Path,
+        link_format: Literal["markdown", "plain"],
+        table_format: Literal["csv", "markdown"],
+        use_bytestream: bool,
+    ) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append([42, 3.5, True, 1.23456])
+        sheet.append([43, 4.5, False, 2.34567])
+        for cell in ["A1", "B1", "C1"]:
+            sheet[cell].hyperlink = "https://example.com"
+        path = tmp_path / "typed_links.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        source = ByteStream.from_file_path(path) if use_bytestream else path
+        format_kwargs = {"float_format": "%.2f"} if table_format == "csv" else {"floatfmt": ".2f"}
+        converter = XLSXToDocument(
+            link_format=link_format, table_format=table_format, table_format_kwargs=format_kwargs
+        )
+        documents = converter.run(sources=[source])["documents"]
+
+        assert len(documents) == 1
+        content = documents[0].content
+        assert content is not None
+        if table_format == "csv":
+            rows = [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+        else:
+            rows = [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+        linked_values = [
+            f"[{text}](https://example.com)" if link_format == "markdown" else f"{text} (https://example.com)"
+            for text in ["42", "3.5", "True"]
+        ]
+        assert rows == [linked_values + ["1.23"], ["43", "4.5", "False", "2.35"]]
+        assert documents[0].meta["xlsx"] == {"sheet_name": "Sheet"}
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize("read_excel_kwargs", [{}, {"skiprows": 0}], ids=["defaults", "unrelated-option"])
+    @pytest.mark.parametrize("missing_value", ["", "<missing>"])
+    def test_run_preserves_literal_na_strings(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        read_excel_kwargs: dict[str, Any],
+        missing_value: str,
+    ) -> None:
+        rows = _convert_rows(
+            tmp_path,
+            [
+                ["Code", "Status", "Blank"],
+                ["NA", "OK", None],
+                ["N/A", "pending", ""],
+                ["NULL", "None", None],
+                ["NaN", "null", ""],
+                ["North America", "active", ""],
+            ],
+            table_format=table_format,
+            read_excel_kwargs=read_excel_kwargs,
+            missing_value=missing_value,
+        )
+        assert rows == [
+            ["Code", "Status", "Blank"],
+            ["NA", "OK", missing_value],
+            ["N/A", "pending", missing_value],
+            ["NULL", "None", missing_value],
+            ["NaN", "null", missing_value],
+            ["North America", "active", missing_value],
+        ]
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize(
+        ("na_values", "expected_custom_values"),
+        [
+            pytest.param(["foo"], ["<missing>", "<missing>"], id="list"),
+            pytest.param(["foo", ""], ["<missing>", "<missing>"], id="list-with-empty-string"),
+            pytest.param([], ["foo", "foo"], id="empty-list"),
+            pytest.param(("foo",), ["<missing>", "<missing>"], id="tuple"),
+            pytest.param({"foo"}, ["<missing>", "<missing>"], id="set"),
+            pytest.param("foo", ["<missing>", "<missing>"], id="string"),
+            pytest.param({0: ["foo"]}, ["<missing>", "foo"], id="column-dict"),
+            pytest.param(None, ["foo", "foo"], id="none"),
+        ],
+    )
+    def test_run_custom_na_values_preserves_empty_cells(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        na_values: Any,
+        expected_custom_values: list[str],
+    ) -> None:
+        rows = _convert_rows(
+            tmp_path,
+            [["Code", "Status", "Blank"], ["foo", "foo", None], ["NA", "N/A", "value"], ["NULL", "None", ""]],
+            table_format=table_format,
+            read_excel_kwargs={"na_values": na_values},
+        )
+        assert rows == [
+            ["Code", "Status", "Blank"],
+            [*expected_custom_values, "<missing>"],
+            ["<missing>", "<missing>", "value"],
+            ["<missing>", "<missing>", "<missing>"],
+        ]
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    @pytest.mark.parametrize(
+        ("read_excel_kwargs", "expected_rows"),
+        [
+            pytest.param(
+                {"keep_default_na": True},
+                [["foo", "<missing>", "<missing>"], ["<missing>", "<missing>", "value"]],
+                id="keep-default-na-true",
+            ),
+            pytest.param(
+                {"keep_default_na": True, "na_values": ["foo"]},
+                [["<missing>", "<missing>", "<missing>"], ["<missing>", "<missing>", "value"]],
+                id="keep-default-na-true-with-custom-values",
+            ),
+            pytest.param(
+                {"keep_default_na": False}, [["foo", "NA", ""], ["N/A", "", "value"]], id="keep-default-na-false"
+            ),
+            pytest.param(
+                {"keep_default_na": False, "na_values": ["foo"]},
+                [["<missing>", "NA", ""], ["N/A", "", "value"]],
+                id="keep-default-na-false-with-custom-values",
+            ),
+            pytest.param(
+                {"keep_default_na": False, "na_values": ["foo", ""]},
+                [["<missing>", "NA", "<missing>"], ["N/A", "<missing>", "value"]],
+                id="explicit-empty-string",
+            ),
+            pytest.param({"na_filter": False}, [["foo", "NA", ""], ["N/A", "", "value"]], id="na-filter-false"),
+        ],
+    )
+    def test_run_na_parsing_overrides(
+        self,
+        tmp_path: Path,
+        table_format: Literal["csv", "markdown"],
+        read_excel_kwargs: dict[str, Any],
+        expected_rows: list[list[str]],
+    ) -> None:
+        rows = _convert_rows(
+            tmp_path,
+            [["Code", "Status", "Blank"], ["foo", "NA", None], ["N/A", "", "value"]],
+            table_format=table_format,
+            read_excel_kwargs=read_excel_kwargs,
+        )
+        assert rows == [["Code", "Status", "Blank"], *expected_rows]
+
+    @pytest.mark.parametrize("na_values", [None, ["foo"]], ids=["no-custom-values", "custom-values"])
+    def test_run_keep_default_na_false_preserves_numeric_formatting(self, tmp_path: Path, na_values: Any) -> None:
+        read_excel_kwargs: dict[str, Any] = {"keep_default_na": False}
+        if na_values is not None:
+            read_excel_kwargs["na_values"] = na_values
+        rows = _convert_rows(tmp_path, [[1, "x"], [None, "foo"], [2, "y"]], read_excel_kwargs=read_excel_kwargs)
+        expected_foo = "foo" if na_values is None else "<missing>"
+        assert rows == [["1", "x"], ["", expected_foo], ["2", "y"]]

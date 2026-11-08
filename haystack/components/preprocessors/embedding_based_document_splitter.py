@@ -12,8 +12,10 @@ import numpy as np
 
 from haystack import Document, component, logging
 from haystack.components.embedders.types import DocumentEmbedder
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ class EmbeddingBasedDocumentSplitter:
 
     ```python
     from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
     # Create a document with content that has a clear topic shift
@@ -47,7 +49,7 @@ class EmbeddingBasedDocumentSplitter:
     )
 
     # Initialize the embedder to calculate semantic similarities
-    embedder = SentenceTransformersDocumentEmbedder()
+    embedder = OpenAIDocumentEmbedder()
 
     # Configure the splitter with parameters that control splitting behavior
     splitter = EmbeddingBasedDocumentSplitter(
@@ -117,21 +119,55 @@ class EmbeddingBasedDocumentSplitter:
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
         self.sentence_splitter: SentenceSplitter | None = None
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the component by initializing the sentence splitter.
+        Warm up the component by initializing the sentence splitter and the document embedder.
         """
-        self.sentence_splitter = SentenceSplitter(
-            language=self.language,
-            use_split_rules=self.use_split_rules,
-            extend_abbreviations=self.extend_abbreviations,
-            keep_white_spaces=True,
-        )
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
         if hasattr(self.document_embedder, "warm_up"):
             self.document_embedder.warm_up()
-        self._is_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the component on the serving event loop.
+
+        Initializes the sentence splitter and warms up the document embedder using its async warm-up path when
+        available, falling back to the synchronous one otherwise.
+        """
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
+        if hasattr(self.document_embedder, "warm_up_async"):
+            await self.document_embedder.warm_up_async()
+        elif hasattr(self.document_embedder, "warm_up"):
+            self.document_embedder.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the document embedder's resources.
+        """
+        if hasattr(self.document_embedder, "close"):
+            self.document_embedder.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the document embedder's async resources.
+        """
+        if hasattr(self.document_embedder, "close_async"):
+            await self.document_embedder.close_async()
+        elif hasattr(self.document_embedder, "close"):
+            self.document_embedder.close()
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -143,15 +179,16 @@ class EmbeddingBasedDocumentSplitter:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
         :raises TypeError: If the input is not a list of Documents.
         :raises ValueError: If the document content is None or empty.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
@@ -184,22 +221,16 @@ class EmbeddingBasedDocumentSplitter:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `split_id` to track the split number.
-                - A metadata field `page_number` to track the original page number.
+                - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
+                - A metadata field `page_number` with the page the chunk starts on, counting form feed
+                  ("\f") characters in the original document.
                 - All other metadata copied from the original document.
 
         :raises RuntimeError: If the component wasn't warmed up.
         :raises TypeError: If the input is not a list of Documents.
         :raises ValueError: If the document content is None or empty.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
-
-        if not hasattr(self.document_embedder, "run_async"):
-            logger.warning(
-                "{embedder_type} does not implement method 'run_async'. Falling back to 'run'.",
-                embedder_type=type(self.document_embedder).__name__,
-            )
-            return self.run(documents)
+        await self.warm_up_async()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
@@ -248,7 +279,7 @@ class EmbeddingBasedDocumentSplitter:
         merged_splits = self._merge_small_splits(splits=splits)
 
         # Recursively split splits larger than max_length
-        final_splits = self._split_large_splits(splits=merged_splits)
+        final_splits = await self._split_large_splits_async(splits=merged_splits)
 
         # Create Document objects from the final splits
         return EmbeddingBasedDocumentSplitter._create_documents_from_splits(splits=final_splits, original_doc=doc)
@@ -320,7 +351,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create Document objects for each group
         group_docs = [Document(content=group) for group in sentence_groups]
-        result = await self.document_embedder.run_async(group_docs)  # type: ignore[attr-defined]
+        result = await _execute_component_async(self.document_embedder, documents=group_docs)
         embedded_docs = result["documents"]
         return [doc.embedding for doc in embedded_docs]
 
@@ -417,6 +448,16 @@ class EmbeddingBasedDocumentSplitter:
         # Don't forget the last split
         merged.append(current_split)
 
+        # The loop only merges forward, so the final split can still be below min_length. Merge it backwards,
+        # subject to the same max_length limit as forward merges.
+        if (
+            len(merged) > 1
+            and len(merged[-1]) < self.min_length
+            and len(merged[-2]) + len(merged[-1]) < self.max_length
+        ):
+            trailing_split = merged.pop()
+            merged[-1] += trailing_split
+
         return merged
 
     def _split_large_splits(self, splits: list[str]) -> list[str]:
@@ -428,6 +469,8 @@ class EmbeddingBasedDocumentSplitter:
         further splitting is possible.
 
         This works because the threshold for splits is calculated dynamically based on the provided of embeddings.
+
+        Keep in sync with `_split_large_splits_async`.
         """
         final_splits = []
 
@@ -454,6 +497,41 @@ class EmbeddingBasedDocumentSplitter:
 
         return final_splits
 
+    async def _split_large_splits_async(self, splits: list[str]) -> list[str]:
+        """
+        Asynchronously and recursively split splits that are above max_length.
+
+        Mirrors `_split_large_splits`, but embeds through the async path so that the recursion does not block the
+        event loop with synchronous embedder calls.
+
+        Keep in sync with `_split_large_splits`, which also documents why re-running the splitter on an oversized
+        chunk can split it further.
+        """
+        final_splits = []
+
+        for split in splits:
+            if len(split) <= self.max_length:
+                final_splits.append(split)
+            else:
+                # Recursively split large splits
+                # We can reuse the same _split_text_async method to split the text into smaller chunks because the
+                # threshold for splits is calculated dynamically based on embeddings from `split`.
+                sub_splits = await self._split_text_async(text=split)
+
+                # Stop splitting if no further split is possible or continue with recursion
+                if len(sub_splits) == 1:
+                    logger.warning(
+                        "Could not split a chunk further below max_length={max_length}. "
+                        "Returning chunk of length {length}.",
+                        max_length=self.max_length,
+                        length=len(split),
+                    )
+                    final_splits.append(split)
+                else:
+                    final_splits.extend(await self._split_large_splits_async(splits=sub_splits))
+
+        return final_splits
+
     @staticmethod
     def _create_documents_from_splits(splits: list[str], original_doc: Document) -> list[Document]:
         """
@@ -463,24 +541,28 @@ class EmbeddingBasedDocumentSplitter:
         metadata = deepcopy(original_doc.meta)
         metadata["source_id"] = original_doc.id
 
-        # Calculate page numbers for each split
+        # Track page number and character offset across splits.
+        # Chunks are contiguous substrings of the original text (all joins are pure string concatenation),
+        # so the character offset is simply accumulated by adding the length of each chunk.
         current_page = 1
+        current_char_pos = 0
 
         for i, split_text in enumerate(splits):
             split_meta = deepcopy(metadata)
             split_meta["split_id"] = i
+            split_meta["split_idx_start"] = current_char_pos
 
-            # Calculate page number for this split
-            # Count page breaks in the split itself
             page_breaks_in_split = split_text.count("\f")
 
-            # Calculate the page number for this split
-            split_meta["page_number"] = current_page
+            # current_page is the page this split's first character is on; a split that opens with page
+            # breaks starts its text on a later page.
+            split_meta["page_number"] = current_page + _leading_page_breaks(split_text)
 
             doc = Document(content=split_text, meta=split_meta)
             documents.append(doc)
 
-            # Update page counter for next split
+            # Advance position and page counter for the next split
+            current_char_pos += len(split_text)
             current_page += page_breaks_in_split
 
         return documents

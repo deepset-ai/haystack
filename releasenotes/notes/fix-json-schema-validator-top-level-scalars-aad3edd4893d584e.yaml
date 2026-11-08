@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``JsonSchemaValidator`` no longer raises ``ValueError`` when the message content is a top-level JSON
+    scalar like ``"hello"``, ``42``, ``true`` or ``null``. The same crash happened for JSON arrays of
+    scalars. Those values now reach the schema validator, which either accepts them or returns the usual
+    ``validation_error`` output.

@@ -114,97 +114,6 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-### ToolBreakpoint
-
-Bases: <code>Breakpoint</code>
-
-A dataclass representing a breakpoint specific to tools used within an Agent component.
-
-Inherits from Breakpoint and adds the ability to target individual tools. If `tool_name` is None,
-the breakpoint applies to all tools within the Agent component.
-
-**Parameters:**
-
-- **tool_name** (<code>str | None</code>) – The name of the tool to target within the Agent component. If None, applies to all tools.
-
-### AgentBreakpoint
-
-A dataclass representing a breakpoint tied to an Agent’s execution.
-
-This allows for debugging either a specific component (e.g., the chat generator) or a tool used by the agent.
-It enforces constraints on which component names are valid for each breakpoint type.
-
-**Parameters:**
-
-- **agent_name** (<code>str</code>) – The name of the agent component in a pipeline where the breakpoint is set.
-- **break_point** (<code>Breakpoint | ToolBreakpoint</code>) – An instance of Breakpoint or ToolBreakpoint indicating where to break execution.
-
-**Raises:**
-
-- <code>ValueError</code> – If the component_name is invalid for the given breakpoint type:
-- Breakpoint must have component_name='chat_generator'.
-- ToolBreakpoint must have component_name='tool_invoker'.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Convert the AgentBreakpoint to a dictionary representation.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the agent name and the breakpoint details.
-
-#### from_dict
-
-```python
-from_dict(data: dict) -> AgentBreakpoint
-```
-
-Populate the AgentBreakpoint from a dictionary representation.
-
-**Parameters:**
-
-- **data** (<code>dict</code>) – A dictionary containing the agent name and the breakpoint details.
-
-**Returns:**
-
-- <code>AgentBreakpoint</code> – An instance of AgentBreakpoint.
-
-### AgentSnapshot
-
-Snapshot of an Agent's state at a breakpoint (component inputs, visit counts, and breakpoint).
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Convert the AgentSnapshot to a dictionary representation.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the agent state, timestamp, and breakpoint.
-
-#### from_dict
-
-```python
-from_dict(data: dict) -> AgentSnapshot
-```
-
-Populate the AgentSnapshot from a dictionary representation.
-
-**Parameters:**
-
-- **data** (<code>dict</code>) – A dictionary containing the agent state, timestamp, and breakpoint.
-
-**Returns:**
-
-- <code>AgentSnapshot</code> – An instance of AgentSnapshot.
-
 ### PipelineState
 
 A dataclass to hold the state of the pipeline at a specific point in time.
@@ -214,6 +123,10 @@ A dataclass to hold the state of the pipeline at a specific point in time.
 - **component_visits** (<code>dict\[str, int\]</code>) – A dictionary mapping component names to their visit counts.
 - **inputs** (<code>dict\[str, Any\]</code>) – The inputs processed by the pipeline at the time of the snapshot.
 - **pipeline_outputs** (<code>dict\[str, Any\]</code>) – Dictionary containing the final outputs of the pipeline up to the breakpoint.
+- **inputs_format** (<code>str | None</code>) – Which format `inputs` are stored in. `"internal"` means each input records the component
+  that sent it, in the order it arrived, as in `{component: {socket: [{"sender": ..., "value": ...}]}}`.
+  `None` marks snapshots taken before Haystack recorded the sender, which hold one flattened value per socket,
+  `{component: {socket: value}}`, and can only be resumed on a component's first visit.
 
 #### to_dict
 
@@ -254,8 +167,7 @@ A dataclass to hold a snapshot of the pipeline at a specific point in time.
 - **original_input_data** (<code>dict\[str, Any\]</code>) – The original input data provided to the pipeline.
 - **ordered_component_names** (<code>list\[str\]</code>) – A list of component names in the order they were visited.
 - **pipeline_state** (<code>PipelineState</code>) – The state of the pipeline at the time of the snapshot.
-- **break_point** (<code>AgentBreakpoint | Breakpoint</code>) – The breakpoint that triggered the snapshot.
-- **agent_snapshot** (<code>AgentSnapshot | None</code>) – Optional agent snapshot if the breakpoint is an agent breakpoint.
+- **break_point** (<code>Breakpoint</code>) – The breakpoint that triggered the snapshot.
 - **timestamp** (<code>datetime | None</code>) – A timestamp indicating when the snapshot was taken.
 - **include_outputs_from** (<code>set\[str\]</code>) – Set of component names whose outputs should be included in the pipeline results.
 
@@ -317,7 +229,7 @@ from_file_path(
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
     guess_mime_type: bool = False,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream from the contents read from a file.
@@ -337,7 +249,7 @@ from_string(
     encoding: str = "utf-8",
     mime_type: str | None = None,
     meta: dict[str, Any] | None = None,
-) -> ByteStream
+) -> Self
 ```
 
 Create a ByteStream encoding a string.
@@ -384,7 +296,7 @@ Convert the ByteStream to a dictionary representation.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ByteStream
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a ByteStream from a dictionary representation.
@@ -395,7 +307,7 @@ Create a ByteStream from a dictionary representation.
 
 **Returns:**
 
-- <code>ByteStream</code> – A ByteStream instance.
+- <code>Self</code> – An instance of this class.
 
 ## chat_message
 
@@ -432,7 +344,7 @@ Convert TextContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> TextContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a TextContent from a dictionary.
@@ -832,8 +744,8 @@ Creates a new ChatMessage object from a dictionary.
 
 **Raises:**
 
-- <code>ValueError</code> – If the `role` field is missing from the dictionary.
-- <code>TypeError</code> – If the `content` field is not a list or string.
+- <code>ValueError</code> – If the role or content is missing, or the role is invalid.
+- <code>TypeError</code> – If the content is not a string or a sequence of content-part dictionaries.
 
 #### to_openai_dict_format
 
@@ -842,6 +754,11 @@ to_openai_dict_format(require_tool_call_ids: bool = True) -> dict[str, Any]
 ```
 
 Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
+
+The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+The exception is a non-empty string in `meta["refusal"]` of an assistant message. It is sent as a refusal
+content part, or as the `refusal` field if the message also has text. If the message also has tool calls, the
+refusal is dropped with a warning, because OpenAI ignores the tool calls of a message with a refusal.
 
 **Parameters:**
 
@@ -863,12 +780,18 @@ Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Complet
 from_openai_dict_format(message: dict[str, Any]) -> ChatMessage
 ```
 
-Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat Completions API.
 
-NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
-accepts messages without it to support shallow OpenAI-compatible APIs.
-If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
-encounter validation errors.
+`content` can be a string or a list of content parts. In user messages, `text` parts become `TextContent`,
+`image_url` parts with a base64 data URL become `ImageContent`, and `file` parts with inline `file_data` become
+`FileContent`. System, developer, and assistant messages accept `text` parts, which are joined with a newline
+into a single text. An assistant's refusal, given as a `refusal` part or as the `refusal` field, is stored in
+`meta["refusal"]` instead of the text. Assistant messages with tool calls or a refusal can omit `content`
+or set it to None.
+
+NOTE: This method accepts tool calls without `id` and tool messages without `tool_call_id` to support
+shallow OpenAI-compatible APIs. Include these IDs when using the resulting ChatMessage with
+OpenAI Chat Completions to avoid validation errors.
 
 **Parameters:**
 
@@ -880,7 +803,9 @@ encounter validation errors.
 
 **Raises:**
 
-- <code>ValueError</code> – If the message dictionary is missing required fields.
+- <code>ValueError</code> – If the message dictionary is missing required fields, if non-null `content` is neither a string nor a
+  list, or if it contains content parts that can't be converted, such as image URLs that are not base64
+  data URLs or files referenced by `file_id`.
 
 ## document
 
@@ -900,6 +825,7 @@ to/from dictionary and JSON.
 - **score** (<code>float | None</code>) – Score of the document. Used for ranking, usually assigned by retrievers.
 - **embedding** (<code>list\[float\] | None</code>) – dense vector representation of the document.
 - **sparse_embedding** (<code>SparseEmbedding | None</code>) – sparse vector representation of the document.
+- **multivector_embedding** (<code>list\[list\[float\]\] | None</code>) – multi-vector representation of the document.
 
 #### to_dict
 
@@ -913,7 +839,8 @@ Converts Document into a dictionary.
 
 **Parameters:**
 
-- **flatten** (<code>bool</code>) – Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+- **flatten** (<code>bool</code>) – Whether to flatten the `meta` field. Defaults to `True` to be backward-compatible with Haystack 1.x.
+  Meta keys that clash with document field names are kept in a nested `meta` dictionary.
 
 #### from_dict
 
@@ -966,7 +893,7 @@ Convert FileContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> FileContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an FileContent from a dictionary.
@@ -1064,7 +991,7 @@ Convert ImageContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ImageContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an ImageContent from a dictionary.
@@ -1099,6 +1026,11 @@ use the `PDFToImageContent` component.
 **Returns:**
 
 - <code>ImageContent</code> – An ImageContent object.
+
+**Raises:**
+
+- <code>ValueError</code> – If the file cannot be read or converted to an image, for example because it does not exist or is not
+  an image.
 
 #### from_url
 
@@ -1137,6 +1069,20 @@ For PDF to ImageContent conversion, use the `PDFToImageContent` component.
 **Raises:**
 
 - <code>ValueError</code> – If the URL does not point to an image or if it points to a PDF file.
+
+## skill_info
+
+### SkillInfo
+
+Lightweight metadata describing a skill.
+
+This is what a `SkillStore` returns when listing its skills, keeping the catalog cheap; the full skill
+content (the instructions body and bundled files) is fetched on demand.
+
+**Parameters:**
+
+- **name** (<code>str</code>) – The skill's name, used to look it up.
+- **description** (<code>str</code>) – A short description of when to use the skill. Shown to the agent up front.
 
 ## sparse_embedding
 
@@ -1336,13 +1282,18 @@ select_streaming_callback(
 
 Picks the correct streaming callback given an optional initial and runtime callback.
 
-The runtime callback takes precedence over the initial callback.
+The runtime callback takes precedence over the initial callback. Only the selected callback is checked for
+compatibility with the execution context.
+
+In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
+the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because
+there is no way to await it.
 
 **Parameters:**
 
 - **init_callback** (<code>StreamingCallbackT | None</code>) – The initial callback.
 - **runtime_callback** (<code>StreamingCallbackT | None</code>) – The runtime callback.
-- **requires_async** (<code>bool</code>) – Whether the selected callback must be async compatible.
+- **requires_async** (<code>bool</code>) – Whether the selected callback will be invoked from an async context.
 
 **Returns:**
 

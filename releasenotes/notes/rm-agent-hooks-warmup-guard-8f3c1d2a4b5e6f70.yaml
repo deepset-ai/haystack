@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The Agent now warms up its hooks before every run, not only the first one, as it already does for Tools and
+    Toolsets. If your hook has a ``warm_up()`` that does expensive setup (opening a client, loading a model),
+    make it return early once done, for example ``if self._client is not None: return``.

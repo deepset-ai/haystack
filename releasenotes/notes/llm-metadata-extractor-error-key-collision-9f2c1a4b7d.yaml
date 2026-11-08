@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``LLMMetadataExtractor`` incorrectly treating an extracted ``error``
+    metadata field as an extraction failure. ``error`` can now be used in
+    ``expected_keys`` like any other metadata key.

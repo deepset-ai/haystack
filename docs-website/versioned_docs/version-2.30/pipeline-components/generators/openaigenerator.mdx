@@ -55,7 +55,7 @@ Basic usage:
 from haystack.components.generators import OpenAIGenerator
 from haystack.utils import Secret
 
-client = OpenAIGenerator(model="gpt-4", api_key=Secret.from_token("<your-api-key>"))
+client = OpenAIGenerator(model="gpt-4o-mini", api_key=Secret.from_token("<your-api-key>"))
 response = client.run("What's Natural Language Processing? Be brief.")
 print(response)
 
@@ -63,7 +63,7 @@ print(response)
     of artificial intelligence that focuses on the interaction between computers
     and humans through natural language. The primary aim of NLP is to enable
     computers to understand, interpret, and generate human language in a valuable way.'],
-    'meta': [{'model': 'gpt-4-0613', 'index': 0, 'finish_reason':
+    'meta': [{'model': 'gpt-4o-mini', 'index': 0, 'finish_reason':
     'stop', 'usage': {'prompt_tokens': 16, 'completion_tokens': 53,
     'total_tokens': 69}}]}
 ```

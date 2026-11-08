@@ -2,11 +2,42 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack import default_from_dict
 from haystack.components.evaluators.document_recall import DocumentRecallEvaluator, RecallMode
 from haystack.dataclasses import Document
+
+
+@pytest.mark.parametrize("mode", [RecallMode.SINGLE_HIT, RecallMode.MULTI_HIT])
+@pytest.mark.parametrize(
+    "truth, matching, different",
+    [
+        (["a", "b"], ["a", "b"], ["b", "a"]),
+        ({"a": 1, "b": 2}, {"b": 2, "a": 1}, {"a": 2, "b": 1}),
+        ({"ids": ["a", "b"]}, {"ids": ["a", "b"]}, {"ids": ["b", "a"]}),
+        ([], [], {}),
+        ([], [], ()),
+        ("a", "a", "b"),
+    ],
+)
+def test_container_metadata_comparison(mode: RecallMode, truth: Any, matching: Any, different: Any) -> None:
+    evaluator = DocumentRecallEvaluator(mode=mode, document_comparison_field="meta.source_ids")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [
+                Document(meta={"source_ids": truth}),
+                Document(meta={"source_ids": truth}),
+                Document(meta={"source_ids": different}),
+            ]
+        ],
+        retrieved_documents=[[Document(meta={"source_ids": matching}), Document(meta={"source_ids": matching})]],
+    )
+
+    expected = 1.0 if mode == RecallMode.SINGLE_HIT else 0.5
+    assert result == {"score": expected, "individual_scores": [expected]}
 
 
 def test_init_with_unknown_mode_string():
@@ -66,6 +97,15 @@ def test_run_with_nested_meta_comparison():
         ],
     )
     assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
+def test_run_with_empty_inputs():
+    evaluator = DocumentRecallEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
 
 
 class TestDocumentRecallEvaluatorSingleHit:
@@ -151,6 +191,46 @@ class TestDocumentRecallEvaluatorSingleHit:
         }
         new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
         assert new_evaluator.mode == RecallMode.SINGLE_HIT
+
+    def test_empty_ground_truth_documents(self, evaluator):
+        ground_truth_documents: list[list[Document]] = [[]]
+        retrieved_documents = [[Document(content="test")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_retrieved_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="test")]]
+        retrieved_documents: list[list[Document]] = [[]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_ground_truth_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="")]]
+        retrieved_documents = [[Document(content="test")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_retrieved_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="test")]]
+        retrieved_documents = [[Document(content="")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_no_match_when_comparison_field_missing_on_all_documents(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT, document_comparison_field="meta.file_id")
+        result = evaluator.run(
+            ground_truth_documents=[[Document(content="real ground truth")]],
+            retrieved_documents=[[Document(content="totally unrelated doc")]],
+        )
+        assert result == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_no_match_when_comparison_field_missing_on_some_documents(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT, document_comparison_field="meta.file_id")
+        result = evaluator.run(
+            ground_truth_documents=[[Document(meta={"file_id": "f1"}), Document(content="no file_id")]],
+            retrieved_documents=[[Document(content="also no file_id"), Document(meta={"file_id": "f2"})]],
+        )
+        assert result == {"individual_scores": [0.0], "score": 0.0}
 
 
 class TestDocumentRecallEvaluatorMultiHit:
@@ -243,14 +323,14 @@ class TestDocumentRecallEvaluatorMultiHit:
         assert new_evaluator.mode == RecallMode.MULTI_HIT
 
     def test_empty_ground_truth_documents(self, evaluator):
-        ground_truth_documents = [[]]
+        ground_truth_documents: list[list[Document]] = [[]]
         retrieved_documents = [[Document(content="test")]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 
     def test_empty_retrieved_documents(self, evaluator):
         ground_truth_documents = [[Document(content="test")]]
-        retrieved_documents = [[]]
+        retrieved_documents: list[list[Document]] = [[]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
 
@@ -265,3 +345,19 @@ class TestDocumentRecallEvaluatorMultiHit:
         retrieved_documents = [[Document(content="")]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_no_match_when_comparison_field_missing_on_some_documents(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.file_id")
+        result = evaluator.run(
+            ground_truth_documents=[[Document(meta={"file_id": "f1"}), Document(content="no file_id")]],
+            retrieved_documents=[[Document(content="also no file_id"), Document(meta={"file_id": "f2"})]],
+        )
+        assert result == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_ground_truth_missing_comparison_field_excluded_from_denominator(self):
+        evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.file_id")
+        result = evaluator.run(
+            ground_truth_documents=[[Document(meta={"file_id": "f1"}), Document(content="no file_id")]],
+            retrieved_documents=[[Document(meta={"file_id": "f1"})]],
+        )
+        assert result == {"individual_scores": [1.0], "score": 1.0}

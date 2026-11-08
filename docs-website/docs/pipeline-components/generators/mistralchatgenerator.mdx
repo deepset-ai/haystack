@@ -3,6 +3,7 @@ title: "MistralChatGenerator"
 id: mistralchatgenerator
 slug: "/mistralchatgenerator"
 description: "This component enables chat completion using Mistral’s text generation models."
+hep_available: true
 ---
 
 # MistralChatGenerator
@@ -16,7 +17,7 @@ This component enables chat completion using Mistral’s text generation models.
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
 | **Package name** | `mistral-haystack` |
@@ -25,22 +26,25 @@ This component enables chat completion using Mistral’s text generation models.
 
 ## Overview
 
-This integration supports Mistral’s models provided through the generative endpoint. For a full list of available models, check out the [Mistral documentation](https://docs.mistral.ai/platform/endpoints/#generative-endpoints).
+This integration supports Mistral’s models provided through the generative endpoint. For a full list of available models, check out the [Mistral documentation](https://docs.mistral.ai/models).
 
 `MistralChatGenerator` needs a Mistral API key to work. You can write this key in:
 
 - The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
 - The `MISTRAL_API_KEY` environment variable (recommended)
 
-Currently, available models are:
+Some of the available models are:
 
-- `mistral-tiny` (default)
-- `mistral-small`
-- `mistral-medium`(soon to be deprecated)
+- `mistral-small-latest` (default)
+- `mistral-medium-latest`
 - `mistral-large-latest`
+- `mistral-large-4`
+- `ministral-14b-latest`
 - `codestral-latest`
 
-This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+The `MistralChatGenerator.SUPPORTED_MODELS` attribute holds the complete list of chat models.
+
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 Refer to the [Mistral API documentation](https://docs.mistral.ai/api/#operation/createChatCompletion) for more details on the parameters supported by the Mistral API, which you can provide with `generation_kwargs` when running the component.
 
@@ -59,8 +63,12 @@ from haystack.tools import Tool, Toolset
 from haystack_integrations.components.generators.mistral import MistralChatGenerator
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -107,7 +115,7 @@ With multimodal inputs:
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.mistral import MistralChatGenerator
 
-llm = MistralChatGenerator(model="pixtral-12b-2409")
+llm = MistralChatGenerator(model="mistral-large-4")
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(
@@ -140,7 +148,7 @@ converter = HTMLToDocument()
 prompt_builder = ChatPromptBuilder(variables=["documents"])
 llm = MistralChatGenerator(
     streaming_callback=print_streaming_chunk,
-    model="mistral-small",
+    model="mistral-large-4",
 )
 
 message_template = """Answer the following question based on the contents of the article: {{query}}\n

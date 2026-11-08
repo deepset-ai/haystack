@@ -3,6 +3,7 @@ title: "GoogleGenAITextEmbedder"
 id: googlegenaitextembedder
 slug: "/googlegenaitextembedder"
 description: "This component transforms a string into a vector that captures its semantics using a Google AI embedding models. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents."
+hep_available: true
 ---
 
 # GoogleGenAITextEmbedder
@@ -60,7 +61,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAITextEmbedder()
+embedder = GoogleGenAITextEmbedder()
 ```
 
 #### Vertex AI (Application Default Credentials)
@@ -71,7 +72,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # Using Application Default Credentials (requires gcloud auth setup)
-chat_generator = GoogleGenAITextEmbedder(
+embedder = GoogleGenAITextEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
@@ -86,7 +87,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAITextEmbedder(api="vertex")
+embedder = GoogleGenAITextEmbedder(api="vertex")
 ```
 
 ## Usage

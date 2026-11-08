@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    ``DocumentLanguageClassifier`` and ``TextLanguageRouter`` have been moved out of Haystack into the
+    ``langdetect-haystack`` integration package. Install the new package with ``pip install langdetect-haystack``
+    and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.classifiers import DocumentLanguageClassifier
+      from haystack.components.routers import TextLanguageRouter
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.classifiers.langdetect import DocumentLanguageClassifier
+      from haystack_integrations.components.routers.langdetect import TextLanguageRouter

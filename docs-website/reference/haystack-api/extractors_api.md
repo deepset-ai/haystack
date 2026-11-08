@@ -22,16 +22,17 @@ Response handling:
 - If the LLM returns a **JSON object with multiple keys**, the value of `document_content` (if present) is
   written to content and all other keys are merged into the document's metadata.
 
-The ChatGenerator can be configured to return JSON (e.g. `response_format={"type": "json_object"}`
-in `generation_kwargs`).
+The ChatGenerator can be configured to return JSON. For example, with the OpenAIResponsesChatGenerator, pass
+`{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` as shown in the usage example below.
 
-Documents that fail extraction are returned in `failed_documents` with `content_extraction_error` in metadata.
+Documents that fail extraction are returned in `failed_documents` with the error in their `extraction_error`
+metadata field.
 
 ### Usage example
 
 ```python
 from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
 
 prompt = """
@@ -43,12 +44,13 @@ Extract metadata about the image like source of the image, date of creation, etc
 Return this metadata as additional key-value pairs in the same JSON object.
 """
 
-chat_generator = OpenAIChatGenerator(
+chat_generator = OpenAIResponsesChatGenerator(
         generation_kwargs={
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
+                "text": {
+                    "format": {
+                        "type": "json_schema",
                         "name": "entity_extraction",
+                        "strict": False,
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -100,15 +102,25 @@ Initialize the LLMDocumentContentExtractor component.
 **Parameters:**
 
 - **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator that supports vision input. Optionally configured for JSON
-  (e.g. `response_format={"type": "json_object"}` in `generation_kwargs`).
+  (e.g. `{"text": {"format": {"type": "json_schema", ...}}}` in `generation_kwargs` when using the
+  OpenAIResponsesChatGenerator).
 - **prompt** (<code>str</code>) – Prompt for extraction. Must not contain Jinja variables.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+  document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+  file paths are treated as absolute paths with no containment check.
+  Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+  document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+  that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
 - **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
 - **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
-- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are returned.
+- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, documents that fail extraction
+  are returned in `failed_documents` with the error in their `extraction_error` metadata field.
 - **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
+
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
 
 #### warm_up
 
@@ -116,7 +128,31 @@ Initialize the LLMDocumentContentExtractor component.
 warm_up() -> None
 ```
 
-Warm up the ChatGenerator if it has a warm_up method.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### to_dict
 
@@ -162,6 +198,27 @@ Run extraction on image-based documents. One LLM call per document.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously run extraction on image-based documents. One LLM call per document.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. LLM calls are made concurrently, bounded by `max_workers`.
+If the chat generator only implements a synchronous `run` method, it is executed in a thread to avoid
+blocking the event loop.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of image-based documents to process. Each must have a valid file path in its metadata.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
+
 ## llm_metadata_extractor
 
 ### LLMMetadataExtractor
@@ -183,7 +240,7 @@ extract metadata by using the `metadata_extraction_response` and `metadata_extra
 ```python
 from haystack import Document
 from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 NER_PROMPT = '''
 -Goal-
@@ -229,15 +286,13 @@ docs = [
     Document(content="Hugging Face is a company that was founded in New York, USA and is known for its Transformers library")
 ]
 
-chat_generator = OpenAIChatGenerator(
+chat_generator = OpenAIResponsesChatGenerator(
     generation_kwargs={
-        "max_completion_tokens": 500,
-        "temperature": 0.0,
-        "seed": 0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
+        "text": {
+            "format": {
+                "type": "json_schema",
                 "name": "entity_extraction",
+                "strict": True,
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -308,8 +363,9 @@ Initializes the LLMMetadataExtractor.
   which points to a single document in the list of documents. For example, to access the content of the
   document, use `{{ document.content }}` in the prompt.
 - **chat_generator** (<code>ChatGenerator</code>) – a ChatGenerator instance which represents the LLM. In order for the component to work,
-  the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
-  should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
+  the LLM should be configured to return a JSON object. For example, when using the
+  OpenAIResponsesChatGenerator, you should pass `{"text": {"format": {"type": "json_schema", ...}}}` in the
+  `generation_kwargs`.
 - **expected_keys** (<code>list\[str\] | None</code>) – The keys expected in the JSON output from the LLM.
 - **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
   metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:
@@ -322,13 +378,41 @@ Initializes the LLMMetadataExtractor.
   This parameter is used limit the maximum number of requests that should be allowed to run concurrently
   when using the `run_async` method.
 
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
+
 #### warm_up
 
 ```python
 warm_up() -> None
 ```
 
-Warm up the LLM provider component.
+Warm up the underlying chat generator and splitter.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator and splitter on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's and splitter's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's and splitter's async resources.
 
 #### to_dict
 
@@ -428,182 +512,6 @@ and return values but can be used with `await` in an async code.
 - "failed_documents": A list of documents that failed to extract metadata. These documents will have
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
   re-run with the extractor to extract metadata.
-
-## named_entity_extractor
-
-### NamedEntityExtractorBackend
-
-Bases: <code>Enum</code>
-
-NLP backend to use for Named Entity Recognition.
-
-#### from_str
-
-```python
-from_str(string: str) -> NamedEntityExtractorBackend
-```
-
-Convert a string to a NamedEntityExtractorBackend enum.
-
-### NamedEntityAnnotation
-
-Describes a single NER annotation.
-
-**Parameters:**
-
-- **entity** (<code>str</code>) – Entity label.
-- **start** (<code>int</code>) – Start index of the entity in the document.
-- **end** (<code>int</code>) – End index of the entity in the document.
-- **score** (<code>float | None</code>) – Score calculated by the model.
-
-### NamedEntityExtractor
-
-Annotates named entities in a collection of documents.
-
-The component supports two backends: Hugging Face and spaCy. The
-former can be used with any sequence classification model from the
-[Hugging Face model hub](https://huggingface.co/models), while the
-latter can be used with any [spaCy model](https://spacy.io/models)
-that contains an NER component. Annotations are stored as metadata
-in the documents.
-
-Usage example:
-
-```python
-from haystack import Document
-from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
-
-documents = [
-    Document(content="I'm Merlin, the happy pig!"),
-    Document(content="My name is Clara and I live in Berkeley, California."),
-]
-extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-results = extractor.run(documents=documents)["documents"]
-annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
-print(annotations)
-# >> [[NamedEntityAnnotation(entity='PER', start=4, end=10, score=np.float32(0.99054915))],
-# >> [NamedEntityAnnotation(entity='PER', start=11, end=16, score=np.float32(0.99641764)),
-# >>  NamedEntityAnnotation(entity='LOC', start=31, end=39, score=np.float32(0.996198)),
-# >>  NamedEntityAnnotation(entity='LOC', start=41, end=51, score=np.float32(0.9990196))]]
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    backend: str | NamedEntityExtractorBackend,
-    model: str,
-    pipeline_kwargs: dict[str, Any] | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    )
-) -> None
-```
-
-Create a Named Entity extractor component.
-
-**Parameters:**
-
-- **backend** (<code>str | NamedEntityExtractorBackend</code>) – Backend to use for NER.
-- **model** (<code>str</code>) – Name of the model or a path to the model on
-  the local disk. Dependent on the backend.
-- **pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments passed to the pipeline. The
-  pipeline can override these arguments. Dependent on the backend.
-- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`,
-  the default device is automatically selected. If a
-  device/device map is specified in `pipeline_kwargs`,
-  it overrides this parameter (only applicable to the
-  HuggingFace backend).
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initialize the component.
-
-**Raises:**
-
-- <code>ComponentError</code> – If the backend fails to initialize successfully.
-
-#### run
-
-```python
-run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
-```
-
-Annotate named entities in each document and store the annotations in the document's metadata.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – Documents to process.
-- **batch_size** (<code>int</code>) – Batch size used for processing the documents.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Processed documents.
-
-**Raises:**
-
-- <code>ComponentError</code> – If the backend fails to process a document.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> NamedEntityExtractor
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>NamedEntityExtractor</code> – Deserialized component.
-
-#### initialized
-
-```python
-initialized: bool
-```
-
-Returns if the extractor is ready to annotate text.
-
-#### get_stored_annotations
-
-```python
-get_stored_annotations(
-    document: Document,
-) -> list[NamedEntityAnnotation] | None
-```
-
-Returns the document's named entity annotations stored in its metadata, if any.
-
-**Parameters:**
-
-- **document** (<code>Document</code>) – Document whose annotations are to be fetched.
-
-**Returns:**
-
-- <code>list\[NamedEntityAnnotation\] | None</code> – The stored annotations.
 
 ## regex_text_extractor
 

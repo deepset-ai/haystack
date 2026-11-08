@@ -1,0 +1,96 @@
+---
+title: "LibreOfficeFileConverter"
+id: libreofficefileconverter
+slug: "/libreofficefileconverter"
+description: "A component that converts office files (documents, spreadsheets, presentations) between formats using LibreOffice's command line interface."
+---
+
+# LibreOfficeFileConverter
+
+A component that converts office files between formats using LibreOffice's command line interface (`soffice`).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a document converter (e.g. [`DOCXToDocument`](./docxtodocument.mdx)) when the source files need to be converted to a format that the converter supports |
+| **Mandatory run variables**            | `sources`: File paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects; `output_file_type`: The target file format |
+| **Output variables**                   | `output`: A list of [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **API reference**                      | [LibreOffice](/reference/integrations-libreoffice) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/libreoffice |
+| **Package name** | `libreoffice-haystack` |
+
+</div>
+
+## Overview
+
+`LibreOfficeFileConverter` converts office files from one format to another using LibreOffice's `soffice` command line utility. It supports a wide range of document, spreadsheet, and presentation formats and is useful when your pipeline receives files in a format that downstream converters don't support.
+
+Unlike most converters, `LibreOfficeFileConverter` outputs [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects rather than Haystack Documents. This means it's typically chained with a document converter (such as [`DOCXToDocument`](./docxtodocument.mdx) or [`PyPDFToDocument`](./pypdftodocument.mdx)) to produce the final Documents.
+
+**Requires LibreOffice to be installed** and available in `PATH` as `soffice`. See the [LibreOffice installation guide](https://www.libreoffice.org/get-help/install-howto/) for details.
+
+### Supported conversions
+
+| Category | Input formats | Possible output formats |
+| --- | --- | --- |
+| Documents | `doc`, `docx`, `odt`, `rtf`, `txt`, `html` | `pdf`, `docx`, `doc`, `odt`, `rtf`, `txt`, `html`, `epub` |
+| Spreadsheets | `xlsx`, `xls`, `ods`, `csv` | `pdf`, `xlsx`, `xls`, `ods`, `csv`, `html` |
+| Presentations | `pptx`, `ppt`, `odp` | `pdf`, `pptx`, `ppt`, `odp`, `html`, `png`, `jpg` |
+
+This is a non-exhaustive list. See the [LibreOffice filter documentation](https://help.libreoffice.org/latest/en-GB/text/shared/guide/convertfilters.html) for all supported conversions.
+
+## Usage
+
+Install the LibreOffice integration:
+
+```shell
+pip install libreoffice-haystack
+```
+
+### On its own
+
+```python
+from pathlib import Path
+from haystack_integrations.components.converters.libreoffice import (
+    LibreOfficeFileConverter,
+)
+
+converter = LibreOfficeFileConverter()
+result = converter.run(sources=[Path("sample.doc")], output_file_type="docx")
+bytestreams = result["output"]
+```
+
+You can also set `output_file_type` at initialization to avoid passing it on every `run()` call:
+
+```python
+converter = LibreOfficeFileConverter(output_file_type="pdf")
+result = converter.run(sources=[Path("report.pptx")])
+```
+
+### In a pipeline
+
+A common pattern is to chain `LibreOfficeFileConverter` with a document converter. The example below converts a legacy `.doc` file to `.docx` and then extracts it as a Haystack Document:
+
+```python
+from pathlib import Path
+from haystack import Pipeline
+from haystack.components.converters import DOCXToDocument
+from haystack_integrations.components.converters.libreoffice import (
+    LibreOfficeFileConverter,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "libreoffice_converter",
+    LibreOfficeFileConverter(output_file_type="docx"),
+)
+pipeline.add_component("docx_converter", DOCXToDocument())
+
+pipeline.connect("libreoffice_converter.output", "docx_converter.sources")
+
+result = pipeline.run(
+    {"libreoffice_converter": {"sources": [Path("legacy_report.doc")]}},
+)
+documents = result["docx_converter"]["documents"]
+```

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``_deepcopy_with_exceptions`` crashing when a value is a ``namedtuple``
+    (or any ``typing.NamedTuple``). The list/tuple/set branch rebuilt the
+    container with ``type(obj)(<generator>)``, but a namedtuple's ``__new__``
+    expects its fields as positional arguments rather than a single iterable, so
+    copying a component input or parameter that contained a namedtuple raised a
+    ``TypeError``. Namedtuples are now rebuilt by unpacking their deep-copied
+    fields.

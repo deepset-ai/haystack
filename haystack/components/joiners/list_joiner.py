@@ -21,7 +21,7 @@ class ListJoiner:
     Usage example:
     ```python
     from haystack.components.builders import ChatPromptBuilder
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
     from haystack.components.joiners import ListJoiner
@@ -39,8 +39,8 @@ class ListJoiner:
 
     prompt_builder = ChatPromptBuilder(template=user_message)
     feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-    llm = OpenAIChatGenerator()
-    feedback_llm = OpenAIChatGenerator()
+    llm = OpenAIResponsesChatGenerator()
+    feedback_llm = OpenAIResponsesChatGenerator()
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -57,8 +57,8 @@ class ListJoiner:
     pipe.connect("feedback_llm.replies", "list_joiner")
 
     query = "What is nuclear physics?"
-    ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
-        "feedback_prompt_builder": {"template_variables":{"query": query}}})
+    ans = pipe.run(data={"prompt_builder": {"query": query},
+        "feedback_prompt_builder": {"query": query}})
 
     print(ans["list_joiner"]["values"])
     ```
@@ -98,7 +98,10 @@ class ListJoiner:
         """
         init_parameters = data.get("init_parameters")
         if init_parameters is not None and init_parameters.get("list_type_") is not None:
-            data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
+            # Copy so the caller's data keeps the serialized type and can be deserialized again
+            init_parameters = dict(init_parameters)
+            init_parameters["list_type_"] = deserialize_type(init_parameters["list_type_"])
+            data = {**data, "init_parameters": init_parameters}
         return default_from_dict(cls, data)
 
     def run(self, values: Variadic[list[Any]]) -> dict[str, list[Any]]:

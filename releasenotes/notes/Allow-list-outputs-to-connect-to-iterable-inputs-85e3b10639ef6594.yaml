@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Allow ``Pipeline`` component outputs typed as ``list[T]`` to connect to inputs typed as ``Iterable[T]``.
+    Lists already satisfy the iterable input contract and are passed through without conversion.

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import textwrap
 
 import pytest
@@ -274,6 +275,16 @@ class TestOrderingAndLineRanges:
             expected = "".join(source_lines[chunk.meta["start_line"] - 1 : chunk.meta["end_line"]])
             assert (chunk.content or "").endswith(expected)
 
+    def test_form_feed_does_not_shift_ast_line_numbers(self):
+        source = "\x0c\ndef first():\n    return 1\n\ndef second():\n    return 2\n"
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1)
+        chunks = splitter.run(documents=[Document(content=source)])["documents"]
+
+        contents = [chunk.content for chunk in chunks]
+        assert contents == ["\x0c\ndef first():\n    return 1\n", "\ndef second():\n    return 2\n"]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 3), (5, 6)]
+        assert "".join(content or "" for content in contents) == source
+
 
 class TestFileNamePropagation:
     def test_file_name_propagated_to_all_chunks(self, simple_module_source):
@@ -296,8 +307,60 @@ class TestFileNamePropagation:
         for chunk in result["documents"]:
             assert chunk.meta["project"] == "haystack"
 
+    def test_nested_metadata_is_not_shared_between_chunks(self, class_source):
+        """Each chunk gets its own copy of nested metadata, so editing one does not reach its siblings."""
+        doc = Document(content=class_source, meta={"tags": ["code"]})
+
+        chunks = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5).run(documents=[doc])["documents"]
+        chunks[0].meta["tags"].append("shape")
+
+        assert chunks[1].meta["tags"] == ["code"]
+        assert doc.meta["tags"] == ["code"]
+
+    def test_nested_metadata_is_not_shared_between_secondary_split_pieces(self, oversized_function_source):
+        """The secondary line-based split copies nested metadata too."""
+        doc = Document(content=oversized_function_source, meta={"tags": ["code"]})
+
+        chunks = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5).run(documents=[doc])["documents"]
+        chunks[0].meta["tags"].append("giant")
+
+        assert chunks[1].meta["tags"] == ["code"]
+        assert doc.meta["tags"] == ["code"]
+
 
 class TestDecorators:
+    def test_multiline_method_decorator_stays_with_method(self):
+        class_header = "class A:\n"
+        first_method = (
+            "    @(\n        # decorator comment\n        decorator\n    )\n    def first(self):\n        return 1\n"
+        )
+        second_method = "\n    def second(self):\n        return 2\n"
+        chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
+            documents=[Document(content=class_header + first_method + second_method)]
+        )["documents"]
+
+        assert [chunk.content for chunk in chunks] == [
+            class_header,
+            class_header + first_method,
+            class_header + second_method,
+        ]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 7), (9, 10)]
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+    def test_multiline_function_decorator_starts_at_marker(self, newline):
+        decorated = "# leading comment\n@(\n    # decorator comment\n    decorator\n)\ndef first():\n    pass\n"
+        following = "\ndef second():\n    pass\n"
+        source = (decorated + following).replace("\n", newline)
+        chunks = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, oversized_factor=100).run(
+            documents=[Document(content=source)]
+        )["documents"]
+
+        assert [chunk.content for chunk in chunks] == [
+            decorated.replace("\n", newline),
+            following.replace("\n", newline),
+        ]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 7), (9, 10)]
+
     def test_decorators_metadata_present(self):
         source = textwrap.dedent(
             """
@@ -313,7 +376,7 @@ class TestDecorators:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
-        all_decorators = []
+        all_decorators: list[str] = []
         for chunk in result["documents"]:
             all_decorators.extend(chunk.meta.get("decorators") or [])
         assert any("staticmethod" in d for d in all_decorators)
@@ -502,6 +565,22 @@ class TestPreserveClassDefinition:
         splitter = PythonCodeSplitter()
         assert splitter.preserve_class_definition is True
 
+    @pytest.mark.parametrize("preserve_class_definition", [True, False])
+    def test_first_property_does_not_decorate_later_methods(self, preserve_class_definition):
+        class_header = "class A:\n"
+        first_method = "    @property\n    def first(self):\n        return 1\n"
+        second_method = "\n    def second(self):\n        return 2\n"
+        chunks = PythonCodeSplitter(
+            min_effective_lines=1,
+            max_effective_lines=1,
+            oversized_factor=100,
+            preserve_class_definition=preserve_class_definition,
+        ).run(documents=[Document(content=class_header + first_method + second_method)])["documents"]
+
+        prefix = class_header if preserve_class_definition else ""
+        assert [chunk.content for chunk in chunks] == [class_header, prefix + first_method, prefix + second_method]
+        assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(1, 1), (2, 4), (6, 7)]
+
     def test_class_signature_prepended_to_later_chunks(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         chunks = splitter.run(documents=[Document(content=multi_method_class_source)])["documents"]
@@ -687,6 +766,40 @@ class TestDocstringStripping:
         assert "Class-level docstring." not in (header.content or "")
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
 
+    @pytest.mark.parametrize(
+        "source", ['def only_docstring():\n    """Function docs."""\n', 'class OnlyDocstring:\n    """Class docs."""\n']
+    )
+    def test_strip_docstrings_keeps_docstring_only_units_valid(self, source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert result["documents"]
+        for chunk in result["documents"]:
+            ast.parse(chunk.content or "")
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            'def f():\n    """Docs."""; return 5\n',
+            'def f():\n    """Docs\n    more."""; x = 1\n    return x\n',
+            'class A:\n    """Docs."""; y = 2\n',
+        ],
+    )
+    def test_strip_docstrings_keeps_docstring_sharing_a_line_with_code(self, source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert "".join(chunk.content or "" for chunk in result["documents"]) == source
+        assert all(not chunk.meta.get("docstrings") for chunk in result["documents"])
+
+    def test_strip_docstrings_still_strips_docstring_followed_by_comment(self):
+        source = 'def f():\n    """Docs."""  # noqa: D400\n    return 5\n'
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert [chunk.content for chunk in result["documents"]] == ["def f():\n    return 5\n"]
+        assert result["documents"][0].meta["docstrings"] == ["Docs."]
+
 
 class TestTopLevelStatements:
     @pytest.fixture
@@ -835,6 +948,12 @@ class TestOversizedFallback:
         chunks_with_long = [c for c in result["documents"] if "def longer" in (c.content or "")]
         assert chunks_with_short and chunks_with_long
         assert chunks_with_short[0] is not chunks_with_long[0]
+
+    def test_qualified_name_in_meta_for_all_pieces(self, oversized_function_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+        result = splitter.run(documents=[Document(content=oversized_function_source)])
+        for piece in result["documents"]:
+            assert piece.meta.get("qualified_name") == "giant"
 
 
 class TestEdgeCases:

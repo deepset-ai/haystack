@@ -10,7 +10,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import posthog
 import yaml
@@ -20,7 +20,7 @@ from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
-    from haystack.core.pipeline import AsyncPipeline, Pipeline
+    from haystack.core.pipeline import Pipeline
 
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
@@ -89,7 +89,7 @@ class Telemetry:
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
             try:
-                with open(CONFIG_PATH, "w") as outfile:
+                with open(CONFIG_PATH, "w", encoding="utf-8") as outfile:
                     yaml.dump({"user_id": self.user_id}, outfile, default_flow_style=False)
             except Exception as e:
                 logger.debug(
@@ -137,7 +137,7 @@ def send_telemetry(func: Callable[..., Any]) -> Callable[..., None]:
 
 
 @send_telemetry
-def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str, dict[str, Any]] | None:
+def pipeline_running(pipeline: "Pipeline") -> tuple[str, dict[str, Any]] | None:
     """
     Collects telemetry data for a pipeline run and sends it to Posthog.
 
@@ -170,7 +170,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str,
             components[component_qualified_class_name].append({"name": component_name})
 
     # Data sent to Posthog
-    return "Pipeline run (2.x)", {
+    return "Pipeline run (3.x)", {
         "pipeline_id": str(id(pipeline)),
         "pipeline_type": generate_qualified_class_name(type(pipeline)),
         "runs": pipeline._telemetry_runs,

@@ -277,17 +277,17 @@ class CountUniqueMetadataByFilterAsyncTest:
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={}, metadata_fields=["category", "status", "priority"]
         )
-        assert counts["category"] == 3
-        assert counts["status"] == 2
-        assert counts["priority"] == 3
+        assert counts == {"category": 3, "status": 2, "priority": 3}
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_count_unique_metadata_by_filter_async_with_filter(document_store: AsyncDocumentStore):
         """Test count_unique_metadata_by_filter_async() with a filter."""
+        # The filtered-out document carries extra unique values, so the counts only come out right
+        # when the store actually applies the filter.
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2}),
+            Document(content="Doc 2", meta={"category": "B", "status": "archived", "priority": 2}),
             Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
             Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
         ]
@@ -297,21 +297,22 @@ class CountUniqueMetadataByFilterAsyncTest:
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "A"}, metadata_fields=["status", "priority"]
         )
-        assert counts["status"] == 2
-        assert counts["priority"] == 2
+        assert counts == {"status": 2, "priority": 2}
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_count_unique_metadata_by_filter_async_with_multiple_filters(document_store: AsyncDocumentStore):
         """Test counting unique metadata asynchronously with multiple filters."""
         docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "A", "year": 2024}),
-            Document(content="Doc 3", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 4", meta={"category": "B", "year": 2024}),
+            Document(content="Doc 1", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 3", meta={"category": "B", "year": 2023, "status": "published"}),
+            Document(content="Doc 4", meta={"category": "B", "year": 2024, "status": "draft"}),
         ]
         await document_store.write_documents_async(docs)
 
+        # The compound filter matches three documents with duplicated values, so the counts only come
+        # out right when the store both applies the filter and properly counts the values.
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={
                 "operator": "AND",
@@ -320,9 +321,9 @@ class CountUniqueMetadataByFilterAsyncTest:
                     {"field": "meta.year", "operator": "==", "value": 2023},
                 ],
             },
-            metadata_fields=["category", "year"],
+            metadata_fields=["status", "year"],
         )
-        assert counts == {"category": 1, "year": 1}
+        assert counts == {"status": 2, "year": 1}
 
 
 class DeleteByFilterAsyncTest:
@@ -620,11 +621,14 @@ class GetMetadataFieldMinMaxAsyncTest:
     @pytest.mark.asyncio
     async def test_get_metadata_field_min_max_numeric_async(document_store: AsyncDocumentStore):
         """Test get_metadata_field_min_max_async() with integer field."""
+        # The min and max are deliberately not the first or last written values, so an implementation
+        # returning values by insertion order fails. Keeping both 10 and 5 catches implementations that
+        # compare numbers as strings ("10" < "5" lexicographically).
         docs = [
-            Document(content="Doc 1", meta={"priority": 1}),
-            Document(content="Doc 2", meta={"priority": 5}),
-            Document(content="Doc 3", meta={"priority": 3}),
-            Document(content="Doc 4", meta={"priority": 10}),
+            Document(content="Doc 1", meta={"priority": 5}),
+            Document(content="Doc 2", meta={"priority": 1}),
+            Document(content="Doc 3", meta={"priority": 10}),
+            Document(content="Doc 4", meta={"priority": 3}),
         ]
         await document_store.write_documents_async(docs)
         assert await document_store.count_documents_async() == 4
@@ -637,13 +641,15 @@ class GetMetadataFieldMinMaxAsyncTest:
     @pytest.mark.asyncio
     async def test_get_metadata_field_min_max_float_async(document_store: AsyncDocumentStore):
         """Test get_metadata_field_min_max_async() with float field."""
+        # The min and max are deliberately not the first or last written values.
         docs = [
-            Document(content="Doc 1", meta={"rating": 0.6}),
-            Document(content="Doc 2", meta={"rating": 0.95}),
-            Document(content="Doc 3", meta={"rating": 0.8}),
+            Document(content="Doc 1", meta={"rating": 0.8}),
+            Document(content="Doc 2", meta={"rating": 0.6}),
+            Document(content="Doc 3", meta={"rating": 0.95}),
+            Document(content="Doc 4", meta={"rating": 0.7}),
         ]
         await document_store.write_documents_async(docs)
-        assert await document_store.count_documents_async() == 3
+        assert await document_store.count_documents_async() == 4
 
         result = await document_store.get_metadata_field_min_max_async("rating")  # type:ignore[attr-defined]
 
@@ -676,15 +682,16 @@ class GetMetadataFieldMinMaxAsyncTest:
     @pytest.mark.asyncio
     async def test_get_metadata_field_min_max_meta_prefix_async(document_store: AsyncDocumentStore):
         """Test get_metadata_field_min_max_async() with field names that include 'meta.' prefix."""
+        # The min and max of each field are deliberately not the first or last written values.
         docs = [
-            Document(content="Doc 1", meta={"priority": 1, "age": 10}),
-            Document(content="Doc 2", meta={"priority": 5, "age": 20}),
-            Document(content="Doc 3", meta={"priority": 3, "age": 15}),
-            Document(content="Doc 4", meta={"priority": 10, "age": 5}),
+            Document(content="Doc 1", meta={"priority": 5, "age": 10}),
+            Document(content="Doc 2", meta={"priority": 1, "age": 20}),
+            Document(content="Doc 3", meta={"priority": 10, "age": 15}),
+            Document(content="Doc 4", meta={"priority": 3, "age": 5}),
             Document(content="Doc 6", meta={"rating": 10.5}),
             Document(content="Doc 7", meta={"rating": 20.3}),
-            Document(content="Doc 8", meta={"rating": 15.7}),
-            Document(content="Doc 9", meta={"rating": 5.2}),
+            Document(content="Doc 8", meta={"rating": 5.2}),
+            Document(content="Doc 9", meta={"rating": 15.7}),
         ]
         await document_store.write_documents_async(docs)
 
@@ -702,8 +709,9 @@ class GetMetadataFieldUniqueValuesAsyncTest:
     """
     Tests for Document Store get_metadata_field_unique_values_async().
 
-    Only mix in for stores that implement get_metadata_field_unique_values_async.
-    Expects the method to return (values_list, total_count) or (values_list, pagination_key).
+    Only mix in for stores that implement get_metadata_field_unique_values_async() with the standardized
+    signature: get_metadata_field_unique_values_async(metadata_field, search_term=None, from_=0, size=10,
+    filters=None) -> (values, total_count).
     """
 
     @staticmethod
@@ -720,26 +728,172 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         await document_store.write_documents_async(docs)
         assert await document_store.count_documents_async() == 5
 
-        sig = inspect.signature(document_store.get_metadata_field_unique_values_async)  # type:ignore[attr-defined]
-        params: dict = {}
-        if "search_term" in sig.parameters:
-            params["search_term"] = None
-        if "from_" in sig.parameters:
-            params["from_"] = 0
-        elif "offset" in sig.parameters:
-            params["offset"] = 0
-        if "size" in sig.parameters:
-            params["size"] = 10
-        elif "limit" in sig.parameters:
-            params["limit"] = 10
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category"
+        )
 
-        result = await document_store.get_metadata_field_unique_values_async("category", **params)  # type:ignore[attr-defined]
-
-        values = result[0] if isinstance(result, tuple) else result
         assert isinstance(values, list)
+        assert len(values) == 3  # the returned values must not contain duplicates
         assert set(values) == {"A", "B", "C"}
-        if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
-            assert result[1] == 3
+        assert total_count == 3
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_meta_prefix_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() with a field name that includes the 'meta.' prefix."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A"}),
+            Document(content="Doc 2", meta={"category": "B"}),
+            Document(content="Doc 3", meta={"category": "A"}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category"
+        )
+        prefixed_values, prefixed_total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="meta.category"
+        )
+
+        assert set(prefixed_values) == set(values)
+        assert prefixed_total_count == total_count
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_search_term_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() filters by a case-insensitive substring of the value."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "All_Beauty"}),
+            Document(content="Doc 2", meta={"category": "Electronics"}),
+            # the content mentions "beaut" but the value doesn't - must not match search_term="beaut"
+            Document(content="something about beauty products", meta={"category": "Home"}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category", search_term="beaut"
+        )
+
+        assert values == ["All_Beauty"]
+        assert total_count == 1
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_pagination_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() paginates a stable ordering via from_/size."""
+        docs = [Document(content=f"Doc {i}", meta={"category": f"category_{i}"}) for i in range(5)]
+        await document_store.write_documents_async(docs)
+
+        all_values = sorted(f"category_{i}" for i in range(5))
+
+        first_page, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category", from_=0, size=2
+        )
+        assert first_page == all_values[:2]
+        assert total_count == 5
+
+        second_page, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category", from_=2, size=2
+        )
+        assert second_page == all_values[2:4]
+        assert total_count == 5
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_empty_store_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() on an empty store."""
+        assert await document_store.count_documents_async() == 0
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category"
+        )
+        assert values == []
+        assert total_count == 0
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_missing_field_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() for a field that no document has."""
+        docs = [Document(content="Doc 1", meta={"category": "A"})]
+        await document_store.write_documents_async(docs)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="missing_field"
+        )
+        assert values == []
+        assert total_count == 0
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_preserves_type_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() returns values in their original (non-string) type."""
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": 2}),
+            Document(content="Doc 3", meta={"priority": 1}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
+
+        assert set(values) == {1, 2}
+        assert all(isinstance(value, int) for value in values)
+        assert total_count == 2
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_distinct_types_async(document_store: AsyncDocumentStore):
+        """
+        Test get_metadata_field_unique_values_async() doesn't collapse values that share a string form.
+
+        Example: the int 1, the float 1.0, the str "1" and the bool True must be counted and returned as
+        distinct values.
+        """
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": "1"}),
+            Document(content="Doc 3", meta={"priority": 1.0}),
+            Document(content="Doc 4", meta={"priority": True}),
+            Document(content="Doc 5", meta={"priority": 1}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
+
+        assert total_count == 4
+        assert len(values) == 4
+
+        # `1 == 1.0 == True` and `set`/`in` use equality, not identity, so distinctness must be
+        # verified by type instead, otherwise this test could pass even if values collapsed.
+        values_by_type = {type(value): value for value in values}
+        assert values_by_type.keys() == {int, str, float, bool}
+        assert values_by_type[int] == 1
+        assert values_by_type[str] == "1"
+        assert values_by_type[float] == 1.0
+        assert values_by_type[bool] is True
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_with_filters_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() restricts documents using the filters param."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        filters = {"field": "meta.status", "operator": "==", "value": "active"}
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category", filters=filters
+        )
+
+        assert set(values) == {"A", "B"}
+        assert total_count == 2
 
 
 class FilterDocumentsAsyncTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):

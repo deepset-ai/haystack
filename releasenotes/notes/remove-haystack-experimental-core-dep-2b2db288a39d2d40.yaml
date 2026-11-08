@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    ``haystack-experimental`` is no longer a core dependency of Haystack and is no longer installed automatically with ``haystack-ai``.
+    If your code imports from ``haystack_experimental`` (directly or
+    through an integration that relies on it), you must now install it explicitly, for example with
+    ``pip install haystack-experimental``. Installations that do not use ``haystack_experimental`` are
+    unaffected.

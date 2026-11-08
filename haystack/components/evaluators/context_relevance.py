@@ -85,17 +85,20 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     print(result["results"])
     # [{
     #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
-    #    'score': 1.0
+    #   'score': 1.0,
+    #   'status': 'evaluated'
     #  },
     #  {
     #   'relevant_statements': ['The JVM has two primary functions: to allow Java programs to run on any device or
     #                           operating system (known as the "write once, run anywhere" principle), and to manage and
     #                           optimize program memory'],
-    #   'score': 1.0
+    #   'score': 1.0,
+    #   'status': 'evaluated'
     #  },
     #  {
     #   'relevant_statements': [],
-    #   'score': 0.0
+    #   'score': 0.0,
+    #   'status': 'evaluated'
     #  }]
     ```
     """
@@ -132,7 +135,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
-            Whether to raise an exception if the API call fails.
+            If True, the component raises an exception when the chat generator call fails or its response isn't valid
+            JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -159,7 +163,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -171,13 +177,17 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
-                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+                - `individual_scores`: A list of context relevance scores for each input question.
+                - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+                  context. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
         return self._postprocess_results(result)
 
-    @component.output_types(score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously.
@@ -189,7 +199,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
-                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+                - `individual_scores`: A list of context relevance scores for each input question.
+                - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+                  context. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = await super(ContextRelevanceEvaluator, self).run_async(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
@@ -209,8 +221,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         """
         for idx, res in enumerate(result["results"]):
             if res is None:
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
+                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
                 continue
+            res["status"] = "evaluated"
             if len(res["relevant_statements"]) > 0:
                 res["score"] = 1
             else:

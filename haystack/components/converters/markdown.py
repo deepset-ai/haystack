@@ -26,6 +26,17 @@ logger = logging.getLogger(__name__)
 _FRONTMATTER_PATTERN = re.compile(r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n)---[ \t]*(?:\r?\n|$)", re.DOTALL)
 
 
+def _render_table_cell_open(tokens: list[Any], idx: int, _options: Any, _env: Any) -> str:
+    """Insert a space before every table cell except the first."""
+    is_first_table_cell = tokens[idx - 1].type == "tr_open" and tokens[idx - 2].type == "thead_open"
+    return "" if is_first_table_cell else " "
+
+
+def _render_table_boundary(_tokens: list[Any], _idx: int, _options: Any, _env: Any) -> str:
+    """Separate the table from surrounding content with a newline."""
+    return "\n"
+
+
 @component
 class MarkdownToDocument:
     """
@@ -52,6 +63,7 @@ class MarkdownToDocument:
         table_to_single_line: bool = False,
         progress_bar: bool = True,
         store_full_path: bool = False,
+        encoding: str = "utf-8-sig",
         *,
         extract_frontmatter: bool = False,
     ) -> None:
@@ -65,6 +77,9 @@ class MarkdownToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param encoding:
+            The default encoding to use when converting Markdown files. If the encoding is specified in the metadata
+            of a source ByteStream, it overrides this value.
         :param extract_frontmatter:
             If True, YAML frontmatter at the beginning of the Markdown file is
             removed from the document content and added to the document metadata.
@@ -74,6 +89,7 @@ class MarkdownToDocument:
         self.table_to_single_line = table_to_single_line
         self.progress_bar = progress_bar
         self.store_full_path = store_full_path
+        self.encoding = encoding
         self.extract_frontmatter = extract_frontmatter
 
     @component.output_types(documents=list[Document])
@@ -100,6 +116,11 @@ class MarkdownToDocument:
         parser = MarkdownIt(renderer_cls=RendererPlain)
         if self.table_to_single_line:
             parser.enable("table")
+            renderer: RendererPlain = parser.renderer
+            renderer.rules["table_open"] = _render_table_boundary
+            renderer.rules["table_close"] = _render_table_boundary
+            renderer.rules["th_open"] = _render_table_cell_open
+            renderer.rules["td_open"] = _render_table_cell_open
 
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
@@ -116,7 +137,8 @@ class MarkdownToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                file_content = bytestream.data.decode("utf-8")
+                encoding = bytestream.meta.get("encoding", self.encoding)
+                file_content = bytestream.data.decode(encoding)
                 file_content, frontmatter = self._extract_frontmatter(file_content, source)
                 text = parser.render(file_content)
             except Exception as conversion_e:

@@ -8,13 +8,25 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAITextEmbedder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.core.errors import PipelineConnectError
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.answer import GeneratedAnswer
 from haystack.utils.auth import Secret
+
+
+class TestListJoinerDeserialization:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        data = ListJoiner(list[ChatMessage]).to_dict()
+        serialized_type = data["init_parameters"]["list_type_"]
+        assert isinstance(serialized_type, str)
+
+        ListJoiner.from_dict(data)
+
+        assert data["init_parameters"]["list_type_"] == serialized_type
+        assert ListJoiner.from_dict(data).list_type_ == list[ChatMessage]
 
 
 class TestListJoiner:
@@ -140,7 +152,7 @@ class TestListJoiner:
     def test_pipeline_bad_connection(self):
         with pytest.raises(PipelineConnectError):
             joiner = ListJoiner()
-            query_embedder = SentenceTransformersTextEmbedder()
+            query_embedder = OpenAITextEmbedder(api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)
             pipe.add_component("query_embedder", query_embedder)

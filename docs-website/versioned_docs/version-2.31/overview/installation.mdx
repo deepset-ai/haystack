@@ -1,0 +1,51 @@
+---
+title: "Installation"
+id: installation
+slug: "/installation"
+description: "See how to quickly install Haystack with pip, uv, or conda."
+---
+
+# Installation
+
+See how to quickly install Haystack with pip, uv, or conda.
+
+## Package Installation
+
+Use [pip](https://github.com/pypa/pip) to install the [Haystack PyPI package](https://pypi.org/project/haystack-ai/):
+
+```shell
+pip install haystack-ai
+```
+
+Alternatively, you can use [uv](https://docs.astral.sh/uv/) to install Haystack:
+
+```shell
+uv pip install haystack-ai
+```
+
+Or add it as a dependency to your project:
+
+```shell
+uv add haystack-ai
+```
+
+You can also use [conda](https://docs.conda.io/projects/conda/en/stable/) to install the [Haystack conda package](https://anaconda.org/conda-forge/haystack-ai):
+
+```shell
+conda install conda-forge::haystack-ai
+```
+
+### Optional Dependencies
+
+Some components in Haystack rely on additional optional dependencies.
+To keep the installation lightweight, these are not included by default – only the essentials are installed.
+If you use a feature that requires an optional dependency that hasn't been installed, Haystack will raise an error that instructs you to install missing dependencies, for example:
+
+```shell
+ImportError: "Haystack failed to import the optional dependency 'pypdf'. Run 'pip install pypdf'.
+```
+
+## Contributing to Haystack
+
+If you would like to contribute to the Haystack, check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first
+and follow the instructions [here](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#setting-up-your-development-environment) to set up your development environment.

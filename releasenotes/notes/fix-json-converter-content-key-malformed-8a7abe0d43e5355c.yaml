@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``JSONConverter`` crashing on a malformed JSON source when it is
+    configured with ``content_key`` and no ``jq_schema``. The non-jq branch
+    called ``json.loads`` without a guard, so a single invalid ``.json`` file
+    raised an unhandled ``JSONDecodeError`` and aborted the whole run. Invalid
+    JSON is now caught, logged, and skipped, matching the behavior of the
+    ``jq_schema`` path.

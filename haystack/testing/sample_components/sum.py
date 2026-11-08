@@ -11,6 +11,6 @@ class Sum:
     @component.output_types(total=int)
     def run(self, values: Variadic[int]):
         """
-        :param value: the values to sum.
+        :param values: the values to sum.
         """
         return {"total": sum(values)}

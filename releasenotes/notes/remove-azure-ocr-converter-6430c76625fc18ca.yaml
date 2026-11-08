@@ -1,0 +1,18 @@
+---
+upgrade:
+  - |
+    ``AzureOCRDocumentConverter`` has been moved out of Haystack into the ``azure-form-recognizer-haystack``
+    integration package. Install the new package with ``pip install azure-form-recognizer-haystack`` and update
+    your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.converters import AzureOCRDocumentConverter
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.converters.azure_form_recognizer import AzureOCRDocumentConverter

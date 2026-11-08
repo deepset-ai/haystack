@@ -3,6 +3,7 @@ title: "DeepEvalEvaluator"
 id: deepevalevaluator
 slug: "/deepevalevaluator"
 description: "The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It supports metrics like answer relevancy, faithfulness, contextual relevance, and more."
+hep_available: false
 ---
 
 # DeepEvalEvaluator
@@ -79,12 +80,12 @@ from haystack_integrations.components.evaluators.deepeval import (
 pipeline = Pipeline()
 evaluator = DeepEvalEvaluator(
     metric=DeepEvalMetric.FAITHFULNESS,
-    metric_params={"model": "gpt-4"},
+    metric_params={"model": "gpt-4o-mini"},
 )
 pipeline.add_component("evaluator", evaluator)
 ```
 
-To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions` and `contexts`. These should come from the results of the pipeline you want to evaluate.
+To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions`, a list of `contexts`, and a list of `responses`. These should come from the results of the pipeline you want to evaluate.
 
 ```python
 results = pipeline.run(

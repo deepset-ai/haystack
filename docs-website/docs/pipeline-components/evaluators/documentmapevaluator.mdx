@@ -3,6 +3,7 @@ title: "DocumentMAPEvaluator"
 id: documentmapevaluator
 slug: "/documentmapevaluator"
 description: "The `DocumentMAPEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks to what extent the list of retrieved documents contains only relevant documents as specified in the ground truth labels or also non-relevant documents. This metric is called mean average precision (MAP)."
+hep_available: false
 ---
 
 # DocumentMAPEvaluator
@@ -101,10 +102,10 @@ result = pipeline.run(
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-# [1.0, 1.0]
 # [1.0, 0.8333333333333333]
+# [1.0, 1.0]
 for evaluator in result:
     print(result[evaluator]["score"])
-# 1.0
 # 0.9166666666666666
+# 1.0
 ```

@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import json
 from dataclasses import replace
 from unittest.mock import ANY
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from haystack import AsyncPipeline, Pipeline, component
+from haystack import Pipeline, component
 from haystack.dataclasses import Document
 from haystack.tracing.tracer import tracer
 from test.tracing.utils import SpyingSpan, SpyingTracer
@@ -47,6 +49,7 @@ class TestTracing:
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_runs_per_component": 100,
+                    "haystack.pipeline.execution_mode": "sync",
                 },
                 parent_span=None,
                 trace_id=ANY,
@@ -113,6 +116,7 @@ class TestTracing:
                     "haystack.pipeline.max_runs_per_component": 100,
                     "haystack.pipeline.input_data": {"hello": {"word": "world"}},
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
+                    "haystack.pipeline.execution_mode": "sync",
                 },
                 trace_id=ANY,
                 span_id=ANY,
@@ -153,10 +157,36 @@ class TestTracing:
             ),
         ]
 
-    @pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
-    def test_span_input_not_affected_by_component_mutation(self, pipeline_class, spying_tracer, monkeypatch):
+    @pytest.mark.parametrize("run_async", [False, True])
+    @pytest.mark.parametrize("content_tracing", [True, False])
+    def test_pipeline_output_data_trace_tag(
+        self, pipeline, run_async, content_tracing, eager_spying_tracer, monkeypatch
+    ):
+        """
+        output_data holds the final outputs and is gated behind content tracing.
+
+        EagerSpyingTracer coerces tags when set (like real backends), so it catches output_data being set from the
+        still-empty outputs dict at span start.
+        """
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", content_tracing)
+        if run_async:
+            asyncio.run(pipeline.run_async(data={"word": "world"}))
+        else:
+            pipeline.run(data={"word": "world"})
+
+        tags = eager_spying_tracer.spans[0].tags
+        assert json.loads(tags["haystack.pipeline.input_data"]) == {"hello": {"word": "world"}}
+        if content_tracing:
+            assert json.loads(tags["haystack.pipeline.output_data"]) == {"hello2": {"output": "Hello, Hello, world!!"}}
+        else:
+            assert "haystack.pipeline.output_data" not in tags
+
+    @pytest.mark.parametrize("run_async", [False, True])
+    def test_span_input_not_affected_by_component_mutation(self, run_async, spying_tracer, monkeypatch):
         """
         Verify that the haystack.component.input span tag retains the pre-execution value.
+
+        Parametrized to cover both the synchronous (`run`) and asynchronous (`run_async`) execution paths.
         """
         monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
 
@@ -166,12 +196,18 @@ class TestTracing:
             def run(self, doc: Document) -> dict:
                 return {"doc": replace(doc, content="mutated")}
 
-        pipe = pipeline_class()
+        pipe = Pipeline()
         pipe.add_component("mutator", MutatingComponent())
 
-        result = pipe.run({"mutator": {"doc": Document(content="original")}})
+        if run_async:
+            result = asyncio.run(pipe.run_async({"mutator": {"doc": Document(content="original")}}))
+        else:
+            result = pipe.run({"mutator": {"doc": Document(content="original")}})
 
+        pipeline_span = spying_tracer.spans[0]
         component_span = spying_tracer.spans[1]
 
+        assert pipeline_span.operation_name == "haystack.pipeline.run"
+        assert pipeline_span.tags["haystack.pipeline.execution_mode"] == ("async" if run_async else "sync")
         assert component_span.tags["haystack.component.input"]["doc"].content == "original"
         assert result["mutator"]["doc"].content == "mutated"

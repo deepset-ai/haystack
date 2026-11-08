@@ -319,6 +319,7 @@ connect() -> list[types.Tool]
 Connect to an MCP server using SSE transport.
 
 Note: If both custom headers and token are provided, custom headers take precedence.
+If `oauth_config` is set, an OAuth access token is obtained and attached to every request.
 
 **Returns:**
 
@@ -362,6 +363,7 @@ connect() -> list[types.Tool]
 Connect to an MCP server using streamable HTTP transport.
 
 Note: If both custom headers and token are provided, custom headers take precedence.
+If `oauth_config` is set, an OAuth access token is obtained and attached to every request.
 
 **Returns:**
 
@@ -454,6 +456,19 @@ server_info = SSEServerInfo(
 )
 ```
 
+For servers protected with OAuth 2.0, using the Client Credentials grant:
+
+```python
+server_info = SSEServerInfo(
+    url="https://my-mcp-server.com/sse",
+    oauth_config=OAuthConfig(
+        client_id="my-client-id",
+        client_secret=Secret.from_env_var("MCP_CLIENT_SECRET"),
+        issuer="https://auth.example.com",
+    ),
+)
+```
+
 **Parameters:**
 
 - **url** (<code>str | None</code>) – Full URL of the MCP server (including /sse endpoint)
@@ -461,6 +476,8 @@ server_info = SSEServerInfo(
 - **token** (<code>str | Secret | None</code>) – Authentication token for the server (optional, generates "Authorization: Bearer `<token>`" header)
 - **headers** (<code>dict\[str, str | Secret\] | None</code>) – Custom HTTP headers (optional, takes precedence over token parameter if provided)
 - **timeout** (<code>int</code>) – Connection timeout in seconds
+- **oauth_config** (<code>OAuthConfig | None</code>) – OAuth 2.0 configuration (optional). Can't be combined with `token` or an
+  `Authorization` header.
 
 #### create_client
 
@@ -509,12 +526,27 @@ server_info = StreamableHttpServerInfo(
 )
 ```
 
+For servers protected with OAuth 2.0, using the Client Credentials grant:
+
+```python
+server_info = StreamableHttpServerInfo(
+    url="https://my-mcp-server.com/mcp",
+    oauth_config=OAuthConfig(
+        client_id="my-client-id",
+        client_secret=Secret.from_env_var("MCP_CLIENT_SECRET"),
+        issuer="https://auth.example.com",
+    ),
+)
+```
+
 **Parameters:**
 
 - **url** (<code>str</code>) – Full URL of the MCP server (streamable HTTP endpoint)
 - **token** (<code>str | Secret | None</code>) – Authentication token for the server (optional, generates "Authorization: Bearer `<token>`" header)
 - **headers** (<code>dict\[str, str | Secret\] | None</code>) – Custom HTTP headers (optional, takes precedence over token parameter if provided)
 - **timeout** (<code>int</code>) – Connection timeout in seconds
+- **oauth_config** (<code>OAuthConfig | None</code>) – OAuth 2.0 configuration (optional). Can't be combined with `token` or an
+  `Authorization` header.
 
 #### create_client
 
@@ -716,7 +748,7 @@ Asynchronous tool invocation.
 warm_up() -> None
 ```
 
-Connect and fetch the tool schema if eager_connect is turned off.
+Connect and fetch the tool schema unless already connected.
 
 #### to_dict
 
@@ -924,7 +956,7 @@ Initialize the MCP toolset.
 warm_up() -> None
 ```
 
-Connect and load tools when eager_connect is turned off.
+Connect and load tools unless already connected.
 
 This method is automatically called by `Agent.warm_up()` and `Pipeline.warm_up()`.
 You can also call it directly before using the toolset to ensure all tool schemas
@@ -965,3 +997,142 @@ close() -> None
 ```
 
 Close the underlying MCP client safely.
+
+## haystack_integrations.tools.mcp.oauth
+
+OAuth 2.0 support for MCP server connections.
+
+Authentication is delegated to the OAuth providers shipped with the `mcp` SDK, which handle the MCP authorization
+spec: authorization server discovery (RFC 9728 and RFC 8414), the `resource` parameter (RFC 8707), and fetching a
+new token when the MCP server rejects the current one.
+
+Only the Client Credentials grant (RFC 6749 §4.4) is supported for now.
+
+### InMemoryTokenStorage
+
+Token storage that keeps OAuth tokens in memory.
+
+Implements the `mcp.client.auth.TokenStorage` protocol. Tokens are lost when the process exits.
+
+#### get_tokens
+
+```python
+get_tokens() -> OAuthToken | None
+```
+
+Return the stored tokens, if any.
+
+#### set_tokens
+
+```python
+set_tokens(tokens: OAuthToken) -> None
+```
+
+Store the given tokens.
+
+#### get_client_info
+
+```python
+get_client_info() -> OAuthClientInformationFull | None
+```
+
+Return the stored client information, if any.
+
+#### set_client_info
+
+```python
+set_client_info(client_info: OAuthClientInformationFull) -> None
+```
+
+Store the given client information.
+
+### OAuthConfig
+
+OAuth 2.0 configuration for authenticating to an MCP server.
+
+Supports the Client Credentials grant (RFC 6749 §4.4), which is non-interactive and suited for
+machine-to-machine connections. The authorization server and its token endpoint are discovered from the
+MCP server, as described in the MCP authorization spec.
+
+Usage example:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.tools.mcp import MCPToolset, OAuthConfig, StreamableHttpServerInfo
+
+server_info = StreamableHttpServerInfo(
+    url="https://my-mcp-server.com/mcp",
+    oauth_config=OAuthConfig(
+        client_id="my-client-id",
+        client_secret=Secret.from_env_var("MCP_CLIENT_SECRET"),
+        issuer="https://auth.example.com",
+        scopes=["mcp:tools"],
+    ),
+)
+toolset = MCPToolset(server_info=server_info)
+```
+
+**Parameters:**
+
+- **client_id** (<code>str</code>) – OAuth client identifier.
+- **client_secret** (<code>Secret</code>) – OAuth client secret.
+- **issuer** (<code>str | None</code>) – Issuer identifier of the authorization server that issued the client credentials.
+  When set, tokens are only requested from an authorization server whose metadata names exactly this issuer.
+  Recommended, and required by future versions of the `mcp` SDK. Needs `mcp>=1.30.0` (v1) or `mcp>=2.2.0`
+  (v2).
+- **scopes** (<code>list\[str\] | None</code>) – OAuth scopes to request.
+- **token_endpoint_auth_method** (<code>Literal['client_secret_basic', 'client_secret_post']</code>) – How the client authenticates to the token endpoint:
+  `"client_secret_basic"` (HTTP Basic, the default) or `"client_secret_post"` (credentials in the request body).
+- **grant_type** (<code>Literal['client_credentials']</code>) – The OAuth grant type. Only `"client_credentials"` is supported for now.
+- **token_storage** (<code>TokenStorage</code>) – Where tokens are kept between connections. Any implementation of the
+  `mcp.client.auth.TokenStorage` protocol works. Defaults to an `InMemoryTokenStorage`. Not serialized.
+
+#### create_auth
+
+```python
+create_auth(server_url: str) -> Any
+```
+
+Create the `httpx.Auth` that authenticates requests to the given MCP server.
+
+**Parameters:**
+
+- **server_url** (<code>str</code>) – URL of the MCP server.
+
+**Returns:**
+
+- <code>Any</code> – An `mcp` SDK OAuth provider, to be passed as `auth` to the HTTP client.
+
+**Raises:**
+
+- <code>ValueError</code> – If the client secret can't be resolved.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this configuration to a dictionary.
+
+`token_storage` is not serialized.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of this configuration.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> OAuthConfig
+```
+
+Deserialize a configuration from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary created by `to_dict`.
+
+**Returns:**
+
+- <code>OAuthConfig</code> – The deserialized configuration.

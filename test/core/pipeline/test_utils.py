@@ -4,6 +4,8 @@
 
 import logging
 import warnings
+from collections import namedtuple
+from copy import deepcopy
 
 import pytest
 
@@ -254,6 +256,39 @@ class TestDeepcopyWithFallback:
         original = {"component": comp}
         res = _deepcopy_with_exceptions(original)
         assert res["component"] is original["component"]
+
+    def test_deepcopy_with_fallback_namedtuple(self):
+        Point = namedtuple("Point", ["x", "y"])
+        inner = Copyable()
+        original = {"point": Point(inner, 2)}
+        copy = _deepcopy_with_exceptions(original)
+        # A namedtuple must be reconstructed as its own type. Its __new__ takes
+        # positional fields, so the plain ``type(obj)(<generator>)`` path used for
+        # lists/tuples/sets would raise a TypeError instead of copying it.
+        assert isinstance(copy["point"], Point)
+        assert copy["point"].y == 2
+        # Its contents are deep-copied, matching how plain tuples are handled.
+        assert copy["point"].x is not original["point"].x
+
+    @pytest.mark.parametrize("value", [None, True, 3, 2.5, 1 + 2j, "text", b"bytes"])
+    def test_deepcopy_with_fallback_matches_deepcopy_for_immutable_builtins(self, value):
+        original = {"values": [value], "value": value}
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["values"] is not original["values"]
+        assert copy == original
+        assert copy["value"] is deepcopy(value)
+        assert copy["values"][0] is deepcopy(value)
+
+    def test_deepcopy_with_fallback_copies_subclass_of_immutable_builtin(self):
+        class TaggedStr(str):
+            __slots__ = ()
+
+            def __deepcopy__(self, memo):
+                return TaggedStr(f"{self} (copied)")
+
+        copy = _deepcopy_with_exceptions(TaggedStr("text"))
+        assert type(copy) is TaggedStr
+        assert copy == "text (copied)"
 
 
 class TestArgsDeprecated:

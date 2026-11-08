@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
 
 permissions:
   contents: read
@@ -23,10 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -45,13 +47,13 @@ jobs:
           fail: "Copyleft,Other,Error"
           # Exclusions in the vanilla distribution must be explicitly motivated
           # - tqdm is MLP but there are no better alternatives
-          # - typing_extensions>=4.13.0 has a Python Software Foundation License 2.0 but pip-license-checker does not recognize it
-          #   (https://github.com/pilosus/pip-license-checker/issues/143)
-          exclude: "(?i)^(tqdm|typing_extensions).*"
+          # - certifi is MPL; it's installed transitively via httpx and posthog anyway,
+          #   we only list it directly to enforce a security floor
+          exclude: "(?i)^(tqdm|certifi).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
-        uses: fossas/fossa-action@ff70fe9fe17cbd2040648f1c45e8ec4e4884dcf3 # v1.9.0
+        uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
         continue-on-error: true # not critical
         with:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}

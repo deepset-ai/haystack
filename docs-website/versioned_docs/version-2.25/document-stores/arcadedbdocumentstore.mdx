@@ -57,10 +57,12 @@ document_store = ArcadeDBDocumentStore(
     recreate_type=True,
 )
 
-document_store.write_documents([
-    Document(content="This is first", embedding=[0.0] * 768),
-    Document(content="This is second", embedding=[0.1, 0.2, 0.3] + [0.0] * 765),
-])
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.0] * 768),
+        Document(content="This is second", embedding=[0.1, 0.2, 0.3] + [0.0] * 765),
+    ]
+)
 print(document_store.count_documents())
 ```
 

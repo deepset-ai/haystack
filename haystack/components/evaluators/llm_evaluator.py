@@ -4,7 +4,7 @@
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, get_origin
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -13,6 +13,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
@@ -83,7 +84,8 @@ class LLMEvaluator:
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
         :param raise_on_failure:
-            If True, the component will raise an exception on an unsuccessful API call.
+            If True, the component raises an exception when the chat generator call fails or its response isn't valid
+            JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param chat_generator:
@@ -111,16 +113,37 @@ class LLMEvaluator:
             generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
             self._chat_generator = OpenAIChatGenerator(generation_kwargs=generation_kwargs)
 
-        self._is_warmed_up = False
-
     def warm_up(self) -> None:
         """
-        Warm up the component by warming up the underlying chat generator.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     @staticmethod
     def validate_init_parameters(
@@ -143,10 +166,12 @@ class LLMEvaluator:
             If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
         """
         # Validate inputs
-        if (
-            not isinstance(inputs, list)
-            or not all(isinstance(_input, tuple) for _input in inputs)
-            or not all(isinstance(_input[0], str) and _input[1] is not list and len(_input) == 2 for _input in inputs)
+        if not isinstance(inputs, list) or not all(
+            isinstance(_input, tuple)
+            and len(_input) == 2
+            and isinstance(_input[0], str)
+            and (_input[1] is list or get_origin(_input[1]) is list)
+            for _input in inputs
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
@@ -177,7 +202,29 @@ class LLMEvaluator:
                 )
                 raise ValueError(msg)
 
-    @component.output_types(results=list[dict[str, Any]])
+    def _parse_reply(self, reply_text: str) -> dict[str, Any] | None:
+        """
+        Parse the chat generator's reply into a dictionary with the expected output keys.
+
+        :param reply_text: The text of the chat generator's reply.
+        :returns: The parsed dictionary, or `None` if parsing fails and `raise_on_failure` is False.
+        :raises ValueError: If parsing fails and `raise_on_failure` is True.
+        """
+        try:
+            return _parse_dict_from_json(reply_text, expected_keys=self.outputs, raise_on_failure=True)
+        except ValueError as e:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "{component} failed to parse the ChatGenerator response: {response}. Setting the result for this "
+                "input to None. Error: {error}",
+                component=type(self).__name__,
+                response=reply_text,
+                error=e,
+            )
+            return None
+
+    @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -195,8 +242,7 @@ class LLMEvaluator:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         self.validate_input_parameters(dict(self.inputs), inputs)
 
@@ -212,18 +258,24 @@ class LLMEvaluator:
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                result = self._chat_generator.run(messages=messages)
+                with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                    result = self._chat_generator.run(messages=messages)
+                    span.set_content_tag("haystack.component.output", result)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
-                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
+                logger.warning(
+                    "{component} failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "input to None. Error: {e}",
+                    component=type(self).__name__,
+                    prompt=prompt,
+                    e=e,
+                )
                 results.append(None)
                 errors += 1
                 continue
 
-            parsed_result = _parse_dict_from_json(
-                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
-            )
+            parsed_result = self._parse_reply(result["replies"][0].text)
             if parsed_result is None:
                 results.append(None)
                 errors += 1
@@ -235,14 +287,15 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                "{component} failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                component=type(self).__name__,
                 errors=errors,
-                len=len(list_of_input_names_to_values),
+                total=len(list_of_input_names_to_values),
             )
 
         return {"results": results, "meta": metadata or None}
 
-    @component.output_types(results=list[dict[str, Any]])
+    @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously
@@ -263,8 +316,7 @@ class LLMEvaluator:
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         self.validate_input_parameters(dict(self.inputs), inputs)
 
@@ -282,26 +334,32 @@ class LLMEvaluator:
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                if generator_has_async:
-                    result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
-                else:
-                    logger.debug(
-                        "{generator_type} does not implement 'run_async'."
-                        " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
-                        generator_type=type(self._chat_generator).__name__,
-                    )
-                    result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
+                with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                    if generator_has_async:
+                        result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
+                    else:
+                        logger.debug(
+                            "{generator_type} does not implement 'run_async'."
+                            " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
+                            generator_type=type(self._chat_generator).__name__,
+                        )
+                        result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
+                    span.set_content_tag("haystack.component.output", result)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
-                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
+                logger.warning(
+                    "{component} failed during chat generation for prompt: {prompt}. Setting the result for this "
+                    "input to None. Error: {e}",
+                    component=type(self).__name__,
+                    prompt=prompt,
+                    e=e,
+                )
                 results.append(None)
                 errors += 1
                 continue
 
-            parsed_result = _parse_dict_from_json(
-                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
-            )
+            parsed_result = self._parse_reply(result["replies"][0].text)
             if parsed_result is None:
                 results.append(None)
                 errors += 1
@@ -313,9 +371,10 @@ class LLMEvaluator:
 
         if errors > 0:
             logger.warning(
-                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                "{component} failed for {errors} out of {total} inputs. The results for these inputs are None.",
+                component=type(self).__name__,
                 errors=errors,
-                len=len(list_of_input_names_to_values),
+                total=len(list_of_input_names_to_values),
             )
 
         return {"results": results, "meta": metadata or None}

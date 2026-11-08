@@ -74,7 +74,6 @@ method decorated with `@component.input`. This dataclass contains:
 """
 
 import inspect
-import typing
 from collections.abc import Callable, Coroutine, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -85,6 +84,7 @@ from typing import Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkabl
 
 from haystack import logging
 from haystack.core.errors import ComponentError
+from haystack.core.type_utils import _resolve_parameter_types
 
 from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
@@ -234,24 +234,15 @@ class ComponentMeta(type):
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
-            try:
-                # TypeError is raised if the argument is not of a type that can contain annotations
-                run_hints = typing.get_type_hints(method)
-            except TypeError:
-                run_hints = None
+            # Resolves the annotations of components using postponed evaluation of annotations, where they are stored
+            # as strings.
+            param_types = _resolve_parameter_types(method)
 
             for param_name, param_info in run_signature.parameters.items():
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
                     continue
 
-                # We prefer the type annotation from inspect.signature, but if it's a string we need to resolve it
-                # using the hints. The type annotation can be a string if the component is using postponed evaluation
-                # of annotations.
-                annotation = param_info.annotation
-                if isinstance(annotation, str) and run_hints is not None:
-                    annotation = run_hints.get(param_name, annotation)
-
-                socket_kwargs = {"name": param_name, "type": annotation}
+                socket_kwargs = {"name": param_name, "type": param_types[param_name]}
                 if param_info.default != Parameter.empty:
                     socket_kwargs["default_value"] = param_info.default
 

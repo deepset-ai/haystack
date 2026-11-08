@@ -3,6 +3,7 @@ title: "FallbackChatGenerator"
 id: fallbackchatgenerator
 slug: "/fallbackchatgenerator"
 description: "A ChatGenerator wrapper that tries multiple Chat Generators sequentially until one succeeds."
+hep_available: true
 ---
 
 # FallbackChatGenerator
@@ -238,5 +239,5 @@ try:
     result = generator.run(messages=[ChatMessage.from_user("Hello")])
 except RuntimeError as e:
     print(f"All generators failed: {e}")
-    # Output: All 2 chat generators failed. Last error: ... Failed chat generators: [OpenAIChatGenerator, OpenAIChatGenerator]
+    # >> All 2 chat generators failed. Last error: ... Failed chat generators: [OpenAIChatGenerator, OpenAIChatGenerator]
 ```

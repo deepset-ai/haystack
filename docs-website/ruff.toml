@@ -1,0 +1,15 @@
+# Ruff configuration for the docs website.
+#
+# It applies to the Python code blocks embedded in .mdx pages, and is picked up  automatically by both `hatch run fmt`
+# and the ruff-format pre-commit hook, so the two always agree on what gets formatted.
+
+extend = "../pyproject.toml"
+
+extension = { "mdx" = "markdown" }
+
+line-length = 88
+
+extend-exclude = ["node_modules", "build", ".docusaurus", "scripts"]
+
+[format]
+skip-magic-trailing-comma = false

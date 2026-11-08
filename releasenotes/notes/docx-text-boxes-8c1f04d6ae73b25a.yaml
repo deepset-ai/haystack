@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``DOCXToDocument`` now extracts text and tables inside text boxes. Previously this content was silently dropped.

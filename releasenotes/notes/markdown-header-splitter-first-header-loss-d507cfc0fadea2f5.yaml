@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` silently dropping a document's leading header line when
+    ``secondary_split`` is used with ``keep_headers=False``. This happened for any chunk that
+    wasn't the result of an actual header split, for example when a document has no headers,
+    only headers without body content, a header at a level excluded from
+    ``header_split_levels``, or input metadata that already contained a ``header`` key. The
+    header line is now only stripped from chunks that truly came from a header split.

@@ -3,16 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import ANY
+from typing import Any
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, component
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 from haystack.components.retrievers import InMemoryBM25Retriever, MultiQueryTextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 from haystack.document_stores.types import DuplicatePolicy
 
 
@@ -70,6 +72,12 @@ class TestMultiQueryTextRetriever:
         assert retriever.retriever == in_memory_retriever
         assert retriever.max_workers == 2
 
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, in_memory_doc_store, max_workers):
+        in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=max_workers)
+
     def test_to_dict(self, in_memory_doc_store):
         in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=2)
@@ -83,12 +91,14 @@ class TestMultiQueryTextRetriever:
                         "document_store": {
                             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                             "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                                 "bm25_algorithm": "BM25L",
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
+                                "shared": True,
                                 "return_embedding": True,
+                                "strict_datetime_comparison": False,
                             },
                         },
                         "filters": None,
@@ -116,7 +126,9 @@ class TestMultiQueryTextRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "88144fa9-6e45-4e5d-8647-4c4002d8b6db",
+                                "shared": True,
                                 "return_embedding": True,
+                                "strict_datetime_comparison": False,
                             },
                         },
                         "filters": None,
@@ -145,6 +157,28 @@ class TestMultiQueryTextRetriever:
         scores = [doc.score for doc in result["documents"] if doc.score is not None]
         assert scores == sorted(scores, reverse=True)
 
+    def test_run_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = MultiQueryTextRetriever(retriever=MockRetriever(), max_workers=1)
+
+        result = retriever.run(queries=["query"])
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
+
     @pytest.mark.integration
     def test_run_with_filters(self, document_store_with_docs):
         in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
@@ -162,7 +196,9 @@ class TestMultiQueryTextRetriever:
     def test_pipeline_integration(self, document_store_with_docs):
         pipeline = Pipeline()
         expander = QueryExpander(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            n_expansions=3,
+            include_original_query=True,
         )
         in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
         multiquery_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=3)
@@ -190,3 +226,51 @@ class TestMultiQueryTextRetriever:
         # assert there are not duplicates
         contents = [doc.content for doc in results["multiquery_retriever"]["documents"]]
         assert len(contents) == len(set(contents))
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.warm_up()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.warm_up_async()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.warm_up_async()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.close()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.close_async()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.close_async()
+        retriever.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_retriever_lacks_methods(self):
+        retriever = Mock(spec=["run"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

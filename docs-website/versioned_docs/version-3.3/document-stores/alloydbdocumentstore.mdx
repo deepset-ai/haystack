@@ -1,0 +1,100 @@
+---
+title: "AlloyDBDocumentStore"
+id: alloydbdocumentstore
+slug: "/alloydbdocumentstore"
+---
+
+# AlloyDBDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [AlloyDB](/reference/integrations-alloydb)                                              |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/alloydb |
+
+</div>
+
+[AlloyDB](https://cloud.google.com/alloydb) is a fully managed, PostgreSQL-compatible database service on Google Cloud. The `AlloyDBDocumentStore` uses the [pgvector extension](https://cloud.google.com/alloydb/docs/ai/work-with-embeddings) to perform vector similarity search.
+
+Connection is handled securely via the [AlloyDB Python Connector](https://github.com/GoogleCloudPlatform/alloydb-python-connector), which provides TLS encryption and IAM-based authorization without requiring manual SSL certificate management, firewall rules, or IP allowlisting.
+
+The `AlloyDBDocumentStore` supports embedding retrieval, keyword retrieval, and metadata filtering.
+
+## Installation
+
+Install the `alloydb-haystack` integration:
+
+```shell
+pip install alloydb-haystack
+```
+
+To set up an AlloyDB cluster and instance, follow the [AlloyDB quickstart](https://cloud.google.com/alloydb/docs/quickstart).
+
+## Usage
+
+### Authentication
+
+The `AlloyDBDocumentStore` uses [Secrets](../concepts/secret-management.mdx) and reads connection details from environment variables by default:
+
+- `ALLOYDB_INSTANCE_URI`: the AlloyDB instance URI in the format `projects/PROJECT/locations/REGION/clusters/CLUSTER/instances/INSTANCE`.
+- `ALLOYDB_USER`: the database user. When using IAM database authentication, use the service account email (omitting `.gserviceaccount.com`) or the full IAM user email.
+- `ALLOYDB_PASSWORD`: the database password. Not required when `enable_iam_auth=True`.
+
+```shell
+export ALLOYDB_INSTANCE_URI="projects/MY_PROJECT/locations/MY_REGION/clusters/MY_CLUSTER/instances/MY_INSTANCE"
+export ALLOYDB_USER="my-db-user"
+export ALLOYDB_PASSWORD="my-db-password"
+```
+
+To authenticate with IAM instead of a password, set `enable_iam_auth=True` and grant the IAM principal the AlloyDB Client role. See the [AlloyDB IAM authentication documentation](https://cloud.google.com/alloydb/docs/manage-iam-authn) for details.
+
+## Initialization
+
+Initialize an `AlloyDBDocumentStore` and write Documents to it. Connection to AlloyDB is established lazily on first use, and the table that stores Haystack Documents is created automatically if it doesn't exist:
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
+
+document_store = AlloyDBDocumentStore(
+    db="my-database",
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+)
+
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.1] * 768),
+        Document(content="This is second", embedding=[0.3] * 768),
+    ],
+)
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see our [API docs](/reference/integrations-alloydb#alloydbdocumentstore).
+
+To compute embeddings for your Documents, you can use a Document Embedder, such as the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx).
+
+### Search Strategy
+
+The `AlloyDBDocumentStore` supports two search strategies for embedding retrieval:
+
+- `"exact_nearest_neighbor"` (default): provides perfect recall but can be slow on large numbers of documents.
+- `"hnsw"`: an approximate nearest neighbor search strategy that trades off some accuracy for speed. Recommended for large numbers of documents.
+
+When using `"hnsw"`, an index is created based on the `vector_function` you choose, so subsequent queries should keep using the same vector similarity function in order to take advantage of the index. You can tune index creation through `hnsw_index_creation_kwargs` (see the [pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw)).
+
+### Metadata Filtering
+
+The `AlloyDBDocumentStore` fully supports comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, `not in`, `like`, `not like`) and the logical operators `AND` and `OR`. The `like` and `not like` operators are PostgreSQL-specific extensions to the standard Haystack filter syntax and map to the SQL `LIKE` / `NOT LIKE` pattern-matching operators.
+
+The `NOT` logical operator is **not** supported. Because every comparison operator already has a negated counterpart (`==`/`!=`, `in`/`not in`, `like`/`not like`), any filter expressible with `NOT` around a single condition can be rewritten by inverting the comparison operator instead. To negate a nested `AND`/`OR` group, apply De Morgan's laws — for example, `NOT (A AND B)` becomes `(NOT A) OR (NOT B)`, where each `NOT A` / `NOT B` is expressed via the inverted comparison.
+
+For more details on filter syntax, refer to [Metadata Filtering](../concepts/metadata-filtering.mdx).
+
+### Supported Retrievers
+
+- [`AlloyDBEmbeddingRetriever`](../pipeline-components/retrievers/alloydbembeddingretriever.mdx): An embedding-based Retriever that fetches Documents from the Document Store based on a query embedding.
+- [`AlloyDBKeywordRetriever`](../pipeline-components/retrievers/alloydbkeywordretriever.mdx): A keyword-based Retriever that fetches Documents matching a query using PostgreSQL full-text search.

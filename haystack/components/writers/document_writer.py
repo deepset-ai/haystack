@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -114,14 +115,25 @@ class DocumentWriter:
 
         :raises ValueError:
             If the specified document store is not found.
-        :raises TypeError:
-            If the specified document store does not implement `write_documents_async`.
         """
         if policy is None:
             policy = self.policy
 
-        if not hasattr(self.document_store, "write_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
-
-        documents_written = await self.document_store.write_documents_async(documents=documents, policy=policy)
+        documents_written = await _call_with_async_fallback(
+            self.document_store, "write_documents", documents=documents, policy=policy
+        )
         return {"documents_written": documents_written}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

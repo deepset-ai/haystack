@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``AutoMergingRetriever`` incorrectly counting duplicate
+    child documents when evaluating merge thresholds. Documents
+    are now deduplicated by ID before merging, retaining the
+    highest-scoring copy in both synchronous and asynchronous
+    retrieval.

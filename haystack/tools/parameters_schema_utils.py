@@ -9,12 +9,13 @@ from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from types import NoneType
-from typing import Any, Union, get_args, get_origin
+from typing import Annotated, Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
+from haystack.components.agents.state.state import State
 from haystack.dataclasses import ChatMessage
 from haystack.utils.type_serialization import _is_union_type
 
@@ -36,9 +37,21 @@ def _unwrap_optional(type_hint: Any) -> Any:
     return type_hint
 
 
+def _is_state_annotation(annotation: Any) -> bool:
+    """Recognize State through Annotated and optional wrappers."""
+    if get_origin(annotation) is Annotated:
+        return _is_state_annotation(get_args(annotation)[0])
+
+    unwrapped = _unwrap_optional(annotation)
+    if unwrapped is not annotation:
+        return _is_state_annotation(unwrapped)
+
+    return annotation is State
+
+
 def _contains_callable_type(type_hint: Any) -> bool:
     """
-    Check if a type hint contains a Callable type, including within Union types.
+    Check if a type hint contains a Callable type, including within Union and Annotated types.
 
     The purpose of this function is to help identify Callable types so they can
     be skipped during schema generation.
@@ -51,6 +64,9 @@ def _contains_callable_type(type_hint: Any) -> bool:
     # Check if it's a Callable type (direct or parameterized)
     if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
         return True
+
+    if origin is Annotated:
+        return _contains_callable_type(get_args(type_hint)[0])
 
     # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
     if origin in (Union, types.UnionType):
@@ -102,7 +118,7 @@ def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     return parsed_doc.short_description or "", param_descriptions
 
 
-def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, str]]:
+def _get_component_param_descriptions(component: Any) -> dict[str, str]:
     """
     Get parameter descriptions from a component, handling both regular Components and SuperComponents.
 
@@ -110,39 +126,26 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
     For SuperComponents, this extracts descriptions from the underlying pipeline components.
 
     :param component: The component to extract parameter descriptions from
-    :returns: A tuple of (short_description, param_descriptions)
+    :returns: A dictionary mapping parameter names to their descriptions
     """
     from haystack.core.super_component.super_component import _SuperComponent
 
     # Get descriptions from the component's run method
-    short_desc, param_descriptions = _get_param_descriptions(component.run)
+    _, param_descriptions = _get_param_descriptions(component.run)
 
-    # If it's a SuperComponent, enhance the descriptions from the original components
+    # If it's a SuperComponent, enhance the parameter descriptions from the original components
     if isinstance(component, _SuperComponent):
-        # Collect descriptions from components in the pipeline
-        component_descriptions = []
-        processed_components = set()
-
-        # First gather descriptions from all components that have inputs mapped
         for super_param_name, pipeline_paths in component.input_mapping.items():
             # Collect descriptions from all mapped components
             descriptions = []
             for path in pipeline_paths:
                 try:
-                    # Get the component and socket this input is mapped fromq
+                    # Get the component and socket this input is mapped from
                     comp_name, socket_name = component._split_component_path(path)
                     pipeline_component = component.pipeline.get_component(comp_name)
 
-                    # Get run method descriptions for this component
-                    run_desc, run_param_descriptions = _get_param_descriptions(pipeline_component.run)
-
-                    # Don't add the same component description multiple times
-                    if comp_name not in processed_components:
-                        processed_components.add(comp_name)
-                        if run_desc:
-                            component_descriptions.append(f"'{comp_name}': {run_desc}")
-
                     # Add parameter description if available
+                    _, run_param_descriptions = _get_param_descriptions(pipeline_component.run)
                     if input_param_mapping := run_param_descriptions.get(socket_name):
                         descriptions.append(f"Provided to the '{comp_name}' component as: '{input_param_mapping}'")
                 except Exception as e:
@@ -153,20 +156,12 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
                         e=str(e),
                     )
 
-            # We don't only handle a one to one description mapping of input parameters, but a one to many mapping.
-            # i.e. for a combined_input parameter description:
-            # super_comp = SuperComponent(
-            #   pipeline=pipeline,
-            #   input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]},
-            # )
+            # A single SuperComponent input can map to multiple pipeline components, e.g.
+            # input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]}
             if descriptions:
                 param_descriptions[super_param_name] = ", and ".join(descriptions) + "."
 
-        # We also create a combined description for the SuperComponent based on its components
-        if component_descriptions:
-            short_desc = f"A component that combines: {', '.join(component_descriptions)}"
-
-    return short_desc, param_descriptions
+    return param_descriptions
 
 
 def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:

@@ -25,15 +25,18 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
 ```python
 __init__(
-    bm25_tokenization_regex: str = "(?u)\\b\\w+\\b",
+    bm25_tokenization_regex: str = _DEFAULT_BM25_TOKENIZATION_REGEX,
     bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
     bm25_parameters: dict | None = None,
     embedding_similarity_function: Literal[
         "dot_product", "cosine"
     ] = "dot_product",
     index: str | None = None,
+    shared: bool = True,
     async_executor: ThreadPoolExecutor | None = None,
     return_embedding: bool = True,
+    *,
+    strict_datetime_comparison: bool = False
 ) -> None
 ```
 
@@ -41,7 +44,9 @@ Initializes the DocumentStore.
 
 **Parameters:**
 
-- **bm25_tokenization_regex** (<code>str</code>) – The regular expression used to tokenize the text for BM25 retrieval.
+- **bm25_tokenization_regex** (<code>str</code>) – The regular expression used to tokenize the text for BM25 retrieval. The default groups word
+  characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
+  Text is lowercased and NFC-normalized before tokenization.
 - **bm25_algorithm** (<code>Literal['BM25Okapi', 'BM25L', 'BM25Plus']</code>) – The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
 - **bm25_parameters** (<code>dict | None</code>) – Parameters for BM25 implementation in a dictionary format.
   For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -50,10 +55,17 @@ Initializes the DocumentStore.
   One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
   about your embedding model.
 - **index** (<code>str | None</code>) – A specific index to store the documents. If not specified, a random UUID is used.
-  Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
+  When `shared` is True, instances using the same index share the same documents.
+- **shared** (<code>bool</code>) – Whether the documents live in process-global storage shared across instances using the same
+  index (True, the default), or are kept instance-local and freed when this instance is garbage collected
+  (False). Shared storage persists for the lifetime of the process, so prefer `shared=False` for stores
+  that are created frequently (for example per request) to avoid unbounded memory growth.
 - **async_executor** (<code>ThreadPoolExecutor | None</code>) – Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
   executor will be initialized and used.
 - **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. Default is True.
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+  comparing.
 
 #### shutdown
 
@@ -255,6 +267,8 @@ count_unique_metadata_by_filter(
 
 Returns the number of unique values for each specified metadata field from documents matching the filters.
 
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
+
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply.
@@ -303,21 +317,30 @@ Returns the minimum and maximum values for the given metadata field across all d
 
 ```python
 get_metadata_field_unique_values(
-    metadata_field: str, search_term: str | None = None
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in content.
+Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – If set, only documents whose content contains this term (case-insensitive)
-  are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a case-insensitive substring
+  against the metadata field's value.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (paginated list of unique values, total count of unique values).
 
 #### bm25_retrieval
 
@@ -342,6 +365,10 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 **Returns:**
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
+
+**Raises:**
+
+- <code>ValueError</code> – if top_k is negative.
 
 #### embedding_retrieval
 
@@ -373,7 +400,7 @@ Retrieves documents that are most similar to the query embedding using a vector 
 
 **Raises:**
 
-- <code>ValueError</code> – if filters have invalid syntax.
+- <code>ValueError</code> – if top_k is negative or filters have invalid syntax.
 
 #### count_documents_async
 
@@ -424,6 +451,27 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
 
+#### delete_by_filter_async
+
+```python
+delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see filter_documents.
+
+**Returns:**
+
+- <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>ValueError</code> – if filters have invalid syntax.
+
 #### update_by_filter_async
 
 ```python
@@ -469,6 +517,8 @@ count_unique_metadata_by_filter_async(
 ```
 
 Returns the number of unique values for each specified metadata field from documents matching the filters.
+
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
 **Parameters:**
 
@@ -518,21 +568,30 @@ Returns the minimum and maximum values for the given metadata field across all d
 
 ```python
 get_metadata_field_unique_values_async(
-    metadata_field: str, search_term: str | None = None
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in content.
+Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
+
+JSON-serializable metadata values, including nested lists and dictionaries, are supported.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – If set, only documents whose content contains this term (case-insensitive)
-  are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a case-insensitive substring
+  against the metadata field's value.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (paginated list of unique values, total count of unique values).
 
 #### delete_all_documents_async
 

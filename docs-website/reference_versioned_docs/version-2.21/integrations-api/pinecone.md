@@ -19,7 +19,9 @@ import os
 from haystack.document_stores.types import DuplicatePolicy
 from haystack import Document
 from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack_integrations.components.retrievers.pinecone import PineconeEmbeddingRetriever
 from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
@@ -31,7 +33,6 @@ documents = [Document(content="There are over 7,000 languages spoken around the 
              Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 
 document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
@@ -99,6 +100,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>PineconeEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -199,7 +216,7 @@ It is meant to be connected to a Pinecone index and namespace.
 close() -> None
 ```
 
-Close the associated synchronous resources.
+Release the associated synchronous resources.
 
 #### close_async
 
@@ -207,7 +224,7 @@ Close the associated synchronous resources.
 close_async() -> None
 ```
 
-Close the associated asynchronous resources. To be invoked manually when the Document Store is no longer needed.
+Release the associated asynchronous resources.
 
 #### from_dict
 
@@ -655,7 +672,8 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a metadata field with optional search and pagination.
@@ -663,16 +681,22 @@ Retrieves unique values for a metadata field with optional search and pagination
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
+Note: Pinecone stores numeric metadata values as `float` (see `_convert_meta_to_int`), so an
+int written for an arbitrary field may come back as a numerically equal float rather than int.
+Values of different types are otherwise kept distinct even when they compare equal in Python
+(e.g. the int `1` and the bool `True` are returned as two separate values).
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
 - **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
 - **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
 - **size** (<code>int</code>) – Number of values to return (default: 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).
 
 #### get_metadata_field_unique_values_async
 
@@ -682,7 +706,8 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously retrieves unique values for a metadata field with optional search and pagination.
@@ -690,13 +715,19 @@ Asynchronously retrieves unique values for a metadata field with optional search
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
+Note: Pinecone stores numeric metadata values as `float` (see `_convert_meta_to_int`), so an
+int written for an arbitrary field may come back as a numerically equal float rather than int.
+Values of different types are otherwise kept distinct even when they compare equal in Python
+(e.g. the int `1` and the bool `True` are returned as two separate values).
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
 - **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
 - **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
 - **size** (<code>int</code>) – Number of values to return (default: 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).

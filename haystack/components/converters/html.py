@@ -35,7 +35,12 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False) -> None:
+    def __init__(
+        self,
+        extraction_kwargs: dict[str, Any] | None = None,
+        store_full_path: bool = False,
+        encoding: str | None = None,
+    ) -> None:
         """
         Create an HTMLToDocument component.
 
@@ -45,11 +50,16 @@ class HTMLToDocument:
         :param store_full_path:
         If True, the full path of the file is stored in the metadata of the document.
         If False, only the file name is stored.
+        :param encoding:
+            The encoding to use when decoding HTML files. If None (the default), Trafilatura detects the encoding.
+            If detection produces incorrect characters, install `trafilatura[all]` for additional encoding detection
+            support, or set this parameter if you know the encoding.
         """
         trafilatura_import.check()
 
         self.extraction_kwargs = extraction_kwargs or {}
         self.store_full_path = store_full_path
+        self.encoding = encoding
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -58,7 +68,9 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path)
+        return default_to_dict(
+            self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path, encoding=self.encoding
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "HTMLToDocument":
@@ -116,13 +128,19 @@ class HTMLToDocument:
                 continue
 
             try:
-                text = extract(bytestream.data.decode("utf-8"), **merged_extraction_kwargs)
+                html_bytes = bytestream.data
+                html_content = html_bytes.decode(self.encoding) if self.encoding is not None else html_bytes
+                text = extract(html_content, **merged_extraction_kwargs)
             except Exception as conversion_e:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
                     source=source,
                     error=conversion_e,
                 )
+                continue
+
+            if text is None:
+                logger.warning("No text could be extracted from {source}. Skipping it.", source=source)
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

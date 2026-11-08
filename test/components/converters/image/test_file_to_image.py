@@ -65,12 +65,13 @@ class TestImageFileToImageContent:
         assert len(results["image_contents"]) == 0
         assert results == {"image_contents": []}
 
-    def test_run_with_invalid_source_type(self, caplog) -> None:
+    def test_run_with_invalid_source_type(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = ImageFileToImageContent()
-        converter.run(sources=[123])  # Invalid source type
+        # The invalid source type is what this test exercises.
+        converter.run(sources=[123])  # type: ignore[list-item]
         assert "Could not read" in caplog.text
 
-    def test_run_with_non_existent_file(self, caplog) -> None:
+    def test_run_with_non_existent_file(self, caplog: pytest.LogCaptureFixture) -> None:
         converter = ImageFileToImageContent()
         converter.run(sources=["./non_existent_file.png"])
         assert "Could not read" in caplog.text
@@ -114,3 +115,14 @@ class TestImageFileToImageContent:
         results = converter.run(sources=[byte_stream])
 
         assert results["image_contents"] == []
+
+    def test_run_with_non_image_file_skips_it(self, caplog: pytest.LogCaptureFixture) -> None:
+        # A file that exists but is not an image must be skipped like any other conversion failure,
+        # instead of failing the whole batch when ImageContent rejects its MIME type.
+        converter = ImageFileToImageContent()
+        results = converter.run(sources=["./test/test_files/images/apple.jpg", "./test/test_files/txt/doc_1.txt"])
+
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].mime_type == "image/jpeg"
+        assert "Could not convert file" in caplog.text
+        assert "text/plain is not a valid image MIME type" in caplog.text

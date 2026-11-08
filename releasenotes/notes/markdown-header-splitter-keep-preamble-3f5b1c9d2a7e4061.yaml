@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` no longer drops the text that precedes the first header it splits on.
+    A document's opening paragraph, title block, or front matter was silently lost, and so was any
+    content above the first matching header when ``header_split_levels`` excluded the levels above it.
+    A document whose headers all had empty bodies lost that text too, because it was treated as
+    header-only. That text is now emitted as a leading chunk with empty ``header`` and
+    ``parent_headers`` metadata, so every chunk still carries the documented metadata fields. Leading
+    text that is only whitespace joins the first chunk instead of becoming a chunk of its own, which
+    keeps the chunks a byte-exact partition of the input without adding an empty chunk.

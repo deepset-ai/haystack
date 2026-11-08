@@ -3,6 +3,7 @@ title: "DocumentSplitter"
 id: documentsplitter
 slug: "/documentsplitter"
 description: "`DocumentSplitter` divides a list of text documents into a list of shorter text documents. This is useful for long texts that otherwise wouldn't fit into the maximum text length of language models and can also speed up question answering."
+hep_available: true
 ---
 
 # DocumentSplitter
@@ -26,12 +27,14 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 
 `DocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. It splits each input document by `split_by` after `split_length` units with an overlap of `split_overlap` units. These additional parameters can be set when the component is initialized:
 
-- `split_by` can be `"word"`, `"sentence"`, `"passage"` (paragraph), `"page"`, `"line"` or `"function"`.
+- `split_by` can be `"word"`, `"sentence"`, `"passage"` (paragraph), `"page"`, `"line"`, `"period"`, `"token"` or `"function"`.
 - `split_length` is an integer indicating the chunk size, which is the number of words, sentences, or passages.
 - `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks.
 - `split_threshold` is an integer indicating the minimum number of words, sentences, or passages that the document fragment should have. If the fragment is below the threshold, it will be attached to the previous one.
 
-A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document to keep track of the page it belonged to in the original document. Other metadata are copied from the original document.
+When `split_by="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
+
+A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document with the page the chunk starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on. Other metadata are copied from the original document.
 
 The DocumentSplitter is compatible with the following DocumentStores:
 
@@ -139,7 +142,7 @@ components:
         init_parameters:
           bm25_algorithm: BM25L
           bm25_parameters: {}
-          bm25_tokenization_regex: (?u)\\b\\w+\\b
+          bm25_tokenization_regex: '[^\W\u1100-\u11ff\ua960-\ua97f\ud7b0-\ud7ff\u3130-\u318f\uac00-\ud7af\u3041-\u3096\u30a1-\u30fa\u30fc\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]+|[\u1100-\u11ff\ua960-\ua97f\ud7b0-\ud7ff\u3130-\u318f\uac00-\ud7af\u3041-\u3096\u30a1-\u30fa\u30fc\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]'
           embedding_similarity_function: dot_product
           index: 64e4f9ab-87fb-47fd-b390-dabcfda61447
           return_embedding: true

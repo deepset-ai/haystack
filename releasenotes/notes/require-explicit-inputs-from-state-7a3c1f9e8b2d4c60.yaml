@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    Tools now read a value from the ``Agent``'s ``State`` by name **only** when they declare an explicit
+    ``inputs_from_state`` mapping. Previously, when a tool had no ``inputs_from_state``, the ``Agent`` would implicitly
+    inject a ``State`` value into any tool parameter whose name happened to match a ``State`` key, on any call where the
+    model did not already supply that argument (LLM-provided arguments always took precedence). This implicit
+    name-matching has been removed. The change applies to every tool type, since ``ComponentTool``, ``PipelineTool``,
+    ``MCPTool``, and others all derive from the base ``Tool`` class.
+
+    This is a breaking change. If you relied on a tool parameter being filled from a same-named ``State`` key, add an
+    explicit mapping, for example ``inputs_from_state={"documents": "documents"}`` to feed the ``documents`` state key
+    into the tool's ``documents`` parameter.
+
+    Auto-injection of the full ``State`` object into a parameter annotated as ``State`` is unchanged and continues to
+    work without any mapping.

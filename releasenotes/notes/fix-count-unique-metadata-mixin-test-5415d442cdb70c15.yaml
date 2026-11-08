@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``CountUniqueMetadataByFilterTest.test_count_unique_metadata_by_filter_with_multiple_filters``
+    in the document store testing mixins: it called ``count_documents_by_filter`` instead of
+    ``count_unique_metadata_by_filter``. The test now exercises the intended method with a compound
+    filter, matching its async counterpart.

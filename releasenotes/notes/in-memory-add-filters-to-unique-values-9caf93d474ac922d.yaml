@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added a ``filters`` parameter to ``InMemoryDocumentStore.get_metadata_field_unique_values`` (sync and async), allowing
+    the set of documents considered when computing unique metadata field values to be restricted.

@@ -3,6 +3,7 @@ title: "ElasticsearchBM25Retriever"
 id: elasticsearchbm25retriever
 slug: "/elasticsearchbm25retriever"
 description: "A keyword-based Retriever that fetches Documents matching a query from the Elasticsearch Document Store."
+hep_available: true
 ---
 
 # ElasticsearchBM25Retriever
@@ -13,7 +14,7 @@ A keyword-based Retriever that fetches Documents matching a query from the Elast
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. Before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx)                                                                                                                       |
 | **Mandatory run variables**            | `query`: A string                                                                                                                                                                                                       |
 | **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                                   |
@@ -41,8 +42,8 @@ If you want a semantic match between a query and documents, you can use `Elastic
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```shell
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.19.7
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.19.7
 ```
 
 As an alternative, you can go to [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:
@@ -92,7 +93,6 @@ retriever.run(query="How many languages are spoken around the world today?")
 Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
 
 ```python
-
 from haystack_integrations.components.retrievers.elasticsearch import (
     ElasticsearchBM25Retriever,
 )

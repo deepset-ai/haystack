@@ -3,6 +3,7 @@ title: "MongoDBAtlasEmbeddingRetriever"
 id: mongodbatlasembeddingretriever
 slug: "/mongodbatlasembeddingretriever"
 description: "This is an embedding Retriever compatible with the MongoDB Atlas Document Store."
+hep_available: true
 ---
 
 # MongoDBAtlasEmbeddingRetriever
@@ -13,7 +14,7 @@ This is an embedding Retriever compatible with the MongoDB Atlas Document Store.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of a [MongoDBAtlasDocumentStore](../../document-stores/mongodbatlasdocumentstore.mdx)                                                                                                                                                                           |
 | **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
 | **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
@@ -63,6 +64,12 @@ retriever.run(query_embedding=[0.1] * 384)
 
 ### In a Pipeline
 
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Pipeline, Document
 from haystack.document_stores.types import DuplicatePolicy
@@ -70,14 +77,14 @@ from haystack.components.writers import DocumentWriter
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
 from haystack_integrations.document_stores.mongodb_atlas import (
     MongoDBAtlasDocumentStore,
 )
-from haystack_integrations.components.embedders.mongodb_atlas import (
+from haystack_integrations.components.retrievers.mongodb_atlas import (
     MongoDBAtlasEmbeddingRetriever,
 )
 
@@ -88,7 +95,6 @@ documents = [
     Document(content="My name is Giorgio and I live in Rome."),
 ]
 
-# We support many different databases. Here we load a simple and lightweight in-memory document store.
 document_store = MongoDBAtlasDocumentStore()
 
 # Define some more components

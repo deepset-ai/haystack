@@ -1,0 +1,14 @@
+---
+deprecations:
+  - |
+    ``OpenTelemetryTracer`` is deprecated and will be removed from Haystack in version 3.0. It is moving to
+    the ``opentelemetry-haystack`` package. To continue using it, install the package with
+    ``pip install opentelemetry-haystack`` and add the ``OpenTelemetryConnector`` component to your pipeline to
+    enable tracing, or update your import as follows:
+
+    .. code-block:: python
+
+        from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
+
+    Note that, starting with Haystack 3.0, OpenTelemetry tracing is no longer auto-enabled when
+    ``opentelemetry-sdk`` is installed. Use the ``OpenTelemetryConnector`` component to enable it.

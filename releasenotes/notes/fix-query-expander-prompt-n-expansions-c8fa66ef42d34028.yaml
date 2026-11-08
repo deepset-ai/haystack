@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The default prompt of ``QueryExpander`` now states that its examples show the output for 3 requested queries
+    and that exactly ``n_expansions`` queries must be returned. The trailing JSON format example, which always showed
+    three queries, is removed. Before, the examples showed three or four queries without saying so, which
+    contradicted the instruction for any other ``n_expansions`` value.

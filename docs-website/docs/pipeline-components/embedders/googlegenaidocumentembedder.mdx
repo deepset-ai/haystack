@@ -3,6 +3,7 @@ title: "GoogleGenAIDocumentEmbedder"
 id: googlegenaidocumentembedder
 slug: "/googlegenaidocumentembedder"
 description: "The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents."
+hep_available: true
 ---
 
 # GoogleGenAIDocumentEmbedder
@@ -60,7 +61,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAIDocumentEmbedder()
+embedder = GoogleGenAIDocumentEmbedder()
 ```
 
 #### Vertex AI (Application Default Credentials)
@@ -71,7 +72,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # Using Application Default Credentials (requires gcloud auth setup)
-chat_generator = GoogleGenAIDocumentEmbedder(
+embedder = GoogleGenAIDocumentEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
@@ -86,7 +87,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAIDocumentEmbedder(api="vertex")
+embedder = GoogleGenAIDocumentEmbedder(api="vertex")
 ```
 
 ## Usage
@@ -99,6 +100,7 @@ You can do this by using the Document Embedder:
 
 ```python
 from haystack import Document
+from haystack.utils import Secret
 from haystack_integrations.components.embedders.google_genai import (
     GoogleGenAIDocumentEmbedder,
 )

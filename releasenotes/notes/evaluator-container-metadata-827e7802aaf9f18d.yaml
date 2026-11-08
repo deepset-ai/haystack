@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``DocumentRecallEvaluator`` and ``DocumentNDCGEvaluator`` now support list and
+    dictionary metadata values in ``document_comparison_field`` instead of raising
+    ``TypeError``. Nested values are supported, and duplicate documents retain
+    the existing recall and relevance scoring behavior.

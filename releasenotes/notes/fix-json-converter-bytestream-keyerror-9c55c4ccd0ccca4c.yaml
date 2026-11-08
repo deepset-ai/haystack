@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``JSONConverter`` raising a ``KeyError`` instead of logging its
+    intended "Failed to extract text, skipping it" warning when a source is a
+    ``ByteStream`` without a ``file_path`` in its ``meta`` (for example
+    ``ByteStream.from_string(...)``, the exact usage shown in the component's
+    own docstring examples). Affected error paths: invalid UTF-8 content, a
+    ``jq_schema`` filter that fails to apply, and malformed JSON content.

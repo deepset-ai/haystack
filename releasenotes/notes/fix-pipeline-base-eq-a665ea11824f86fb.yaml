@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix unhandled ``AssertionError`` crash when comparing a ``Pipeline`` to any non-Pipeline object (such as ``pipeline == object()`` or ``pipeline in [object(), ...]``) caused by an inverted ``isinstance`` check in ``PipelineBase.__eq__``.

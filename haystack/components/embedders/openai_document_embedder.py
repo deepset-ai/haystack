@@ -39,10 +39,10 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 (too-many-arguments)
+    def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "text-embedding-ada-002",
+        model: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -71,7 +71,7 @@ class OpenAIDocumentEmbedder:
             during initialization.
         :param model:
             The name of the model to use for calculating embeddings.
-            The default model is `text-embedding-ada-002`.
+            The default model is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
             later models support this parameter.
@@ -86,7 +86,7 @@ class OpenAIDocumentEmbedder:
         :param suffix:
             A string to add at the end of each text.
         :param batch_size:
-            Number of documents to embed at once.
+            Number of documents to embed at once. Must be a positive integer.
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
@@ -105,7 +105,11 @@ class OpenAIDocumentEmbedder:
         :param raise_on_failure:
             Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
             and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+        :raises ValueError:
+            If `batch_size` is not a positive integer.
         """
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
         self.api_key = api_key
         self.model = model
         self.dimensions = dimensions
@@ -122,23 +126,63 @@ class OpenAIDocumentEmbedder:
         self.http_client_kwargs = http_client_kwargs
         self.raise_on_failure = raise_on_failure
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
 
-        client_kwargs: dict[str, Any] = {
-            "api_key": api_key.resolve_value(),
-            "organization": organization,
-            "base_url": api_base_url,
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous OpenAI client.
+        """
+        if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            self.client = OpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous OpenAI client on the serving event loop.
+        """
+        if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            self.async_client = AsyncOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -218,6 +262,8 @@ class OpenAIDocumentEmbedder:
                 args["dimensions"] = self.dimensions
 
             try:
+                # this method is invoked after warm_up, so client is not None
+                assert self.client is not None
                 response = self.client.embeddings.create(**args)
             except APIError as exc:
                 ids = ", ".join(b[0] for b in batch)
@@ -255,12 +301,14 @@ class OpenAIDocumentEmbedder:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
-            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
 
             try:
+                # this method is invoked after warm_up_async, so async_client is not None
+                assert self.async_client is not None
                 response = await self.async_client.embeddings.create(**args)
             except APIError as exc:
                 ids = ", ".join(b[0] for b in batch)
@@ -302,6 +350,8 @@ class OpenAIDocumentEmbedder:
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
 
+        self.warm_up()
+
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
         doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
@@ -333,6 +383,8 @@ class OpenAIDocumentEmbedder:
                 "OpenAIDocumentEmbedder expects a list of Documents as input. "
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
+
+        await self.warm_up_async()
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 

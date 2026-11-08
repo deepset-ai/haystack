@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Converting PDF pages to images, as ``PDFToImageContent`` and ``DocumentToImageContent`` do, now closes the
+    pypdfium2 document even when rendering a page raises an error. Before, the document was only closed after all
+    pages rendered successfully, so a failing page left it open until garbage collection.

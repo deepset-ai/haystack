@@ -3,6 +3,7 @@ title: "AnswerExactMatchEvaluator"
 id: answerexactmatchevaluator
 slug: "/answerexactmatchevaluator"
 description: "The `AnswerExactMatchEvaluator` evaluates answers predicted by Haystack pipelines using ground truth labels. It checks character by character whether a predicted answer exactly matches the ground truth answer. This metric is called the exact match."
+hep_available: false
 ---
 
 # AnswerExactMatchEvaluator
@@ -85,10 +86,10 @@ result = pipeline.run(
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
 # [1, 0]
-# [array([[0.99999994]], dtype=float32), array([[0.51747656]], dtype=float32)]
+# [1.0, 0.5174766182899475]
 
 for evaluator in result:
     print(result[evaluator]["score"])
 # 0.5
-# 0.7587383
+# 0.7587383091449738
 ```

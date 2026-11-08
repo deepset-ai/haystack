@@ -94,22 +94,6 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SupabaseBucketDownloader
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SupabaseBucketDownloader</code> – Deserialized component.
-
 ## haystack_integrations.components.retrievers.supabase.embedding_retriever
 
 ### SupabasePgvectorEmbeddingRetriever
@@ -132,7 +116,9 @@ export SUPABASE_DB_URL=postgresql://postgres:postgres@localhost:5432/postgres
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.types.policy import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 
 from haystack_integrations.document_stores.supabase import SupabasePgvectorDocumentStore
 from haystack_integrations.components.retrievers.supabase import SupabasePgvectorEmbeddingRetriever
@@ -148,7 +134,6 @@ documents = [Document(content="There are over 7,000 languages spoken around the 
              Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
 

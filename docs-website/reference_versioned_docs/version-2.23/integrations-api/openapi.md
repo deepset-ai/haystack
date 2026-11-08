@@ -64,6 +64,14 @@ Initialize the OpenAPIConnector with a specification and optional credentials.
 - **service_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments passed to OpenAPIClient.from_spec()
   For example, you can pass a custom config_factory or other configuration options.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the OpenAPI client.
+
 #### to_dict
 
 ```python

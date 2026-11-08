@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    ``AnswerJoiner`` now logs an informational message when ``sort_by_score`` is enabled and some
+    answers have no score, matching the existing behaviour of ``DocumentJoiner``. Such answers are
+    still sorted as if their score were ``-infinity``, but the demotion is no longer silent. This
+    is common when joining ``GeneratedAnswer`` objects, which carry no score at all.

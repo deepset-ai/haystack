@@ -28,6 +28,12 @@ You can install the Valkey Haystack integration with:
 pip install valkey-haystack
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Initialization
 
 To use Valkey as your data storage for Haystack pipelines, you need a Valkey server with the search module running. Initialize a `ValkeyDocumentStore` like this:
@@ -65,7 +71,9 @@ To write documents to your `ValkeyDocumentStore`, create an indexing pipeline or
 from haystack import Pipeline
 from haystack.components.converters import MarkdownToDocument
 from haystack.components.writers import DocumentWriter
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.preprocessors import DocumentSplitter
 from haystack_integrations.document_stores.valkey import ValkeyDocumentStore
 
@@ -99,7 +107,9 @@ Once documents are in your `ValkeyDocumentStore`, you can use [`ValkeyEmbeddingR
 from haystack import Pipeline
 from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack_integrations.document_stores.valkey import ValkeyDocumentStore

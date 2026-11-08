@@ -19,12 +19,20 @@ With this decorator, the `to_dict` and `from_dict` serialization is optional, as
 
 The custom HybridRetriever example SuperComponent below turns your query into embeddings, then runs both a BM25 search and an embedding-based search at the same time. It finally merges those two result sets and returns the combined documents.
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
-# pip install haystack-ai datasets "sentence-transformers>=3.0.0"
+# pip install haystack-ai datasets sentence-transformers-haystack
 
 from haystack import Document, Pipeline, super_component
 from haystack.components.joiners import DocumentJoiner
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
 from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
@@ -125,21 +133,23 @@ document_store.write_documents(documents)
 
 prompt_template = [
     ChatMessage.from_user(
-    '''
+        """
     According to the following documents:
     {% for document in documents %}
     {{document.content}}
     {% endfor %}
     Answer the given question: {{query}}
     Answer:
-    '''
+    """
     )
 ]
 
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 
 pipeline = Pipeline()
-pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+pipeline.add_component(
+    "retriever", InMemoryBM25Retriever(document_store=document_store)
+)
 pipeline.add_component("prompt_builder", prompt_builder)
 pipeline.add_component("llm", OpenAIChatGenerator())
 pipeline.connect("retriever.documents", "prompt_builder.documents")
@@ -151,17 +161,14 @@ wrapper = SuperComponent(
     input_mapping={
         "query": ["retriever.query", "prompt_builder.query"],
     },
-    output_mapping={
-        "llm.replies": "replies",
-        "retriever.documents": "documents"
-    }
+    output_mapping={"llm.replies": "replies", "retriever.documents": "documents"},
 )
 
 # Run the pipeline with simplified interface
 result = wrapper.run(query="What is the capital of France?")
 print(result)
-{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
- _content=[TextContent(text='The capital of France is Paris.')],...)
+# >> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+# >>  _content=[TextContent(text='The capital of France is Paris.')],...)
 ```
 
 ## Type Checking and Static Code Analysis

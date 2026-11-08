@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add ``OpenAIDecisionsImageRouter`` to route images to different pipeline branches
+    based on their content, with optional text context. Images with low-confidence
+    decisions can be sent to a fallback branch.

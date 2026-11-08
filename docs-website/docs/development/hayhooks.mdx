@@ -137,11 +137,12 @@ For the full CLI reference, see the [Hayhooks CLI documentation](https://deepset
 
 ## MCP Support
 
-Hayhooks supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) and can act as an MCP Server. It automatically lists your deployed pipelines and agents as MCP Tools using Server-Sent Events (SSE) as the transport method. Agents are deployed using the same `PipelineWrapper` mechanism as pipelines.
+Hayhooks supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) and can act as an MCP Server. It automatically lists your deployed pipelines and agents as MCP Tools, over both Streamable HTTP (recommended) and Server-Sent Events (SSE, kept for backward compatibility). Agents are deployed using the same `PipelineWrapper` mechanism as pipelines.
 
-To start the Hayhooks MCP server, run:
+MCP support is an optional extra. Install it and start the Hayhooks MCP server with:
 
 ```shell
+pip install "hayhooks[mcp]"
 hayhooks mcp run
 ```
 

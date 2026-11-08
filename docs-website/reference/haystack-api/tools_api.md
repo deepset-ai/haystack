@@ -6,6 +6,191 @@ slug: "/tools-api"
 ---
 
 
+## agent_tool
+
+### agent_result_to_string
+
+```python
+agent_result_to_string(result: dict[str, Any]) -> str
+```
+
+Default `outputs_to_string` handler
+
+### AgentTool
+
+Bases: <code>ComponentTool</code>
+
+A Tool that wraps a Haystack Agent, allowing it to be used as a tool by another Agent.
+
+AgentTool is a building block for multi-agent systems: an Agent specialized in one task becomes a tool that
+other Agents can delegate to. The calling Agent only sees the final reply, so all the steps the wrapped Agent
+takes stay out of its context. Sensible defaults make this work out of the box: the task is delegated as a
+single user message and comes back as text.
+
+To use AgentTool, you first need a Haystack Agent. Below is an example of creating an AgentTool from an Agent
+that searches the web with a SerperDevWebSearch component from the `serperdev-haystack` integration package
+(`pip install serperdev-haystack`).
+
+## Usage Example:
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import AgentTool, ComponentTool
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
+
+researcher = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
+    system_prompt="You are a research specialist. Investigate the task and report your findings.",
+    tools=[
+        ComponentTool(
+            component=SerperDevWebSearch(
+                top_k=3,
+            ),
+            name="web_search",
+            description="Search the web for current information on any topic",
+        ),
+    ],
+)
+
+research = AgentTool(
+    agent=researcher,
+    name="research",
+    description="Research a question on the web and report the findings",
+)
+
+coordinator = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4"),
+    tools=[research],
+    system_prompt="You coordinate specialists. Delegate research questions, then answer the user.",
+)
+
+result = coordinator.run([ChatMessage.from_user("What are the latest developments in the Haystack framework?")])
+print(result["last_message"].text)
+```
+
+#### __init__
+
+```python
+__init__(
+    agent: Agent,
+    *,
+    name: str,
+    description: str,
+    parameters: dict[str, Any] | None = None,
+    outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, str | Callable]] | None = None
+) -> None
+```
+
+Create a Tool instance from a Haystack Agent.
+
+**Parameters:**
+
+- **agent** (<code>Agent</code>) – The Haystack Agent to wrap as a tool.
+- **name** (<code>str</code>) – Name of the tool.
+- **description** (<code>str</code>) – Description of the tool. It should tell the calling LLM what the Agent is specialized in
+  and when to delegate to it.
+- **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
+  Will fall back to a schema with the task to delegate as a single user message, plus one string parameter
+  for every other mandatory input of the Agent, if not provided.
+- **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
+  If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
+  the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,
+  reached the model's output limit, or had its response stopped by a content filter.
+
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+
+   ```python
+   {
+       "source": "last_message", "handler": format_reply, "raw_result": False
+   }
+   ```
+
+   - `source`: If provided, only the specified output key is sent to the handler.
+   - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+     final result.
+   - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+     `handler` if provided. This is intended for tools that return images. In this mode, the `handler`
+     is required, since the Agent returns a dictionary, and it must return a list of
+     `TextContent`/`ImageContent` objects to ensure compatibility with Chat Generators.
+
+1. Multiple output format - map keys to individual configurations:
+
+   ```python
+   {
+       "reply": {"source": "last_message", "handler": format_reply},
+       "steps": {"source": "step_count", "handler": str}
+   }
+   ```
+
+   Each key maps to a dictionary that can contain "source" and/or "handler".
+   Note that `raw_result` is not supported in the multiple output format.
+
+- **inputs_from_state** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping the calling Agent's state keys to Agent input names.
+  Example: `{"subject": "topic"}` maps state's "subject" to the Agent's "topic" input.
+  Inputs mapped this way are not added to the generated `parameters` schema, since the calling Agent
+  provides them.
+- **outputs_to_state** (<code>dict\[str, dict\[str, str | Callable\]\] | None</code>) – Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+  The keys must be declared in the `state_schema` of the calling Agent.
+  Handlers merge the tool output into the state and are called as `handler(current_value, tool_output)`.
+  If the source is provided only the specified output key is sent to the handler.
+  Example:
+
+```python
+{
+    "notes": {"source": "last_message", "handler": custom_handler}
+}
+```
+
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+
+```python
+{
+    "notes": {"handler": custom_handler}
+}
+```
+
+**Raises:**
+
+- <code>TypeError</code> – If the object passed is not a Haystack Agent instance.
+- <code>ValueError</code> – If `parameters` is provided but does not cover all the mandatory inputs of the Agent.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the AgentTool to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – The serialized dictionary representation of AgentTool.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AgentTool
+```
+
+Deserializes the AgentTool from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of AgentTool.
+
+**Returns:**
+
+- <code>AgentTool</code> – The deserialized AgentTool instance.
+
 ## component_tool
 
 ### ComponentTool
@@ -31,20 +216,21 @@ Key features:
 
 To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
 You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component
+from the `serperdev-haystack` integration package (`pip install serperdev-haystack`).
 
 ## Usage Example:
 
 <!-- test-ignore -->
 
 ```python
-from haystack import component, Pipeline
+from haystack import component
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
 from haystack.utils import Secret
-from haystack.components.tools.tool_invoker import ToolInvoker
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
 # Create a SerperDev search component
 search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
@@ -56,18 +242,13 @@ tool = ComponentTool(
     description="Search the web for current information on any topic"  # Optional: defaults to component docstring
 )
 
-# Create pipeline with OpenAIChatGenerator and ToolInvoker
-pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-# Connect components
-pipeline.connect("llm.replies", "tool_invoker.messages")
+# Create an Agent with an OpenAIResponsesChatGenerator and the tool
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=[tool])
 
 message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
-# Run pipeline
-result = pipeline.run({"llm": {"messages": [message]}})
+# Run the Agent
+result = agent.run(messages=[message])
 
 print(result)
 ```
@@ -95,6 +276,7 @@ Create a Tool instance from a Haystack component.
 - **name** (<code>str | None</code>) – Optional name for the tool (defaults to snake_case of component class name).
 - **description** (<code>str | None</code>) – Optional description (defaults to component's docstring).
 - **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
+  Unknown top-level properties produce a warning; unknown invocation arguments are skipped with a warning.
   Will fall back to the parameters defined in the component's run method signature if not provided.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is converted to a string using a default handler.
@@ -153,7 +335,8 @@ Example:
 **Raises:**
 
 - <code>TypeError</code> – If the object passed is not a Haystack Component instance.
-- <code>ValueError</code> – If the component has already been added to a pipeline, or if schema generation fails.
+- <code>ValueError</code> – If the component has already been added to a pipeline, schema generation fails,
+  or custom parameters omit mandatory inputs not supplied through state.
 
 #### warm_up
 
@@ -161,7 +344,31 @@ Example:
 warm_up() -> None
 ```
 
-Prepare the ComponentTool for use.
+Warm up the wrapped component.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the wrapped component on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the wrapped component's synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the wrapped component's async resources.
 
 #### to_dict
 
@@ -232,8 +439,13 @@ print(tool)
 
 **Parameters:**
 
-- **function** (<code>Callable</code>) – The function to be converted into a Tool.
-  The function must include type hints for all parameters.
+- **function** (<code>Callable</code>) – The function to be converted into a Tool. May be either a regular function (assigned to the
+  resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
+  to `async_function`).
+  Parameters exposed in the Tool's schema must have type hints.
+  Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
   The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
   Other input types may work but are not guaranteed.
   If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -301,7 +513,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If any parameter of the function lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ### tool
@@ -359,7 +572,11 @@ print(get_weather)
 
 **Parameters:**
 
-- **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters)
+- **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters).
+  Parameters exposed in the Tool's schema must have type hints.
+  Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
 - **name** (<code>str | None</code>) – Optional custom name for the tool
 - **description** (<code>str | None</code>) – Optional custom description
 - **inputs_from_state** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping state keys to tool parameter names.
@@ -421,6 +638,12 @@ Example:
 
 - <code>Tool | Callable\\[[Callable\], Tool\]</code> – Either a Tool instance or a decorator function that will create one
 
+**Raises:**
+
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
+- <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
+
 ## pipeline_tool
 
 ### PipelineTool
@@ -446,18 +669,15 @@ Below is an example of creating a PipelineTool
 from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
-from haystack.components.embedders.sentence_transformers_document_embedder import (
-    SentenceTransformersDocumentEmbedder
-)
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.agents import Agent
 from haystack.tools import PipelineTool
 
 # Initialize a document store and add some documents
 document_store = InMemoryDocumentStore()
-document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+document_embedder = OpenAIDocumentEmbedder()
 documents = [
     Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
     Document(
@@ -470,9 +690,7 @@ document_store.write_documents(docs_with_embeddings)
 
 # Build a simple retrieval pipeline
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component(
-    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-)
+retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
 retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
@@ -488,7 +706,7 @@ retriever_tool = PipelineTool(
 
 # Create an Agent with the tool
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.6-luna"),
     tools=[retriever_tool]
 )
 
@@ -509,7 +727,7 @@ print(result["messages"][-1].text)
 
 ```python
 __init__(
-    pipeline: Pipeline | AsyncPipeline,
+    pipeline: Pipeline,
     *,
     name: str,
     description: str,
@@ -526,7 +744,7 @@ Create a Tool instance from a Haystack pipeline.
 
 **Parameters:**
 
-- **pipeline** (<code>Pipeline | AsyncPipeline</code>) – The Haystack pipeline to wrap as a tool.
+- **pipeline** (<code>Pipeline</code>) – The Haystack pipeline to wrap as a tool.
 - **name** (<code>str</code>) – Name of the tool.
 - **description** (<code>str</code>) – Description of the tool.
 - **input_mapping** (<code>dict\[str, list\[str\]\] | None</code>) – A dictionary mapping component input names to pipeline input socket paths.
@@ -646,36 +864,50 @@ Bases: <code>Toolset</code>
 
 Dynamic tool discovery from large catalogs using BM25 search.
 
-This Toolset enables LLMs to discover and use tools from large catalogs through
-BM25-based search. Instead of exposing all tools at once (which can overwhelm the
-LLM context), it provides a `search_tools` bootstrap tool that allows the LLM to
-find and load specific tools as needed.
+This Toolset enables LLMs to discover and use tools from large catalogs through BM25-based search.
+Instead of exposing all tools at once (which can overwhelm the LLM context), it provides a `search_tools` bootstrap
+tool that allows the LLM to find and load specific tools as needed.
 
-For very small catalogs (below `search_threshold`), acts as a simple passthrough
-exposing all tools directly without any discovery mechanism.
+For very small catalogs (below `search_threshold`), acts as a simple passthrough exposing all tools directly
+without any discovery mechanism.
 
 ### Usage Example
 
 ```python
+from typing import Annotated
+
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool, SearchableToolset
+from haystack.tools import SearchableToolset, tool
 
-# Create a catalog of tools
-catalog = [
-    Tool(name="get_weather", description="Get weather for a city",
-         parameters={}, function=lambda: None),
-    Tool(name="search_web", description="Search the web",
-         parameters={}, function=lambda: None),
-    # ... 100s more tools
-]
-toolset = SearchableToolset(catalog=catalog)
+@tool
+def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+    '''Get the current weather for a city.'''
+    return f"The weather in {city} is 22°C and sunny."
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+@tool
+def search_web(query: Annotated[str, "The query to search the web for"]) -> str:
+    '''Search the web for a query.'''
+    return f"Top result for '{query}': ..."
+
+@tool
+def convert_currency(
+    amount: Annotated[float, "The amount to convert"],
+    to_currency: Annotated[str, "The currency to convert to, e.g. 'EUR'"],
+) -> str:
+    '''Convert an amount in USD to another currency.'''
+    return f"{amount} USD is {amount * 0.9} {to_currency}"
+
+# search_threshold=2 means a catalog of 2+ tools activates discovery: the agent only sees the
+# `search_tools` tool and must search to load the others (set it higher for larger catalogs).
+toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
+
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=toolset)
 
 # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
 result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+print(result["last_message"].text)
 ```
 
 #### __init__
@@ -698,12 +930,12 @@ Initialize the SearchableToolset.
 
 - **catalog** (<code>ToolsType</code>) – Source of tools - a list of Tools, list of Toolsets, or a single Toolset.
 - **top_k** (<code>int</code>) – Default number of results for search_tools.
-- **search_threshold** (<code>int</code>) – Minimum catalog size to activate search.
-  If catalog has fewer tools, acts as passthrough (all tools visible).
-  Default is 8.
+- **search_threshold** (<code>int</code>) – Minimum catalog size to activate search. If catalog has fewer tools, acts as
+  passthrough (all tools visible). Default is 8.
 - **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
-- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool.
-  If not provided, uses a default description.
+  Must differ from every catalog tool name when the catalog has at least `search_threshold` tools.
+- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool. If not provided, uses a
+  default description.
 - **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
   Keys must be a subset of `{"tool_keywords", "k"}`.
   Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
@@ -711,7 +943,7 @@ Initialize the SearchableToolset.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
 Adding new tools after initialization is not supported for SearchableToolset.
@@ -722,12 +954,57 @@ Adding new tools after initialization is not supported for SearchableToolset.
 warm_up() -> None
 ```
 
-Prepare the toolset for use.
+Warm up the catalog tools and initialize tool discovery.
 
-Warms up child toolsets first (so lazy toolsets like MCPToolset can connect),
-then flattens the catalog, indexes it, and creates the search_tools bootstrap tool.
-In passthrough mode, it warms up all catalog tools directly.
-Must be called before using the toolset with an Agent.
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the catalog tools asynchronously and initialize tool discovery.
+
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
+
+#### get_selectable_tools
+
+```python
+get_selectable_tools() -> list[Tool]
+```
+
+Return the full catalog of tools that can be selected by name.
+
+Iteration only exposes the search tool plus already-discovered tools, but name-based selection can target
+any tool in the catalog, so this returns the entire flattened catalog. Prepare it with `warm_up()`
+or `warm_up_async()` before selection.
+
+**Returns:**
+
+- <code>list\[Tool\]</code> – The flattened catalog of tools.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the tools and toolsets in the catalog.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the tools and toolsets in the catalog asynchronously.
 
 #### clear
 
@@ -737,9 +1014,30 @@ clear() -> None
 
 Clear all discovered tools.
 
-This method allows resetting the toolset's discovered tools between agent runs
-when the same toolset instance is reused. This can be useful for long-running
-applications to control memory usage or to start fresh searches.
+This method allows resetting the toolset's discovered tools between agent runs when the same toolset instance
+is reused. This can be useful for long-running applications to control memory usage or to start fresh searches.
+
+#### spawn
+
+```python
+spawn(selected_tool_names: set[str] | None = None) -> SearchableToolset
+```
+
+Return an isolated copy for a single run, carrying the given name selection.
+
+The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
+plus a bootstrap search tool bound to the copy; the selection scopes both iteration and search. This way
+concurrent runs sharing the same configured SearchableToolset don't share discovered tools or collide on
+the active selection.
+
+**Parameters:**
+
+- **selected_tool_names** (<code>set\[str\] | None</code>) – Optional catalog tool names this run is restricted to. None means no
+  restriction.
+
+**Returns:**
+
+- <code>SearchableToolset</code> – A run-scoped copy of this SearchableToolset.
 
 #### to_dict
 
@@ -769,6 +1067,140 @@ Deserialize a toolset from a dictionary.
 
 - <code>SearchableToolset</code> – New SearchableToolset instance.
 
+**Raises:**
+
+- <code>TypeError</code> – If a serialized catalog entry is not a subclass of Tool or Toolset.
+
+## skills/skill_toolset
+
+### SkillToolset
+
+Bases: <code>Toolset</code>
+
+A Toolset that lets an Agent discover and read skills via progressive disclosure.
+
+A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter
+(`name` and `description`) and a markdown body of instructions. Skills may bundle additional files
+(reference docs, examples, templates).
+
+- On `warm_up`, the name and description of every discovered skill are baked into the `load_skill` tool
+  description so the model knows which skills exist without any system prompt injection.
+- `load_skill` returns a skill's full instructions on demand, plus a manifest of its bundled files.
+- `read_skill_file` reads a bundled file on demand.
+
+### Usage example
+
+<!-- test-concept -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import SkillToolset
+from haystack.skill_stores.file_system import FileSystemSkillStore
+
+store = FileSystemSkillStore("skills/")
+skills_toolset = SkillToolset(store)
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=skills_toolset)
+result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
+```
+
+Expected filesystem layout:
+
+```
+skills/
+  pdf-forms/
+    SKILL.md            # frontmatter (name, description) + markdown instructions
+    reference/forms.md
+```
+
+The tool names `load_skill` and `read_skill_file` are fixed, so an `Agent` can use at most one
+`SkillToolset`. To serve skills from multiple sources, back a single toolset with a custom store that
+merges them.
+
+#### __init__
+
+```python
+__init__(store: SkillStore) -> None
+```
+
+Initialize the SkillToolset.
+
+Constructing the toolset does not read any skills. The store is queried for the available skills on
+`warm_up()`, so stores that do I/O (reading a directory, connecting to a database) stay cheap to
+construct.
+
+The `load_skill` and `read_skill_file` tools are created right away, so the toolset can be used as a
+collection (length, membership checks, iteration) immediately.
+
+**Parameters:**
+
+- **store** (<code>SkillStore</code>) – A `haystack.skill_stores.types.SkillStore` instance to back this toolset.
+
+#### skills
+
+```python
+skills: dict[str, SkillInfo]
+```
+
+Mapping of skill name to its metadata. Triggers `warm_up()` on first access if not already warmed up.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Discover the available skills from the store and bake the catalog into the `load_skill` description.
+
+Only the description content is dynamic, so the (static) tools created in `__init__` are reused; this
+refreshes `load_skill`'s description once the catalog is known. Idempotent: repeated calls after the
+first are no-ops.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the skill store and invalidate the cached catalog.
+
+#### add
+
+```python
+add(tool: Tool) -> None
+```
+
+Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the toolset to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of the toolset.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SkillToolset
+```
+
+Deserialize a toolset from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary representation of the toolset, as produced by `to_dict`.
+
+**Returns:**
+
+- <code>SkillToolset</code> – A new SkillToolset instance.
+
 ## tool
 
 ### Tool
@@ -779,17 +1211,21 @@ Accurate definitions of the textual attributes such as `name` and `description`
 are important for the Language Model to correctly prepare the call.
 
 For resource-intensive operations like establishing connections to remote services or
-loading models, override the `warm_up()` method. This method is called before the Tool
-is used and should be idempotent, as it may be called multiple times during
-pipeline/agent setup.
+loading models, implement an optional `warm_up()` method. It is called before invocation
+and during pipeline/agent setup, and must be idempotent. Native async tools can implement
+`warm_up_async()` instead. Implement `close()` and/or `close_async()` to release owned resources;
+these methods must be safe to call before warm-up and multiple times.
 
 **Parameters:**
 
 - **name** (<code>str</code>) – Name of the Tool.
 - **description** (<code>str</code>) – Description of the Tool.
 - **parameters** (<code>dict\[str, Any\]</code>) – A JSON schema defining the parameters expected by the Tool.
-- **function** (<code>Callable</code>) – The function that will be invoked when the Tool is called.
-  Must be a synchronous function; async functions are not supported.
+- **function** (<code>Callable | None</code>) – The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
+  be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
+- **async_function** (<code>Callable | None</code>) – Optional coroutine function awaited by `Tool.invoke_async`. When only `async_function` is set, `invoke` raises
+  a `ToolInvocationError`. When only `function` is set, `invoke_async` falls back to running `function` in a
+  worker thread via `asyncio.to_thread`.
 - **outputs_to_string** (<code>dict\[str, Any\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is converted to a string using a default handler.
 
@@ -847,8 +1283,10 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If `function` is async, if `parameters` is not a valid JSON schema, or if the
-  `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+- <code>ValueError</code> – If neither `function` nor `async_function` is provided, if `function` is a
+  coroutine function, if `async_function` is not a coroutine function, if `parameters` is not a
+  valid JSON schema, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
+  configurations are invalid.
 - <code>TypeError</code> – If any configuration value in `outputs_to_state`, `outputs_to_string`, or
   `inputs_from_state` has the wrong type.
 
@@ -860,25 +1298,34 @@ tool_spec: dict[str, Any]
 
 Return the Tool specification to be used by the Language Model.
 
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Prepare the Tool for use.
-
-Override this method to establish connections to remote services, load models,
-or perform other resource-intensive initialization. This method should be idempotent,
-as it may be called multiple times.
-
 #### invoke
 
 ```python
 invoke(**kwargs: Any) -> Any
 ```
 
-Invoke the Tool with the provided keyword arguments.
+Warm up the Tool if supported and invoke it synchronously with the provided keyword arguments.
+
+**Raises:**
+
+- <code>ToolInvocationError</code> – If the Tool has no sync `function`, or if the underlying call
+  raises an exception.
+
+#### invoke_async
+
+```python
+invoke_async(**kwargs: Any) -> Any
+```
+
+Invoke the Tool asynchronously with the provided keyword arguments.
+
+If `async_function` is set, prepare with `warm_up_async` (falling back to `warm_up`) before awaiting it.
+Otherwise, synchronous preparation and invocation run in a worker thread via `asyncio.to_thread`,
+which propagates the current context to the worker.
+
+**Raises:**
+
+- <code>ToolInvocationError</code> – If the underlying call raises an exception.
 
 #### to_dict
 
@@ -923,172 +1370,126 @@ Toolset serves two main purposes:
    Example:
 
 ```python
-from haystack.tools import Tool, Toolset
-from haystack.components.tools import ToolInvoker
+from typing import Annotated
+from haystack.tools import tool, Toolset
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
-# Define math functions
-def add_numbers(a: int, b: int) -> int:
+# Create tools with the @tool decorator (the recommended way)
+@tool
+def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    '''Add two numbers.'''
     return a + b
 
-def subtract_numbers(a: int, b: int) -> int:
+@tool
+def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    '''Subtract b from a.'''
     return a - b
 
-# Create tools with proper schemas
-add_tool = Tool(
-    name="add",
-    description="Add two numbers",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "integer"},
-            "b": {"type": "integer"}
-        },
-        "required": ["a", "b"]
-    },
-    function=add_numbers
-)
-
-subtract_tool = Tool(
-    name="subtract",
-    description="Subtract b from a",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "integer"},
-            "b": {"type": "integer"}
-        },
-        "required": ["a", "b"]
-    },
-    function=subtract_numbers
-)
-
 # Create a toolset with the math tools
-math_toolset = Toolset([add_tool, subtract_tool])
+math_toolset = Toolset([add, subtract])
 
-# Use the toolset with a ToolInvoker or ChatGenerator component
-invoker = ToolInvoker(tools=math_toolset)
+# Use the toolset with an Agent
+agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=math_toolset)
 ```
 
 2. Base class for dynamic tool loading:
-   By subclassing Toolset, you can create implementations that dynamically load tools
-   from external sources like OpenAPI URLs, MCP servers, or other resources.
+   By subclassing Toolset, you can create implementations that dynamically load tools from external sources like
+   OpenAPI URLs, MCP servers, or other resources.
+
+   When implementing a custom Toolset subclass for dynamic tool loading:
+
+   - Load the tools in `warm_up()` and assign them to `self.tools`. Since `warm_up()` may be called before
+     every run, make it idempotent by guarding on your own state (e.g. `if self._client is not None: return`).
+   - Override `to_dict()` and `from_dict()` to serialize the endpoint descriptor (URL, server info) rather than
+     the dynamically loaded Tool instances.
 
    Example:
 
 ```python
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.tools import Tool, Toolset
-from haystack.components.tools import ToolInvoker
+from haystack.tools import Toolset
 
-class CalculatorToolset(Toolset):
-    '''A toolset for calculator operations.'''
+class RemoteServiceToolset(Toolset):
+    def __init__(self, endpoint: str) -> None:
+        self.endpoint = endpoint
+        self._client = None
+        super().__init__(tools=[])  # tools are loaded on warm_up()
 
-    def __init__(self) -> None:
-        tools = self._create_tools()
-        super().__init__(tools)
-
-    def _create_tools(self):
-        # These Tool instances are obviously defined statically and for illustration purposes only.
-        # In a real-world scenario, you would dynamically load tools from an external source here.
-        tools = []
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=lambda a, b: a + b,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=lambda a, b: a * b,
-        )
-
-        tools.append(add_tool)
-        tools.append(multiply_tool)
-
-        return tools
+    def warm_up(self) -> None:
+        if self._client is not None:
+            return
+        self._client = connect(self.endpoint)
+        self.tools = self._client.fetch_tools()
 
     def to_dict(self):
         return {
             "type": generate_qualified_class_name(type(self)),
-            "data": {},  # no data to serialize as we define the tools dynamically
+            "data": {"endpoint": self.endpoint},
         }
 
     @classmethod
     def from_dict(cls, data):
-        return cls()  # Recreate the tools dynamically during deserialization
-
-# Create the dynamic toolset and use it with ToolInvoker
-calculator_toolset = CalculatorToolset()
-invoker = ToolInvoker(tools=calculator_toolset)
+        return cls(endpoint=data["data"]["endpoint"])
 ```
 
-Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
-making it behave like a list of Tools. This makes it compatible with components that expect
-iterable tools, such as ToolInvoker or Haystack chat generators.
+Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
+a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
+chat generators.
 
-When implementing a custom Toolset subclass for dynamic tool loading:
-
-- Perform the dynamic loading in the __init__ method
-- Override to_dict() and from_dict() methods if your tools are defined dynamically
-- Serialize endpoint descriptors rather than tool instances if your tools
-  are loaded from external sources
-
-#### warm_up
+#### get_selectable_tools
 
 ```python
-warm_up() -> None
+get_selectable_tools() -> list[Tool]
 ```
 
-Prepare the Toolset for use.
+Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
 
-By default, this method iterates through and warms up all tools in the Toolset.
-Subclasses can override this method to customize initialization behavior, such as:
+Prepare lazy toolsets with `warm_up_tools` or `warm_up_tools_async` before selection.
+Subclasses whose iteration does not surface every selectable tool (e.g. SearchableToolset)
+override this to return the full set.
 
-- Setting up shared resources (database connections, HTTP sessions) instead of
-  warming individual tools
-- Implementing custom initialization logic for dynamically loaded tools
-- Controlling when and how tools are initialized
+**Returns:**
 
-For example, a Toolset that manages tools from an external service (like MCPToolset)
-might override this to initialize a shared connection rather than warming up
-individual tools:
+- <code>list\[Tool\]</code> – The list of tools available for name-based selection.
+
+#### spawn
 
 ```python
-class MCPToolset(Toolset):
-    def warm_up(self) -> None:
-        # Only warm up the shared MCP connection, not individual tools
-        self.mcp_connection = establish_connection(self.server_url)
+spawn(selected_tool_names: set[str] | None = None) -> Toolset
 ```
 
-This method should be idempotent, as it may be called multiple times.
+Return this Toolset, or an isolated copy of it, for a single run.
+
+A plain Toolset has no run-scoped state, so the default implementation returns `self` and ignores the
+selection (the Agent materializes it). Subclasses with run-scoped state (e.g. SearchableToolset) override
+this to return a copy carrying the selection, so concurrent runs sharing the same configured Toolset
+don't corrupt each other.
+
+**Parameters:**
+
+- **selected_tool_names** (<code>set\[str\] | None</code>) – Optional tool names this run is restricted to. None means no restriction.
+
+**Returns:**
+
+- <code>Toolset</code> – This Toolset, or a run-scoped copy of it.
 
 #### add
 
 ```python
-add(tool: Union[Tool, Toolset]) -> None
+add(tool: Tool) -> None
 ```
 
-Add a new Tool or merge another Toolset.
+Add a new Tool to this Toolset.
 
 **Parameters:**
 
-- **tool** (<code>Union\[Tool, Toolset\]</code>) – A Tool instance or another Toolset to add
+- **tool** (<code>Tool</code>) – A Tool instance to add
 
 **Raises:**
 
 - <code>ValueError</code> – If adding the tool would result in duplicate tool names
-- <code>TypeError</code> – If the provided object is not a Tool or Toolset
+- <code>TypeError</code> – If the provided object is not a Tool
 
 #### to_dict
 

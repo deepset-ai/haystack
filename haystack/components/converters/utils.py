@@ -2,10 +2,37 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from haystack.dataclasses import ByteStream
+
+
+class LinkFormat(Enum):
+    """
+    Supported formats for storing link information in a Document.
+    """
+
+    MARKDOWN = "markdown"
+    PLAIN = "plain"
+    NONE = "none"
+
+    def __str__(self) -> str:
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "LinkFormat":
+        """
+        Convert a string to a LinkFormat enum.
+        """
+        enum_map = {e.value: e for e in LinkFormat}
+        link_format = enum_map.get(string.lower())
+        if link_format is None:
+            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return link_format
 
 
 def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type: bool = False) -> ByteStream:
@@ -39,11 +66,15 @@ def normalize_metadata(meta: dict[str, Any] | list[dict[str, Any]] | None, sourc
     :param meta: the meta input of the converter, as-is
     :param sources_count: the number of sources the converter received
     :returns: a list of dictionaries of the make length as the sources list
+
+    Each source always gets its own independent dictionary. When ``meta`` is ``None`` or a single
+    dictionary, a separate copy is returned for every source so that mutating one source's metadata
+    downstream does not leak into the others.
     """
     if meta is None:
-        return [{}] * sources_count
+        return [{} for _ in range(sources_count)]
     if isinstance(meta, dict):
-        return [meta] * sources_count
+        return [deepcopy(meta) for _ in range(sources_count)]
     if isinstance(meta, list):
         if sources_count != len(meta):
             raise ValueError("The length of the metadata list must match the number of sources.")

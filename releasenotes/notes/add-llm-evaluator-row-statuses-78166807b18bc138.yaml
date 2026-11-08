@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Adds a ``status`` field to each result produced by ``ContextRelevanceEvaluator`` and ``FaithfulnessEvaluator``.
+    The field is ``evaluated`` for valid results and ``error`` for generation or parsing failures continued with
+    ``raise_on_failure=False``.

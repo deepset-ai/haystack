@@ -73,7 +73,8 @@ class InputSocket:
     @property
     def is_mandatory(self) -> bool:
         """Check if the input is mandatory."""
-        return self.default_value == _empty
+        # Identity, so a default with a custom `__eq__`, such as a DataFrame, is never compared to the sentinel.
+        return self.default_value is _empty
 
     def __post_init__(self) -> None:
         try:

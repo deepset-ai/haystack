@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``FileTypeRouter`` and ``DocumentTypeRouter`` now raise a clear ``ValueError``
+    when a MIME type uses a reserved output name (``unclassified``, or ``failed``
+    on ``FileTypeRouter``), instead of failing with an internal duplicate-keyword
+    ``TypeError`` during output registration.

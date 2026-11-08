@@ -3,6 +3,7 @@ title: "OpenRouterChatGenerator"
 id: openrouterchatgenerator
 slug: "/openrouterchatgenerator"
 description: "This component enables chat completion with any model hosted on [OpenRouter](https://openrouter.ai/)."
+hep_available: true
 ---
 
 # OpenRouterChatGenerator
@@ -25,7 +26,7 @@ This component enables chat completion with any model hosted on [OpenRouter](htt
 
 ## Overview
 
-The `OpenRouterChatGenerator` enables you to use models from multiple providers (such as `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, and others) by making chat completion calls to the [OpenRouter API](https://openrouter.ai/docs/quickstart).
+The `OpenRouterChatGenerator` enables you to use models from multiple providers (such as `openai/gpt-4o`, `anthropic/claude-sonnet-4.5`, and others) by making chat completion calls to the [OpenRouter API](https://openrouter.ai/docs/quickstart).
 
 This generator also supports OpenRouter-specific features such as:
 
@@ -46,11 +47,17 @@ This allows you to organize related tools into logical groups while also includi
 
 ```python
 from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -119,7 +126,7 @@ from haystack_integrations.components.generators.openrouter import (
     OpenRouterChatGenerator,
 )
 
-llm = OpenRouterChatGenerator(model="anthropic/claude-3-5-sonnet")
+llm = OpenRouterChatGenerator(model="anthropic/claude-sonnet-4.5")
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(

@@ -3,6 +3,7 @@ title: "CohereDocumentImageEmbedder"
 id: coheredocumentimageembedder
 slug: "/coheredocumentimageembedder"
 description: "`CohereDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Cohere embedding models with the ability to embed text and images into the same vector space."
+hep_available: true
 ---
 
 # CohereDocumentImageEmbedder
@@ -46,7 +47,12 @@ pip install cohere-haystack
 The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
 
 ```python
-embedder = CohereTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.cohere import (
+    CohereDocumentImageEmbedder,
+)
+
+embedder = CohereDocumentImageEmbedder(api_key=Secret.from_token("<your-api-key>"))
 ```
 
 To get a Cohere API key, head over to https://cohere.com/.

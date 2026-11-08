@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a ``TypeError`` raised when filtering documents with the ordering
+    operators (``>``, ``>=``, ``<``, ``<=``) where both the filter value and the
+    document meta value are ``datetime`` objects but one is timezone-aware and the
+    other is naive. The naive/aware reconciliation is now applied to any pair of
+    ``datetime`` operands, matching the behavior already used for ISO 8601 string
+    dates.

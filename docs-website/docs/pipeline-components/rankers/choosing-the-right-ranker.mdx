@@ -38,7 +38,6 @@ These Rankers run entirely on your local infrastructure. They are ideal for team
 All on-premise Rankers in Haystack use cross-encoder architectures. These models jointly process the query and each document to assess relevance with deep contextual awareness. For example:
 
 - [SentenceTransformersSimilarityRanker](sentencetransformerssimilarityranker.mdx) ranks documents based on semantic similarity to the query. In addition to the default PyTorch backend (optimal for GPU), it also offers other memory-efficient options which are suitable for CPU-only cases: ONNX and OpenVINO.  
-- [TransformersSimilarityRanker](transformerssimilarityranker.mdx) is its legacy predecessor and should generally be avoided in favor of the newer, more flexible SentenceTransformersSimilarityRanker.  
 - [HuggingFaceTEIRanker](huggingfaceteiranker.mdx) is based on the Text Embeddings Inference project: whether you have GPU resources or not, it offers high-performance for serving the models locally. In addition, you can also use this component to perform inference with reranking models hosted on Hugging Face Inference Endpoints.  
 - [FastembedRanker](fastembedranker.mdx) supports a variety of cross-encoder models and is optimal for CPU-only environments.  
 - [SentenceTransformersDiversityRanker](sentencetransformersdiversityranker.mdx) reorders documents to maximize diversity, helping reduce redundancy and cover a broader range of relevant topics.

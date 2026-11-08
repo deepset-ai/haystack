@@ -3,6 +3,7 @@ title: "LLMMetadataExtractor"
 id: llmmetadataextractor
 slug: "/llmmetadataextractor"
 description: "Extracts metadata from documents using a Large Language Model. The metadata is extracted by providing a prompt to a LLM that generates it."
+hep_available: true
 ---
 
 # LLMMetadataExtractor
@@ -35,8 +36,9 @@ If the LLM fails to extract metadata from a document, it will be added to the `f
 
 These documents can be re-run with another extractor to extract metadata using the `metadata_extraction_response` and `metadata_extraction_error` in the prompt.
 
-The current implementation supports the following Haystack Generators:
+`chat_generator` accepts any Haystack Chat Generator configured to return a JSON object, for example:
 
+- [OpenAIResponsesChatGenerator](../generators/openairesponseschatgenerator.mdx)
 - [OpenAIChatGenerator](../generators/openaichatgenerator.mdx)
 - [AzureOpenAIChatGenerator](../generators/azureopenaichatgenerator.mdx)
 - [AmazonBedrockChatGenerator](../generators/amazonbedrockchatgenerator.mdx)
@@ -51,7 +53,7 @@ First, the mandatory imports:
 ```python
 from haystack import Document
 from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 ```
 
 Then, define some documents:
@@ -113,37 +115,57 @@ NER_PROMPT = """
 Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to extract named entities from the documents:
 
 ```python
-chat_generator = OpenAIChatGenerator(
-  generation_kwargs={
-    "max_tokens": 500,
-    "temperature": 0.0,
-    "seed": 0,
-    "response_format": {"type": "json_object"},
-  },
-  max_retries=1,
-  timeout=60.0,
+chat_generator = OpenAIResponsesChatGenerator(
+    generation_kwargs={
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "entity_extraction",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "entities": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "entity": {"type": "string"},
+                                    "entity_type": {"type": "string"},
+                                },
+                                "required": ["entity", "entity_type"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "required": ["entities"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+    },
+    max_retries=1,
+    timeout=60.0,
 )
 
 extractor = LLMMetadataExtractor(
-  prompt=NER_PROMPT,
-  chat_generator=generator,
-  expected_keys=["entities"],
-  raise_on_failure=False,
+    prompt=NER_PROMPT,
+    chat_generator=chat_generator,
+    expected_keys=["entities"],
+    raise_on_failure=False,
 )
 
 extractor.run(documents=docs)
-
->> {'documents': [
-  Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-           meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
-                               {'entity': 'Haystack', 'entity_type': 'product'}]}),
-  Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
-           meta: {'entities': [
-             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
-           ]})
-]
-    'failed_documents': []
-   }
->>
+# >> {'documents': [
+# >>   Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+# >>            meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'},
+# >>                                {'entity': 'Haystack', 'entity_type': 'product'}]}),
+# >>   Document(id=.., content: 'Hugging Face is a company founded in New York, USA and is known for its Transformers library',
+# >>            meta: {'entities': [
+# >>              {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'USA', 'entity_type': 'country'},
+# >>              {'entity': 'Transformers Library', 'entity_type': 'product'}
+# >>            ]})
+# >>    ],
+# >>     'failed_documents': []
+# >>    }
 ```

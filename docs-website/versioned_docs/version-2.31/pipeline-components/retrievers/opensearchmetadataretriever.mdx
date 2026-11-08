@@ -1,0 +1,184 @@
+---
+title: OpenSearchMetadataRetriever
+id: opensearchmetadataretriever
+slug: /opensearchmetadataretriever
+description: Searches and ranks the metadata fields of documents stored in an OpenSearch Document Store and returns the matching metadata values.
+---
+
+# OpenSearchMetadataRetriever
+
+Searches and ranks the metadata fields of documents stored in an OpenSearch Document Store and returns the matching metadata values.
+
+<div className="key-value-table">
+
+|                                         |                                                                                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline**  | The last component in a metadata lookup pipeline, or wherever you need other structured data from an OpenSearchDocumentStore index |
+| **Mandatory init variables**            | `document_store`: An instance of `OpenSearchDocumentStore`; `metadata_fields`: List of metadata field names to search and return |
+| **Mandatory run variables**             | `query`: A search query string (may contain comma-separated parts)                                                               |
+| **Output variables**                    | `metadata`: A list of dictionaries containing only the requested metadata fields                                                 |
+| **API reference**                       | [OpenSearch](/reference/integrations-opensearch)                                                                                 |
+| **GitHub link**                         | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                       |
+| **Package name**                        | `opensearch-haystack`                                                                                                            |
+
+</div>
+
+## Overview
+
+`OpenSearchMetadataRetriever` searches the metadata of documents stored in an `OpenSearchDocumentStore` and returns the matching metadata values, not the documents themselves. It is useful when the metadata is the answer: for example, listing the categories or tags that match a partial query, building a metadata autocomplete, or surfacing the structured side of an index without pulling back document content.
+
+Unlike the other OpenSearch retrievers (`OpenSearchBM25Retriever`, `OpenSearchEmbeddingRetriever`, `OpenSearchHybridRetriever`), this component does not return `Document` objects. The output is a list under `metadata`, where each entry is a dictionary containing only the fields you listed in `metadata_fields`. Document content and any other metadata are excluded from the result.
+
+The retriever supports two search modes:
+
+- `strict` uses prefix and wildcard matching on the configured metadata fields.
+- `fuzzy` (the default) uses fuzzy matching with `dis_max` queries, allowing typos and partial matches.
+
+In both modes, candidate documents are scored server-side with Jaccard similarity on character n-grams (the `jaccard_n` parameter controls the n-gram size), and exact matches receive an additional boost controlled by `exact_match_weight`. Up to 1000 hits are fetched from OpenSearch, and the top `top_k` results are returned.
+
+Both a synchronous `run` method and an asynchronous `run_async` method are available with the same parameters.
+
+### Field types
+
+The matching engine only operates on metadata fields that OpenSearch indexes as text or keyword values. Numeric, boolean, and array-of-non-strings fields are not valid search targets, because prefix, wildcard, and full-text matching do not apply to them. Mixed-type fields, such as a list that combines strings and numbers, are also not supported.
+
+
+## Installation
+
+If you have Docker set up, the easiest way to run OpenSearch is to pull and run the Docker image.
+
+```bash
+docker pull opensearchproject/opensearch:2
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:2
+```
+
+As an alternative, you can go to the [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container using the provided `docker-compose.yml`:
+
+```bash
+docker compose up
+```
+
+Once you have a running OpenSearch instance, install the `opensearch-haystack` integration:
+
+```bash
+pip install opensearch-haystack
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs an `OpenSearchDocumentStore` with indexed documents. The example below writes three documents with simple categorical metadata and queries the `category` and `status` fields:
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.opensearch import (
+    OpenSearchMetadataRetriever,
+)
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+
+document_store = OpenSearchDocumentStore(
+    hosts="http://localhost:9200",
+    index="my_index",
+)
+
+documents = [
+    Document(
+        content="Python programming guide",
+        meta={
+            "category": "Python",
+            "status": "active",
+            "priority": 1,
+            "author": "John Doe",
+        },
+    ),
+    Document(
+        content="Java tutorial",
+        meta={
+            "category": "Java",
+            "status": "active",
+            "priority": 2,
+            "author": "Jane Smith",
+        },
+    ),
+    Document(
+        content="Python advanced topics",
+        meta={
+            "category": "Python",
+            "status": "inactive",
+            "priority": 3,
+            "author": "John Doe",
+        },
+    ),
+]
+
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+retriever = OpenSearchMetadataRetriever(
+    document_store=document_store,
+    metadata_fields=["category", "status"],
+    top_k=10,
+)
+
+result = retriever.run(query="Python")
+
+print(result)
+# {
+#     "metadata": [
+#         {"category": "Python", "status": "active"},
+#         {"category": "Python", "status": "inactive"},
+#     ]
+# }
+```
+
+Only the fields listed in `metadata_fields` appear in each result dictionary. The `author` metadata and the document content are excluded.
+
+### Multi-part queries
+
+The `query` string can contain several comma-separated parts. Each part is searched across every field listed in `metadata_fields`, and a document that matches multiple parts is ranked higher (controlled by `exact_match_weight`).
+
+```python
+result = retriever.run(query="Python, active")
+# Returns the metadata of documents whose fields match both "Python" and "active".
+```
+
+### Strict mode
+
+By default the retriever runs in `fuzzy` mode, which tolerates typos and partial matches. For lookups where you only want prefix or wildcard matches and no edit-distance tolerance, switch to `strict`:
+
+```python
+retriever = OpenSearchMetadataRetriever(
+    document_store=document_store,
+    metadata_fields=["category"],
+    mode="strict",
+)
+
+result = retriever.run(query="Pyth")
+# Matches "Python" through prefix matching, but not transposed-letter variants.
+```
+
+The fuzzy-mode parameters (`fuzziness`, `prefix_length`, `max_expansions`, `tie_breaker`) only take effect when `mode="fuzzy"`.
+
+### Combining with filters
+
+You can narrow the candidate set before scoring by passing standard Haystack `filters` at run time. The filters are applied in a `bool` `filter` context, so they exclude non-matching documents without affecting scores:
+
+```python
+result = retriever.run(
+    query="Python",
+    filters={"field": "status", "operator": "==", "value": "active"},
+)
+```
+
+### Asynchronous execution
+
+For pipelines that mix synchronous and asynchronous components, the retriever exposes `run_async` with the same signature:
+
+```python
+result = await retriever.run_async(query="Python, active")
+```
+
+### Error handling
+
+By default, a failed OpenSearch request raises an exception. To treat a failure as an empty result instead — for example, when the retriever sits behind a forgiving API — initialize the component with `raise_on_failure=False`. The error is then logged as a warning and `metadata` is returned as an empty list.

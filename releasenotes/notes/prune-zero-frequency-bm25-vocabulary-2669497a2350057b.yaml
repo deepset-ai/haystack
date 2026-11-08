@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Remove zero-frequency vocabulary entries after deleting documents from
+    ``InMemoryDocumentStore`` so previous document history no longer changes
+    BM25Okapi scores for the active corpus.

@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -86,7 +87,8 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
+        resolved_filters = filters if filters is not None else self.filters
+        return {"documents": self.document_store.filter_documents(filters=resolved_filters)}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -99,6 +101,23 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)  # type: ignore[attr-defined]
+        # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
+        resolved_filters = filters if filters is not None else self.filters
+        out_documents = await _call_with_async_fallback(
+            self.document_store, "filter_documents", filters=resolved_filters
+        )
         return {"documents": out_documents}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    Removed the unused ``serialize_class_instance`` and ``deserialize_class_instance`` functions from
+    ``haystack.utils.base_serialization``. These were internal helpers not used anywhere in Haystack. If you were
+    importing them directly, inline their logic: use ``{"type": generate_qualified_class_name(type(obj)), "data": obj.to_dict()}``
+    to serialize, and ``obj_class.from_dict(data["data"])`` (after resolving ``obj_class`` with
+    ``import_class_by_name(data["type"])``) to deserialize.

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``FilterPolicy.MERGE`` in ``InMemoryBM25Retriever`` and
+    ``InMemoryEmbeddingRetriever`` so initialization filters are combined with
+    runtime comparison filters instead of being silently overwritten.

@@ -25,9 +25,9 @@ Once you have an AstraDB account and have created a database, install the `astra
 pip install astra-haystack
 ```
 
-From the configuration in AstraDB’s web UI, you need the database ID and a generated token.
+From the configuration in AstraDB’s web UI, you need the database API endpoint and a generated token.
 
-You will additionally need a collection name and a namespace. When you create the collection name, you also need to set the embedding dimensions and the similarity metric. The namespace organizes data in a database and is called a keyspace in Apache Cassandra.
+You can additionally set a collection name and a namespace. The collection name defaults to `documents`, and you can set the embedding dimensions and the similarity metric alongside it with `embedding_dimension` and `similarity`. The namespace organizes data in a database and is called a keyspace in Apache Cassandra.
 
 Then, in Haystack, initialize an `AstraDocumentStore` object that’s connected to the AstraDB instance, and write documents to it.
 

@@ -83,7 +83,9 @@ To write to the session cache instead of the permanent graph, pass a `session_id
 ```python
 session_writer = CogneeWriter(memory_store=store, session_id="alice_session_1")
 session_writer.run(
-    messages=[ChatMessage.from_user("Alice is currently debugging a vector store issue.")],
+    messages=[
+        ChatMessage.from_user("Alice is currently debugging a vector store issue.")
+    ],
     user_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 )
 ```

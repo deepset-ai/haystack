@@ -141,17 +141,22 @@ class TestMetaFieldRanker:
                 "this meta key." in caplog.text
             )
 
-    def test_warning_if_unsortable_values(self, caplog):
-        ranker = MetaFieldRanker(meta_field="rating")
-        docs_before = [
-            Document(id="1", content="abc", meta={"rating": 1.3}),
-            Document(id="2", content="abc", meta={"rating": "1.2"}),
-            Document(id="3", content="abc", meta={"rating": 2.1}),
+    @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"), [("drop", ["1", "3"]), ("top", ["2", "1", "3"]), ("bottom", ["1", "3", "2"])]
+    )
+    def test_missing_meta_with_unsortable_values(self, missing_meta, expected_ids, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
+        docs = [
+            Document(id="1", content="abc", meta={"rating": 1}),
+            Document(id="2", content="abc"),
+            Document(id="3", content="abc", meta={"rating": "x"}),
         ]
+
         with caplog.at_level(logging.WARNING):
-            output = ranker.run(documents=docs_before)
-            assert len(output["documents"]) == 3
-            assert "Tried to sort Documents with IDs 1,2,3, but got TypeError with the message:" in caplog.text
+            output = ranker.run(documents=docs)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids
+        assert "Tried to sort Documents with IDs 1,3, but got TypeError with the message:" in caplog.text
 
     def test_warning_if_meta_value_parsing_error(self, caplog):
         ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
@@ -183,30 +188,60 @@ class TestMetaFieldRanker:
                 "provided Documents with IDs 1,2,3 are strings." in caplog.text
             )
 
+    @pytest.mark.parametrize("meta_value", [[1, 2, 3], {"score": 5}])
+    def test_warning_meta_value_type_with_unhashable_value(self, meta_value, caplog):
+        ranker = MetaFieldRanker(meta_field="rating", meta_value_type="float")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": meta_value}),
+            Document(id="2", content="abc", meta={"rating": "1.2"}),
+        ]
+        with caplog.at_level(logging.WARNING):
+            output = ranker.run(documents=docs_before)
+        assert output["documents"] == docs_before
+        assert "not all of meta values in the provided Documents with IDs 1,2 are strings" in caplog.text
+
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
+            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")  # type: ignore[arg-type]
 
-    def test_raises_value_error_if_wrong_top_k(self):
-        with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", top_k=-1)
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_raises_value_error_if_wrong_top_k(self, top_k):
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {top_k}"):
+            MetaFieldRanker(meta_field="rating", top_k=top_k)
 
-    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
+    @pytest.mark.parametrize(("init_top_k", "run_top_k"), [(None, 0), (1, 0), (1, -1)])
+    def test_run_raises_value_error_if_wrong_top_k(self, init_top_k, run_top_k):
+        ranker = MetaFieldRanker(meta_field="rating", top_k=init_top_k)
+        documents = [Document(content="abc", meta={"rating": 1.3})]
+
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
+            ranker.run(documents=documents, top_k=run_top_k)
+
+    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1, float("nan"), float("inf"), float("-inf")])
     def test_raises_component_error_if_wrong_weight(self, score):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"Parameter <weight> must be in range \[0,1\]"):
             MetaFieldRanker(meta_field="rating", weight=score)
+
+    @pytest.mark.parametrize("weight", [float("nan"), float("inf"), float("-inf")])
+    @pytest.mark.parametrize("ranking_mode", ["reciprocal_rank_fusion", "linear_score"])
+    def test_run_rejects_non_finite_weight(self, weight, ranking_mode):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode=ranking_mode)
+        documents = [Document(content="abc", meta={"rating": 1.3}, score=0.5)]
+
+        with pytest.raises(ValueError, match=r"Parameter <weight> must be in range \[0,1\]"):
+            ranker.run(documents=documents, weight=weight)
 
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
+            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_missing_meta(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")
+            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_meta_value_type(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")
+            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")  # type: ignore[arg-type]
 
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
@@ -230,7 +265,7 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert docs_after[0].score == pytest.approx(0.016261, abs=1e-5)
 
-    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
+    @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1, float("nan")])
     def test_linear_score_raises_warning_if_doc_wrong_score(self, score, caplog):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
         docs_before = [
@@ -304,3 +339,35 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert len(docs_after) == 2
         assert "2" not in [doc.id for doc in docs_after]
+
+    @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"), [("bottom", ["3", "1", "2"]), ("top", ["2", "3", "1"]), ("drop", ["3", "1"])]
+    )
+    def test_none_meta_value_is_handled_as_missing_meta(self, missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=missing_meta)
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}),
+            Document(id="2", content="abc", meta={"rating": None}),
+            Document(id="3", content="abc", meta={"rating": 2.1}),
+        ]
+        output = ranker.run(documents=docs_before)
+        assert [doc.id for doc in output["documents"]] == expected_ids
+
+    @pytest.mark.parametrize(
+        ("meta", "init_missing_meta", "run_missing_meta", "expected_ids"),
+        [
+            ({}, "drop", None, []),
+            ({}, "top", None, ["a", "b"]),
+            ({}, "bottom", None, ["a", "b"]),
+            ({}, "bottom", "drop", []),
+            ({}, "drop", "top", ["a", "b"]),
+            ({"rating": None}, "drop", None, []),
+        ],
+    )
+    def test_missing_meta_when_all_values_are_missing(self, meta, init_missing_meta, run_missing_meta, expected_ids):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta=init_missing_meta)
+        docs = [Document(id="a", content="a", meta=meta), Document(id="b", content="b", meta=meta)]
+
+        output = ranker.run(documents=docs, missing_meta=run_missing_meta)
+
+        assert [doc.id for doc in output["documents"]] == expected_ids

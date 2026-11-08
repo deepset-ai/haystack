@@ -3,6 +3,7 @@ title: "SearchApiWebSearch"
 id: searchapiwebsearch
 slug: "/searchapiwebsearch"
 description: "Search engine using Search API."
+hep_available: true
 ---
 
 # SearchApiWebSearch
@@ -50,6 +51,7 @@ This is an example of how `SearchApiWebSearch` looks up answers to our query on 
 
 ```python
 from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch
+from haystack.utils import Secret
 
 web_search = SearchApiWebSearch(api_key=Secret.from_token("<your-api-key>"))
 query = "What is the capital of Germany?"

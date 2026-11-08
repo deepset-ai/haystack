@@ -95,6 +95,14 @@ Deserializes the component from a dictionary.
 
 - <code>ArangoEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 ## haystack_integrations.document_stores.arangodb.document_store
 
 ### ArangoDocumentStore
@@ -242,3 +250,11 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>ArangoDocumentStore</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.

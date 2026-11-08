@@ -22,13 +22,29 @@ with the following structure:
 ### Usage example
 
 ```python
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.query import QueryExpander
 
-expander = QueryExpander(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
-    n_expansions=3
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
+    generation_kwargs={
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "query_expansion",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                    "required": ["queries"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+    },
 )
+
+expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
 
 result = expander.run(query="green energy sources")
 print(result["queries"])
@@ -58,7 +74,8 @@ Initialize the QueryExpander component.
 **Parameters:**
 
 - **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator component to use for query expansion.
-  If None, a default OpenAIChatGenerator with gpt-4.1-mini model is used.
+  If None, a default `OpenAIResponsesChatGenerator` with the gpt-4.1-mini model and `store` set to `False`
+  is used.
 - **prompt_template** (<code>str | None</code>) – Custom [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder)
   template for query expansion. The template should instruct the LLM to return a JSON response with the
   structure: `{"queries": ["query1", "query2", "query3"]}`. The template should include 'query' and
@@ -108,7 +125,37 @@ The language of the original query is preserved in the expanded queries.
 
 - **query** (<code>str</code>) – The original query to expand.
 - **n_expansions** (<code>int | None</code>) – Number of additional queries to generate (not including the original).
-  If None, uses the value from initialization. Can be 0 to generate no additional queries.
+  If None, uses the value from initialization. Must be a positive integer.
+
+**Returns:**
+
+- <code>dict\[str, list\[str\]\]</code> – Dictionary with "queries" key containing the list of expanded queries.
+  If include_original_query=True, the original query will be included in addition
+  to the n_expansions alternative queries.
+
+**Raises:**
+
+- <code>ValueError</code> – If n_expansions is not positive (less than or equal to 0).
+
+#### run_async
+
+```python
+run_async(query: str, n_expansions: int | None = None) -> dict[str, list[str]]
+```
+
+Asynchronously expand the input query into multiple semantically similar queries.
+
+The language of the original query is preserved in the expanded queries.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. If the chat generator only implements a synchronous
+`run` method, it is executed in a thread to avoid blocking the event loop.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The original query to expand.
+- **n_expansions** (<code>int | None</code>) – Number of additional queries to generate (not including the original).
+  If None, uses the value from initialization. Must be a positive integer.
 
 **Returns:**
 
@@ -126,4 +173,28 @@ The language of the original query is preserved in the expanded queries.
 warm_up() -> None
 ```
 
-Warm up the LLM provider component.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.

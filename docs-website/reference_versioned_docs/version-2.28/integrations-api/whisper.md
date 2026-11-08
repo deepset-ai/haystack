@@ -173,6 +173,38 @@ Creates an instance of the RemoteWhisperTranscriber component.
   uses log probability to automatically increase the
   temperature until certain thresholds are hit.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous OpenAI client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous OpenAI client.
+
 #### to_dict
 
 ```python

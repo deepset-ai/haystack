@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``CompactionHook`` mis-estimating the context size when compaction leaves a conversation with no assistant
+    message, for example when a compactor summarizes every Agent step away. The hook now records the whole compacted
+    conversation as accounted for, and the estimate reads that count back unchanged, so a second compaction hook
+    running right after sees the true size instead of counting the conversation twice.

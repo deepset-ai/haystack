@@ -1,0 +1,107 @@
+---
+title: "FirecrawlWebSearch"
+id: firecrawlwebsearch
+slug: "/firecrawlwebsearch"
+description: "Search engine using the Firecrawl API."
+---
+
+# FirecrawlWebSearch
+
+Search the web and extract content using the Firecrawl API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline. |
+| **Mandatory init variables** | `api_key`: The Firecrawl API key. Can be set with the `FIRECRAWL_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing the scraped content and metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [Firecrawl Search API](/reference/integrations-firecrawl) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/firecrawl/src/haystack_integrations/components/websearch/firecrawl/firecrawl_websearch.py |
+| **Package name** | `firecrawl-haystack` |
+
+</div>
+
+## Overview
+
+When you give `FirecrawlWebSearch` a query, it uses the Firecrawl Search API to search the web, crawl the resulting pages, and return the structured text as a list of Haystack `Document` objects. It also returns a list of the underlying URLs.
+
+Because Firecrawl actively scrapes and structures the content of the pages it finds into LLM-friendly formats, you generally don't need an additional component like `LinkContentFetcher` to read the web pages. `FirecrawlWebSearch` handles the retrieval and scraping all in one step.
+
+`FirecrawlWebSearch` requires a [Firecrawl](https://firecrawl.dev) API key to work. By default, it looks for a `FIRECRAWL_API_KEY` environment variable. Alternatively, you can pass an `api_key` directly during initialization.
+
+## Usage
+
+### On its own
+
+Here is a quick example of how `FirecrawlWebSearch` searches the web based on a query, scrapes the resulting web pages, and returns a list of Documents containing the page content.
+
+```python
+from haystack_integrations.components.websearch.firecrawl import FirecrawlWebSearch
+from haystack.utils import Secret
+
+web_search = FirecrawlWebSearch(
+    api_key=Secret.from_env_var("FIRECRAWL_API_KEY"),
+    top_k=5,
+    search_params={"scrape_options": {"formats": ["markdown"]}},
+)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.content)
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline where using `FirecrawlWebSearch` to look up an answer. Because Firecrawl returns the actual text of the scraped pages, you can pass its `documents` output directly into the `ChatPromptBuilder` to give the LLM the necessary context.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.websearch.firecrawl import FirecrawlWebSearch
+from haystack.dataclasses import ChatMessage
+
+web_search = FirecrawlWebSearch(
+    api_key=Secret.from_env_var("FIRECRAWL_API_KEY"),
+    top_k=2,
+    search_params={"scrape_options": {"formats": ["markdown"]}},
+)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    model="gpt-5-nano",
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```

@@ -134,7 +134,16 @@ class JSONConverter:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :raises ValueError:
+            If neither `jq_schema` nor `content_key` is set, or if `extra_meta_fields` is a string other than `"*"`.
         """
+        if isinstance(extra_meta_fields, str) and extra_meta_fields != "*":
+            msg = (
+                f"Invalid extra_meta_fields value '{extra_meta_fields}'. "
+                "Provide a set of field names or the literal '*' to include all fields."
+            )
+            raise ValueError(msg)
+
         self._compiled_filter = None
         if jq_schema:
             jq_import.check()
@@ -187,11 +196,11 @@ class JSONConverter:
             to a different document.
         """
         try:
-            file_content = source.data.decode("utf-8")
+            file_content = source.data.decode("utf-8-sig")
         except UnicodeError as exc:
             logger.warning(
                 "Failed to extract text from {source}. Skipping it. Error: {error}",
-                source=source.meta["file_path"],
+                source=source.meta.get("file_path", "unknown"),
                 error=exc,
             )
             return []
@@ -204,14 +213,22 @@ class JSONConverter:
             except Exception as exc:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
-                    source=source.meta["file_path"],
+                    source=source.meta.get("file_path", "unknown"),
                     error=exc,
                 )
                 return []
         else:
             # We just load the whole file as JSON if the user didn't provide a jq filter.
             # We put it in a list even if it's not to ease handling it later on.
-            objects = [json.loads(file_content)]
+            try:
+                objects = [json.loads(file_content)]
+            except json.JSONDecodeError as exc:
+                logger.warning(
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    source=source.meta.get("file_path", "unknown"),
+                    error=exc,
+                )
+                return []
 
         result = []
         if self._content_key is not None:
@@ -229,6 +246,9 @@ class JSONConverter:
                 if isinstance(text, (dict, list)):
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
+
+                if text is not None and not isinstance(text, str):
+                    text = str(text)
 
                 meta = {}
                 if meta_fields == "*":

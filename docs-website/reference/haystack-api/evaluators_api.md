@@ -107,17 +107,20 @@ print(result["individual_scores"])
 print(result["results"])
 # [{
 #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
-#    'score': 1.0
+#   'score': 1.0,
+#   'status': 'evaluated'
 #  },
 #  {
 #   'relevant_statements': ['The JVM has two primary functions: to allow Java programs to run on any device or
 #                           operating system (known as the "write once, run anywhere" principle), and to manage and
 #                           optimize program memory'],
-#   'score': 1.0
+#   'score': 1.0,
+#   'status': 'evaluated'
 #  },
 #  {
 #   'relevant_statements': [],
-#   'score': 0.0
+#   'score': 0.0,
+#   'status': 'evaluated'
 #  }]
 ```
 
@@ -157,7 +160,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -180,7 +184,9 @@ Run the LLM evaluator.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
-  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+  - `individual_scores`: A list of context relevance scores for each input question.
+  - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+    context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### run_async
 
@@ -199,7 +205,9 @@ Run the LLM evaluator asynchronously.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
-  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+  - `individual_scores`: A list of context relevance scores for each input question.
+  - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+    context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### to_dict
 
@@ -452,6 +460,7 @@ Create a DocumentNDCGEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### to_dict
 
@@ -537,8 +546,10 @@ calculate_idcg(gt_docs: list[Document]) -> float
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
-are excluded, since they can never be matched in `calculate_dcg` either. Including them here
+Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
+are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
+a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
+credits each relevant value at most once. Including duplicates or unmatchable documents here
 would inflate the IDCG and make it impossible for NDCG to reach 1.0 for a perfect retrieval.
 
 **Parameters:**
@@ -615,6 +626,7 @@ Create a DocumentRecallEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### run
 
@@ -687,7 +699,8 @@ print(result["score"])
 # 0.5
 print(result["results"])
 # [{'statements': ['Python is a high-level general-purpose programming language.',
-# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5,
+# 'status': 'evaluated'}]
 ```
 
 #### __init__
@@ -728,7 +741,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -753,7 +767,8 @@ Run the LLM evaluator.
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean faithfulness score over all the provided input answers.
   - `individual_scores`: A list of faithfulness scores for each input answer.
-  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+  - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+    each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### run_async
 
@@ -774,7 +789,8 @@ Run the LLM evaluator asynchronously.
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean faithfulness score over all the provided input answers.
   - `individual_scores`: A list of faithfulness scores for each input answer.
-  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+  - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+    each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### to_dict
 
@@ -867,7 +883,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   `outputs` parameters.
   Each example is a dictionary with keys "inputs" and "outputs"
   They contain the input and output as dictionaries respectively.
-- **raise_on_failure** (<code>bool</code>) – If True, the component will raise an exception on an unsuccessful API call.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -880,7 +897,31 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 warm_up() -> None
 ```
 
-Warm up the component by warming up the underlying chat generator.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### validate_init_parameters
 

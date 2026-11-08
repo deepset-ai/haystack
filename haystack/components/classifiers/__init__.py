@@ -7,16 +7,11 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {
-    "document_language_classifier": ["DocumentLanguageClassifier"],
-    "zero_shot_document_classifier": ["TransformersZeroShotDocumentClassifier"],
-}
+_import_structure = {"openai_decisions_document_classifier": ["OpenAIDecisionsDocumentClassifier"]}
 
 if TYPE_CHECKING:
-    from .document_language_classifier import DocumentLanguageClassifier as DocumentLanguageClassifier
-    from .zero_shot_document_classifier import (
-        TransformersZeroShotDocumentClassifier as TransformersZeroShotDocumentClassifier,
+    from .openai_decisions_document_classifier import (
+        OpenAIDecisionsDocumentClassifier as OpenAIDecisionsDocumentClassifier,
     )
-
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

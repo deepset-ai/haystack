@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``SentenceSplitter`` now reads its curated abbreviation lists as UTF-8 regardless of the system locale.
+    Previously, on Windows, the German list was decoded with the ANSI code page (for example cp1252), so
+    abbreviations containing umlauts or ``ß``, such as ``ggü.`` or ``außenpol.``, were garbled and did not
+    prevent sentence splits when ``extend_abbreviations=True``.

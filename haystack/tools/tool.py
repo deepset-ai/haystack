@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import inspect
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -24,9 +25,10 @@ class Tool:
     are important for the Language Model to correctly prepare the call.
 
     For resource-intensive operations like establishing connections to remote services or
-    loading models, override the `warm_up()` method. This method is called before the Tool
-    is used and should be idempotent, as it may be called multiple times during
-    pipeline/agent setup.
+    loading models, implement an optional `warm_up()` method. It is called before invocation
+    and during pipeline/agent setup, and must be idempotent. Native async tools can implement
+    `warm_up_async()` instead. Implement `close()` and/or `close_async()` to release owned resources;
+    these methods must be safe to call before warm-up and multiple times.
 
     :param name:
         Name of the Tool.
@@ -35,8 +37,12 @@ class Tool:
     :param parameters:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
-        The function that will be invoked when the Tool is called.
-        Must be a synchronous function; async functions are not supported.
+        The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
+        be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
+    :param async_function:
+        Optional coroutine function awaited by `Tool.invoke_async`. When only `async_function` is set, `invoke` raises
+        a `ToolInvocationError`. When only `function` is set, `invoke_async` falls back to running `function` in a
+        worker thread via `asyncio.to_thread`.
     :param outputs_to_string:
         Optional dictionary defining how tool outputs should be converted into string(s) or results.
         If not provided, the tool result is converted to a string using a default handler.
@@ -86,8 +92,10 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
-    :raises ValueError: If `function` is async, if `parameters` is not a valid JSON schema, or if the
-        `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+    :raises ValueError: If neither `function` nor `async_function` is provided, if `function` is a
+        coroutine function, if `async_function` is not a coroutine function, if `parameters` is not a
+        valid JSON schema, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
+        configurations are invalid.
     :raises TypeError: If any configuration value in `outputs_to_state`, `outputs_to_string`, or
         `inputs_from_state` has the wrong type.
     """
@@ -95,18 +103,30 @@ class Tool:
     name: str
     description: str
     parameters: dict[str, Any]
-    function: Callable
+    function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    async_function: Callable | None = None
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
-        # Check that the function is not a coroutine (async function)
-        if inspect.iscoroutinefunction(self.function):
+        # At least one of function / async_function must be set.
+        if self.function is None and self.async_function is None:
+            raise ValueError(f"Tool '{self.name}' requires at least one of `function` or `async_function` to be set.")
+
+        # `function` must be a regular (sync) function. Coroutine functions belong on `async_function`.
+        if self.function is not None and inspect.iscoroutinefunction(self.function):
             raise ValueError(
-                f"Async functions are not supported as tools. "
+                f"`function` must be a synchronous function. "
                 f"The function '{self.function.__name__}' is a coroutine function. "
-                f"Please use a synchronous function instead."
+                f"Pass it as `async_function` instead."
+            )
+
+        # `async_function` must be a coroutine function defined with `async def`.
+        if self.async_function is not None and not inspect.iscoroutinefunction(self.async_function):
+            raise ValueError(
+                f"`async_function` must be a coroutine function defined with `async def`. "
+                f"Got '{getattr(self.async_function, '__name__', repr(self.async_function))}'."
             )
 
         # Check that the parameters define a valid JSON schema
@@ -186,43 +206,41 @@ class Tool:
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )
-                if valid_inputs and param_name not in valid_inputs:
+                if valid_inputs is not None and param_name not in valid_inputs:
                     raise ValueError(
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
                     )
 
-    def _get_valid_inputs(self) -> set[str]:
+    def _get_valid_inputs(self) -> set[str] | None:
         """
-        Return the set of valid input parameter names that this tool accepts.
+        Return the tool's accepted input parameter names, or None if unknown.
 
-        Used to validate that `inputs_from_state` only references parameters that actually exist.
-        This prevents typos and catches configuration errors at tool construction time.
+        Used to validate parameter names in `inputs_from_state` when the tool is created.
 
-        By default, introspects the function signature to get ALL parameters, including those
-        that may be excluded from the JSON schema (e.g., parameters mapped from state).
-        Falls back to schema properties if introspection fails.
+        Combines the function's signature parameters with the JSON schema properties.
+        The signature also includes parameters supplied from state, which may be omitted
+        from the schema exposed to the LLM.
+
+        Returns None if the signature cannot be inspected. In this case, the schema alone
+        cannot identify all accepted parameters, so name validation is skipped.
 
         Subclasses like ComponentTool override this to return component input socket names.
 
-        :returns: Set of valid input parameter names for validation.
+        :returns: Accepted input parameter names, an empty set if the tool takes no input,
+            or None if the names cannot be determined.
         """
-        # Combine parameters from both function signature and schema for robustness
-        # Function signature includes all parameters (even those excluded from schema)
-        # Schema properties provide the validated parameter set
-        valid_params: set[str] = set()
+        # Prefer the sync callable when both are provided
+        introspection_target = self.function if self.function is not None else self.async_function
+        if introspection_target is None:
+            return None
 
-        # Try to get parameters from function introspection
         try:
-            sig = inspect.signature(self.function)
-            valid_params.update(sig.parameters.keys())
+            sig = inspect.signature(introspection_target)
         except (ValueError, TypeError):
-            pass  # Introspection failed, will rely on schema
+            return None
 
-        # Add parameters from schema (union with function params)
-        valid_params.update(self.parameters.get("properties", {}).keys())
-
-        return valid_params
+        return set(sig.parameters) | set(self.parameters.get("properties", {}))
 
     def _get_valid_outputs(self) -> set[str] | None:
         """
@@ -248,27 +266,53 @@ class Tool:
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
-    def warm_up(self) -> None:
-        """
-        Prepare the Tool for use.
-
-        Override this method to establish connections to remote services, load models,
-        or perform other resource-intensive initialization. This method should be idempotent,
-        as it may be called multiple times.
-        """
-        pass
-
     def invoke(self, **kwargs: Any) -> Any:
         """
-        Invoke the Tool with the provided keyword arguments.
+        Warm up the Tool if supported and invoke it synchronously with the provided keyword arguments.
+
+        :raises ToolInvocationError: If the Tool has no sync `function`, or if the underlying call
+            raises an exception.
         """
+        if self.function is None:
+            raise ToolInvocationError(
+                f"Tool `{self.name}` has no sync `function` and can only be invoked via `invoke_async` "
+                f"(use `Agent.run_async`).",
+                tool_name=self.name,
+            )
+
         try:
+            if hasattr(self, "warm_up"):
+                self.warm_up()
             result = self.function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
                 f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
             ) from e
         return result
+
+    async def invoke_async(self, **kwargs: Any) -> Any:
+        """
+        Invoke the Tool asynchronously with the provided keyword arguments.
+
+        If `async_function` is set, prepare with `warm_up_async` (falling back to `warm_up`) before awaiting it.
+        Otherwise, synchronous preparation and invocation run in a worker thread via `asyncio.to_thread`,
+        which propagates the current context to the worker.
+
+        :raises ToolInvocationError: If the underlying call raises an exception.
+        """
+        if self.async_function is None:
+            return await asyncio.to_thread(self.invoke, **kwargs)
+
+        try:
+            if hasattr(self, "warm_up_async"):
+                await self.warm_up_async()
+            elif hasattr(self, "warm_up"):
+                self.warm_up()
+            return await self.async_function(**kwargs)
+        except Exception as e:
+            raise ToolInvocationError(
+                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
+            ) from e
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -278,7 +322,8 @@ class Tool:
             Dictionary with serialized data.
         """
         data = asdict(self)
-        data["function"] = serialize_callable(self.function)
+        data["function"] = serialize_callable(self.function) if self.function is not None else None
+        data["async_function"] = serialize_callable(self.async_function) if self.async_function is not None else None
 
         if self.outputs_to_state is not None:
             data["outputs_to_state"] = _serialize_outputs_to_state(self.outputs_to_state)
@@ -299,7 +344,11 @@ class Tool:
             Deserialized Tool.
         """
         init_parameters = data["data"]
-        init_parameters["function"] = deserialize_callable(init_parameters["function"])
+        init_parameters["function"] = (
+            deserialize_callable(init_parameters["function"]) if init_parameters.get("function") is not None else None
+        )
+        if init_parameters.get("async_function") is not None:
+            init_parameters["async_function"] = deserialize_callable(init_parameters["async_function"])
         if "outputs_to_state" in init_parameters and init_parameters["outputs_to_state"]:
             init_parameters["outputs_to_state"] = _deserialize_outputs_to_state(init_parameters["outputs_to_state"])
 
@@ -324,6 +373,33 @@ def _check_duplicate_tool_names(tools: list[Tool] | None) -> None:
         raise ValueError(f"Duplicate tool names found: {duplicate_tool_names}")
 
 
+def _convert_handler(config: dict[str, Any], converter: Callable[[Any], Any]) -> dict[str, Any]:
+    """
+    Copies a single output config, converting its "handler" entry (if present) via `converter`.
+
+    :param config: A single output configuration dictionary that may contain a "handler" key.
+    :param converter: `serialize_callable` or `deserialize_callable`, applied to the "handler" value.
+    :returns: A copy of `config` with the "handler" value converted, if present.
+    """
+    new_config = config.copy()
+    if "handler" in config:
+        new_config["handler"] = converter(config["handler"])
+    return new_config
+
+
+def _convert_handler_in_configs(
+    configs: dict[str, dict[str, Any]], converter: Callable[[Any], Any]
+) -> dict[str, dict[str, Any]]:
+    """
+    Applies `_convert_handler` to every config in a dictionary of named output configs.
+
+    :param configs: A mapping of keys to output configuration dictionaries.
+    :param converter: `serialize_callable` or `deserialize_callable`, applied to each "handler" value.
+    :returns: A new mapping with the same keys, each config converted via `_convert_handler`.
+    """
+    return {key: _convert_handler(config, converter) for key, config in configs.items()}
+
+
 def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """
     Serializes the outputs_to_state dictionary, converting any callable handlers to their string representation.
@@ -331,13 +407,7 @@ def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> 
     :param outputs_to_state: The outputs_to_state dictionary to serialize.
     :returns: The serialized outputs_to_state dictionary.
     """
-    serialized_outputs = {}
-    for key, config in outputs_to_state.items():
-        serialized_config = config.copy()
-        if "handler" in config:
-            serialized_config["handler"] = serialize_callable(config["handler"])
-        serialized_outputs[key] = serialized_config
-    return serialized_outputs
+    return _convert_handler_in_configs(outputs_to_state, serialize_callable)
 
 
 def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -347,13 +417,7 @@ def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -
     :param outputs_to_state: The outputs_to_state dictionary to deserialize.
     :returns: The deserialized outputs_to_state dictionary.
     """
-    deserialized_outputs = {}
-    for key, config in outputs_to_state.items():
-        deserialized_config = config.copy()
-        if "handler" in config:
-            deserialized_config["handler"] = deserialize_callable(config["handler"])
-        deserialized_outputs[key] = deserialized_config
-    return deserialized_outputs
+    return _convert_handler_in_configs(outputs_to_state, deserialize_callable)
 
 
 def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
@@ -365,19 +429,10 @@ def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str,
     """
     if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
         # Single output configuration
-        serialized_outputs = outputs_to_string.copy()
-        if "handler" in outputs_to_string:
-            serialized_outputs["handler"] = serialize_callable(outputs_to_string["handler"])
-        return serialized_outputs
+        return _convert_handler(outputs_to_string, serialize_callable)
 
     # Multiple outputs configuration
-    serialized_outputs = {}
-    for key, config in outputs_to_string.items():
-        serialized_config = config.copy()
-        if "handler" in config:
-            serialized_config["handler"] = serialize_callable(config["handler"])
-        serialized_outputs[key] = serialized_config
-    return serialized_outputs
+    return _convert_handler_in_configs(outputs_to_string, serialize_callable)
 
 
 def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
@@ -389,16 +444,7 @@ def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[st
     """
     if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
         # Single output configuration
-        deserialized_outputs = outputs_to_string.copy()
-        if "handler" in outputs_to_string:
-            deserialized_outputs["handler"] = deserialize_callable(outputs_to_string["handler"])
-        return deserialized_outputs
+        return _convert_handler(outputs_to_string, deserialize_callable)
 
     # Multiple outputs configuration
-    deserialized_outputs = {}
-    for key, config in outputs_to_string.items():
-        deserialized_config = config.copy()
-        if "handler" in config:
-            deserialized_config["handler"] = deserialize_callable(config["handler"])
-        deserialized_outputs[key] = deserialized_config
-    return deserialized_outputs
+    return _convert_handler_in_configs(outputs_to_string, deserialize_callable)

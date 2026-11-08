@@ -1,0 +1,66 @@
+---
+title: "Agent Pack"
+id: agent-pack
+slug: "/agent-pack"
+description: "Agent Pack is a collection of complex, pre-configured agents you can run as they are, customize or copy as a blueprint."
+---
+
+# Agent Pack
+
+Agent Pack is a collection of complex, pre-configured Haystack agents you can run as they are, customize, or copy as a blueprint for your own architecture.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **API reference** | Agent Pack |
+| **GitHub link**   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack |
+| **Package name**  | `agent-pack-haystack` |
+
+</div>
+
+## Overview
+
+Language Models and Tools are the core building blocks of agents.
+
+However, building a robust agent often requires more: an architecture that splits the work across sub-agents, techniques for keeping context small but focused, and ways to influence and interact with the agent loop.
+
+Agent Pack combines these techniques into working agents. Each one is a complete architecture built from Haystack primitives ([`Agent`](./agent.mdx), [Tools](../../tools/tool.mdx), [hooks](./hooks.mdx), [`State`](./state.mdx), and Pipelines), exposed behind a single `create_*` entry point.
+
+There are three ways to use an agent from the pack:
+- **Run it as is.** Each agent has a factory that builds a ready-to-run agent with defaults chosen to work out of the box. For example, `create_deep_research_agent()` returns an agent that takes a question and produces a report.
+- **Customize it.** Each entry point exposes parameters for changing models, adding tools, and configuring behavior specific to that type of agent. (*This interface is still being refined to make customization more consistent and flexible.*)
+- **Copy it.** Read the implementation and take inspiration for your agents. These agents are built with this use case in mind, so individual parts should be easy to adapt.
+
+In other words, you can use the agents in Agent Pack as either ready-made solutions or reference architectures.
+
+## Installation
+
+```shell
+pip install agent-pack-haystack
+```
+
+Each agent has its own additional runtime dependencies and may require API keys. See its documentation page for these details.
+
+## Available agents
+
+| Agent | Description |
+| --- | --- |
+| [Deep Research Agent](agent-pack/deep-research-agent.mdx) | Researches a question on the web and produces a structured Markdown report with citations. |
+| [Advanced RAG Agent](agent-pack/advanced-rag-agent.mdx) | Inspects document-store metadata and builds Haystack filters to retrieve precisely, then answers with citations. |
+
+## Experimental
+
+:::warning
+Agent Pack is experimental for the moment. Its APIs and agent architectures can change in any release, without following the usual deprecation policy.
+:::
+
+Agent Pack is distributed separately from `haystack-ai` and its code lives in `haystack-core-integrations`.
+
+Agentic architectures are evolving fast. Keeping it outside `haystack-ai` allows us to improve these agents rapidly, release updates independently, and avoid committing to stability before these patterns have settled.
+
+Developing complex agents also helps us identify missing capabilities in Haystack. When a gap shows up, we can implement it in the pack first, and then, if it turns out to be generally useful, refine it and move it into Haystack.
+
+## Feedback
+
+If you find a bug or have an idea for a complex agent that could belong in the pack, [open an issue](https://github.com/deepset-ai/haystack-core-integrations/issues).

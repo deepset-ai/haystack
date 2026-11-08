@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    ``InMemoryDocumentStore.get_metadata_field_unique_values`` and its async counterpart now support
+    pagination via ``from_`` and ``size`` parameters, matching the behavior of other Document Stores
+    (e.g. Chroma).
+upgrade:
+  - |
+    ``InMemoryDocumentStore.get_metadata_field_unique_values`` (and its async counterpart)'s
+    ``search_term`` parameter now matches against the metadata field's own value (case-insensitive
+    substring) instead of the document's content. Callers relying on the previous content-matching
+    behavior will need to filter documents by content themselves before calling this method.

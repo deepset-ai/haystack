@@ -3,6 +3,7 @@ title: "ChineseDocumentSplitter"
 id: chinesedocumentsplitter
 slug: "/chinesedocumentsplitter"
 description: "`ChineseDocumentSplitter` divides Chinese text documents into smaller chunks using advanced Chinese language processing capabilities. It leverages HanLP for accurate Chinese word segmentation and sentence tokenization, making it ideal for processing Chinese text that requires linguistic awareness."
+hep_available: false
 ---
 
 # ChineseDocumentSplitter
@@ -144,7 +145,6 @@ def custom_split(text: str) -> list[str]:
 doc = Document(content="第一段，第二段，第三段，第四段")
 
 splitter = ChineseDocumentSplitter(split_by="function", splitting_function=custom_split)
-splitter.warm_up()
 result = splitter.run(documents=[doc])
 print(result["documents"])
 ```

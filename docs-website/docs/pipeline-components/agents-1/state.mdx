@@ -67,6 +67,15 @@ The schema defines what data can be stored and how values are updated. Each sche
 
 If you don't specify a handler, State automatically assigns a default based on the type.
 
+:::info Reserved keys
+The `Agent` manages some state keys itself and rejects them in a user-provided `state_schema` with a `ValueError`:
+
+- The run-metadata keys `step_count`, `token_usage`, `tool_call_counts`, and `exit_reason`, which the Agent populates automatically during a run: tools and hooks can read them from the live `State`, and they are returned in the result dictionary. `exit_reason` reports why the Agent stopped (`"text"`, `"length"`, `"content_filter"`, the name of the tool that triggered a tool exit condition, `"max_agent_steps"`, or a custom reason a hook set through `stop_run`).
+- The hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `stop_run` (set by any hook to stop the run, read before each LLM call and used as the `exit_reason`), `tools` (the tools available in the current step, for hooks to inspect), `hook_context` (the request-scoped resources passed to `Agent.run(hook_context={...})`), `context_tokens` (an approximate count of the tokens currently in the context window, refreshed after each LLM call for hooks to read — for example, to trigger context compaction), and `max_agent_steps` (the Agent's step limit, for hooks to compare with `step_count`). Unlike the run-metadata keys, these are not returned in the result dictionary.
+
+If one of your state keys clashes, rename it (for example, `my_token_usage`).
+:::
+
 ### Default Handlers
 
 State provides two built-in merge behaviors (importable from `haystack.components.agents.state`):
@@ -246,6 +255,8 @@ print(f"Result count: {result['result_count']}")
 print(f"Last query: {result['last_query']}")
 ```
 
+[Hooks](./hooks.mdx) can read these keys with `state.data.get(...)`.
+
 If you omit `source`, the entire tool result dict is stored under the state key:
 
 ```python
@@ -323,7 +334,7 @@ print(f"Processed {result['final_count']} documents")
 As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can declare a `state: State` parameter to receive the live `State` object at invocation time.
 This lets the tool read from and write to any number of state keys without declaring mappings upfront.
 
-The ToolInvoker detects the `State` annotation and injects the object automatically.
+The Agent detects the `State` annotation and injects the object automatically.
 It is excluded from the LLM-facing schema. The model is never asked to supply it.
 Both `State` and `State | None` annotations are supported.
 

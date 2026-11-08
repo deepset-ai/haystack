@@ -109,6 +109,14 @@ Deserializes the component from a dictionary.
 
 - <code>AlloyDBEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 ## haystack_integrations.components.retrievers.alloydb.keyword_retriever
 
 ### AlloyDBKeywordRetriever
@@ -194,11 +202,19 @@ Deserializes the component from a dictionary.
 
 - <code>AlloyDBKeywordRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 ## haystack_integrations.document_stores.alloydb.document_store
 
 ### AlloyDBDocumentStore
 
-Bases: <code>DocumentStore</code>
+Bases: <code>PgvectorDocumentStore</code>
 
 A Document Store backed by [Google Cloud AlloyDB](https://cloud.google.com/alloydb).
 
@@ -210,8 +226,14 @@ Connection is handled securely via the
 which provides TLS encryption and IAM-based authorization without requiring manual SSL certificate
 management, firewall rules, or IP allowlisting.
 
+This store extends `PgvectorDocumentStore` and only changes how the connection is opened, so all
+document, filtering, metadata and retrieval operations behave as in `PgvectorDocumentStore`.
+
 **Filter limitations**: the `NOT` logical operator is not supported. Use `!=` or `not in`
 comparison operators to express negation.
+
+**Async**: the async methods are not supported, because the AlloyDB Python Connector does not
+provide async psycopg connections. They raise `NotImplementedError`.
 
 Usage example:
 
@@ -356,246 +378,4 @@ Deserializes the component from a dictionary.
 close() -> None
 ```
 
-Closes the database connection and the AlloyDB connector.
-
-Call this when you are done using the document store to release resources.
-For long-lived applications the connector runs a background refresh thread;
-calling `close()` ensures that thread is stopped cleanly.
-
-#### delete_table
-
-```python
-delete_table() -> None
-```
-
-Deletes the table used to store Haystack documents.
-
-The name of the schema (`schema_name`) and the name of the table (`table_name`)
-are defined when initializing the `AlloyDBDocumentStore`.
-
-#### count_documents
-
-```python
-count_documents() -> int
-```
-
-Returns how many documents are in the document store.
-
-**Returns:**
-
-- <code>int</code> – The number of documents in the document store.
-
-#### filter_documents
-
-```python
-filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
-```
-
-Returns the documents that match the filters provided.
-
-For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-
-**Filter operator support**: comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `in`,
-`not in`, `like`, `not like`) and logical operators `AND` and `OR` are fully supported.
-The `NOT` logical operator is **not** supported — use `!=` or `not in` comparison
-operators instead.
-
-**Parameters:**
-
-- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
-
-**Returns:**
-
-- <code>list\[Document\]</code> – A list of Documents that match the given filters.
-
-**Raises:**
-
-- <code>TypeError</code> – If `filters` is not a dictionary.
-- <code>ValueError</code> – If `filters` syntax is invalid.
-
-#### write_documents
-
-```python
-write_documents(
-    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
-) -> int
-```
-
-Writes documents to the document store.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – A list of Documents to write to the document store.
-- **policy** (<code>DuplicatePolicy</code>) – The duplicate policy to use when writing documents.
-
-**Returns:**
-
-- <code>int</code> – The number of documents written to the document store.
-
-**Raises:**
-
-- <code>ValueError</code> – If `documents` contains objects that are not of type `Document`.
-- <code>DuplicateDocumentError</code> – If a document with the same id already exists in the document store
-  and the policy is set to `DuplicatePolicy.FAIL` (or not specified).
-- <code>DocumentStoreError</code> – If the write operation fails for any other reason.
-
-#### delete_documents
-
-```python
-delete_documents(document_ids: list[str]) -> None
-```
-
-Deletes documents that match the provided `document_ids` from the document store.
-
-**Parameters:**
-
-- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
-
-#### delete_all_documents
-
-```python
-delete_all_documents() -> None
-```
-
-Deletes all documents in the document store.
-
-#### delete_by_filter
-
-```python
-delete_by_filter(filters: dict[str, Any]) -> int
-```
-
-Deletes all documents that match the provided filters.
-
-**Parameters:**
-
-- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-
-**Returns:**
-
-- <code>int</code> – The number of documents deleted.
-
-#### update_by_filter
-
-```python
-update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
-```
-
-Updates the metadata of all documents that match the provided filters.
-
-**Parameters:**
-
-- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
-
-**Returns:**
-
-- <code>int</code> – The number of documents updated.
-
-#### count_documents_by_filter
-
-```python
-count_documents_by_filter(filters: dict[str, Any]) -> int
-```
-
-Returns the number of documents that match the provided filters.
-
-**Parameters:**
-
-- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-
-**Returns:**
-
-- <code>int</code> – The number of documents that match the filters.
-
-#### count_unique_metadata_by_filter
-
-```python
-count_unique_metadata_by_filter(
-    filters: dict[str, Any], metadata_fields: list[str]
-) -> dict[str, int]
-```
-
-Returns the count of unique values for each specified metadata field.
-
-Considers only documents that match the provided filters.
-
-**Parameters:**
-
-- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names to count unique values for.
-  Field names can include or omit the "meta." prefix.
-
-**Returns:**
-
-- <code>dict\[str, int\]</code> – A dictionary mapping field names to their unique value counts.
-
-#### get_metadata_fields_info
-
-```python
-get_metadata_fields_info() -> dict[str, dict[str, str]]
-```
-
-Returns information about the metadata fields in the document store.
-
-Since metadata is stored in a JSONB field, this method analyzes actual data
-to infer field types.
-
-Example return:
-
-```python
-{
-    'category': {'type': 'text'},
-    'priority': {'type': 'integer'},
-}
-```
-
-**Returns:**
-
-- <code>dict\[str, dict\[str, str\]\]</code> – A dictionary mapping field names to their type information.
-
-#### get_metadata_field_min_max
-
-```python
-get_metadata_field_min_max(field: str) -> dict[str, Any]
-```
-
-Returns the minimum and maximum values for a metadata field.
-
-For numeric fields (integer, real), returns numeric min/max.
-For text and other non-numeric fields, returns lexicographic min/max
-using the `"C"` collation.
-
-**Parameters:**
-
-- **field** (<code>str</code>) – The metadata field name (with or without the "meta." prefix).
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with `min` and `max` keys. Returns
-  `{"min": None, "max": None}` when the field has no values or the
-  store is empty.
-
-#### get_metadata_field_unique_values
-
-```python
-get_metadata_field_unique_values(
-    field: str, filters: dict[str, Any] | None = None
-) -> list[Any]
-```
-
-Returns a list of unique values for a metadata field.
-
-**Parameters:**
-
-- **field** (<code>str</code>) – The metadata field name (with or without the "meta." prefix).
-- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
-
-**Returns:**
-
-- <code>list\[Any\]</code> – A list of unique values for the given field.
+Release the associated synchronous resources, including the AlloyDB Python Connector.

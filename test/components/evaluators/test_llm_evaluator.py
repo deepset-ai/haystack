@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 
@@ -30,20 +33,22 @@ class TestLLMEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_fail_wo_openai_api_key(self, monkeypatch):
+        assert set(component.__haystack_output__._sockets_dict) == {"results", "meta"}  # type: ignore[attr-defined]
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
+            component.warm_up()
 
     def test_init_with_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -61,121 +66,70 @@ class TestLLMEvaluator:
 
         assert component._chat_generator is chat_generator
 
-    def test_init_with_invalid_parameters(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        # Invalid inputs
-        with pytest.raises(ValueError):
+    @pytest.mark.parametrize(
+        "inputs",
+        [
+            pytest.param({("predicted_answers", list[str])}, id="set"),
+            pytest.param([(list[str], "predicted_answers")], id="non-string-name"),
+            pytest.param([list[str]], id="non-tuple"),
+            pytest.param({("predicted_answers", str)}, id="set-with-non-list-type"),
+            pytest.param([()], id="empty-tuple"),
+            pytest.param([("predicted_answers",)], id="missing-type"),
+            pytest.param([("predicted_answers", list[str], "extra")], id="extra-element"),
+            pytest.param([("predicted_answers", str)], id="str-type"),
+            pytest.param([("predicted_answers", dict)], id="dict-type"),
+        ],
+    )
+    def test_init_with_invalid_inputs(self, inputs):
+        with pytest.raises(ValueError, match="expects inputs to be a list of tuples"):
+            LLMEvaluator(instructions="test-instruction", inputs=inputs, outputs=["score"], examples=[])
+
+    @pytest.mark.parametrize(
+        "outputs", [pytest.param("score", id="non-list"), pytest.param([["score"]], id="non-string-element")]
+    )
+    def test_init_with_invalid_outputs(self, outputs):
+        with pytest.raises(ValueError, match="expects outputs to be a list of str"):
             LLMEvaluator(
-                instructions="test-instruction",
-                inputs={("predicted_answers", list[str])},
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[(list[str], "predicted_answers")],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[list[str]],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs={("predicted_answers", str)},
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
+                instructions="test-instruction", inputs=[("predicted_answers", list[str])], outputs=outputs, examples=[]
             )
 
-        # Invalid outputs
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs="score",
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=[["score"]],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-
-        # Invalid examples
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples={
-                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                    "outputs": {"custom_score": 1},
-                },
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    [
-                        {
-                            "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                            "outputs": {"custom_score": 1},
-                        }
-                    ]
-                ],
-            )
-        with pytest.raises(ValueError):
+    @pytest.mark.parametrize(
+        "examples, error_message",
+        [
+            pytest.param(
+                {"inputs": {"predicted_answers": "answer"}, "outputs": {"score": 1}},
+                "expects examples to be a list of dictionaries",
+                id="non-list",
+            ),
+            pytest.param(
+                [[{"inputs": {"predicted_answers": "answer"}, "outputs": {"score": 1}}]],
+                "expects examples to be a list of dictionaries",
+                id="non-dict-element",
+            ),
+            pytest.param(
+                [{"wrong_key": {"predicted_answers": "answer"}, "outputs": {"score": 1}}],
+                "expects each example to have keys",
+                id="wrong-key",
+            ),
+            pytest.param(
+                [{"inputs": [{"predicted_answers": "answer"}], "outputs": [{"score": 1}]}],
+                "expects each example to have keys",
+                id="non-dict-values",
+            ),
+            pytest.param(
+                [{"inputs": {1: "answer"}, "outputs": {2: 1}}],
+                "expects each example to have keys",
+                id="non-string-keys",
+            ),
+        ],
+    )
+    def test_init_with_invalid_examples(self, examples, error_message):
+        with pytest.raises(ValueError, match=error_message):
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
-                examples=[
-                    {
-                        "wrong_key": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                        "outputs": {"custom_score": 1},
-                    }
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    {
-                        "inputs": [{"predicted_answers": "Damn, this is straight outta hell!!!"}],
-                        "outputs": [{"custom_score": 1}],
-                    }
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[{"inputs": {1: "Damn, this is straight outta hell!!!"}, "outputs": {2: 1}}],
+                examples=examples,
             )
 
     def test_to_dict_default(self, monkeypatch):
@@ -268,7 +222,6 @@ class TestLLMEvaluator:
 
         component = LLMEvaluator.from_dict(data)
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", list[str])]
@@ -417,7 +370,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError, match="Missing expected keys"):
             component.run(predicted_answers=["answer"])
 
-    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
+    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -434,8 +387,14 @@ class TestLLMEvaluator:
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
-        result = component.run(predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = component.run(predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert (
+            "LLMEvaluator failed to parse the ChatGenerator response: some_invalid_json_output. "
+            "Setting the result for this input to None." in caplog.text
+        )
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -519,7 +478,7 @@ class TestLLMEvaluatorAsync:
         assert results == {"results": [{"score": 0}], "meta": None}
 
     @pytest.mark.asyncio
-    async def test_run_async_raise_on_failure_false(self, monkeypatch):
+    async def test_run_async_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -544,8 +503,12 @@ class TestLLMEvaluatorAsync:
             "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
         )
 
-        result = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = await component.run_async(questions=["question"], predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert "LLMEvaluator failed during chat generation" in caplog.text
+        assert "Setting the result for this input to None. Error: API error" in caplog.text
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     @pytest.mark.asyncio
     async def test_run_async_raise_on_failure_true(self, monkeypatch):
@@ -574,3 +537,100 @@ class TestLLMEvaluatorAsync:
 
         with pytest.raises(ValueError):
             await component.run_async(questions=["question"], predicted_answers=["answer"])
+
+
+class TestComponentLifecycle:
+    @staticmethod
+    def _make_evaluator(chat_generator):
+        return LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            chat_generator=chat_generator,
+        )
+
+    def test_warm_up_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up_async"])
+        chat_generator.warm_up_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.close()
+        chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close_async"])
+        chat_generator.close_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        await evaluator.warm_up_async()
+        evaluator.close()
+        await evaluator.close_async()
+
+
+class TestLLMEvaluatorTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        evaluator.run(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMEvaluatorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        await evaluator.run_async(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

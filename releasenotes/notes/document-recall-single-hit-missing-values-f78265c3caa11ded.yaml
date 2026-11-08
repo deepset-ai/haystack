@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentRecallEvaluator`` returning wrong scores when the configured
+    ``document_comparison_field`` is missing or empty on some documents. Those documents were
+    considered a match for each other, so unrelated documents could count as correctly retrieved.
+    They are now ignored when computing the score.

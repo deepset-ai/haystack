@@ -43,6 +43,10 @@ def _serializable_value(value: Any, use_placeholders: bool = True) -> Any:
     """
     Serializes a value into a format suitable for tracing.
 
+    One-way only: this is never deserialized, so it's allowed to lose data (e.g. replace large
+    objects with a placeholder). Don't swap it for `base_serialization`'s schema serializer, which
+    is built to round-trip exactly.
+
     :param value:
         The value to serialize.
     :param use_placeholders:

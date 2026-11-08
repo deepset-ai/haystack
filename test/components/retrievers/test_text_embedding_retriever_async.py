@@ -7,20 +7,10 @@ from typing import Any
 import numpy as np
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-@component
-class MockTextEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
-
-    @component.output_types(embedding=list[float])
-    async def run_async(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestTextEmbeddingRetrieverAsync:
@@ -57,8 +47,41 @@ class TestTextEmbeddingRetrieverAsync:
         retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
         result = await retriever.run_async(query="energy")
 
-        scores = [doc.score for doc in result["documents"]]
+        docs = result["documents"]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_run_async_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
+
+        result = await retriever.run_async(query="query")
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
 
     @pytest.mark.asyncio
     async def test_run_async_falls_back_to_sync_when_no_run_async(self, document_store_with_categorized_docs):
@@ -114,7 +137,7 @@ class TestTextEmbeddingRetrieverAsync:
     async def test_run_async_with_filters(self, document_store_with_categorized_docs):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs),
-            text_embedder=MockTextEmbedder(),
+            text_embedder=MockTextEmbedder(dimension=384),
         )
         filters = {"field": "category", "operator": "==", "value": "solar"}
         result = await retriever.run_async(query="energy", filters=filters)
@@ -129,7 +152,7 @@ class TestTextEmbeddingRetrieverAsync:
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
             text_embedder=MockTextEmbedder(),
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result = await pipeline.run_async(data={"retriever": {"query": "green energy"}})
 

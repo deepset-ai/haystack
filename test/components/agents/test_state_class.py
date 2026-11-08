@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, Generic, List, Optional, TypeVar, Union
 
 import pytest
@@ -50,7 +52,7 @@ class TestMergeLists:
     def test_merge_two_lists(self):
         current = [1, 2, 3]
         new = [4, 5, 6]
-        result = merge_lists(current, new)
+        result: list[int] = merge_lists(current, new)
         assert result == [1, 2, 3, 4, 5, 6]
         # Ensure original lists weren't modified
         assert current == [1, 2, 3]
@@ -351,7 +353,7 @@ class TestState:
 
     def test_schema_to_dict_with_handlers(self, complex_schema):
         expected_dict = {
-            "numbers": {"type": "list", "handler": "test_state_class.numbers_handler"},
+            "numbers": {"type": "list", "handler": "agents.test_state_class.numbers_handler"},
             "metadata": {"type": "dict"},
             "name": {"type": "str"},
         }
@@ -365,7 +367,7 @@ class TestState:
 
     def test_schema_from_dict_with_handlers(self, complex_schema):
         schema_dict = {
-            "numbers": {"type": "list", "handler": "test_state_class.numbers_handler"},
+            "numbers": {"type": "list", "handler": "agents.test_state_class.numbers_handler"},
             "metadata": {"type": "dict"},
             "name": {"type": "str"},
         }
@@ -419,6 +421,30 @@ class TestState:
                 "numbers": 1,
                 "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
                 "dict_of_lists": {"numbers": [1, 2, 3]},
+            },
+        }
+
+    def test_state_to_dict_skip_keys(self):
+        state_schema = {"numbers": {"type": int}, "messages": {"type": list[ChatMessage]}}
+
+        data = {"numbers": 1, "messages": [ChatMessage.from_user(text="Hello, world!")]}
+        state = State(state_schema, data)
+        state_dict = state.to_dict(skip_keys=["numbers"])
+        assert state_dict["schema"] == {
+            "messages": {
+                "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                "handler": "haystack.components.agents.state.state_utils.merge_lists",
+            }
+        }
+        assert state_dict["data"] == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}}
+                },
+            },
+            "serialized_data": {
+                "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}]
             },
         }
 
@@ -511,6 +537,16 @@ class TestState:
                 "dict_of_lists": {"numbers": [1, 2, 3]},
             },
         }
+
+    def test_state_to_dict_omits_non_serializable_field(self, caplog):
+        # A non-serializable value must not crash serialization: only that field is omitted,
+        # and a warning is logged.
+        state = State({"good": {"type": int}, "bad": {"type": object}}, {"good": 1, "bad": datetime(2024, 1, 1)})
+        with caplog.at_level(logging.WARNING):
+            state_dict = state.to_dict()
+        assert state_dict["data"]["serialized_data"] == {"good": 1}
+        assert "bad" not in state_dict["data"]["serialization_schema"]["properties"]
+        assert any("Failed to serialize the 'bad' field of the agent's State data" in msg for msg in caplog.messages)
 
     def test_state_from_dict_typing_list(self):
         state_dict = {

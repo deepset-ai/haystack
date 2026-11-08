@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Added ``stop_run``, a control flag that lets an Agent hook end a run cleanly instead of raising an error. The
+    hook sets it to a reason of your choice (``state.set("stop_run", "my_reason")``), and the Agent stops without
+    another model call and reports that reason in ``exit_reason``.
+  - |
+    Added ``TokenBudgetHook`` (experimental), a ready-made hook that caps how many tokens an Agent run may spend.
+    The run ends with ``exit_reason`` set to ``"token_budget_exceeded"``, keeping the messages collected so far.
+
+    .. code-block:: python
+
+        from haystack.hooks.budget import TokenBudgetHook
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[search],
+            hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
+        )

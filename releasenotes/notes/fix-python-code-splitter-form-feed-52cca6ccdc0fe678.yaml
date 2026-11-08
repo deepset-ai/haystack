@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed an issue in ``PythonCodeSplitter`` where form feed characters (``\f``) and certain Unicode separators could
+    cause functions to be split incorrectly across chunks. Chunk boundaries and the ``start_line`` / ``end_line``
+    metadata now remain correct when these characters appear in the source.

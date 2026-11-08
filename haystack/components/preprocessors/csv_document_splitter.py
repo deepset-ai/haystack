@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from io import StringIO
 from typing import Any, Literal, get_args
 
@@ -40,12 +41,14 @@ class CSVDocumentSplitter:
 
         :param row_split_threshold: The minimum number of consecutive empty rows required to trigger a split.
         :param column_split_threshold: The minimum number of consecutive empty columns required to trigger a split.
-        :param read_csv_kwargs: Additional keyword arguments to pass to `pandas.read_csv`.
-            By default, the component with options:
+        :param read_csv_kwargs: Keyword arguments passed to `pandas.read_csv`.
+            These extend or override the following defaults:
             - `header=None`
             - `skip_blank_lines=False` to preserve blank lines
             - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
             See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
+            Customizing CSV parsing options may cause splitting errors or inaccurate position metadata.
+            Validate the split content and metadata on representative inputs when customizing these options.
         :param split_mode:
             If `threshold`, the component will split the document based on the number of
             consecutive empty rows or columns that exceed the `row_split_threshold` or `column_split_threshold`.
@@ -152,7 +155,7 @@ class CSVDocumentSplitter:
                     Document(
                         content=split_df.to_csv(index=False, header=False, lineterminator="\n"),
                         meta={
-                            **document.meta.copy(),
+                            **deepcopy(document.meta),
                             "source_id": document.id,
                             "row_idx_start": int(split_df.index[0]),
                             "col_idx_start": int(split_df.columns[0]),
@@ -173,12 +176,12 @@ class CSVDocumentSplitter:
         :param df: DataFrame to split.
         :param split_threshold: Minimum number of consecutive empty rows or columns to trigger a split.
         :param axis: Axis along which to find empty elements. Either "row" or "column".
-        :return: List of indices where consecutive empty rows or columns start.
+        :return: List of zero-based positional indices for consecutive empty rows or columns.
         """
         if axis == "row":
-            empty_elements = df[df.isnull().all(axis=1)].index.tolist()
+            empty_elements = [i for i, is_empty in enumerate(df.isnull().all(axis=1).tolist()) if is_empty]
         else:
-            empty_elements = df.columns[df.isnull().all(axis=0)].tolist()
+            empty_elements = [i for i, is_empty in enumerate(df.isnull().all(axis=0).tolist()) if is_empty]
 
         # If no empty elements found, return empty list
         if len(empty_elements) == 0:
