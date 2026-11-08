@@ -1,0 +1,4 @@
+fixes:
+  - |
+    Prevent ``Pipeline.stream()`` from duplicating chunks across concurrent streams
+    that reuse the same input dictionary, and keep its injected callbacks out of that dictionary.
