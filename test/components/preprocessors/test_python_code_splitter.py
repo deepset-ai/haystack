@@ -865,6 +865,7 @@ class TestOversizedFallback:
             start, end = chunk.meta["start_line"], chunk.meta["end_line"]
             assert 5 <= start <= end <= 35
             # The lines the metadata points at are the code in the chunk.
+            assert chunk.content is not None
             assert chunk.content.strip().endswith("".join(lines[start - 1 : end]).strip())
 
         starts = [c.meta["start_line"] for c in secondary]

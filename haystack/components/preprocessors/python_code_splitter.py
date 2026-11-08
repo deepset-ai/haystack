@@ -159,7 +159,7 @@ class PythonCodeSplitter:
 
     @staticmethod
     def _count_lines(text: str) -> int:
-        """Count lines in ``text`` the way ``ast`` does (only \\n, \\r\\n and \\r end a line)."""
+        """Count lines in `text` the way `ast` does (only \\n, \\r\\n and \\r end a line)."""
         return len(io.StringIO(text, newline="").readlines())
 
     @staticmethod
