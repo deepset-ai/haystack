@@ -84,10 +84,12 @@ class TestStructuredOutputHook:
         [
             VALID_REPLY,
             f"```json\n{VALID_REPLY}\n```",
+            f"```json\r\n{VALID_REPLY}\r\n```",
             f"```\n{VALID_REPLY}\n```",
+            f"```\r\n{VALID_REPLY}\r\n```",
             f"\n  ```JSON\n{VALID_REPLY}\n```  \n",
         ],
-        ids=["plain", "json-fence", "bare-fence", "padded-fence"],
+        ids=["plain", "json-fence", "json-fence-crlf", "bare-fence", "bare-fence-crlf", "padded-fence"],
     )
     @pytest.mark.parametrize("schema", [CityInfo, CITY_JSON_SCHEMA], ids=["pydantic", "json-schema"])
     def test_stores_the_parsed_reply(self, schema, reply):
