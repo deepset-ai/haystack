@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Pipeline connections now distinguish literal values with different types, such as
+    ``Literal[True]`` and ``Literal[1]``. Previously, Python's value equality allowed
+    these incompatible connections, including inside containers. Valid literal subsets
+    and differently ordered literal members remain compatible.
+upgrade:
+  - |
+    Pipelines that connect boolean literals to integer literals (or the reverse) now
+    raise ``PipelineConnectError``. Align the component socket declarations or convert
+    the value explicitly before connecting them.

@@ -172,7 +172,11 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     if sender_origin is receiver_origin is Union:
         return all(_strict_types_are_compatible(union_arg, receiver) for union_arg in sender_args)
     if sender_origin is receiver_origin is Literal:
-        return all(value in receiver_args for value in sender_args)
+        # Literal equality requires equal types as well as values (e.g. True is not the literal 1).
+        return all(
+            any(type(value) is type(receiver_value) and value == receiver_value for receiver_value in receiver_args)
+            for value in sender_args
+        )
 
     # Special case to allow list[T] -> Iterable[T] and list[T] -> Iterable[Any]
     if sender_origin is list and receiver_origin is Iterable:

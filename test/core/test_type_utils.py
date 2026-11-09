@@ -554,6 +554,10 @@ incompatible_type_cases = [
     pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
     pytest.param((Literal["a", "x"]), (Literal["a", "b", "c"]), id="partially-overlapping-literals"),
     pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
+    pytest.param(Literal[True], Literal[1], id="boolean-literal-is-not-integer-literal"),
+    pytest.param(Literal[False], Literal[0], id="false-literal-is-not-zero-literal"),
+    pytest.param(Literal[True, "a"], Literal[1, "a"], id="mixed-literals-with-equal-values-of-different-types"),
+    pytest.param(list[Literal[True]], list[Literal[1]], id="nested-literals-with-equal-values-of-different-types"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
     ),

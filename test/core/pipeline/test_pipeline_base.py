@@ -4,7 +4,7 @@
 
 import logging
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import patch
 
 import pytest
@@ -2291,6 +2291,17 @@ class TestPipelineConnect:
         pipe.add_component("comp2", comp2)
         with pytest.raises(PipelineConnectError):
             pipe.connect("comp1", "comp2")
+
+    @pytest.mark.parametrize("sender_type, receiver_type", [(Literal[True], Literal[1]), (Literal[0], Literal[False])])
+    def test_connect_rejects_equal_literal_values_of_different_types(self, sender_type, receiver_type):
+        producer = component_class("Producer", output_types={"value": sender_type})()
+        consumer = component_class("Consumer", input_types={"value": receiver_type})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+
+        with pytest.raises(PipelineConnectError, match="their declared input and output types do not match"):
+            pipe.connect("producer.value", "consumer.value")
 
     def test_connect_with_multiple_sender_connections_with_same_type_and_differing_name(self):
         comp1 = component_class("Comp1", output_types={"val1": int, "val2": int})()
