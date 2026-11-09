@@ -11,6 +11,7 @@ import versions from './versions.json' with { type: 'json' };
 // Build the current version (docs/), the unstable version (e.g. 3.x-unstable, only present during the release process)
 // and fill the remaining slots with the most recent stable versions (e.g. 3.x)
 const MAX_TOTAL_VERSIONS = 6;
+const LAST_VERSION = '3.4';
 const unstableVersions = versions.filter(v => v.endsWith('-unstable'));
 const activeVersions = [
   'current',
@@ -83,7 +84,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           onlyIncludeVersions: activeVersions,
           sidebarPath: './sidebars.js',
            // Exclude internal templates from the docs build
-           exclude: ['**/_templates/**'],
+           exclude: ['**/_templates/**', '**/AGENTS.md', '**/CLAUDE.md'],
           editUrl:
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
           // Use beforeDefaultRemarkPlugins to ensure our plugin runs before Webpack processes links
@@ -95,7 +96,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.4',
+          lastVersion: LAST_VERSION,
+        },
+        // Only list the canonical (latest stable) pages; older versions redirect or are archived
+        sitemap: {
+          ignorePatterns: [
+            ...activeVersions
+              .filter(v => v !== 'current' && v !== 'next' && v !== LAST_VERSION)
+              .flatMap(v => [`/docs/${v}/**`, `/reference/${v}/**`]),
+            '/docs/next/**',
+            '/reference/next/**',
+          ],
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -148,18 +159,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.4',
+        lastVersion: LAST_VERSION,
       },
     ],
-    [
-      'docusaurus-plugin-generate-llms-txt',
-      {
-        // defaults to "llms.txt", but set explicitly for clarity
-        outputFile: 'llms.txt',
-      },
-    ],
-    // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
-    require.resolve('./plugins/txtLoaderPlugin'),
+    // Writes llms.txt and a Markdown copy of every docs page for AI agents
+    require.resolve('./plugins/markdownForAgents'),
     [
       '@docusaurus/plugin-client-redirects',
       {
