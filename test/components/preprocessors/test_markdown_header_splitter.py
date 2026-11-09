@@ -338,7 +338,7 @@ def test_secondary_splits_have_independent_header_metadata(keep_headers, prefix,
 
     assert [split.content for split in split_docs] == expected_content
     assert "".join(expected_content) == (doc.content if keep_headers else "\n" + body)
-    offset = len(doc.content) - len("".join(expected_content))
+    offset = len(prefix + body) - len("".join(expected_content))
     for split_id, (split, content) in enumerate(zip(split_docs, expected_content, strict=True)):
         assert split.meta == {
             "tags": ["docs"],
@@ -1338,5 +1338,6 @@ def test_secondary_split_idx_start_is_offset_in_original_document():
     starts = [split.meta["split_idx_start"] for split in split_docs]
     assert starts == sorted(starts)
     for split in split_docs:
+        assert split.content is not None
         start = split.meta["split_idx_start"]
         assert text[start : start + len(split.content)] == split.content
