@@ -97,6 +97,37 @@ class TestAnswerBuilder:
         with pytest.raises(ValueError, match="contains multiple capture groups"):
             AnswerBuilder(pattern=r"Answer: (.*), (.*)")
 
+    def test_init_with_reference_pattern_with_more_than_one_capturing_group(self):
+        with pytest.raises(ValueError, match="contains multiple capture groups"):
+            AnswerBuilder(reference_pattern=r"\[(\d+)\]\[(\d+)\]")
+
+    def test_run_with_reference_pattern_with_more_than_one_capturing_group_set_at_runtime(self):
+        with pytest.raises(ValueError, match="contains multiple capture groups"):
+            AnswerBuilder().run(query="test query", replies=["Answer[1][2]"], reference_pattern=r"\[(\d+)\]\[(\d+)\]")
+
+    def test_run_with_reference_pattern_without_capturing_group_uses_whole_match(self):
+        component = AnswerBuilder(reference_pattern=r"(?<=\[)\d+(?=\])")
+        output = component.run(
+            query="test query",
+            replies=["Answer[2]"],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        assert [doc.content for doc in output["answers"][0].documents] == ["test doc 2"]
+
+    def test_run_with_reference_pattern_matching_non_index(self):
+        component = AnswerBuilder(reference_pattern=r"\[\d+\]")
+        with pytest.raises(ValueError, match="matched '\\[1\\]', which is not a document index"):
+            component.run(query="test query", replies=["Answer[1]"], documents=[Document(content="test doc 1")])
+
+    def test_run_with_reference_pattern_with_optional_group_ignores_empty_match(self):
+        component = AnswerBuilder(reference_pattern=r"\[(\d*)\]")
+        output = component.run(
+            query="test query",
+            replies=["Answer[] and [2]"],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        assert [doc.content for doc in output["answers"][0].documents] == ["test doc 2"]
+
     def test_run_with_pattern_set_at_runtime(self):
         component = AnswerBuilder(pattern="unused pattern")
         output = component.run(query="test query", replies=["Answer: AnswerString"], meta=[{}], pattern=r"Answer: (.*)")
