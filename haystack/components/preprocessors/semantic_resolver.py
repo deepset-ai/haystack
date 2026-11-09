@@ -37,7 +37,7 @@ def _normalize_entity_type(etype: Any) -> Any:
     if etype is None or isinstance(etype, (str, int, float, bool)):
         return etype
     if isinstance(etype, (list, tuple)):
-        return tuple(etype)
+        return tuple(_normalize_entity_type(sub) for sub in etype)
     return str(etype)
 
 

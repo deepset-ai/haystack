@@ -602,6 +602,15 @@ class TestSemanticResolver:
         assert res["documents"][0].meta["entities"][0]["entity"] == "Apple"
         assert res["documents"][1].meta["entities"][0]["entity"] == "Apple"
 
+        # Also handles nested unhashable structures recursively
+        docs_nested = [
+            Document(meta={"entities": [{"entity": "Google", "entity_type": [["tech", "search"]]}]}),
+            Document(meta={"entities": [{"entity": "Google LLC", "entity_type": [["tech", "search"]]}]}),
+        ]
+        res_nested = resolver.run(docs_nested)
+        assert res_nested["documents"][0].meta["entities"][0]["entity"] == "Google"
+        assert res_nested["documents"][1].meta["entities"][0]["entity"] == "Google"
+
     def test_batch_size_chunking_with_many_targets(self, monkeypatch):
         chunk_sizes = []
 
