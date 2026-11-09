@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -100,10 +101,10 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
+        # The Protocol does not declare the async methods; the helper runs the sync one in a thread.
         resolved_filters = filters if filters is not None else self.filters
-        out_documents = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
-            filters=resolved_filters
+        out_documents = await _call_with_async_fallback(
+            self.document_store, "filter_documents", filters=resolved_filters
         )
         return {"documents": out_documents}
 

@@ -97,6 +97,7 @@ class SearchableToolset(Toolset):
         :param search_threshold: Minimum catalog size to activate search. If catalog has fewer tools, acts as
             passthrough (all tools visible). Default is 8.
         :param search_tool_name: Custom name for the bootstrap search tool. Default is "search_tools".
+            Must differ from every catalog tool name when the catalog has at least `search_threshold` tools.
         :param search_tool_description: Custom description for the bootstrap search tool. If not provided, uses a
             default description.
         :param search_tool_parameters_description: Custom descriptions for the bootstrap search tool's parameters.
@@ -150,6 +151,9 @@ class SearchableToolset(Toolset):
     def warm_up(self) -> None:
         """
         Warm up the catalog tools and initialize tool discovery.
+
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         # Warm up the catalog first (triggers lazy connections like MCPToolset), then flatten — lazy toolsets will
         # have their real tools available.
@@ -159,6 +163,9 @@ class SearchableToolset(Toolset):
     async def warm_up_async(self) -> None:
         """
         Warm up the catalog tools asynchronously and initialize tool discovery.
+
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         await warm_up_tools_async(self._raw_catalog)
         self._build_catalog()
@@ -171,13 +178,21 @@ class SearchableToolset(Toolset):
         Catalogs below the search threshold use passthrough mode. Otherwise, build the BM25 index
         and create the search_tools bootstrap tool.
 
-        :raises ValueError: If the catalog contains tools with duplicate names.
+        :raises ValueError: If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+            the bootstrap search tool while the catalog has at least `search_threshold` tools.
         """
         if self._passthrough is not None:
             return
-        self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
-        _check_duplicate_tool_names(self._catalog)
-        self._passthrough = len(self._catalog) < self._search_threshold
+        catalog = flatten_tools_or_toolsets(self._raw_catalog)
+        _check_duplicate_tool_names(catalog)
+        passthrough = len(catalog) < self._search_threshold
+        if not passthrough and any(tool.name == self._search_tool_name for tool in catalog):
+            raise ValueError(
+                f"Catalog tool name '{self._search_tool_name}' conflicts with the bootstrap search tool. "
+                "Choose a different `search_tool_name`."
+            )
+        self._catalog = catalog
+        self._passthrough = passthrough
 
         # Build the BM25 search index only when the catalog is large enough to need discovery.
         if not self._passthrough:

@@ -102,7 +102,7 @@ def recover_from_output_limit(state: State) -> None:
     if state.get("exit_reason") == "length" and not recovery_attempted:
         state.set(
             "messages",
-            [ChatMessage.from_user(recovery_prompt)],
+            [ChatMessage.from_user(recovery_prompt, meta={"system_reminder": True})],
         )
         state.set("continue_run", True)
 ```

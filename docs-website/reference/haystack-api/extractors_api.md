@@ -118,6 +118,10 @@ Initialize the LLMDocumentContentExtractor component.
   are returned in `failed_documents` with the error in their `extraction_error` metadata field.
 - **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
 
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
+
 #### warm_up
 
 ```python
@@ -373,6 +377,10 @@ Initializes the LLMMetadataExtractor.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
   This parameter is used limit the maximum number of requests that should be allowed to run concurrently
   when using the `run_async` method.
+
+**Raises:**
+
+- <code>ValueError</code> – If `max_workers` is not greater than 0.
 
 #### warm_up
 

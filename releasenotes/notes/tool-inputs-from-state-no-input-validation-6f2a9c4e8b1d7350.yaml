@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``Tool`` now rejects non-empty ``inputs_from_state`` mappings for tools that take
+    no inputs. The error is raised when the tool is created instead of when it is
+    invoked. If the callable's signature cannot be inspected, parameter names in
+    ``inputs_from_state`` are not checked at construction time.
