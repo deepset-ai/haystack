@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` with ``secondary_split`` now sets ``split_idx_start`` relative to the original document.
+    Previously it was counted from the start of each header section, so it restarted at 0 for every section and
+    ``SentenceWindowRetriever``, which orders context by ``split_idx_start``, returned the window text out of order.

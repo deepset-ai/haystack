@@ -338,7 +338,7 @@ def test_secondary_splits_have_independent_header_metadata(keep_headers, prefix,
 
     assert [split.content for split in split_docs] == expected_content
     assert "".join(expected_content) == (doc.content if keep_headers else "\n" + body)
-    offset = 0
+    offset = len(doc.content) - len("".join(expected_content))
     for split_id, (split, content) in enumerate(zip(split_docs, expected_content, strict=True)):
         assert split.meta == {
             "tags": ["docs"],
@@ -967,7 +967,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 2,
         "page_number": 2,
-        "split_idx_start": 0,
+        "split_idx_start": 37,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -977,7 +977,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 3,
         "page_number": 2,
-        "split_idx_start": 18,
+        "split_idx_start": 55,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -987,7 +987,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 4,
         "page_number": 2,
-        "split_idx_start": 48,
+        "split_idx_start": 85,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -997,7 +997,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 5,
         "page_number": 3,
-        "split_idx_start": 0,
+        "split_idx_start": 104,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1007,7 +1007,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 6,
         "page_number": 3,
-        "split_idx_start": 18,
+        "split_idx_start": 122,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1017,7 +1017,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 7,
         "page_number": 3,
-        "split_idx_start": 48,
+        "split_idx_start": 152,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1027,7 +1027,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 8,
         "page_number": 4,
-        "split_idx_start": 0,
+        "split_idx_start": 168,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1037,7 +1037,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 9,
         "page_number": 4,
-        "split_idx_start": 28,
+        "split_idx_start": 196,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1047,7 +1047,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 10,
         "page_number": 5,
-        "split_idx_start": 0,
+        "split_idx_start": 218,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1057,7 +1057,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 11,
         "page_number": 5,
-        "split_idx_start": 28,
+        "split_idx_start": 246,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1326,3 +1326,17 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     assert first_content is not None
     assert "# Top Level" in first_content
     assert "Top content." in first_content
+
+
+def test_secondary_split_idx_start_is_offset_in_original_document():
+    text = "# Intro\nalpha beta gamma delta\n# Usage\nepsilon zeta eta theta\n"
+    doc = Document(content=text)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=2)
+
+    split_docs = splitter.run(documents=[doc])["documents"]
+
+    starts = [split.meta["split_idx_start"] for split in split_docs]
+    assert starts == sorted(starts)
+    for split in split_docs:
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
