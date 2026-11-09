@@ -186,6 +186,24 @@ class TestRegexTextExtractor:
 
         assert result == {"captured_text": "username"}
 
+    def test_first_capture_group_in_unmatched_alternation_branch_returns_empty_string(self):
+        extractor = RegexTextExtractor(regex_pattern=r"Score: (\d+)|N/A")
+
+        assert extractor.run(text_or_messages="Score: 7") == {"captured_text": "7"}
+        assert extractor.run(text_or_messages="N/A") == {"captured_text": ""}
+
+    def test_unmatched_optional_first_capture_group_returns_empty_string(self):
+        extractor = RegexTextExtractor(regex_pattern=r"Answer:( \w+)?")
+
+        assert extractor.run(text_or_messages="Answer:") == {"captured_text": ""}
+
+    def test_first_capture_group_not_participating_in_chat_message_returns_empty_string(self):
+        extractor = RegexTextExtractor(regex_pattern=r"Score: (\d+)|N/A")
+
+        result = extractor.run(text_or_messages=[ChatMessage.from_assistant("N/A")])
+
+        assert result == {"captured_text": ""}
+
     def test_pipeline_integration(self):
         """Test component integration in a Haystack pipeline."""
         pattern = r'<issue url="(.+?)">'

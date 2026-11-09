@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``RegexTextExtractor`` now returns ``{"captured_text": ""}`` instead of ``{"captured_text": None}`` when the
+    pattern matches but its first capture group does not take part in the match, for example ``Score: (\d+)|N/A``
+    matched against ``"N/A"`` or an unmatched optional group such as ``Answer:( \w+)?``.
+    The output is now always a string, as declared by the component, and matches what it returns when there is no match.
