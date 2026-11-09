@@ -165,6 +165,16 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
 
+    # A Literal stands for its values: each one must match the receiver, either by its type or, when the receiver is
+    # a Union, as a member of one of its Literal arguments. Literal receivers are matched by membership below.
+    if sender_origin is Literal and receiver_origin is not Literal:
+        if receiver_origin is Union:
+            return all(
+                any(_strict_types_are_compatible(Literal[value], union_arg) for union_arg in receiver_args)
+                for value in sender_args
+            )
+        return all(_strict_types_are_compatible(type(value), receiver) for value in sender_args)
+
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)
 

@@ -181,6 +181,16 @@ def generate_strict_asymmetric_cases():
             pytest.param(bool, int, id="different-primitives"),
             pytest.param((Literal["a", "b"]), (Literal["a", "b", "c"]), id="sending-subset-literal"),
             pytest.param((Literal["b", "c"]), (Literal["a", "b", "c"]), id="sending-non-prefix-subset-literal"),
+            pytest.param(Literal["a", "b"], str, id="string-literal-to-str"),
+            pytest.param(Literal[1, 2], int, id="int-literal-to-int"),
+            pytest.param(Literal[Enum1.TEST1], Enum1, id="enum-literal-to-enum"),
+            pytest.param(Literal["a"], str | None, id="string-literal-to-optional-str-pep604"),
+            pytest.param(Literal["a"], Optional[str], id="string-literal-to-optional-str"),
+            pytest.param(Literal[1, "a"], Union[int, str], id="mixed-literal-to-typing-union-of-value-types"),
+            pytest.param(Literal[None], str | None, id="none-literal-to-optional-str"),
+            pytest.param(Literal[1, "a"], int | str, id="mixed-literal-to-union-of-value-types"),
+            pytest.param(Literal["a", 1], Literal["a"] | int, id="mixed-literal-to-union-of-literal-and-type"),
+            pytest.param(list[Literal["a"]], list[str], id="list-of-string-literal-to-list-of-str"),
             pytest.param((Optional[str]), (Union[int, str, None]), id="union-to-superset-union-in-other-order"),
             pytest.param(str | None, str | int | None, id="union-to-superset-union-in-other-order-pep604"),
             pytest.param(
@@ -554,6 +564,9 @@ incompatible_type_cases = [
     pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
     pytest.param((Literal["a", "x"]), (Literal["a", "b", "c"]), id="partially-overlapping-literals"),
     pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
+    pytest.param(Literal["a"], int, id="string-literal-to-different-primitive"),
+    pytest.param(Literal[1, "a"], int, id="mixed-literal-to-type-of-some-values"),
+    pytest.param(Literal["a", "x"], Literal["a"] | int, id="literal-partially-matching-union-of-literal-and-type"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
     ),

@@ -4,7 +4,7 @@
 
 import logging
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import patch
 
 import pytest
@@ -2319,6 +2319,16 @@ class TestPipelineConnect:
         pipe.connect("producer.items", "consumer.sources")
         assert list(pipe.graph.edges) == [("producer", "consumer", "items/sources")]
         assert pipe.graph["producer"]["consumer"]["items/sources"]["conversion_strategy"] is None
+
+    def test_connect_literal_output_to_str_input(self):
+        producer = component_class("Producer", output_types={"label": Literal["positive", "negative"]})()
+        consumer = component_class("Consumer", input_types={"text": str})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        pipe.connect("producer.label", "consumer.text")
+        assert list(pipe.graph.edges) == [("producer", "consumer", "label/text")]
+        assert pipe.graph["producer"]["consumer"]["label/text"]["conversion_strategy"] is None
 
     def test_connect_list_output_to_list_or_iterable_input_is_ambiguous(self):
         producer = component_class("Producer", output_types={"value": list[str]})()

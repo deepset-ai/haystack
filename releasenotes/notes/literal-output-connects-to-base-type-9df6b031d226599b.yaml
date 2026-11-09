@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``Pipeline.connect()`` now accepts a ``Literal`` output connected to an input that takes the type of its values.
+    For example, an output declared as ``Literal["positive", "negative"]`` can feed a ``str`` input, and
+    ``Literal["a"]`` can feed ``str | None`` or ``list[str]``. Before, these connections raised a
+    ``PipelineConnectError`` even though every value the sender can produce is valid for the receiver.
