@@ -310,6 +310,8 @@ Joins multiple lists of documents into a single list.
 It supports different join modes:
 
 - concatenate: Keeps the highest-scored document in case of duplicates.
+- merge_embeddings: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+  of documents with the same ID.
 - merge: Calculates a weighted sum of scores for duplicates and merges them.
 - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
 - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
@@ -362,14 +364,20 @@ Creates a DocumentJoiner component.
 
 - **join_mode** (<code>str | JoinMode</code>) – Specifies the join mode to use. Available modes:
 - `concatenate`: Keeps the highest-scored document in case of duplicates.
+- `merge_embeddings`: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+  of documents with the same ID.
+  All other fields, including `content`, `meta`, and `score`, are kept from the first document
+  received with that ID.
 - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
 - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
 - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
   distribution in each Retriever.
 - **weights** (<code>list\[float\] | None</code>) – Assign importance to each list of documents to influence how they're joined.
   This parameter is ignored for
-  `concatenate` or `distribution_based_rank_fusion` join modes.
+  `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
+  `weights[i]` applies to the documents from the i-th connection made to `documents`
+  with `Pipeline.connect()`.
   Each weight must be a non-negative number.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
@@ -378,7 +386,7 @@ Creates a DocumentJoiner component.
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0,
-  or if any value in `weights` is negative.
+  or if any value in `weights` is negative, NaN, or infinite.
 
 #### run
 
@@ -403,7 +411,7 @@ Joins multiple lists of Documents into a single list depending on the `join_mode
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` is negative.
+- <code>ValueError</code> – If `top_k` is negative, or `merge_embeddings` encounters conflicting embeddings for the same document ID.
 
 #### to_dict
 

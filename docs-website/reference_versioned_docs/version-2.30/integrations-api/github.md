@@ -116,7 +116,8 @@ Process GitHub file operations.
 
 **Raises:**
 
-- <code>ValueError</code> – If command is not a valid Command enum value
+- <code>ValueError</code> – If command is not a valid Command enum value, or if repo is not in owner/repo format or
+  contains characters other than letters, digits, `.`, `_` and `-`
 
 #### to_dict
 

@@ -405,7 +405,9 @@ class Agent:
     @hook
     def require_save(state: State) -> None:
         if state.data.get("exit_reason") == "text":
-            state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
+            # Marked as a system reminder so context compaction doesn't take it for the user's task
+            nudge = ChatMessage.from_user("Call `save_result` before finishing.", meta={"system_reminder": True})
+            state.set("messages", [nudge])
             state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 

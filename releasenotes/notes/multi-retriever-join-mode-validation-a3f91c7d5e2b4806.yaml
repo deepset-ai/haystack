@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MultiRetriever`` now raises a ``ValueError`` at initialization if ``join_mode`` is not
+    ``"concatenate"`` or ``"reciprocal_rank_fusion"``. Previously, unsupported values such as ``"rrf"``
+    were silently treated as ``"concatenate"`` when ``top_k`` was not set.

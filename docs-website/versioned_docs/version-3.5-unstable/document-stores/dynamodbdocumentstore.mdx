@@ -1,0 +1,95 @@
+---
+title: "DynamoDBDocumentStore"
+id: dynamodbdocumentstore
+slug: "/dynamodbdocumentstore"
+---
+
+# DynamoDBDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Amazon DynamoDB](/reference/integrations-dynamodb)                                                       |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/dynamodb/ |
+
+</div>
+
+[Amazon DynamoDB](https://aws.amazon.com/dynamodb/) is a serverless NoSQL database. Its native vector search stores embeddings in a vector index directly on a table, so documents and their embeddings live next to your operational data without a separate vector database.
+
+`DynamoDBDocumentStore` stores each document as an item in a DynamoDB table with a vector index and retrieves documents through DynamoDB's `SearchVectors` API using cosine similarity. It supports embedding retrieval and metadata filtering.
+
+## Installation
+
+To use DynamoDB with Haystack, install the `dynamodb-haystack` integration:
+
+```shell
+pip install dynamodb-haystack
+```
+
+DynamoDB's vector search requires `boto3 >= 1.43.66`, which the package installs for you. There is no local DynamoDB emulator with vector index support, so you need an AWS account.
+
+## Usage
+
+### Credentials
+
+The Document Store uses the standard AWS credential chain. Set your credentials and region as environment variables:
+
+```shell
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+You can also pass them as [Secret](../concepts/secret-management.mdx) arguments (`aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`) or rely on any other boto3 credential source, such as an IAM role.
+
+The credentials need permission for `DescribeTable`, the item-level operations (`PutItem`, `DeleteItem`, `Scan`) and `SearchVectors`. If you let the store create the table, it also needs `CreateTable`.
+
+## Initialization
+
+Initialize a `DynamoDBDocumentStore` object and write documents to it:
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.dynamodb import DynamoDBDocumentStore
+
+document_store = DynamoDBDocumentStore(
+    table_name="haystack_documents",
+    index_name="haystack_vector_index",
+    embedding_dimension=768,
+    region_name="us-east-1",
+)
+
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.1] * 768),
+        Document(content="This is second", embedding=[0.3] * 768),
+    ],
+)
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see our [API docs](/reference/integrations-dynamodb#dynamodbdocumentstore).
+
+:::note[Table creation]
+
+With `create_table_if_not_exists=True` (the default), the store creates the table and its vector index on first use and waits until the index is queryable, which takes about 20 seconds. The table has a single partition key `id`, and the vector index is declared together with the table because adding a vector index to an existing table triggers a backfill that blocks vector search for several minutes.
+
+If you point the store at an existing table, it must have a single partition key named `id` and a cosine vector index on the `embedding` attribute with matching `index_name` and `embedding_dimension`. The store validates this on first use and raises a `ValueError` on mismatch.
+
+:::
+
+:::info[Limitations]
+
+- `filter_documents`, `count_documents` and the filter-based bulk operations run a consistent full-table `Scan` and evaluate filters client-side, so their cost grows with the table size.
+- `SearchVectors` returns at most 100 candidates per request, so `top_k` cannot exceed 100. Metadata filters are applied to those candidates, so a selective filter can return fewer than `top_k` documents.
+- Only cosine similarity is supported. Scores are converted to Haystack's higher-is-better convention: `1.0` for an identical vector, `0.0` for an opposite one.
+- A DynamoDB item is limited to 400 KB, which bounds a document's content, metadata and embedding together.
+
+:::
+
+To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx)).
+
+### Supported Retrievers
+
+- [`DynamoDBEmbeddingRetriever`](../pipeline-components/retrievers/dynamodbembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding.
