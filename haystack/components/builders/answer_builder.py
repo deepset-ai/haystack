@@ -95,6 +95,7 @@ class AnswerBuilder:
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
             If not specified, no parsing is done, and all documents are returned.
+            The regular expression must contain exactly one capture group that matches the document index.
             References need to be specified as indices of the input documents and start at [1].
             The pattern can have at most one capture group. If present, the capture group must match the document
             index; otherwise the whole match must be the document index.
@@ -170,6 +171,7 @@ class AnswerBuilder:
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
             If not specified, no parsing is done, and all documents are returned.
+            The regular expression must contain exactly one capture group that matches the document index.
             References need to be specified as indices of the input documents and start at [1].
             The pattern can have at most one capture group. If present, the capture group must match the document
             index; otherwise the whole match must be the document index.
@@ -180,6 +182,9 @@ class AnswerBuilder:
 
         :returns: A dictionary with the following keys:
             - `answers`: The answers received from the output of the Generator.
+        :raises ValueError:
+            If `replies` and `meta` lengths do not match, if `pattern` contains multiple capture groups,
+            or if `reference_pattern` does not contain exactly one capture group.
         """
         if not meta:
             meta = [{}] * len(replies)
@@ -193,6 +198,8 @@ class AnswerBuilder:
 
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
+        if reference_pattern:
+            AnswerBuilder._check_reference_pattern(reference_pattern)
         expand_reference_ranges = (
             self.expand_reference_ranges if expand_reference_ranges is None else expand_reference_ranges
         )
@@ -320,6 +327,15 @@ class AnswerBuilder:
                     "is the document index."
                 ) from e
         return idxs
+
+    @staticmethod
+    def _check_reference_pattern(reference_pattern: str) -> None:
+        num_groups = re.compile(reference_pattern).groups
+        if num_groups != 1:
+            raise ValueError(
+                f"Reference pattern '{reference_pattern}' contains {num_groups} capture groups. "
+                f"Please specify a pattern with exactly one capture group that matches the document index."
+            )
 
     @staticmethod
     def _check_num_groups_in_regex(pattern: str) -> None:
