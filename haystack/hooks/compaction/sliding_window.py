@@ -17,7 +17,6 @@ from haystack.hooks.compaction.utils import (
     _messages_at,
     _messages_except,
 )
-from haystack.hooks.utils import _is_system_reminder
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -43,30 +42,33 @@ def _flatten(groups: list[list[int]]) -> list[int]:
     return [index for group in groups for index in group]
 
 
-def _attach_system_reminders(
+def _attach_messages_between_steps(
     messages: list[ChatMessage], groups: list[list[int]], start: int
 ) -> tuple[list[list[int]], list[int]]:
     """
-    Group each system reminder in the current task with the next assistant message and its tool results.
+    Group each message in the current task that is not part of a step with the next assistant message and its results.
 
-    A `before_llm` hook adds a reminder right before an LLM call, and the next assistant message is that call's reply,
-    so the two are kept or removed together. Reminders with no assistant message after them were added for the LLM
-    call about to happen, and are returned separately so they are always kept.
+    This covers system reminders and records other compaction strategies leave, such as a `SummarizationCompactor`
+    summary. A `before_llm` hook adds a reminder right before an LLM call, and the next assistant message is that call's
+    reply, so the two are kept or removed together. Messages with no assistant message after them were added for the
+    LLM call about to happen, and are returned separately so they are always kept. An omission note this strategy left
+    is in neither, so it is removed and folded into the next note.
 
     :param messages: The full conversation, ordered oldest to newest.
     :param groups: Index groups for the current task's Agent steps, oldest first.
     :param start: The index the current task's steps are looked for from.
-    :returns: The step groups with each reminder placed before the reply it belongs to, and the indices of reminders
+    :returns: The step groups with each message placed before the step that follows it, and the indices of messages
         with no assistant message after them.
     """
     groups_by_start = {group[0]: group for group in groups}
+    in_a_step = {index for group in groups for index in group}
     attached: list[list[int]] = []
     pending: list[int] = []
     for index in range(start, len(messages)):
         if index in groups_by_start:
             attached.append([*pending, *groups_by_start[index]])
             pending = []
-        elif _is_system_reminder(message=messages[index]):
+        elif index not in in_a_step and not _is_compaction_note(message=messages[index]):
             pending.append(index)
     return attached, pending
 
@@ -80,17 +82,23 @@ def _removable_groups(
     :param messages: The full conversation, ordered oldest to newest.
     :param system_end: The end of the leading system-message block.
     :param task_index: The index of the user message anchoring the current task, or None when there is none.
-    :returns: Index groups for the complete historical turns preceding the current task, and index groups for the
-        current task's own Agent steps. Both are ordered oldest group first. A group is the unit of removal: it is
-        kept or removed entire, which is what keeps a tool call with its results and an assistant reply with the user
-        message it answers.
+    :returns: Index groups for the historical turns preceding the current task, and index groups for the current
+        task's own Agent steps. Both are ordered oldest group first. A group is the unit of removal: it is kept or
+        removed entire, which is what keeps a tool call with its results and an assistant reply with the user message
+        it answers.
     """
-    # An earlier compaction's note is left out of its turn, so keeping the turn folds that note into the note this
+    turn_groups = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+    # The messages between the instructions and the first turn, such as the summary a `SummarizationCompactor` leaves
+    # at the start of history, form the oldest group.
+    first_turn_start = turn_groups[0][0] if turn_groups else (task_index if task_index is not None else system_end)
+    leading_group = list(range(system_end, first_turn_start))
+    # An earlier compaction's note is left out of its group, so keeping the group folds that note into the note this
     # compaction leaves behind.
     historical_groups = [
         [index for index in group if not _is_compaction_note(message=messages[index])]
-        for group in _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+        for group in [leading_group, *turn_groups]
     ]
+    historical_groups = [group for group in historical_groups if group]
     agent_step_groups = _current_agent_step_groups(messages=messages, system_end=system_end, task_index=task_index)
     return historical_groups, agent_step_groups
 
@@ -170,10 +178,10 @@ def _task_and_step_split(
     """
     Split a conversation into the messages to keep and the messages to remove.
 
-    Leading system messages, the latest real user message, and system reminders after the last assistant message are
-    always kept. Historical turns are kept in full when they fit. If the current task itself exceeds the available
-    budget, its oldest Agent steps are removed one at a time, keeping each assistant message together with its tool
-    results and the system reminders before it.
+    Leading system messages, the latest real user message, and messages after the last assistant message are always
+    kept. Historical turns are kept in full when they fit. If the current task itself exceeds the available budget,
+    its oldest Agent steps are removed one at a time, keeping each assistant message together with its tool results
+    and the messages before it, such as system reminders or another strategy's summary.
 
     :param messages: The full conversation to split, ordered oldest to newest.
     :param target_tokens: The token budget for the messages that are kept.
@@ -197,14 +205,14 @@ def _task_and_step_split(
     historical_groups, agent_step_groups = _removable_groups(
         messages=messages, system_end=system_end, task_index=task_index
     )
-    # Each reminder goes with the reply after it, and the reminders with no reply yet are never removed.
-    agent_step_groups, pending_reminders = _attach_system_reminders(
+    # Each message between steps goes with the reply after it, and the messages with no reply yet are never removed.
+    agent_step_groups, pending_messages = _attach_messages_between_steps(
         messages=messages, groups=agent_step_groups, start=task_index + 1 if task_index is not None else system_end
     )
 
-    # The instructions, the current task, and the reminders not read yet are never removed, so they come off the
-    # budget first.
-    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices, *pending_reminders])
+    # The instructions, the current task, and the messages added after the last step are never removed, so they come off
+    # the budget first.
+    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices, *pending_messages])
     first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
         historical_groups=historical_groups,
@@ -215,10 +223,10 @@ def _task_and_step_split(
     )
 
     # What survives, laid out in conversation order: the instructions, the turns that fit, the task, its steps, then
-    # the reminders not read yet.
+    # the messages added after the last step.
     kept_turn_indices = _flatten(groups=historical_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=agent_step_groups[first_kept_step:])
-    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices, *pending_reminders]
+    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices, *pending_messages]
 
     # The note stands in for what was dropped, so it goes where those messages used to sit. Either right after the
     # instructions when the historical turns were trimmed, or right after the task anchor when its own steps were.
@@ -235,10 +243,12 @@ class SlidingWindowCompactor(Compactor):
     """
     Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-    Leading system messages, the latest user message, and system reminders after the last assistant message are
-    protected. Historical turns are kept in full when they fit, and the current task's history is kept in complete
-    Agent steps, where a step is an assistant message together with all immediately following tool results. A system
-    reminder in the current task is kept or removed together with the next assistant message and its tool results.
+    Leading system messages, the latest user message, and messages after the last assistant message are protected.
+    Historical turns are kept in full when they fit, and the current task's history is kept in complete Agent steps,
+    where a step is an assistant message together with all immediately following tool results. Any other message in
+    the current task, such as a system reminder or another strategy's summary, is kept or removed together with the
+    next assistant message and its tool results. A summary at the start of history is kept or removed like the oldest
+    historical turn.
 
     An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
     only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -266,8 +276,8 @@ class SlidingWindowCompactor(Compactor):
         Initialize the compactor.
 
         :param min_keep_steps: The fewest complete recent Agent steps to keep even when they exceed the target. A step
-            is an assistant message, all immediately following tool results, and the system reminders right before it.
-            `0` allows all completed steps to be removed when none fit.
+            is an assistant message, all immediately following tool results, and the messages right before it, such as
+            system reminders. `0` allows all completed steps to be removed when none fit.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
         :raises ValueError: If `min_keep_steps` is negative.
