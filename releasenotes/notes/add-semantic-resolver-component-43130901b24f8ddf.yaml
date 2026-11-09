@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `SemanticResolver` preprocessor component that resolves semantically similar entities
+    in document metadata using Hugging Face Text Embeddings Inference (TEI) `/similarity` endpoint
+    and normalizes them to canonical names.
