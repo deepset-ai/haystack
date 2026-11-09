@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_SYSTEM_PROMPT_TEMPLATE = """You are given a conversation in which an assistant was working on the user's \
 request using tools, but was stopped before it could write a final answer. Write the final answer to the user's \
-request now, using only the information gathered in the conversation so far. Do not call tools. If the gathered \
-information is incomplete, answer as well as you can and say clearly which parts could not be answered.
+request now, using only the information gathered in the conversation so far. Do not call tools. If parts of the \
+request could not be answered from that information, answer the rest and briefly say which parts are missing. \
+Otherwise, do not add caveats about missing information or suggestions to check other sources.
 {%- if system_prompt %}
 
 The assistant was working under the instructions below. Follow them for language, tone, persona and formatting, but \

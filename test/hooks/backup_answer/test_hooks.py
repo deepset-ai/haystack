@@ -73,7 +73,7 @@ class TestBackupAnswerHook:
 
         system_prompt = generator.run.call_args.kwargs["messages"][0].text
         assert "<instructions>" not in system_prompt
-        assert system_prompt.endswith("say clearly which parts could not be answered.")
+        assert system_prompt.endswith("suggestions to check other sources.")
 
     @pytest.mark.parametrize(
         ("template", "expected"),
