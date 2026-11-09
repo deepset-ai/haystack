@@ -187,7 +187,7 @@
 | haystack/hooks/budget/hooks.py                                             |       57 |        0 |    100% |           |
 | haystack/hooks/compaction/\_\_init\_\_.py                                  |        5 |        0 |    100% |           |
 | haystack/hooks/compaction/hooks.py                                         |      111 |        1 |     99% |       296 |
-| haystack/hooks/compaction/sliding\_window.py                               |       80 |        0 |    100% |           |
+| haystack/hooks/compaction/sliding\_window.py                               |       82 |        0 |    100% |           |
 | haystack/hooks/compaction/summarization.py                                 |      171 |       16 |     91% |89, 314-317, 475-479, 483-484, 488-492 |
 | haystack/hooks/compaction/tool\_result\_offloading.py                      |       52 |        1 |     98% |       165 |
 | haystack/hooks/compaction/tool\_result\_pruning.py                         |       36 |        0 |    100% |           |
@@ -276,7 +276,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18571** |  **682** | **96%** |           |
+| **TOTAL**                                                                  | **18573** |  **682** | **96%** |           |
 
 
 ## Setup coverage badge
