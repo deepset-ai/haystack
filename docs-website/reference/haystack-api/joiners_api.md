@@ -376,6 +376,8 @@ Creates a DocumentJoiner component.
   This parameter is ignored for
   `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
+  `weights[i]` applies to the documents from the i-th connection made to `documents`
+  with `Pipeline.connect()`.
   Each weight must be a non-negative number.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
