@@ -336,9 +336,11 @@ def apply_filter_policy(
           filters combined with `AND`, all of their conditions apply (intersection) and a warning is logged when
           they have conditions on the same field. If both are logical filters with the same operator other than
           `AND`, they are nested under an `AND`, so both apply with no precedence. If both are logical filters with
-          different operators, the initial filters are ignored and only the runtime filters are used. If at least
-          one of the two is a comparison filter, a runtime condition on a field that is also in the initial filters
-          takes precedence over the initial one.
+          different operators, the initial filters are ignored and only the runtime filters are used. If one is a
+          comparison filter and the other a logical filter, they are combined only when the logical filter's
+          operator matches `default_logical_operator`; otherwise the initial filters are ignored. When a comparison
+          filter is combined, a runtime condition on a field that is also in the initial filters takes precedence
+          over the initial one.
     :param init_filters: The initial filters set during the initialization of the relevant retriever.
     :param runtime_filters: The filters provided at runtime, usually during a query operation execution. These filters
                             can change for each query/retriever run invocation.
