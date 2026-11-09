@@ -203,3 +203,14 @@ def test_period_context_re_does_not_swallow_unexpected_errors() -> None:
 
     with pytest.raises(RuntimeError, match="unexpected"):
         FailingLanguageVars().period_context_re()
+
+
+@pytest.mark.parametrize("keep_white_spaces", [False, True])
+def test_split_sentences_splits_on_danda(keep_white_spaces: bool) -> None:
+    # the danda (U+0964) and double danda (U+0965) end sentences in Hindi, Marathi, Bengali and other Indic scripts
+    text = "भारत एक विशाल देश है। इसकी राजधानी नई दिल्ली है। हिमालय उत्तर में स्थित है॥ गंगा एक नदी है।"
+    splitter = SentenceSplitter(language="en", keep_white_spaces=keep_white_spaces)
+
+    sentences = [sentence["sentence"].strip() for sentence in splitter.split_sentences(text)]
+
+    assert sentences == ["भारत एक विशाल देश है।", "इसकी राजधानी नई दिल्ली है।", "हिमालय उत्तर में स्थित है॥", "गंगा एक नदी है।"]

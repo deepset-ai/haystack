@@ -77,12 +77,16 @@ if nltk_imports.is_successful():
             )
             sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
 
-        if keep_white_spaces:
-            sentence_tokenizer._lang_vars = CustomPunktLanguageVars()
+        sentence_tokenizer._lang_vars = CustomPunktLanguageVars() if keep_white_spaces else DandaPunktLanguageVars()
 
         return sentence_tokenizer
 
-    class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
+    class DandaPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
+        # NLTK only ends sentences on ".", "?" and "!". The danda (U+0964) and double danda (U+0965) are the
+        # sentence terminators in Hindi, Marathi, Bengali and other Indic scripts.
+        sent_end_chars = (".", "?", "!", "।", "॥")
+
+    class CustomPunktLanguageVars(DandaPunktLanguageVars):
         # The following adjustment of PunktSentenceTokenizer is inspired by:
         # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
         # It is needed for preserving whitespace while splitting text into sentences.
