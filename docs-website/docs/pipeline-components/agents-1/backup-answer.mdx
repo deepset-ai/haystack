@@ -30,7 +30,7 @@ description: "Use BackupAnswerHook to write a final answer when an Agent stops a
 
 `BackupAnswerHook` runs once, after the Agent loop ends. When the run's `exit_reason` is one of the hook's `exit_reasons` (by default only `"max_agent_steps"`), it:
 
-1. Takes the conversation so far and replaces its system messages with the hook's `system_prompt`.
+1. Takes the conversation so far and moves its system messages into the backup call's system prompt, rendered from `system_prompt_template`. With the default template, the answer keeps following the Agent's instructions on language, tone, and formatting, but not those about calling tools.
 2. Calls its own chat generator with that conversation and no tools.
 3. Appends the reply to `messages`, so it becomes the Agent's `last_message`.
 
@@ -84,12 +84,15 @@ This example requires the `OPENAI_API_KEY` environment variable.
 
 ### Customizing the prompt and exit reasons
 
-`system_prompt` replaces the default prompt, which asks for a best-effort final answer from the gathered information. `exit_reasons` controls which exits trigger a backup answer. For example, to also cover runs stopped by [`TokenBudgetHook`](./token-budget.mdx):
+`system_prompt_template` replaces the default system prompt, which asks for a best-effort final answer from the gathered information. It is a Jinja2 template, and `{{ system_prompt }}` inserts the Agent's system prompt. Leave the variable out to drop it from the backup call. `exit_reasons` controls which exits trigger a backup answer. For example, to also cover runs stopped by [`TokenBudgetHook`](./token-budget.mdx):
 
 ```python
 hook = BackupAnswerHook(
     chat_generator=OpenAIResponsesChatGenerator(),
-    system_prompt="Answer the user's question from the search results above. Keep it under 100 words.",
+    system_prompt_template=(
+        "Answer the user's question from the search results above. Keep it under 100 words.\n"
+        "Follow these instructions for language and formatting:\n{{ system_prompt }}"
+    ),
     exit_reasons=["max_agent_steps", "token_budget_exceeded"],
 )
 ```

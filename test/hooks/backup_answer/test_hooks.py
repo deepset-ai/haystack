@@ -12,7 +12,6 @@ from haystack.components.agents.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.backup_answer import BackupAnswerHook
-from haystack.hooks.backup_answer.hooks import _DEFAULT_SYSTEM_PROMPT
 from haystack.tools import tool
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
@@ -42,17 +41,17 @@ class TestBackupAnswerHook:
     def test_to_dict_and_from_dict(self):
         hook = BackupAnswerHook(
             chat_generator=MockChatGenerator(responses="backup"),
-            system_prompt="custom",
+            system_prompt_template="custom {{ system_prompt }}",
             exit_reasons=("max_agent_steps", "token_budget_exceeded"),
             raise_on_failure=True,
         )
         restored = BackupAnswerHook.from_dict(hook.to_dict())
         assert isinstance(restored.chat_generator, MockChatGenerator)
-        assert restored.system_prompt == "custom"
+        assert restored.system_prompt_template == "custom {{ system_prompt }}"
         assert restored.exit_reasons == ("max_agent_steps", "token_budget_exceeded")
         assert restored.raise_on_failure is True
 
-    def test_appends_backup_answer_with_replaced_system_prompt(self):
+    def test_appends_backup_answer_with_agent_instructions(self):
         generator = MagicMock()
         generator.run.return_value = {"replies": [ChatMessage.from_assistant("backup")]}
         state = _state(_transcript(), exit_reason="max_agent_steps")
@@ -62,9 +61,36 @@ class TestBackupAnswerHook:
         assert state.data["messages"][-1].text == "backup"
         assert state.data["exit_reason"] == "max_agent_steps"
         prompt = generator.run.call_args.kwargs["messages"]
-        assert prompt[0].text == _DEFAULT_SYSTEM_PROMPT
-        assert prompt[1].text == "question"
-        assert not any(m.text == "agent prompt" for m in prompt)
+        assert prompt[0].text.endswith("<instructions>\nagent prompt\n</instructions>")
+        assert [m.text for m in prompt[1:]] == ["question", None, None]
+
+    def test_default_template_omits_instructions_without_agent_system_prompt(self):
+        generator = MagicMock()
+        generator.run.return_value = {"replies": [ChatMessage.from_assistant("backup")]}
+        state = _state(_transcript()[1:], exit_reason="max_agent_steps")
+
+        BackupAnswerHook(chat_generator=generator).run(state)
+
+        system_prompt = generator.run.call_args.kwargs["messages"][0].text
+        assert "<instructions>" not in system_prompt
+        assert system_prompt.endswith("say clearly which parts could not be answered.")
+
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [("Answer now. Rules: {{ system_prompt }}", "Answer now. Rules: agent prompt"), ("Answer now.", "Answer now.")],
+    )
+    def test_custom_system_prompt_template(self, template, expected):
+        generator = MagicMock()
+        generator.run.return_value = {"replies": [ChatMessage.from_assistant("backup")]}
+        state = _state(_transcript(), exit_reason="max_agent_steps")
+
+        BackupAnswerHook(chat_generator=generator, system_prompt_template=template).run(state)
+
+        assert generator.run.call_args.kwargs["messages"][0].text == expected
+
+    def test_rejects_unknown_template_variables(self):
+        with pytest.raises(ValueError, match=r"can only use the variable 'system_prompt', but it uses \['query'\]"):
+            BackupAnswerHook(chat_generator=MagicMock(), system_prompt_template="{{ query }}")
 
     @pytest.mark.parametrize("exit_reason", ["text", "token_budget_exceeded", None])
     def test_skips_other_exit_reasons(self, exit_reason):
