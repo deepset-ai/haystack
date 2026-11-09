@@ -363,9 +363,27 @@ async def async_callback(chunk):
 
 
 class TestSelectStreamingCallback:
-    def test_runtime_precedes_init(self):
-        selected = select_streaming_callback(sync_callback, async_callback, requires_async=True)
+    def test_runtime_precedes_init(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            selected = select_streaming_callback(sync_callback, async_callback, requires_async=True)
         assert selected is async_callback
+        assert "sync streaming callback" not in caplog.text
+
+    def test_sync_runtime_overrides_async_init(self):
+        selected = select_streaming_callback(async_callback, sync_callback, requires_async=False)
+        assert selected is sync_callback
+
+    def test_empty_runtime_callback_collection_receives_chunks(self):
+        class RecordingCallback(list[StreamingChunk]):
+            def __call__(self, chunk: StreamingChunk) -> None:
+                self.append(chunk)
+
+        runtime_callback = RecordingCallback()
+        selected = select_streaming_callback(sync_callback, runtime_callback, requires_async=False)
+        assert selected is not None
+        chunk = StreamingChunk(content="hello")
+        selected(chunk)
+        assert runtime_callback == [chunk]
 
     def test_runtime_only(self):
         selected = select_streaming_callback(None, sync_callback, requires_async=False)
@@ -384,6 +402,8 @@ class TestSelectStreamingCallback:
             select_streaming_callback(None, async_callback, requires_async=False)
         with pytest.raises(ValueError, match="cannot be a coroutine"):
             select_streaming_callback(async_callback, None, requires_async=False)
+        with pytest.raises(ValueError, match="cannot be a coroutine"):
+            select_streaming_callback(sync_callback, async_callback, requires_async=False)
 
     def test_sync_callback_in_async_context_warns_but_returns(self, caplog):
         with caplog.at_level(logging.WARNING):

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` now keeps decorators with the methods or classes they
+    belong to, without copying them to other chunks. This also works with
+    multiline decorators.

@@ -199,6 +199,7 @@ Initialize DocumentCleaner.
   which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
 - **remove_substrings** (<code>list\[str\] | None</code>) – List of substrings to remove from the text.
 - **remove_regex** (<code>str | None</code>) – Regex to match and replace substrings by "".
+  Pages where the regex matches are also stripped of leading and trailing whitespace.
 - **keep_id** (<code>bool</code>) – If `True`, keeps the IDs of the original documents.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text.
   Note: This will run before any other steps.
@@ -725,8 +726,8 @@ splitter.run([doc])
 # >> Document(id=8dc.., content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['39d..', 'e23..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
 # >> Document(id=f19.., content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
 # >> Document(id=52c.., content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
-# >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-# >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
+# >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 10}),
+# >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 22})]}
 ```
 
 #### __init__
@@ -735,7 +736,9 @@ splitter.run([doc])
 __init__(
     block_sizes: set[int],
     split_overlap: int = 0,
-    split_by: Literal["word", "sentence", "page", "passage"] = "word",
+    split_by: Literal["word", "sentence", "page", "passage", "token"] = "word",
+    *,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -745,12 +748,24 @@ Initialize HierarchicalDocumentSplitter.
 
 - **block_sizes** (<code>set\[int\]</code>) – Set of block sizes to split the document into. The blocks are split in descending order.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
-- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage']</code>) – The unit for splitting your documents.
+- **split_by** (<code>Literal['word', 'sentence', 'page', 'passage', 'token']</code>) – The unit for splitting your documents: `word`, `sentence`, `page`, `passage`, or `token`.
+  `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that block sizes
+  match an LLM's context budget.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to `"o200k_base"`
+  (current OpenAI models). Only used when `split_by="token"`.
 
 **Raises:**
 
 - <code>ValueError</code> – If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
   greater than or equal to the smallest value in `block_sizes`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the splitters by loading the sentence tokenizer or the tiktoken encoding they need.
 
 #### run
 
@@ -820,6 +835,8 @@ Deserialize this component from a dictionary.
 ### MarkdownHeaderSplitter
 
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
+
+Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
 
 This component processes text documents by:
 
@@ -979,8 +996,8 @@ Initializes a RecursiveDocumentSplitter.
 
 **Raises:**
 
-- <code>ValueError</code> – If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-  if any separator is not a string.
+- <code>ValueError</code> – If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+  equal to the chunk size, if the overlap is negative, or if any separator is not a string.
 
 #### warm_up
 

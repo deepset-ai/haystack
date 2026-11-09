@@ -1,0 +1,5 @@
+upgrade:
+  - |
+    ``OpenAIChatGenerator`` and ``AzureOpenAIChatGenerator`` now request token usage
+    metadata by default when streaming. To restore the previous behavior, pass
+    ``generation_kwargs={"stream_options": {"include_usage": False}}``.
