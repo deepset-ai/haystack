@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from collections import defaultdict
 from copy import copy, deepcopy
-import math
 from numbers import Real
 from typing import Any, Literal
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def _validate_similarity_score(score: Any, source: str, target: str) -> float:
     """Validates that a TEI similarity score is a finite real number, rejecting booleans, NaN, and Inf."""
     if isinstance(score, bool) or not isinstance(score, Real):
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004 - TEI payload parsing error
             f"Invalid similarity score returned by TEI similarity endpoint for pair "
             f"('{source}', '{target}'): expected a numeric score, got {score!r}."
         )

@@ -573,7 +573,7 @@ class TestSemanticResolver:
         monkeypatch.setattr(
             httpx.Client,
             "post",
-            lambda *a, **kw: httpx.Response(200, json=[float("nan")], request=httpx.Request("POST", "http://test")),
+            lambda *a, **kw: httpx.Response(200, content=b"[NaN]", request=httpx.Request("POST", "http://test")),
         )
         with pytest.raises(ValueError, match="Non-finite similarity score returned by TEI similarity endpoint"):
             resolver.run(docs)
@@ -582,7 +582,7 @@ class TestSemanticResolver:
         monkeypatch.setattr(
             httpx.Client,
             "post",
-            lambda *a, **kw: httpx.Response(200, json=[float("inf")], request=httpx.Request("POST", "http://test")),
+            lambda *a, **kw: httpx.Response(200, content=b"[Infinity]", request=httpx.Request("POST", "http://test")),
         )
         with pytest.raises(ValueError, match="Non-finite similarity score returned by TEI similarity endpoint"):
             resolver.run(docs)
@@ -620,10 +620,7 @@ class TestSemanticResolver:
             return httpx.Response(200, json=[0.1] * len(chunk), request=httpx.Request("POST", url))
 
         monkeypatch.setattr(httpx.Client, "post", mock_post)
-        docs = [
-            Document(meta={"entities": [{"entity": f"Entity_{i}", "entity_type": "t"}]})
-            for i in range(5)
-        ]
+        docs = [Document(meta={"entities": [{"entity": f"Entity_{i}", "entity_type": "t"}]}) for i in range(5)]
         resolver = SemanticResolver(batch_size=2)
         resolver.run(docs)
         # Source 0 has 4 targets, chunked with batch_size=2 -> calls of size 2
@@ -659,11 +656,10 @@ class TestSemanticResolver:
 
     @pytest.mark.asyncio
     async def test_async_tei_error_handling(self, monkeypatch):
-        monkeypatch.setattr(
-            httpx.AsyncClient,
-            "post",
-            lambda *a, **kw: httpx.Response(500, request=httpx.Request("POST", "http://test")),
-        )
+        async def mock_post(*a, **kw):
+            return httpx.Response(500, request=httpx.Request("POST", "http://test"))
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
         docs = [
             Document(meta={"entities": [{"entity": "E1", "entity_type": "t"}]}),
             Document(meta={"entities": [{"entity": "E2", "entity_type": "t"}]}),
@@ -674,11 +670,10 @@ class TestSemanticResolver:
 
     @pytest.mark.asyncio
     async def test_async_malformed_response(self, monkeypatch):
-        monkeypatch.setattr(
-            httpx.AsyncClient,
-            "post",
-            lambda *a, **kw: httpx.Response(200, json={"error": "bad"}, request=httpx.Request("POST", "http://test")),
-        )
+        async def mock_post(*a, **kw):
+            return httpx.Response(200, json={"error": "bad"}, request=httpx.Request("POST", "http://test"))
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
         docs = [
             Document(meta={"entities": [{"entity": "E1", "entity_type": "t"}]}),
             Document(meta={"entities": [{"entity": "E2", "entity_type": "t"}]}),
