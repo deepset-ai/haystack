@@ -4,6 +4,8 @@
 
 from collections import defaultdict
 from copy import copy, deepcopy
+import math
+from numbers import Real
 from typing import Any, Literal
 
 import httpx
@@ -12,6 +14,31 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_similarity_score(score: Any, source: str, target: str) -> float:
+    """Validates that a TEI similarity score is a finite real number, rejecting booleans, NaN, and Inf."""
+    if isinstance(score, bool) or not isinstance(score, Real):
+        raise ValueError(
+            f"Invalid similarity score returned by TEI similarity endpoint for pair "
+            f"('{source}', '{target}'): expected a numeric score, got {score!r}."
+        )
+    val = float(score)
+    if not math.isfinite(val):
+        raise ValueError(
+            f"Non-finite similarity score returned by TEI similarity endpoint for pair "
+            f"('{source}', '{target}'): got {score!r}."
+        )
+    return val
+
+
+def _normalize_entity_type(etype: Any) -> Any:
+    """Normalizes entity type to ensure it is hashable for grouping and dictionary keys."""
+    if etype is None or isinstance(etype, (str, int, float, bool)):
+        return etype
+    if isinstance(etype, (list, tuple)):
+        return tuple(etype)
+    return str(etype)
 
 
 class _UnionFind:
@@ -107,7 +134,7 @@ class SemanticResolver:
         :param group_by_type: If `True`, only compares entities having identical entity types. Defaults to `True`.
         :param canonical_name_strategy: Strategy to pick the canonical representative of a merged cluster.
             Options are:
-            - `"most_frequent"`: The name occurring most frequently across input documents.
+            - `"most_frequent"`: The name occurring most frequently (total mentions) across input documents.
             - `"shortest"`: The shortest name by character count.
             - `"longest"`: The longest name by character count.
             - `"first"`: The first name encountered in the input documents.
@@ -115,18 +142,19 @@ class SemanticResolver:
         :param keep_original_entity_name: If `True`, preserves the pre-resolution entity name in
             `original_<entity_key>`. Defaults to `True`.
         :param deduplicate_entities: If `True`, removes duplicate entities within each document's metadata list
-            after resolution based on canonical entity identity and entity type. Defaults to `True`.
+            after resolution based on canonical entity identity and entity type, retaining the first occurrence.
+            If `False`, preserves all occurrences and their individual metadata fields. Defaults to `True`.
         :param batch_size: Maximum number of target sentences to send in a single TEI `/similarity` request.
             Defaults to 64.
         :param timeout: HTTP request timeout in seconds. Defaults to 30.0.
         :param http_client_kwargs: Optional keyword arguments passed to the underlying `httpx.Client`.
         :raises ValueError: If parameters are invalid (e.g. threshold out of bounds).
         """
-        if not (0.0 <= threshold <= 1.0):
+        if not math.isfinite(threshold) or not (0.0 <= threshold <= 1.0):
             raise ValueError(f"threshold must be between 0.0 and 1.0, got {threshold}")
         if batch_size <= 0:
             raise ValueError(f"batch_size must be greater than 0, got {batch_size}")
-        if timeout <= 0:
+        if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(f"timeout must be greater than 0, got {timeout}")
         valid_strategies = ("most_frequent", "shortest", "longest", "first")
         if canonical_name_strategy not in valid_strategies:
@@ -137,6 +165,8 @@ class SemanticResolver:
             raise ValueError("metadata_key cannot be empty")
         if not entity_key:
             raise ValueError("entity_key cannot be empty")
+        if not type_key:
+            raise ValueError("type_key cannot be empty")
 
         normalized_url = url.rstrip("/")
         if not normalized_url.endswith("/similarity"):
@@ -162,12 +192,16 @@ class SemanticResolver:
     def warm_up(self) -> None:
         """Initializes the synchronous HTTP client."""
         if self._client is None:
-            self._client = httpx.Client(timeout=self.timeout, **self.http_client_kwargs)
+            client_kwargs = dict(self.http_client_kwargs)
+            client_kwargs.setdefault("timeout", self.timeout)
+            self._client = httpx.Client(**client_kwargs)
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """Initializes the asynchronous HTTP client."""
         if self._async_client is None:
-            self._async_client = httpx.AsyncClient(timeout=self.timeout, **self.http_client_kwargs)
+            client_kwargs = dict(self.http_client_kwargs)
+            client_kwargs.setdefault("timeout", self.timeout)
+            self._async_client = httpx.AsyncClient(**client_kwargs)
 
     def close(self) -> None:
         """Closes the synchronous HTTP client."""
@@ -264,7 +298,7 @@ class SemanticResolver:
             for item in entities:
                 if isinstance(item, dict):
                     name = item.get(self.entity_key)
-                    etype = item.get(self.type_key) if self.group_by_type else None
+                    etype = _normalize_entity_type(item.get(self.type_key)) if self.group_by_type else None
                 elif isinstance(item, str):
                     name = item
                     etype = None
@@ -377,7 +411,7 @@ class SemanticResolver:
             for item in raw_entities:
                 if isinstance(item, dict):
                     name = item.get(self.entity_key)
-                    etype = item.get(self.type_key) if self.group_by_type else None
+                    etype = _normalize_entity_type(item.get(self.type_key)) if self.group_by_type else None
                     if name is not None and isinstance(name, str):
                         canonical = resolution_map.get((name, etype), name)
                         new_item = copy(item)
@@ -404,7 +438,7 @@ class SemanticResolver:
                         key: tuple[Any, ...] = (
                             "entity",
                             entity[self.entity_key],
-                            entity.get(self.type_key) if self.group_by_type else None,
+                            _normalize_entity_type(entity.get(self.type_key)) if self.group_by_type else None,
                         )
                     elif isinstance(entity, str):
                         key = ("string", entity)
@@ -496,7 +530,8 @@ class SemanticResolver:
                         )
 
                     for target, score in zip(chunk, scores, strict=True):
-                        if float(score) >= self.threshold:
+                        score_val = _validate_similarity_score(score, source, target)
+                        if score_val >= self.threshold:
                             uf.union(source, target)
 
             cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen.get(etype, {}))
@@ -566,7 +601,8 @@ class SemanticResolver:
                         )
 
                     for target, score in zip(chunk, scores, strict=True):
-                        if float(score) >= self.threshold:
+                        score_val = _validate_similarity_score(score, source, target)
+                        if score_val >= self.threshold:
                             uf.union(source, target)
 
             cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen.get(etype, {}))

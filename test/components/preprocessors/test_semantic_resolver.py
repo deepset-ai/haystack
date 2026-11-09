@@ -524,3 +524,183 @@ class TestSemanticResolver:
         serialized = pipeline.to_dict()
         assert "resolver" in serialized["components"]
         assert serialized["components"]["resolver"]["init_parameters"]["threshold"] == 0.88
+
+    def test_init_rejects_nan_threshold_and_timeout(self):
+        with pytest.raises(ValueError, match="threshold must be between 0.0 and 1.0"):
+            SemanticResolver(threshold=float("nan"))
+        with pytest.raises(ValueError, match="timeout must be greater than 0"):
+            SemanticResolver(timeout=float("nan"))
+
+    def test_init_rejects_empty_type_key(self):
+        with pytest.raises(ValueError, match="type_key cannot be empty"):
+            SemanticResolver(type_key="")
+
+    def test_http_client_kwargs_timeout_override(self):
+        # http_client_kwargs with timeout should not raise TypeError when warming up
+        resolver = SemanticResolver(timeout=30.0, http_client_kwargs={"timeout": 45.0})
+        resolver.warm_up()
+        assert resolver._client is not None
+        assert resolver._client.timeout.read == 45.0
+        resolver.close()
+
+    def test_tei_rejects_invalid_similarity_scores(self, monkeypatch):
+        # Rejects boolean, string, NaN, Inf in TEI similarity response
+        docs = [
+            Document(meta={"entities": [{"entity": "E1", "entity_type": "t"}]}),
+            Document(meta={"entities": [{"entity": "E2", "entity_type": "t"}]}),
+        ]
+        resolver = SemanticResolver()
+
+        # Boolean
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=[True], request=httpx.Request("POST", "http://test")),
+        )
+        with pytest.raises(ValueError, match="Invalid similarity score returned by TEI similarity endpoint"):
+            resolver.run(docs)
+
+        # Non-numeric string
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=["invalid"], request=httpx.Request("POST", "http://test")),
+        )
+        with pytest.raises(ValueError, match="Invalid similarity score returned by TEI similarity endpoint"):
+            resolver.run(docs)
+
+        # NaN
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=[float("nan")], request=httpx.Request("POST", "http://test")),
+        )
+        with pytest.raises(ValueError, match="Non-finite similarity score returned by TEI similarity endpoint"):
+            resolver.run(docs)
+
+        # Inf
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=[float("inf")], request=httpx.Request("POST", "http://test")),
+        )
+        with pytest.raises(ValueError, match="Non-finite similarity score returned by TEI similarity endpoint"):
+            resolver.run(docs)
+
+    def test_unhashable_entity_types_handled(self, monkeypatch):
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=[0.95], request=httpx.Request("POST", "http://test")),
+        )
+        docs = [
+            Document(meta={"entities": [{"entity": "Apple", "entity_type": ["company"]}]}),
+            Document(meta={"entities": [{"entity": "Apple Inc", "entity_type": ["company"]}]}),
+        ]
+        resolver = SemanticResolver(threshold=0.85)
+        res = resolver.run(docs)
+        assert res["documents"][0].meta["entities"][0]["entity"] == "Apple"
+        assert res["documents"][1].meta["entities"][0]["entity"] == "Apple"
+
+    def test_batch_size_chunking_with_many_targets(self, monkeypatch):
+        chunk_sizes = []
+
+        def mock_post(client, url, json=None, headers=None):
+            chunk = json["inputs"]["sentences"]
+            chunk_sizes.append(len(chunk))
+            return httpx.Response(200, json=[0.1] * len(chunk), request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx.Client, "post", mock_post)
+        docs = [
+            Document(meta={"entities": [{"entity": f"Entity_{i}", "entity_type": "t"}]})
+            for i in range(5)
+        ]
+        resolver = SemanticResolver(batch_size=2)
+        resolver.run(docs)
+        # Source 0 has 4 targets, chunked with batch_size=2 -> calls of size 2
+        assert 2 in chunk_sizes
+        assert len(chunk_sizes) > 1
+
+    def test_deduplicate_entities_preserves_all_when_disabled(self, monkeypatch):
+        monkeypatch.setattr(
+            httpx.Client,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json=[0.95], request=httpx.Request("POST", "http://test")),
+        )
+        docs = [
+            Document(
+                meta={
+                    "entities": [
+                        {"entity": "deepset", "entity_type": "company", "confidence": 0.95, "source": "src1"},
+                        {"entity": "deepset GmbH", "entity_type": "company", "confidence": 0.88, "source": "src2"},
+                    ]
+                }
+            )
+        ]
+        resolver = SemanticResolver(deduplicate_entities=False, threshold=0.85)
+        res = resolver.run(docs)
+        entities = res["documents"][0].meta["entities"]
+        assert len(entities) == 2
+        assert entities[0]["entity"] == "deepset"
+        assert entities[0]["confidence"] == 0.95
+        assert entities[0]["source"] == "src1"
+        assert entities[1]["entity"] == "deepset"
+        assert entities[1]["confidence"] == 0.88
+        assert entities[1]["source"] == "src2"
+
+    @pytest.mark.asyncio
+    async def test_async_tei_error_handling(self, monkeypatch):
+        monkeypatch.setattr(
+            httpx.AsyncClient,
+            "post",
+            lambda *a, **kw: httpx.Response(500, request=httpx.Request("POST", "http://test")),
+        )
+        docs = [
+            Document(meta={"entities": [{"entity": "E1", "entity_type": "t"}]}),
+            Document(meta={"entities": [{"entity": "E2", "entity_type": "t"}]}),
+        ]
+        resolver = SemanticResolver()
+        with pytest.raises(httpx.HTTPStatusError):
+            await resolver.run_async(docs)
+
+    @pytest.mark.asyncio
+    async def test_async_malformed_response(self, monkeypatch):
+        monkeypatch.setattr(
+            httpx.AsyncClient,
+            "post",
+            lambda *a, **kw: httpx.Response(200, json={"error": "bad"}, request=httpx.Request("POST", "http://test")),
+        )
+        docs = [
+            Document(meta={"entities": [{"entity": "E1", "entity_type": "t"}]}),
+            Document(meta={"entities": [{"entity": "E2", "entity_type": "t"}]}),
+        ]
+        resolver = SemanticResolver()
+        with pytest.raises(ValueError, match="Unexpected response format from TEI similarity endpoint"):
+            await resolver.run_async(docs)
+
+    @pytest.mark.asyncio
+    async def test_sync_and_async_parity(self, monkeypatch):
+        def mock_post(client, url, json=None, headers=None):
+            return httpx.Response(200, json=[0.95], request=httpx.Request("POST", url))
+
+        async def mock_post_async(client, url, json=None, headers=None):
+            return httpx.Response(200, json=[0.95], request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx.Client, "post", mock_post)
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post_async)
+
+        docs_sync = [
+            Document(meta={"entities": [{"entity": "deepset", "entity_type": "company"}]}),
+            Document(meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]}),
+        ]
+        docs_async = [
+            Document(meta={"entities": [{"entity": "deepset", "entity_type": "company"}]}),
+            Document(meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]}),
+        ]
+
+        resolver = SemanticResolver(threshold=0.85)
+        res_sync = resolver.run(docs_sync)
+        res_async = await resolver.run_async(docs_async)
+
+        assert res_sync["documents"][0].meta == res_async["documents"][0].meta
+        assert res_sync["documents"][1].meta == res_async["documents"][1].meta
