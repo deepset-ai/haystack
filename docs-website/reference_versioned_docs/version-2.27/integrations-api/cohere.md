@@ -649,13 +649,11 @@ print(response)
 
 ### Advanced example
 
-CohereChatGenerator can be integrated into pipelines and supports Haystack's tooling
-architecture, enabling tools to be invoked seamlessly across various generators.
+CohereChatGenerator supports Haystack's tooling architecture, so it can drive tool calls in an `Agent`.
 
 ```python
-from haystack import Pipeline
+from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
-from haystack.components.tools import ToolInvoker
 from haystack.tools import Tool
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
@@ -679,20 +677,12 @@ weather_tool = Tool(
     function=weather,
 )
 
-# Create and set up the pipeline
-pipeline = Pipeline()
-pipeline.add_component("generator", CohereChatGenerator(tools=[weather_tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[weather_tool]))
-pipeline.connect("generator", "tool_invoker")
+# The Agent calls the tool and feeds the result back to the model
+agent = Agent(chat_generator=CohereChatGenerator(), tools=[weather_tool])
+result = agent.run(messages=[ChatMessage.from_user("What's the weather like in Paris?")])
 
-# Run the pipeline with a weather query
-results = pipeline.run(
-    data={"generator": {"messages": [ChatMessage.from_user("What's the weather like in Paris?")]}}
-)
-
-# The tool result will be available in the pipeline output
-print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
-# Output: "The weather in Paris is sunny and 32°C"
+print(result["last_message"].text)
+# Output: "The weather in Paris is sunny and 32°C."
 ```
 
 #### SUPPORTED_MODELS

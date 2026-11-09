@@ -121,7 +121,8 @@ class ToolResultOffloadHook:
     Only successful tool output is offloaded; error results are always left in context. Each part of a result is
     written to its own store entry and the pointer says where each one went. Image and file content is only offloaded
     to a store that sets `supports_binary_content`; with a text-only store the result stays in context and a warning
-    is logged. Each result is offloaded at most once, even though the hook runs on every tool step.
+    is logged. If a write to the store fails, the result also stays in context, a warning is logged, and the Agent
+    keeps running. Each result is offloaded at most once, even though the hook runs on every tool step.
 
     The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
     `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -222,7 +223,8 @@ class ToolResultOffloadHook:
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
         human-in-the-loop rejections), when it was already offloaded (e.g. another offload hook under `after_tool`
         handled it), when no policy applies, when the result is empty (no content, or nothing but empty text), when
-        the result carries image or file content that `store` cannot store, or when the policy declines to offload.
+        the result carries image or file content that `store` cannot store, when the policy declines to offload, or
+        when a write to `store` fails.
 
         Otherwise the result is written to `store` and the message is rebuilt with a pointer in place of the full
         result, preserving its origin and error flag and marking it offloaded. Each part of the result goes to its own
@@ -261,13 +263,15 @@ class ToolResultOffloadHook:
         # Step, tool name, and call id keep results from different tools and steps from colliding. A tool call id is
         # optional, so an id-less call falls back to its position in this step's batch.
         step = state.data.get("step_count", 0)
-        return _offloaded_message(
+        offloaded = _offloaded_message(
             message=message,
             content_blocks=content_blocks,
             store=store,
             key_prefix=f"{step}_{tool_name}_{result.origin.id or f'call{index}'}",
             preview_chars=self.preview_chars,
         )
+        # A failed store write leaves the result in context.
+        return offloaded or message
 
     def to_dict(self) -> dict[str, Any]:
         """

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 from haystack import logging
@@ -52,3 +53,26 @@ async def _execute_component_async(component_instance: Any, **kwargs: Any) -> di
         component_type=type(component_instance).__name__,
     )
     return await asyncio.to_thread(component_instance.run, **kwargs)
+
+
+async def _call_with_async_fallback(instance: Any, method_name: str, /, **kwargs: Any) -> Any:
+    """
+    Call the async variant of a method when it exists, otherwise run its sync counterpart in a worker thread.
+
+    The async half of the DocumentStore API is optional: a store may implement only the synchronous
+    methods, and calling `filter_documents_async` on such a store raises an AttributeError. Running the
+    synchronous method in a thread keeps those stores usable from `run_async` without blocking the event
+    loop, the same fallback `Pipeline.run_async` applies to components that do not implement `run_async`.
+
+    :param instance: Object that exposes the synchronous method and, optionally, its async counterpart.
+    :param method_name: Name of the synchronous method; the async one is looked up as `<method_name>_async`.
+    :param kwargs: Keyword arguments passed to whichever method is called.
+    :returns:
+        The value returned by the async method, or by the synchronous one run in the worker thread.
+    """
+    async_method_name = f"{method_name}_async"
+    async_method: Callable[..., Awaitable[Any]] | None = getattr(instance, async_method_name, None)
+    if callable(async_method):
+        return await async_method(**kwargs)
+
+    return await asyncio.to_thread(getattr(instance, method_name), **kwargs)

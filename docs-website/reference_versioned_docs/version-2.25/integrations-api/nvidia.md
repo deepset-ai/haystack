@@ -118,22 +118,6 @@ available_models: list[Model]
 
 Get a list of available models that work with NvidiaDocumentEmbedder.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> NvidiaDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>NvidiaDocumentEmbedder</code> – The deserialized component.
-
 #### run
 
 ```python
@@ -262,22 +246,6 @@ available_models: list[Model]
 ```
 
 Get a list of available models that work with NvidiaTextEmbedder.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> NvidiaTextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>NvidiaTextEmbedder</code> – The deserialized component.
 
 #### run
 
@@ -528,22 +496,6 @@ Serialize the ranker to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the ranker's attributes.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> NvidiaRanker
-```
-
-Deserialize the ranker from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – A dictionary containing the ranker's attributes.
-
-**Returns:**
-
-- <code>NvidiaRanker</code> – The deserialized ranker.
 
 #### warm_up
 

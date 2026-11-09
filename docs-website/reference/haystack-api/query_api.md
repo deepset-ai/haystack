@@ -22,13 +22,29 @@ with the following structure:
 ### Usage example
 
 ```python
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.query import QueryExpander
 
-expander = QueryExpander(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
-    n_expansions=3
+chat_generator = OpenAIResponsesChatGenerator(
+    model="gpt-5.6-luna",
+    generation_kwargs={
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "query_expansion",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                    "required": ["queries"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+    },
 )
+
+expander = QueryExpander(chat_generator=chat_generator, n_expansions=3)
 
 result = expander.run(query="green energy sources")
 print(result["queries"])

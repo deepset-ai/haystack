@@ -19,6 +19,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.in_memory import document_store as in_memory_module
 from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -34,6 +35,7 @@ from haystack.testing.document_store_async import (
     CountDocumentsByFilterAsyncTest,
     CountUniqueMetadataByFilterAsyncTest,
     DeleteAllAsyncTest,
+    DeleteByFilterAsyncTest,
     DeleteDocumentsAsyncTest,
     FilterDocumentsAsyncTest,
     GetMetadataFieldMinMaxAsyncTest,
@@ -51,6 +53,7 @@ class TestMemoryDocumentStore(
     CountDocumentsAsyncTest,
     WriteDocumentsAsyncTest,
     DeleteAllAsyncTest,
+    DeleteByFilterAsyncTest,
     DeleteDocumentsAsyncTest,
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterAsyncTest,
@@ -278,6 +281,13 @@ class TestMemoryDocumentStore(
         document_store.write_documents(docs)
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
             document_store.bm25_retrieval(query="", top_k=1)
+
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_bm25_retrieval_with_negative_top_k_raises(self, document_store: InMemoryDocumentStore, top_k: int) -> None:
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        document_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            document_store.bm25_retrieval(query="world languages", top_k=top_k)
 
     def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
@@ -509,6 +519,19 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
 
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_embedding_retrieval_with_negative_top_k_raises(
+        self, in_memory_doc_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
+        ]
+        in_memory_doc_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
+
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
@@ -733,6 +756,29 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_bm25_retrieval_async_with_negative_top_k_raises(
+        self, document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        await document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await document_store.bm25_retrieval_async(query="world languages", top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_embedding_retrieval_async_with_negative_top_k_raises(
+        self, cosine_document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        await cosine_document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await cosine_document_store.embedding_retrieval_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
 
     @pytest.mark.asyncio
     async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore) -> None:
@@ -973,6 +1019,44 @@ class TestMemoryDocumentStore(
         reused_scores = {doc.id: doc.score for doc in reused_store.bm25_retrieval(query="common", top_k=3)}
 
         assert reused_scores == pytest.approx(fresh_scores)
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_scores_do_not_depend_on_documents_without_content(self, bm25_algorithm):
+        text_documents = [
+            Document(id="short", content="python tips for beginners"),
+            Document(id="long", content="python python guide covering advanced topics in depth today"),
+            Document(id="other", content="cooking pasta at home"),
+        ]
+        text_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+        mixed_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+
+        text_store.write_documents(text_documents)
+        mixed_store.write_documents(text_documents)
+        mixed_store.write_documents([Document(id=f"image_{i}", embedding=[0.1, 0.2]) for i in range(20)])
+
+        text_scores = {doc.id: doc.score for doc in text_store.bm25_retrieval(query="python", top_k=3)}
+        mixed_scores = {doc.id: doc.score for doc in mixed_store.bm25_retrieval(query="python", top_k=3)}
+
+        assert mixed_scores == pytest.approx(text_scores)
+        assert mixed_store._avg_doc_len == pytest.approx(text_store._avg_doc_len)
+
+    def test_bm25_avg_doc_len_with_documents_without_content(self):
+        store = InMemoryDocumentStore(shared=False)
+        store.write_documents(
+            [
+                Document(id="d1", content="hello world"),  # 2 tokens
+                Document(id="d2", content="foo bar baz"),  # 3 tokens
+                Document(id="image", embedding=[0.1, 0.2]),
+            ]
+        )
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        store.delete_documents(["image"])
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        # Overwriting a text document with one without content removes it from the statistics
+        store.write_documents([Document(id="d1", embedding=[0.1, 0.2])], policy=DuplicatePolicy.OVERWRITE)
+        assert store._avg_doc_len == pytest.approx(3.0)
 
 
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):

@@ -86,6 +86,7 @@ class TestOffloadedMessage:
             preview_chars=5,
             additional_meta={"extra": 1},
         )
+        assert offloaded is not None
 
         reference = offloaded.meta["tool_result_offloaded"][0]
         assert Path(reference).name == "key.txt"
@@ -104,6 +105,7 @@ class TestOffloadedMessage:
         offloaded = _offloaded_message(
             message=_tool_message(content), content_blocks=content, store=store, key_prefix="key", preview_chars=4
         )
+        assert offloaded is not None
 
         references = offloaded.meta["tool_result_offloaded"]
         assert [Path(reference).name for reference in references] == ["key_0.txt", "key_1.png", "key_2.pdf"]
@@ -138,8 +140,23 @@ class TestOffloadedMessage:
             key_prefix="key",
             preview_chars=0,
         )
+        assert offloaded is not None
 
         assert Path(offloaded.meta["tool_result_offloaded"][0]).suffix == expected_extension
+
+    def test_failed_write_leaves_the_result_in_context(self, caplog):
+        # The text block writes, the image block raises, so nothing from the result is replaced.
+        content: list[TextContent | ImageContent | FileContent] = [TextContent("caption"), IMAGE_BLOCK]
+        offloaded = _offloaded_message(
+            message=_tool_message(content),
+            content_blocks=content,
+            store=TextOnlyToolResultStore(),
+            key_prefix="key",
+            preview_chars=0,
+        )
+
+        assert offloaded is None
+        assert "Failed to offload the result of tool 'a' to TextOnlyToolResultStore" in caplog.text
 
     def test_rejects_a_message_without_a_tool_result(self, tmp_path):
         with pytest.raises(ValueError, match="Only tool-result messages can be offloaded."):

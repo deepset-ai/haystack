@@ -569,6 +569,9 @@ __init__(
     root_path: str | None = None,
     image_size: tuple[int, int] | None = None,
     progress_bar: bool = True,
+    include_content: bool = False,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
     boto3_config: dict[str, Any] | None = None,
     **kwargs: Any
 ) -> None
@@ -597,6 +600,10 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
+- **include_content** (<code>bool</code>) – Whether to embed `Document.content` together with the image. Currently supported only
+  for models whose identifier contains `cohere.embed-v4`.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Metadata fields to include with `Document.content` when `include_content=True`.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate metadata values and `Document.content`.
 - **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
@@ -988,7 +995,8 @@ __init__(
     *,
     guardrail_config: dict[str, str] | None = None,
     tools_cachepoint_config: dict[str, str] | None = None,
-    system_cachepoint_config: dict[str, str] | None = None
+    system_cachepoint_config: dict[str, str] | None = None,
+    tools_strict: bool = False
 ) -> None
 ```
 
@@ -1026,6 +1034,15 @@ and `aws_region_name`.
 - `temperature`: Sampling temperature.
 
 - `topP`: Nucleus sampling parameter.
+
+- `cache_control`: A dictionary of cache control options.
+  See [Prompt Caching](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html)
+  for more details on cache control options.
+  To enable automatic prompt caching, pass `{"cache_control": {"type": "ephemeral"}}`.
+
+- `cache_control_ttl`: Shortcut to set the cache `ttl` (e.g. `"5m"` or `"1h"`) without building the
+  `cache_control` dict yourself. It is merged into `cache_control`, overriding any `ttl` set there,
+  and `type` defaults to `"ephemeral"` if not set.
 
 - `response_format`: Request structured JSON output validated against a schema. Provide a dict with:
 
@@ -1090,6 +1107,11 @@ and `aws_region_name`.
   The dictionary must match the
   [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
   Example: `{"type": "default", "ttl": "5m"}`
+
+- **tools_strict** (<code>bool</code>) – Whether to enable strict tool use. If `True`, each tool spec is sent with `strict: true`,
+  so the model's tool calls are enforced against the tool's `parameters` schema. Only Haystack `tools` are
+  affected, not a `toolConfig` passed in `generation_kwargs`. See the
+  [ToolSpecification reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolSpecification.html).
 
 **Raises:**
 

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -65,121 +66,70 @@ class TestLLMEvaluator:
 
         assert component._chat_generator is chat_generator
 
-    def test_init_with_invalid_parameters(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        # Invalid inputs
-        with pytest.raises(ValueError):
+    @pytest.mark.parametrize(
+        "inputs",
+        [
+            pytest.param({("predicted_answers", list[str])}, id="set"),
+            pytest.param([(list[str], "predicted_answers")], id="non-string-name"),
+            pytest.param([list[str]], id="non-tuple"),
+            pytest.param({("predicted_answers", str)}, id="set-with-non-list-type"),
+            pytest.param([()], id="empty-tuple"),
+            pytest.param([("predicted_answers",)], id="missing-type"),
+            pytest.param([("predicted_answers", list[str], "extra")], id="extra-element"),
+            pytest.param([("predicted_answers", str)], id="str-type"),
+            pytest.param([("predicted_answers", dict)], id="dict-type"),
+        ],
+    )
+    def test_init_with_invalid_inputs(self, inputs):
+        with pytest.raises(ValueError, match="expects inputs to be a list of tuples"):
+            LLMEvaluator(instructions="test-instruction", inputs=inputs, outputs=["score"], examples=[])
+
+    @pytest.mark.parametrize(
+        "outputs", [pytest.param("score", id="non-list"), pytest.param([["score"]], id="non-string-element")]
+    )
+    def test_init_with_invalid_outputs(self, outputs):
+        with pytest.raises(ValueError, match="expects outputs to be a list of str"):
             LLMEvaluator(
-                instructions="test-instruction",
-                inputs={("predicted_answers", list[str])},  # type: ignore[arg-type]
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[(list[str], "predicted_answers")],  # type: ignore[list-item]
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[list[str]],  # type: ignore[list-item]
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs={("predicted_answers", str)},  # type: ignore[arg-type]
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
+                instructions="test-instruction", inputs=[("predicted_answers", list[str])], outputs=outputs, examples=[]
             )
 
-        # Invalid outputs
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs="score",  # type: ignore[arg-type]
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=[["score"]],  # type: ignore[list-item]
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-
-        # Invalid examples
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples={  # type: ignore[arg-type]
-                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                    "outputs": {"custom_score": 1},
-                },
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    [  # type: ignore[list-item]
-                        {
-                            "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                            "outputs": {"custom_score": 1},
-                        }
-                    ]
-                ],
-            )
-        with pytest.raises(ValueError):
+    @pytest.mark.parametrize(
+        "examples, error_message",
+        [
+            pytest.param(
+                {"inputs": {"predicted_answers": "answer"}, "outputs": {"score": 1}},
+                "expects examples to be a list of dictionaries",
+                id="non-list",
+            ),
+            pytest.param(
+                [[{"inputs": {"predicted_answers": "answer"}, "outputs": {"score": 1}}]],
+                "expects examples to be a list of dictionaries",
+                id="non-dict-element",
+            ),
+            pytest.param(
+                [{"wrong_key": {"predicted_answers": "answer"}, "outputs": {"score": 1}}],
+                "expects each example to have keys",
+                id="wrong-key",
+            ),
+            pytest.param(
+                [{"inputs": [{"predicted_answers": "answer"}], "outputs": [{"score": 1}]}],
+                "expects each example to have keys",
+                id="non-dict-values",
+            ),
+            pytest.param(
+                [{"inputs": {1: "answer"}, "outputs": {2: 1}}],
+                "expects each example to have keys",
+                id="non-string-keys",
+            ),
+        ],
+    )
+    def test_init_with_invalid_examples(self, examples, error_message):
+        with pytest.raises(ValueError, match=error_message):
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
-                examples=[
-                    {
-                        "wrong_key": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                        "outputs": {"custom_score": 1},
-                    }
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    {
-                        "inputs": [{"predicted_answers": "Damn, this is straight outta hell!!!"}],
-                        "outputs": [{"custom_score": 1}],
-                    }
-                ],
-            )
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[{"inputs": {1: "Damn, this is straight outta hell!!!"}, "outputs": {2: 1}}],
+                examples=examples,
             )
 
     def test_to_dict_default(self, monkeypatch):
@@ -420,7 +370,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError, match="Missing expected keys"):
             component.run(predicted_answers=["answer"])
 
-    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
+    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -437,8 +387,14 @@ class TestLLMEvaluator:
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
-        result = component.run(predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = component.run(predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert (
+            "LLMEvaluator failed to parse the ChatGenerator response: some_invalid_json_output. "
+            "Setting the result for this input to None." in caplog.text
+        )
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -522,7 +478,7 @@ class TestLLMEvaluatorAsync:
         assert results == {"results": [{"score": 0}], "meta": None}
 
     @pytest.mark.asyncio
-    async def test_run_async_raise_on_failure_false(self, monkeypatch):
+    async def test_run_async_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -547,8 +503,12 @@ class TestLLMEvaluatorAsync:
             "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
         )
 
-        result = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        with caplog.at_level(logging.WARNING):
+            result = await component.run_async(questions=["question"], predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert "LLMEvaluator failed during chat generation" in caplog.text
+        assert "Setting the result for this input to None. Error: API error" in caplog.text
+        assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
 
     @pytest.mark.asyncio
     async def test_run_async_raise_on_failure_true(self, monkeypatch):
