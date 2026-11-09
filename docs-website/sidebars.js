@@ -468,6 +468,7 @@ export default {
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
             'pipeline-components/generators/googlegenaichatgenerator',
+            'pipeline-components/generators/googlegenaiinteractionschatgenerator',
             'pipeline-components/generators/hetznerchatgenerator',
             'pipeline-components/generators/huggingfaceapichatgenerator',
             'pipeline-components/generators/litellmchatgenerator',

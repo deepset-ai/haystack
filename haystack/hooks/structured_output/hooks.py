@@ -15,6 +15,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY, _is_system_reminder
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 _CORRECTION_META_KEY = "structured_output_correction"
 
 # A markdown code fence wrapping the whole reply, with an optional language tag such as `json`.
-_CODE_FENCE_PATTERN = re.compile(r"^```[\w-]*[ \t]*\n(.*?)\n?[ \t]*```$", re.DOTALL)
+_CODE_FENCE_PATTERN = re.compile(r"^```[\w-]*[ \t]*\r?\n(.*?)(?:\r?\n)?[ \t]*```$", re.DOTALL)
 
 
 class StructuredOutputHook:
@@ -163,11 +164,12 @@ class StructuredOutputHook:
             )
             return
 
-        # Ask the model to correct its reply and keep the Agent running
+        # Ask the model to correct its reply and keep the Agent running. The correction is also marked as a system
+        # reminder so compaction doesn't take it for the user's task.
         correction = ChatMessage.from_user(
             f"Your previous reply could not be used: {error}\n\n"
             f"Reply again with only JSON that matches this JSON schema:\n{self._schema_text}",
-            meta={_CORRECTION_META_KEY: True},
+            meta={_CORRECTION_META_KEY: True, _SYSTEM_REMINDER_META_KEY: True},
         )
         state.set("messages", [correction])
         state.set("continue_run", True)
@@ -226,7 +228,7 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
     Count the correction messages the hook added since the last message from the user.
 
     Only the current turn is counted, so corrections from earlier turns of a multi-turn conversation don't use up
-    the retries of the current one.
+    the retries of the current one. System reminders added by other hooks are not user turns, so they are skipped.
     """
     count = 0
     # Walk back from the newest message
@@ -234,10 +236,15 @@ def _count_corrections(messages: list[ChatMessage]) -> int:
         # Skip all non-user messages, including the assistant's reply and any tool results
         if not message.is_from(ChatRole.USER):
             continue
-        # The first untagged user message is the start of the current turn, so stop counting
-        if not message.meta.get(_CORRECTION_META_KEY):
-            break
-        count += 1
+        # Count the corrections this hook added. Check this first: a correction may also carry the system reminder tag
+        if message.meta.get(_CORRECTION_META_KEY):
+            count += 1
+            continue
+        # Reminders that hooks such as `StepBudgetReminderHook` add as user messages don't start a new turn
+        if _is_system_reminder(message=message):
+            continue
+        # Any other user message is the start of the current turn, so stop counting
+        break
     return count
 
 

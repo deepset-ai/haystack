@@ -111,7 +111,8 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 Run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
@@ -131,7 +132,8 @@ run_async(documents: list[Document]) -> dict[str, list[Document]]
 Asynchronously run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
@@ -1047,8 +1049,8 @@ Create the MultiRetriever component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
-  greater than 0.
+- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, if `max_workers` is not
+  greater than 0, or if `join_mode` is not one of the available modes.
 
 #### warm_up
 

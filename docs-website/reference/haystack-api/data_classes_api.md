@@ -344,7 +344,7 @@ Convert TextContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> TextContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create a TextContent from a dictionary.
@@ -893,7 +893,7 @@ Convert FileContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> FileContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an FileContent from a dictionary.
@@ -991,7 +991,7 @@ Convert ImageContent into a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ImageContent
+from_dict(data: dict[str, Any]) -> Self
 ```
 
 Create an ImageContent from a dictionary.
@@ -1026,6 +1026,11 @@ use the `PDFToImageContent` component.
 **Returns:**
 
 - <code>ImageContent</code> – An ImageContent object.
+
+**Raises:**
+
+- <code>ValueError</code> – If the file cannot be read or converted to an image, for example because it does not exist or is not
+  an image.
 
 #### from_url
 
