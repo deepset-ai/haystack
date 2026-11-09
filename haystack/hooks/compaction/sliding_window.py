@@ -60,16 +60,17 @@ def _attach_messages_between_steps(
     :returns: The step groups with each message placed before the step that follows it, and the indices of messages
         with no assistant message after them.
     """
-    groups_by_start = {group[0]: group for group in groups}
-    in_a_step = {index for group in groups for index in group}
     attached: list[list[int]] = []
-    pending: list[int] = []
-    for index in range(start, len(messages)):
-        if index in groups_by_start:
-            attached.append([*pending, *groups_by_start[index]])
-            pending = []
-        elif index not in in_a_step and not _is_compaction_note(message=messages[index]):
-            pending.append(index)
+    previous_end = start
+    for group in groups:
+        # The messages between the previous step and this one go with this step.
+        between = [index for index in range(previous_end, group[0]) if not _is_compaction_note(message=messages[index])]
+        attached.append([*between, *group])
+        previous_end = group[-1] + 1
+    # The messages after the last step have no reply yet.
+    pending = [
+        index for index in range(previous_end, len(messages)) if not _is_compaction_note(message=messages[index])
+    ]
     return attached, pending
 
 
@@ -90,7 +91,8 @@ def _removable_groups(
     turn_groups = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
     # The messages between the instructions and the first turn, such as the summary a `SummarizationCompactor` leaves
     # at the start of history, form the oldest group.
-    first_turn_start = turn_groups[0][0] if turn_groups else (task_index if task_index is not None else system_end)
+    history_end = task_index if task_index is not None else system_end
+    first_turn_start = turn_groups[0][0] if turn_groups else history_end
     leading_group = list(range(system_end, first_turn_start))
     # An earlier compaction's note is left out of its group, so keeping the group folds that note into the note this
     # compaction leaves behind.

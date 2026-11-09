@@ -56,8 +56,8 @@ The compactor divides a conversation into protected context, historical turns, a
 1. It preserves all leading system messages as the Agent's instructions.
 2. It preserves the latest user message as the current task. Omission notes and [messages marked as system reminders](../compaction.mdx#messages-added-by-hooks) don't count.
 3. It groups the history before that task into complete historical turns, each running from one user message up to the next. Messages before the first of these turns, such as the summary a `SummarizationCompactor` leaves, form the oldest group.
-4. It groups each assistant message and all immediately following tool-result messages into one complete Agent step. Any other message in the current task, such as a system reminder or a `SummarizationCompactor` summary, is kept or removed together with the next assistant message and its tool results, since that message is the model's reply to it. Messages after the last assistant message are always kept, since the model hasn't seen them yet.
-5. Working backwards from the newest, it keeps as many complete historical turns as fit within the target.
+4. It groups each assistant message and all immediately following tool-result messages into one complete Agent step. Any other message in the current task, such as a system reminder or a `SummarizationCompactor` summary, is kept or removed together with the next assistant message and its tool results, since the model saw it when writing that message. Messages after the last assistant message are always kept, since the model hasn't seen them yet.
+5. Working backwards from the newest, it keeps as many of these history groups as fit within the target.
 6. Only when the current task alone still exceeds the target does it begin removing that task's own steps, oldest first.
 7. It replaces what it removed with an omission note, unless the note is disabled.
 
