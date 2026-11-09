@@ -350,10 +350,12 @@ Bases: <code>Compactor</code>
 
 Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-Leading system messages, the latest user message, and system reminders after the last assistant message are
-protected. Historical turns are kept in full when they fit, and the current task's history is kept in complete
-Agent steps, where a step is an assistant message together with all immediately following tool results. A system
-reminder in the current task is kept or removed together with the next assistant message and its tool results.
+Leading system messages, the latest user message, and messages after the last assistant message are protected.
+Historical turns are kept in full when they fit, and the current task's history is kept in complete Agent steps,
+where a step is an assistant message together with all immediately following tool results. Any other message in
+the current task, such as a system reminder or another strategy's summary, is kept or removed together with the
+next assistant message and its tool results. A summary at the start of history is kept or removed like the oldest
+historical turn.
 
 An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
 only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -391,8 +393,8 @@ Initialize the compactor.
 **Parameters:**
 
 - **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep even when they exceed the target. A step
-  is an assistant message, all immediately following tool results, and the system reminders right before it.
-  `0` allows all completed steps to be removed when none fit.
+  is an assistant message, all immediately following tool results, and the messages right before it, such as
+  system reminders. `0` allows all completed steps to be removed when none fit.
 - **omission_note** (<code>str | None</code>) – The user message left in place of what was removed, or None to remove the messages
   silently. Include `{num_removed}` to have the number of removed messages substituted in.
 
