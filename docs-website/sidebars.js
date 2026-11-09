@@ -539,6 +539,7 @@ export default {
             'pipeline-components/preprocessors/markdownheadersplitter',
             'pipeline-components/preprocessors/pythoncodesplitter',
             'pipeline-components/preprocessors/recursivesplitter',
+            'pipeline-components/preprocessors/semanticresolver',
             'pipeline-components/preprocessors/textcleaner',
             'pipeline-components/preprocessors/presidiodocumentcleaner',
             'pipeline-components/preprocessors/presidiotextcleaner',
