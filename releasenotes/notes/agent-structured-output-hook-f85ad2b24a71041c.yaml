@@ -1,0 +1,36 @@
+---
+features:
+  - |
+    Added ``StructuredOutputHook`` to ``haystack.hooks.structured_output``. Registered under ``on_exit``, it parses
+    the Agent's final reply as JSON, validates it against a Pydantic model or a JSON schema, and stores the result
+    as a dict under the ``structured_output`` key by default. The key must be declared in the Agent's
+    ``state_schema``, otherwise the hook raises an error at runtime.
+
+    When a reply can't be parsed, the hook sends the validation error back to the model and keeps the Agent running
+    so it can correct its reply, up to ``max_retries`` times (2 by default). When the reply still can't be parsed,
+    or the Agent stops on another exit condition, ``None`` is stored.
+
+    .. code:: python
+
+        from pydantic import BaseModel
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.dataclasses import ChatMessage
+        from haystack.hooks.structured_output import StructuredOutputHook
+
+
+        class CityInfo(BaseModel):
+            city: str
+            country: str
+
+
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
+            state_schema={"structured_output": {"type": dict}},
+            hooks={"on_exit": [StructuredOutputHook(schema=CityInfo)]},
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("Which city is the Eiffel Tower in?")])
+        print(result["structured_output"])
+        # {'city': 'Paris', 'country': 'France'}

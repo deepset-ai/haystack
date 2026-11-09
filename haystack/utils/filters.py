@@ -91,8 +91,7 @@ def _parse_iso_date(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
-        # Python 3.10's fromisoformat rejects valid ISO 8601 spellings that later versions accept,
-        # most notably a trailing "Z".
+        # fromisoformat still rejects some valid ISO 8601 spellings, such as "24:00" for end-of-day midnight.
         try:
             return dateutil.parser.isoparse(value)
         except (ValueError, OverflowError):

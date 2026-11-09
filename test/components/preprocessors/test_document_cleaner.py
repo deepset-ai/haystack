@@ -122,6 +122,27 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "This is a text\fwith some words."
 
+    @pytest.mark.parametrize(
+        "content, expected",
+        [
+            ("    def f():\n        return 1\n", "    def f():\n        return 1\n"),
+            ("    keep indent [TODO] here\n", "keep indent  here"),
+            ("\n# Page 1 [TODO]\n\f\n## Page 2\n    indented\n", "# Page 1\f\n## Page 2\n    indented\n"),
+        ],
+        ids=["no-match", "match", "multi-page"],
+    )
+    def test_remove_regex_strips_only_matching_pages(self, content, expected):
+        cleaner = DocumentCleaner(remove_empty_lines=False, remove_extra_whitespaces=False, remove_regex=r"\[TODO\]")
+        result = cleaner.run(documents=[Document(content=content)])
+        assert result["documents"][0].content == expected
+
+    def test_remove_regex_with_strip_whitespaces(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_regex=r"Page \d$", strip_whitespaces=True
+        )
+        result = cleaner.run(documents=[Document(content="\n  Body 1\nPage 1\f  Body 2  \n")])
+        assert result["documents"][0].content == "Body 1\f  Body 2"
+
     def test_remove_repeated_substrings(self):
         cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
@@ -264,6 +285,7 @@ class TestDocumentCleaner:
             score=0.1,
             embedding=[0.1, 0.2, 0.3],
             sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+            multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
         )
         res = cleaner.run(documents=[document])
 
@@ -278,6 +300,7 @@ class TestDocumentCleaner:
         assert res["documents"][0].score == document.score
         assert res["documents"][0].embedding == document.embedding
         assert res["documents"][0].sparse_embedding == document.sparse_embedding
+        assert res["documents"][0].multivector_embedding == document.multivector_embedding
 
     def test_strip_whitespaces(self):
         """Test that strip_whitespaces removes only leading and trailing whitespace."""

@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``OpenAIChatGenerator`` now includes several methods to make it easier for subclasses to customize the component's
+    behavior while reducing code duplication.

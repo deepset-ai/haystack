@@ -1,0 +1,102 @@
+---
+title: "TavilyWebSearchTool"
+id: tavilywebsearchtool
+slug: "/tavilywebsearchtool"
+description: "A Tool that allows Agents to search the web with Tavily."
+---
+
+# TavilyWebSearchTool
+
+A Tool that allows Agents to search the web with Tavily.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `api_key`: The Tavily API key. Can be set with the `TAVILY_API_KEY` env var. |
+| **API reference**            | [Tavily](/reference/integrations-tavily) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/tavily/src/haystack_integrations/tools/tavily/websearch_tool.py |
+| **Package name**             | `tavily-haystack` |
+
+</div>
+
+## Overview
+
+`TavilyWebSearchTool` wraps the [`TavilyWebSearch`](../../pipeline-components/websearch/tavilywebsearch.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool parameters are derived from the component's `run` method, so the LLM can pass a `query` and, optionally, `search_params` that override the ones set at initialization time.
+
+Results are formatted as a string, with each result showing a title, the exact URL, and a content snippet. This makes it straightforward for the LLM to cite its sources.
+
+### Parameters
+
+All parameters are keyword-only.
+
+- `api_key` is _mandatory_ and holds the Tavily API key. The default setting reads it from the `TAVILY_API_KEY` environment variable.
+- `top_k` is _optional_ and sets the maximum number of results to return. If unset, the `TavilyWebSearch` default applies.
+- `search_params` is _optional_ and takes additional parameters for the Tavily search API. Supported keys include `search_depth`, `include_answer`, `include_raw_content`, `include_domains`, and `exclude_domains`.
+- `name` is _optional_ and defaults to "web_search". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does. If not provided, a default description is applied.
+
+## Usage
+
+Install the Tavily integration to use the `TavilyWebSearchTool`:
+
+```shell
+pip install tavily-haystack
+```
+
+### On its own
+
+Basic usage to search the web:
+
+```python
+from haystack_integrations.tools.tavily import TavilyWebSearchTool
+
+tool = TavilyWebSearchTool(top_k=3)
+
+result = tool.invoke(query="What is Haystack by deepset?")
+
+for document in result["documents"]:
+    print(document.meta["title"], "-", document.meta["url"])
+```
+
+```bash
+GitHub - deepset-ai/haystack: Open-source AI orchestration framework ... - https://github.com/deepset-ai/haystack
+deepset - Wikipedia - https://en.wikipedia.org/wiki/Deepset
+Haystack | Haystack - https://haystack.deepset.ai
+```
+
+### With an Agent
+
+You can use `TavilyWebSearchTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when it needs information from the web.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.tools.tavily import TavilyWebSearchTool
+
+web_search = TavilyWebSearchTool(top_k=5, search_params={"search_depth": "advanced"})
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5-mini"),
+    tools=[web_search],
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack by deepset?")])
+
+print(result["last_message"].text)
+```
+
+```bash
+Haystack (by deepset) is an open-source Python framework for building production-ready
+LLM applications, especially Retrieval-Augmented Generation (RAG), semantic search,
+question answering, and agentic workflows.
+
+It provides modular components and pipelines (document stores, retrievers, rankers,
+generators, routers, and tool integrations) so you can compose and control how data
+flows before a model sees it.
+
+Source repo: https://github.com/deepset-ai/haystack
+```

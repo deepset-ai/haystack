@@ -236,10 +236,15 @@ def test_output_type_serialization_typing_generic_with_nonetype():
     assert serialize_type(Dict[type(None), str]) == "typing.Dict[None, str]"  # type: ignore[misc]
     assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
     assert serialize_type(List[type(None)]) == "typing.List[None]"  # type: ignore[misc]
-    # A Union with more than two members that includes None must keep None as well.
-    assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
-    # Optional must still be serialized without a redundant trailing None.
-    assert serialize_type(Optional[str]) == "typing.Optional[str]"
+    # A Union with more than two members that includes None must keep None as well, and Optional must still be
+    # serialized without a redundant trailing None.
+    # Python 3.14+ represents typing.Union as types.UnionType, so both serialize with PEP 604 syntax.
+    if sys.version_info >= (3, 14):
+        assert serialize_type(Union[str, int, None]) == "str | int | None"
+        assert serialize_type(Optional[str]) == "str | None"
+    else:
+        assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
+        assert serialize_type(Optional[str]) == "typing.Optional[str]"
 
 
 def test_output_type_round_trip_typing_generic_with_nonetype():
@@ -266,7 +271,12 @@ def test_output_type_serialization_callable_with_parameter_list():
     assert serialize_type(Callable[[int, str], bool]) == "typing.Callable[[int, str], bool]"
     assert serialize_type(Callable[[], int]) == "typing.Callable[[], int]"
     assert serialize_type(Callable[[int], List[str]]) == "typing.Callable[[int], typing.List[str]]"
-    assert serialize_type(Callable[[Union[str, int]], bool]) == "typing.Callable[[typing.Union[str, int]], bool]"
+    expected = (
+        "typing.Callable[[str | int], bool]"
+        if sys.version_info >= (3, 14)
+        else "typing.Callable[[typing.Union[str, int]], bool]"
+    )
+    assert serialize_type(Callable[[Union[str, int]], bool]) == expected
 
 
 def test_output_type_deserialization_callable_with_parameter_list():
