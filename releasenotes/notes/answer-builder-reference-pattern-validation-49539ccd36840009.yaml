@@ -1,7 +1,0 @@
----
-fixes:
-  - |
-    ``AnswerBuilder`` now validates ``reference_pattern`` during ``run()`` and raises a clear
-    ``ValueError`` immediately if it does not contain exactly one capture group. Previously,
-    an invalid ``reference_pattern`` with zero or multiple capture groups went undetected until
-    a reply matched, causing an unclear ``ValueError`` or ``TypeError`` during index parsing.
