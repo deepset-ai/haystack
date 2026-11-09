@@ -89,6 +89,8 @@ Creates an instance of the AnswerBuilder component.
 - **reference_pattern** (<code>str | None</code>) – The regular expression pattern used for parsing the document references.
   If not specified, no parsing is done, and all documents are returned.
   References need to be specified as indices of the input documents and start at [1].
+  The pattern can have at most one capture group. If present, the capture group must match the document
+  index; otherwise the whole match must be the document index.
   Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
   If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
 - **last_message_only** (<code>bool</code>) – If False (default value), all messages are used as the answer.
@@ -144,6 +146,8 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 - **reference_pattern** (<code>str | None</code>) – The regular expression pattern used for parsing the document references.
   If not specified, no parsing is done, and all documents are returned.
   References need to be specified as indices of the input documents and start at [1].
+  The pattern can have at most one capture group. If present, the capture group must match the document
+  index; otherwise the whole match must be the document index.
   Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
 - **expand_reference_ranges** (<code>bool | None</code>) – If True, reference ranges like `[6-10]` are expanded to documents 6 through 10.
   If not specified, the value from the component initialization is used.
@@ -152,6 +156,11 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `answers`: The answers received from the output of the Generator.
+
+**Raises:**
+
+- <code>ValueError</code> – If `replies` and `meta` lengths do not match, if `pattern` or `reference_pattern` contains multiple
+  capture groups, or if `reference_pattern` matches text that is not a document index.
 
 ## chat_prompt_builder
 
