@@ -200,8 +200,15 @@ class SearchableToolset(Toolset):
             # accumulating in InMemoryDocumentStore's process-global storage (e.g. when a SearchableToolset is
             # built per request in a served application).
             self._document_store = InMemoryDocumentStore(shared=False)
+            # Index the snake_case-split tool name as well so a keyword that only appears
+            # inside the name (e.g. searching "weather" for a tool named `get_weather`) is
+            # findable. The default BM25 tokenizer keeps `get_weather` as a single token,
+            # so without this the name words are unreachable when the description omits them.
             documents = [
-                Document(content=f"{tool.name} {tool.description}", meta={"tool_name": tool.name})
+                Document(
+                    content=f"{tool.name} {' '.join(tool.name.split('_'))} {tool.description}",
+                    meta={"tool_name": tool.name},
+                )
                 for tool in self._catalog
             ]
             self._document_store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
