@@ -137,6 +137,23 @@ class TestSemanticResolver:
         with pytest.raises(TypeError, match="SemanticResolver expects a List of Documents as input"):
             resolver.run(documents=["not-a-document"])  # type: ignore[list-item]
 
+        # Validates all elements in mixed lists
+        with pytest.raises(TypeError, match="SemanticResolver expects a List of Documents as input"):
+            resolver.run(documents=[Document(content="valid"), "not-a-document"])  # type: ignore[list-item]
+
+    @pytest.mark.asyncio
+    async def test_run_async_rejects_invalid_documents(self):
+        resolver = SemanticResolver()
+        with pytest.raises(TypeError, match="SemanticResolver expects a List of Documents as input"):
+            await resolver.run_async(documents="not-a-list")  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="SemanticResolver expects a List of Documents as input"):
+            await resolver.run_async(documents=["not-a-document"])  # type: ignore[list-item]
+
+        # Validates all elements in mixed lists
+        with pytest.raises(TypeError, match="SemanticResolver expects a List of Documents as input"):
+            await resolver.run_async(documents=[Document(content="valid"), "not-a-document"])  # type: ignore[list-item]
+
     def test_run_empty_documents(self):
         resolver = SemanticResolver()
         result = resolver.run(documents=[])
@@ -170,7 +187,6 @@ class TestSemanticResolver:
         ]
 
     def test_run_merges_similar_entities(self, monkeypatch):
-        # Mock httpx.Client.post
         def mock_post(client, url, json=None, headers=None):
             source = json["inputs"]["source_sentence"]
             sentences = json["inputs"]["sentences"]
@@ -219,6 +235,27 @@ class TestSemanticResolver:
         assert out_docs[2].meta["entities"][0]["entity"] == "Google"
         assert out_docs[2].meta["entities"][0]["original_entity"] == "Google"
 
+    def test_rerun_preserves_original_entity(self, monkeypatch):
+        def mock_post(client, url, json=None, headers=None):
+            return httpx.Response(200, json=[0.95], request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+        docs = [
+            Document(id="d1", meta={"entities": [{"entity": "deepset", "entity_type": "company"}]}),
+            Document(id="d2", meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]}),
+        ]
+
+        resolver = SemanticResolver(threshold=0.85)
+        first_result = resolver.run(docs)["documents"]
+        assert first_result[1].meta["entities"][0]["entity"] == "deepset"
+        assert first_result[1].meta["entities"][0]["original_entity"] == "deepset GmbH"
+
+        # Repeated run must preserve the original alias instead of overwriting with the resolved name
+        second_result = resolver.run(first_result)["documents"]
+        assert second_result[1].meta["entities"][0]["entity"] == "deepset"
+        assert second_result[1].meta["entities"][0]["original_entity"] == "deepset GmbH"
+
     def test_run_string_entities(self, monkeypatch):
         def mock_post(client, url, json=None, headers=None):
             return httpx.Response(200, json=[0.92], request=httpx.Request("POST", url))
@@ -232,7 +269,6 @@ class TestSemanticResolver:
 
         resolver = SemanticResolver(threshold=0.85)
         result = resolver.run(documents=docs)
-        # Python 3 appears twice, Python once -> canonical is "Python 3" under most_frequent
         assert result["documents"][0].meta["entities"] == ["Python 3"]
         assert result["documents"][1].meta["entities"] == ["Python 3"]
 
@@ -242,7 +278,6 @@ class TestSemanticResolver:
 
         monkeypatch.setattr(httpx.Client, "post", mock_post)
 
-        # "deepset" appears 1x, "deepset GmbH" appears 2x, "deepset software" appears 1x
         docs = [
             Document(id="1", meta={"entities": [{"entity": "deepset", "entity_type": "company"}]}),
             Document(id="2", meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]}),
@@ -270,8 +305,38 @@ class TestSemanticResolver:
         res_first = r_first.run(docs)
         assert res_first["documents"][0].meta["entities"][0]["entity"] == "deepset"
 
+    def test_first_strategy_tracked_per_entity_type(self, monkeypatch):
+        # Verify that "first" canonical strategy tracks order per entity type independently.
+        # "Alpha" appears in doc 1 under type_B (first in type_B).
+        # "Beta" appears in doc 1 under type_A (first in type_A).
+        # "Alpha" appears in doc 2 under type_A (second in type_A, similar to Beta).
+        # Because Beta appeared first in type_A, Beta must win for type_A despite Alpha appearing earlier globally.
+        def mock_post(client, url, json=None, headers=None):
+            return httpx.Response(200, json=[0.95], request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+        docs = [
+            Document(
+                id="1",
+                meta={
+                    "entities": [
+                        {"entity": "Alpha", "entity_type": "type_B"},
+                        {"entity": "Beta", "entity_type": "type_A"},
+                    ]
+                },
+            ),
+            Document(id="2", meta={"entities": [{"entity": "Alpha", "entity_type": "type_A"}]}),
+        ]
+
+        resolver = SemanticResolver(canonical_name_strategy="first", threshold=0.85)
+        res = resolver.run(docs)["documents"]
+
+        # In type_A, "Beta" was seen first (index 0 for type_A), so "Beta" must be canonical
+        assert res[0].meta["entities"][1]["entity"] == "Beta"
+        assert res[1].meta["entities"][0]["entity"] == "Beta"
+
     def test_group_by_type_separation(self, monkeypatch):
-        # If group_by_type=True, "Apple" (company) and "Apple" (fruit) are never compared
         call_count = 0
 
         def mock_post(client, url, json=None, headers=None):
@@ -293,17 +358,19 @@ class TestSemanticResolver:
         assert result["documents"][0].meta["entities"][0]["entity_type"] == "company"
         assert result["documents"][1].meta["entities"][0]["entity_type"] == "food"
 
-    def test_transitive_clustering_and_candidate_reduction(self, monkeypatch):
-        # A ~ B (0.9), B ~ C (0.9), but A ~ C is never directly queried if A and C already united
-        calls = []
+    def test_transitive_clustering(self, monkeypatch):
+        # A ~ B (0.90) and B ~ C (0.90), but A ~ C (0.10)
+        # Verify that transitive clustering connects all 3, but the API compares B against C
+        queried_pairs = []
 
         def mock_post(client, url, json=None, headers=None):
             source = json["inputs"]["source_sentence"]
             sentences = json["inputs"]["sentences"]
-            calls.append((source, sentences))
             scores = []
             for target in sentences:
-                if {source, target} in [{"A", "B"}, {"B", "C"}]:
+                queried_pairs.append((source, target))
+                pair = {source, target}
+                if pair in [{"A", "B"}, {"B", "C"}]:
                     scores.append(0.90)
                 else:
                     scores.append(0.10)
@@ -320,9 +387,40 @@ class TestSemanticResolver:
         resolver = SemanticResolver(threshold=0.85)
         result = resolver.run(docs)
 
-        # All 3 documents should resolve to the same canonical entity
+        # A is compared to B and C, then B is compared to C
+        assert ("A", "B") in queried_pairs
+        assert ("A", "C") in queried_pairs
+        assert ("B", "C") in queried_pairs
+
+        # All 3 documents resolve to the same canonical entity
         canonical_entities = {d.meta["entities"][0]["entity"] for d in result["documents"]}
         assert len(canonical_entities) == 1
+
+    def test_candidate_reduction(self, monkeypatch):
+        # A-B and A-C both exceed the threshold in the first batch;
+        # expect only one source API call, from A.
+        queried_sources = []
+
+        def mock_post(client, url, json=None, headers=None):
+            source = json["inputs"]["source_sentence"]
+            sentences = json["inputs"]["sentences"]
+            queried_sources.append(source)
+            return httpx.Response(200, json=[0.95] * len(sentences), request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+        docs = [
+            Document(meta={"entities": [{"entity": "A", "entity_type": "t"}]}),
+            Document(meta={"entities": [{"entity": "B", "entity_type": "t"}]}),
+            Document(meta={"entities": [{"entity": "C", "entity_type": "t"}]}),
+        ]
+
+        resolver = SemanticResolver(threshold=0.85)
+        resolver.run(docs)
+
+        # Since A was compared with both B and C and united them into one cluster,
+        # source B never needs to make an API call for C.
+        assert queried_sources == ["A"]
 
     def test_input_immutability(self, monkeypatch):
         def mock_post(client, url, json=None, headers=None):
@@ -346,27 +444,32 @@ class TestSemanticResolver:
         assert "original_entity" not in orig_entity_1
         assert "original_entity" not in orig_entity_2
 
-    def test_deduplicate_entities(self, monkeypatch):
+    def test_deduplicate_different_aliases_in_same_document(self, monkeypatch):
+        # When two different aliases in the same document resolve to the same canonical entity,
+        # they must be deduplicated into a single entity entry.
         def mock_post(client, url, json=None, headers=None):
             return httpx.Response(200, json=[0.95], request=httpx.Request("POST", url))
 
         monkeypatch.setattr(httpx.Client, "post", mock_post)
 
-        # Document mentions both "deepset" and "deepset"
         docs = [
             Document(
                 meta={
                     "entities": [
                         {"entity": "deepset", "entity_type": "company"},
                         {"entity": "deepset", "entity_type": "company"},
+                        {"entity": "deepset GmbH", "entity_type": "company"},
                     ]
                 }
             )
         ]
 
-        resolver = SemanticResolver(deduplicate_entities=True)
+        resolver = SemanticResolver(deduplicate_entities=True, threshold=0.85)
         res = resolver.run(docs)
-        assert len(res["documents"][0].meta["entities"]) == 1
+        entities = res["documents"][0].meta["entities"]
+        assert len(entities) == 1
+        assert entities[0]["entity"] == "deepset"
+        assert entities[0]["original_entity"] == "deepset"
 
     def test_tei_error_handling(self, monkeypatch):
         def mock_post(client, url, json=None, headers=None):

@@ -115,7 +115,7 @@ class SemanticResolver:
         :param keep_original_entity_name: If `True`, preserves the pre-resolution entity name in
             `original_<entity_key>`. Defaults to `True`.
         :param deduplicate_entities: If `True`, removes duplicate entities within each document's metadata list
-            after resolution. Defaults to `True`.
+            after resolution based on canonical entity identity and entity type. Defaults to `True`.
         :param batch_size: Maximum number of target sentences to send in a single TEI `/similarity` request.
             Defaults to 64.
         :param timeout: HTTP request timeout in seconds. Defaults to 30.0.
@@ -241,18 +241,18 @@ class SemanticResolver:
 
     def _extract_entities_from_documents(
         self, documents: list[Document]
-    ) -> tuple[dict[Any, dict[str, int]], dict[str, int]]:
+    ) -> tuple[dict[Any, dict[str, int]], dict[Any, dict[str, int]]]:
         """
         Extracts entity occurrences and order of appearance from documents.
 
         :param documents: The list of documents.
         :returns: A tuple of:
             - mapping: `entity_type -> {entity_name: count}`
-            - first_seen: `{entity_name: first_seen_index}`
+            - first_seen: `entity_type -> {entity_name: first_seen_index}`
         """
         occurrences: dict[Any, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-        first_seen: dict[str, int] = {}
-        seen_counter = 0
+        first_seen: dict[Any, dict[str, int]] = defaultdict(dict)
+        seen_counter: dict[Any, int] = defaultdict(int)
 
         for doc in documents:
             if not doc.meta or self.metadata_key not in doc.meta:
@@ -273,9 +273,9 @@ class SemanticResolver:
 
                 if name is not None and isinstance(name, str):
                     occurrences[etype][name] += 1
-                    if name not in first_seen:
-                        first_seen[name] = seen_counter
-                        seen_counter += 1
+                    if name not in first_seen[etype]:
+                        first_seen[etype][name] = seen_counter[etype]
+                        seen_counter[etype] += 1
 
         return occurrences, first_seen
 
@@ -285,7 +285,7 @@ class SemanticResolver:
 
         :param cluster: List of entity names in the cluster.
         :param counts: Frequency count of each entity name.
-        :param first_seen: Index of first appearance for each entity name.
+        :param first_seen: Index of first appearance for each entity name within its type group.
         :returns: The canonical entity name.
         """
         if len(cluster) == 1:
@@ -301,7 +301,7 @@ class SemanticResolver:
             # Longer string first, then higher count, then alphabetical
             return min(cluster, key=lambda name: (-len(name), -counts.get(name, 0), name))
         elif self.canonical_name_strategy == "first":
-            # First encountered in documents, then alphabetical
+            # First encountered in documents for this type, then alphabetical
             return min(cluster, key=lambda name: (first_seen.get(name, float("inf")), name))
 
         return cluster[0]
@@ -382,8 +382,10 @@ class SemanticResolver:
                         canonical = resolution_map.get((name, etype), name)
                         new_item = copy(item)
                         new_item[self.entity_key] = canonical
-                        if self.keep_original_entity_name:
-                            new_item[f"original_{self.entity_key}"] = name
+                        orig_key = f"original_{self.entity_key}"
+                        # Preserve existing original name if already present (e.g. on re-run)
+                        if self.keep_original_entity_name and orig_key not in new_item:
+                            new_item[orig_key] = name
                         updated_entities.append(new_item)
                     else:
                         updated_entities.append(copy(item))
@@ -394,11 +396,29 @@ class SemanticResolver:
                     updated_entities.append(copy(item))
 
             if self.deduplicate_entities:
-                seen_entities: list[Any] = []
+                deduplicated: list[Any] = []
+                seen_keys: set[tuple[Any, ...]] = set()
+
                 for entity in updated_entities:
-                    if entity not in seen_entities:
-                        seen_entities.append(entity)
-                updated_entities = seen_entities
+                    if isinstance(entity, dict) and isinstance(entity.get(self.entity_key), str):
+                        key: tuple[Any, ...] = (
+                            "entity",
+                            entity[self.entity_key],
+                            entity.get(self.type_key) if self.group_by_type else None,
+                        )
+                    elif isinstance(entity, str):
+                        key = ("string", entity)
+                    else:
+                        # Preserve non-standard entries unless they are exact duplicates.
+                        if entity not in deduplicated:
+                            deduplicated.append(entity)
+                        continue
+
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        deduplicated.append(entity)
+
+                updated_entities = deduplicated
 
             new_meta[self.metadata_key] = updated_entities
 
@@ -428,7 +448,7 @@ class SemanticResolver:
         :raises ValueError: If the TEI response format is invalid.
         :raises httpx.HTTPError: If the request to the TEI service fails.
         """
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or any(not isinstance(doc, Document) for doc in documents):
             raise TypeError("SemanticResolver expects a List of Documents as input.")
 
         if not documents:
@@ -456,7 +476,14 @@ class SemanticResolver:
                     continue
 
                 for chunk_start in range(0, len(candidate_targets), self.batch_size):
-                    chunk = candidate_targets[chunk_start : chunk_start + self.batch_size]
+                    chunk = [
+                        target
+                        for target in candidate_targets[chunk_start : chunk_start + self.batch_size]
+                        if uf.find(source) != uf.find(target)
+                    ]
+                    if not chunk:
+                        continue
+
                     payload = {"inputs": {"source_sentence": source, "sentences": chunk}}
                     response = self._client.post(self.url, json=payload, headers=headers)
                     response.raise_for_status()
@@ -472,7 +499,7 @@ class SemanticResolver:
                         if float(score) >= self.threshold:
                             uf.union(source, target)
 
-            cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen)
+            cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen.get(etype, {}))
             for name, canonical in cluster_map.items():
                 resolution_map[(name, etype)] = canonical
 
@@ -491,7 +518,7 @@ class SemanticResolver:
         :raises ValueError: If the TEI response format is invalid.
         :raises httpx.HTTPError: If the request to the TEI service fails.
         """
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or any(not isinstance(doc, Document) for doc in documents):
             raise TypeError("SemanticResolver expects a List of Documents as input.")
 
         if not documents:
@@ -519,7 +546,14 @@ class SemanticResolver:
                     continue
 
                 for chunk_start in range(0, len(candidate_targets), self.batch_size):
-                    chunk = candidate_targets[chunk_start : chunk_start + self.batch_size]
+                    chunk = [
+                        target
+                        for target in candidate_targets[chunk_start : chunk_start + self.batch_size]
+                        if uf.find(source) != uf.find(target)
+                    ]
+                    if not chunk:
+                        continue
+
                     payload = {"inputs": {"source_sentence": source, "sentences": chunk}}
                     response = await self._async_client.post(self.url, json=payload, headers=headers)
                     response.raise_for_status()
@@ -535,7 +569,7 @@ class SemanticResolver:
                         if float(score) >= self.threshold:
                             uf.union(source, target)
 
-            cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen)
+            cluster_map = self._resolve_clusters(names, uf, name_counts, first_seen.get(etype, {}))
             for name, canonical in cluster_map.items():
                 resolution_map[(name, etype)] = canonical
 
