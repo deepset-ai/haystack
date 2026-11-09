@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+import re
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -200,13 +201,14 @@ class SearchableToolset(Toolset):
             # accumulating in InMemoryDocumentStore's process-global storage (e.g. when a SearchableToolset is
             # built per request in a served application).
             self._document_store = InMemoryDocumentStore(shared=False)
-            # Index the snake_case-split tool name as well so a keyword that only appears
-            # inside the name (e.g. searching "weather" for a tool named `get_weather`) is
-            # findable. The default BM25 tokenizer keeps `get_weather` as a single token,
-            # so without this the name words are unreachable when the description omits them.
+            # Index the tool name split on word boundaries (snake_case and camelCase) so a
+            # keyword that only appears inside the name (e.g. searching "weather" for a tool
+            # named `get_weather` or `getWeather`) is findable. The default BM25 tokenizer
+            # keeps `get_weather` / `getWeather` as a single token, so without this the name
+            # words are unreachable when the description omits them.
             documents = [
                 Document(
-                    content=f"{tool.name} {' '.join(tool.name.split('_'))} {tool.description}",
+                    content=f"{tool.name} {' '.join(part.lower() for part in re.split(r'[_\s]+|(?<!^)(?=[A-Z])', tool.name) if part)} {tool.description}",
                     meta={"tool_name": tool.name},
                 )
                 for tool in self._catalog
