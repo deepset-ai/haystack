@@ -21,6 +21,7 @@ from haystack.hooks.human_in_the_loop import (
     SimpleConsoleUI,
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -80,7 +81,7 @@ class TestAgent:
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": "gpt-5-mini",
+                        "model": "gpt-5.6-terra",
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
@@ -375,11 +376,13 @@ class TestMultipleConfirmationHooks:
             ),
             ChatMessage.from_user(
                 "The user changed the arguments of 'bar' to {'x': 99} and wants that result used. "
-                "Don't call it again with the original arguments."
+                "Don't call it again with the original arguments.",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
             ),
             ChatMessage.from_user(
                 "The user changed the arguments of 'baz' to {'x': 77} and wants that result used. "
-                "Don't call it again with the original arguments."
+                "Don't call it again with the original arguments.",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
             ),
             ChatMessage.from_assistant(tool_calls=[ToolCall("bar", {"x": 99}), ToolCall("baz", {"x": 77})]),
             ChatMessage.from_tool(tool_result='{"echoed": 99}', origin=ToolCall("bar", {"x": 99}), error=False),
