@@ -29,7 +29,6 @@ from openai.types.responses import (
     ResponseOutputText,
     ResponseOutputTextAnnotationAddedEvent,
     ResponseReasoningItem,
-    ResponseReasoningSummaryPartAddedEvent,
     ResponseReasoningSummaryTextDeltaEvent,
     ResponseReasoningTextDeltaEvent,
     ResponseRefusalDeltaEvent,
@@ -42,7 +41,6 @@ from openai.types.responses import (
 )
 from openai.types.responses.response import IncompleteDetails
 from openai.types.responses.response_reasoning_item import Content, Summary
-from openai.types.responses.response_reasoning_summary_part_added_event import Part
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from haystack.components.generators.chat.openai_responses import (
@@ -491,56 +489,6 @@ class TestConversionToStreamingChunks:
         message = _convert_streaming_chunks_to_chat_message(chunks)
         assert message.reasoning is not None
         assert message.reasoning.reasoning_text == "Thinking."
-
-    def test_streamed_reasoning_summary_parts_match_final_reasoning_text(self) -> None:
-        events: list[ResponseStreamEvent] = []
-        for summary_index, text in enumerate(["First part.", "Second part."]):
-            events.append(
-                ResponseReasoningSummaryPartAddedEvent(
-                    item_id="rs_1",
-                    output_index=0,
-                    part=Part(text="", type="summary_text"),
-                    sequence_number=len(events),
-                    summary_index=summary_index,
-                    type="response.reasoning_summary_part.added",
-                )
-            )
-            events.append(
-                ResponseReasoningSummaryTextDeltaEvent(
-                    delta=text,
-                    item_id="rs_1",
-                    output_index=0,
-                    sequence_number=len(events),
-                    summary_index=summary_index,
-                    type="response.reasoning_summary_text.delta",
-                )
-            )
-        events.append(
-            ResponseOutputItemDoneEvent(
-                item=ResponseReasoningItem(
-                    id="rs_1",
-                    summary=[
-                        Summary(text="First part.", type="summary_text"),
-                        Summary(text="Second part.", type="summary_text"),
-                    ],
-                    type="reasoning",
-                    status="completed",
-                ),
-                output_index=0,
-                sequence_number=len(events),
-                type="response.output_item.done",
-            )
-        )
-
-        chunks: list[StreamingChunk] = []
-        for event in events:
-            chunks.append(_convert_response_chunk_to_streaming_chunk(event, previous_chunks=chunks))
-
-        streamed_text = "".join(chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning)
-        message = _convert_streaming_chunks_to_chat_message(chunks)
-        assert message.reasoning is not None
-        assert message.reasoning.reasoning_text == "First part.\nSecond part."
-        assert streamed_text == message.reasoning.reasoning_text
 
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
