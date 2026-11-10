@@ -94,7 +94,8 @@ class RegexTextExtractor:
 
         :returns:
           - `{"captured_text": "matched text"}` if a match is found
-          - `{"captured_text": ""}` if no match is found
+          - `{"captured_text": ""}` if no match is found, or if the first capture group
+            does not take part in the match
 
         :raises TypeError: if receiving a list the last element is not a ChatMessage instance.
         """

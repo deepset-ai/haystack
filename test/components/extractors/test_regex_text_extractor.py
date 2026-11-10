@@ -199,6 +199,12 @@ class TestRegexTextExtractor:
 
         assert result == {"captured_text": ""}
 
+    def test_capture_group_outside_the_match_in_chat_message_returns_empty_string(self):
+        extractor = RegexTextExtractor(regex_pattern=r"Score: (\d+)|N/A")
+
+        assert extractor.run(text_or_messages=[ChatMessage.from_assistant("Score: 7")]) == {"captured_text": "7"}
+        assert extractor.run(text_or_messages=[ChatMessage.from_assistant("N/A")]) == {"captured_text": ""}
+
     def test_pipeline_integration(self):
         """Test component integration in a Haystack pipeline."""
         pattern = r'<issue url="(.+?)">'
