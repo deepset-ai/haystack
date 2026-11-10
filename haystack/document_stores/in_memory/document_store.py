@@ -23,6 +23,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils import expit
 from haystack.utils.filters import document_matches_filter
+from haystack.utils.misc import _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -56,22 +57,6 @@ _CJK_CHAR_CLASS = (
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
 _DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
-
-
-def _make_metadata_value_hashable(value: Any) -> Any:
-    """Convert nested metadata values into values that can be used for deduplication."""
-    if isinstance(value, list):
-        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, tuple):
-        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, dict):
-        return (
-            "dict",
-            frozenset(
-                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
-            ),
-        )
-    return value
 
 
 @dataclass
@@ -795,9 +780,12 @@ class InMemoryDocumentStore:
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
+        :raises ValueError: if top_k is negative.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
@@ -872,10 +860,12 @@ class InMemoryDocumentStore:
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises ValueError: if filters have invalid syntax.
+        :raises ValueError: if top_k is negative or filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
@@ -1012,6 +1002,19 @@ class InMemoryDocumentStore:
         """
         await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
+        )
+
+    async def delete_by_filter_async(self, filters: dict[str, Any]) -> int:
+        """
+        Deletes all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for deletion.
+            For filter syntax, see filter_documents.
+        :returns: The number of documents deleted.
+        :raises ValueError: if filters have invalid syntax.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.delete_by_filter(filters=filters)
         )
 
     async def update_by_filter_async(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:

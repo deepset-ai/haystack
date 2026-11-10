@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import re
 import threading
+from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
@@ -215,6 +217,21 @@ class TestTool:
         assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
 
+    @pytest.mark.parametrize("output_key", ["source", "handler", "raw_result"])
+    def test_outputs_to_string_reserved_output_names_round_trip(self, output_key):
+        config = {output_key: {"source": "report", "handler": format_string}, "temp": {"source": "temperature"}}
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_string=config,
+        )
+
+        restored_tool = Tool.from_dict(json.loads(json.dumps(tool.to_dict())))
+
+        assert restored_tool.outputs_to_string == config
+
     def test_serialize_outputs_to_string(self):
         config = {"handler": format_string, "source": "result", "raw_result": False}
         serialized = _serialize_outputs_to_string(config)
@@ -302,6 +319,43 @@ class TestTool:
                 function=get_weather_report,
                 inputs_from_state={"state_key": "nonexistent"},
             )
+
+    @pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
+    def test_inputs_from_state_rejects_parameters_for_no_input_callable(self, is_async):
+        def no_args_function() -> str:
+            return "12:00"
+
+        async def async_no_args_function() -> str:
+            return "12:00"
+
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "inputs_from_state maps 'city' to unknown parameter 'nonexistent'. Valid parameters are: set()."
+            ),
+        ):
+            Tool(
+                name="clock",
+                description="What time is it?",
+                parameters={"type": "object", "properties": {}},
+                function=None if is_async else no_args_function,
+                async_function=async_no_args_function if is_async else None,
+                inputs_from_state={"city": "nonexistent"},
+            )
+
+    @pytest.mark.parametrize(
+        "properties", [{}, {"seconds": {"type": "number"}}], ids=["empty-schema", "partial-schema"]
+    )
+    def test_inputs_from_state_with_uninspectable_callable(self, properties):
+        tool = Tool(
+            name="duration",
+            description="Return the duration from state",
+            parameters={"type": "object", "properties": properties},
+            function=timedelta,
+            inputs_from_state={"duration_days": "days"},
+        )
+
+        assert tool.invoke(days=3) == timedelta(days=3)
 
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""

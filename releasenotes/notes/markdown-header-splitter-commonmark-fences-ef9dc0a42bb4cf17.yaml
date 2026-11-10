@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` now follows the CommonMark rules for fenced code blocks, so ``#`` lines inside
+    them are no longer split off as headers. A block can now close with a longer fence than the one that
+    opened it, fences may be indented by up to three spaces, and a block that is never closed runs to the
+    end of the document. A line that starts with inline code, where more backticks follow the opening
+    ones on the same line, is not treated as a fence.

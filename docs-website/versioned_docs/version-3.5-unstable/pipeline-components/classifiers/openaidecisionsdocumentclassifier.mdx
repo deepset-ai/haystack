@@ -1,0 +1,190 @@
+---
+title: "OpenAIDecisionsDocumentClassifier"
+id: openaidecisionsdocumentclassifier
+slug: "/openaidecisionsdocumentclassifier"
+description: "Answers typed questions about each document with an OpenAI Decisions model and stores the answers in its metadata."
+hep_available: false
+---
+
+# OpenAIDecisionsDocumentClassifier
+
+Answers typed questions about each document with an OpenAI Decisions model and stores the answers in its metadata.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [MetadataRouter](../routers/metadatarouter.mdx) |
+| **Mandatory init variables** | `questions`: A list of named questions in the OpenAI format <br /> <br />`api_key`: The OpenAI API key. Can be set with the `OPENAI_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to classify |
+| **Output variables** | `documents`: The classified documents, with the answers in their metadata <br /> <br />`failed_documents`: The documents that couldn't be classified |
+| **API reference** | Classifiers |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/classifiers/openai_decisions_document_classifier.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`OpenAIDecisionsDocumentClassifier` sends each document to an [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) model and stores the answers in the document's metadata. All questions about a document are answered in one request.
+
+Each question has one of three types:
+
+- `choice`: picks one value from `choices`, a list of objects with a `value` (string or boolean) and an optional `description`.
+- `score`: rates the text on the ordered `levels`, a list of objects with a `label` and an optional `description`.
+- `predicate`: returns the probability that the yes/no question in `instructions` is true.
+
+Pass a list of question dicts in the OpenAI format. Each question must have a non-empty, unique string `name`. See the [OpenAI documentation](https://developers.openai.com/api/docs/guides/decisions) for the full question and answer format.
+
+The answers are stored under `meta["openai_decisions"]`, keyed by question name, with `name` omitted from each answer. You can change the field name with `metadata_field`. The component classifies the document's `content` by default. To classify a metadata field instead, set `classification_field`.
+
+Documents without text to classify are returned in `failed_documents` with the reason in `meta["classification_error"]`. So are documents whose request failed, unless you set `raise_on_failure=True`, in which case the first failed request raises its error.
+
+OpenAI may refuse an individual question. That answer is stored with `type="refusal"`; the document remains in `documents`, along with the answers to its other questions. A refusal is not a failed API request, so `raise_on_failure` does not affect it.
+
+For `choice` and `score`, `probabilities` is a list of objects; `predicate` answers contain a single `probability`.
+
+Each document is sent as its own request. `max_workers` sets how many requests run at once, in both `run` and `run_async`.
+
+### Authentication
+
+The component reads the API key from the `OPENAI_API_KEY` environment variable by default. You can also pass it at initialization with `api_key`:
+
+```python
+from haystack.components.classifiers import OpenAIDecisionsDocumentClassifier
+from haystack.utils import Secret
+
+classifier = OpenAIDecisionsDocumentClassifier(
+    questions=[
+        {
+            "name": "refund",
+            "type": "predicate",
+            "instructions": "Is the customer asking for a refund?",
+        }
+    ],
+    api_key=Secret.from_token("<your-api-key>"),
+)
+```
+
+## Usage
+
+Set the `OPENAI_API_KEY` environment variable before running these examples.
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.classifiers import OpenAIDecisionsDocumentClassifier
+
+classifier = OpenAIDecisionsDocumentClassifier(
+    questions=[
+        {
+            "name": "department",
+            "type": "choice",
+            "instructions": "Which department should handle this ticket?",
+            "choices": [
+                {"value": "billing"},
+                {"value": "technical"},
+                {"value": "sales"},
+            ],
+        },
+        {
+            "name": "urgency",
+            "type": "score",
+            "instructions": "How urgent is this ticket?",
+            "levels": [
+                {"label": "can wait"},
+                {"label": "this week"},
+                {"label": "today"},
+            ],
+        },
+        {
+            "name": "refund",
+            "type": "predicate",
+            "instructions": "Is the customer asking for a refund?",
+        },
+    ]
+)
+
+result = classifier.run(
+    documents=[Document(content="I was charged twice, please refund me today.")]
+)
+print(result["documents"][0].meta["openai_decisions"])
+# Example response (values may vary):
+# >> {
+#     "department": {"type": "choice", "choice": "billing", "confidence": 0.95,
+#      "probabilities": [{"value": "billing", "probability": 0.97},
+#                        {"value": "technical", "probability": 0.02},
+#                        {"value": "sales", "probability": 0.01}]},
+#     "urgency": {"type": "score", "score": 1.95, "confidence": 0.94,
+#      "probabilities": [{"label": "can wait", "value": 0, "probability": 0.01},
+#                        {"label": "this week", "value": 1, "probability": 0.03},
+#                        {"label": "today", "value": 2, "probability": 0.96}]},
+#     "refund": {"type": "predicate", "probability": 0.95},
+# }
+print(result["failed_documents"])
+# >> []
+```
+
+### In a pipeline
+
+The following pipeline classifies support tickets by department and sends each one to a different output of a `MetadataRouter`, which matches on the nested answer field:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.classifiers import OpenAIDecisionsDocumentClassifier
+from haystack.components.routers import MetadataRouter
+
+labels = ["billing", "technical"]
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "classifier",
+    OpenAIDecisionsDocumentClassifier(
+        questions=[
+            {
+                "type": "choice",
+                "name": "department",
+                "instructions": "Which department should handle this ticket?",
+                "choices": [{"value": label} for label in labels],
+            }
+        ],
+    ),
+)
+pipeline.add_component(
+    "router",
+    MetadataRouter(
+        rules={
+            label: {
+                "field": "meta.openai_decisions.department.choice",
+                "operator": "==",
+                "value": label,
+            }
+            for label in labels
+        }
+    ),
+)
+pipeline.connect("classifier.documents", "router.documents")
+
+result = pipeline.run(
+    {
+        "classifier": {
+            "documents": [
+                Document(content="I was charged twice for my subscription."),
+                Document(
+                    content="The app crashes every time I open the settings page."
+                ),
+            ]
+        }
+    }
+)
+print(
+    {
+        output: [document.content for document in documents]
+        for output, documents in result["router"].items()
+    }
+)
+# >> {"billing": ["I was charged twice for my subscription."],
+#     "technical": ["The app crashes every time I open the settings page."],
+#     "unmatched": []}
+```

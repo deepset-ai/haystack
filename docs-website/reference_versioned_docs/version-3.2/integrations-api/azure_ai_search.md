@@ -358,6 +358,8 @@ Writes the provided documents to search index.
 
 - <code>ValueError</code> – If the documents are not of type Document.
 - <code>TypeError</code> – If the document ids are not strings.
+- <code>AzureAISearchDocumentStoreError</code> – If Azure AI Search reports that any document was not indexed.
+  The documents it did index stay in the index.
 
 #### delete_documents
 
@@ -424,6 +426,11 @@ first searches for matching documents, then updates them using merge operations.
 **Returns:**
 
 - <code>int</code> – The number of documents updated.
+
+**Raises:**
+
+- <code>AzureAISearchDocumentStoreError</code> – If the search or the update fails, including when Azure AI Search
+  reports that any matching document was not updated.
 
 #### get_documents_by_id
 

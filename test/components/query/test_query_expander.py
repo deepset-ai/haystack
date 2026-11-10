@@ -467,8 +467,9 @@ class TestQueryExpanderIntegration:
     @pytest.fixture
     def chat_generator(self):
         return OpenAIChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             generation_kwargs={
+                "reasoning_effort": "none",
                 "temperature": 0.7,
                 "response_format": {
                     "type": "json_schema",
