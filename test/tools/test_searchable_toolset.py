@@ -244,68 +244,21 @@ class TestSearchableToolsetBM25Mode:
         assert "get_weather" in result
         assert "get_weather" in toolset._discovered_tools
 
-    def test_search_tools_matches_snake_case_name_word(self):
-        """A keyword that lives only inside a snake_case tool name must be findable.
-
-        Regression test for #13631: the default BM25 tokenizer keeps ``book_flight`` as a
-        single token, so searching ``flight`` (when the description does not repeat it)
-        returned nothing. The index now also stores the name split on ``_``.
-        """
-        from typing import Annotated
-
-        def book_flight(destination: Annotated[str, "The destination to fly to"]) -> str:
-            """Reserve an airline seat."""
-            return f"Booked to {destination}"
-
-        def add_numbers(a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]) -> int:
-            """Add two numbers."""
-            return a + b
-
-        # Only two tools so discovery activates (search_threshold=2), and neither description
-        # contains "flight" - the keyword appears solely inside the snake_case name.
-        catalog = [create_tool_from_function(book_flight), create_tool_from_function(add_numbers)]
+    @pytest.mark.parametrize(("tool_name", "keyword"), [("book_flight", "flight"), ("getWeather", "weather")])
+    def test_search_tools_matches_word_inside_tool_name(self, tool_name, keyword):
+        """Test that search_tools finds a tool by a word that only appears inside its snake_case or camelCase name."""
+        params = {"type": "object", "properties": {}}
+        catalog = [
+            Tool(name=tool_name, description="Reserve an airline seat.", parameters=params, function=lambda: None),
+            Tool(name="add_numbers", description="Add two numbers.", parameters=params, function=lambda: None),
+        ]
         toolset = SearchableToolset(catalog=catalog, search_threshold=2)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
-        result = toolset._bootstrap_tool.invoke(tool_keywords="flight")
-        assert "book_flight" in result
-        assert "book_flight" in toolset._discovered_tools
-
-        # A keyword that is not present anywhere must still return nothing.
-        assert "No tools found" in toolset._bootstrap_tool.invoke(tool_keywords="zzznotpresent")
-
-    def test_search_tools_matches_camel_case_name_word(self):
-        """A keyword that lives only inside a camelCase tool name must be findable.
-
-        Follow-up to #13631: the default BM25 tokenizer keeps ``getWeather`` as a
-        single token, so searching ``weather`` (when the description does not repeat
-        it) returned nothing. The index now also splits on case boundaries, so the
-        inner word is reachable.
-        """
-        from typing import Annotated
-
-        def getWeather(destination: Annotated[str, "The destination to fly to"]) -> str:
-            """Reserve an airline seat."""
-            return f"Booked to {destination}"
-
-        def addNumbers(a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]) -> int:
-            """Add two numbers."""
-            return a + b
-
-        # Only two tools so discovery activates (search_threshold=2), and neither description
-        # contains "weather" - the keyword appears solely inside the camelCase name.
-        catalog = [create_tool_from_function(getWeather), create_tool_from_function(addNumbers)]
-        toolset = SearchableToolset(catalog=catalog, search_threshold=2)
-        toolset.warm_up()
-        assert toolset._bootstrap_tool is not None
-
-        result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
-        assert "getWeather" in result
-        assert "getWeather" in toolset._discovered_tools
-
-        # A keyword that is not present anywhere must still return nothing.
-        assert "No tools found" in toolset._bootstrap_tool.invoke(tool_keywords="zzznotpresent")
+        result = toolset._bootstrap_tool.invoke(tool_keywords=keyword)
+        assert tool_name in result
+        assert tool_name in toolset._discovered_tools
 
     def test_search_tools_auto_loads(self, large_catalog):
         """Test that search_tools auto-loads found tools."""
