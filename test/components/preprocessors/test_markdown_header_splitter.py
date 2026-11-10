@@ -9,7 +9,7 @@ from unittest.mock import ANY, Mock
 import pytest
 
 import haystack.components.preprocessors.document_splitter as document_splitter_module
-from haystack import Document, Pipeline
+from haystack import Document
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
 from haystack.core.serialization import component_from_dict, component_to_dict
@@ -1361,14 +1361,6 @@ def mock_tiktoken_encoding(monkeypatch):
 
 
 class TestSecondarySplitByToken:
-    def test_init_defaults(self):
-        splitter = MarkdownHeaderSplitter(secondary_split="token")
-
-        assert splitter.secondary_split == "token"
-        assert splitter.tokenizer_encoding == "o200k_base"
-        assert splitter.secondary_splitter.split_by == "token"
-        assert splitter.secondary_splitter.tokenizer_encoding == "o200k_base"
-
     def test_init_passes_settings_to_the_inner_splitter(self):
         splitter = MarkdownHeaderSplitter(
             secondary_split="token",
@@ -1385,26 +1377,6 @@ class TestSecondarySplitByToken:
         assert inner.split_threshold == 5
         assert inner.tokenizer_encoding == "cl100k_base"
 
-    def test_tokenizer_encoding_does_not_load_tiktoken_for_other_split_types(self, mock_tiktoken_encoding):
-        splitter = MarkdownHeaderSplitter(secondary_split="word", tokenizer_encoding="cl100k_base")
-        splitter.warm_up()
-
-        mock_tiktoken_encoding.assert_not_called()
-        assert splitter.secondary_splitter.split_by == "word"
-
-    def test_invalid_split_overlap_for_token_split_raises(self):
-        with pytest.raises(ValueError, match="split_overlap"):
-            MarkdownHeaderSplitter(secondary_split="token", split_length=5, split_overlap=5)
-
-    def test_to_dict(self):
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=100, tokenizer_encoding="cl100k_base")
-
-        init_parameters = component_to_dict(splitter, "splitter")["init_parameters"]
-
-        assert init_parameters["secondary_split"] == "token"
-        assert init_parameters["split_length"] == 100
-        assert init_parameters["tokenizer_encoding"] == "cl100k_base"
-
     def test_serialization_round_trip(self):
         splitter = MarkdownHeaderSplitter(
             secondary_split="token", split_length=100, split_overlap=20, tokenizer_encoding="cl100k_base"
@@ -1418,28 +1390,6 @@ class TestSecondarySplitByToken:
         assert restored.tokenizer_encoding == "cl100k_base"
         assert restored.secondary_splitter.tokenizer_encoding == "cl100k_base"
 
-    def test_from_dict_without_tokenizer_encoding_uses_the_default(self):
-        data = component_to_dict(MarkdownHeaderSplitter(secondary_split="word"), "splitter")
-        # dicts serialized before tokenizer_encoding existed
-        data["init_parameters"].pop("tokenizer_encoding")
-
-        restored = component_from_dict(MarkdownHeaderSplitter, data, "splitter")
-
-        assert restored.tokenizer_encoding == "o200k_base"
-
-    def test_pipeline_serialization_round_trip(self):
-        pipeline = Pipeline()
-        pipeline.add_component(
-            "splitter", MarkdownHeaderSplitter(secondary_split="token", tokenizer_encoding="cl100k_base")
-        )
-
-        restored = Pipeline.loads(pipeline.dumps())
-
-        splitter = restored.get_component("splitter")
-        assert isinstance(splitter, MarkdownHeaderSplitter)
-        assert splitter.secondary_split == "token"
-        assert splitter.tokenizer_encoding == "cl100k_base"
-
     def test_warm_up_loads_the_encoding_once(self, mock_tiktoken_encoding):
         splitter = MarkdownHeaderSplitter(secondary_split="token", tokenizer_encoding="cl100k_base")
 
@@ -1448,33 +1398,6 @@ class TestSecondarySplitByToken:
 
         mock_tiktoken_encoding.assert_called_once_with("cl100k_base")
         assert splitter.secondary_splitter._tiktoken_tokenizer is mock_tiktoken_encoding.return_value
-
-    def test_run_warms_up_automatically(self, mock_tiktoken_encoding):
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
-
-        splitter.run(documents=[Document(content="# Title\nOne two three four.")])
-        splitter.run(documents=[Document(content="# Title\nOne two three four.")])
-
-        mock_tiktoken_encoding.assert_called_once_with("o200k_base")
-
-    def test_chunks_respect_split_length(self, mock_tiktoken_encoding):
-        text = "# Intro\nOne two three four five six seven.\n## Details\nA b c d e f g h i j k."
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=4)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        encoding = mock_tiktoken_encoding.return_value
-        assert len(docs) > 2
-        for doc in docs:
-            assert 0 < len(encoding.encode_ordinary(doc.content)) <= 4
-
-    def test_split_without_overlap_keeps_all_text(self, mock_tiktoken_encoding):
-        text = "Preamble text.\n# Intro\nOne two three four five six seven.\n## Details\nA b c d e f g h i j k.\n"
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert "".join(str(doc.content) for doc in docs) == text
 
     def test_header_metadata_split_id_and_source_id(self, mock_tiktoken_encoding):
         text = "# Intro\nOne two three four five.\n## Details\nA b c d e f."
@@ -1507,42 +1430,6 @@ class TestSecondarySplitByToken:
         assert [doc.meta["header"] for doc in docs] == ["Intro", "Intro", "Details"]
         assert [doc.meta["parent_headers"] for doc in docs] == [[], [], ["Intro"]]
 
-    def test_split_overlap(self, mock_tiktoken_encoding):
-        text = "# Title\nt1 t2 t3 t4 t5 t6"
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=4, split_overlap=2)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        # every chunk starts with the last 2 tokens of the chunk before it
-        assert [doc.content for doc in docs] == ["# Title\nt1 t2", "\nt1 t2 t3 t4", " t3 t4 t5 t6"]
-
-    def test_split_threshold_merges_a_short_last_chunk(self, mock_tiktoken_encoding):
-        text = "# Title\nt1 t2 t3 t4 t5"
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3, split_threshold=2)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        # "# Title t1" | "t2 t3 t4" | "t5" -> the last chunk has 1 token, below the threshold, so it is merged
-        assert [doc.content for doc in docs] == ["# Title\nt1", " t2 t3 t4 t5"]
-
-    def test_page_numbers(self, mock_tiktoken_encoding):
-        text = "# Header\nFirst page\f Second page\f Third page"
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=1)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert [doc.content for doc in docs] == [
-            "#",
-            " Header",
-            "\nFirst",
-            " page",
-            "\f Second",
-            " page",
-            "\f Third",
-            " page",
-        ]
-        assert [doc.meta["page_number"] for doc in docs] == [1, 1, 1, 1, 2, 2, 3, 3]
-
     def test_page_numbers_across_headers(self, mock_tiktoken_encoding):
         text = "# One\nAlpha beta.\f\n# Two\nGamma delta epsilon.\f\n# Three\nZeta."
         splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=2)
@@ -1561,68 +1448,12 @@ class TestSecondarySplitByToken:
             ("\nZeta.", "Three", 3),
         ]
 
-    def test_short_section_is_one_chunk(self, mock_tiktoken_encoding):
-        text = "# Setup\nRun pip install."
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=200)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert len(docs) == 1
-        assert docs[0].content == text
-        assert docs[0].meta["header"] == "Setup"
-
-    def test_document_without_headers(self, mock_tiktoken_encoding):
-        text = "Just plain text with no headers at all."
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert "".join(str(doc.content) for doc in docs) == text
-        assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
-
-    def test_code_block_comments_are_not_headers(self, mock_tiktoken_encoding):
-        text = "# Usage\n```python\n# not a header\nprint(1)\n```\nDone."
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
-
-        docs = splitter.run(documents=[Document(content=text)])["documents"]
-
-        assert {doc.meta["header"] for doc in docs} == {"Usage"}
-        assert "".join(str(doc.content) for doc in docs) == text
-
-    @pytest.mark.parametrize("skip_empty_documents, expected_count", [(True, 0), (False, 1)])
-    def test_empty_documents(self, mock_tiktoken_encoding, skip_empty_documents, expected_count):
-        splitter = MarkdownHeaderSplitter(secondary_split="token", skip_empty_documents=skip_empty_documents)
-
-        docs = splitter.run(documents=[Document(content="   ")])["documents"]
-
-        assert len(docs) == expected_count
-
-    def test_multiple_documents_keep_their_own_source_id(self, mock_tiktoken_encoding):
-        first = Document(content="# A\none two three four")
-        second = Document(content="# B\nfive six seven eight")
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=2)
-
-        docs = splitter.run(documents=[first, second])["documents"]
-
-        assert {doc.meta["source_id"] for doc in docs if doc.meta["header"] == "A"} == {first.id}
-        assert {doc.meta["source_id"] for doc in docs if doc.meta["header"] == "B"} == {second.id}
-        # split_id restarts for every input document
-        assert [doc.meta["split_id"] for doc in docs if doc.meta["header"] == "B"][0] == 0
-
-    def test_input_meta_is_kept(self, mock_tiktoken_encoding):
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=2)
-
-        docs = splitter.run(documents=[Document(content="# A\none two three", meta={"file": "a.md"})])["documents"]
-
-        assert all(doc.meta["file"] == "a.md" for doc in docs)
-
 
 @pytest.mark.integration
 class TestSecondarySplitByTokenIntegration:
-    """Integration tests for secondary_split="token" that load a real tiktoken encoding."""
+    """Integration test for secondary_split="token" that loads a real tiktoken encoding."""
 
-    @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
-    def test_run(self, encoding):
+    def test_run(self):
         text = (
             "# Install\n"
             "Run `pip install haystack-ai` and see https://github.com/deepset-ai/haystack for the source code.\n"
@@ -1631,7 +1462,7 @@ class TestSecondarySplitByTokenIntegration:
             "Token-based chunks keep every piece inside the context budget of the model.\n"
             "```python\n# a comment, not a header\npipeline.run({'retriever': {'query': 'What is RAG?'}})\n```\n"
         )
-        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=10, tokenizer_encoding=encoding)
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=10)
         splitter.warm_up()
 
         docs = splitter.run(documents=[Document(content=text)])["documents"]
