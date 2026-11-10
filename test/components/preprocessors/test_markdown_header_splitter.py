@@ -338,7 +338,7 @@ def test_secondary_splits_have_independent_header_metadata(keep_headers, prefix,
 
     assert [split.content for split in split_docs] == expected_content
     assert "".join(expected_content) == (doc.content if keep_headers else "\n" + body)
-    offset = 0
+    offset = len(prefix + body) - len("".join(expected_content))
     for split_id, (split, content) in enumerate(zip(split_docs, expected_content, strict=True)):
         assert split.meta == {
             "tags": ["docs"],
@@ -828,6 +828,11 @@ def test_secondary_split_with_overlap():
     split_docs = result["documents"]
     assert len(split_docs) == 9
 
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
+
     # Verify exact content and metadata of each split
     # intro (4 docs)
     assert split_docs[0].content == "\nThis is the introduction section with some words "
@@ -882,6 +887,11 @@ def test_secondary_split_with_overlap():
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
     assert len(split_docs) == 24
+
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
 
     assert split_docs[0].content is not None
     assert split_docs[0].content.startswith("# Introduction")
@@ -967,7 +977,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 2,
         "page_number": 2,
-        "split_idx_start": 0,
+        "split_idx_start": 37,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -977,7 +987,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 3,
         "page_number": 2,
-        "split_idx_start": 18,
+        "split_idx_start": 55,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -987,7 +997,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 4,
         "page_number": 2,
-        "split_idx_start": 48,
+        "split_idx_start": 85,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -997,7 +1007,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 5,
         "page_number": 3,
-        "split_idx_start": 0,
+        "split_idx_start": 104,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1007,7 +1017,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 6,
         "page_number": 3,
-        "split_idx_start": 18,
+        "split_idx_start": 122,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1017,7 +1027,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 7,
         "page_number": 3,
-        "split_idx_start": 48,
+        "split_idx_start": 152,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1027,7 +1037,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 8,
         "page_number": 4,
-        "split_idx_start": 0,
+        "split_idx_start": 168,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1037,7 +1047,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 9,
         "page_number": 4,
-        "split_idx_start": 28,
+        "split_idx_start": 196,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1047,7 +1057,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 10,
         "page_number": 5,
-        "split_idx_start": 0,
+        "split_idx_start": 218,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1057,7 +1067,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 11,
         "page_number": 5,
-        "split_idx_start": 28,
+        "split_idx_start": 246,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }

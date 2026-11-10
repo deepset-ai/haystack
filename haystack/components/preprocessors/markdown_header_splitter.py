@@ -273,7 +273,7 @@ class MarkdownHeaderSplitter:
 
         return chunks
 
-    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool]]) -> list[Document]:
+    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool, int]]) -> list[Document]:
         """
         Apply secondary splitting while preserving header metadata and structure.
 
@@ -282,7 +282,7 @@ class MarkdownHeaderSplitter:
         result_docs = []
         current_split_id = 0  # track split_id across all secondary splits from the same parent
 
-        for doc, from_header_split in documents:
+        for doc, from_header_split, source_start_idx in documents:
             if doc.content is None:
                 result_docs.append(doc)
                 continue
@@ -321,8 +321,12 @@ class MarkdownHeaderSplitter:
             page_break_count = 0
 
             for split in secondary_splits:
-                split_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
-                while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
+                section_relative_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
+                split.meta["split_idx_start"] = source_start_idx + section_relative_start_idx
+                while (
+                    page_break_count < len(page_break_ends)
+                    and page_break_ends[page_break_count] <= section_relative_start_idx
+                ):
                     page_break_count += 1
 
                 split.meta["page_number"] = (
@@ -347,22 +351,23 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool]]:
+    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool, int]]:
         """
         Split a list of documents by markdown headers, preserving metadata.
 
         Each returned Document is paired with whether it was produced by an actual header split (True) or is a
-        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False).
+        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False), and with
+        the offset in the original document where its content starts.
         """
 
-        result_docs: list[tuple[Document, bool]] = []
+        result_docs: list[tuple[Document, bool, int]] = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             # mypy: doc.content is Optional[str], so we must check for None before passing to splitting method
             if doc.content is None:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
-            docs: list[tuple[Document, bool]] = []
+            docs: list[tuple[Document, bool, int]] = []
 
             document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
             total_page_breaks = doc.content.count(self.page_break_character)
@@ -385,7 +390,9 @@ class MarkdownHeaderSplitter:
                 from_header_split = split["from_header_split"]
                 if split["meta"]:
                     meta.update(split["meta"])
-                docs.append((Document(content=split["content"], meta=meta), from_header_split))
+                docs.append(
+                    (Document(content=split["content"], meta=meta), from_header_split, split["source_start_idx"])
+                )
             final_page = document_start_page + total_page_breaks
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {final_page}",
@@ -409,6 +416,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `page_number` with the page the chunk starts on, counting
                   `page_break_character` occurrences in the original document.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
+                - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+                  character offset where the chunk starts in the original document.
                 - All other metadata copied from the original document.
         :raises ValueError: If a document has `None` content.
         :raises TypeError: If a document's content is not a string.
@@ -447,7 +456,7 @@ class MarkdownHeaderSplitter:
             if self.secondary_split:
                 doc_splits = self._apply_secondary_splitting(header_split_docs)
             else:
-                doc_splits = [split_doc for split_doc, _ in header_split_docs]
+                doc_splits = [split_doc for split_doc, _, _ in header_split_docs]
 
             final_docs.extend(doc_splits)
 
