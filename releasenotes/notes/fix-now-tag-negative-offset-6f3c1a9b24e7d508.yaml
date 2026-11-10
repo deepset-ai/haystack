@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The ``{% now %}`` tag in Jinja templates, used by ``PromptBuilder`` and ``ChatPromptBuilder``, now accepts
+    signed offset values such as ``{% now 'UTC' + 'hours=-2' %}``. These previously raised
+    ``ValueError: could not convert string to float``.
