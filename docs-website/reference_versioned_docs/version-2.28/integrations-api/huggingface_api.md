@@ -849,14 +849,13 @@ Initialize the HuggingFaceAPIChatGenerator instance.
 - **stop_words** (<code>list\[str\] | None</code>) – An optional list of strings representing the stop words.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  The chosen model should support tool/function calling, according to the model card.
-  Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
-  unexpected behavior.
+  The chosen model and provider must support tool/function calling, including streaming when a callback
+  is supplied. See [Hugging Face tool calling](https://huggingface.co/docs/inference-providers/guides/function-calling).
 
 **Raises:**
 
 - <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid, the `api_type`
-  is unknown, `tools` and `streaming_callback` are used together, or duplicate tool names are provided.
+  is unknown, or duplicate tool names are provided.
 
 #### warm_up
 
@@ -943,7 +942,7 @@ Invoke the text generation inference based on the provided messages and generati
 
 **Raises:**
 
-- <code>ValueError</code> – If `tools` and a streaming callback are used together, or if duplicate tool names are provided.
+- <code>ValueError</code> – If duplicate tool names are provided.
 
 #### run_async
 
@@ -981,7 +980,7 @@ and return values but can be used with `await` in an async code.
 
 **Raises:**
 
-- <code>ValueError</code> – If `tools` and a streaming callback are used together, or if duplicate tool names are provided.
+- <code>ValueError</code> – If duplicate tool names are provided.
 
 ## haystack_integrations.components.rankers.huggingface_api.ranker
 

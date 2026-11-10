@@ -18,9 +18,11 @@ class MarkdownHeaderSplitter:
     """
     Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
+    Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
+
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+    - Optionally applying a secondary split (by word, passage, period, line or token) to each chunk
       (using haystack's DocumentSplitter).
     - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
     """
@@ -31,11 +33,12 @@ class MarkdownHeaderSplitter:
         page_break_character: str = "\f",
         keep_headers: bool = True,
         header_split_levels: list[int] | None = None,
-        secondary_split: Literal["word", "passage", "period", "line"] | None = None,
+        secondary_split: Literal["word", "passage", "period", "line", "token"] | None = None,
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
         skip_empty_documents: bool = True,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initialize the MarkdownHeaderSplitter.
@@ -47,7 +50,9 @@ class MarkdownHeaderSplitter:
             on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
             all levels `[1, 2, 3, 4, 5, 6]`.
         :param secondary_split: Optional secondary split condition after header splitting.
-            Options are None, "word", "passage", "period", "line". Defaults to None.
+            Options are None, "word", "passage", "period", "line", "token". Defaults to None.
+            `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that each chunk fits
+            the token limit of an embedding model or LLM.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
@@ -55,6 +60,8 @@ class MarkdownHeaderSplitter:
         :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
+        :param tokenizer_encoding: The tiktoken encoding to use when `secondary_split="token"`. Defaults to
+            `"o200k_base"` (current OpenAI models). Only used when `secondary_split="token"`.
         """
         if header_split_levels is None:
             header_split_levels = [1, 2, 3, 4, 5, 6]
@@ -75,31 +82,34 @@ class MarkdownHeaderSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.skip_empty_documents = skip_empty_documents
+        self.tokenizer_encoding = tokenizer_encoding
         self.keep_headers = keep_headers
         self.header_split_levels = header_split_levels
         self._header_split_levels_set = set(header_split_levels)
-        self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
+        self._header_pattern = re.compile(r"(?m)^ {0,3}(#{1,6}) (.+)$")  # ATX-style .md-headers
         # Optional closing sequence of an ATX header, e.g. the trailing "##" in "## Install ##". It is not part of
         # the header text. Only spaces/tabs may surround it, with an optional carriage return for Windows line endings.
         self._closing_sequence_pattern = re.compile(r"(?:^|[ \t])#+[ \t]*\r?$")
 
-        # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
-        # Broken down:
-        #   ^                 - fence must start at the beginning of a line (MULTILINE)
-        #   (?P<fence>`{3,}|~{3,})
-        #                     - named capture group "fence": three or more backticks OR three or
-        #                       more tildes. Capturing it allows the closing fence to be matched
-        #                       with a backreference, so ```-opened blocks must close with ```
-        #                       and ~~~-opened blocks must close with ~~~.
-        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
-        #                       on the opening fence line, up to the newline
-        #   \n                - newline ending the opening fence line
+        # Matches fenced code blocks, following the CommonMark rules for fences
+        # (https://spec.commonmark.org/0.31.2/#fenced-code-blocks). Broken down:
+        #   ^[ ]{0,3}         - a fence starts a line, indented by at most three spaces (four or more
+        #                       make it an indented code block, which this splitter does not track)
+        #   (?P<backticks>`{3,})(?![^\n]*`)
+        #                     - three or more backticks; the rest of the opening line may not contain a
+        #                       backtick, so a line starting with inline code (```foo```) opens nothing
+        #   |(?P<tildes>~{3,}) - or three or more tildes
+        #   [^\n]*(?:\n|\Z)   - optional info string (e.g. "python") up to the end of the opening line
         #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
-        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
-        #                       and must start at the beginning of a line
-        #   \s*$              - optional trailing whitespace after the closing fence
+        #   (?:^[ ]{0,3}(?(backticks)(?P=backticks)`*|(?P=tildes)~*)[ \t]*\r?$|\Z)
+        #                     - closing fence: the same character, at least as many times as the
+        #                       opening fence, indented by at most three spaces and followed only by
+        #                       spaces or tabs. A block that is never closed runs to the end of the text.
         self._code_block_pattern = re.compile(
-            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
+            r"^[ ]{0,3}(?:(?P<backticks>`{3,})(?![^\n]*`)|(?P<tildes>~{3,}))[^\n]*(?:\n|\Z)"
+            r".*?"
+            r"(?:^[ ]{0,3}(?(backticks)(?P=backticks)`*|(?P=tildes)~*)[ \t]*\r?$|\Z)",
+            re.MULTILINE | re.DOTALL,
         )
 
         self._is_warmed_up = False
@@ -111,11 +121,14 @@ class MarkdownHeaderSplitter:
                 split_length=self.split_length,
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
+                tokenizer_encoding=self.tokenizer_encoding,
             )
 
     def warm_up(self) -> None:
         """
         Warm up the MarkdownHeaderSplitter.
+
+        Loads the tiktoken encoding when `secondary_split="token"`.
         """
         if self.secondary_split and not self._is_warmed_up:
             self.secondary_splitter.warm_up()
@@ -269,7 +282,7 @@ class MarkdownHeaderSplitter:
 
         return chunks
 
-    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool]]) -> list[Document]:
+    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool, int]]) -> list[Document]:
         """
         Apply secondary splitting while preserving header metadata and structure.
 
@@ -278,7 +291,7 @@ class MarkdownHeaderSplitter:
         result_docs = []
         current_split_id = 0  # track split_id across all secondary splits from the same parent
 
-        for doc, from_header_split in documents:
+        for doc, from_header_split, source_start_idx in documents:
             if doc.content is None:
                 result_docs.append(doc)
                 continue
@@ -317,8 +330,12 @@ class MarkdownHeaderSplitter:
             page_break_count = 0
 
             for split in secondary_splits:
-                split_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
-                while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
+                section_relative_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
+                split.meta["split_idx_start"] = source_start_idx + section_relative_start_idx
+                while (
+                    page_break_count < len(page_break_ends)
+                    and page_break_ends[page_break_count] <= section_relative_start_idx
+                ):
                     page_break_count += 1
 
                 split.meta["page_number"] = (
@@ -343,22 +360,23 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool]]:
+    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool, int]]:
         """
         Split a list of documents by markdown headers, preserving metadata.
 
         Each returned Document is paired with whether it was produced by an actual header split (True) or is a
-        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False).
+        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False), and with
+        the offset in the original document where its content starts.
         """
 
-        result_docs: list[tuple[Document, bool]] = []
+        result_docs: list[tuple[Document, bool, int]] = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             # mypy: doc.content is Optional[str], so we must check for None before passing to splitting method
             if doc.content is None:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
-            docs: list[tuple[Document, bool]] = []
+            docs: list[tuple[Document, bool, int]] = []
 
             document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
             total_page_breaks = doc.content.count(self.page_break_character)
@@ -381,7 +399,9 @@ class MarkdownHeaderSplitter:
                 from_header_split = split["from_header_split"]
                 if split["meta"]:
                     meta.update(split["meta"])
-                docs.append((Document(content=split["content"], meta=meta), from_header_split))
+                docs.append(
+                    (Document(content=split["content"], meta=meta), from_header_split, split["source_start_idx"])
+                )
             final_page = document_start_page + total_page_breaks
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {final_page}",
@@ -405,6 +425,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `page_number` with the page the chunk starts on, counting
                   `page_break_character` occurrences in the original document.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
+                - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+                  character offset where the chunk starts in the original document.
                 - All other metadata copied from the original document.
         :raises ValueError: If a document has `None` content.
         :raises TypeError: If a document's content is not a string.
@@ -443,7 +465,7 @@ class MarkdownHeaderSplitter:
             if self.secondary_split:
                 doc_splits = self._apply_secondary_splitting(header_split_docs)
             else:
-                doc_splits = [split_doc for split_doc, _ in header_split_docs]
+                doc_splits = [split_doc for split_doc, _, _ in header_split_docs]
 
             final_docs.extend(doc_splits)
 

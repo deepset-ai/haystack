@@ -2,11 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import io
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 import pytest
+from pptx import Presentation
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.util import Inches
 
 from haystack.components.converters.pptx import PPTXToDocument
 from haystack.dataclasses import ByteStream
@@ -123,3 +128,77 @@ class TestPPTXToDocument:
 
         assert "https://example.com" not in content
         assert "Example" in content
+
+    @pytest.mark.parametrize(
+        "link_format, expected",
+        [
+            ("none", "Slide 3: Report"),
+            ("markdown", "Slide 3: [Report](https://example.com)"),
+            ("plain", "Slide 3: Report (https://example.com)"),
+        ],
+    )
+    @pytest.mark.parametrize("in_table", [False, True])
+    def test_preserves_field_text(
+        self, link_format: Literal["none", "markdown", "plain"], expected: str, in_table: bool
+    ) -> None:
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        if in_table:
+            table = slide.shapes.add_table(
+                rows=1, cols=1, left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)
+            ).table
+            paragraph = table.cell(row_idx=0, col_idx=0).text_frame.paragraphs[0]
+        else:
+            paragraph = slide.shapes.add_textbox(
+                left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)
+            ).text_frame.paragraphs[0]
+
+        paragraph.add_run().text = "Slide "
+        field = OxmlElement("a:fld")
+        field.set("id", "{00000000-0000-0000-0000-000000000001}")
+        field.set("type", "slidenum")
+        field_text = OxmlElement("a:t")
+        field_text.text = "3"
+        field.append(field_text)
+        paragraph._p.append(field)
+        paragraph.add_run().text = ": "
+        run = paragraph.add_run()
+        run.text = "Report"
+        run.hyperlink.address = "https://example.com"
+
+        source = io.BytesIO()
+        presentation.save(source)
+        converter = PPTXToDocument(link_format=link_format)
+        documents = converter.run(sources=[ByteStream(data=source.getvalue())])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected
+
+    def test_run_reads_nested_groups_and_table_with_links(self, test_files_path):
+        # The slide includes nested text groups, a grouped table, and an empty decorative shape.
+        converter = PPTXToDocument(link_format="markdown")
+        source = test_files_path / "pptx" / "complex_groups_and_table.pptx"
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == (
+            "PPTX extraction playground\n"
+            "One slide • text boxes • nested groups • table cells • hyperlinks\n"
+            "PLAIN TEXTBOX\n"
+            "First paragraph.\n"
+            "Second paragraph: café, naïve, 日本語.\n"
+            "[Haystack documentation](https://docs.haystack.deepset.ai/)\n"
+            "OUTER GROUP\n"
+            "Text directly inside the outer group.\n"
+            "NESTED GROUP\n"
+            "Text two levels deep.\n"
+            "[deepset website](https://www.deepset.ai/)\n"
+            "TABLE INSIDE A GROUP\n"
+            "Case,Content,Reference\r\n"
+            'CSV escaping,"Hello, world\nHe said ""yes""",\r\n'
+            "Markdown,left | right,[Docs](https://docs.haystack.deepset.ai/)\r\n"
+            'Unicode,café / 日本語,"Two\nparagraphs"\n'
+            "\n"
+            "END OF SLIDE — text after the groups and table"
+        )

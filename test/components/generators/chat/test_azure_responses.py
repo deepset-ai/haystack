@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from pydantic import BaseModel
 
@@ -145,6 +146,7 @@ class TestSerDe:
                 "tools": None,
                 "tools_strict": False,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -200,6 +202,7 @@ class TestSerDe:
                 "tools": None,
                 "tools_strict": False,
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -223,6 +226,7 @@ class TestSerDe:
                 "tools": None,
                 "tools_strict": False,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -287,6 +291,7 @@ class TestSerDe:
                 ],
                 "tools_strict": False,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -323,6 +328,7 @@ class TestSerDe:
                 "tools": None,
                 "tools_strict": False,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -406,6 +412,7 @@ class TestSerDe:
                         "tools": None,
                         "tools_strict": False,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 }
             },
@@ -621,3 +628,54 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
 
     # additional tests intentionally omitted as they are covered by test_openai_responses.py
     # and test_openai_responses_conversion.py
+
+
+class TestRateLimitHeaders:
+    def test_included_in_meta(self) -> None:
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "99", "x-ratelimit-remaining-tokens": "99990"}
+        payload = {
+            "id": "resp_123",
+            "object": "response",
+            "created_at": 1786704941,
+            "status": "completed",
+            "model": "gpt-5-mini",
+            "output": [
+                {
+                    "id": "msg_123",
+                    "type": "message",
+                    "status": "completed",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "Paris", "annotations": []}],
+                }
+            ],
+            "usage": {
+                "input_tokens": 17,
+                "input_tokens_details": {"cached_tokens": 0},
+                "output_tokens": 10,
+                "output_tokens_details": {"reasoning_tokens": 0},
+                "total_tokens": 27,
+            },
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=payload, headers=rate_limit_headers)
+
+        generator = AzureOpenAIResponsesChatGenerator(
+            azure_endpoint="https://example-resource.azure.openai.com/",
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            include_rate_limit_headers=True,
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == {
+            "id": "resp_123",
+            "created_at": 1786704941.0,
+            "model": "gpt-5-mini",
+            "object": "response",
+            "status": "completed",
+            "usage": payload["usage"],
+            "finish_reason": "stop",
+            "rate_limit_headers": rate_limit_headers,
+        }
