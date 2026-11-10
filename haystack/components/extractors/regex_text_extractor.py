@@ -94,7 +94,8 @@ class RegexTextExtractor:
 
         :returns:
           - `{"captured_text": "matched text"}` if a match is found
-          - `{"captured_text": ""}` if no match is found
+          - `{"captured_text": ""}` if no match is found, or if the first capture group
+            does not take part in the match
 
         :raises TypeError: if receiving a list the last element is not a ChatMessage instance.
         """
@@ -136,11 +137,12 @@ class RegexTextExtractor:
         :returns:
             The text captured by the first capturing group in the regex pattern.
             If the pattern has no capture groups, returns the entire match.
-            If no match is found, returns an empty string.
+            If no match is found, or the first group is not part of the match, returns an empty string.
         """
         match = re.search(self.regex_pattern, text)
         if not match:
             return ""
         if match.groups():
-            return match.group(1)
+            # group(1) is None when the group did not take part in the match, e.g. the other side of an alternation
+            return match.group(1) or ""
         return match.group(0)

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` with ``secondary_split`` now reports ``split_idx_start``
+    relative to the original document instead of each header section. This prevents
+    incorrect ordering and missing text when ``SentenceWindowRetriever`` merges chunks
+    across sections.

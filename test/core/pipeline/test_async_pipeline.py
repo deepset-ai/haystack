@@ -50,6 +50,30 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
+@pytest.mark.parametrize("use_async", [False, True], ids=["run", "run_async"])
+def test_run_preserves_caller_input_data(use_async):
+    @component
+    class AppendValue:
+        @component.output_types(values=list[str])
+        def run(self, values: list[str]) -> dict[str, list[str]]:
+            values.append("processed")
+            return {"values": values}
+
+    pipeline = Pipeline()
+    pipeline.add_component("append", AppendValue())
+    values = ["original"]
+    component_inputs = {"values": values}
+    data = {"append": component_inputs}
+
+    result = asyncio.run(pipeline.run_async(data=data)) if use_async else pipeline.run(data=data)
+
+    assert result == {"append": {"values": ["original", "processed"]}}
+    assert values == ["original"]
+    assert component_inputs == {"values": ["original"]}
+    assert component_inputs["values"] is values
+    assert data["append"] is component_inputs
+
+
 def test_run_async_accepts_dict_valued_flat_input():
     @component
     class DictEcho:
