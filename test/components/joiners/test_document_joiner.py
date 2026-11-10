@@ -422,10 +422,7 @@ class TestDocumentJoiner:
         assert all(math.isfinite(doc.score) for doc in output["documents"])
         scores_by_content = {doc.content: doc.score for doc in output["documents"]}
         assert (
-            scores_by_content["non-finite"]
-            > scores_by_content["a"]
-            > scores_by_content["b"]
-            > scores_by_content["d"]
+            scores_by_content["non-finite"] > scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"]
         )
 
     def test_distribution_based_rank_fusion_handles_a_list_of_non_finite_scores(self):
