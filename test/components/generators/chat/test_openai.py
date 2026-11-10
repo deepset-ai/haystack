@@ -35,9 +35,9 @@ import haystack.components.generators.chat.openai as openai_chat_module
 from haystack import component
 from haystack.components.generators.chat._rate_limit_headers import (
     _async_capture_rate_limit_headers,
+    _build_http_client,
     _capture_rate_limit_headers,
-    build_http_client,
-    extract_rate_limit_headers,
+    _extract_rate_limit_headers,
 )
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
@@ -2596,11 +2596,11 @@ class TestRateLimitHeaders:
     def test_extract_rate_limit_headers(self) -> None:
         headers = httpx.Headers({"X-RateLimit-Remaining-Requests": "99", "Content-Type": "application/json"})
 
-        assert extract_rate_limit_headers(headers) == {"x-ratelimit-remaining-requests": "99"}
+        assert _extract_rate_limit_headers(headers) == {"x-ratelimit-remaining-requests": "99"}
 
     def test_default_http_client_has_rate_limit_hook(self) -> None:
-        client = build_http_client(None, async_client=False, include_rate_limit_headers=True)
-        async_client = build_http_client(None, async_client=True, include_rate_limit_headers=True)
+        client = _build_http_client(None, async_client=False, include_rate_limit_headers=True)
+        async_client = _build_http_client(None, async_client=True, include_rate_limit_headers=True)
 
         assert isinstance(client, DefaultHttpxClient)
         assert client.event_hooks["response"] == [_capture_rate_limit_headers]

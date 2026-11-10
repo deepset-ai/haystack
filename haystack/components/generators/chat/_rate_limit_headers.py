@@ -24,7 +24,7 @@ class _HttpResponse(Protocol):
     def headers(self) -> Mapping[str, str]: ...
 
 
-def extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
+def _extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
     """
     Extract the rate limit headers (`x-ratelimit-*`) sent by OpenAI and Azure OpenAI from the HTTP response headers.
     """
@@ -33,14 +33,14 @@ def extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
 
 def _capture_rate_limit_headers(response: _HttpResponse) -> None:
     if response.is_success:
-        _rate_limit_headers.set(extract_rate_limit_headers(response.headers))
+        _rate_limit_headers.set(_extract_rate_limit_headers(response.headers))
 
 
 async def _async_capture_rate_limit_headers(response: _HttpResponse) -> None:
     _capture_rate_limit_headers(response)
 
 
-def reset_rate_limit_headers() -> None:
+def _reset_rate_limit_headers() -> None:
     """Clear captured headers so concurrent or subsequent runs cannot reuse each other's values."""
     _rate_limit_headers.set(None)
 
@@ -50,7 +50,7 @@ def _captured_rate_limit_headers() -> dict[str, str] | None:
     return dict(headers) if headers is not None else None
 
 
-def attach_rate_limit_headers(replies: Sequence[Any], *, enabled: bool) -> None:
+def _attach_rate_limit_headers(replies: Sequence[Any], *, enabled: bool) -> None:
     """
     Add captured `x-ratelimit-*` headers to each reply's `meta` when capture is enabled.
 
@@ -81,7 +81,7 @@ def _http_client_kwargs_with_rate_limit_hook(
     return kwargs
 
 
-def build_http_client(
+def _build_http_client(
     http_client_kwargs: dict[str, Any] | None, *, async_client: bool, include_rate_limit_headers: bool
 ) -> httpx.Client | httpx.AsyncClient | DefaultHttpxClient | DefaultAsyncHttpxClient | None:
     """

@@ -24,9 +24,9 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat._rate_limit_headers import (
-    attach_rate_limit_headers,
-    build_http_client,
-    reset_rate_limit_headers,
+    _attach_rate_limit_headers,
+    _build_http_client,
+    _reset_rate_limit_headers,
 )
 from haystack.components.generators.utils import (
     _convert_streaming_chunks_to_chat_message,
@@ -257,7 +257,7 @@ class OpenAIChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = build_http_client(
+            http_client = _build_http_client(
                 self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.client = OpenAI(
@@ -272,7 +272,7 @@ class OpenAIChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = build_http_client(
+            http_client = _build_http_client(
                 self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.async_client = AsyncOpenAI(
@@ -415,7 +415,7 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
-        reset_rate_limit_headers()
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
         chat_completion = openai_endpoint_method(**api_args)
 
@@ -498,7 +498,7 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
-        reset_rate_limit_headers()
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
         chat_completion = await openai_endpoint_method(**api_args)
 
@@ -523,7 +523,7 @@ class OpenAIChatGenerator:
     def _finalize_replies(self, completions: list[ChatMessage]) -> None:
         for message in completions:
             _check_finish_reason(message.meta)
-        attach_rate_limit_headers(completions, enabled=self.include_rate_limit_headers)
+        _attach_rate_limit_headers(completions, enabled=self.include_rate_limit_headers)
 
     def _convert_chat_completion_to_chat_message(
         self, completion: ChatCompletion | ParsedChatCompletion, choice: Choice

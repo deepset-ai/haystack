@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.generators.chat._rate_limit_headers import build_http_client
+from haystack.components.generators.chat._rate_limit_headers import _build_http_client
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
     ToolsType,
@@ -274,7 +274,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = build_http_client(
+            http_client = _build_http_client(
                 self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.client = AzureOpenAI(
@@ -289,7 +289,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = build_http_client(
+            http_client = _build_http_client(
                 self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.async_client = AsyncAzureOpenAI(
