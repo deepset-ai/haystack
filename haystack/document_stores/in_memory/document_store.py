@@ -12,8 +12,10 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
+from functools import wraps
 from pathlib import Path
-from typing import Any, Literal
+from threading import RLock
+from typing import Any, Concatenate, Literal, ParamSpec, TypeVar
 
 import numpy as np
 
@@ -78,11 +80,30 @@ _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
+# Clearing the documents replaces the data dictionaries, but must preserve the lock shared by existing instances.
+_STORAGE_LOCKS: dict[str, RLock] = {}
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+
+def _synchronized(
+    method: Callable[Concatenate["InMemoryDocumentStore", _P], _T],
+) -> Callable[Concatenate["InMemoryDocumentStore", _P], _T]:
+    @wraps(method)
+    def locked(self: "InMemoryDocumentStore", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        # Overwrites call delete_documents while holding the same index lock.
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return locked
 
 
 class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
+
+    Document writes, deletions and BM25 retrieval are serialized per index, including across shared instances.
     """
 
     def __init__(
@@ -135,13 +156,15 @@ class InMemoryDocumentStore:
         # instance instead of accumulating in the globals.
         self._shared = shared
         self.index = index if index is not None else str(uuid.uuid4())
+        self._lock = _STORAGE_LOCKS.setdefault(self.index, RLock()) if shared else RLock()
 
         if self._shared:
-            if self.index not in _STORAGES:
-                _STORAGES[self.index] = {}
-                _BM25_STATS_STORAGES[self.index] = {}
-                _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
-                _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+            with self._lock:
+                if self.index not in _STORAGES:
+                    _STORAGES[self.index] = {}
+                    _BM25_STATS_STORAGES[self.index] = {}
+                    _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+                    _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
         else:
             self._local_storage: dict[str, Document] = {}
             self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
@@ -493,6 +516,7 @@ class InMemoryDocumentStore:
 
         return docs
 
+    @_synchronized
     def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Refer to the DocumentStore.write_documents() protocol documentation.
@@ -539,6 +563,7 @@ class InMemoryDocumentStore:
             self._avg_doc_len = (len(tokens) + self._avg_doc_len * (n_docs - 1)) / n_docs
         return written_documents
 
+    @_synchronized
     def delete_documents(self, document_ids: list[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
@@ -573,6 +598,7 @@ class InMemoryDocumentStore:
                 "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
             )
 
+    @_synchronized
     def delete_all_documents(self) -> None:
         """
         Deletes all documents in the document store.
@@ -769,6 +795,7 @@ class InMemoryDocumentStore:
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
+    @_synchronized
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
