@@ -103,7 +103,8 @@ class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
-    Document writes, deletions and BM25 retrieval are serialized per index, including across shared instances.
+    Calls to `write_documents`, `delete_documents`, `delete_all_documents` and `bm25_retrieval` are serialized
+    per index, including across shared instances.
     """
 
     def __init__(
