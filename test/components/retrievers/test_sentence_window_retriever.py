@@ -63,6 +63,22 @@ class TestSentenceWindowRetriever:
         expected = "This is a text with some words. There is a second sentence. And there is also a third sentence"
         assert merged_text == expected
 
+    @pytest.mark.parametrize(
+        "splits",
+        [
+            pytest.param([(0, "one two three"), (4, "two"), (8, "three four")], id="contained_followed_by_overlap"),
+            pytest.param([(0, "one two three four"), (8, "three")], id="contained_at_end"),
+            pytest.param([(0, "one two three"), (0, "one"), (8, "three four")], id="contained_with_same_start"),
+            pytest.param([(0, "one two three"), (4, "two"), (8, "three"), (8, "three four")], id="several_contained"),
+            pytest.param([(8, "three four"), (4, "two"), (0, "one two three")], id="unsorted"),
+            pytest.param([(0.0, "one two three"), (4.0, "two"), (8.0, "three four")], id="float_offsets"),
+        ],
+    )
+    def test_merge_documents_restores_original_text(self, splits: list[tuple[float, str]]) -> None:
+        documents = [Document(content=content, meta={"split_idx_start": start}) for start, content in splits]
+
+        assert SentenceWindowRetriever.merge_documents_text(documents) == "one two three four"
+
     def test_run_preserves_text_with_contained_chunks(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
         text = "one two three four"
         splitter = DocumentSplitter(
