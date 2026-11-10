@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``TextCleaner`` has a new ``remove_extra_whitespaces`` init parameter. When set to ``True``, after the other
+    cleaning steps, it collapses every run of whitespace into a single space and strips leading and trailing
+    whitespace. This helps exact-match evaluation: with ``remove_punctuation=True`` and
+    ``remove_extra_whitespaces=True``, ``"Rome - Italy"`` becomes ``"Rome Italy"`` instead of ``"Rome  Italy"``.
+    The default is ``False``, so existing behavior does not change.

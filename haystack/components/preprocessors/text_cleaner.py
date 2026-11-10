@@ -15,7 +15,7 @@ class TextCleaner:
     Cleans text strings.
 
     It can remove substrings matching a list of regular expressions, convert text to lowercase,
-    remove punctuation, and remove numbers.
+    remove punctuation, remove numbers, and remove extra whitespaces.
     Use it to clean up text data before evaluation.
 
     ### Usage example
@@ -36,6 +36,7 @@ class TextCleaner:
         convert_to_lowercase: bool = False,
         remove_punctuation: bool = False,
         remove_numbers: bool = False,
+        remove_extra_whitespaces: bool = False,
     ) -> None:
         """
         Initializes the TextCleaner component.
@@ -44,11 +45,14 @@ class TextCleaner:
         :param convert_to_lowercase: If `True`, converts all characters to lowercase.
         :param remove_punctuation: If `True`, removes punctuation from the text.
         :param remove_numbers: If `True`, removes numerical digits from the text.
+        :param remove_extra_whitespaces: If `True`, collapses every run of whitespace into a single space and strips
+            leading and trailing whitespace. Runs after all other cleaning steps.
         """
         self._remove_regexps = remove_regexps
         self._convert_to_lowercase = convert_to_lowercase
         self._remove_punctuation = remove_punctuation
         self._remove_numbers = remove_numbers
+        self._remove_extra_whitespaces = remove_extra_whitespaces
 
         self._regex = None
         if remove_regexps:
@@ -74,6 +78,7 @@ class TextCleaner:
             convert_to_lowercase=self._convert_to_lowercase,
             remove_punctuation=self._remove_punctuation,
             remove_numbers=self._remove_numbers,
+            remove_extra_whitespaces=self._remove_extra_whitespaces,
         )
 
     @component.output_types(texts=list[str])
@@ -98,5 +103,8 @@ class TextCleaner:
 
         if self._translator:
             texts = [text.translate(self._translator) for text in texts]
+
+        if self._remove_extra_whitespaces:
+            texts = [" ".join(text.split()) for text in texts]
 
         return {"texts": texts}

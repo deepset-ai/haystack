@@ -25,11 +25,12 @@ Use `TextCleaner` to make text data more readable. It removes regexes, punctuati
 
 ## Overview
 
-`TextCleaner` expects a list of strings as input and returns a list of strings with cleaned texts. Selectable cleaning steps are to `convert_to_lowercase`, `remove_punctuation`, and to `remove_numbers`. These three parameters are booleans that need to be set when the component is initialized.
+`TextCleaner` expects a list of strings as input and returns a list of strings with cleaned texts. Selectable cleaning steps are to `convert_to_lowercase`, `remove_punctuation`, `remove_numbers`, and to `remove_extra_whitespaces`. These four parameters are booleans that need to be set when the component is initialized.
 
 - `convert_to_lowercase` converts all characters in texts to lowercase.
 - `remove_punctuation` removes all punctuation from the text.
 - `remove_numbers` removes all numerical digits from the text.
+- `remove_extra_whitespaces` collapses runs of whitespace into a single space and strips leading and trailing whitespace. It runs after the other cleaning steps.
 
 In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed.
 

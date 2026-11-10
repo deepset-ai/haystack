@@ -14,6 +14,7 @@ def test_init_default():
     assert not cleaner._convert_to_lowercase
     assert not cleaner._remove_punctuation
     assert not cleaner._remove_numbers
+    assert not cleaner._remove_extra_whitespaces
     assert cleaner._regex is None
     assert cleaner._translator is None
 
@@ -78,6 +79,18 @@ def test_run_with_remove_numbers():
     assert result["texts"] == ["Open! Source", "Haystack.AI"]
 
 
+def test_run_with_remove_extra_whitespaces():
+    cleaner = TextCleaner(remove_extra_whitespaces=True)
+    result = cleaner.run(texts=["  Paris  ", "Open \t\n  Source", ""])
+    assert result["texts"] == ["Paris", "Open Source", ""]
+
+
+def test_run_with_remove_extra_whitespaces_after_remove_punctuation():
+    cleaner = TextCleaner(remove_punctuation=True, remove_extra_whitespaces=True)
+    result = cleaner.run(texts=["Rome - Italy"])
+    assert result["texts"] == ["Rome Italy"]
+
+
 def test_run_with_multiple_parameters():
     cleaner = TextCleaner(
         remove_regexps=[r"\d+", r"[^\w\s]"], convert_to_lowercase=True, remove_punctuation=True, remove_numbers=True
@@ -89,7 +102,11 @@ def test_run_with_multiple_parameters():
 
 def test_serialization_keeps_init_parameters():
     cleaner = TextCleaner(
-        remove_regexps=["World"], convert_to_lowercase=True, remove_punctuation=True, remove_numbers=True
+        remove_regexps=["World"],
+        convert_to_lowercase=True,
+        remove_punctuation=True,
+        remove_numbers=True,
+        remove_extra_whitespaces=True,
     )
     pipeline = Pipeline()
     pipeline.add_component("cleaner", cleaner)
@@ -98,9 +115,10 @@ def test_serialization_keeps_init_parameters():
         "convert_to_lowercase": True,
         "remove_punctuation": True,
         "remove_numbers": True,
+        "remove_extra_whitespaces": True,
     }
 
     restored = Pipeline.loads(pipeline.dumps()).get_component("cleaner")
 
     texts = ["Hello, World 42!"]
-    assert restored.run(texts=texts) == cleaner.run(texts=texts) == {"texts": ["hello  "]}
+    assert restored.run(texts=texts) == cleaner.run(texts=texts) == {"texts": ["hello"]}
