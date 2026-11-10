@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue where pipeline snapshots containing a Pydantic model with ``datetime``, ``date``, ``UUID`` or
+    ``Decimal`` fields could not be saved. With ``HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED`` enabled, the breakpoint
+    raised ``TypeError: Object of type datetime is not JSON serializable`` instead of ``BreakpointException`` and
+    left a half-written snapshot file that failed to load. Pydantic models are now serialized in JSON mode, so such
+    snapshots are written correctly and resume as expected.
