@@ -15,7 +15,8 @@ with LazyImport("Run 'pip install nltk>=3.9.1'") as nltk_imports:
 logger = logging.getLogger(__name__)
 
 Language = Literal[
-    "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml"
+    "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml",
+    "hi", "mr", "bn", "ne", "pa", "or", "sa"
 ]
 
 ISO639_TO_NLTK = {
@@ -38,6 +39,13 @@ ISO639_TO_NLTK = {
     "pl": "polish",
     "pt": "portuguese",
     "ml": "malayalam",
+    "hi": "hindi",
+    "mr": "marathi",
+    "bn": "bengali",
+    "ne": "nepali",
+    "pa": "punjabi",
+    "or": "oriya",
+    "sa": "sanskrit",
 }
 
 QUOTE_SPANS_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
@@ -79,6 +87,8 @@ if nltk_imports.is_successful():
 
         if keep_white_spaces:
             sentence_tokenizer._lang_vars = CustomPunktLanguageVars()
+        else:
+            sentence_tokenizer._lang_vars = DandaPunktLanguageVars()
 
         return sentence_tokenizer
 
@@ -116,6 +126,14 @@ if nltk_imports.is_successful():
                     re.UNICODE | re.VERBOSE,
                 )
                 return self._re_period_context
+
+
+class DandaPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
+    """
+    PunktLanguageVars subclass that includes danda (।) and double danda (॥) as sentence endings.
+    This is used for Indic languages that use these characters as sentence terminators.
+    """
+    sent_end_chars = (".", "?", "!", "।", "॥")
 
 
 class SentenceSplitter:
