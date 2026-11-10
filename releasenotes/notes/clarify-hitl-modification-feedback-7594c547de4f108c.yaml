@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    The default ``modify_template`` of ``BlockingConfirmationStrategy`` now tells the LLM that the user wants the
+    result of the modified tool call used and that it should not call the tool again with the original arguments.
+    With the previous wording, models often repeated the original tool call after a user modified its parameters.
+    Pass ``modify_template`` explicitly to keep the previous message.

@@ -144,6 +144,34 @@ def test_merge_two_logical_filters():
     }
 
 
+def test_merge_two_and_filters_same_field_keeps_both_and_warns(caplog):
+    """
+    Merging two AND logical filters that constrain the same field
+
+    Result: both conditions are kept (intersection) and a warning is logged
+    """
+    init_filters = {"operator": "AND", "conditions": [{"field": "meta.lang", "operator": "==", "value": "en"}]}
+    runtime_filters = {"operator": "AND", "conditions": [{"field": "meta.lang", "operator": "==", "value": "de"}]}
+    with caplog.at_level("WARNING"):
+        result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert result == {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.lang", "operator": "==", "value": "en"},
+            {"field": "meta.lang", "operator": "==", "value": "de"},
+        ],
+    }
+    assert "meta.lang" in caplog.text
+
+
+def test_merge_two_and_filters_different_fields_does_not_warn(caplog):
+    init_filters = {"operator": "AND", "conditions": [{"field": "meta.lang", "operator": "==", "value": "en"}]}
+    runtime_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "a"}]}
+    with caplog.at_level("WARNING"):
+        apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert caplog.text == ""
+
+
 def test_merge_does_not_mutate_logical_filters():
     init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
     runtime_filters = {"field": "meta.year", "operator": "==", "value": 2020}

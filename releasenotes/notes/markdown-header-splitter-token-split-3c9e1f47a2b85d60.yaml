@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    ``MarkdownHeaderSplitter`` now supports ``secondary_split="token"`` (requires ``pip install tiktoken``), so
+    large sections can be split again by token count to fit the token limit of an embedding model or LLM. The
+    encoding is set by the new ``tokenizer_encoding`` parameter (default ``"o200k_base"``).

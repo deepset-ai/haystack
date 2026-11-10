@@ -42,6 +42,8 @@ class TestFileSystemToolResultStore:
         "key, content",
         [
             pytest.param("a.txt", "round trip", id="text"),
+            pytest.param("a.txt", "line 1\nline 2\n", id="text-lf"),
+            pytest.param("a.txt", "line 1\r\nline 2\r\n", id="text-crlf"),
             pytest.param("a.png", b"\x89PNG\r\n\x1a\n\xde\xad\xbe\xef", id="bytes"),
         ],
     )

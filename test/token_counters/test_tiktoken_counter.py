@@ -27,7 +27,7 @@ class _FakeEncoder:
     def __init__(self) -> None:
         self.encoded: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode_ordinary(self, text: str) -> list[int]:
         self.encoded.append(text)
         return list(range(len(text.split())))
 
@@ -160,3 +160,25 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+    def test_special_token_strings_are_counted_as_literal_text(self):
+        # Regression test for https://github.com/deepset-ai/haystack/issues/12869: a literal "<|endoftext|>"
+        # in message content must be counted as ordinary text instead of raising ValueError.
+        counter = TiktokenCounter()
+        with_marker = [ChatMessage.from_user("The manual documents <|endoftext|> as a literal marker.")]
+        without_marker = [ChatMessage.from_user("The manual documents a literal marker.")]
+
+        assert counter.count(with_marker) > counter.count(without_marker) > 0
+
+    def test_special_token_strings_in_tool_schemas_are_counted_as_literal_text(self):
+        # Same crash through the tools path: schema text is concatenated into the same encoded string.
+
+        @tool
+        def lookup(query: Annotated[str, "The <|endoftext|> marker, documented literally"]) -> str:
+            """Look up the <|endoftext|> marker."""
+            return "result"
+
+        counter = TiktokenCounter()
+        messages = [ChatMessage.from_user("hi")]
+
+        assert counter.count(messages, tools=[lookup]) > counter.count(messages) > 0

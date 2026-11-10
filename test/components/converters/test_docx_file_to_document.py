@@ -478,6 +478,7 @@ class TestDOCXToDocument:
             "score": None,
             "embedding": None,
             "sparse_embedding": None,
+            "multivector_embedding": None,
             "meta": {
                 "test": 1,
                 "docx": {
@@ -527,6 +528,34 @@ class TestDOCXToDocument:
         else:  # plain format
             assert "PDF (https://en.wikipedia.org/wiki/PDF)" in content
 
+    @pytest.mark.parametrize(
+        ("link_format", "expected"),
+        [
+            ("markdown", "[refund policy](https://example.org/manual#refund-policy)"),
+            ("plain", "refund policy (https://example.org/manual#refund-policy)"),
+        ],
+    )
+    def test_link_fragment_in_w_anchor_is_preserved(self, tmp_path, link_format, expected):
+        doc = docx.Document()
+        paragraph = doc.add_paragraph()
+        relationship_id = doc.part.relate_to(
+            target="https://example.org/manual", reltype=RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+        )
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), relationship_id)
+        hyperlink.set(qn("w:anchor"), "refund-policy")
+        run = OxmlElement("w:r")
+        text = OxmlElement("w:t")
+        text.text = "refund policy"
+        run.append(text)
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
+        path = tmp_path / "anchor_link.docx"
+        doc.save(str(path))
+        converter = DOCXToDocument(link_format=link_format)
+        content = converter.run(sources=[path])["documents"][0].content
+        assert content == expected
+
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
     def test_link_extraction_page_break(self, test_files_path, link_format):
         docx_converter = DOCXToDocument(link_format=link_format)
@@ -565,6 +594,61 @@ class TestDOCXToDocument:
         assert "TEXT INSIDE A TEXT BOX" in content
         # In reading order, between the paragraphs it sits among.
         assert content.index("BEFORE") < content.index("TEXT INSIDE A TEXT BOX") < content.index("AFTER")
+
+    @pytest.mark.parametrize(
+        "content, expected",
+        [
+            pytest.param(
+                '<w:r><w:t xml:space="preserve">Keep </w:t></w:r>'
+                '<w:ins w:id="1" w:author="A"><w:r><w:t>inserted</w:t></w:r></w:ins>'
+                '<w:del w:id="2" w:author="A"><w:r><w:delText xml:space="preserve"> deleted</w:delText></w:r></w:del>',
+                "Keep inserted",
+                id="tracked insertion and deletion",
+            ),
+            pytest.param(
+                '<w:r><w:t xml:space="preserve">A </w:t></w:r>'
+                '<w:moveFrom w:id="1" w:author="A"><w:r><w:t>OLD</w:t></w:r></w:moveFrom>'
+                '<w:moveTo w:id="2" w:author="A"><w:r><w:t>MOVED</w:t></w:r></w:moveTo>',
+                "A MOVED",
+                id="moved text",
+            ),
+            pytest.param(
+                '<w:r><w:t xml:space="preserve">Name: </w:t></w:r>'
+                "<w:sdt><w:sdtPr/><w:sdtContent><w:r><w:t>Ada</w:t></w:r></w:sdtContent></w:sdt>"
+                '<w:sdt><w:sdtPr><w:showingPlcHdr w:val="0"/></w:sdtPr>'
+                '<w:sdtContent><w:r><w:t xml:space="preserve"> Lovelace</w:t></w:r></w:sdtContent></w:sdt>'
+                "<w:sdt><w:sdtPr><w:showingPlcHdr/></w:sdtPr>"
+                "<w:sdtContent><w:r><w:t>Click or tap here to enter text.</w:t></w:r></w:sdtContent></w:sdt>",
+                "Name: Ada Lovelace",
+                id="filled content controls, not a placeholder",
+            ),
+            pytest.param(
+                '<w:smartTag w:uri="urn:x" w:element="City"><w:r><w:t>Berlin</w:t></w:r></w:smartTag>'
+                '<w:customXml w:element="x"><w:r><w:t xml:space="preserve"> office</w:t></w:r></w:customXml>',
+                "Berlin office",
+                id="smart tag and custom XML",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("link_format", ["none", "markdown"])
+    def test_run_reads_runs_inside_inline_wrappers(self, content, expected, link_format):
+        """`Paragraph.text` reads only a paragraph's direct runs and links."""
+        docx_bytes = _docx_with_text_box("<w:p {ns}>{content}</w:p>", content)
+
+        output = DOCXToDocument(link_format=link_format).run(sources=[ByteStream(data=docx_bytes)])
+
+        assert output["documents"][0].content == f"BEFORE\n{expected}\nAFTER"
+
+    def test_run_formats_a_link_inside_a_tracked_insertion(self):
+        docx_bytes = _docx_with_text_box(
+            "<w:p {ns}>{content}</w:p>",
+            '<w:ins w:id="1" w:author="A"><w:hyperlink r:id="{rid}"><w:r><w:t>LINK</w:t></w:r></w:hyperlink></w:ins>',
+            link_url="https://example.com",
+        )
+
+        output = DOCXToDocument(link_format="markdown").run(sources=[ByteStream(data=docx_bytes)])
+
+        assert "[LINK](https://example.com)" in output["documents"][0].content
 
     def test_run_does_not_repeat_a_text_box_that_has_a_vml_fallback(self):
         """Word writes the same text under `mc:Choice` and again under `mc:Fallback`."""

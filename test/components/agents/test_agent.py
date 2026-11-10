@@ -92,6 +92,19 @@ def weather_tool():
 
 
 @pytest.fixture
+def failing_tool():
+    def failing_function(location: str) -> dict[str, str]:
+        raise RuntimeError("weather service unavailable")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=failing_function,
+    )
+
+
+@pytest.fixture
 def component_tool():
     return ComponentTool(name="parrot", description="This is a parrot.", component=PromptBuilder(template="{{parrot}}"))
 
@@ -233,6 +246,7 @@ class TestAgentInit:
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
             "context_tokens": {"type": int, "handler": replace_values},
+            "max_agent_steps": {"type": int, "handler": replace_values},
         }
 
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
@@ -254,7 +268,7 @@ class TestAgentInit:
             agent.__haystack_input__._sockets_dict.keys()
         )
         # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
-        for internal_key in ("continue_run", "context_tokens"):
+        for internal_key in ("continue_run", "context_tokens", "max_agent_steps"):
             assert internal_key not in agent.__haystack_input__._sockets_dict
             assert internal_key not in agent.__haystack_output__._sockets_dict
 
@@ -339,6 +353,7 @@ class TestAgentSerialization:
                         "tools": None,
                         "tools_strict": False,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 },
                 "tools": [
@@ -870,7 +885,7 @@ class TestAgentRun:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
@@ -990,7 +1005,7 @@ class TestAgentStreaming:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         streaming_callback_called = False
 
@@ -1417,6 +1432,10 @@ class TestAgentTracing:
                     "type": "int",
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
+                "max_agent_steps": {
+                    "type": "int",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
             },
             "haystack.agent.input": {
                 "messages": [ChatMessage.from_user("What's the weather in Paris?")],
@@ -1494,6 +1513,29 @@ class TestAgentTracing:
         }
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
+
+    def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
 
     def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""

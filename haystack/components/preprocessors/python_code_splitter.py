@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import io
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -197,13 +198,35 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # Stripping removes whole lines, so also skip it when the next statement
+        # starts on the docstring's last line (``"""Docs."""; return 5``); otherwise
+        # that statement would be silently dropped.
+        if len(body) > 1 and body[1].lineno == ds_end:
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
+        # Removing the only statement from a function or class would leave an
+        # invalid suite. Keep the generated chunk syntactically valid.
+        if len(body) == 1:
+            docstring_line = source_lines[ds_start - 1]
+            indentation = docstring_line[: len(docstring_line) - len(docstring_line.lstrip())]
+            after.insert(0, f"{indentation}pass\n")
         return "".join(before + after), docstring
+
+    @staticmethod
+    def _definition_start(node: ast.stmt, source_lines: list[str]) -> int:
+        """Include the decorator marker, which may precede the AST expression's first line."""
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) or not node.decorator_list:
+            return node.lineno
+        start = node.decorator_list[0].lineno
+        while start > 1 and not source_lines[start - 1].lstrip().startswith("@"):
+            start -= 1
+        return start
 
     def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
         """Emit class header and per-method units for ``cls``; return the next cursor (1-indexed)."""
-        class_start = cls.decorator_list[0].lineno if cls.decorator_list else cls.lineno
+        class_start = self._definition_start(cls, source_lines)
         class_end = cls.end_lineno or cls.lineno
         class_name = cls.name
         class_decorators = [self._safe_unparse(d) for d in cls.decorator_list]
@@ -220,7 +243,7 @@ class PythonCodeSplitter:
         # ``preserve_class_definition`` to prefix later chunks of the same class.
         class_signature: str | None = None
         if cls.body:
-            body_start = cls.body[0].lineno
+            body_start = self._definition_start(cls.body[0], source_lines)
             if body_start > class_start:
                 class_signature = self._slice_lines(source_lines, class_start, body_start - 1)
 
@@ -246,14 +269,7 @@ class PythonCodeSplitter:
             return class_end + 1
 
         # Class header: from outer cursor up to (but excluding) the first split child.
-        first_child = cls.body[split_children_idx[0]]
-        if (
-            isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-            and first_child.decorator_list
-        ):
-            first_child_start = first_child.decorator_list[0].lineno
-        else:
-            first_child_start = first_child.lineno
+        first_child_start = self._definition_start(cls.body[split_children_idx[0]], source_lines)
         header_end = first_child_start - 1
         header_slice = self._slice_lines(source_lines, cursor, header_end)
         header_docstring: str | None = None
@@ -279,7 +295,7 @@ class PythonCodeSplitter:
             child = cls.body[idx]
             if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue  # narrowed above; kept for the type checker
-            child_start = child.decorator_list[0].lineno if child.decorator_list else child.lineno
+            child_start = self._definition_start(child, source_lines)
             child_end = child.end_lineno or child.lineno
             decorators = [self._safe_unparse(d) for d in child.decorator_list]
 
@@ -315,7 +331,8 @@ class PythonCodeSplitter:
     def _extract_units(self, source: str) -> list[_CodeUnit]:
         """Parse ``source`` and produce the ordered list of syntactic split units."""
         tree = ast.parse(source)
-        source_lines = source.splitlines(keepends=True)
+        # Match ast line numbers: split only on \n / \r\n / \r, not form feed etc.
+        source_lines = io.StringIO(source, newline="").readlines()
         total_lines = len(source_lines)
 
         units: list[_CodeUnit] = []
@@ -372,7 +389,7 @@ class PythonCodeSplitter:
                 continue
 
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                start = node.decorator_list[0].lineno if node.decorator_list else node.lineno
+                start = self._definition_start(node, source_lines)
                 end = node.end_lineno or node.lineno
                 decorators = [self._safe_unparse(d) for d in node.decorator_list]
                 unit_slice = self._slice_lines(source_lines, cursor, end)

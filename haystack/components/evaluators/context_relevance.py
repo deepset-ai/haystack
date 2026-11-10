@@ -135,7 +135,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
-            Whether to raise an exception if the API call fails.
+            If True, the component raises an exception when the chat generator call fails or its response isn't valid
+            JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,

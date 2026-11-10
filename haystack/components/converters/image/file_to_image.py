@@ -79,7 +79,7 @@ class ImageFileToImageContent:
         size: tuple[int, int] | None = None,
     ) -> dict[str, list[ImageContent]]:
         """
-        Converts files to ImageContent objects.
+        Converts files to ImageContent objects. Sources that fail conversion or validation are logged and skipped.
 
         :param sources:
             List of file paths or ByteStream objects to convert.
@@ -100,7 +100,7 @@ class ImageFileToImageContent:
 
         :returns:
             A dictionary with the following keys:
-            - `image_contents`: A list of ImageContent objects.
+            - `image_contents`: Successfully converted images in source order, or an empty list if none succeed.
         """
         if not sources:
             return {"image_contents": []}
@@ -135,16 +135,19 @@ class ImageFileToImageContent:
 
             try:
                 inferred_mime_type, base64_image = _encode_image_to_base64(bytestream=bytestream, size=resolved_size)
+                merged_metadata = {**bytestream.meta, **metadata}
+                image_content = ImageContent(
+                    base64_image=base64_image,
+                    mime_type=inferred_mime_type,
+                    meta=merged_metadata,
+                    detail=resolved_detail,
+                )
             except Exception as e:
                 logger.warning(
                     "Could not convert file {source}. Skipping it. Error message: {error}", source=source, error=e
                 )
                 continue
 
-            merged_metadata = {**bytestream.meta, **metadata}
-            image_content = ImageContent(
-                base64_image=base64_image, mime_type=inferred_mime_type, meta=merged_metadata, detail=resolved_detail
-            )
             image_contents.append(image_content)
 
         return {"image_contents": image_contents}

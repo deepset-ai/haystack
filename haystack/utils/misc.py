@@ -30,6 +30,22 @@ CUSTOM_MIMETYPES = {
 logger = logging.getLogger(__name__)
 
 
+def _make_metadata_value_hashable(value: Any) -> Any:
+    """Convert nested metadata values into values that can be used for deduplication."""
+    if isinstance(value, list):
+        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
+    if isinstance(value, dict):
+        return (
+            "dict",
+            frozenset(
+                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
+            ),
+        )
+    return value
+
+
 def expand_page_range(page_range: list[str | int]) -> list[int]:
     """
     Takes a list of page numbers and ranges and expands them into a list of page numbers.
