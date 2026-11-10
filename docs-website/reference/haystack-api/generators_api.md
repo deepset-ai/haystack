@@ -125,7 +125,8 @@ __init__(
     azure_ad_token_provider: (
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -193,6 +194,10 @@ Initialize the Azure OpenAI Chat Generator component.
   every request.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -351,7 +356,8 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -410,6 +416,10 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### to_dict
 
@@ -1033,6 +1043,8 @@ __init__(
     tools: ToolsType | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None,
+    *,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -1099,6 +1111,10 @@ in the OpenAI client.
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -1312,7 +1328,8 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -1394,6 +1411,10 @@ in the OpenAI client.
   are strict by default.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
