@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` with ``join_mode="distribution_based_rank_fusion"`` now treats a non-finite score
+    (``NaN`` or infinity) the same way it already treats a missing score, that is as 0, and logs a warning
+    with the IDs of the affected Documents. Before, a single non-finite score made the rescaled score of every
+    Document in that list ``NaN``, which silently emptied downstream filters that compare against a score threshold.
