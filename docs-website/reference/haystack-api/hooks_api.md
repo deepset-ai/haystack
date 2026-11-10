@@ -350,9 +350,12 @@ Bases: <code>Compactor</code>
 
 Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
-and the current task's history is kept in complete Agent steps, where a step is an assistant message together
-with all immediately following tool results.
+Leading system messages, the latest user message, and messages after the last assistant message are protected.
+Historical turns are kept in full when they fit, and the current task's history is kept in complete Agent steps,
+where a step is an assistant message together with all immediately following tool results. Any other message in
+the current task, such as a system reminder or another strategy's summary, is kept or removed together with the
+next assistant message and its tool results. A summary at the start of history is kept or removed like the oldest
+historical turn.
 
 An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
 only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -390,8 +393,8 @@ Initialize the compactor.
 **Parameters:**
 
 - **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep even when they exceed the target. A step
-  is an assistant message and all immediately following tool results. `0` allows all completed steps to be
-  removed when none fit.
+  is an assistant message, all immediately following tool results, and the messages right before it, such as
+  system reminders. `0` allows all completed steps to be removed when none fit.
 - **omission_note** (<code>str | None</code>) – The user message left in place of what was removed, or None to remove the messages
   silently. Include `{num_removed}` to have the number of removed messages substituted in.
 
@@ -1621,7 +1624,7 @@ Parse the Agent's final text reply as JSON and store it in a `State` key.
 The hook runs at the `on_exit` hook point. When the Agent stops with a text reply (`exit_reason` is `"text"`),
 the hook parses the reply as JSON, validates it against `schema`, and stores the result under `state_key`.
 A markdown code fence around the whole reply (for example ```` ```json ````) is removed before parsing.
-With a Pydantic model as `schema`, the stored value is the validated model dumped to a dict.
+With a Pydantic model as `schema`, the stored value is its JSON-compatible model dump.
 
 When the reply is not valid JSON or does not match the schema, and retries are left, the hook adds a user
 message describing the error and keeps the Agent running so the model can correct its reply. Retries count
@@ -1636,6 +1639,7 @@ If the hook never ran during the run, `state_key` is missing from the Agent's re
 `result.get("structured_output")`.
 
 `state_key` must be declared in the Agent's `state_schema`, which also makes it an output of the Agent.
+The parsed result replaces the previous value, overriding the state field's handler.
 
 The hook works with any chat generator. When the chat generator supports native structured output (for example
 `text_format` on `OpenAIResponsesChatGenerator`), pass the same schema there as well so the model is constrained

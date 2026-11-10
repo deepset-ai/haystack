@@ -1080,9 +1080,9 @@ get_metadata_fields_info() -> dict[str, dict[str, str]]
 
 Returns the information about the metadata fields in the collection.
 
-Since Qdrant may not have a payload schema for unindexed metadata,
-this method scrolls through documents to infer field types from
-payload["meta"].
+Indexed metadata fields take their type from the collection's payload schema.
+Qdrant has no schema for unindexed metadata, so this method also scrolls
+through documents to infer the type of every other field from payload["meta"].
 
 **Returns:**
 
@@ -1104,9 +1104,9 @@ get_metadata_fields_info_async() -> dict[str, dict[str, str]]
 
 Asynchronously returns the information about the metadata fields in the collection.
 
-Since Qdrant may not have a payload schema for unindexed metadata,
-this method scrolls through documents to infer field types from
-payload["meta"].
+Indexed metadata fields take their type from the collection's payload schema.
+Qdrant has no schema for unindexed metadata, so this method also scrolls
+through documents to infer the type of every other field from payload["meta"].
 
 **Returns:**
 

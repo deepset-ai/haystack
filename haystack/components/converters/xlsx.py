@@ -21,6 +21,12 @@ with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
 
+# The `pandas.read_excel` options that decide which cells end up where in the DataFrame.
+_POSITION_KWARGS = ("skiprows", "nrows", "skipfooter", "usecols", "names", "index_col")
+# Placeholder written into non-empty cells so pandas itself can resolve where they land after the
+# positional read_excel_kwargs (skiprows/names/usecols/...) have been applied.
+_CELL_TAG = "__haystack_cell__"
+
 
 @component
 class XLSXToDocument:
@@ -63,6 +69,16 @@ class XLSXToDocument:
         :param table_format: The format to convert the Excel file to.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
+            By default, the converter passes `keep_default_na=False` and `na_values=[""]`, so literal text like
+            "NA" and "N/A" is kept and only empty cells are treated as missing.
+            If you set either `keep_default_na` or `na_values`, these defaults aren't applied and pandas' own
+            behavior is used: `na_values` alone adds to pandas' default NA strings, and `keep_default_na=False`
+            alone doesn't treat empty cells as missing unless `""` is in `na_values`.
+            Set `keep_default_na=True` to restore pandas' default NA parsing.
+            Custom parsing options may cause conversion errors or unexpected output.
+            For example, `skiprows` can produce incorrect row numbers, and `index_col`
+            can cause values to change or the entire file to be skipped.
+            Validate the output on representative inputs when using these options.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
             - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
@@ -158,6 +174,49 @@ class XLSXToDocument:
             result.append(col_name)
         return result
 
+    @staticmethod
+    def _get_worksheet(workbook: Any, sheet_key: str | int | None) -> Any:
+        if isinstance(sheet_key, int):
+            return workbook.worksheets[sheet_key]
+        if sheet_key is None:
+            return workbook.active
+        return workbook[sheet_key]
+
+    def _map_hyperlinks_to_dataframe(
+        self, workbook: Any, hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]]
+    ) -> dict[str | int | None, dict[tuple[int, int], str]]:
+        """Re-key 0-based Excel cell coordinates to their positions in the filtered DataFrame."""
+        for sheet_key in hyperlinks_by_sheet:
+            for row in self._get_worksheet(workbook, sheet_key).iter_rows():
+                for cell in row:
+                    # Empty cells must stay empty: pandas sizes the sheet by its non-empty cells, and the placeholder
+                    # cells of merged ranges are read-only.
+                    if cell.value not in (None, ""):
+                        cell.value = f"{_CELL_TAG}{cell.row - 1},{cell.column - 1}"
+        tagged_bytes = io.BytesIO()
+        workbook.save(tagged_bytes)
+        position_kwargs = {
+            key: self.read_excel_kwargs[key] for key in _POSITION_KWARGS if key in self.read_excel_kwargs
+        }
+        tagged_sheets = pd.read_excel(
+            io=tagged_bytes, sheet_name=self.sheet_name, header=None, engine="openpyxl", **position_kwargs
+        )
+        if isinstance(tagged_sheets, pd.DataFrame):
+            tagged_sheets = {self.sheet_name: tagged_sheets}
+
+        mapped_hyperlinks = {}
+        for sheet_key, cell_links in hyperlinks_by_sheet.items():
+            positions = {}
+            for row_idx, values in enumerate(tagged_sheets[sheet_key].itertuples(index=False, name=None)):
+                for col_idx, value in enumerate(values):
+                    if isinstance(value, str) and value.startswith(_CELL_TAG):
+                        excel_row, excel_col = value.removeprefix(_CELL_TAG).split(",")
+                        positions[(int(excel_row), int(excel_col))] = (row_idx, col_idx)
+            mapped_hyperlinks[sheet_key] = {
+                positions[cell]: url for cell, url in cell_links.items() if cell in positions
+            }
+        return mapped_hyperlinks
+
     def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
         Extract tables from an Excel file.
@@ -169,6 +228,8 @@ class XLSXToDocument:
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
+        if "keep_default_na" not in self.read_excel_kwargs and "na_values" not in self.read_excel_kwargs:
+            resolved_read_excel_kwargs.update(keep_default_na=False, na_values=[""])
         sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
@@ -179,19 +240,16 @@ class XLSXToDocument:
             file_bytes.seek(0)
             wb = openpyxl.load_workbook(file_bytes, data_only=True)
             for sheet_key in sheet_to_dataframe:
-                if isinstance(sheet_key, int):
-                    ws = wb.worksheets[sheet_key]
-                elif sheet_key is None:
-                    ws = wb.active
-                else:
-                    ws = wb[sheet_key]
+                ws = self._get_worksheet(wb, sheet_key)
                 cell_links: dict[tuple[int, int], str] = {}
                 for row in ws.iter_rows():
                     for cell in row:
                         if cell.hyperlink and cell.hyperlink.target:
-                            # Convert to 0-based indices to match DataFrame positions
+                            # Store zero-based Excel coordinates; they are translated to filtered positions below.
                             cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
                 hyperlinks_by_sheet[sheet_key] = cell_links
+            if any(hyperlinks_by_sheet.values()) and any(key in self.read_excel_kwargs for key in _POSITION_KWARGS):
+                hyperlinks_by_sheet = self._map_hyperlinks_to_dataframe(wb, hyperlinks_by_sheet)
             wb.close()
 
         updated_sheet_to_dataframe = {}
