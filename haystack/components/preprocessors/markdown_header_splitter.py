@@ -321,9 +321,12 @@ class MarkdownHeaderSplitter:
             page_break_count = 0
 
             for split in secondary_splits:
-                split_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
-                split.meta["split_idx_start"] = source_start_idx + split_start_idx
-                while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
+                section_relative_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
+                split.meta["split_idx_start"] = source_start_idx + section_relative_start_idx
+                while (
+                    page_break_count < len(page_break_ends)
+                    and page_break_ends[page_break_count] <= section_relative_start_idx
+                ):
                     page_break_count += 1
 
                 split.meta["page_number"] = (
