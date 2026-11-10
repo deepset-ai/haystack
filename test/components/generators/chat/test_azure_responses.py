@@ -669,6 +669,13 @@ class TestRateLimitHeaders:
         result = generator.run("What's the capital of France?")
 
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
-        assert result["replies"][0].meta["finish_reason"] == "stop"
-
+        assert result["replies"][0].meta == {
+            "id": "resp_123",
+            "created_at": 1786704941.0,
+            "model": "gpt-5-mini",
+            "object": "response",
+            "status": "completed",
+            "usage": payload["usage"],
+            "finish_reason": "stop",
+            "rate_limit_headers": rate_limit_headers,
+        }

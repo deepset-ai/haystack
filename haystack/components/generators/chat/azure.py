@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat._rate_limit_headers import build_http_client
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
     ToolsType,
@@ -20,7 +21,6 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.components.generators.chat._rate_limit_headers import build_http_client
 
 
 @component
@@ -275,9 +275,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = build_http_client(
-                self.http_client_kwargs,
-                async_client=False,
-                include_rate_limit_headers=self.include_rate_limit_headers,
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.client = AzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
@@ -292,9 +290,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = build_http_client(
-                self.http_client_kwargs,
-                async_client=True,
-                include_rate_limit_headers=self.include_rate_limit_headers,
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
             )
             self.async_client = AsyncAzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]

@@ -4,7 +4,7 @@
 
 from collections.abc import Mapping, Sequence
 from contextvars import ContextVar
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 from openai import DefaultAsyncHttpxClient, DefaultHttpxClient
@@ -13,6 +13,17 @@ from haystack.utils.http_client import init_http_client
 
 _rate_limit_headers: ContextVar[dict[str, str] | None] = ContextVar("_rate_limit_headers", default=None)
 
+
+class _HttpResponse(Protocol):
+    # OpenAI's default client passes an `httpx2` response to the hook, clients built from `http_client_kwargs` an
+    # `httpx` one. The hook only reads these two attributes, which both have.
+    @property
+    def is_success(self) -> bool: ...
+
+    @property
+    def headers(self) -> Mapping[str, str]: ...
+
+
 def extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
     """
     Extract the rate limit headers (`x-ratelimit-*`) sent by OpenAI and Azure OpenAI from the HTTP response headers.
@@ -20,12 +31,12 @@ def extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return {name.lower(): value for name, value in headers.items() if name.lower().startswith("x-ratelimit-")}
 
 
-def _capture_rate_limit_headers(response: httpx.Response) -> None:
+def _capture_rate_limit_headers(response: _HttpResponse) -> None:
     if response.is_success:
         _rate_limit_headers.set(extract_rate_limit_headers(response.headers))
 
 
-async def _async_capture_rate_limit_headers(response: httpx.Response) -> None:
+async def _async_capture_rate_limit_headers(response: _HttpResponse) -> None:
     _capture_rate_limit_headers(response)
 
 
@@ -34,7 +45,7 @@ def reset_rate_limit_headers() -> None:
     _rate_limit_headers.set(None)
 
 
-def captured_rate_limit_headers() -> dict[str, str] | None:
+def _captured_rate_limit_headers() -> dict[str, str] | None:
     headers = _rate_limit_headers.get()
     return dict(headers) if headers is not None else None
 
@@ -48,14 +59,14 @@ def attach_rate_limit_headers(replies: Sequence[Any], *, enabled: bool) -> None:
     """
     if not enabled:
         return
-    headers = captured_rate_limit_headers()
+    headers = _captured_rate_limit_headers()
     if headers is None:
         return
     for reply in replies:
         reply.meta["rate_limit_headers"] = headers
 
 
-def http_client_kwargs_with_rate_limit_hook(
+def _http_client_kwargs_with_rate_limit_hook(
     http_client_kwargs: dict[str, Any] | None, *, async_client: bool
 ) -> dict[str, Any]:
     """
@@ -72,19 +83,20 @@ def http_client_kwargs_with_rate_limit_hook(
 
 def build_http_client(
     http_client_kwargs: dict[str, Any] | None, *, async_client: bool, include_rate_limit_headers: bool
-) -> httpx.Client | httpx.AsyncClient | None:
+) -> httpx.Client | httpx.AsyncClient | DefaultHttpxClient | DefaultAsyncHttpxClient | None:
     """
     Build the httpx client used by the OpenAI SDK, attaching a rate-limit hook when requested.
 
     User-provided `http_client_kwargs` (including existing `event_hooks`) are preserved. When no
     custom kwargs are given, OpenAI's default httpx client is used so timeouts and limits stay the same.
     """
-    if not include_rate_limit_headers:
-        return init_http_client(http_client_kwargs, async_client=async_client)
-
-    kwargs = http_client_kwargs_with_rate_limit_hook(http_client_kwargs, async_client=async_client)
-    if http_client_kwargs:
-        return init_http_client(kwargs, async_client=async_client)
+    kwargs = http_client_kwargs
+    if include_rate_limit_headers:
+        kwargs = _http_client_kwargs_with_rate_limit_hook(http_client_kwargs, async_client=async_client)
+        if not http_client_kwargs:
+            if async_client:
+                return DefaultAsyncHttpxClient(**kwargs)
+            return DefaultHttpxClient(**kwargs)
     if async_client:
-        return DefaultAsyncHttpxClient(event_hooks=kwargs["event_hooks"])
-    return DefaultHttpxClient(event_hooks=kwargs["event_hooks"])
+        return init_http_client(kwargs, async_client=True)
+    return init_http_client(kwargs, async_client=False)

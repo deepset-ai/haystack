@@ -1304,6 +1304,17 @@ SERIALIZED_RESPONSE_USAGE = {
     "total_tokens": 27,
 }
 
+META_WITH_RATE_LIMIT_HEADERS = {
+    "id": "resp_123",
+    "created_at": 1786704941.0,
+    "model": "gpt-5-mini",
+    "object": "response",
+    "status": "completed",
+    "usage": SERIALIZED_RESPONSE_USAGE,
+    "finish_reason": "stop",
+    "rate_limit_headers": RATE_LIMIT_HEADERS,
+}
+
 
 class TestRateLimitHeaders:
     @staticmethod
@@ -1326,14 +1337,36 @@ class TestRateLimitHeaders:
         result = self._generator(response, include_rate_limit_headers=True).run("What's the capital of France?")
 
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta == {
-            "id": "resp_123",
-            "created_at": 1786704941.0,
-            "model": "gpt-5-mini",
-            "object": "response",
-            "status": "completed",
-            "usage": SERIALIZED_RESPONSE_USAGE,
-            "finish_reason": "stop",
-            "rate_limit_headers": RATE_LIMIT_HEADERS,
-        }
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS
 
+    def test_included_in_meta_when_streaming(self) -> None:
+        events = [
+            {
+                "type": "response.output_text.delta",
+                "item_id": "msg_123",
+                "output_index": 0,
+                "content_index": 0,
+                "delta": "Paris",
+                "sequence_number": 0,
+            },
+            {"type": "response.completed", "response": RESPONSE_PAYLOAD, "sequence_number": 1},
+        ]
+        body = "".join(f"data: {json.dumps(event)}\n\n" for event in events).encode()
+        response = httpx.Response(
+            200, content=body, headers={"content-type": "text/event-stream", **RATE_LIMIT_HEADERS}
+        )
+        streamed: list[StreamingChunk] = []
+        generator = self._generator(response, include_rate_limit_headers=True, streaming_callback=streamed.append)
+        result = generator.run("What's the capital of France?")
+
+        assert all("rate_limit_headers" not in chunk.meta for chunk in streamed)
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS
+
+    async def test_included_in_meta_run_async(self) -> None:
+        response = httpx.Response(200, json=RESPONSE_PAYLOAD, headers=RATE_LIMIT_HEADERS)
+        generator = self._generator(response, include_rate_limit_headers=True)
+        result = await generator.run_async("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS

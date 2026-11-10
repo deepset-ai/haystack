@@ -12,7 +12,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from openai import OpenAIError
+from openai import DefaultAsyncHttpxClient, DefaultHttpxClient, OpenAIError
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
@@ -33,12 +33,17 @@ from pydantic import BaseModel
 
 import haystack.components.generators.chat.openai as openai_chat_module
 from haystack import component
+from haystack.components.generators.chat._rate_limit_headers import (
+    _async_capture_rate_limit_headers,
+    _capture_rate_limit_headers,
+    build_http_client,
+    extract_rate_limit_headers,
+)
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
     _convert_chat_completion_to_chat_message,
-    _extract_rate_limit_headers,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -2591,4 +2596,13 @@ class TestRateLimitHeaders:
     def test_extract_rate_limit_headers(self) -> None:
         headers = httpx.Headers({"X-RateLimit-Remaining-Requests": "99", "Content-Type": "application/json"})
 
-        assert _extract_rate_limit_headers(headers) == {"x-ratelimit-remaining-requests": "99"}
+        assert extract_rate_limit_headers(headers) == {"x-ratelimit-remaining-requests": "99"}
+
+    def test_default_http_client_has_rate_limit_hook(self) -> None:
+        client = build_http_client(None, async_client=False, include_rate_limit_headers=True)
+        async_client = build_http_client(None, async_client=True, include_rate_limit_headers=True)
+
+        assert isinstance(client, DefaultHttpxClient)
+        assert client.event_hooks["response"] == [_capture_rate_limit_headers]
+        assert isinstance(async_client, DefaultAsyncHttpxClient)
+        assert async_client.event_hooks["response"] == [_async_capture_rate_limit_headers]

@@ -614,7 +614,12 @@ class TestAzureOpenAIChatGenerator:
 
     def test_rate_limit_headers_included_in_meta_when_streaming(self) -> None:
         rate_limit_headers = {"x-ratelimit-remaining-requests": "99", "x-ratelimit-remaining-tokens": "99990"}
-        chunk = {"id": "chatcmpl-123", "object": "chat.completion.chunk", "created": 1786704941, "model": "gpt-4.1-mini"}
+        chunk = {
+            "id": "chatcmpl-123",
+            "object": "chat.completion.chunk",
+            "created": 1786704941,
+            "model": "gpt-4.1-mini",
+        }
         body = (
             f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {'content': 'Paris'}}]})}\n\n"
             f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
