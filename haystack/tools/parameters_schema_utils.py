@@ -51,7 +51,7 @@ def _is_state_annotation(annotation: Any) -> bool:
 
 def _contains_callable_type(type_hint: Any) -> bool:
     """
-    Check if a type hint contains a Callable type, including within Union types.
+    Check if a type hint contains a Callable type, including within Union and Annotated types.
 
     The purpose of this function is to help identify Callable types so they can
     be skipped during schema generation.
@@ -64,6 +64,9 @@ def _contains_callable_type(type_hint: Any) -> bool:
     # Check if it's a Callable type (direct or parameterized)
     if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
         return True
+
+    if origin is Annotated:
+        return _contains_callable_type(get_args(type_hint)[0])
 
     # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
     if origin in (Union, types.UnionType):

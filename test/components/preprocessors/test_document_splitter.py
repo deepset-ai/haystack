@@ -747,6 +747,16 @@ class TestSplittingNLTKSentenceSplitter:
         )
         assert num_sentences == 0
 
+    def test_sentence_overlap_stops_when_word_count_is_exact(self) -> None:
+        # The last sentence is already exactly split_overlap words, so the sentence before it is not kept.
+        text = "Alpha beta. Gamma delta. Epsilon zeta. Eta theta."
+        splitter = DocumentSplitter(split_by="word", split_length=6, split_overlap=2, respect_sentence_boundary=True)
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.content for doc in documents] == [
+            "Alpha beta. Gamma delta. Epsilon zeta. ",
+            "Epsilon zeta. Eta theta.",
+        ]
+
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="sentence",
