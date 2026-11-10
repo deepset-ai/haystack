@@ -40,6 +40,9 @@ ISO639_TO_NLTK = {
     "ml": "malayalam",
 }
 
+# Languages that use the danda (।) and double danda (॥) as sentence terminators
+DANDA_LANGUAGES = {"hi", "mr", "bn", "sa", "ne", "gu", "pa", "or", "as", "kn", "te", "ml"}
+
 QUOTE_SPANS_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 
 # Closing brackets and quotes that can trail a sentence ending, as in `He said "Hi." Bye.` or `(Hi.) Bye.`
@@ -77,7 +80,13 @@ if nltk_imports.is_successful():
             )
             sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
 
-        sentence_tokenizer._lang_vars = CustomPunktLanguageVars() if keep_white_spaces else DandaPunktLanguageVars()
+        use_danda = language in DANDA_LANGUAGES
+        if keep_white_spaces:
+            sentence_tokenizer._lang_vars = CustomPunktLanguageVars() if use_danda else CustomPunktLanguageVarsNoDanda()
+        else:
+            sentence_tokenizer._lang_vars = (
+                DandaPunktLanguageVars() if use_danda else nltk.tokenize.punkt.PunktLanguageVars()
+            )
 
         return sentence_tokenizer
 
@@ -85,6 +94,31 @@ if nltk_imports.is_successful():
         # NLTK only ends sentences on ".", "?" and "!". The danda (U+0964) and double danda (U+0965) are the
         # sentence terminators in Hindi, Marathi, Bengali and other Indic scripts.
         sent_end_chars = (".", "?", "!", "।", "॥")
+
+    class CustomPunktLanguageVarsNoDanda(nltk.tokenize.punkt.PunktLanguageVars):
+        # Whitespace-preserving variant without danda support (for non-Indic languages)
+        _period_context_fmt = r"""
+                %(SentEndChars)s             # a potential sentence ending
+                \s*                          # match potential whitespace [ \t\n\x0B\f\r]
+                (?=(?P<after_tok>
+                    %(NonWord)s              # either other punctuation
+                    |
+                    (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
+                ))"""
+
+        def period_context_re(self) -> re.Pattern:
+            try:
+                return self._re_period_context  # type: ignore
+            except AttributeError:
+                self._re_period_context = re.compile(
+                    self._period_context_fmt
+                    % {
+                        "NonWord": self._re_non_word_chars,
+                        "SentEndChars": self._re_sent_end_chars + SENTENCE_CLOSING_CHARS_RE,
+                    },
+                    re.UNICODE | re.VERBOSE,
+                )
+                return self._re_period_context
 
     class CustomPunktLanguageVars(DandaPunktLanguageVars):
         # The following adjustment of PunktSentenceTokenizer is inspired by:

@@ -1,6 +1,7 @@
 ---
 fixes:
   - |
-    `DocumentSplitter` with `split_by="sentence"` and `RecursiveDocumentSplitter` now split sentences ending with
-    the danda (`।`) or double danda (`॥`), as used in Hindi, Marathi, Bengali and other Indic languages. Before,
-    such text was returned as a single chunk.
+    ``DocumentSplitter`` with ``split_by="sentence"`` and ``RecursiveDocumentSplitter`` now split sentences ending with
+    the danda (``।``) or double danda (``॥``) when the ``language`` parameter is set to an Indic language (``hi``, ``mr``,
+    ``bn``, ``sa``, ``ne``, ``gu``, ``pa``, ``or``, ``as``, ``kn``, ``te``, or ``ml``). Before, such text was returned as
+    a single chunk.
