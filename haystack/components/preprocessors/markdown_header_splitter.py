@@ -413,6 +413,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `page_number` with the page the chunk starts on, counting
                   `page_break_character` occurrences in the original document.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
+                - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+                  character offset where the chunk starts in the original document.
                 - All other metadata copied from the original document.
         :raises ValueError: If a document has `None` content.
         :raises TypeError: If a document's content is not a string.

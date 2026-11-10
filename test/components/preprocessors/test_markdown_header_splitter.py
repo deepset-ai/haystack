@@ -828,6 +828,11 @@ def test_secondary_split_with_overlap():
     split_docs = result["documents"]
     assert len(split_docs) == 9
 
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
+
     # Verify exact content and metadata of each split
     # intro (4 docs)
     assert split_docs[0].content == "\nThis is the introduction section with some words "
@@ -882,6 +887,11 @@ def test_secondary_split_with_overlap():
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
     assert len(split_docs) == 24
+
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
 
     assert split_docs[0].content is not None
     assert split_docs[0].content.startswith("# Introduction")
@@ -1326,18 +1336,3 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     assert first_content is not None
     assert "# Top Level" in first_content
     assert "Top content." in first_content
-
-
-def test_secondary_split_idx_start_is_offset_in_original_document():
-    text = "# Intro\nalpha beta gamma delta\n# Usage\nepsilon zeta eta theta\n"
-    doc = Document(content=text)
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=2)
-
-    split_docs = splitter.run(documents=[doc])["documents"]
-
-    starts = [split.meta["split_idx_start"] for split in split_docs]
-    assert starts == sorted(starts)
-    for split in split_docs:
-        assert split.content is not None
-        start = split.meta["split_idx_start"]
-        assert text[start : start + len(split.content)] == split.content
