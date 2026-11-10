@@ -20,9 +20,9 @@ def _finite_score(score: float | None) -> float:
     """
     Return the score to use in the arithmetic of a join mode.
 
-    A score that is missing and a score that is not finite (NaN or infinity) both carry no ranking information,
-    so they are treated as 0. A non-finite score that reaches the arithmetic of a join mode does not stay local
-    to its own Document, it turns the scores of the other Documents into NaN as well.
+    Missing and non-finite (NaN or infinity) scores are both treated as 0. A non-finite score that reaches the
+    arithmetic of a join mode does not stay local to its own Document, it turns the scores of the other Documents
+    into NaN as well.
     """
     return score if score is not None and isfinite(score) else 0.0
 
@@ -119,7 +119,8 @@ class DocumentJoiner:
             - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
             - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
             - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-            distribution in each Retriever.
+            distribution in each Retriever. Documents without a score or with a non-finite score are treated as
+            having a score of 0.
         :param weights:
             Assign importance to each list of documents to influence how they're joined.
             This parameter is ignored for
@@ -282,13 +283,13 @@ class DocumentJoiner:
                 continue
 
             scores_list = [_finite_score(doc.score) for doc in documents]
-            non_finite_scores = [doc.id for doc in documents if doc.score is not None and not isfinite(doc.score)]
-            if non_finite_scores:
+            non_finite_ids = [doc.id for doc in documents if doc.score is not None and not isfinite(doc.score)]
+            if non_finite_ids:
                 logger.warning(
                     "Some of the Documents DocumentJoiner got have a non-finite score. They were treated as if their "
                     "score was 0 while rescaling the scores of the list, otherwise every score in the list would "
                     "become NaN. Documents with IDs: {document_ids}",
-                    document_ids=",".join(non_finite_scores),
+                    document_ids=",".join(non_finite_ids),
                 )
 
             mean_score = sum(scores_list) / len(scores_list)

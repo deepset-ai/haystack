@@ -432,6 +432,17 @@ class TestDocumentJoiner:
 
         assert [doc.score for doc in output["documents"]] == [0.0, 0.0]
 
+    def test_distribution_based_rank_fusion_warns_about_non_finite_scores(self, caplog):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [Document(content="a", score=0.9), Document(content="b", score=float("nan"))]
+
+        with caplog.at_level(logging.WARNING):
+            joiner.run([documents])
+
+        assert "have a non-finite score" in caplog.text
+        assert documents[1].id in caplog.text
+        assert documents[0].id not in caplog.text
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
