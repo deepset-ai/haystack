@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat._rate_limit_headers import _build_http_client
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
     ToolsType,
@@ -20,7 +21,6 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -126,6 +126,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -193,6 +194,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -229,6 +235,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
         self.tools = tools
         self.tools_strict = tools_strict
@@ -267,7 +274,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.client = AzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -280,7 +289,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.async_client = AsyncAzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -346,6 +357,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             tools_strict=self.tools_strict,
             azure_ad_token_provider=azure_ad_token_provider_name,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod

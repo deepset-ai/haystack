@@ -186,6 +186,25 @@ class TestRegexTextExtractor:
 
         assert result == {"captured_text": "username"}
 
+    @pytest.mark.parametrize(
+        "pattern, text",
+        [(r"Score: (\d+)|N/A", "N/A"), (r"Answer:( \w+)?", "Answer:")],
+        ids=["alternation", "optional-group"],
+    )
+    def test_capture_group_outside_the_match_returns_empty_string(self, pattern, text):
+        """A match whose first group did not participate returns a str, never None."""
+        extractor = RegexTextExtractor(regex_pattern=pattern)
+
+        result = extractor.run(text_or_messages=text)
+
+        assert result == {"captured_text": ""}
+
+    def test_capture_group_outside_the_match_in_chat_message_returns_empty_string(self):
+        extractor = RegexTextExtractor(regex_pattern=r"Score: (\d+)|N/A")
+
+        assert extractor.run(text_or_messages=[ChatMessage.from_assistant("Score: 7")]) == {"captured_text": "7"}
+        assert extractor.run(text_or_messages=[ChatMessage.from_assistant("N/A")]) == {"captured_text": ""}
+
     def test_pipeline_integration(self):
         """Test component integration in a Haystack pipeline."""
         pattern = r'<issue url="(.+?)">'

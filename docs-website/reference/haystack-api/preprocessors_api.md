@@ -841,7 +841,7 @@ Headers may be indented by up to three spaces, following CommonMark; lines inden
 This component processes text documents by:
 
 - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-- Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+- Optionally applying a secondary split (by word, passage, period, line or token) to each chunk
   (using haystack's DocumentSplitter).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
@@ -853,11 +853,14 @@ __init__(
     page_break_character: str = "\x0c",
     keep_headers: bool = True,
     header_split_levels: list[int] | None = None,
-    secondary_split: Literal["word", "passage", "period", "line"] | None = None,
+    secondary_split: (
+        Literal["word", "passage", "period", "line", "token"] | None
+    ) = None,
     split_length: int = 200,
     split_overlap: int = 0,
     split_threshold: int = 0,
-    skip_empty_documents: bool = True
+    skip_empty_documents: bool = True,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -871,8 +874,10 @@ Initialize the MarkdownHeaderSplitter.
 - **header_split_levels** (<code>list\[int\] | None</code>) – List of header levels (1–6) to split on. For example, `[1, 2]` splits only
   on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
   all levels `[1, 2, 3, 4, 5, 6]`.
-- **secondary_split** (<code>Literal['word', 'passage', 'period', 'line'] | None</code>) – Optional secondary split condition after header splitting.
-  Options are None, "word", "passage", "period", "line". Defaults to None.
+- **secondary_split** (<code>Literal['word', 'passage', 'period', 'line', 'token'] | None</code>) – Optional secondary split condition after header splitting.
+  Options are None, "word", "passage", "period", "line", "token". Defaults to None.
+  `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that each chunk fits
+  the token limit of an embedding model or LLM.
 - **split_length** (<code>int</code>) – The maximum number of units in each split when using secondary splitting. Defaults to 200.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split when using secondary splitting.
   Defaults to 0.
@@ -880,6 +885,8 @@ Initialize the MarkdownHeaderSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Choose whether to skip documents with empty content. Default is True.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `secondary_split="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `secondary_split="token"`.
 
 #### warm_up
 
@@ -888,6 +895,8 @@ warm_up() -> None
 ```
 
 Warm up the MarkdownHeaderSplitter.
+
+Loads the tiktoken encoding when `secondary_split="token"`.
 
 #### run
 
@@ -909,6 +918,8 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `page_number` with the page the chunk starts on, counting
     `page_break_character` occurrences in the original document.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
+  - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+    character offset where the chunk starts in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
