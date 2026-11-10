@@ -1,4 +1,5 @@
 fixes:
   - |
-    Prevent ``Pipeline.stream()`` from duplicating chunks across concurrent streams
-    that reuse the same input dictionary, and keep its injected callbacks out of that dictionary.
+    ``Pipeline.run()``, ``Pipeline.run_async()``, and ``Pipeline.stream()`` no longer modify
+    the ``data`` dictionary passed to them. Concurrent streams that reuse the same input
+    dictionary no longer receive each other's chunks.

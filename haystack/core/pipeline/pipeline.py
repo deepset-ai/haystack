@@ -1322,7 +1322,7 @@ class Pipeline(PipelineBase):
 
             return forwarder
 
-        new_data: dict[str, Any] = self._prepare_component_input_data(data.copy())
+        new_data: dict[str, Any] = self._prepare_component_input_data(data)
         for name in streaming_capable:
             if streaming_components is not None and name not in streaming_components:
                 continue
