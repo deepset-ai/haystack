@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    Fixed `SearchableToolset` BM25 indexing so tool names are split on both snake_case and camelCase
+    Fixed ``SearchableToolset`` BM25 indexing so tool names are split on both snake_case and camelCase
     boundaries. Searching by a partial word now also matches camelCase tool names (for example,
-    searching `weather` also finds a tool named `getWeather`). Added a regression test covering the
+    searching ``weather`` also finds a tool named ``getWeather``). Added a regression test covering the
     camelCase split.
