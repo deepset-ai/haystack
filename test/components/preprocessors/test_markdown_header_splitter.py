@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 from collections import defaultdict
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 import pytest
 
+import haystack.components.preprocessors.document_splitter as document_splitter_module
 from haystack import Document
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 # Fixtures
@@ -1336,3 +1339,151 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     assert first_content is not None
     assert "# Top Level" in first_content
     assert "Top content." in first_content
+
+
+# Secondary split by token
+@pytest.fixture
+def mock_tiktoken_encoding(monkeypatch):
+    """
+    Replace `tiktoken.get_encoding` with a fake whitespace tokenizer, so these tests need no network access.
+
+    Every word is one token, and every token after the first carries the whitespace in front of it, like
+    real BPE tokenizers do. Decoding the tokens of a text gives back exactly that text.
+    """
+
+    def encode_ordinary(text: str) -> list[str]:
+        return [match.group(0) for match in re.finditer(r"\s*\S+|\s+$", text)]
+
+    def decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+        offsets: list[int] = []
+        idx = 0
+        for token in tokens:
+            offsets.append(idx)
+            idx += len(token)
+        return "".join(tokens), offsets
+
+    encoding = Mock()
+    encoding.encode_ordinary.side_effect = encode_ordinary
+    encoding.decode_with_offsets.side_effect = decode_with_offsets
+    get_encoding = Mock(return_value=encoding)
+    monkeypatch.setattr(document_splitter_module.tiktoken, "get_encoding", get_encoding)
+    return get_encoding
+
+
+class TestSecondarySplitByToken:
+    def test_init_passes_settings_to_the_inner_splitter(self):
+        splitter = MarkdownHeaderSplitter(
+            secondary_split="token",
+            split_length=50,
+            split_overlap=10,
+            split_threshold=5,
+            tokenizer_encoding="cl100k_base",
+        )
+
+        inner = splitter.secondary_splitter
+        assert inner.split_by == "token"
+        assert inner.split_length == 50
+        assert inner.split_overlap == 10
+        assert inner.split_threshold == 5
+        assert inner.tokenizer_encoding == "cl100k_base"
+
+    def test_serialization_round_trip(self):
+        splitter = MarkdownHeaderSplitter(
+            secondary_split="token", split_length=100, split_overlap=20, tokenizer_encoding="cl100k_base"
+        )
+
+        restored = component_from_dict(MarkdownHeaderSplitter, component_to_dict(splitter, "splitter"), "splitter")
+
+        assert restored.secondary_split == "token"
+        assert restored.split_length == 100
+        assert restored.split_overlap == 20
+        assert restored.tokenizer_encoding == "cl100k_base"
+        assert restored.secondary_splitter.tokenizer_encoding == "cl100k_base"
+
+    def test_warm_up_loads_the_encoding_once(self, mock_tiktoken_encoding):
+        splitter = MarkdownHeaderSplitter(secondary_split="token", tokenizer_encoding="cl100k_base")
+
+        splitter.warm_up()
+        splitter.warm_up()
+
+        mock_tiktoken_encoding.assert_called_once_with("cl100k_base")
+        assert splitter.secondary_splitter._tiktoken_tokenizer is mock_tiktoken_encoding.return_value
+
+    def test_header_metadata_split_id_and_source_id(self, mock_tiktoken_encoding):
+        text = "# Intro\nOne two three four five.\n## Details\nA b c d e f."
+        source = Document(content=text)
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
+
+        docs = splitter.run(documents=[source])["documents"]
+
+        # "#" and "Intro" are tokens too, so the first chunk of a section holds the header and one word
+        assert [doc.content for doc in docs] == [
+            "# Intro\nOne",
+            " two three four",
+            " five.\n",
+            "## Details\nA",
+            " b c d",
+            " e f.",
+        ]
+        assert [doc.meta["header"] for doc in docs] == ["Intro"] * 3 + ["Details"] * 3
+        assert [doc.meta["parent_headers"] for doc in docs] == [[]] * 3 + [["Intro"]] * 3
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2, 3, 4, 5]
+        assert all(doc.meta["source_id"] == source.id for doc in docs)
+
+    def test_keep_headers_false(self, mock_tiktoken_encoding):
+        text = "# Intro\nOne two three four five.\n## Details\nA b c."
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3, keep_headers=False)
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == ["\nOne two three", " four five.\n", "\nA b c."]
+        assert [doc.meta["header"] for doc in docs] == ["Intro", "Intro", "Details"]
+        assert [doc.meta["parent_headers"] for doc in docs] == [[], [], ["Intro"]]
+
+    def test_page_numbers_across_headers(self, mock_tiktoken_encoding):
+        text = "# One\nAlpha beta.\f\n# Two\nGamma delta epsilon.\f\n# Three\nZeta."
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=2)
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [(doc.content, doc.meta["header"], doc.meta["page_number"]) for doc in docs] == [
+            ("# One", "One", 1),
+            ("\nAlpha beta.", "One", 1),
+            # a chunk that starts with a page break is on the next page, as with the other split types
+            ("\f\n", "One", 2),
+            ("# Two", "Two", 2),
+            ("\nGamma delta", "Two", 2),
+            (" epsilon.\f\n", "Two", 2),
+            ("# Three", "Three", 3),
+            ("\nZeta.", "Three", 3),
+        ]
+
+
+@pytest.mark.integration
+class TestSecondarySplitByTokenIntegration:
+    """Integration test for secondary_split="token" that loads a real tiktoken encoding."""
+
+    def test_run(self):
+        text = (
+            "# Install\n"
+            "Run `pip install haystack-ai` and see https://github.com/deepset-ai/haystack for the source code.\n"
+            "## Usage\n"
+            "Haystack pipelines connect retrievers, rankers and generators.\f"
+            "Token-based chunks keep every piece inside the context budget of the model.\n"
+            "```python\n# a comment, not a header\npipeline.run({'retriever': {'query': 'What is RAG?'}})\n```\n"
+        )
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=10)
+        splitter.warm_up()
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        tokenizer = splitter.secondary_splitter._tiktoken_tokenizer
+        assert tokenizer is not None
+        assert len(docs) > 2
+        for doc in docs:
+            assert doc.content
+            assert len(tokenizer.encode_ordinary(doc.content)) <= 10
+        assert "".join(str(doc.content) for doc in docs) == text
+        assert {doc.meta["header"] for doc in docs} == {"Install", "Usage"}
+        assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
+        assert docs[-1].meta["page_number"] == 2
