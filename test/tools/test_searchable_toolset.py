@@ -244,6 +244,22 @@ class TestSearchableToolsetBM25Mode:
         assert "get_weather" in result
         assert "get_weather" in toolset._discovered_tools
 
+    @pytest.mark.parametrize(("tool_name", "keyword"), [("book_flight", "flight"), ("getWeather", "weather")])
+    def test_search_tools_matches_word_inside_tool_name(self, tool_name, keyword):
+        """Test that search_tools finds a tool by a word that only appears inside its snake_case or camelCase name."""
+        params = {"type": "object", "properties": {}}
+        catalog = [
+            Tool(name=tool_name, description="Reserve an airline seat.", parameters=params, function=lambda: None),
+            Tool(name="add_numbers", description="Add two numbers.", parameters=params, function=lambda: None),
+        ]
+        toolset = SearchableToolset(catalog=catalog, search_threshold=2)
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords=keyword)
+        assert tool_name in result
+        assert tool_name in toolset._discovered_tools
+
     def test_search_tools_auto_loads(self, large_catalog):
         """Test that search_tools auto-loads found tools."""
         toolset = SearchableToolset(catalog=large_catalog, top_k=3)
