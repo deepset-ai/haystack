@@ -115,10 +115,9 @@ splitter = MarkdownHeaderSplitter(
     secondary_split="token",
     split_length=256,
     split_overlap=32,
-    tokenizer_encoding="o200k_base",
 )
 result = splitter.run(documents=[doc])
-# every chunk in result["documents"] has at most 256 tokens
+# >> every chunk in result["documents"] has at most 256 tokens
 ```
 
 ### In a pipeline
