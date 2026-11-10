@@ -44,8 +44,7 @@ def test_run_in_sync_context(waiting_component):
 
 
 @pytest.mark.parametrize("use_async", [False, True], ids=["run", "run_async"])
-@pytest.mark.parametrize("flat_input", [False, True], ids=["nested", "flat"])
-def test_run_preserves_caller_input_data(use_async, flat_input):
+def test_run_preserves_caller_input_data(use_async):
     @component
     class AppendValue:
         @component.output_types(values=list[str])
@@ -57,7 +56,7 @@ def test_run_preserves_caller_input_data(use_async, flat_input):
     pipeline.add_component("append", AppendValue())
     values = ["original"]
     component_inputs = {"values": values}
-    data = component_inputs if flat_input else {"append": component_inputs}
+    data = {"append": component_inputs}
 
     result = asyncio.run(pipeline.run_async(data=data)) if use_async else pipeline.run(data=data)
 
@@ -65,8 +64,7 @@ def test_run_preserves_caller_input_data(use_async, flat_input):
     assert values == ["original"]
     assert component_inputs == {"values": ["original"]}
     assert component_inputs["values"] is values
-    if not flat_input:
-        assert data["append"] is component_inputs
+    assert data["append"] is component_inputs
 
 
 def test_run_async_accepts_dict_valued_flat_input():

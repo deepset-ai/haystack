@@ -1280,6 +1280,7 @@ class PipelineBase:  # noqa: PLW1641
 
         # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
         # when the same input reference is passed to multiple components.
+        # Build a new dictionary so the caller's data is left unmodified.
         return {
             component_name: {k: _deepcopy_with_exceptions(v) for k, v in component_inputs.items()}
             for component_name, component_inputs in data.items()
