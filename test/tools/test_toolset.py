@@ -358,6 +358,40 @@ class TestToolsetAdd:
         with pytest.raises(TypeError, match="Expected Tool"):
             toolset.add(not_a_tool)
 
+    def test_add_does_not_modify_the_list_passed_to_the_constructor(self, add_tool, multiply_tool):
+        tools = [add_tool]
+        toolset = Toolset(tools)
+
+        toolset.add(multiply_tool)
+
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+        assert tools == [add_tool]
+
+    def test_changing_the_list_passed_to_the_constructor_does_not_change_the_toolset(self, add_tool, multiply_tool):
+        tools = [add_tool]
+        toolset = Toolset(tools)
+
+        tools.append(multiply_tool)
+
+        assert [tool.name for tool in toolset] == ["add"]
+
+    def test_add_with_tuple_passed_to_the_constructor(self, add_tool, multiply_tool):
+        tools: Any = (add_tool,)
+        toolset = Toolset(tools)
+
+        toolset.add(multiply_tool)
+
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+        assert len(toolset) == 2
+
+    def test_add_still_rejects_duplicate_tool_names(self, add_tool):
+        toolset = Toolset([add_tool])
+
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            toolset.add(add_tool)
+
+        assert len(toolset) == 1
+
 
 class TestToolsetSpawn:
     """Tests for spawn(), the run-scoping hook."""

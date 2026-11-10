@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``Toolset`` now copies the collection of tools it receives. Previously ``Toolset.add()`` also added the tool to the
+    list passed to the constructor, and changing that list afterwards changed the ``Toolset``. Calling ``add()`` on a
+    ``Toolset`` created from a tuple (or another non-list iterable) of tools also failed with a ``TypeError``.

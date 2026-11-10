@@ -103,6 +103,9 @@ class Toolset:
         # Check for duplicate tool names in the initial set
         _check_duplicate_tool_names(self.tools)
 
+        # Own the collection: adding a tool must neither change the caller's list nor fail for other iterables
+        self.tools = list(self.tools)
+
     def __iter__(self) -> Iterator[Tool]:
         """
         Return an iterator over the Tools in this Toolset.
