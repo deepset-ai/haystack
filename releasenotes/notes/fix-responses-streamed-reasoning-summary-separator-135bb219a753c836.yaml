@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` now streams a newline between reasoning summary parts.
+    Before, the streamed reasoning ran the parts together (for example ``...satellite.**Describing...``),
+    so it no longer matched ``ChatMessage.reasoning`` in the final reply, which joins the parts with a newline.

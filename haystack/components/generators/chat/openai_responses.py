@@ -887,6 +887,18 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             meta={"received_at": datetime.now().isoformat()},
         )
 
+    elif chunk.type == "response.reasoning_summary_part.added" and chunk.summary_index > 0:
+        # Summary parts are joined with a newline in the final message, so the stream emits the same separator
+        extra = chunk.to_dict()
+        extra.pop("part")
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            reasoning=ReasoningContent(reasoning_text="\n", extra=extra),
+            meta={"received_at": datetime.now().isoformat()},
+        )
+
     # the function arguments are streamed in parts
     # function name is not passed in these chunks
     elif chunk.type == "response.function_call_arguments.delta":
