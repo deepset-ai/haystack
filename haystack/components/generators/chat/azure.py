@@ -20,7 +20,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
+from haystack.components.generators.chat._rate_limit_headers import build_http_client
 
 
 @component
@@ -197,7 +197,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param include_rate_limit_headers:
             If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
             under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
-            The values are passed through as returned by the API. Disabled by default.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -273,7 +274,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=False,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.client = AzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -286,7 +291,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=True,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.async_client = AsyncAzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),

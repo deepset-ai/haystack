@@ -39,7 +39,11 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
+from haystack.components.generators.chat._rate_limit_headers import (
+    attach_rate_limit_headers,
+    build_http_client,
+    reset_rate_limit_headers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +139,7 @@ class OpenAIResponsesChatGenerator:
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
@@ -218,6 +223,11 @@ class OpenAIResponsesChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
         """
         self.api_key = api_key
@@ -231,6 +241,7 @@ class OpenAIResponsesChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
@@ -256,7 +267,11 @@ class OpenAIResponsesChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=False,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -269,7 +284,11 @@ class OpenAIResponsesChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=True,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -343,6 +362,7 @@ class OpenAIResponsesChatGenerator:
             tools=serialized_tools,
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
@@ -435,6 +455,7 @@ class OpenAIResponsesChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
+        self._reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
 
@@ -446,6 +467,7 @@ class OpenAIResponsesChatGenerator:
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
             response_output = [_convert_response_to_chat_message(responses)]
+        attach_rate_limit_headers(response_output, enabled=self.include_rate_limit_headers)
         return {"replies": response_output}
 
     @component.output_types(replies=list[ChatMessage])
@@ -512,6 +534,7 @@ class OpenAIResponsesChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
+        self._reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.async_client.responses, openai_endpoint)
         responses = await openai_endpoint_method(**api_args)
 
@@ -524,7 +547,12 @@ class OpenAIResponsesChatGenerator:
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
             response_output = [_convert_response_to_chat_message(responses)]
+        attach_rate_limit_headers(response_output, enabled=self.include_rate_limit_headers)
         return {"replies": response_output}
+
+    def _reset_rate_limit_headers(self) -> None:
+        if self.include_rate_limit_headers:
+            reset_rate_limit_headers()
 
     def _prepare_api_call(  # noqa: PLR0913
         self,

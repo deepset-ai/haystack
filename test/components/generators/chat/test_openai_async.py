@@ -166,7 +166,19 @@ class TestOpenAIChatGeneratorAsync:
         result = await component.run_async("What's the capital of France?")
 
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
+        assert result["replies"][0].meta == {
+            "model": "gpt-5-mini-2025-08-07",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {
+                "completion_tokens": 10,
+                "prompt_tokens": 17,
+                "total_tokens": 27,
+                "completion_tokens_details": None,
+                "prompt_tokens_details": None,
+            },
+            "rate_limit_headers": rate_limit_headers,
+        }
 
     async def test_rate_limit_headers_included_in_meta_when_streaming(self) -> None:
         rate_limit_headers = {"x-ratelimit-remaining-requests": "4999", "x-ratelimit-remaining-tokens": "3999975"}
@@ -196,8 +208,18 @@ class TestOpenAIChatGeneratorAsync:
         result = await component.run_async("What's the capital of France?")
 
         assert [c.content for c in streamed] == ["Paris", ""]
+        assert all("rate_limit_headers" not in c.meta for c in streamed)
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
+        meta = result["replies"][0].meta
+        completion_start_time = meta.pop("completion_start_time")
+        assert isinstance(completion_start_time, str)
+        assert meta == {
+            "model": "gpt-5-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": None,
+            "rate_limit_headers": rate_limit_headers,
+        }
 
     @pytest.mark.asyncio
     async def test_run_async(

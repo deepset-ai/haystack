@@ -2449,6 +2449,14 @@ COMPLETION_WITH_TWO_CHOICES = {
     "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
 }
 
+SERIALIZED_USAGE = {
+    "completion_tokens": 10,
+    "prompt_tokens": 17,
+    "total_tokens": 27,
+    "completion_tokens_details": None,
+    "prompt_tokens_details": None,
+}
+
 
 def _sse_body(deltas: list[dict[str, Any]]) -> bytes:
     events = []
@@ -2484,9 +2492,14 @@ class TestRateLimitHeaders:
         result = generator.run("What's the capital of France?", generation_kwargs={"n": 2})
 
         assert [reply.text for reply in result["replies"]] == ["Paris", "Paris."]
-        for reply in result["replies"]:
-            assert reply.meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
-            assert reply.meta["usage"]["total_tokens"] == 27
+        for index, reply in enumerate(result["replies"]):
+            assert reply.meta == {
+                "model": "gpt-5-mini-2025-08-07",
+                "index": index,
+                "finish_reason": "stop",
+                "usage": SERIALIZED_USAGE,
+                "rate_limit_headers": RATE_LIMIT_HEADERS,
+            }
 
     def test_included_with_structured_output(self) -> None:
         class City(BaseModel):
@@ -2505,7 +2518,13 @@ class TestRateLimitHeaders:
         result = generator.run("What's the capital of France?")
 
         assert result["replies"][0].text == '{"name": "Paris"}'
-        assert result["replies"][0].meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
+        assert result["replies"][0].meta == {
+            "model": "gpt-5-mini-2025-08-07",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": SERIALIZED_USAGE,
+            "rate_limit_headers": RATE_LIMIT_HEADERS,
+        }
 
     def test_included_when_streaming(self) -> None:
         body = _sse_body(
@@ -2522,14 +2541,52 @@ class TestRateLimitHeaders:
         result = generator.run("What's the capital of France?")
 
         assert [chunk.content for chunk in streamed] == ["Paris", ""]
+        assert all("rate_limit_headers" not in chunk.meta for chunk in streamed)
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
+        meta = result["replies"][0].meta
+        completion_start_time = meta.pop("completion_start_time")
+        assert isinstance(completion_start_time, str)
+        assert meta == {
+            "model": "gpt-5-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": None,
+            "rate_limit_headers": RATE_LIMIT_HEADERS,
+        }
 
     def test_empty_when_api_sends_no_rate_limit_headers(self) -> None:
         response = httpx.Response(200, json=COMPLETION_WITH_TWO_CHOICES, headers=OTHER_HEADERS)
         result = self._generator(response, include_rate_limit_headers=True).run("What's the capital of France?")
 
-        assert result["replies"][0].meta["rate_limit_headers"] == {}
+        assert result["replies"][0].meta == {
+            "model": "gpt-5-mini-2025-08-07",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": SERIALIZED_USAGE,
+            "rate_limit_headers": {},
+        }
+
+    def test_preserves_existing_http_client_event_hooks(self) -> None:
+        seen: list[int] = []
+
+        def existing_hook(response: httpx.Response) -> None:
+            seen.append(response.status_code)
+
+        response = httpx.Response(
+            200, json=COMPLETION_WITH_TWO_CHOICES, headers={**RATE_LIMIT_HEADERS, **OTHER_HEADERS}
+        )
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={
+                "transport": httpx.MockTransport(lambda _: response),
+                "event_hooks": {"response": [existing_hook]},
+            },
+            include_rate_limit_headers=True,
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert seen == [200]
+        assert result["replies"][0].meta["rate_limit_headers"] == RATE_LIMIT_HEADERS
 
     def test_extract_rate_limit_headers(self) -> None:
         headers = httpx.Headers({"X-RateLimit-Remaining-Requests": "99", "Content-Type": "application/json"})

@@ -5,7 +5,6 @@
 import asyncio
 import json
 import os
-from collections.abc import Mapping
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -50,7 +49,12 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
+from haystack.components.generators.chat._rate_limit_headers import (
+    attach_rate_limit_headers,
+    build_http_client,
+    extract_rate_limit_headers as _extract_rate_limit_headers,
+    reset_rate_limit_headers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +216,8 @@ class OpenAIChatGenerator:
         :param include_rate_limit_headers:
             If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
             under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
-            The values are passed through as returned by the API. Disabled by default.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
         """
         self.api_key = api_key
@@ -253,7 +258,11 @@ class OpenAIChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=False,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -266,7 +275,11 @@ class OpenAIChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = build_http_client(
+                self.http_client_kwargs,
+                async_client=True,
+                include_rate_limit_headers=self.include_rate_limit_headers,
+            )
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -407,14 +420,9 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
-        rate_limit_headers = None
-        if self.include_rate_limit_headers:
-            raw_response = getattr(self.client.chat.completions.with_raw_response, openai_endpoint)(**api_args)
-            rate_limit_headers = _extract_rate_limit_headers(raw_response.headers)
-            chat_completion = raw_response.parse()
-        else:
-            openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
-            chat_completion = openai_endpoint_method(**api_args)
+        self._reset_rate_limit_headers()
+        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
+        chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -431,12 +439,7 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
-        for message in completions:
-            _check_finish_reason(message.meta)
-            if rate_limit_headers is not None:
-                message.meta["rate_limit_headers"] = dict(rate_limit_headers)
-
+        self._finalize_replies(completions)
         return {"replies": completions}
 
     @component.output_types(replies=list[ChatMessage])
@@ -500,16 +503,9 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
-        rate_limit_headers = None
-        if self.include_rate_limit_headers:
-            raw_response = await getattr(self.async_client.chat.completions.with_raw_response, openai_endpoint)(
-                **api_args
-            )
-            rate_limit_headers = _extract_rate_limit_headers(raw_response.headers)
-            chat_completion = raw_response.parse()
-        else:
-            openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
-            chat_completion = await openai_endpoint_method(**api_args)
+        self._reset_rate_limit_headers()
+        openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
+        chat_completion = await openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
@@ -526,13 +522,17 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
+        self._finalize_replies(completions)
+        return {"replies": completions}
+
+    def _reset_rate_limit_headers(self) -> None:
+        if self.include_rate_limit_headers:
+            reset_rate_limit_headers()
+
+    def _finalize_replies(self, completions: list[ChatMessage]) -> None:
         for message in completions:
             _check_finish_reason(message.meta)
-            if rate_limit_headers is not None:
-                message.meta["rate_limit_headers"] = dict(rate_limit_headers)
-
-        return {"replies": completions}
+        attach_rate_limit_headers(completions, enabled=self.include_rate_limit_headers)
 
     def _convert_chat_completion_to_chat_message(
         self, completion: ChatCompletion | ParsedChatCompletion, choice: Choice
@@ -719,13 +719,6 @@ def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
             schema[combinator] = [_make_schema_strict(s) for s in schema[combinator]]
 
     return schema
-
-
-def _extract_rate_limit_headers(headers: Mapping[str, str]) -> dict[str, str]:
-    """
-    Extract the rate limit headers (`x-ratelimit-*`) sent by OpenAI and Azure OpenAI from the HTTP response headers.
-    """
-    return {name.lower(): value for name, value in headers.items() if name.lower().startswith("x-ratelimit-")}
 
 
 def _check_finish_reason(meta: dict[str, Any]) -> None:

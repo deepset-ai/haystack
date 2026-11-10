@@ -123,7 +123,7 @@ Give preference to `print_streaming_chunk` by default. Write a custom callback o
 
 ### Rate Limit Headers
 
-To keep track of your OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response are then added to the `meta` of each reply under the `rate_limit_headers` key. This also works with streaming. `AzureOpenAIChatGenerator` supports the same parameter.
+To keep track of your OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response are then added to the `meta` of each reply under the `rate_limit_headers` key. Headers are only added for successful requests and, when streaming, only to the final reply. `AzureOpenAIChatGenerator`, `OpenAIResponsesChatGenerator`, and `AzureOpenAIResponsesChatGenerator` support the same parameter.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

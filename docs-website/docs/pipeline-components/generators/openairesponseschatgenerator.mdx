@@ -265,6 +265,10 @@ for annotation, offset in zip(
     print(reply.text[start:end], annotation["url"])
 ```
 
+### Rate Limit Headers
+
+To keep track of your OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response are then added to the `meta` of the final reply under the `rate_limit_headers` key. Headers are only added for successful requests and, when streaming, only to the final reply. `AzureOpenAIResponsesChatGenerator` supports the same parameter.
+
 ## Usage
 
 ### On its own

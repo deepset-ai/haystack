@@ -17,7 +17,7 @@ import haystack.components.generators.chat.azure as azure_chat_module
 from haystack import Pipeline, component
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -598,7 +598,57 @@ class TestAzureOpenAIChatGenerator:
 
         assert requests[0].url.path == "/openai/deployments/gpt-4.1-mini/chat/completions"
         assert result["replies"][0].text == "Paris"
-        assert result["replies"][0].meta["rate_limit_headers"] == rate_limit_headers
+        assert result["replies"][0].meta == {
+            "model": "gpt-4.1-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {
+                "completion_tokens": 10,
+                "prompt_tokens": 17,
+                "total_tokens": 27,
+                "completion_tokens_details": None,
+                "prompt_tokens_details": None,
+            },
+            "rate_limit_headers": rate_limit_headers,
+        }
+
+    def test_rate_limit_headers_included_in_meta_when_streaming(self) -> None:
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "99", "x-ratelimit-remaining-tokens": "99990"}
+        chunk = {"id": "chatcmpl-123", "object": "chat.completion.chunk", "created": 1786704941, "model": "gpt-4.1-mini"}
+        body = (
+            f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {'content': 'Paris'}}]})}\n\n"
+            f"data: {json.dumps({**chunk, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+            "data: [DONE]\n\n"
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200, content=body.encode(), headers={"content-type": "text/event-stream", **rate_limit_headers}
+            )
+
+        streamed: list[StreamingChunk] = []
+        generator = AzureOpenAIChatGenerator(
+            azure_endpoint="https://example-resource.azure.openai.com/",
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            streaming_callback=streamed.append,
+            include_rate_limit_headers=True,
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert [chunk.content for chunk in streamed] == ["Paris", ""]
+        assert all("rate_limit_headers" not in chunk.meta for chunk in streamed)
+        assert result["replies"][0].text == "Paris"
+        meta = result["replies"][0].meta
+        completion_start_time = meta.pop("completion_start_time")
+        assert isinstance(completion_start_time, str)
+        assert meta == {
+            "model": "gpt-4.1-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": None,
+            "rate_limit_headers": rate_limit_headers,
+        }
 
 
 class TestAzureOpenAIChatGeneratorAsync:
@@ -674,6 +724,43 @@ class TestAzureOpenAIChatGeneratorAsync:
         assert message.meta["finish_reason"] == "tool_calls"
 
         await component.close_async()
+
+    async def test_rate_limit_headers_included_in_meta_run_async(self) -> None:
+        rate_limit_headers = {"x-ratelimit-remaining-requests": "99", "x-ratelimit-remaining-tokens": "99990"}
+        completion = {
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-4.1-mini",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        async def handler(request: httpx.Request) -> httpx.Response:  # noqa: RUF029
+            return httpx.Response(200, json=completion, headers={**rate_limit_headers, "apim-request-id": "abc"})
+
+        generator = AzureOpenAIChatGenerator(
+            azure_endpoint="https://example-resource.azure.openai.com/",
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            include_rate_limit_headers=True,
+        )
+        result = await generator.run_async("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == {
+            "model": "gpt-4.1-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {
+                "completion_tokens": 10,
+                "prompt_tokens": 17,
+                "total_tokens": 27,
+                "completion_tokens_details": None,
+                "prompt_tokens_details": None,
+            },
+            "rate_limit_headers": rate_limit_headers,
+        }
 
     # additional tests intentionally omitted as they are covered by test_openai.py
 
