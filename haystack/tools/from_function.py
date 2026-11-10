@@ -15,6 +15,72 @@ from .parameters_schema_utils import _contains_callable_type, _is_state_annotati
 from .tool import Tool
 
 
+def _build_input_model(
+    function: Callable,
+    inputs_from_state: dict[str, str] | None = None,
+    signature: inspect.Signature | None = None,
+    param_types: dict[str, Any] | None = None,
+) -> tuple[Any, dict[str, Any]]:
+    """
+    Build the Pydantic model describing a function's tool parameters.
+
+    :param function: The function to describe.
+    :param inputs_from_state: State keys mapped to parameter names, excluded from the model.
+    :param signature: Precomputed signature of `function` (computed when None).
+    :param param_types: Precomputed resolved parameter types (computed when None).
+    :returns: (model, descriptions) where descriptions maps parameter names to Annotated metadata.
+    :raises SchemaGenerationError: If the model cannot be created.
+    """
+    signature = signature or inspect.signature(function)
+    param_types = param_types or _resolve_parameter_types(function, include_extras=True)
+
+    fields: dict[str, Any] = {}
+    descriptions: dict[str, Any] = {}
+
+    for param_name, param in signature.parameters.items():
+        # Skip *args and **kwargs because the LLM passes arguments by name
+        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            continue
+
+        annotation = param_types[param_name]
+
+        # Skip adding parameter names that will be passed to the tool from State
+        if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
+        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
+        if _is_state_annotation(annotation):
+            continue
+
+        if annotation is param.empty:
+            raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
+
+        # Skip Callable types since Pydantic cannot generate JSON schemas for them
+        if _contains_callable_type(annotation):
+            continue
+
+        # Pydantic treats leading-underscore names as private attributes and leaves them out of the schema
+        if param_name.startswith("_") and param.default is param.empty:
+            raise ValueError(
+                f"Function '{function.__name__}': required parameter '{param_name}' starts with an underscore and "
+                "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
+            )
+
+        # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
+        # to explicitly indicate that the parameter is required
+        default = param.default if param.default is not param.empty else ...
+        fields[param_name] = (annotation, default)
+
+        if hasattr(annotation, "__metadata__"):
+            descriptions[param_name] = annotation.__metadata__[0]
+
+    try:
+        model = create_model(function.__name__, **fields)
+    except Exception as e:
+        raise SchemaGenerationError(f"Failed to create JSON schema for function '{function.__name__}'") from e
+    return model, descriptions
+
+
 def create_tool_from_function(
     function: Callable,
     name: str | None = None,
@@ -137,53 +203,11 @@ def create_tool_from_function(
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
-    # resolve postponed annotations (`from __future__ import annotations`), keeping `Annotated` descriptions
     param_types = _resolve_parameter_types(function, include_extras=True)
+    model, descriptions = _build_input_model(function, inputs_from_state, signature, param_types)
 
-    # collect fields (types and defaults) and descriptions from function parameters
-    fields: dict[str, Any] = {}
-    descriptions = {}
-
-    for param_name, param in signature.parameters.items():
-        # Skip *args and **kwargs because the LLM passes arguments by name
-        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
-            continue
-
-        annotation = param_types[param_name]
-
-        # Skip adding parameter names that will be passed to the tool from State
-        if inputs_from_state and param_name in inputs_from_state.values():
-            continue
-
-        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
-        if _is_state_annotation(annotation):
-            continue
-
-        if annotation is param.empty:
-            raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
-
-        # Skip Callable types since Pydantic cannot generate JSON schemas for them
-        if _contains_callable_type(annotation):
-            continue
-
-        # Pydantic treats leading-underscore names as private attributes and leaves them out of the schema
-        if param_name.startswith("_") and param.default is param.empty:
-            raise ValueError(
-                f"Function '{function.__name__}': required parameter '{param_name}' starts with an underscore and "
-                "can't be part of the tool schema. Provide it through `inputs_from_state` or give it a default."
-            )
-
-        # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
-        # to explicitly indicate that the parameter is required
-        default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (annotation, default)
-
-        if hasattr(annotation, "__metadata__"):
-            descriptions[param_name] = annotation.__metadata__[0]
-
-    # create Pydantic model and generate JSON schema
+    # generate JSON schema
     try:
-        model = create_model(function.__name__, **fields)
         schema = model.model_json_schema()
     except Exception as e:
         raise SchemaGenerationError(f"Failed to create JSON schema for function '{function.__name__}'") from e
@@ -209,6 +233,7 @@ def create_tool_from_function(
         inputs_from_state=inputs_from_state,
         outputs_to_state=outputs_to_state,
         outputs_to_string=outputs_to_string,
+        input_model=model,
     )
 
 

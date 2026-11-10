@@ -13,7 +13,7 @@ import pytest
 from pydantic import BaseModel, Field
 
 from haystack.components.agents.state import State
-from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.errors import SchemaGenerationError, ToolInvocationError
 from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
 from haystack.tools.tool import Tool
 
@@ -737,3 +737,69 @@ class TestToolDecoratorExport:
         env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
         assert result.returncode == 0, result.stderr
+
+
+class OrderItem(BaseModel):
+    sku: str
+    qty: int
+
+
+class TestArgumentValidationAtInvoke:
+    """Function tools validate and convert LLM-provided arguments with the same Pydantic model
+    that produced their schema (#13659)."""
+
+    def test_model_params_receive_instances(self):
+        def place_order(items: list[OrderItem]) -> str:
+            """Place an order."""
+            return items[0].sku
+
+        t = create_tool_from_function(place_order)
+        assert t.invoke(items=[{"sku": "A", "qty": 2}]) == "A"
+
+    def test_schema_violation_raises_tool_invocation_error(self):
+        def set_level(level: Literal["low", "high"], retries: int) -> str:
+            """Set level."""
+            return f"{level} {retries}"
+
+        t = create_tool_from_function(set_level)
+        with pytest.raises(ToolInvocationError) as exc_info:
+            t.invoke(level="LOUD", retries="3")
+        assert "do not match its schema" in str(exc_info.value)
+
+    def test_valid_arguments_pass_unchanged_semantics(self):
+        def set_level(level: Literal["low", "high"], retries: int = 1) -> str:
+            """Set level."""
+            return f"{level} {retries}"
+
+        t = create_tool_from_function(set_level)
+        assert t.invoke(level="high", retries=2) == "high 2"
+
+    def test_state_injected_params_pass_through(self):
+        def use_repo(repo: OrderItem, items: list[OrderItem]) -> str:
+            """Use repo."""
+            return f"{repo.sku}:{items[0].sku}"
+
+        t = create_tool_from_function(use_repo, inputs_from_state={"repo": "repo"})
+        assert "repo" not in t.parameters.get("properties", {})
+        # repo is injected from State (trusted, already an instance) and excluded from the model: untouched
+        assert t.invoke(repo=OrderItem(sku="R", qty=1), items=[{"sku": "A", "qty": 2}]) == "R:A"
+
+    async def test_invoke_async_validates(self):
+        async def set_level(level: Literal["low", "high"]) -> str:
+            """Set level."""
+            return level
+
+        t = create_tool_from_function(set_level)
+        assert await t.invoke_async(level="low") == "low"
+        with pytest.raises(ToolInvocationError):
+            await t.invoke_async(level="LOUD")
+
+    def test_to_dict_excludes_input_model_and_roundtrip_rebuilds_it(self):
+        t = create_tool_from_function(make_report)  # module-level function defined above
+        assert t.input_model is not None
+
+        data = t.to_dict()
+        assert "input_model" not in data["data"]
+
+        restored = Tool.from_dict(data)
+        assert restored.input_model is not None

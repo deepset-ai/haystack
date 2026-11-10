@@ -5,11 +5,12 @@
 import asyncio
 import inspect
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
+from pydantic import ValidationError
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
@@ -108,6 +109,10 @@ class Tool:
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
     async_function: Callable | None = None
+    # Optional Pydantic model describing the tool's parameters. When set, `invoke`/`invoke_async` validate
+    # and convert LLM-provided arguments with it before calling the function (models arrive as instances,
+    # schema violations raise ToolInvocationError). Not serialized - rebuilt by the factories that set it.
+    input_model: Any = field(default=None, compare=False)
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         # At least one of function / async_function must be set.
@@ -281,7 +286,8 @@ class Tool:
         try:
             if hasattr(self, "warm_up"):
                 self.warm_up()
-            result = self.function(**kwargs)
+            validated = self._validate_and_convert(kwargs)
+            result = self.function(**validated)
         except Exception as e:
             raise ToolInvocationError(
                 f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
@@ -306,11 +312,36 @@ class Tool:
                 await self.warm_up_async()
             elif hasattr(self, "warm_up"):
                 self.warm_up()
-            return await self.async_function(**kwargs)
+            validated = self._validate_and_convert(kwargs)
+            return await self.async_function(**validated)
         except Exception as e:
             raise ToolInvocationError(
                 f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
             ) from e
+
+    def _validate_and_convert(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """
+        Validate and convert LLM-provided arguments with the Pydantic model that generated the tool's schema.
+
+        Model/dataclass parameters arrive as instances instead of raw dicts, and values violating the
+        schema raise a ToolInvocationError carrying the validation message. Parameters injected from
+        `inputs_from_state` are not part of the model (they are excluded from the schema) and pass through.
+
+        :param kwargs: The arguments the caller wants to pass to the underlying function.
+        :returns: The arguments to call the function with.
+        :raises ToolInvocationError: If validation fails.
+        """
+        if self.input_model is None:
+            return kwargs
+        state_injected = set((self.inputs_from_state or {}).values())
+        to_validate = {k: v for k, v in kwargs.items() if k not in state_injected}
+        try:
+            converted = self.input_model.model_validate(to_validate)
+        except ValidationError as e:
+            raise ToolInvocationError(
+                f"Tool `{self.name}` received arguments that do not match its schema: {e}", tool_name=self.name
+            ) from e
+        return {**kwargs, **dict(converted)}
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -320,6 +351,7 @@ class Tool:
             Dictionary with serialized data.
         """
         data = asdict(self)
+        data.pop("input_model", None)  # rebuilt by the factory that created it, not serializable
         data["function"] = serialize_callable(self.function) if self.function is not None else None
         data["async_function"] = serialize_callable(self.async_function) if self.async_function is not None else None
 
@@ -353,7 +385,16 @@ class Tool:
         if init_parameters.get("outputs_to_string") is not None:
             init_parameters["outputs_to_string"] = _deserialize_outputs_to_string(init_parameters["outputs_to_string"])
 
-        return cls(**init_parameters)
+        tool = cls(**init_parameters)
+        if tool.input_model is None and (tool.function is not None or tool.async_function is not None):
+            # Factories that build a parameter model (e.g. create_tool_from_function) set `input_model`;
+            # it is not serializable, so rebuild it here to keep schema validation after a round trip.
+            from haystack.tools.from_function import _build_input_model
+
+            fn = tool.function or tool.async_function
+            tool.input_model = _build_input_model(fn, tool.inputs_from_state)[0]
+
+        return tool
 
 
 def _check_duplicate_tool_names(tools: list[Tool] | None) -> None:
