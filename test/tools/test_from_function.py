@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
 import jsonschema
@@ -13,7 +14,8 @@ import pytest
 from pydantic import BaseModel, Field
 
 from haystack.components.agents.state import State
-from haystack.tools.errors import SchemaGenerationError
+from haystack.dataclasses import Document
+from haystack.tools.errors import SchemaGenerationError, ToolInvocationError
 from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
 from haystack.tools.tool import Tool
 
@@ -737,3 +739,106 @@ class TestToolDecoratorExport:
         env = {**os.environ, "PYTHON_LAZY_IMPORTS": lazy_imports_mode}
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False, env=env)
         assert result.returncode == 0, result.stderr
+
+
+class OrderItem(BaseModel):
+    sku: str
+    qty: int
+
+
+@dataclass
+class Address:
+    city: str
+    zip_code: str
+
+
+class TestFunctionToolArgumentConversion:
+    def test_pydantic_model_arguments_are_built_from_dicts(self):
+        @tool
+        def place_order(items: list[OrderItem]) -> int:
+            """Place an order."""
+            return sum(item.qty for item in items)
+
+        assert place_order.invoke(items=[{"sku": "A", "qty": 2}, {"sku": "B", "qty": 3}]) == 5
+
+    def test_dataclass_argument_is_built_from_dict(self):
+        @tool
+        def ship(address: Address) -> str:
+            """Ship to an address."""
+            return f"{address.city} {address.zip_code}"
+
+        assert ship.invoke(address={"city": "Berlin", "zip_code": "10115"}) == "Berlin 10115"
+
+    def test_annotated_from_dict_type_is_built_with_from_dict(self):
+        @tool
+        def count_words(documents: Annotated[list[Document], "Documents to count words in"]) -> int:
+            """Count words."""
+            return sum(len(doc.content.split()) for doc in documents)
+
+        assert count_words.invoke(documents=[{"content": "one two"}, {"content": "three"}]) == 3
+
+    def test_model_instances_are_passed_through(self):
+        @tool
+        def place_order(items: list[OrderItem]) -> int:
+            """Place an order."""
+            return sum(item.qty for item in items)
+
+        assert place_order.invoke(items=[OrderItem(sku="A", qty=4)]) == 4
+
+    def test_arguments_are_coerced_like_component_tool_inputs(self):
+        @tool
+        def repeat(text: str, times: int) -> str:
+            """Repeat a text."""
+            return text * times
+
+        assert repeat.invoke(text="ab", times="2") == "abab"
+
+    def test_invalid_arguments_raise_tool_invocation_error(self):
+        called = False
+
+        @tool
+        def set_level(level: Literal["low", "high"], retries: int, items: list[OrderItem]) -> str:
+            """Set a level."""
+            nonlocal called
+            called = True
+            return level
+
+        with pytest.raises(ToolInvocationError) as exc_info:
+            set_level.invoke(level="LOUD", retries="three", items=[{"sku": "A"}])
+
+        message = str(exc_info.value)
+        assert message.startswith("Invalid arguments for Tool `set_level`: ")
+        assert "level: Input should be 'low' or 'high'" in message
+        assert "retries: Input should be a valid integer" in message
+        assert "items.0.qty: Field required" in message
+        assert not called
+
+    def test_optional_argument_accepts_none(self):
+        @tool
+        def ship(address: Address | None = None) -> str:
+            """Ship to an address."""
+            return "pickup" if address is None else address.city
+
+        assert ship.invoke(address=None) == "pickup"
+        assert ship.invoke(address={"city": "Berlin", "zip_code": "10115"}) == "Berlin"
+
+    def test_state_inputs_are_not_converted(self):
+        @tool(inputs_from_state={"documents": "docs"})
+        def count(query: str, docs: list[Document], state: State) -> str:
+            """Count documents."""
+            return f"{query}: {len(docs)} {type(state).__name__}"
+
+        state = State(schema={})
+        # values injected from State are not part of the schema and are passed as they are, even a raw list
+        assert count.invoke(query="q", docs=["not", "documents"], state=state) == "q: 2 State"
+
+    async def test_async_function_arguments_are_converted(self):
+        @tool
+        async def place_order(items: list[OrderItem]) -> int:
+            """Place an order."""
+            return sum(item.qty for item in items)
+
+        assert await place_order.invoke_async(items=[{"sku": "A", "qty": 2}]) == 2
+
+        with pytest.raises(ToolInvocationError, match="items.0.qty: Input should be a valid integer"):
+            await place_order.invoke_async(items=[{"sku": "A", "qty": "two"}])

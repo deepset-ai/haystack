@@ -1,0 +1,18 @@
+---
+upgrade:
+  - |
+    `Tool.invoke` and `Tool.invoke_async` now check the arguments exposed in the Tool's JSON schema against the type
+    hints of the Tool's function. A function whose type hints don't match the values the LLM sends (for example a
+    parameter typed `str` that receives a number) now gets a `ToolInvocationError` instead of the raw value.
+    Remove or correct the type hint if the function relied on receiving other types.
+fixes:
+  - |
+    Tools created from functions (with `create_tool_from_function` or the `@tool` decorator) now validate and convert
+    the arguments the LLM provides before calling the function, in the same way as `ComponentTool`.
+    Parameters typed as Pydantic models, dataclasses, or classes with `from_dict` (such as `Document`) now receive
+    instances instead of plain dicts, and values like `"3"` for an `int` parameter are converted.
+    Arguments that don't match a parameter's type hint, such as a value outside a `Literal`, now raise a
+    `ToolInvocationError` that lists each invalid field, so the Agent can send the error back to the LLM instead of
+    running the tool with invalid input.
+    Only arguments exposed in the Tool's JSON schema are converted. Values injected at runtime, such as `State` or
+    inputs from `inputs_from_state`, are passed through unchanged.

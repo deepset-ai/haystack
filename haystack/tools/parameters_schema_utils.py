@@ -12,7 +12,7 @@ from types import NoneType
 from typing import Annotated, Any, Union, get_args, get_origin
 
 from docstring_parser import parse
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, TypeAdapter, create_model
 
 from haystack import logging
 from haystack.components.agents.state.state import State
@@ -35,6 +35,51 @@ def _unwrap_optional(type_hint: Any) -> Any:
         if len(non_none) == 1:
             return non_none[0]
     return type_hint
+
+
+def _convert_param_value(param_value: Any, param_type: Any) -> Any:
+    """
+    Convert a single tool argument, as parsed from the LLM's JSON, to the expected type.
+
+    Types with a `from_dict` class method (such as `ChatMessage` or `Document`), and lists of them, are built with
+    `from_dict`. Any other type is validated and converted with Pydantic.
+
+    :param param_value: The value to convert.
+    :param param_type: The expected type of the parameter.
+    :returns: The converted value.
+    :raises pydantic.ValidationError: If the value does not match `param_type`.
+    """
+    # Annotated metadata (such as a parameter description) doesn't change which conversion applies
+    annotated_type = get_args(param_type)[0] if get_origin(param_type) is Annotated else param_type
+
+    # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
+    unwrapped_param_type = _unwrap_optional(annotated_type)
+
+    # We handle union types (e.g. list[ChatMessage] | str) by extracting the list[T] arm that has
+    # from_dict, so the conversion below works the same as for plain list[T]. Other arms like str
+    # need no special handling and fall through to Pydantic or the plain return at the end.
+    if _is_union_type(unwrapped_param_type):
+        list_arms = [
+            a
+            for a in get_args(unwrapped_param_type)
+            if get_origin(a) is list and get_args(a) and hasattr(get_args(a)[0], "from_dict")
+        ]
+        unwrapped_param_type = list_arms[0] if list_arms else unwrapped_param_type
+
+    # We support calling from_dict on target types that have it, even if they are wrapped in a list.
+    # This allows us to support lists of dataclasses as well as single dataclass inputs.
+    target_type = (
+        get_args(unwrapped_param_type)[0] if get_origin(unwrapped_param_type) is list else unwrapped_param_type
+    )
+    if hasattr(target_type, "from_dict"):
+        if isinstance(param_value, list):
+            return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
+        if isinstance(param_value, dict):
+            return target_type.from_dict(param_value)
+        return param_value
+
+    # Use the original type for pydantic validation
+    return TypeAdapter(param_type).validate_python(param_value)
 
 
 def _is_state_annotation(annotation: Any) -> bool:

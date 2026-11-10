@@ -168,6 +168,27 @@ class TestTool:
         ):
             tool.invoke()
 
+    def test_invoke_validates_arguments_against_type_hints(self):
+        tool = Tool(
+            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
+        )
+        with pytest.raises(
+            ToolInvocationError, match=re.escape("Invalid arguments for Tool `weather`: city: Input should be")
+        ):
+            tool.invoke(city=["Berlin"])
+
+    def test_invoke_leaves_untyped_and_unexposed_arguments_unchanged(self):
+        received = {}
+
+        def invoke(city, units: int = 0, **kwargs):
+            received.update(city=city, units=units, **kwargs)
+            return "ok"
+
+        # `units` has a type hint but is not in the schema, so it is not converted; `city` has no type hint
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, function=invoke)
+        assert tool.invoke(city=42, units="3", extra=[1]) == "ok"
+        assert received == {"city": 42, "units": "3", "extra": [1]}
+
     def test_to_dict(self):
         tool = Tool(
             name="weather",

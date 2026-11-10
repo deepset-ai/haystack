@@ -10,9 +10,13 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
+from pydantic import ValidationError
+from pydantic.errors import PydanticUndefinedAnnotation, PydanticUserError
 
 from haystack.core.serialization import generate_qualified_class_name
+from haystack.core.type_utils import _resolve_parameter_types
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.parameters_schema_utils import _convert_param_value
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 
@@ -264,12 +268,68 @@ class Tool:
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
+    def _convert_arguments(self, function: Callable, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """
+        Validate the LLM-provided arguments against the function's type hints and convert them.
+
+        Only arguments that the Tool's JSON schema exposes to the LLM are converted, so values injected at runtime,
+        like a `State` object or a streaming callback, are passed through unchanged. Pydantic models and dataclasses
+        are built from the dicts in the LLM's JSON, and other values are checked against their type hint, the way
+        `ComponentTool` converts component inputs. Parameters without a type hint, and type hints Pydantic can't
+        handle, are left as they are.
+
+        :param function: The function the arguments are passed to.
+        :param kwargs: The arguments to convert.
+        :returns: The converted arguments.
+        :raises ToolInvocationError: If an argument doesn't match the type hint of its parameter.
+        """
+        properties = self.parameters.get("properties") or {}
+        if not kwargs or not properties:
+            return kwargs
+
+        try:
+            signature = inspect.signature(function)
+            param_types = _resolve_parameter_types(function, include_extras=True)
+        except (ValueError, TypeError):
+            return kwargs
+
+        converted = dict(kwargs)
+        errors: list[str] = []
+        for name, value in kwargs.items():
+            param = signature.parameters.get(name)
+            if (
+                name not in properties
+                or param is None
+                or param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+                or param_types[name] is inspect.Parameter.empty
+            ):
+                continue
+            try:
+                converted[name] = _convert_param_value(value, param_types[name])
+            except ValidationError as e:
+                errors.extend(
+                    f"{'.'.join(str(loc) for loc in (name, *error['loc']))}: {error['msg']}"
+                    for error in e.errors(include_url=False)
+                )
+            except (PydanticUserError, PydanticUndefinedAnnotation):
+                # Pydantic can't build a validator for this type hint, so the value is passed as it is
+                continue
+            except Exception as e:
+                # for example a `from_dict` that can't build its type from the given dict
+                errors.append(f"{name}: {e}")
+
+        if errors:
+            raise ToolInvocationError(
+                f"Invalid arguments for Tool `{self.name}`: " + "; ".join(errors), tool_name=self.name
+            )
+        return converted
+
     def invoke(self, **kwargs: Any) -> Any:
         """
         Warm up the Tool if supported and invoke it synchronously with the provided keyword arguments.
 
-        :raises ToolInvocationError: If the Tool has no sync `function`, or if the underlying call
-            raises an exception.
+        :raises ToolInvocationError: If the Tool has no sync `function`, if an argument doesn't match the type hint
+            of its parameter, or if the underlying call raises an exception.
         """
         if self.function is None:
             raise ToolInvocationError(
@@ -278,6 +338,7 @@ class Tool:
                 tool_name=self.name,
             )
 
+        kwargs = self._convert_arguments(self.function, kwargs)
         try:
             if hasattr(self, "warm_up"):
                 self.warm_up()
@@ -296,11 +357,13 @@ class Tool:
         Otherwise, synchronous preparation and invocation run in a worker thread via `asyncio.to_thread`,
         which propagates the current context to the worker.
 
-        :raises ToolInvocationError: If the underlying call raises an exception.
+        :raises ToolInvocationError: If an argument doesn't match the type hint of its parameter, or if the
+            underlying call raises an exception.
         """
         if self.async_function is None:
             return await asyncio.to_thread(self.invoke, **kwargs)
 
+        kwargs = self._convert_arguments(self.async_function, kwargs)
         try:
             if hasattr(self, "warm_up_async"):
                 await self.warm_up_async()
