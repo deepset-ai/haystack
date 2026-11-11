@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``Agent`` no longer overwrites a tool's own argument defaults with ``None`` when a
+    state input is left unconnected in a ``Pipeline``. Inputs that are not provided are no
+    longer seeded into the agent's ``State``, so tools that read from state through
+    ``inputs_from_state`` fall back to their declared defaults instead of receiving ``None``.
+    Explicitly provided values still take precedence over the tool's defaults.

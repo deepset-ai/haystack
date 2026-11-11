@@ -816,7 +816,12 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs}
+        # Inputs that were never provided reach ``run()`` as ``None`` (that is the default of every
+        # state input socket). Seeding them as state values would let them overwrite a tool's own
+        # argument defaults through ``inputs_from_state``, so only provided values seed the state.
+        state_kwargs: dict[str, Any] = {
+            key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs and kwargs[key] is not None
+        }
         state = State(schema=self.resolved_state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)

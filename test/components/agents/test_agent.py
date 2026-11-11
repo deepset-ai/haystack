@@ -34,7 +34,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
+from haystack.tools import ComponentTool, SearchableToolset, Tool, tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -918,6 +918,54 @@ class TestAgentRun:
         assert response["token_usage"]["prompt_tokens"] > 0
         assert response["token_usage"]["completion_tokens"] > 0
         assert response["token_usage"]["total_tokens"] > 0
+
+
+class TestAgentStateInputDefaults:
+    """A state input that was never provided must not override a tool's own argument default."""
+
+    @staticmethod
+    def _search_tool() -> Tool:
+        @tool(inputs_from_state={"top_k": "top_k"})
+        def search(query: str, top_k: int = 5) -> str:
+            """Search for documents."""
+            return f"top_k={top_k}"
+
+        return search
+
+    @staticmethod
+    def _agent(search: Tool) -> Agent:
+        return Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(
+                        tool_calls=[ToolCall(tool_name="search", arguments={"query": "haystack"})]
+                    ),
+                    "done",
+                ]
+            ),
+            tools=[search],
+            state_schema={"top_k": {"type": int}},
+        )
+
+    def test_pipeline_run_keeps_tool_default_when_state_input_is_unset(self):
+        """Pipelines pass unconnected inputs as ``None``; that must not reach the tool as a value."""
+        pipeline = Pipeline()
+        pipeline.add_component("agent", self._agent(self._search_tool()))
+
+        result = pipeline.run({"agent": {"messages": [ChatMessage.from_user("find something")]}})
+
+        tool_result = result["agent"]["messages"][-2].tool_call_result.result
+        assert tool_result == "top_k=5"
+
+    def test_pipeline_run_forwards_an_explicitly_provided_state_input(self):
+        """A value that is actually provided still overrides the tool default."""
+        pipeline = Pipeline()
+        pipeline.add_component("agent", self._agent(self._search_tool()))
+
+        result = pipeline.run({"agent": {"messages": [ChatMessage.from_user("find something")], "top_k": 1}})
+
+        tool_result = result["agent"]["messages"][-2].tool_call_result.result
+        assert tool_result == "top_k=1"
 
 
 class TestAgentStreaming:
