@@ -604,6 +604,7 @@ export default {
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
             'pipeline-components/retrievers/amazonbedrockknowledgebaseretriever',
+            'pipeline-components/retrievers/amazons3vectorsembeddingretriever',
             'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
@@ -785,6 +786,7 @@ export default {
       items: [
         'document-stores/inmemorydocumentstore',
         'document-stores/alloydbdocumentstore',
+        'document-stores/amazons3vectorsdocumentstore',
         'document-stores/arangodocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
