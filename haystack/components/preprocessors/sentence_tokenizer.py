@@ -15,7 +15,36 @@ with LazyImport("Run 'pip install nltk>=3.9.1'") as nltk_imports:
 logger = logging.getLogger(__name__)
 
 Language = Literal[
-    "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml"
+    "ru",
+    "sl",
+    "es",
+    "sv",
+    "tr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "it",
+    "no",
+    "pl",
+    "pt",
+    "ml",
+    "hi",
+    "mr",
+    "bn",
+    "sa",
+    "ne",
+    "gu",
+    "pa",
+    "or",
+    "as",
+    "kn",
+    "te",
 ]
 
 ISO639_TO_NLTK = {
@@ -70,23 +99,20 @@ if nltk_imports.is_successful():
 
         language_name = ISO639_TO_NLTK.get(language)
 
-        if language_name is not None:
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
-        else:
+        if language_name is None:
             logger.warning(
-                "PreProcessor couldn't find the default sentence tokenizer model for {language}. "
-                " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
+                "No pretrained NLTK Punkt model is configured for {language}. Using the English model instead.",
                 language=language,
             )
-            sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
+            language_name = "english"
+
+        sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
 
         use_danda = language in DANDA_LANGUAGES
         if keep_white_spaces:
-            sentence_tokenizer._lang_vars = CustomPunktLanguageVars() if use_danda else CustomPunktLanguageVarsNoDanda()
-        else:
-            sentence_tokenizer._lang_vars = (
-                DandaPunktLanguageVars() if use_danda else nltk.tokenize.punkt.PunktLanguageVars()
-            )
+            sentence_tokenizer._lang_vars = DandaCustomPunktLanguageVars() if use_danda else CustomPunktLanguageVars()
+        elif use_danda:
+            sentence_tokenizer._lang_vars = DandaPunktLanguageVars()
 
         return sentence_tokenizer
 
@@ -95,32 +121,7 @@ if nltk_imports.is_successful():
         # sentence terminators in Hindi, Marathi, Bengali and other Indic scripts.
         sent_end_chars = (".", "?", "!", "।", "॥")
 
-    class CustomPunktLanguageVarsNoDanda(nltk.tokenize.punkt.PunktLanguageVars):
-        # Whitespace-preserving variant without danda support (for non-Indic languages)
-        _period_context_fmt = r"""
-                %(SentEndChars)s             # a potential sentence ending
-                \s*                          # match potential whitespace [ \t\n\x0B\f\r]
-                (?=(?P<after_tok>
-                    %(NonWord)s              # either other punctuation
-                    |
-                    (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
-                ))"""
-
-        def period_context_re(self) -> re.Pattern:
-            try:
-                return self._re_period_context  # type: ignore
-            except AttributeError:
-                self._re_period_context = re.compile(
-                    self._period_context_fmt
-                    % {
-                        "NonWord": self._re_non_word_chars,
-                        "SentEndChars": self._re_sent_end_chars + SENTENCE_CLOSING_CHARS_RE,
-                    },
-                    re.UNICODE | re.VERBOSE,
-                )
-                return self._re_period_context
-
-    class CustomPunktLanguageVars(DandaPunktLanguageVars):
+    class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
         # The following adjustment of PunktSentenceTokenizer is inspired by:
         # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
         # It is needed for preserving whitespace while splitting text into sentences.
@@ -154,6 +155,9 @@ if nltk_imports.is_successful():
                     re.UNICODE | re.VERBOSE,
                 )
                 return self._re_period_context
+
+    class DandaCustomPunktLanguageVars(CustomPunktLanguageVars):
+        sent_end_chars = DandaPunktLanguageVars.sent_end_chars
 
 
 class SentenceSplitter:
