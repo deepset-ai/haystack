@@ -275,7 +275,8 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            parsed_result = self._parse_reply(result["replies"][0].text)
+            # the reply has no text, for example when the model refuses or the content is filtered
+            parsed_result = self._parse_reply(result["replies"][0].text or "")
             if parsed_result is None:
                 results.append(None)
                 errors += 1
@@ -359,7 +360,8 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            parsed_result = self._parse_reply(result["replies"][0].text)
+            # the reply has no text, for example when the model refuses or the content is filtered
+            parsed_result = self._parse_reply(result["replies"][0].text or "")
             if parsed_result is None:
                 results.append(None)
                 errors += 1
