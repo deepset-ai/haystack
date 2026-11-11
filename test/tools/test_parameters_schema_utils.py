@@ -19,7 +19,6 @@ BYTE_STREAM_SCHEMA = {
         "data": {"type": "string", "description": "The binary data stored in Bytestream.", "format": "binary"},
         "meta": {
             "type": "object",
-            "default": {},
             "description": "Additional metadata to be stored with the ByteStream.",
             "additionalProperties": True,
         },
@@ -72,7 +71,6 @@ DOCUMENT_SCHEMA = {
         "meta": {
             "type": "object",
             "description": "Additional custom metadata for the document. Must be JSON-serializable.",
-            "default": {},
             "additionalProperties": True,
         },
         "score": {
@@ -161,7 +159,6 @@ REASONING_CONTENT_SCHEMA = {
         "reasoning_text": {"type": "string", "description": "The reasoning text produced by the model."},
         "extra": {
             "type": "object",
-            "default": {},
             "description": (
                 "Dictionary of extra information about the reasoning content. Use to store "
                 "provider-specific\ninformation. To avoid serialization issues, values should be JSON serializable."
@@ -176,12 +173,7 @@ IMAGE_CONTENT_SCHEMA = {
     "type": "object",
     "properties": {
         "base64_image": {"type": "string", "description": "A base64 string representing the image."},
-        "meta": {
-            "type": "object",
-            "default": {},
-            "description": "Optional metadata for the image.",
-            "additionalProperties": True,
-        },
+        "meta": {"type": "object", "description": "Optional metadata for the image.", "additionalProperties": True},
         "mime_type": {
             "anyOf": [{"type": "string"}, {"type": "null"}],
             "default": None,
@@ -215,7 +207,6 @@ FILE_CONTENT_SCHEMA = {
         "base64_data": {"description": "A base64 string representing the file.", "type": "string"},
         "extra": {
             "additionalProperties": True,
-            "default": {},
             "description": "Dictionary of extra information about the file. Can be used "
             "to store provider-specific information.\n"
             "To avoid serialization issues, values should be JSON "
@@ -278,12 +269,7 @@ CHAT_MESSAGE_SCHEMA = {
             "default": None,
             "description": "Field 'name' of 'ChatMessage'.",
         },
-        "meta": {
-            "type": "object",
-            "description": "Field 'meta' of 'ChatMessage'.",
-            "default": {},
-            "additionalProperties": True,
-        },
+        "meta": {"type": "object", "description": "Field 'meta' of 'ChatMessage'.", "additionalProperties": True},
     },
     "required": ["role", "content"],
 }

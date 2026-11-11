@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    ``ComponentTool`` no longer executes dataclass ``default_factory`` functions
+    while generating parameter schemas. This avoids consuming runtime values or
+    failing setup before a tool is invoked.
+upgrade:
+  - |
+    Factory-backed dataclass fields remain optional but no longer advertise a
+    captured ``default`` value in ``ComponentTool`` schemas. If you inspect these
+    schemas, do not rely on that value; omit the field at invocation to let its
+    factory generate a fresh default, or supply the desired value explicitly.
