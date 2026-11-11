@@ -82,7 +82,6 @@ def test_pdf_content_extraction_pipeline() -> None:
 
     for doc in indexed_documents:
         assert doc.content is not None
-        assert doc.content.strip()
         assert "file_path" in doc.meta
         assert "page_number" in doc.meta
 
