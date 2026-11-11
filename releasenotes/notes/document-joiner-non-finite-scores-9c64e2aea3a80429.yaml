@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `DocumentJoiner` no longer propagates non-finite scores. In `concatenate` mode a NaN-scored duplicate no
+    longer silently wins the best-duplicate selection regardless of arrival order, in `merge` mode the weighted
+    sum treats missing and non-finite scores as 0 instead of turning the merged score into NaN, and the final
+    score sorting places NaN-scored Documents last instead of at arbitrary positions. Each of these paths now
+    logs a warning listing the affected Document IDs, mirroring the existing behavior of
+    `distribution_based_rank_fusion`.

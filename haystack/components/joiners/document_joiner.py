@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from dataclasses import replace
 from enum import Enum
-from math import inf, isfinite
+from math import inf, isfinite, isnan
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -25,6 +25,19 @@ def _finite_score(score: float | None) -> float:
     into NaN as well.
     """
     return score if score is not None and isfinite(score) else 0.0
+
+
+def _ordering_score(score: float | None) -> float:
+    """
+    Return the score to use when ordering Documents (best-duplicate selection and sorting).
+
+    Missing and NaN scores are both treated as -infinity: comparisons against NaN are always False, so a NaN
+    score left as-is corrupts `max()` and `sorted()`. Positive and negative infinity order correctly, so they
+    keep their value.
+    """
+    if score is None or isnan(score):
+        return -inf
+    return score
 
 
 class JoinMode(Enum):
@@ -133,7 +146,7 @@ class DocumentJoiner:
             The maximum number of documents to return. Must be `None` or greater than 0.
         :param sort_by_score:
             If `True`, sorts the documents by score in descending order.
-            If a document has no score, it is handled as if its score is -infinity.
+            If a document has no score or a NaN score, it is handled as if its score is -infinity.
 
         :raises ValueError:
             If `top_k` is not `None` and is less than or equal to 0,
@@ -186,9 +199,15 @@ class DocumentJoiner:
         output_documents = self.join_mode_function(documents)
 
         if self.sort_by_score:
-            output_documents = sorted(
-                output_documents, key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True
-            )
+            nan_score_ids = [doc.id for doc in output_documents if doc.score is not None and isnan(doc.score)]
+            if nan_score_ids:
+                logger.warning(
+                    "Some of the Documents DocumentJoiner got have a NaN score. It was configured to sort Documents "
+                    "by score, so those with a NaN score were sorted as if they had a score of -infinity. "
+                    "Documents with IDs: {document_ids}",
+                    document_ids=",".join(nan_score_ids),
+                )
+            output_documents = sorted(output_documents, key=lambda doc: _ordering_score(doc.score), reverse=True)
             if any(doc.score is None for doc in output_documents):
                 logger.info(
                     "Some of the Documents DocumentJoiner got have score=None. It was configured to sort Documents by "
@@ -211,10 +230,20 @@ class DocumentJoiner:
         """
         output = []
         docs_per_id = defaultdict(list)
+        nan_score_ids = []
         for doc in itertools.chain.from_iterable(document_lists):
             docs_per_id[doc.id].append(doc)
+            if doc.score is not None and isnan(doc.score):
+                nan_score_ids.append(doc.id)
+        if nan_score_ids:
+            logger.warning(
+                "Some of the Documents DocumentJoiner got have a NaN score. They were treated as if their score "
+                "was -infinity when picking the best-scoring duplicate, otherwise a NaN-scored duplicate could "
+                "silently win the comparison. Documents with IDs: {document_ids}",
+                document_ids=",".join(nan_score_ids),
+            )
         for docs in docs_per_id.values():
-            doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score is not None else -inf)
+            doc_with_best_score = max(docs, key=lambda doc: _ordering_score(doc.score))
             output.append(doc_with_best_score)
         return output
 
@@ -230,9 +259,23 @@ class DocumentJoiner:
         documents_map = {}
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
 
+        non_finite_ids = [
+            doc.id
+            for documents in document_lists
+            for doc in documents
+            if doc.score is not None and not isfinite(doc.score)
+        ]
+        if non_finite_ids:
+            logger.warning(
+                "Some of the Documents DocumentJoiner got have a non-finite score. They were treated as if their "
+                "score was 0 when merging duplicates, otherwise the merged score would become NaN. "
+                "Documents with IDs: {document_ids}",
+                document_ids=",".join(non_finite_ids),
+            )
+
         for documents, weight in zip(document_lists, weights, strict=True):
             for doc in documents:
-                scores_map[doc.id] += (doc.score if doc.score is not None else 0) * weight
+                scores_map[doc.id] += _finite_score(doc.score) * weight
                 documents_map[doc.id] = doc
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]

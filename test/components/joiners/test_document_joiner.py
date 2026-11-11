@@ -443,6 +443,88 @@ class TestDocumentJoiner:
         assert documents[1].id in caplog.text
         assert documents[0].id not in caplog.text
 
+    @pytest.mark.parametrize("nan_first", [True, False])
+    def test_concatenate_does_not_let_a_nan_scored_duplicate_win(self, nan_first):
+        # Comparisons against NaN are always False, so max() never replaced the current best with a
+        # NaN-scored Document: a NaN-scored duplicate that arrived first kept the "best duplicate"
+        # slot and the higher-scored copy was silently dropped. The outcome must not depend on the
+        # order in which the lists arrive.
+        nan_doc = Document(content="doc A", score=float("nan"))
+        scored_doc = Document(content="doc A", score=0.99)
+        joiner = DocumentJoiner(sort_by_score=False)
+        document_lists = [[nan_doc], [scored_doc]] if nan_first else [[scored_doc], [nan_doc]]
+
+        output = joiner.run(document_lists)
+
+        assert output["documents"][0].score == 0.99
+
+    def test_concatenate_keeps_one_document_when_all_duplicates_are_nan(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+
+        output = joiner.run(
+            [[Document(content="doc A", score=float("nan"))], [Document(content="doc A", score=float("nan"))]]
+        )
+
+        assert len(output["documents"]) == 1
+
+    def test_concatenate_warns_about_nan_scores(self, caplog):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents = [Document(content="a", score=0.9), Document(content="b", score=float("nan"))]
+
+        with caplog.at_level(logging.WARNING):
+            joiner.run([documents])
+
+        assert "have a NaN score" in caplog.text
+        assert documents[1].id in caplog.text
+        assert documents[0].id not in caplog.text
+
+    @pytest.mark.parametrize("non_finite_score", [float("nan"), float("inf"), float("-inf")])
+    def test_merge_treats_non_finite_score_as_zero(self, non_finite_score):
+        # A non-finite score must not reach the weighted sum: one NaN turns the merged score into NaN.
+        joiner = DocumentJoiner(join_mode="merge", weights=[1, 1], sort_by_score=False)
+
+        output = joiner.run(
+            [[Document(content="doc A", score=0.9)], [Document(content="doc A", score=non_finite_score)]]
+        )
+
+        assert output["documents"][0].score == pytest.approx(0.45)
+
+    def test_merge_warns_about_non_finite_scores(self, caplog):
+        joiner = DocumentJoiner(join_mode="merge", weights=[1, 1], sort_by_score=False)
+        documents = [Document(content="a", score=0.9), Document(content="b", score=float("nan"))]
+
+        with caplog.at_level(logging.WARNING):
+            joiner.run([[documents[0]], [documents[1]]])
+
+        assert "non-finite" in caplog.text
+        assert documents[1].id in caplog.text
+
+    def test_sort_by_score_places_nan_scored_documents_last(self, caplog):
+        # A NaN comparison is always False, so sorted() left NaN-scored Documents at arbitrary
+        # positions instead of the end.
+        joiner = DocumentJoiner()
+        documents = [
+            Document(content="m", score=0.5),
+            Document(content="n", score=float("nan")),
+            Document(content="p", score=0.9),
+        ]
+
+        with caplog.at_level(logging.WARNING):
+            output = joiner.run([documents])
+
+        assert [doc.content for doc in output["documents"]] == ["p", "m", "n"]
+        assert "have a NaN score" in caplog.text
+        assert documents[1].id in caplog.text
+
+    def test_sort_by_score_keeps_infinity_ordering(self):
+        # Unlike NaN, infinity orders correctly, so it keeps its value when sorting.
+        joiner = DocumentJoiner()
+        documents = [Document(content="finite", score=0.5), Document(content="infinite", score=float("inf"))]
+
+        output = joiner.run([documents])
+
+        assert [doc.content for doc in output["documents"]] == ["infinite", "finite"]
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
