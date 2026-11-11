@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -123,18 +123,33 @@ class TestSASEvaluator:
         assert wrong_only["individual_scores"] == pytest.approx([expected_scores["Lyon"]])
         assert mixed["individual_scores"] == pytest.approx([expected_scores["Lyon"], expected_scores["Paris"]])
 
-    def test_run_with_multi_label_cross_encoder_raises(self, monkeypatch):
-        # The mocked model has a length of 0, so run would try to load the real model without this
-        monkeypatch.setattr(SASEvaluator, "warm_up", lambda self: None)
+    @pytest.mark.parametrize("num_labels", [2, 3])
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_with_multi_label_cross_encoder_raises(self, mock_auto_config, mock_cross_encoder, num_labels):
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertForSequenceClassification"])
+        mock_cross_encoder.return_value.num_labels = num_labels
         evaluator = SASEvaluator(model="cross-encoder/nli-deberta-v3-xsmall")
-        model = MagicMock(spec=CrossEncoder)
-        model.num_labels = 3
-        model.predict.return_value = np.array([[2.0, -1.0, 0.0]])
-        evaluator._similarity_model = model
 
-        with pytest.raises(ValueError, match="3"):
-            evaluator.run(ground_truth_answers=["Paris"], predicted_answers=["Lyon"])
-        model.predict.assert_not_called()
+        with pytest.raises(ValueError, match=f"has {num_labels} labels"):
+            evaluator.warm_up()
+
+        assert evaluator._similarity_model is None
+        mock_cross_encoder.return_value.predict.assert_not_called()
+
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_with_single_label_cross_encoder_is_idempotent(self, mock_auto_config, mock_cross_encoder):
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertForSequenceClassification"])
+        mock_cross_encoder.return_value.num_labels = 1
+        evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        evaluator.warm_up()
+        evaluator.warm_up()
+
+        assert evaluator._similarity_model is mock_cross_encoder.return_value
+        mock_auto_config.from_pretrained.assert_called_once()
+        mock_cross_encoder.assert_called_once()
 
     @pytest.mark.integration
     @pytest.mark.slow

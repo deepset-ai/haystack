@@ -109,6 +109,9 @@ class SASEvaluator:
     def warm_up(self) -> None:
         """
         Initializes the component.
+
+        :raises ValueError:
+            If the Cross Encoder model has more than one output label.
         """
         if self._similarity_model:
             return
@@ -122,7 +125,15 @@ class SASEvaluator:
         # Based on the Model string we can load either Bi-Encoders or Cross Encoders.
         # Similarity computation changes for both approaches
         if cross_encoder_used:
-            self._similarity_model = CrossEncoder(self._model, device=device, token=token)
+            cross_encoder = CrossEncoder(self._model, device=device, token=token)
+            if cross_encoder.num_labels != 1:
+                msg = (
+                    f"SASEvaluator requires a Cross Encoder with exactly one output score, but '{self._model}' "
+                    f"has {cross_encoder.num_labels} labels. Use a single-score Cross Encoder or a Bi-Encoder "
+                    "(SentenceTransformer) model."
+                )
+                raise ValueError(msg)
+            self._similarity_model = cross_encoder
         else:
             self._similarity_model = SentenceTransformer(self._model, device=device, token=token)
 
@@ -144,7 +155,7 @@ class SASEvaluator:
                 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
         :raises ValueError:
             If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
-            returns more than one score per pair.
+            has more than one output label.
         """
         if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
@@ -159,16 +170,6 @@ class SASEvaluator:
             self.warm_up()
 
         if isinstance(self._similarity_model, CrossEncoder):
-            # SAS needs one similarity score per pair, so multi-label models (for example NLI) are not supported
-            num_labels = self._similarity_model.num_labels
-            if num_labels != 1:
-                msg = (
-                    f"SASEvaluator requires a Cross Encoder with exactly one output score, but '{self._model}' "
-                    f"has {num_labels} labels. Use a single-score Cross Encoder or a Bi-Encoder "
-                    "(SentenceTransformer) model."
-                )
-                raise ValueError(msg)
-
             # For Cross Encoders we create a list of pairs of predictions and labels
             sentence_pairs = list(zip(predicted_answers, ground_truth_answers, strict=True))
             similarity_scores = self._similarity_model.predict(
