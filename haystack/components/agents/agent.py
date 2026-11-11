@@ -816,7 +816,13 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs}
+        # None means "not provided" on the Pipeline boundary: keep the entry out of the State so
+        # tools keep their own defaults instead of receiving an explicit None (#13680). An input that
+        # was explicitly set to None by the caller is indistinguishable from an omitted one, so both
+        # fall back to the tool default.
+        state_kwargs: dict[str, Any] = {
+            key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs and kwargs[key] is not None
+        }
         state = State(schema=self.resolved_state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)

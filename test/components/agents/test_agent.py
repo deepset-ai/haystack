@@ -34,7 +34,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
+from haystack.tools import ComponentTool, SearchableToolset, Tool, tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -2396,3 +2396,49 @@ class TestAgentNotTriggeredByInjectedInput:
 
         assert "agent" not in result
         run_mock.assert_not_called()
+
+
+class TestAgentToolDefaultsThroughState:
+    """Omitted pipeline inputs must not override tool defaults with None (#13680)."""
+
+    @component
+    class FakeLLM:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage], tools: Any = None, **kwargs: Any) -> dict:
+            if messages[-1].tool_call_result:
+                return {"replies": [ChatMessage.from_assistant("done")]}
+            call = ToolCall(tool_name="search", arguments={"query": "haystack"})
+            return {"replies": [ChatMessage.from_assistant(tool_calls=[call])]}
+
+    @staticmethod
+    def _search_tool() -> Tool:
+        @tool(inputs_from_state={"top_k": "top_k"})
+        def search(query: str, top_k: int = 5) -> str:
+            """Search for documents."""
+            return f"top_k={top_k}"
+
+        return search
+
+    def _agent(self) -> Agent:
+        return Agent(chat_generator=self.FakeLLM(), tools=[self._search_tool()], state_schema={"top_k": {"type": int}})
+
+    def test_direct_call_uses_tool_default(self):
+        result = self._agent().run(messages=[ChatMessage.from_user("find something")])
+        assert result["messages"][-2].tool_call_result.result == "top_k=5"
+
+    def test_pipeline_without_input_keeps_tool_default(self):
+        pipe = Pipeline()
+        pipe.add_component("agent", self._agent())
+        result = pipe.run({"agent": {"messages": [ChatMessage.from_user("find something")]}})
+        assert result["agent"]["messages"][-2].tool_call_result.result == "top_k=5"
+
+    def test_explicit_value_is_used(self):
+        agent = self._agent()
+        result = agent.run(messages=[ChatMessage.from_user("find something")], top_k=1)
+        assert result["messages"][-2].tool_call_result.result == "top_k=1"
+
+    def test_pipeline_with_explicit_value_uses_it(self):
+        pipe = Pipeline()
+        pipe.add_component("agent", self._agent())
+        result = pipe.run({"agent": {"messages": [ChatMessage.from_user("find something")], "top_k": 2}})
+        assert result["agent"]["messages"][-2].tool_call_result.result == "top_k=2"
