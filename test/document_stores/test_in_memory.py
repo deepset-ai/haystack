@@ -8,6 +8,9 @@ import logging
 import math
 import tempfile
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, wait
+from pathlib import Path
+from threading import Event
 from typing import Literal, cast
 from unittest.mock import patch
 
@@ -44,6 +47,231 @@ from haystack.testing.document_store_async import (
     UpdateByFilterAsyncTest,
     WriteDocumentsAsyncTest,
 )
+
+
+@pytest.fixture
+def paused_text() -> tuple[str, Event, Event]:
+    # Pause a real write during content normalization without replacing any document-store methods.
+    tokenizing, resume = Event(), Event()
+
+    class PausedText(str):
+        __slots__ = ()
+
+        def lower(self) -> str:
+            tokenizing.set()
+            assert resume.wait(timeout=5)
+            return super().lower()
+
+    return PausedText("alpha"), tokenizing, resume
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["overwrite", "delete", "clear"])
+def test_concurrent_mutations_keep_bm25_consistent(
+    shared: bool, operation: Literal["overwrite", "delete", "clear"], paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+    fresh_store = InMemoryDocumentStore(shared=False)
+
+    def mutate() -> None:
+        if operation == "overwrite":
+            second_store.write_documents([Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE)
+        elif operation == "delete":
+            second_store.delete_documents(["same"])
+        else:
+            second_store.delete_all_documents()
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(
+                first_store.write_documents, [Document(id="same", content=content)], DuplicatePolicy.OVERWRITE
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(mutate)
+                wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+            second.result(timeout=5)
+
+        if operation != "overwrite":
+            assert first_store.filter_documents() == []
+            first_store.write_documents([Document(id="replacement", content="beta")])
+
+        current = first_store.filter_documents()
+        fresh_store.write_documents(current)
+        expected_scores = {doc.id: doc.score for doc in fresh_store.bm25_retrieval(query="beta")}
+
+        for store in (first_store, second_store):
+            assert [doc.content for doc in store.filter_documents()] == ["beta"]
+            assert {doc.id: doc.score for doc in store.bm25_retrieval(query="beta")} == pytest.approx(expected_scores)
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+        fresh_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_bm25_read_waits_for_complete_document_write(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    writer = InMemoryDocumentStore(shared=shared)
+    reader = InMemoryDocumentStore(index=writer.index) if shared else writer
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            write = executor.submit(writer.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                read = executor.submit(reader.bm25_retrieval, "alpha")
+                wait([read], timeout=0.2)
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert [(doc.id, doc.content) for doc in read.result(timeout=5)] == [("same", "alpha")]
+    finally:
+        writer.shutdown()
+        reader.shutdown()
+
+
+def test_reads_wait_for_complete_document_write(paused_text: tuple[str, Event, Event], tmp_path: Path) -> None:
+    content, tokenizing, resume = paused_text
+    store = InMemoryDocumentStore(shared=False)
+    store.write_documents([Document(id="old", content="beta", meta={"kind": "a", "n": 1}, embedding=[0.1, 0.2])])
+    filters = {"field": "meta.kind", "operator": "==", "value": "a"}
+    readers = {
+        "filter_documents": lambda: store.filter_documents(filters=filters),
+        "embedding_retrieval": lambda: store.embedding_retrieval(query_embedding=[0.1, 0.2], filters=filters),
+        "count_documents_by_filter": lambda: store.count_documents_by_filter(filters=filters),
+        "count_unique_metadata_by_filter": lambda: store.count_unique_metadata_by_filter(
+            filters=filters, metadata_fields=["kind"]
+        ),
+        "get_metadata_fields_info": store.get_metadata_fields_info,
+        "get_metadata_field_min_max": lambda: store.get_metadata_field_min_max(metadata_field="n"),
+        "get_metadata_field_unique_values": lambda: store.get_metadata_field_unique_values(metadata_field="kind"),
+        "save_to_disk": lambda: store.save_to_disk(str(tmp_path / "store.json")),
+    }
+    try:
+        with ThreadPoolExecutor(max_workers=len(readers) + 1) as executor:
+            write = executor.submit(
+                store.write_documents,
+                [Document(id="new", content=content, meta={"kind": "a", "n": 2}, embedding=[0.1, 0.2])],
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                reads = {name: executor.submit(reader) for name, reader in readers.items()}
+                wait(reads.values(), timeout=0.2)
+                finished_during_write = [name for name, read in reads.items() if read.done()]
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert finished_during_write == []
+            for read in reads.values():
+                read.result(timeout=5)
+            assert reads["count_documents_by_filter"].result() == 2
+    finally:
+        store.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shared", [False, True])
+async def test_concurrent_async_overwrites_keep_bm25_consistent(
+    shared: bool, paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_store = InMemoryDocumentStore(shared=shared, async_executor=executor)
+        second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+        try:
+            first = asyncio.create_task(
+                first_store.write_documents_async(
+                    [Document(id="same", content=content)], policy=DuplicatePolicy.OVERWRITE
+                )
+            )
+            try:
+                assert await asyncio.to_thread(tokenizing.wait, 5)
+                second = asyncio.create_task(
+                    second_store.write_documents_async(
+                        [Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE
+                    )
+                )
+                await asyncio.wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert await asyncio.gather(first, second) == [1, 1]
+            result = await first_store.bm25_retrieval_async(query="beta")
+            assert [(doc.id, doc.content) for doc in result] == [("same", "beta")]
+        finally:
+            first_store.shutdown()
+            second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_independent_indexes_do_not_block_each_other(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore() if shared else InMemoryDocumentStore(index=first_store.index, shared=False)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(first_store.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(second_store.write_documents, [Document(id="same", content="beta")])
+                assert second.result(timeout=2) == 1
+                assert [doc.content for doc in second_store.bm25_retrieval(query="beta")] == ["beta"]
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["delete", "update"])
+def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
+    shared: bool, operation: Literal["delete", "update"]
+) -> None:
+    store = InMemoryDocumentStore(shared=shared)
+    other = InMemoryDocumentStore(index=store.index) if shared else store
+    store.write_documents([Document(id="same", content="alpha", meta={"kind": "old"})])
+    matching, resume = Event(), Event()
+    original_matches = in_memory_module.document_matches_filter
+
+    def paused_matches(**kwargs):
+        matching.set()
+        assert resume.wait(timeout=5)
+        return original_matches(**kwargs)
+
+    def mutate() -> int:
+        filters = {"field": "meta.kind", "operator": "==", "value": "old"}
+        if operation == "delete":
+            return store.delete_by_filter(filters=filters)
+        return store.update_by_filter(filters=filters, meta={"updated": True})
+
+    try:
+        with patch.object(in_memory_module, "document_matches_filter", paused_matches):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                mutation = executor.submit(mutate)
+                try:
+                    assert matching.wait(timeout=5)
+                    overwrite = executor.submit(
+                        other.write_documents,
+                        [Document(id="same", content="beta", meta={"kind": "new"})],
+                        DuplicatePolicy.OVERWRITE,
+                    )
+                    wait([overwrite], timeout=0.2)
+                finally:
+                    resume.set()
+                assert mutation.result(timeout=5) == 1
+                assert overwrite.result(timeout=5) == 1
+
+        assert [(doc.content, doc.meta) for doc in store.filter_documents()] == [("beta", {"kind": "new"})]
+        assert [doc.content for doc in store.bm25_retrieval(query="beta")] == ["beta"]
+    finally:
+        store.shutdown()
+        other.shutdown()
 
 
 class TestMemoryDocumentStore(

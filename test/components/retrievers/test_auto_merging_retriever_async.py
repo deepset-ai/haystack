@@ -46,11 +46,13 @@ class TestAutoMergingRetrieverAsync:
     async def test_run_mixed_valid_and_invalid_documents(self, in_memory_doc_store):
         docs = [
             Document(content="valid", meta={"__parent_id": "parent1", "__level": 1, "__block_size": 10}),
-            Document(content="invalid", meta={"__level": 1, "__block_size": 10}),
+            Document(content="invalid", id="root", meta={"__level": 0, "__block_size": 0}),
         ]
         retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
-            ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
+            ValueError,
+            match="The matched leaf documents do not have the required meta field '__parent_id': document 'root' has "
+            "none. AutoMergingRetriever only accepts leaf documents created by HierarchicalDocumentSplitter.",
         ):
             await retriever.run_async(documents=docs)
 

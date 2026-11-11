@@ -1,0 +1,82 @@
+---
+title: "AmazonS3VectorsDocumentStore"
+id: amazons3vectorsdocumentstore
+slug: "/amazons3vectorsdocumentstore"
+description: "Store documents and dense embeddings in Amazon S3 Vectors for similarity search and metadata filtering."
+---
+
+# AmazonS3VectorsDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `vector_bucket_name`, `index_name`: The vector bucket and index to use. <br /><br />`dimension`: The embedding dimension. |
+| **Optional init variables** | `distance_metric`: `"cosine"` (default) or `"euclidean"`. <br /><br />`region_name`: AWS region; otherwise uses the environment or AWS configuration. <br /><br />`aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`: Credentials as `Secret` objects; otherwise uses the configured AWS credentials. <br /><br />`create_bucket_and_index`: Create missing resources (default: `True`). <br /><br />`non_filterable_metadata_keys`: Additional metadata fields excluded from query filtering. |
+| **API reference** | [Amazon S3 Vectors](/reference/integrations-amazon-s3-vectors) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_s3_vectors |
+| **Package name** | `amazon-s3-vectors-haystack` |
+
+</div>
+
+[Amazon S3 Vectors](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors.html) provides vector storage and approximate similarity search without provisioning a database server. It uses dedicated **vector buckets**, with indexes containing embeddings and metadata.
+
+`AmazonS3VectorsDocumentStore` stores [Documents](/reference/data-classes-api#document), their dense embeddings, and supported metadata in a vector index. It does not provide keyword retrieval.
+
+## Installation
+
+Install the integration:
+
+```shell
+pip install amazon-s3-vectors-haystack
+```
+
+## Authentication
+
+`AmazonS3VectorsDocumentStore` uses AWS for authentication. You can provide AWS credentials directly to the Document Store or use credentials configured through the AWS CLI.
+
+To authenticate by providing credentials, pass `aws_access_key_id` and `aws_secret_access_key` as [Secret](../concepts/secret-management.mdx) arguments, along with `aws_session_token` for temporary credentials. Set the AWS region with `region_name`.
+
+Make sure your AWS identity has the required [S3 Vectors permissions](https://docs.aws.amazon.com/service-authorization/latest/reference/list_s3vectors.html).
+
+## Initialization
+
+Provide a vector bucket name, an index name, and the embedding dimension.
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.amazon_s3_vectors import (
+    AmazonS3VectorsDocumentStore,
+)
+
+document_store = AmazonS3VectorsDocumentStore(
+    vector_bucket_name="haystack-docs-example",
+    index_name="documents",
+    dimension=3,
+    region_name="us-east-1",
+)
+document_store.write_documents(
+    [
+        Document(id="first", content="First document", embedding=[1.0, 0.0, 0.0]),
+        Document(id="second", content="Second document", embedding=[0.0, 1.0, 0.0]),
+    ]
+)
+print(document_store.count_documents())
+# >> 2
+document_store.close()
+```
+
+To learn more about the initialization parameters, see our [API docs](/reference/integrations-amazon-s3-vectors#amazons3vectorsdocumentstore).
+
+:::info[Limitations]
+
+- Writes overwrite documents with the same ID; `DuplicatePolicy.FAIL` and `DuplicatePolicy.SKIP` are not enforced.
+- `filter_documents()` and `count_documents()` scan the index and can be slow. Prefer the retriever for similarity search.
+
+See the [AWS limitations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-limitations.html) for service quotas and metadata limits.
+
+:::
+
+## Supported Retrievers
+
+- [AmazonS3VectorsEmbeddingRetriever](../pipeline-components/retrievers/amazons3vectorsembeddingretriever.mdx): retrieves documents using a query embedding, with optional metadata filters.

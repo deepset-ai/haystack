@@ -174,6 +174,32 @@ class TestPPTXToDocument:
         assert len(documents) == 1
         assert documents[0].content == expected
 
+    @pytest.mark.parametrize(
+        "link_format, expected",
+        [
+            ("none", "before\vexample"),
+            ("markdown", "before\v[example](https://example.com)"),
+            ("plain", "before\vexample (https://example.com)"),
+        ],
+    )
+    def test_preserves_soft_line_breaks(self, link_format: Literal["none", "markdown", "plain"], expected: str) -> None:
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+        text_frame = slide.shapes.add_textbox(
+            left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)
+        ).text_frame
+        # python-pptx stores the vertical tab as a soft line break (<a:br/>) between two runs.
+        text_frame.text = "before\vexample"
+        text_frame.paragraphs[0].runs[1].hyperlink.address = "https://example.com"
+
+        source = io.BytesIO()
+        presentation.save(source)
+        converter = PPTXToDocument(link_format=link_format)
+        documents = converter.run(sources=[ByteStream(data=source.getvalue())])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == expected
+
     def test_run_reads_nested_groups_and_table_with_links(self, test_files_path):
         # The slide includes nested text groups, a grouped table, and an empty decorative shape.
         converter = PPTXToDocument(link_format="markdown")

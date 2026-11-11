@@ -32,7 +32,7 @@ Use `TextCleaner` to make text data more readable. It removes regexes, punctuati
 - `remove_numbers` removes all numerical digits from the text.
 - `remove_extra_whitespaces` replaces every run of whitespace with a single space and removes leading and trailing whitespace. It runs after the other steps, so it also closes the gaps left by removed punctuation, numbers, and regex matches. For example, with `remove_punctuation=True`, `"Rome - Italy"` becomes `"Rome Italy"` instead of `"Rome  Italy"`. Line breaks count as whitespace too, so a multi-line text becomes a single line.
 
-In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed.
+In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed. The patterns are applied one after another and match case-insensitively. To match part of a pattern case-sensitively, use an inline flag group such as `(?-i:[A-Z]+)`.
 
 ## Usage
 

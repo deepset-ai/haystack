@@ -371,7 +371,8 @@ Creates a DocumentJoiner component.
 - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
 - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
 - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-  distribution in each Retriever.
+  distribution in each Retriever. Documents without a score or with a non-finite score are treated as
+  having a score of 0.
 - **weights** (<code>list\[float\] | None</code>) – Assign importance to each list of documents to influence how they're joined.
   This parameter is ignored for
   `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.

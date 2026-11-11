@@ -38,6 +38,7 @@ The tables below list every available integration alongside the key properties y
 | --- | --- | --- | --- | --- | --- |
 | ArcadeDB | Multi-model Database | Multi-model database (graph, document, key-value) with HNSW vector search via HTTP/JSON API | Yes | No | Embedding |
 | AlloyDB | Relational Database | Managed PostgreSQL-compatible database (Google Cloud) with pgvector extension | No | Yes | Embedding, Keyword |
+| Amazon S3 Vectors | Vector Database | Managed serverless vector storage and similarity search in Amazon S3 | No | No | Embedding |
 | ArangoDB | Multi-model Database | Multi-model database (graph, document, key-value) with AQL vector search (requires v3.12+) | Yes (BUSL) | No | Embedding |
 | Astra | Document / NoSQL Database | Cloud-native managed NoSQL (Apache Cassandra-based) with vector search via DataStax JSON API | No | No | Embedding |
 | Azure AI Search | Search Engine | Managed cloud search service (Microsoft Azure AI Search) with HNSW vector search | No | No | BM25, Embedding, Hybrid |
@@ -80,6 +81,7 @@ The tables below list every available integration alongside the key properties y
 
 **Best for** semantic search over large document corpora — e.g. a knowledge base where users search by meaning rather than exact keywords.
 
+- [Amazon S3 Vectors](../../document-stores/amazons3vectorsdocumentstore.mdx)
 - [Chroma](../../document-stores/chromadocumentstore.mdx)
 - [Pinecone](../../document-stores/pinecone-document-store.mdx)
 - [Qdrant](../../document-stores/qdrant-document-store.mdx)

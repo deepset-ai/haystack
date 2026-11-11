@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``AutoMergingRetriever`` now explains its expected setup when it receives a document without a ``__parent_id``,
+    such as the root document created by ``HierarchicalDocumentSplitter``. The ``ValueError`` names the offending
+    document and says to write only the leaf documents to the document store searched by the upstream retriever,
+    and the root and parent documents to the document store passed to ``AutoMergingRetriever``. The class and
+    ``run()`` docstrings now describe this two-store setup.
