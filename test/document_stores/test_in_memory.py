@@ -189,7 +189,10 @@ def test_independent_indexes_do_not_block_each_other(shared: bool, paused_text: 
 
 
 @pytest.mark.parametrize("shared", [False, True])
-def test_delete_by_filter_does_not_delete_a_concurrent_overwrite(shared: bool) -> None:
+@pytest.mark.parametrize("operation", ["delete", "update"])
+def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
+    shared: bool, operation: Literal["delete", "update"]
+) -> None:
     store = InMemoryDocumentStore(shared=shared)
     other = InMemoryDocumentStore(index=store.index) if shared else store
     store.write_documents([Document(id="same", content="alpha", meta={"kind": "old"})])
@@ -201,12 +204,16 @@ def test_delete_by_filter_does_not_delete_a_concurrent_overwrite(shared: bool) -
         assert resume.wait(timeout=5)
         return original_matches(**kwargs)
 
+    def mutate() -> int:
+        filters = {"field": "meta.kind", "operator": "==", "value": "old"}
+        if operation == "delete":
+            return store.delete_by_filter(filters=filters)
+        return store.update_by_filter(filters=filters, meta={"updated": True})
+
     try:
         with patch.object(in_memory_module, "document_matches_filter", paused_matches):
             with ThreadPoolExecutor(max_workers=2) as executor:
-                delete = executor.submit(
-                    store.delete_by_filter, {"field": "meta.kind", "operator": "==", "value": "old"}
-                )
+                mutation = executor.submit(mutate)
                 try:
                     assert matching.wait(timeout=5)
                     overwrite = executor.submit(
@@ -217,7 +224,7 @@ def test_delete_by_filter_does_not_delete_a_concurrent_overwrite(shared: bool) -
                     wait([overwrite], timeout=0.2)
                 finally:
                     resume.set()
-                assert delete.result(timeout=5) == 1
+                assert mutation.result(timeout=5) == 1
                 assert overwrite.result(timeout=5) == 1
 
         assert [(doc.content, doc.meta) for doc in store.filter_documents()] == [("beta", {"kind": "new"})]
