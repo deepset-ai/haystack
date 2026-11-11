@@ -995,7 +995,8 @@ __init__(
     *,
     guardrail_config: dict[str, str] | None = None,
     tools_cachepoint_config: dict[str, str] | None = None,
-    system_cachepoint_config: dict[str, str] | None = None
+    system_cachepoint_config: dict[str, str] | None = None,
+    tools_strict: bool = False
 ) -> None
 ```
 
@@ -1033,6 +1034,15 @@ and `aws_region_name`.
 - `temperature`: Sampling temperature.
 
 - `topP`: Nucleus sampling parameter.
+
+- `cache_control`: A dictionary of cache control options.
+  See [Prompt Caching](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html)
+  for more details on cache control options.
+  To enable automatic prompt caching, pass `{"cache_control": {"type": "ephemeral"}}`.
+
+- `cache_control_ttl`: Shortcut to set the cache `ttl` (e.g. `"5m"` or `"1h"`) without building the
+  `cache_control` dict yourself. It is merged into `cache_control`, overriding any `ttl` set there,
+  and `type` defaults to `"ephemeral"` if not set.
 
 - `response_format`: Request structured JSON output validated against a schema. Provide a dict with:
 
@@ -1097,6 +1107,11 @@ and `aws_region_name`.
   The dictionary must match the
   [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
   Example: `{"type": "default", "ttl": "5m"}`
+
+- **tools_strict** (<code>bool</code>) – Whether to enable strict tool use. If `True`, each tool spec is sent with `strict: true`,
+  so the model's tool calls are enforced against the tool's `parameters` schema. Only Haystack `tools` are
+  affected, not a `toolConfig` passed in `generation_kwargs`. See the
+  [ToolSpecification reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolSpecification.html).
 
 **Raises:**
 

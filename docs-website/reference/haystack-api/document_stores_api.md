@@ -21,6 +21,8 @@ A dataclass for managing document statistics for BM25 retrieval.
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
+Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
+
 #### __init__
 
 ```python
@@ -366,6 +368,10 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
 
+**Raises:**
+
+- <code>ValueError</code> – if top_k is negative.
+
 #### embedding_retrieval
 
 ```python
@@ -396,7 +402,7 @@ Retrieves documents that are most similar to the query embedding using a vector 
 
 **Raises:**
 
-- <code>ValueError</code> – if filters have invalid syntax.
+- <code>ValueError</code> – if top_k is negative or filters have invalid syntax.
 
 #### count_documents_async
 
@@ -446,6 +452,27 @@ Deletes all documents with matching document_ids from the DocumentStore.
 **Parameters:**
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
+
+#### delete_by_filter_async
+
+```python
+delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see filter_documents.
+
+**Returns:**
+
+- <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>ValueError</code> – if filters have invalid syntax.
 
 #### update_by_filter_async
 

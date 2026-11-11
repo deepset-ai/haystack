@@ -8,22 +8,23 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.converters.pypdf import PyPDFToDocument
-from haystack.components.joiners import DocumentJoiner
-from haystack.components.preprocessors.document_splitter import DocumentSplitter
-from haystack.components.writers.document_writer import DocumentWriter
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.extractors.image.llm_document_content_extractor import LLMDocumentContentExtractor
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.routers.document_length_router import DocumentLengthRouter
+from haystack.components.writers.document_writer import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_pdf_content_extraction_pipeline():
+def test_pdf_content_extraction_pipeline() -> None:
     """
     Test a pipeline that processes PDFs with the following steps:
+
     1. Convert PDFs to documents
     2. Split documents by page
     3. Route documents by length (short vs long)
@@ -80,8 +81,7 @@ def test_pdf_content_extraction_pipeline():
     assert file_paths == set(test_files)
 
     for doc in indexed_documents:
-        assert hasattr(doc, "content")
-        assert hasattr(doc, "meta")
+        assert doc.content is not None
         assert "file_path" in doc.meta
         assert "page_number" in doc.meta
 
