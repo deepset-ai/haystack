@@ -577,6 +577,7 @@ class PythonCodeSplitter:
             if unit.docstring is None and piece_offset is not None and piece_content:
                 piece_start = source_first_line + self._count_lines(unit.source[:piece_offset])
                 piece_end = piece_start + self._count_lines(piece_content) - 1
+                # The clamp trims leading blank lines and comments to match primary chunks.
                 meta["start_line"] = min(max(piece_start, unit.start_line), unit.end_line)
                 meta["end_line"] = max(min(piece_end, unit.end_line), meta["start_line"])
             meta["secondary_split"] = True
