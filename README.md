@@ -103,7 +103,7 @@
 | haystack/components/preprocessors/python\_code\_splitter.py                |      303 |       14 |     95% |152, 164, 192, 199, 297, 325-327, 429-431, 433, 546, 614 |
 | haystack/components/preprocessors/recursive\_splitter.py                   |      269 |       20 |     93% |171-174, 215-217, 256-258, 271-273, 310, 350, 484, 490-493 |
 | haystack/components/preprocessors/sentence\_tokenizer.py                   |       95 |        2 |     98% |     97-98 |
-| haystack/components/preprocessors/text\_cleaner.py                         |       33 |        0 |    100% |           |
+| haystack/components/preprocessors/text\_cleaner.py                         |       31 |        0 |    100% |           |
 | haystack/components/query/\_\_init\_\_.py                                  |        5 |        0 |    100% |           |
 | haystack/components/query/query\_expander.py                               |      142 |       10 |     93% |298-299, 305, 315-320, 327-333, 344-352 |
 | haystack/components/rankers/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
@@ -277,7 +277,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18733** |  **660** | **96%** |           |
+| **TOTAL**                                                                  | **18731** |  **660** | **96%** |           |
 
 
 ## Setup coverage badge
