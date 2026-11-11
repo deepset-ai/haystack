@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a hang in ``Pipeline.stream()``: if ``PipelineStreamHandle.aclose()`` cancelled the pipeline before it
+    started running, a consumer iterating the handle waited forever. The end-of-stream marker is now sent whenever the
+    pipeline task finishes, including when it is cancelled before it starts, so the consumer receives the cancellation.
