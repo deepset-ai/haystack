@@ -188,6 +188,45 @@ def test_independent_indexes_do_not_block_each_other(shared: bool, paused_text: 
         second_store.shutdown()
 
 
+@pytest.mark.parametrize("shared", [False, True])
+def test_delete_by_filter_does_not_delete_a_concurrent_overwrite(shared: bool) -> None:
+    store = InMemoryDocumentStore(shared=shared)
+    other = InMemoryDocumentStore(index=store.index) if shared else store
+    store.write_documents([Document(id="same", content="alpha", meta={"kind": "old"})])
+    matching, resume = Event(), Event()
+    original_matches = in_memory_module.document_matches_filter
+
+    def paused_matches(**kwargs):
+        matching.set()
+        assert resume.wait(timeout=5)
+        return original_matches(**kwargs)
+
+    try:
+        with patch.object(in_memory_module, "document_matches_filter", paused_matches):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                delete = executor.submit(
+                    store.delete_by_filter, {"field": "meta.kind", "operator": "==", "value": "old"}
+                )
+                try:
+                    assert matching.wait(timeout=5)
+                    overwrite = executor.submit(
+                        other.write_documents,
+                        [Document(id="same", content="beta", meta={"kind": "new"})],
+                        DuplicatePolicy.OVERWRITE,
+                    )
+                    wait([overwrite], timeout=0.2)
+                finally:
+                    resume.set()
+                assert delete.result(timeout=5) == 1
+                assert overwrite.result(timeout=5) == 1
+
+        assert [(doc.content, doc.meta) for doc in store.filter_documents()] == [("beta", {"kind": "new"})]
+        assert [doc.content for doc in store.bm25_retrieval(query="beta")] == ["beta"]
+    finally:
+        store.shutdown()
+        other.shutdown()
+
+
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
     UpdateByFilterAsyncTest,

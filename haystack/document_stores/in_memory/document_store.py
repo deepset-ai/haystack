@@ -103,8 +103,8 @@ class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
-    Calls to `write_documents`, `delete_documents`, `delete_all_documents` and `bm25_retrieval` are serialized
-    per index, including across shared instances.
+    Calls to `write_documents`, `delete_documents`, `delete_all_documents`, `update_by_filter`,
+    `delete_by_filter` and `bm25_retrieval` are serialized per index, including across shared instances.
     """
 
     def __init__(
@@ -615,6 +615,7 @@ class InMemoryDocumentStore:
             self._local_avg_doc_len = 0.0
             self._local_freq_vocab_for_idf = Counter()
 
+    @_synchronized
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
         Updates the metadata of all documents that match the provided filters.
@@ -638,6 +639,7 @@ class InMemoryDocumentStore:
             self.storage[doc.id] = doc
         return len(matching)
 
+    @_synchronized
     def delete_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Deletes all documents that match the provided filters.

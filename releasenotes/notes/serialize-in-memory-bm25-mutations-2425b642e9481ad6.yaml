@@ -3,6 +3,6 @@ fixes:
   - |
     Fix concurrent writes and deletions in ``InMemoryDocumentStore`` corrupting BM25 statistics,
     causing missing retrieval results, incorrect scores or division-by-zero errors. Calls to
-    ``write_documents``, ``delete_documents``, ``delete_all_documents`` and ``bm25_retrieval`` now share
-    a reentrant lock per index, including across shared store instances and their async methods.
-    Different indexes remain independent.
+    ``write_documents``, ``delete_documents``, ``delete_all_documents``, ``update_by_filter``,
+    ``delete_by_filter`` and ``bm25_retrieval`` now share a reentrant lock per index, including
+    across shared store instances and their async methods. Different indexes remain independent.
