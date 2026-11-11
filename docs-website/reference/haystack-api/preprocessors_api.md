@@ -1085,6 +1085,8 @@ Initializes the TextCleaner component.
 **Parameters:**
 
 - **remove_regexps** (<code>list\[str\] | None</code>) – A list of regex patterns to remove matching substrings from the text.
+  The patterns are applied one after another, in list order, and match case-insensitively.
+  To match a part of a pattern case-sensitively, use an inline flag group such as `(?-i:[A-Z]+)`.
 - **convert_to_lowercase** (<code>bool</code>) – If `True`, converts all characters to lowercase.
 - **remove_punctuation** (<code>bool</code>) – If `True`, removes punctuation from the text.
 - **remove_numbers** (<code>bool</code>) – If `True`, removes numerical digits from the text.
