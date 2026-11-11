@@ -11,6 +11,7 @@ import pytest
 
 from haystack import Pipeline, component
 from haystack.core.errors import PipelineRuntimeError
+from haystack.core.pipeline.pipeline import PipelineStreamHandle
 from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk
 
 
@@ -419,3 +420,88 @@ async def test_cancel_on_abandon_false_lets_pipeline_finish():
     await handle._task
     assert not handle._task.cancelled()
     assert handle.result["streamer"] == {"reply": "s-final"}
+
+
+@component
+class SlowCleanupStreamer:
+    """Streaming component whose async cleanup waits for an explicit release."""
+
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.cleanup_started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    @component.output_types(value=str)
+    def run(self) -> dict:
+        return {"value": "done"}
+
+    @component.output_types(value=str)
+    async def run_async(self) -> dict:
+        self.started.set()
+        try:
+            await asyncio.Future()
+        finally:
+            self.cleanup_started.set()
+            await self.release.wait()
+        return {"value": "done"}
+
+
+@pytest.mark.asyncio
+async def test_aclose_propagates_caller_cancellation():
+    """Cancelling the task that calls `aclose()` must not be swallowed by cleanup."""
+    release = asyncio.Event()
+
+    async def slow_cleanup():
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            # Simulate cleanup that keeps the pipeline task alive for a while.
+            await release.wait()
+            raise
+
+    pipeline_task = asyncio.create_task(slow_cleanup())
+    await asyncio.sleep(0)  # let the producer start, so cancellation enters its cleanup
+    handle = PipelineStreamHandle(queue=asyncio.Queue(), task=pipeline_task)
+
+    caller = asyncio.create_task(handle.aclose())
+    await asyncio.sleep(0)  # let `aclose()` cancel the producer and enter its cleanup wait
+
+    caller.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await caller
+
+    release.set()
+    pipeline_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await pipeline_task
+
+
+@pytest.mark.asyncio
+async def test_aclose_respects_caller_deadline():
+    """An expired `asyncio.timeout()` must still raise in a caller awaiting `aclose()`."""
+    pipeline = Pipeline()
+    instance = SlowCleanupStreamer()
+    pipeline.add_component("worker", instance)
+
+    handle = pipeline.stream(data={})
+    await asyncio.wait_for(instance.started.wait(), timeout=2)
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.create_future()
+
+    async def request():
+        async with asyncio.timeout(None) as scope:
+            deadline.set_result(scope)
+            await handle.aclose()
+            return "returned normally"
+
+    caller = asyncio.create_task(request())
+    scope = await asyncio.wait_for(deadline, timeout=2)
+    await asyncio.wait_for(instance.cleanup_started.wait(), timeout=2)
+    scope.reschedule(loop.time() - 1)
+    await asyncio.sleep(0)
+
+    with pytest.raises(TimeoutError):
+        await caller
+
+    instance.release.set()
