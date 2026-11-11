@@ -52,8 +52,6 @@ class TextCleaner:
         self._remove_punctuation = remove_punctuation
         self._remove_numbers = remove_numbers
 
-        # Compile each pattern on its own: joining them with "|" would renumber their groups (breaking
-        # backreferences like `\1`), reject repeated group names, and reject inline flags in later patterns.
         self._regexes = [re.compile(regexp, flags=re.IGNORECASE) for regexp in remove_regexps or []]
         to_remove = ""
         if remove_punctuation:
