@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    ``RecursiveDocumentSplitter`` now produces different chunk boundaries and a different chunk count for text
+    containing runs of blank lines or other whitespace. Re-split and re-index documents if you rely on stable chunk
+    boundaries.
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` no longer returns chunks of only whitespace for text with runs of blank lines,
+    which is common in text extracted from PDFs. A whitespace-only chunk is now joined to a neighbouring chunk when
+    the result stays within ``split_length``, which with ``split_unit="word"`` is always the case. With
+    ``split_unit="char"`` or ``"token"``, a run of whitespace longer than ``split_length`` can still produce a
+    whitespace-only chunk, as joining it would exceed ``split_length``.
+    With the ``"sentence"`` separator, chunks also no longer exceed ``split_length`` in ``"char"`` and ``"token"``
+    mode because of the whitespace after the last sentence.

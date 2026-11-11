@@ -349,6 +349,26 @@ class RecursiveDocumentSplitter:
         # at this point we know that the tokenizer is already initialized
         return len(self.tiktoken_tokenizer.encode_ordinary(text))  # type: ignore
 
+    def _merge_whitespace_chunks(self, chunks: list[str]) -> list[str]:
+        """
+        Joins chunks of only whitespace to a neighbouring chunk, preferably the one before it.
+
+        Runs of blank lines, common in text extracted from PDFs, otherwise end up as chunks of their own. Chunks are
+        only joined if the result is within `split_length`. In word mode whitespace isn't counted, so they always are.
+
+        :param chunks: A list of text chunks, as returned by `_chunk_text`.
+        :returns:
+            The chunks, with whitespace-only chunks joined to a neighbour where they fit.
+        """
+        merged: list[str] = []
+        for chunk in chunks:
+            joinable = bool(merged) and (not chunk.strip() or not merged[-1].strip())
+            if joinable and self._chunk_length(merged[-1] + chunk) <= self.split_length:
+                merged[-1] += chunk
+            else:
+                merged.append(chunk)
+        return merged
+
     def _chunk_text(self, text: str) -> list[str]:
         """
         Recursive chunking algorithm that divides text into smaller chunks based on a list of separator characters.
@@ -366,18 +386,16 @@ class RecursiveDocumentSplitter:
             return [text]
 
         for curr_separator in self.separators:
-            # text after the last split that the splits leave out
-            trailing_text = ""
             if curr_separator == "sentence":
                 # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
                 # Each split runs from where its sentence starts to where the next one does, so the splits keep the
                 # whitespace between sentences even where the tokenizer leaves it out (keep_white_spaces=False).
                 # Leaving it out would glue sentences together, lose page breaks and shift every later chunk's offset.
+                # Likewise, the last split runs to the end of the text, keeping the whitespace after the last sentence.
                 split_bounds = [sentence["start"] for sentence in sentence_with_spans]
                 if split_bounds:
-                    split_bounds.append(sentence_with_spans[-1]["end"])
-                    trailing_text = text[split_bounds[-1] :]
+                    split_bounds.append(len(text))
                 splits = [text[start:end] for start, end in zip(split_bounds, split_bounds[1:], strict=False)]
             else:
                 # add escape "\" to the separator and wrapped it in a group so that it's included in the splits as well
@@ -433,9 +451,6 @@ class RecursiveDocumentSplitter:
                 chunks.append("".join(current_chunk))
 
             if chunks:
-                # like the whitespace left over by _fall_back_to_fixed_chunking, attach it to the last chunk rather
-                # than making it a chunk of its own
-                chunks[-1] += trailing_text
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
@@ -509,6 +524,7 @@ class RecursiveDocumentSplitter:
         content = doc.content or ""  # run() skips documents without content, so this is a non-empty string
         chunks = self._chunk_text(content)
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
+        chunks = self._merge_whitespace_chunks(chunks)
 
         # apply the overlap once, on the fully chunked list, so that chunks produced
         # at inner recursion levels don't get the overlap applied a second time
