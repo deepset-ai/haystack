@@ -89,8 +89,8 @@ class RecursiveDocumentSplitter:
         :param tokenizer_encoding: The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
             (current OpenAI models). Only used when `split_unit="token"`.
 
-        :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-                            if any separator is not a string.
+        :raises ValueError: If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+                            equal to the chunk size, if the overlap is negative, or if any separator is not a string.
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
@@ -136,6 +136,8 @@ class RecursiveDocumentSplitter:
         )
 
     def _check_params(self) -> None:
+        if self.split_units not in ("word", "char", "token"):
+            raise ValueError(f"split_unit '{self.split_units}' is not recognized. Choose one of: word, char, token.")
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
@@ -287,14 +289,18 @@ class RecursiveDocumentSplitter:
         :returns:
             The `(start, end)` character offsets of each chunk with the overlap applied, in the concatenated `chunks`.
         """
-        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only spaces has no words and
+        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only whitespace has no words and
         # joins the chunk before it (or after it, at the start of the text).
         words: list[tuple[int, int]] = []
         chunk_word_ends: list[int] = []
         chunk_starts: list[int] = []
         offset = 0
         for chunk in chunks:
-            chunk_words = [(offset + match.start(), offset + match.end()) for match in re.finditer(r"[^ ]+", chunk)]
+            chunk_words = [
+                (offset + match.start(), offset + match.end())
+                for match in re.finditer(r"[^ ]+", chunk)
+                if match.group().strip()
+            ]
             if chunk_words:
                 words.extend(chunk_words)
                 chunk_word_ends.append(len(words))
@@ -334,7 +340,8 @@ class RecursiveDocumentSplitter:
         :returns: The length of the text in the specified units.
         """
         if self.split_units == "word":
-            words = [word for word in text.split(" ") if word]
+            # like _fall_back_to_fixed_chunking, don't count whitespace-only pieces such as "\f" as words
+            words = [word for word in text.split(" ") if word.strip()]
             return len(words)
         if self.split_units == "char":
             return len(text)

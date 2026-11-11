@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` with ``split_unit="word"`` no longer counts a whitespace-only piece, such as a
+    page break (``\f``) or a tab between two spaces, as a word when measuring chunks against ``split_length``.
+    The word-mode fixed-size fallback already skipped them, so it produced chunks that the rest of the splitter
+    measured as longer than ``split_length``, and chunks split at separators held fewer real words than
+    ``split_length`` whenever they contained a page break. With ``split_overlap``, such a piece could also be
+    taken as the overlapping word.
+
+    This changes the chunk boundaries for text containing page breaks or other whitespace surrounded by spaces.
+    Re-split and re-index documents if you rely on stable chunk boundaries.

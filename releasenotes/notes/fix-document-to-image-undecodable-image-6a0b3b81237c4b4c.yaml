@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``DocumentToImageContent`` now skips an image file that cannot be decoded instead of failing the whole
+    ``run()`` call. The skipped document gets ``None`` in ``image_contents`` and a warning is logged.

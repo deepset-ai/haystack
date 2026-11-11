@@ -97,22 +97,6 @@ Serialize the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> 'WatsonxDocumentEmbedder'
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
-
-**Returns:**
-
-- <code>'WatsonxDocumentEmbedder'</code> – The deserialized component instance.
-
 #### run
 
 ```python
@@ -214,22 +198,6 @@ Serialize the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> WatsonxTextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
-
-**Returns:**
-
-- <code>WatsonxTextEmbedder</code> – The deserialized component instance.
 
 #### run
 
