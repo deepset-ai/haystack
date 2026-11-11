@@ -570,6 +570,7 @@ export default {
             'pipeline-components/rankers/jinaranker',
             'pipeline-components/rankers/llmranker',
             'pipeline-components/rankers/lostinthemiddleranker',
+            'pipeline-components/rankers/maxsimranker',
             'pipeline-components/rankers/metafieldgroupingranker',
             'pipeline-components/rankers/metafieldranker',
             'pipeline-components/rankers/nvidiaranker',
