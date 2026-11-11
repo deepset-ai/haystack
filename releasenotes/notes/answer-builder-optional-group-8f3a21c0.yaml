@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``AnswerBuilder`` returning the whole match as the answer when a
+    pattern has a single optional capture group that does not take part in the
+    match (for example ``Answer: (\d+)?`` against ``Answer: abc``). The
+    optional group now yields an empty answer, matching the behaviour of
+    ``RegexTextExtractor``.
