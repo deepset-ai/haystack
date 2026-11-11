@@ -137,10 +137,6 @@ class PPTXToDocument:
         """
         if self.link_format == "none":
             return paragraph.text
-        # `paragraph.runs` yields only the `<a:r>` children, so it drops the `<a:br/>` elements that
-        # stand between runs. Walk every paragraph child instead and emit each break as the vertical
-        # tab python-pptx itself uses in `paragraph.text`, keeping the formatted modes consistent
-        # with `"none"`.
         parts = []
         for child in paragraph._p:
             # Fields have text but are not included in paragraph.runs.
@@ -156,6 +152,7 @@ class PPTXToDocument:
                 else:
                     parts.append(run.text)
             elif isinstance(child, CT_TextLineBreak):
+                # Same character python-pptx uses for soft line breaks in paragraph.text.
                 parts.append("\v")
         return "".join(parts)
 
