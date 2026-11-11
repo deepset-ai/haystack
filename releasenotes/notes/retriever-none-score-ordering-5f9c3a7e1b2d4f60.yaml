@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``MultiQueryEmbeddingRetriever``, ``MultiQueryTextRetriever``, and
+    ``TextEmbeddingRetriever`` sorting so documents without a score are placed after all
+    scored documents, including documents with negative scores.

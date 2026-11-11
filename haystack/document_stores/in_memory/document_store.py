@@ -12,8 +12,10 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
+from functools import wraps
 from pathlib import Path
-from typing import Any, Literal
+from threading import RLock
+from typing import Any, Concatenate, Literal, ParamSpec, TypeVar
 
 import numpy as np
 
@@ -23,6 +25,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils import expit
 from haystack.utils.filters import document_matches_filter
+from haystack.utils.misc import _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -58,22 +61,6 @@ _CJK_CHAR_CLASS = (
 _DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
 
 
-def _make_metadata_value_hashable(value: Any) -> Any:
-    """Convert nested metadata values into values that can be used for deduplication."""
-    if isinstance(value, list):
-        return ("list", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, tuple):
-        return ("tuple", tuple(_make_metadata_value_hashable(item) for item in value))
-    if isinstance(value, dict):
-        return (
-            "dict",
-            frozenset(
-                (_make_metadata_value_hashable(key), _make_metadata_value_hashable(item)) for key, item in value.items()
-            ),
-        )
-    return value
-
-
 @dataclass
 class BM25DocumentStats:
     """
@@ -93,11 +80,30 @@ _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
+# Clearing the documents replaces the data dictionaries, but must preserve the lock shared by existing instances.
+_STORAGE_LOCKS: dict[str, RLock] = {}
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+
+def _synchronized(
+    method: Callable[Concatenate["InMemoryDocumentStore", _P], _T],
+) -> Callable[Concatenate["InMemoryDocumentStore", _P], _T]:
+    @wraps(method)
+    def locked(self: "InMemoryDocumentStore", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        # Overwrites call delete_documents while holding the same index lock.
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return locked
 
 
 class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
+
+    Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
     """
 
     def __init__(
@@ -150,13 +156,15 @@ class InMemoryDocumentStore:
         # instance instead of accumulating in the globals.
         self._shared = shared
         self.index = index if index is not None else str(uuid.uuid4())
+        self._lock = _STORAGE_LOCKS.setdefault(self.index, RLock()) if shared else RLock()
 
         if self._shared:
-            if self.index not in _STORAGES:
-                _STORAGES[self.index] = {}
-                _BM25_STATS_STORAGES[self.index] = {}
-                _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
-                _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+            with self._lock:
+                if self.index not in _STORAGES:
+                    _STORAGES[self.index] = {}
+                    _BM25_STATS_STORAGES[self.index] = {}
+                    _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+                    _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
         else:
             self._local_storage: dict[str, Document] = {}
             self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
@@ -442,6 +450,7 @@ class InMemoryDocumentStore:
         """
         return default_from_dict(cls, data)
 
+    @_synchronized
     def save_to_disk(self, path: str) -> None:
         """
         Write the database and its data to disk as a JSON file.
@@ -483,6 +492,7 @@ class InMemoryDocumentStore:
         """
         return len(self.storage.keys())
 
+    @_synchronized
     def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
@@ -508,6 +518,7 @@ class InMemoryDocumentStore:
 
         return docs
 
+    @_synchronized
     def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Refer to the DocumentStore.write_documents() protocol documentation.
@@ -540,12 +551,13 @@ class InMemoryDocumentStore:
             if document.id in self.storage.keys():
                 self.delete_documents([document.id])
 
-            tokens = []
-            if document.content is not None:
-                tokens = self._tokenize_bm25(document.content)
-
             self.storage[document.id] = document
 
+            # BM25 retrieval only searches documents with content, so only they count toward N and avgdl
+            if document.content is None:
+                continue
+
+            tokens = self._tokenize_bm25(document.content)
             self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
             self._freq_vocab_for_idf.update(set(tokens))
             # Update avg doc len based on the new document and the previous average
@@ -553,6 +565,7 @@ class InMemoryDocumentStore:
             self._avg_doc_len = (len(tokens) + self._avg_doc_len * (n_docs - 1)) / n_docs
         return written_documents
 
+    @_synchronized
     def delete_documents(self, document_ids: list[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
@@ -564,8 +577,10 @@ class InMemoryDocumentStore:
                 continue
             del self.storage[doc_id]
 
-            # Update statistics accordingly
-            doc_stats = self._bm25_attr.pop(doc_id)
+            # Update statistics accordingly; documents without content were never added to them
+            doc_stats = self._bm25_attr.pop(doc_id, None)
+            if doc_stats is None:
+                continue
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 
@@ -585,6 +600,7 @@ class InMemoryDocumentStore:
                 "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
             )
 
+    @_synchronized
     def delete_all_documents(self) -> None:
         """
         Deletes all documents in the document store.
@@ -600,6 +616,7 @@ class InMemoryDocumentStore:
             self._local_avg_doc_len = 0.0
             self._local_freq_vocab_for_idf = Counter()
 
+    @_synchronized
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
         Updates the metadata of all documents that match the provided filters.
@@ -623,6 +640,7 @@ class InMemoryDocumentStore:
             self.storage[doc.id] = doc
         return len(matching)
 
+    @_synchronized
     def delete_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Deletes all documents that match the provided filters.
@@ -644,6 +662,7 @@ class InMemoryDocumentStore:
         self.delete_documents(doc_ids)
         return len(doc_ids)
 
+    @_synchronized
     def count_documents_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Returns the number of documents that match the provided filters.
@@ -664,6 +683,7 @@ class InMemoryDocumentStore:
             )
         return len(self.storage)
 
+    @_synchronized
     def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
@@ -701,6 +721,7 @@ class InMemoryDocumentStore:
             result[key] = len(values)
         return result
 
+    @_synchronized
     def get_metadata_fields_info(self) -> dict[str, dict[str, str]]:
         """
         Returns information about the metadata fields present in the stored documents.
@@ -724,6 +745,7 @@ class InMemoryDocumentStore:
                     type_map[key] = "keyword"
         return {k: {"type": v} for k, v in type_map.items()}
 
+    @_synchronized
     def get_metadata_field_min_max(self, metadata_field: str) -> dict[str, Any]:
         """
         Returns the minimum and maximum values for the given metadata field across all documents.
@@ -781,6 +803,7 @@ class InMemoryDocumentStore:
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
+    @_synchronized
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
@@ -792,9 +815,12 @@ class InMemoryDocumentStore:
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
+        :raises ValueError: if top_k is negative.
         """
         if not query:
             raise ValueError("Query should be a non-empty string")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
@@ -850,6 +876,7 @@ class InMemoryDocumentStore:
 
         return return_documents
 
+    @_synchronized
     def embedding_retrieval(
         self,
         query_embedding: list[float],
@@ -869,10 +896,12 @@ class InMemoryDocumentStore:
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises ValueError: if filters have invalid syntax.
+        :raises ValueError: if top_k is negative or filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
+        if top_k < 0:
+            raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
@@ -1009,6 +1038,19 @@ class InMemoryDocumentStore:
         """
         await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
+        )
+
+    async def delete_by_filter_async(self, filters: dict[str, Any]) -> int:
+        """
+        Deletes all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for deletion.
+            For filter syntax, see filter_documents.
+        :returns: The number of documents deleted.
+        :raises ValueError: if filters have invalid syntax.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.delete_by_filter(filters=filters)
         )
 
     async def update_by_filter_async(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:

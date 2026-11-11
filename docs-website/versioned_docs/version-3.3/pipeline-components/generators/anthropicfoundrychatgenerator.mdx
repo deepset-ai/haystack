@@ -2,20 +2,20 @@
 title: "AnthropicFoundryChatGenerator"
 id: anthropicfoundrychatgenerator
 slug: "/anthropicfoundrychatgenerator"
-description: "This component enables chat completions using Anthropic models served through Azure Foundry."
+description: "This component enables chat completions using Anthropic models served through Microsoft Foundry."
 hep_available: true
 ---
 
 # AnthropicFoundryChatGenerator
 
-This component enables chat completions using Anthropic models served through Azure Foundry.
+This component enables chat completions using Anthropic models served through Microsoft Foundry.
 
 <div className="key-value-table">
 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | `api_key`: Your Azure Foundry API key. Can be set with the `ANTHROPIC_FOUNDRY_API_KEY` env var. Alternatively, pass an `azure_ad_token_provider` callable.  <br /> <br />`resource`: Your Azure Foundry resource name. Can be set with the `ANTHROPIC_FOUNDRY_RESOURCE` env var. Alternatively, pass a full `endpoint` URL. |
+| **Mandatory init variables** | `api_key`: Your Microsoft Foundry API key. Can be set with the `ANTHROPIC_FOUNDRY_API_KEY` env var. Alternatively, pass an `azure_ad_token_provider` callable.  <br /> <br />`resource`: Your Microsoft Foundry resource name. Can be set with the `ANTHROPIC_FOUNDRY_RESOURCE` env var. Alternatively, pass a full `endpoint` URL. |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
 | **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
@@ -26,7 +26,7 @@ This component enables chat completions using Anthropic models served through Az
 
 ## Overview
 
-`AnthropicFoundryChatGenerator` lets you call Anthropic's Claude models through an [Azure Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/) deployment. It is a thin subclass of [`AnthropicChatGenerator`](anthropicchatgenerator.mdx) — the request and response shapes match the Anthropic Messages API, but the traffic flows through your Azure resource instead of `api.anthropic.com`.
+`AnthropicFoundryChatGenerator` lets you call Anthropic's Claude models through an [Microsoft Foundry](https://learn.microsoft.com/en-us/azure/foundry/what-is-foundry) deployment. It is a thin subclass of [`AnthropicChatGenerator`](anthropicchatgenerator.mdx) — the request and response shapes match the Anthropic Messages API, but the traffic flows through your Azure resource instead of `api.anthropic.com`.
 
 Use this generator when your organization standardizes on Azure for model hosting (billing, networking, compliance) but still wants to work against Claude. If you don't need Azure, prefer `AnthropicChatGenerator`.
 

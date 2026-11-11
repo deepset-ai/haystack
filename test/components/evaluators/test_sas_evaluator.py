@@ -2,9 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 import pytest
+from sentence_transformers import CrossEncoder
+from torch.nn import Identity, Sigmoid
 
 from haystack.components.evaluators.sas_evaluator import SASEvaluator
+from haystack.utils import expit
 from haystack.utils.device import ComponentDevice
 
 
@@ -54,6 +60,21 @@ class TestSASEvaluator:
         assert evaluator._device.to_torch_str() == "cuda:0"
         assert evaluator._token.resolve_value() == "fake-token"
 
+    @patch("haystack.components.evaluators.sas_evaluator.SentenceTransformer")
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_passes_token_to_hf(
+        self, mock_auto_config, mock_cross_encoder, mock_sentence_transformer, monkeypatch
+    ):
+        monkeypatch.setenv("HF_API_TOKEN", "fake-token")
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertModel"])
+        evaluator = SASEvaluator(model="private/model", device=ComponentDevice.from_str("cpu"))
+        evaluator.warm_up()
+
+        mock_auto_config.from_pretrained.assert_called_once_with("private/model", token="fake-token")
+        mock_sentence_transformer.assert_called_once_with("private/model", device="cpu", token="fake-token")
+        mock_cross_encoder.assert_not_called()
+
     def test_run_with_empty_inputs(self):
         evaluator = SASEvaluator()
         result = evaluator.run(ground_truth_answers=[], predicted_answers=[])
@@ -89,6 +110,32 @@ class TestSASEvaluator:
         ]
         with pytest.raises(ValueError):
             evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        ("activation_fn", "model_scores", "expected_scores"),
+        [
+            # Raw logits are normalized with a sigmoid
+            (Identity(), {"Lyon": -9.4, "Paris": 4.9}, {"Lyon": expit(-9.4), "Paris": expit(4.9)}),
+            # Scores that the model already normalized are returned as they are
+            (Sigmoid(), {"Lyon": 0.2, "Paris": 0.9}, {"Lyon": 0.2, "Paris": 0.9}),
+        ],
+    )
+    def test_run_cross_encoder_score_does_not_depend_on_batch(
+        self, activation_fn, model_scores, expected_scores, monkeypatch
+    ):
+        # Use the mocked model below instead of loading a real one
+        monkeypatch.setattr(SASEvaluator, "warm_up", lambda self: None)
+        model = MagicMock(spec=CrossEncoder)
+        model.activation_fn = activation_fn
+        model.predict.side_effect = lambda pairs, **kwargs: np.array([model_scores[pred] for pred, _ in pairs])
+        evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        evaluator._similarity_model = model
+
+        wrong_only = evaluator.run(ground_truth_answers=["Paris"], predicted_answers=["Lyon"])
+        mixed = evaluator.run(ground_truth_answers=["Paris", "Paris"], predicted_answers=["Lyon", "Paris"])
+
+        assert wrong_only["individual_scores"] == pytest.approx([expected_scores["Lyon"]])
+        assert mixed["individual_scores"] == pytest.approx([expected_scores["Lyon"], expected_scores["Paris"]])
 
     @pytest.mark.integration
     @pytest.mark.slow

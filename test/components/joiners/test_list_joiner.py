@@ -17,6 +17,18 @@ from haystack.dataclasses.answer import GeneratedAnswer
 from haystack.utils.auth import Secret
 
 
+class TestListJoinerDeserialization:
+    def test_from_dict_does_not_mutate_caller_data(self):
+        data = ListJoiner(list[ChatMessage]).to_dict()
+        serialized_type = data["init_parameters"]["list_type_"]
+        assert isinstance(serialized_type, str)
+
+        ListJoiner.from_dict(data)
+
+        assert data["init_parameters"]["list_type_"] == serialized_type
+        assert ListJoiner.from_dict(data).list_type_ == list[ChatMessage]
+
+
 class TestListJoiner:
     def test_init(self):
         joiner = ListJoiner(list[ChatMessage])

@@ -8,6 +8,9 @@ import logging
 import math
 import tempfile
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, wait
+from pathlib import Path
+from threading import Event
 from typing import Literal, cast
 from unittest.mock import patch
 
@@ -19,6 +22,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.in_memory import document_store as in_memory_module
 from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -34,6 +38,7 @@ from haystack.testing.document_store_async import (
     CountDocumentsByFilterAsyncTest,
     CountUniqueMetadataByFilterAsyncTest,
     DeleteAllAsyncTest,
+    DeleteByFilterAsyncTest,
     DeleteDocumentsAsyncTest,
     FilterDocumentsAsyncTest,
     GetMetadataFieldMinMaxAsyncTest,
@@ -44,6 +49,231 @@ from haystack.testing.document_store_async import (
 )
 
 
+@pytest.fixture
+def paused_text() -> tuple[str, Event, Event]:
+    # Pause a real write during content normalization without replacing any document-store methods.
+    tokenizing, resume = Event(), Event()
+
+    class PausedText(str):
+        __slots__ = ()
+
+        def lower(self) -> str:
+            tokenizing.set()
+            assert resume.wait(timeout=5)
+            return super().lower()
+
+    return PausedText("alpha"), tokenizing, resume
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["overwrite", "delete", "clear"])
+def test_concurrent_mutations_keep_bm25_consistent(
+    shared: bool, operation: Literal["overwrite", "delete", "clear"], paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+    fresh_store = InMemoryDocumentStore(shared=False)
+
+    def mutate() -> None:
+        if operation == "overwrite":
+            second_store.write_documents([Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE)
+        elif operation == "delete":
+            second_store.delete_documents(["same"])
+        else:
+            second_store.delete_all_documents()
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(
+                first_store.write_documents, [Document(id="same", content=content)], DuplicatePolicy.OVERWRITE
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(mutate)
+                wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+            second.result(timeout=5)
+
+        if operation != "overwrite":
+            assert first_store.filter_documents() == []
+            first_store.write_documents([Document(id="replacement", content="beta")])
+
+        current = first_store.filter_documents()
+        fresh_store.write_documents(current)
+        expected_scores = {doc.id: doc.score for doc in fresh_store.bm25_retrieval(query="beta")}
+
+        for store in (first_store, second_store):
+            assert [doc.content for doc in store.filter_documents()] == ["beta"]
+            assert {doc.id: doc.score for doc in store.bm25_retrieval(query="beta")} == pytest.approx(expected_scores)
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+        fresh_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_bm25_read_waits_for_complete_document_write(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    writer = InMemoryDocumentStore(shared=shared)
+    reader = InMemoryDocumentStore(index=writer.index) if shared else writer
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            write = executor.submit(writer.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                read = executor.submit(reader.bm25_retrieval, "alpha")
+                wait([read], timeout=0.2)
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert [(doc.id, doc.content) for doc in read.result(timeout=5)] == [("same", "alpha")]
+    finally:
+        writer.shutdown()
+        reader.shutdown()
+
+
+def test_reads_wait_for_complete_document_write(paused_text: tuple[str, Event, Event], tmp_path: Path) -> None:
+    content, tokenizing, resume = paused_text
+    store = InMemoryDocumentStore(shared=False)
+    store.write_documents([Document(id="old", content="beta", meta={"kind": "a", "n": 1}, embedding=[0.1, 0.2])])
+    filters = {"field": "meta.kind", "operator": "==", "value": "a"}
+    readers = {
+        "filter_documents": lambda: store.filter_documents(filters=filters),
+        "embedding_retrieval": lambda: store.embedding_retrieval(query_embedding=[0.1, 0.2], filters=filters),
+        "count_documents_by_filter": lambda: store.count_documents_by_filter(filters=filters),
+        "count_unique_metadata_by_filter": lambda: store.count_unique_metadata_by_filter(
+            filters=filters, metadata_fields=["kind"]
+        ),
+        "get_metadata_fields_info": store.get_metadata_fields_info,
+        "get_metadata_field_min_max": lambda: store.get_metadata_field_min_max(metadata_field="n"),
+        "get_metadata_field_unique_values": lambda: store.get_metadata_field_unique_values(metadata_field="kind"),
+        "save_to_disk": lambda: store.save_to_disk(str(tmp_path / "store.json")),
+    }
+    try:
+        with ThreadPoolExecutor(max_workers=len(readers) + 1) as executor:
+            write = executor.submit(
+                store.write_documents,
+                [Document(id="new", content=content, meta={"kind": "a", "n": 2}, embedding=[0.1, 0.2])],
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                reads = {name: executor.submit(reader) for name, reader in readers.items()}
+                wait(reads.values(), timeout=0.2)
+                finished_during_write = [name for name, read in reads.items() if read.done()]
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert finished_during_write == []
+            for read in reads.values():
+                read.result(timeout=5)
+            assert reads["count_documents_by_filter"].result() == 2
+    finally:
+        store.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shared", [False, True])
+async def test_concurrent_async_overwrites_keep_bm25_consistent(
+    shared: bool, paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_store = InMemoryDocumentStore(shared=shared, async_executor=executor)
+        second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+        try:
+            first = asyncio.create_task(
+                first_store.write_documents_async(
+                    [Document(id="same", content=content)], policy=DuplicatePolicy.OVERWRITE
+                )
+            )
+            try:
+                assert await asyncio.to_thread(tokenizing.wait, 5)
+                second = asyncio.create_task(
+                    second_store.write_documents_async(
+                        [Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE
+                    )
+                )
+                await asyncio.wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert await asyncio.gather(first, second) == [1, 1]
+            result = await first_store.bm25_retrieval_async(query="beta")
+            assert [(doc.id, doc.content) for doc in result] == [("same", "beta")]
+        finally:
+            first_store.shutdown()
+            second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_independent_indexes_do_not_block_each_other(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore() if shared else InMemoryDocumentStore(index=first_store.index, shared=False)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(first_store.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(second_store.write_documents, [Document(id="same", content="beta")])
+                assert second.result(timeout=2) == 1
+                assert [doc.content for doc in second_store.bm25_retrieval(query="beta")] == ["beta"]
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["delete", "update"])
+def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
+    shared: bool, operation: Literal["delete", "update"]
+) -> None:
+    store = InMemoryDocumentStore(shared=shared)
+    other = InMemoryDocumentStore(index=store.index) if shared else store
+    store.write_documents([Document(id="same", content="alpha", meta={"kind": "old"})])
+    matching, resume = Event(), Event()
+    original_matches = in_memory_module.document_matches_filter
+
+    def paused_matches(**kwargs):
+        matching.set()
+        assert resume.wait(timeout=5)
+        return original_matches(**kwargs)
+
+    def mutate() -> int:
+        filters = {"field": "meta.kind", "operator": "==", "value": "old"}
+        if operation == "delete":
+            return store.delete_by_filter(filters=filters)
+        return store.update_by_filter(filters=filters, meta={"updated": True})
+
+    try:
+        with patch.object(in_memory_module, "document_matches_filter", paused_matches):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                mutation = executor.submit(mutate)
+                try:
+                    assert matching.wait(timeout=5)
+                    overwrite = executor.submit(
+                        other.write_documents,
+                        [Document(id="same", content="beta", meta={"kind": "new"})],
+                        DuplicatePolicy.OVERWRITE,
+                    )
+                    wait([overwrite], timeout=0.2)
+                finally:
+                    resume.set()
+                assert mutation.result(timeout=5) == 1
+                assert overwrite.result(timeout=5) == 1
+
+        assert [(doc.content, doc.meta) for doc in store.filter_documents()] == [("beta", {"kind": "new"})]
+        assert [doc.content for doc in store.bm25_retrieval(query="beta")] == ["beta"]
+    finally:
+        store.shutdown()
+        other.shutdown()
+
+
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
     UpdateByFilterAsyncTest,
@@ -51,6 +281,7 @@ class TestMemoryDocumentStore(
     CountDocumentsAsyncTest,
     WriteDocumentsAsyncTest,
     DeleteAllAsyncTest,
+    DeleteByFilterAsyncTest,
     DeleteDocumentsAsyncTest,
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterAsyncTest,
@@ -278,6 +509,13 @@ class TestMemoryDocumentStore(
         document_store.write_documents(docs)
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
             document_store.bm25_retrieval(query="", top_k=1)
+
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_bm25_retrieval_with_negative_top_k_raises(self, document_store: InMemoryDocumentStore, top_k: int) -> None:
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        document_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            document_store.bm25_retrieval(query="world languages", top_k=top_k)
 
     def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
@@ -509,6 +747,19 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
 
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    def test_embedding_retrieval_with_negative_top_k_raises(
+        self, in_memory_doc_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+            Document(content="Python is a popular programming language", embedding=[0.5, 0.5, 0.5, 0.5]),
+        ]
+        in_memory_doc_store.write_documents(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
+
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
@@ -733,6 +984,29 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_bm25_retrieval_async_with_negative_top_k_raises(
+        self, document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        await document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await document_store.bm25_retrieval_async(query="world languages", top_k=top_k)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("top_k", [-1, -5])
+    async def test_embedding_retrieval_async_with_negative_top_k_raises(
+        self, cosine_document_store: InMemoryDocumentStore, top_k: int
+    ) -> None:
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        await cosine_document_store.write_documents_async(docs)
+        with pytest.raises(ValueError, match="top_k must be greater than or equal to 0"):
+            await cosine_document_store.embedding_retrieval_async(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=top_k)
 
     @pytest.mark.asyncio
     async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore) -> None:
@@ -973,6 +1247,44 @@ class TestMemoryDocumentStore(
         reused_scores = {doc.id: doc.score for doc in reused_store.bm25_retrieval(query="common", top_k=3)}
 
         assert reused_scores == pytest.approx(fresh_scores)
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_scores_do_not_depend_on_documents_without_content(self, bm25_algorithm):
+        text_documents = [
+            Document(id="short", content="python tips for beginners"),
+            Document(id="long", content="python python guide covering advanced topics in depth today"),
+            Document(id="other", content="cooking pasta at home"),
+        ]
+        text_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+        mixed_store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm, shared=False)
+
+        text_store.write_documents(text_documents)
+        mixed_store.write_documents(text_documents)
+        mixed_store.write_documents([Document(id=f"image_{i}", embedding=[0.1, 0.2]) for i in range(20)])
+
+        text_scores = {doc.id: doc.score for doc in text_store.bm25_retrieval(query="python", top_k=3)}
+        mixed_scores = {doc.id: doc.score for doc in mixed_store.bm25_retrieval(query="python", top_k=3)}
+
+        assert mixed_scores == pytest.approx(text_scores)
+        assert mixed_store._avg_doc_len == pytest.approx(text_store._avg_doc_len)
+
+    def test_bm25_avg_doc_len_with_documents_without_content(self):
+        store = InMemoryDocumentStore(shared=False)
+        store.write_documents(
+            [
+                Document(id="d1", content="hello world"),  # 2 tokens
+                Document(id="d2", content="foo bar baz"),  # 3 tokens
+                Document(id="image", embedding=[0.1, 0.2]),
+            ]
+        )
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        store.delete_documents(["image"])
+        assert store._avg_doc_len == pytest.approx(2.5)
+
+        # Overwriting a text document with one without content removes it from the statistics
+        store.write_documents([Document(id="d1", embedding=[0.1, 0.2])], policy=DuplicatePolicy.OVERWRITE)
+        assert store._avg_doc_len == pytest.approx(3.0)
 
 
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):

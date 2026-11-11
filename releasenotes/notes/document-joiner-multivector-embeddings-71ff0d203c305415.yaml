@@ -1,0 +1,3 @@
+---
+enhancements:
+  - '``DocumentJoiner(join_mode="merge_embeddings")`` now supports multivector embeddings in addition to dense and sparse embeddings when combining documents with the same ID.'

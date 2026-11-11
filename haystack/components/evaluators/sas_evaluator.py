@@ -13,6 +13,7 @@ from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
+    from torch.nn import Identity
     from transformers import AutoConfig
 
 
@@ -112,7 +113,7 @@ class SASEvaluator:
             return
 
         token = self._token.resolve_value() if self._token else None
-        config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
+        config = AutoConfig.from_pretrained(self._model, token=token)
         cross_encoder_used = False
         if config.architectures:
             cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
@@ -160,9 +161,8 @@ class SASEvaluator:
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
 
-            # All Cross Encoders do not return a set of logits scores that are normalized
-            # We normalize scores if they are larger than 1
-            if (similarity_scores > 1).any():
+            # Cross Encoders with an Identity activation return raw logits, so we apply a sigmoid to map them to [0, 1]
+            if isinstance(self._similarity_model.activation_fn, Identity):
                 similarity_scores = expit(similarity_scores)
 
             # Convert scores to list of floats from numpy array

@@ -40,7 +40,7 @@ If you are not initializing the Evaluator with your own Chat Generator other tha
 - `inputs`: The inputs that the `LLMEvaluator` expects and that it evaluates. The inputs determine the incoming connections of the component. Each input is a tuple of an input name and input type. Input types must be lists. An example could be `[("responses", List[str])]`.
 - `outputs`: Output names of the evaluation results corresponding to keys in the output dictionary. An example could be a `["score"]`.
 - `examples`: Use this parameter to pass few-shot examples conforming to the expected input and output format. These examples are included in the prompt that is sent to the LLM. Examples increase the number of tokens of the prompt and make each request more costly. Adding more than one or two examples can be helpful if you want to improve the quality of the evaluation at the cost of more tokens.
-- `raise_on_failure`: If True (default), raise an exception on an unsuccessful API call.
+- `raise_on_failure`: If True (default), raise an exception when the chat generator call fails or its response isn't valid JSON with the expected keys. If False, log a warning and set the result for that input to `None`.
 - `progress_bar`: Whether to show a progress bar during the evaluation. True is the default.
 
 Each example must be a dictionary with keys `inputs` and `outputs`.

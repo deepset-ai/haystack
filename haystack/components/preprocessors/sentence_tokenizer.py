@@ -15,7 +15,36 @@ with LazyImport("Run 'pip install nltk>=3.9.1'") as nltk_imports:
 logger = logging.getLogger(__name__)
 
 Language = Literal[
-    "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml"
+    "ru",
+    "sl",
+    "es",
+    "sv",
+    "tr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "it",
+    "no",
+    "pl",
+    "pt",
+    "ml",
+    "hi",
+    "mr",
+    "bn",
+    "sa",
+    "ne",
+    "gu",
+    "pa",
+    "or",
+    "as",
+    "kn",
+    "te",
 ]
 
 ISO639_TO_NLTK = {
@@ -39,6 +68,9 @@ ISO639_TO_NLTK = {
     "pt": "portuguese",
     "ml": "malayalam",
 }
+
+# Languages that use the danda (।) and double danda (॥) as sentence terminators
+DANDA_LANGUAGES = {"hi", "mr", "bn", "sa", "ne", "gu", "pa", "or", "as", "kn", "te", "ml"}
 
 QUOTE_SPANS_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 
@@ -67,20 +99,27 @@ if nltk_imports.is_successful():
 
         language_name = ISO639_TO_NLTK.get(language)
 
-        if language_name is not None:
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
-        else:
+        if language_name is None:
             logger.warning(
-                "PreProcessor couldn't find the default sentence tokenizer model for {language}. "
-                " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
+                "No pretrained NLTK Punkt model is configured for {language}. Using the English model instead.",
                 language=language,
             )
-            sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
+            language_name = "english"
 
+        sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
+
+        use_danda = language in DANDA_LANGUAGES
         if keep_white_spaces:
-            sentence_tokenizer._lang_vars = CustomPunktLanguageVars()
+            sentence_tokenizer._lang_vars = DandaCustomPunktLanguageVars() if use_danda else CustomPunktLanguageVars()
+        elif use_danda:
+            sentence_tokenizer._lang_vars = DandaPunktLanguageVars()
 
         return sentence_tokenizer
+
+    class DandaPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
+        # NLTK only ends sentences on ".", "?" and "!". The danda (U+0964) and double danda (U+0965) are the
+        # sentence terminators in Hindi, Marathi, Bengali and other Indic scripts.
+        sent_end_chars = (".", "?", "!", "।", "॥")
 
     class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
         # The following adjustment of PunktSentenceTokenizer is inspired by:
@@ -116,6 +155,9 @@ if nltk_imports.is_successful():
                     re.UNICODE | re.VERBOSE,
                 )
                 return self._re_period_context
+
+    class DandaCustomPunktLanguageVars(CustomPunktLanguageVars):
+        sent_end_chars = DandaPunktLanguageVars.sent_end_chars
 
 
 class SentenceSplitter:

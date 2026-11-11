@@ -1,8 +1,8 @@
 # Pinned digest defaults so the base images are resolvable by hash even when
 # the args are not passed (e.g. by supply-chain scanners or a plain `docker build`).
 # docker/docker-bake.hcl overrides these at build time; keep the digests in sync.
-ARG build_image=python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
-ARG base_image=python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
+ARG build_image=python:3.12-slim@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
+ARG base_image=python:3.12-slim@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
 
 FROM ${build_image} AS build-image
 
@@ -12,7 +12,7 @@ ARG haystack_version
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.17@sha256:03bdc89bb9798628846e60c3a9ad19006c8c3c724ccd2985a33145c039a0577b /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.4@sha256:9f130421e930bfbdc563c00740466603f8723158e90297d07957c2294640262b /uv /uvx /bin/
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
@@ -25,7 +25,9 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade setuptools due to https://nvd.nist.gov/vuln/detail/CVE-2022-40897
-RUN uv pip install --no-cache-dir -U setuptools && \
+# Upgrade pip because the version bundled with CPython trusts the compromised eMudhra/emSign CAs,
+# see https://discuss.python.org/t/109576
+RUN uv pip install --no-cache-dir -U setuptools "pip>=26.2.2" && \
     uv pip install --no-cache-dir .
 
 FROM ${base_image} AS final
