@@ -823,7 +823,8 @@ Invoke the chat endpoint based on the provided messages and generation parameter
   For more details on the parameters supported by the Cohere API, refer to the
   Cohere [documentation](https://docs.cohere.com/reference/chat).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter set during component initialization.
+  If set, it will override the `tools` parameter set during component initialization. Pass an empty
+  list to disable tools for this call.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   The callback function accepts StreamingChunk as an argument.
 
@@ -855,7 +856,8 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
   For more details on the parameters supported by the Cohere API, refer to the
   Cohere [documentation](https://docs.cohere.com/reference/chat).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter set during component initialization.
+  If set, it will override the `tools` parameter set during component initialization. Pass an empty
+  list to disable tools for this call.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 
 **Returns:**
