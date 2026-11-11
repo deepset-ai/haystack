@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    PipelineStreamHandle.aclose() no longer swallows cancellation of the
+    task that calls it. Previously, cleanup guarded asyncio.wait_for() with
+    contextlib.suppress(BaseException), so an expired asyncio.timeout()
+    or a cancelled request could continue past aclose() and return normally.
+    Caller cancellation is now propagated, while failures from the pipeline task
+    itself remain suppressed during cleanup and are still surfaced by result.
