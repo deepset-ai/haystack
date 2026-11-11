@@ -103,8 +103,7 @@ class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
-    Calls to `write_documents`, `delete_documents`, `delete_all_documents`, `update_by_filter`,
-    `delete_by_filter` and `bm25_retrieval` are serialized per index, including across shared instances.
+    Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
     """
 
     def __init__(
@@ -451,6 +450,7 @@ class InMemoryDocumentStore:
         """
         return default_from_dict(cls, data)
 
+    @_synchronized
     def save_to_disk(self, path: str) -> None:
         """
         Write the database and its data to disk as a JSON file.
@@ -492,6 +492,7 @@ class InMemoryDocumentStore:
         """
         return len(self.storage.keys())
 
+    @_synchronized
     def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
@@ -661,6 +662,7 @@ class InMemoryDocumentStore:
         self.delete_documents(doc_ids)
         return len(doc_ids)
 
+    @_synchronized
     def count_documents_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Returns the number of documents that match the provided filters.
@@ -681,6 +683,7 @@ class InMemoryDocumentStore:
             )
         return len(self.storage)
 
+    @_synchronized
     def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
@@ -718,6 +721,7 @@ class InMemoryDocumentStore:
             result[key] = len(values)
         return result
 
+    @_synchronized
     def get_metadata_fields_info(self) -> dict[str, dict[str, str]]:
         """
         Returns information about the metadata fields present in the stored documents.
@@ -741,6 +745,7 @@ class InMemoryDocumentStore:
                     type_map[key] = "keyword"
         return {k: {"type": v} for k, v in type_map.items()}
 
+    @_synchronized
     def get_metadata_field_min_max(self, metadata_field: str) -> dict[str, Any]:
         """
         Returns the minimum and maximum values for the given metadata field across all documents.
@@ -871,6 +876,7 @@ class InMemoryDocumentStore:
 
         return return_documents
 
+    @_synchronized
     def embedding_retrieval(
         self,
         query_embedding: list[float],

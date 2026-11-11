@@ -9,6 +9,7 @@ import math
 import tempfile
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, wait
+from pathlib import Path
 from threading import Event
 from typing import Literal, cast
 from unittest.mock import patch
@@ -132,6 +133,45 @@ def test_bm25_read_waits_for_complete_document_write(shared: bool, paused_text: 
     finally:
         writer.shutdown()
         reader.shutdown()
+
+
+def test_reads_wait_for_complete_document_write(paused_text: tuple[str, Event, Event], tmp_path: Path) -> None:
+    content, tokenizing, resume = paused_text
+    store = InMemoryDocumentStore(shared=False)
+    store.write_documents([Document(id="old", content="beta", meta={"kind": "a", "n": 1}, embedding=[0.1, 0.2])])
+    filters = {"field": "meta.kind", "operator": "==", "value": "a"}
+    readers = {
+        "filter_documents": lambda: store.filter_documents(filters=filters),
+        "embedding_retrieval": lambda: store.embedding_retrieval(query_embedding=[0.1, 0.2], filters=filters),
+        "count_documents_by_filter": lambda: store.count_documents_by_filter(filters=filters),
+        "count_unique_metadata_by_filter": lambda: store.count_unique_metadata_by_filter(
+            filters=filters, metadata_fields=["kind"]
+        ),
+        "get_metadata_fields_info": store.get_metadata_fields_info,
+        "get_metadata_field_min_max": lambda: store.get_metadata_field_min_max(metadata_field="n"),
+        "get_metadata_field_unique_values": lambda: store.get_metadata_field_unique_values(metadata_field="kind"),
+        "save_to_disk": lambda: store.save_to_disk(str(tmp_path / "store.json")),
+    }
+    try:
+        with ThreadPoolExecutor(max_workers=len(readers) + 1) as executor:
+            write = executor.submit(
+                store.write_documents,
+                [Document(id="new", content=content, meta={"kind": "a", "n": 2}, embedding=[0.1, 0.2])],
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                reads = {name: executor.submit(reader) for name, reader in readers.items()}
+                wait(reads.values(), timeout=0.2)
+                finished_during_write = [name for name, read in reads.items() if read.done()]
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert finished_during_write == []
+            for read in reads.values():
+                read.result(timeout=5)
+            assert reads["count_documents_by_filter"].result() == 2
+    finally:
+        store.shutdown()
 
 
 @pytest.mark.asyncio
