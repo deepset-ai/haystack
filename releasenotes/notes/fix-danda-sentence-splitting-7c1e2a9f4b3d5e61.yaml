@@ -1,0 +1,26 @@
+---
+enhancements:
+  - |
+    ``DocumentSplitter`` and ``RecursiveDocumentSplitter`` now recognize the danda (``।``) and double danda (``॥``) as
+    sentence boundaries when a supported Indic language is selected. Text containing multiple sentences separated by
+    these characters can now be split into separate chunks instead of being treated as a single sentence.
+
+    Supported language codes are ``hi``, ``mr``, ``bn``, ``sa``, ``ne``, ``gu``, ``pa``, ``or``, ``as``, ``kn``,
+    ``te``, and ``ml``.
+
+    .. code-block:: python
+
+        from haystack import Document
+        from haystack.components.preprocessors import DocumentSplitter
+
+        splitter = DocumentSplitter(
+            split_by="sentence",
+            split_length=1,
+            language="hi",
+        )
+
+        result = splitter.run(
+            documents=[Document(content="यह पहला वाक्य है। यह दूसरा वाक्य है॥")]
+        )
+        print([doc.content for doc in result["documents"]])
+        # >> ["यह पहला वाक्य है। ", "यह दूसरा वाक्य है॥"]
