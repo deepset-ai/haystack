@@ -66,6 +66,8 @@ def test_run_with_multiple_regexps():
         ([r"(?P<n>\d+)px", r"(?P<n>\d+)em"], "10px and 2em", " and "),
         # a global inline flag is allowed in any pattern, not just the first
         ([r"\d+", r"(?m)^>.*\n"], "> quoted 1\nreply 2\n", "reply \n"),
+        # patterns run in list order, each on the text left by the ones before it
+        (["bc", "ab"], "abc", "a"),
     ],
 )
 def test_run_applies_each_regexp_independently(remove_regexps, text, expected):
