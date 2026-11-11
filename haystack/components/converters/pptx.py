@@ -17,7 +17,7 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
-    from pptx.oxml.text import CT_RegularTextRun, CT_TextField
+    from pptx.oxml.text import CT_RegularTextRun, CT_TextField, CT_TextLineBreak
     from pptx.shapes.autoshape import Shape
     from pptx.shapes.base import BaseShape
     from pptx.shapes.graphfrm import GraphicFrame
@@ -151,6 +151,9 @@ class PPTXToDocument:
                         parts.append(f"{run.text} ({run.hyperlink.address})")
                 else:
                     parts.append(run.text)
+            elif isinstance(child, CT_TextLineBreak):
+                # Same character python-pptx uses for soft line breaks in paragraph.text.
+                parts.append("\v")
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
