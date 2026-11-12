@@ -57,6 +57,7 @@ def test_pdf_content_extraction_pipeline() -> None:
     indexing_pipe.connect("doc_length_router.short_documents", "content_extractor.documents")
     indexing_pipe.connect("doc_length_router.long_documents", "final_doc_joiner.documents")
     indexing_pipe.connect("content_extractor.documents", "final_doc_joiner.documents")
+    indexing_pipe.connect("content_extractor.failed_documents", "final_doc_joiner.documents")
     indexing_pipe.connect("final_doc_joiner.documents", "document_writer.documents")
 
     # Test with both text-searchable and non-text-searchable PDFs
