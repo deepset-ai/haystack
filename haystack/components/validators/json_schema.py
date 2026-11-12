@@ -169,17 +169,20 @@ class JsonSchemaValidator:
         else:
             validation_schema = json_schema
         try:
-            schema_type = validation_schema.get("type")
-            validates_array = not using_openai_schema and (
-                schema_type == "array" or isinstance(schema_type, list) and "array" in schema_type
-            )
-            if validates_array or not isinstance(last_message_json, list):
-                last_message_json = [last_message_json]
-            for content in last_message_json:
-                if using_openai_schema:
-                    validate(instance=content["function"]["arguments"], schema=validation_schema)
-                else:
-                    validate(instance=content, schema=validation_schema)
+            if using_openai_schema:
+                calls = last_message_json if isinstance(last_message_json, list) else [last_message_json]
+                for call in calls:
+                    validate(instance=call["function"]["arguments"], schema=validation_schema)
+            else:
+                schema_type = json_schema.get("type")
+                validates_array = schema_type == "array" or (isinstance(schema_type, list) and "array" in schema_type)
+                instances = (
+                    last_message_json
+                    if isinstance(last_message_json, list) and not validates_array
+                    else [last_message_json]
+                )
+                for instance in instances:
+                    validate(instance=instance, schema=validation_schema)
 
             return {"validated": [last_message]}
         except ValidationError as e:
@@ -199,7 +202,7 @@ class JsonSchemaValidator:
         error_message: str,
         error_path: str,
         error_schema_path: str,
-        json_schema: dict[str, Any],
+        json_schema: dict[str, Any] | bool,
         failing_json: str,
     ) -> str:
         """

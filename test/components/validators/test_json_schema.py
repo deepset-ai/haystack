@@ -143,6 +143,32 @@ class TestJsonSchemaValidator:
 
         assert list(result) == [output]
 
+    def test_nested_arrays_require_nested_schema(self):
+        inner_schema = {"type": "array", "items": {"type": "integer"}}
+        message = ChatMessage.from_assistant("[[1, 2], [3, 4]]")
+        validator = JsonSchemaValidator(json_schema=inner_schema)
+
+        result = validator.run([message])
+        assert list(result) == ["validation_error"]
+        recovery_text = result["validation_error"][0].text
+        assert recovery_text is not None
+        assert "Schema Path: items -> type" in recovery_text
+
+        result = validator.run([message], json_schema={"type": "array", "items": inner_schema})
+        assert result == {"validated": [message]}
+
+    def test_non_array_schema_validates_every_list_item(self):
+        validator = JsonSchemaValidator(json_schema={"type": "object", "required": ["name"]})
+        valid = ChatMessage.from_assistant('[{"name": "first"}, {"name": "second"}]')
+        invalid = ChatMessage.from_assistant('[{"name": "first"}, {}]')
+
+        assert validator.run([valid]) == {"validated": [valid]}
+        result = validator.run([invalid])
+        assert list(result) == ["validation_error"]
+        recovery_text = result["validation_error"][0].text
+        assert recovery_text is not None
+        assert "'name' is a required property" in recovery_text
+
     # Validates recursive_json_to_object method
     def test_recursive_json_to_object(self, genuine_fc_message):
         arguments_is_string = json.loads(genuine_fc_message)
@@ -226,6 +252,19 @@ class TestJsonSchemaValidator:
         assert "validated" in result
         assert len(result["validated"]) == 1
         assert result["validated"][0] == messages[1]
+
+    @pytest.mark.parametrize("parameters, output", [(True, "validated"), (False, "validation_error")])
+    def test_validates_function_call_with_boolean_schema(self, parameters, output):
+        validator = JsonSchemaValidator(
+            json_schema={"name": "collect", "description": "Collect values.", "parameters": parameters}
+        )
+        message = ChatMessage.from_assistant('{"function": {"arguments": "{}"}}')
+
+        result = validator.run([message])
+
+        assert list(result) == [output]
+        if parameters:
+            assert result == {"validated": [message]}
 
     def test_validates_function_call_list_with_array_arguments(self):
         validator = JsonSchemaValidator(
