@@ -480,8 +480,10 @@ class InMemoryDocumentStore:
             except Exception as e:
                 raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e
 
+            # Parse the documents first so an invalid snapshot leaves the index untouched
             documents = [Document.from_dict(doc) for doc in data.pop("documents")]
             cls_object = default_from_dict(cls, data)
+            # Hold the index lock so synchronized readers never see a partially restored index
             with cls_object._lock:
                 cls_object.delete_all_documents()
                 cls_object.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
