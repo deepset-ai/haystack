@@ -188,7 +188,8 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span
     "execute tool" span per invocation
     (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span),
     and tracing backends such as Langfuse follow the same model. The span is tagged with the tool's identity; the caller
-    adds the call arguments and result as content tags, and sets `haystack.tool.error` to `True` when the call fails.
+    adds the call arguments, the raw tool output, and the result string the LLM sees as content tags, and sets
+    `haystack.tool.error` to `True` when the call fails.
 
     The parent is passed in rather than read from the tracer here: the calls of a step run concurrently, so a tracer
     that tracks the active span globally would report a sibling tool span as current and the spans would end up chained
@@ -202,18 +203,19 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span
 
 
 def _make_context_bound_invoke(
-    tool: Tool, args: dict[str, Any], tool_call: ToolCall, parent_span: tracing.Span | None
-) -> Callable[[], Any]:
+    tool: Tool, args: dict[str, Any], tool_call: ToolCall, parent_span: tracing.Span | None, *, raise_on_failure: bool
+) -> Callable[[], ToolInvocationError | tuple[Any, ChatMessage]]:
     """
     Return a zero-arg callable that runs `tool.invoke(**args)` under the current contextvars snapshot.
 
     This preserves tracing spans and other context-local state across thread-pool boundaries, so spans opened by the
-    tool itself stay attached to the calling trace. The callable returns a ToolInvocationError instead of raising so
-    that parallel executions can collect failures without aborting the whole batch.
+    tool itself stay attached to the calling trace. The callable returns the raw result paired with its tool-result
+    message, or the ToolInvocationError instead of raising so that parallel executions can collect failures without
+    aborting the whole batch.
     """
     ctx = contextvars.copy_context()
 
-    def _invoke() -> Any:
+    def _invoke() -> ToolInvocationError | tuple[Any, ChatMessage]:
         with _create_tool_span(tool, tool_call, parent_span) as span:
             span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
             try:
@@ -223,7 +225,9 @@ def _make_context_bound_invoke(
                 span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                 return e
             span.set_content_tag("haystack.agent.step.tool.output", result)
-            return result
+            message = _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+            span.set_content_tag("haystack.agent.step.tool.result", message.tool_call_results[0].result)
+            return result, message
 
     def _runner() -> Any:
         return ctx.run(_invoke)
@@ -237,6 +241,8 @@ def _make_bounded_invoke_async(
     semaphore: asyncio.Semaphore,
     tool_call: ToolCall,
     parent_span: tracing.Span | None,
+    *,
+    raise_on_failure: bool,
 ) -> Callable[[], Any]:
     """
     Return a zero-arg async callable that awaits `tool.invoke_async(**args)` while holding `semaphore`.
@@ -246,11 +252,11 @@ def _make_bounded_invoke_async(
     the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch, so spans opened by
     the tool itself stay attached to the calling trace.
 
-    Returns a `ToolInvocationError` instead of raising so that gathered executions can collect failures
-    without aborting the whole batch.
+    The callable returns the raw result paired with its tool-result message, or the `ToolInvocationError` instead of
+    raising so that gathered executions can collect failures without aborting the whole batch.
     """
 
-    async def _runner() -> Any:
+    async def _runner() -> ToolInvocationError | tuple[Any, ChatMessage]:
         async with semaphore:
             with _create_tool_span(tool, tool_call, parent_span) as span:
                 span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
@@ -261,7 +267,9 @@ def _make_bounded_invoke_async(
                     span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                     return e
                 span.set_content_tag("haystack.agent.step.tool.output", result)
-                return result
+                message = _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+                span.set_content_tag("haystack.agent.step.tool.result", message.tool_call_results[0].result)
+                return result, message
 
     return _runner
 
@@ -496,22 +504,29 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
 
 
 def _finalize_tool_result(
-    result: Any, tool_call: ToolCall, tool: Tool, state: State, *, raise_on_failure: bool
+    outcome: ToolInvocationError | tuple[Any, ChatMessage],
+    tool_call: ToolCall,
+    tool: Tool,
+    state: State,
+    *,
+    raise_on_failure: bool,
 ) -> ChatMessage:
     """
-    Turn a single tool invocation result into a tool-result ChatMessage, merging outputs into State.
+    Merge a single tool invocation outcome into State and return its tool-result ChatMessage.
 
     On a `ToolInvocationError`, either re-raise (when `raise_on_failure`) or return an error message. Otherwise
-    merge the tool's outputs into State and build the result message.
+    `outcome` is the raw result and the message built inside the tool span: merge the result into State and return
+    the message.
     """
-    if isinstance(result, ToolInvocationError):
+    if isinstance(outcome, ToolInvocationError):
         if raise_on_failure:
-            raise result
-        logger.error("{error_exception}", error_exception=result)
-        return ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True)
+            raise outcome
+        logger.error("{error_exception}", error_exception=outcome)
+        return ChatMessage.from_tool(tool_result=str(outcome), origin=tool_call, error=True)
 
+    result, message = outcome
     _merge_tool_outputs_into_state(tool, result, state)
-    return _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+    return message
 
 
 def _run_tool(
@@ -574,17 +589,21 @@ def _run_tool(
                 )
                 futures[idx] = executor.submit(
                     _make_context_bound_invoke(
-                        tool=resolved_tools[idx], args=args, tool_call=tool_calls[idx], parent_span=parent_span
+                        tool=resolved_tools[idx],
+                        args=args,
+                        tool_call=tool_calls[idx],
+                        parent_span=parent_span,
+                        raise_on_failure=raise_on_failure,
                     )
                 )
 
             # Merge results in call order within the batch so write-write merges stay deterministic.
             for idx in batch:
                 message = _finalize_tool_result(
-                    futures[idx].result(),
-                    tool_calls[idx],
-                    resolved_tools[idx],
-                    state,
+                    outcome=futures[idx].result(),
+                    tool_call=tool_calls[idx],
+                    tool=resolved_tools[idx],
+                    state=state,
                     raise_on_failure=raise_on_failure,
                 )
                 results[idx] = message
@@ -669,13 +688,18 @@ async def _run_tool_async(
                 semaphore=semaphore,
                 tool_call=tool_calls[idx],
                 parent_span=parent_span,
+                raise_on_failure=raise_on_failure,
             )()
         batch_results = await asyncio.gather(*tasks.values())
 
         # Merge results in call order within the batch so write-write merges stay deterministic.
-        for idx, result in zip(tasks.keys(), batch_results, strict=True):
+        for idx, outcome in zip(tasks.keys(), batch_results, strict=True):
             message = _finalize_tool_result(
-                result, tool_calls[idx], resolved_tools[idx], state, raise_on_failure=raise_on_failure
+                outcome=outcome,
+                tool_call=tool_calls[idx],
+                tool=resolved_tools[idx],
+                state=state,
+                raise_on_failure=raise_on_failure,
             )
             results[idx] = message
             if streaming_callback is not None:

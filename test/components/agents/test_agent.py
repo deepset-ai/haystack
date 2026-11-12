@@ -92,6 +92,17 @@ def weather_tool():
 
 
 @pytest.fixture
+def uppercase_weather_tool():
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=weather_function,
+        outputs_to_string={"source": "weather", "handler": str.upper},
+    )
+
+
+@pytest.fixture
 def failing_tool():
     def failing_function(location: str) -> dict[str, str]:
         raise RuntimeError("weather service unavailable")
@@ -1510,9 +1521,37 @@ class TestAgentTracing:
             "haystack.tool.description": "Provides weather information for a given location.",
             "haystack.agent.step.tool.input": {"location": "Berlin"},
             "haystack.agent.step.tool.output": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+            "haystack.agent.step.tool.result": '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}',
         }
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
+
+    def test_tracing_span_tool_result_uses_outputs_to_string(self, spying_tracer, uppercase_weather_tool):
+        """The tool span records the result the LLM sees, after the `outputs_to_string` handler ran."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_tool_result_uses_outputs_to_string(
+        self, spying_tracer, uppercase_weather_tool
+    ):
+        """The async path also records the `outputs_to_string` result on each tool span."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
 
     def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
