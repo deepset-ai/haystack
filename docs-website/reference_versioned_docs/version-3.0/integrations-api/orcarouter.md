@@ -89,3 +89,15 @@ Unless specified otherwise, the default model is `openai/gpt-4o-mini`.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
