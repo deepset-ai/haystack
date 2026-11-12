@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import logging
 from collections.abc import Iterable
 from typing import Any
@@ -2971,3 +2972,58 @@ class TestFindComponentsBlockingPipeline:
         # actually blocking.
         assert blocking_comps == ["a_comp3", "blocking_comp"]
         assert blocking_comp_types == ["FakeComponent", "FakeComponent"]
+
+
+@component
+class _ClosingFails:
+    @component.output_types(v=str)
+    def run(self):
+        return {"v": "bad"}
+
+    def close(self):
+        raise RuntimeError("close failed")
+
+    async def close_async(self):
+        raise RuntimeError("close failed")
+
+
+@component
+class _ClosingSucceeds:
+    def __init__(self):
+        self.closed = False
+
+    @component.output_types(v=str)
+    def run(self):
+        return {"v": "good"}
+
+    def close(self):
+        self.closed = True
+
+    async def close_async(self):
+        self.closed = True
+
+
+def test_close_continues_after_a_component_error():
+    pipeline = Pipeline()
+    good = _ClosingSucceeds()
+    pipeline.add_component("bad", _ClosingFails())
+    pipeline.add_component("good", good)
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        pipeline.close()
+
+    assert good.closed
+
+
+def test_close_async_continues_after_a_component_error():
+    pipeline = Pipeline()
+    good = _ClosingSucceeds()
+    pipeline.add_component("bad", _ClosingFails())
+    pipeline.add_component("good", good)
+
+    async def _close():
+        with pytest.raises(RuntimeError, match="close failed"):
+            await pipeline.close_async()
+
+    asyncio.run(_close())
+    assert good.closed
