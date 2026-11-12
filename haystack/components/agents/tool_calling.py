@@ -225,7 +225,9 @@ def _make_context_bound_invoke(
                 span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                 return e
             span.set_content_tag("haystack.agent.step.tool.output", result)
-            message = _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+            message = _build_tool_result_message(
+                result=result, tool_call=tool_call, tool=tool, raise_on_failure=raise_on_failure
+            )
             span.set_content_tag("haystack.agent.step.tool.result", message.tool_call_results[0].result)
             return result, message
 
@@ -267,7 +269,9 @@ def _make_bounded_invoke_async(
                     span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                     return e
                 span.set_content_tag("haystack.agent.step.tool.output", result)
-                message = _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+                message = _build_tool_result_message(
+                    result=result, tool_call=tool_call, tool=tool, raise_on_failure=raise_on_failure
+                )
                 span.set_content_tag("haystack.agent.step.tool.result", message.tool_call_results[0].result)
                 return result, message
 
