@@ -1612,9 +1612,10 @@ def test_token_unit_overlap_keeps_multibyte_characters_intact(split_length, spli
     chunks = splitter.run([Document(content=text)])["documents"]
 
     for chunk in chunks:
-        assert "\ufffd" not in (chunk.content or "")
+        content = chunk.content or ""
+        assert "\ufffd" not in content
         # every chunk is a slice of the original text: no character was rebuilt from partial bytes
-        assert chunk.content in text
+        assert content in text
     # the chunks still carry their overlap and the split_length, none of them lost characters to the boundary
     assert len(chunks) > 1
     assert all(splitter._chunk_length(chunk.content or "") > split_overlap for chunk in chunks[:-1])
