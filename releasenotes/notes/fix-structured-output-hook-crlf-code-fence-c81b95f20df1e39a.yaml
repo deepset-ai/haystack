@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed ``StructuredOutputHook`` failing to parse JSON wrapped in Markdown code fences using CRLF line endings. Fenced replies using either LF or CRLF line endings are now stripped before structured-output parsing.

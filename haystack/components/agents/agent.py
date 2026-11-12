@@ -101,12 +101,14 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
 #   (e.g. a `before_llm` hook that triggers compaction once the context grows too large). Kept internal rather than
 #   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
+# - `max_agent_steps`: the Agent's step limit, for hooks to read alongside `step_count`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
     "stop_run": {"type": str, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
     "context_tokens": {"type": int, "handler": replace_values},
+    "max_agent_steps": {"type": int, "handler": replace_values},
 }
 
 
@@ -403,7 +405,9 @@ class Agent:
     @hook
     def require_save(state: State) -> None:
         if state.data.get("exit_reason") == "text":
-            state.set("messages", [ChatMessage.from_user("Call `save_result` before finishing.")])
+            # Marked as a system reminder so context compaction doesn't take it for the user's task
+            nudge = ChatMessage.from_user("Call `save_result` before finishing.", meta={"system_reminder": True})
+            state.set("messages", [nudge])
             state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
@@ -816,6 +820,7 @@ class Agent:
         state = State(schema=self.resolved_state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)
+        state.set("max_agent_steps", self.max_agent_steps)
         state.set("token_usage", {})
         state.set("context_tokens", 0)
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})

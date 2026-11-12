@@ -1,7 +1,7 @@
 ---
 title: "Hooks"
 id: hooks-api
-description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in context compaction, tool result offloading, and Human-in-the-Loop tool confirmation."
+description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in context compaction, tool result offloading, structured output parsing, and Human-in-the-Loop tool confirmation."
 slug: "/hooks-api"
 ---
 
@@ -90,6 +90,92 @@ Create a hook from its serialized representation.
 **Returns:**
 
 - <code>TokenBudgetHook</code> – The deserialized hook.
+
+### StepBudgetReminderHook
+
+Tells the Agent how many steps it has left once it gets close to `max_agent_steps`.
+
+This `before_llm` hook adds a reminder before each of the Agent's last `remind_within_steps` LLM calls, telling
+the model how many steps are left and asking it to wrap up. On the last step, it asks for the final answer
+directly.
+
+The reminder is a user message wrapped in `<system-reminder>` tags and marked with
+`meta={"system_reminder": True}`, so compaction hooks don't mistake it for the user's task. Reminders stay in the
+conversation and appear in the Agent's `messages` output.
+
+The model can still ignore the reminder. Pair it with an `after_run` hook if a run that ends on `max_agent_steps`
+needs a final answer.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.budget import StepBudgetReminderHook
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    max_agent_steps=10,
+    hooks={"before_llm": [StepBudgetReminderHook()]},
+)
+```
+
+#### __init__
+
+```python
+__init__(*, remind_within_steps: int = 3) -> None
+```
+
+Create a step budget reminder hook.
+
+**Parameters:**
+
+- **remind_within_steps** (<code>int</code>) – Number of remaining steps at which reminders start.
+
+**Raises:**
+
+- <code>ValueError</code> – If `remind_within_steps` is less than 1.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Add a reminder if no more than `remind_within_steps` steps are left.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state containing `step_count` and `max_agent_steps`.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> StepBudgetReminderHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>StepBudgetReminderHook</code> – The deserialized hook.
 
 ## compaction/hooks
 
@@ -264,9 +350,12 @@ Bases: <code>Compactor</code>
 
 Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
-and the current task's history is kept in complete Agent steps, where a step is an assistant message together
-with all immediately following tool results.
+Leading system messages, the latest user message, and messages after the last assistant message are protected.
+Historical turns are kept in full when they fit, and the current task's history is kept in complete Agent steps,
+where a step is an assistant message together with all immediately following tool results. Any other message in
+the current task, such as a system reminder or another strategy's summary, is kept or removed together with the
+next assistant message and its tool results. A summary at the start of history is kept or removed like the oldest
+historical turn.
 
 An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
 only historical turns were removed, and directly after the latest user message when the current task's own steps
@@ -304,8 +393,8 @@ Initialize the compactor.
 **Parameters:**
 
 - **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep even when they exceed the target. A step
-  is an assistant message and all immediately following tool results. `0` allows all completed steps to be
-  removed when none fit.
+  is an assistant message, all immediately following tool results, and the messages right before it, such as
+  system reminders. `0` allows all completed steps to be removed when none fit.
 - **omission_note** (<code>str | None</code>) – The user message left in place of what was removed, or None to remove the messages
   silently. Include `{num_removed}` to have the number of removed messages substituted in.
 
@@ -1525,6 +1614,133 @@ from_dict(data: dict[str, Any]) -> Hook
 ```
 
 Deserialize the hook from a dictionary.
+
+## structured_output/hooks
+
+### StructuredOutputHook
+
+Parse the Agent's final text reply as JSON and store it in a `State` key.
+
+The hook runs at the `on_exit` hook point. When the Agent stops with a text reply (`exit_reason` is `"text"`),
+the hook parses the reply as JSON, validates it against `schema`, and stores the result under `state_key`.
+A markdown code fence around the whole reply (for example ```` ```json ````) is removed before parsing.
+With a Pydantic model as `schema`, the stored value is its JSON-compatible model dump.
+
+When the reply is not valid JSON or does not match the schema, and retries are left, the hook adds a user
+message describing the error and keeps the Agent running so the model can correct its reply. Retries count
+toward `max_agent_steps`. When no retries are left, or the Agent stops on an exit condition other than a text
+reply, `None` is stored under `state_key`.
+
+When an earlier `on_exit` hook has already set `continue_run`, the hook skips parsing and parses the reply at
+the next exit instead.
+
+`on_exit` hooks don't run when the Agent stops because `max_agent_steps` is reached or a hook sets `stop_run`.
+If the hook never ran during the run, `state_key` is missing from the Agent's result, so read it with
+`result.get("structured_output")`.
+
+`state_key` must be declared in the Agent's `state_schema`, which also makes it an output of the Agent.
+The parsed result replaces the previous value, overriding the state field's handler.
+
+The hook works with any chat generator. When the chat generator supports native structured output (for example
+`text_format` on `OpenAIResponsesChatGenerator`), pass the same schema there as well so the model is constrained
+to valid JSON and retries are rarely needed.
+
+<!-- test-ignore -->
+
+```python
+from pydantic import BaseModel
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks.structured_output import StructuredOutputHook
+
+
+class CityInfo(BaseModel):
+    city: str
+    country: str
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(generation_kwargs={"text_format": CityInfo}),
+    state_schema={"structured_output": {"type": dict}},
+    hooks={"on_exit": [StructuredOutputHook(schema=CityInfo)]},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Which city is the Eiffel Tower in?")])
+print(result["structured_output"])
+# >> {'city': 'Paris', 'country': 'France'}
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    schema: type[BaseModel] | dict[str, Any],
+    state_key: str = "structured_output",
+    max_retries: int = 2
+) -> None
+```
+
+Create a structured output hook.
+
+**Parameters:**
+
+- **schema** (<code>type\[BaseModel\] | dict\[str, Any\]</code>) – A Pydantic model or a JSON schema the final reply is validated against.
+- **state_key** (<code>str</code>) – The `State` key the parsed reply is stored under. It must be declared in the Agent's
+  `state_schema`. Defaults to `"structured_output"`.
+- **max_retries** (<code>int</code>) – How many times the model is asked to correct a reply that is not valid JSON or does not
+  match the schema. Defaults to 2. Set it to 0 to store `None` on the first failure.
+
+**Raises:**
+
+- <code>ValueError</code> – If `schema` is not a valid JSON schema, or if `max_retries` is negative.
+- <code>TypeError</code> – If `schema` is neither a Pydantic model nor a dict.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Parse the final reply and store it, or ask the model to correct it.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state holding the conversation and the `exit_reason`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `state_key` is not declared in the Agent's `state_schema`.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> StructuredOutputHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>StructuredOutputHook</code> – The deserialized hook.
 
 ## tool_result_offloading/hooks
 

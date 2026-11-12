@@ -460,6 +460,7 @@ Create a DocumentNDCGEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### to_dict
 
@@ -545,7 +546,7 @@ calculate_idcg(gt_docs: list[Document]) -> float
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
 are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
 a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
 credits each relevant value at most once. Including duplicates or unmatchable documents here
@@ -625,6 +626,7 @@ Create a DocumentRecallEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
 
 #### run
 
@@ -1130,10 +1132,14 @@ Creates a new instance of SASEvaluator.
 
 - **model** (<code>str</code>) – SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
   model.
-- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once.
+- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once. Must be a positive integer.
 - **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically selected.
 - **token** (<code>Secret</code>) – The Hugging Face token for HTTP bearer authorization.
   You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+
+**Raises:**
+
+- <code>ValueError</code> – If `batch_size` is not a positive integer.
 
 #### to_dict
 

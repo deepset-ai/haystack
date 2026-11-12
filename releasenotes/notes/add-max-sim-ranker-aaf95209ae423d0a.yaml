@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add ``MaxSimRanker`` to rank documents by their similarity to a query using precomputed multivector embeddings.
+    In two-stage retrieval, an embedding retriever can quickly select candidates using dense similarity, then
+    ``MaxSimRanker`` performs a more fine-grained comparison of the query and each candidate's content to return the
+    most relevant documents.

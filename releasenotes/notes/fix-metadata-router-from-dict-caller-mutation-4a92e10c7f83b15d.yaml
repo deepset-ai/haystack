@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``MetadataRouter.from_dict`` mutating the caller's serialized dictionary in place,
+    which made a second ``from_dict`` call on the same dictionary fail.

@@ -27,6 +27,7 @@ from haystack.hooks.human_in_the_loop.strategies import (
     _run_confirmation_strategies_async,
     _update_chat_history,
 )
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -72,8 +73,8 @@ class TestBlockingConfirmationStrategy:
                     "init_parameters": {},
                 },
                 "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
-                "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
-                "\n{final_tool_params}",
+                "modify_template": "The user changed the arguments of '{tool_name}' to {final_tool_params} and "
+                "wants that result used. Don't call it again with the original arguments.",
                 "user_feedback_template": "With user feedback: {feedback}",
             },
         }
@@ -129,7 +130,8 @@ class TestBlockingConfirmationStrategy:
         assert decision.execute is True
         assert decision.final_tool_params == {"param1": "new_value"}
         assert decision.feedback == (
-            "The parameters for tool 'test_tool' were updated by the user to:\n{'param1': 'new_value'}"
+            "The user changed the arguments of 'test_tool' to {'param1': 'new_value'} and wants that result used. "
+            "Don't call it again with the original arguments."
         )
 
     def test_run_reject(self, monkeypatch):
@@ -322,7 +324,8 @@ class TestApplyToolExecutionDecisions:
         assert rejection_messages == []
         assert new_tool_call_messages == [
             ChatMessage.from_user(
-                "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 5, 'b': 6}"
+                "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
             ),
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name=tools[0].name, arguments={"a": 5, "b": 6}, id="1")]
@@ -461,8 +464,14 @@ class TestUpdateChatHistory:
         )
         assert updated_messages == [
             chat_history[0],
-            ChatMessage.from_user("The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}"),
-            ChatMessage.from_user("The parameters for tool 'tool2' were updated by the user to:\n{'a': 7, 'b': 8}'"),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool2' were updated by the user to:\n{'a': 7, 'b': 8}'",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
             ChatMessage.from_assistant(
                 tool_calls=[
                     ToolCall(tool_name="tool1", arguments={"a": 5, "b": 6}, id="1", extra=None),
@@ -509,7 +518,10 @@ class TestUpdateChatHistory:
                 origin=ToolCall(tool_name="tool2", arguments={"a": 3, "b": 4}, id="2", extra=None),
                 error=True,
             ),
-            ChatMessage.from_user("The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}"),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name="tool1", arguments={"a": 5, "b": 6}, id="1", extra=None)]
             ),

@@ -61,7 +61,7 @@ jobs:
           git tag "v${{ steps.versions.outputs.next_version_rc0 }}" -m "v${{ steps.versions.outputs.next_version_rc0 }}"
           git push --tags
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -82,7 +82,7 @@ jobs:
 
       - name: Create PR to bump unstable version and create unstable docs
         id: create-pr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Bump unstable version and create unstable docs"
