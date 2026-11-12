@@ -58,8 +58,7 @@ class Jinja2TimeExtension(Extension):
             if operator not in ("+", "-"):
                 raise ValueError(f"Invalid offset or operator {offset}, {operator}: operator must be '+' or '-'")
             try:
-                # Parse the offset values first, so a value carrying its own sign (such as 'hours=-2')
-                # composes with the operator instead of concatenating into an invalid float literal.
+                # Parse each value as a signed float, e.g. 'hours=-2' -> {"hours": -2.0}
                 parsed_offset: dict[str, float] = {
                     interval.strip(): float(value.strip())
                     for param in offset.split(",")
