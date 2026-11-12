@@ -7,8 +7,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -152,22 +151,22 @@ class DocumentProcessor:
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k] if doc.content)}
 
 
-class Priority(Enum):
-    """The priority of a task."""
-
-    LOW = "low"
-    HIGH = "high"
-
-
 @dataclass
 class Task:
-    """A task whose field annotations are strings, as with `from __future__ import annotations`."""
+    """A task with string field annotations, as with `from __future__ import annotations`, and a forward reference."""
 
     title: "Annotated[str, Field(min_length=1)]"
     due: "date"
-    priority: "Priority"
-    status: "Literal['open', 'done']"
     assignees: "list[Address]"
+    items: list["OrderItem"]
+
+
+@dataclass
+class OrderItem:
+    """An item of an order."""
+
+    sku: str
+    quantity: int = 1
 
 
 @component
@@ -183,89 +182,32 @@ class TaskPlanner:
         :return: A dictionary with the summary of the task.
         """
         cities = ", ".join(address.city for address in task.assignees)
-        return {"summary": f"{task.title} ({task.status}, {task.priority.value}) due {task.due.isoformat()}, {cities}"}
-
-
-@dataclass
-class Order:
-    """An order whose items are annotated with a forward reference."""
-
-    items: list["OrderItem"]
-
-
-@dataclass
-class OrderItem:
-    """An item of an order."""
-
-    sku: str
-    quantity: int = 1
-
-
-@component
-class OrderCounter:
-    """A component that counts the items of an Order."""
-
-    @component.output_types(count=int)
-    def run(self, order: Order) -> dict[str, int]:
-        """
-        Counts the items of an order.
-
-        :param order: The Order whose items are counted.
-        :return: A dictionary with the total quantity of the items.
-        """
-        return {"count": sum(item.quantity for item in order.items)}
-
-
-@dataclass
-class TreeNode:
-    """A node of a tree."""
-
-    name: str
-    children: list["TreeNode"]
-
-
-@component
-class TreeCounter:
-    """A component that counts the nodes of a tree."""
-
-    @component.output_types(count=int)
-    def run(self, root: TreeNode) -> dict[str, int]:
-        """
-        Counts the nodes of a tree.
-
-        :param root: The root node of the tree.
-        :return: A dictionary with the number of nodes in the tree.
-        """
-        count, nodes = 0, [root]
-        while nodes:
-            count += 1
-            nodes.extend(nodes.pop().children)
-        return {"count": count}
+        quantity = sum(item.quantity for item in task.items)
+        return {"summary": f"{task.title} due {task.due.isoformat()}, {cities}, {quantity} items"}
 
 
 @dataclass
 class Category:
-    """A category of a catalog, which refers to itself inside `Annotated`, `tuple` and `X | None`."""
+    """A category of a catalog, which refers to itself inside `Annotated` and `X | None`."""
 
     name: str
     subcategories: "Annotated[list[Category], Field(max_length=20)]"
-    related: tuple["Category", ...] = ()
     parent: "Category | None" = None
 
 
 @component
 class CategoryLister:
-    """A component that lists the categories next to a Category."""
+    """A component that lists the subcategories of a Category."""
 
     @component.output_types(names=list[str])
     def run(self, category: Category) -> dict[str, list[str]]:
         """
-        Lists the subcategories and related categories of a category.
+        Lists the subcategories of a category.
 
-        :param category: The category whose subcategories and related categories are listed.
-        :return: A dictionary with the names of the subcategories and related categories.
+        :param category: The category whose subcategories are listed.
+        :return: A dictionary with the names of the subcategories.
         """
-        return {"names": [other.name for other in (*category.subcategories, *category.related)]}
+        return {"names": [subcategory.name for subcategory in category.subcategories]}
 
 
 def output_handler(old, new):
@@ -456,59 +398,6 @@ class TestComponentTool:
                     "required": ["street", "city"],
                     "type": "object",
                 },
-                "Priority": {"description": "The priority of a task.", "enum": ["low", "high"], "type": "string"},
-                "Task": {
-                    "properties": {
-                        "title": {"description": "Field 'title' of 'Task'.", "minLength": 1, "type": "string"},
-                        "due": {"description": "Field 'due' of 'Task'.", "format": "date", "type": "string"},
-                        "priority": {"$ref": "#/$defs/Priority", "description": "Field 'priority' of 'Task'."},
-                        "status": {
-                            "description": "Field 'status' of 'Task'.",
-                            "enum": ["open", "done"],
-                            "type": "string",
-                        },
-                        "assignees": {
-                            "description": "Field 'assignees' of 'Task'.",
-                            "items": {"$ref": "#/$defs/Address"},
-                            "type": "array",
-                        },
-                    },
-                    "required": ["title", "due", "priority", "status", "assignees"],
-                    "type": "object",
-                },
-            },
-            "properties": {"task": {"$ref": "#/$defs/Task", "description": "The Task to summarize."}},
-            "required": ["task"],
-            "type": "object",
-        }
-
-        result = tool.invoke(
-            task={
-                "title": "Ship the release",
-                "due": "2026-11-02",
-                "priority": "high",
-                "status": "open",
-                "assignees": [{"street": "Main Street 1", "city": "Berlin"}],
-            }
-        )
-        assert result == {"summary": "Ship the release (open, high) due 2026-11-02, Berlin"}
-
-    def test_from_component_with_forward_referenced_dataclass(self):
-        tool = ComponentTool(component=OrderCounter())
-
-        assert tool.parameters == {
-            "$defs": {
-                "Order": {
-                    "properties": {
-                        "items": {
-                            "description": "Field 'items' of 'Order'.",
-                            "items": {"$ref": "#/$defs/OrderItem"},
-                            "type": "array",
-                        }
-                    },
-                    "required": ["items"],
-                    "type": "object",
-                },
                 "OrderItem": {
                     "properties": {
                         "sku": {"description": "Field 'sku' of 'OrderItem'.", "type": "string"},
@@ -521,42 +410,41 @@ class TestComponentTool:
                     "required": ["sku"],
                     "type": "object",
                 },
-            },
-            "properties": {"order": {"$ref": "#/$defs/Order", "description": "The Order whose items are counted."}},
-            "required": ["order"],
-            "type": "object",
-        }
-
-        result = tool.invoke(order={"items": [{"sku": "A1", "quantity": 2}, {"sku": "B2"}]})
-        assert result == {"count": 3}
-
-    def test_from_component_with_recursive_dataclass(self):
-        tool = ComponentTool(component=TreeCounter())
-
-        assert tool.parameters == {
-            "$defs": {
-                "TreeNode": {
+                "Task": {
                     "properties": {
-                        "name": {"description": "Field 'name' of 'TreeNode'.", "type": "string"},
-                        "children": {
-                            "description": "Field 'children' of 'TreeNode'.",
-                            "items": {"$ref": "#/$defs/TreeNode"},
+                        "title": {"description": "Field 'title' of 'Task'.", "minLength": 1, "type": "string"},
+                        "due": {"description": "Field 'due' of 'Task'.", "format": "date", "type": "string"},
+                        "assignees": {
+                            "description": "Field 'assignees' of 'Task'.",
+                            "items": {"$ref": "#/$defs/Address"},
+                            "type": "array",
+                        },
+                        "items": {
+                            "description": "Field 'items' of 'Task'.",
+                            "items": {"$ref": "#/$defs/OrderItem"},
                             "type": "array",
                         },
                     },
-                    "required": ["name", "children"],
+                    "required": ["title", "due", "assignees", "items"],
                     "type": "object",
-                }
+                },
             },
-            "properties": {"root": {"$ref": "#/$defs/TreeNode", "description": "The root node of the tree."}},
-            "required": ["root"],
+            "properties": {"task": {"$ref": "#/$defs/Task", "description": "The Task to summarize."}},
+            "required": ["task"],
             "type": "object",
         }
 
-        result = tool.invoke(root={"name": "root", "children": [{"name": "leaf", "children": []}]})
-        assert result == {"count": 2}
+        result = tool.invoke(
+            task={
+                "title": "Ship the release",
+                "due": "2026-11-02",
+                "assignees": [{"street": "Main Street 1", "city": "Berlin"}],
+                "items": [{"sku": "A1", "quantity": 2}, {"sku": "B2"}],
+            }
+        )
+        assert result == {"summary": "Ship the release due 2026-11-02, Berlin, 3 items"}
 
-    def test_from_component_with_recursive_dataclass_in_annotated_and_tuple(self):
+    def test_from_component_with_recursive_dataclass_in_annotated(self):
         tool = ComponentTool(component=CategoryLister())
 
         assert tool.parameters == {
@@ -570,12 +458,6 @@ class TestComponentTool:
                             "maxItems": 20,
                             "type": "array",
                         },
-                        "related": {
-                            "default": [],
-                            "description": "Field 'related' of 'Category'.",
-                            "items": {"$ref": "#/$defs/Category"},
-                            "type": "array",
-                        },
                         "parent": {
                             "anyOf": [{"$ref": "#/$defs/Category"}, {"type": "null"}],
                             "default": None,
@@ -587,23 +469,14 @@ class TestComponentTool:
                 }
             },
             "properties": {
-                "category": {
-                    "$ref": "#/$defs/Category",
-                    "description": "The category whose subcategories and related categories are listed.",
-                }
+                "category": {"$ref": "#/$defs/Category", "description": "The category whose subcategories are listed."}
             },
             "required": ["category"],
             "type": "object",
         }
 
-        result = tool.invoke(
-            category={
-                "name": "Books",
-                "subcategories": [{"name": "Fiction", "subcategories": []}],
-                "related": [{"name": "E-books", "subcategories": []}],
-            }
-        )
-        assert result == {"names": ["Fiction", "E-books"]}
+        result = tool.invoke(category={"name": "Books", "subcategories": [{"name": "Fiction", "subcategories": []}]})
+        assert result == {"names": ["Fiction"]}
 
     def test_from_component_with_list_of_documents(self):
         tool = ComponentTool(

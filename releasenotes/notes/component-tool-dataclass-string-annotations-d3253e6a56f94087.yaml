@@ -5,5 +5,4 @@ fixes:
     forward references to a dataclass defined later in the module, such as ``items: list["Item"]``, and dataclasses
     defined in a module that uses ``from __future__ import annotations``. Before, creating the tool raised a
     ``SchemaGenerationError`` for most non-builtin field types, such as ``date``, an ``Enum``, ``Literal``,
-    ``Optional`` or a nested dataclass. The field annotations are now resolved in the module that defines the
-    dataclass, and recursive dataclasses keep working.
+    ``Optional`` or a nested dataclass. Recursive dataclasses keep working.
