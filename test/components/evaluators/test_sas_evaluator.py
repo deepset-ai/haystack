@@ -134,6 +134,7 @@ class TestSASEvaluator:
         # Use the mocked model below instead of loading a real one
         monkeypatch.setattr(SASEvaluator, "warm_up", lambda self: None)
         model = MagicMock(spec=CrossEncoder)
+        model.num_labels = 1
         model.activation_fn = activation_fn
         model.predict.side_effect = lambda pairs, **kwargs: np.array([model_scores[pred] for pred, _ in pairs])
         evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
@@ -144,6 +145,34 @@ class TestSASEvaluator:
 
         assert wrong_only["individual_scores"] == pytest.approx([expected_scores["Lyon"]])
         assert mixed["individual_scores"] == pytest.approx([expected_scores["Lyon"], expected_scores["Paris"]])
+
+    @pytest.mark.parametrize("num_labels", [2, 3])
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_with_multi_label_cross_encoder_raises(self, mock_auto_config, mock_cross_encoder, num_labels):
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertForSequenceClassification"])
+        mock_cross_encoder.return_value.num_labels = num_labels
+        evaluator = SASEvaluator(model="cross-encoder/nli-deberta-v3-xsmall")
+
+        with pytest.raises(ValueError, match=f"has {num_labels} labels"):
+            evaluator.warm_up()
+
+        assert evaluator._similarity_model is None
+        mock_cross_encoder.return_value.predict.assert_not_called()
+
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_with_single_label_cross_encoder_is_idempotent(self, mock_auto_config, mock_cross_encoder):
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertForSequenceClassification"])
+        mock_cross_encoder.return_value.num_labels = 1
+        evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+        evaluator.warm_up()
+        evaluator.warm_up()
+
+        assert evaluator._similarity_model is mock_cross_encoder.return_value
+        mock_auto_config.from_pretrained.assert_called_once()
+        mock_cross_encoder.assert_called_once()
 
     @pytest.mark.integration
     @pytest.mark.slow

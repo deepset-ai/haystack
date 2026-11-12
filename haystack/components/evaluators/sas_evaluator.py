@@ -66,6 +66,7 @@ class SASEvaluator:
         :param model:
             SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
             model.
+            Cross Encoder models must return exactly one score per pair.
         :param batch_size:
             Number of prediction-label pairs to encode at once. Must be a positive integer.
         :param device:
@@ -112,6 +113,9 @@ class SASEvaluator:
     def warm_up(self) -> None:
         """
         Initializes the component.
+
+        :raises ValueError:
+            If the Cross Encoder model has more than one output label.
         """
         if self._similarity_model:
             return
@@ -125,7 +129,15 @@ class SASEvaluator:
         # Based on the Model string we can load either Bi-Encoders or Cross Encoders.
         # Similarity computation changes for both approaches
         if cross_encoder_used:
-            self._similarity_model = CrossEncoder(self._model, device=device, token=token)
+            cross_encoder = CrossEncoder(self._model, device=device, token=token)
+            if cross_encoder.num_labels != 1:
+                msg = (
+                    f"SASEvaluator requires a Cross Encoder with exactly one output score, but '{self._model}' "
+                    f"has {cross_encoder.num_labels} labels. Use a single-score Cross Encoder or a Bi-Encoder "
+                    "(SentenceTransformer) model."
+                )
+                raise ValueError(msg)
+            self._similarity_model = cross_encoder
         else:
             self._similarity_model = SentenceTransformer(self._model, device=device, token=token)
 
@@ -145,6 +157,9 @@ class SASEvaluator:
             A dictionary with the following outputs:
                 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
                 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+        :raises ValueError:
+            If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
+            has more than one output label.
         """
         if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
