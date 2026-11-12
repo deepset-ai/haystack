@@ -26,6 +26,10 @@ OpenSearch provides support for vector similarity comparisons and approximate ne
 
 ### Initialization
 
+Choose the instructions for your deployment: a [local Docker instance](#local-docker-instance) or an [Amazon OpenSearch Service domain](#amazon-opensearch-service). A local instance does not require an AWS account or IAM credentials.
+
+#### Local Docker Instance
+
 [Install](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/index/) and run an OpenSearch instance.
 
 If you have Docker set up, we recommend pulling the Docker image and running it.
@@ -41,7 +45,9 @@ docker run \
     opensearchproject/opensearch:3.5.0
 ```
 
-As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
+OpenSearch 2.12 and later require a custom administrator password for the demo security configuration. Replace `SecureHaystack*2026` with your own strong password in both the Docker command and the Python example below. The username remains `admin`; there is no need to create an OpenSearch account. See [Setting a custom admin password](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/#setting-a-custom-admin-password).
+
+As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`. Follow its password configuration, then run this command from that directory:
 
 ```shell
 docker compose up
@@ -60,7 +66,7 @@ from haystack_integrations.document_stores.opensearch import OpenSearchDocumentS
 from haystack import Document
 
 document_store = OpenSearchDocumentStore(
-    hosts="http://localhost:9200",
+    hosts="https://localhost:9200",
     use_ssl=True,
     verify_certs=False,
     http_auth=("admin", "SecureHaystack*2026"),
@@ -70,6 +76,35 @@ document_store.write_documents(
 )
 print(document_store.count_documents())
 ```
+
+`verify_certs=False` is only for this local demo, which uses self-signed certificates. For a production cluster, enable certificate verification and configure `ca_certs` with the appropriate CA certificate, as described in the [OpenSearch Python client documentation](https://docs.opensearch.org/latest/clients/python-low-level/#connecting-to-opensearch).
+
+#### Amazon OpenSearch Service
+
+For an AWS-hosted domain, use its endpoint instead of `localhost`. You do not need to run the Docker container above. If the domain uses IAM authentication, install Boto3 alongside the integration:
+
+```shell
+pip install opensearch-haystack boto3
+```
+
+Configure AWS credentials through the [Boto3 credential provider chain](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html), for example with an IAM role or the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables. Temporary credentials also require `AWS_SESSION_TOKEN`. Then use the integration's `AWSAuth` wrapper to sign requests:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+from haystack_integrations.document_stores.opensearch.auth import AWSAuth
+
+document_store = OpenSearchDocumentStore(
+    hosts=[{"host": "search-my-domain.us-east-1.es.amazonaws.com", "port": 443}],
+    http_auth=AWSAuth(aws_region_name=Secret.from_token("us-east-1")),
+    use_ssl=True,
+    verify_certs=True,
+)
+```
+
+Replace the example hostname with your domain endpoint **without** `https://`, and set `aws_region_name` to the domain's region. `AWSAuth` uses the `es` signing service by default for Amazon OpenSearch Service domains. The IAM principal must have the required domain permissions and, when fine-grained access control is enabled, the appropriate OpenSearch role mapping. See [IAM authentication and fine-grained access control](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/fgac.html).
+
+If your domain uses the internal user database instead of IAM authentication, pass its OpenSearch username and password as `http_auth=(username, password)`. These are the domain's credentials, not your AWS console sign-in credentials or the local Docker password.
 
 ### Supported Retrievers
 
