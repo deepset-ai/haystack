@@ -1580,3 +1580,41 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     for doc in result:
         assert doc.content is not None
         assert doc.content.strip()
+
+
+@pytest.mark.integration
+def test_token_unit_split_keeps_multibyte_characters_intact():
+    # a token boundary can land in the middle of a UTF-8 character, the chunk must still hold whole characters
+    text = "hello " * 198 + "Enjoy \U0001f355 and \U0001f680"
+    splitter = RecursiveDocumentSplitter(
+        split_unit="token", split_length=200, split_overlap=0, separators=["\n\n"], tokenizer_encoding="cl100k_base"
+    )
+
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+    assert all("\ufffd" not in (chunk.content or "") for chunk in chunks)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(("split_length", "split_overlap"), [(12, 3), (60, 10)])
+def test_token_unit_overlap_keeps_multibyte_characters_intact(split_length, split_overlap):
+    # the overlap encodes and decodes the chunks again, that must not drop characters either
+    text = "고맙습니다 \U0001f355 " * 60 + "끝 \U0001f680"
+    splitter = RecursiveDocumentSplitter(
+        split_unit="token",
+        split_length=split_length,
+        split_overlap=split_overlap,
+        separators=["\n\n"],
+        tokenizer_encoding="cl100k_base",
+    )
+
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    for chunk in chunks:
+        assert "\ufffd" not in (chunk.content or "")
+        # every chunk is a slice of the original text: no character was rebuilt from partial bytes
+        assert chunk.content in text
+    # the chunks still carry their overlap and the split_length, none of them lost characters to the boundary
+    assert len(chunks) > 1
+    assert all(splitter._chunk_length(chunk.content or "") > split_overlap for chunk in chunks[:-1])
