@@ -137,7 +137,7 @@
 | haystack/components/samplers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                     |       67 |        0 |    100% |           |
 | haystack/components/validators/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
-| haystack/components/validators/json\_schema.py                             |       73 |        7 |     90% |23-24, 142, 144, 159, 247, 253 |
+| haystack/components/validators/json\_schema.py                             |       77 |        7 |     91% |23-24, 145, 147, 162, 258, 264 |
 | haystack/components/writers/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/writers/document\_writer.py                            |       37 |        0 |    100% |           |
 | haystack/core/\_\_init\_\_.py                                              |        2 |        0 |    100% |           |
@@ -277,7 +277,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18747** |  **660** | **96%** |           |
+| **TOTAL**                                                                  | **18751** |  **660** | **96%** |           |
 
 
 ## Setup coverage badge
