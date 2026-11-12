@@ -67,14 +67,18 @@ class SASEvaluator:
             SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
             model.
         :param batch_size:
-            Number of prediction-label pairs to encode at once.
+            Number of prediction-label pairs to encode at once. Must be a positive integer.
         :param device:
             The device on which the model is loaded. If `None`, the default device is automatically selected.
         :param token:
             The Hugging Face token for HTTP bearer authorization.
             You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :raises ValueError:
+            If `batch_size` is not a positive integer.
         """
         sas_import.check()
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
 
         self._model = model
         self._batch_size = batch_size
