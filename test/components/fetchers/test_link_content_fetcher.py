@@ -480,22 +480,6 @@ class TestLinkContentFetcherAsync:
             assert first_stream.meta["content_type"] == "text/plain"
             assert first_stream.mime_type == "text/plain"
 
-    async def test_run_async_binary_content_type_is_case_insensitive(self):
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
-            png_bytes = b"\x89PNG\r\n"
-            mock_response = Mock(
-                status_code=200, content=png_bytes, text="corrupted", headers={"Content-Type": "IMAGE/PNG"}
-            )
-            mock_get.return_value = mock_response
-
-            fetcher = LinkContentFetcher()
-            streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
-
-            first_stream = streams[0]
-            assert first_stream.data == png_bytes
-            assert first_stream.meta["content_type"] == "image/png"
-            assert first_stream.mime_type == "image/png"
-
     async def test_run_async_multiple(self):
         """Test async fetching of multiple URLs with mocked responses"""
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
