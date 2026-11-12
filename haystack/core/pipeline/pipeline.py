@@ -4,7 +4,7 @@
 
 import asyncio
 import contextlib
-from collections.abc import AsyncGenerator, AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping
 from typing import Any, ClassVar, cast
 
 from haystack import logging, tracing
@@ -40,6 +40,27 @@ logger = logging.getLogger(__name__)
 
 class _EndOfStream:
     """Sentinel type indicating no more chunks will arrive on the stream."""
+
+
+def _end_stream_on_cancellation(
+    queue: asyncio.Queue["StreamingChunk | _EndOfStream"],
+) -> Callable[[asyncio.Task[Any]], None]:
+    """
+    Put the end-of-stream marker when a pipeline task is cancelled.
+
+    The runner sends the marker from its `finally`, which only runs once the coroutine has started.
+    A task cancelled before its first step is finished without ever executing a line of it, so the
+    marker has to come from the cancellation itself; otherwise a reader blocked on the queue never
+    wakes up. Non-cancelled finishes are left to the runner, which sends the marker once.
+    """
+
+    def callback(task: asyncio.Task[Any]) -> None:
+        if not task.cancelled():
+            return
+        with contextlib.suppress(asyncio.QueueFull):  # unbounded in practice
+            queue.put_nowait(PipelineStreamHandle._END_OF_STREAM)
+
+    return callback
 
 
 class PipelineStreamHandle:
@@ -78,7 +99,8 @@ class PipelineStreamHandle:
             while True:
                 item = await self._queue.get()
                 if item is self._END_OF_STREAM:
-                    await self._task  # called to make exceptions surface
+                    if not self._task.cancelled():
+                        await self._task  # called to make exceptions surface
                     return
                 yield cast(StreamingChunk, item)  # at this point, item is guaranteed to be a StreamingChunk
 
@@ -1345,4 +1367,8 @@ class Pipeline(PipelineBase):
                 await queue.put(PipelineStreamHandle._END_OF_STREAM)
 
         task = asyncio.create_task(runner())
+        # A task cancelled before its first step never enters `runner`, so the `finally` above never
+        # runs and the reader would wait on the queue forever. Close the queue from the cancellation
+        # itself instead of relying on the coroutine having started.
+        task.add_done_callback(_end_stream_on_cancellation(queue))
         return PipelineStreamHandle(queue=queue, task=task, cancel_on_abandon=cancel_on_abandon)

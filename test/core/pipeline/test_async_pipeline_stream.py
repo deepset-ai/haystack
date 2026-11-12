@@ -375,6 +375,26 @@ async def test_aclose_cancels_pipeline_and_result_reports_cancelled():
 
 
 @pytest.mark.asyncio
+async def test_reader_ends_when_closed_before_the_producer_starts():
+    """`aclose()` with no await in between cancels the runner before it ever executes, so its
+    `finally` never sends the end-of-stream marker. The reader has to be woken up anyway."""
+    pipeline = Pipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
+    await handle.aclose()
+
+    async def collect() -> list[Any]:
+        return [chunk async for chunk in handle]
+
+    chunks = await asyncio.wait_for(collect(), timeout=1)
+
+    assert chunks == []
+    with pytest.raises(RuntimeError, match="cancelled"):
+        handle.result
+
+
+@pytest.mark.asyncio
 async def test_consumer_cancellation_cancels_pipeline():
     pipeline = Pipeline()
     # chunk_delay keeps the producer running so the consumer can be cancelled mid-stream

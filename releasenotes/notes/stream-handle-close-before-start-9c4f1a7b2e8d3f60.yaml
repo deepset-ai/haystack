@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    A ``PipelineStreamHandle`` no longer leaves its reader blocked forever when the handle is closed
+    before the pipeline task has started. The end-of-stream marker was only sent from the runner's
+    ``finally`` block, and a task cancelled before its first step never reaches it, so a reader waiting
+    on the queue never woke up. The marker is now also sent on cancellation, and iterating a handle
+    whose pipeline was cancelled ends the iteration instead of raising ``CancelledError``.
