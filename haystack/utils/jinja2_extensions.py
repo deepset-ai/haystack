@@ -42,9 +42,12 @@ class Jinja2TimeExtension(Extension):
             Defaults to None if no offset is applied, otherwise default is '+'.
         :param offset: The offset string in the format 'interval=value' (e.g., 'hours=2,days=1') specifying how much
             to adjust the datetime. The intervals can be any valid interval accepted
-            by Arrow (e.g., hours, days, weeks, months). Defaults to None if no adjustment is needed.
+            by Arrow (e.g., hours, days, weeks, months). The value may carry its own sign
+            (e.g., 'hours=-2'), which is applied on top of the operator. Defaults to None if no adjustment
+            is needed.
         :param datetime_format: The format string to use for formatting the output datetime.
             Defaults to '%Y-%m-%d %H:%M:%S' if not provided.
+        :raises ValueError: If the timezone is invalid, or if the offset or operator cannot be applied.
         """
         try:
             dt = arrow.now(timezone)
@@ -52,14 +55,19 @@ class Jinja2TimeExtension(Extension):
             raise ValueError(f"Invalid timezone {timezone}: {e}") from e
 
         if offset and operator:
+            if operator not in ("+", "-"):
+                raise ValueError(f"Invalid offset or operator {offset}, {operator}: operator must be '+' or '-'")
             try:
-                # Parse the offset and apply it to the datetime object
-                replace_params: dict[str, Any] = {
-                    interval.strip(): float(operator + value.strip())
+                # Parse each value as a signed float, e.g. 'hours=-2' -> {"hours": -2.0}
+                parsed_offset: dict[str, float] = {
+                    interval.strip(): float(value.strip())
                     for param in offset.split(",")
                     for interval, value in [param.split("=")]
                 }
-                # Shift the datetime fields based on the parsed offset
+                # Apply the operator's sign, then shift the datetime fields based on the parsed offset
+                replace_params: dict[str, Any] = {
+                    interval: value if operator == "+" else -value for interval, value in parsed_offset.items()
+                }
                 dt = dt.shift(**replace_params)
             except (ValueError, AttributeError) as e:
                 raise ValueError(f"Invalid offset or operator {offset}, {operator}: {e}") from e
