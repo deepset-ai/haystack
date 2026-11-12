@@ -133,6 +133,9 @@ load_from_disk(path: str) -> InMemoryDocumentStore
 
 Load the database and its data from disk as a JSON file.
 
+With `shared=True`, the saved documents replace all documents in the index, including for other
+instances sharing it.
+
 **Parameters:**
 
 - **path** (<code>str</code>) – The path to the JSON file.
