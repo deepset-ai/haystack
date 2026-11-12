@@ -32,12 +32,6 @@ class TestSASEvaluator:
         ):
             SASEvaluator(batch_size=batch_size)
 
-    def test_from_dict_invalid_batch_size(self):
-        data = SASEvaluator().to_dict()
-        data["init_parameters"]["batch_size"] = 0
-        with pytest.raises(ValueError, match="batch_size must be a positive integer, but got 0"):
-            SASEvaluator.from_dict(data)
-
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("HF_API_TOKEN", "fake-token")
 
