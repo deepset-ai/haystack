@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel
@@ -118,7 +119,7 @@ class TestInitialization:
         assert component.client is None
         assert component.async_client is None
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-5.6-terra"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.timeout is None
@@ -195,7 +196,7 @@ class TestSerDe:
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-5-mini",
+                "model": "gpt-5.6-terra",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -205,6 +206,7 @@ class TestSerDe:
                 "max_retries": None,
                 "timeout": None,
                 "http_client_kwargs": None,
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -276,6 +278,7 @@ class TestSerDe:
                 ],
                 "tools_strict": True,
                 "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
+                "include_rate_limit_headers": False,
             },
         }
 
@@ -305,6 +308,7 @@ class TestSerDe:
                 ],
                 "tools_strict": True,
                 "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
+                "include_rate_limit_headers": False,
             },
         }
         component = OpenAIResponsesChatGenerator.from_dict(data)
@@ -738,14 +742,15 @@ class TestIntegration:
         # It serializes with empty content, so this also checks the API accepts that, not just the converter.
         chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
@@ -862,9 +867,9 @@ class TestIntegration:
 
         callback = RecordingCallback()
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano",
+            model="gpt-5.6-luna",
             streaming_callback=callback,
-            generation_kwargs={"include": ["message.output_text.logprobs"]},
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -878,7 +883,7 @@ class TestIntegration:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4.1-nano" in metadata["model"]
+        assert "gpt-5.6-luna" in metadata["model"]
         assert metadata["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -905,7 +910,11 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
-        assert callback.reasoning == message.reasoning.reasoning_text
+        # The stream has no separator between summary parts, so compare against the parts joined without one
+        summary_parts = [
+            part["text"] for item in message.reasoning.extra["reasoning_items"] for part in item["summary"]
+        ]
+        assert callback.reasoning == "".join(summary_parts)
         assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
@@ -992,7 +1001,9 @@ class TestIntegration:
             )
         ]
 
-        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+        )
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1
@@ -1159,7 +1170,9 @@ class TestIntegration:
         )
 
         agent = Agent(
-            chat_generator=OpenAIResponsesChatGenerator(model="gpt-4.1-nano"),
+            chat_generator=OpenAIResponsesChatGenerator(
+                model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "none"}}
+            ),
             system_prompt="You are an Agent that can retrieve documents and answer questions about them.",
             tools=[document_retriever_tool],
         )
@@ -1242,15 +1255,118 @@ class TestOpenAIResponsesChatGeneratorAsync:
 
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-5.6-luna",
+            generation_kwargs={"reasoning": {"effort": "none"}, "include": ["message.output_text.logprobs"]},
         )
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.text is not None
         assert "paris" in message.text.lower()
-        assert "gpt-4.1-nano" in message.meta["model"]
+        assert "gpt-5.6-luna" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
+
+
+RESPONSE_PAYLOAD = {
+    "id": "resp_123",
+    "object": "response",
+    "created_at": 1786704941,
+    "status": "completed",
+    "model": "gpt-5-mini",
+    "output": [
+        {
+            "id": "msg_123",
+            "type": "message",
+            "status": "completed",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": "Paris", "annotations": []}],
+        }
+    ],
+    "usage": {
+        "input_tokens": 17,
+        "input_tokens_details": {"cached_tokens": 0},
+        "output_tokens": 10,
+        "output_tokens_details": {"reasoning_tokens": 0},
+        "total_tokens": 27,
+    },
+}
+
+RATE_LIMIT_HEADERS = {"x-ratelimit-remaining-requests": "4999", "x-ratelimit-remaining-tokens": "3999975"}
+
+SERIALIZED_RESPONSE_USAGE = {
+    "input_tokens": 17,
+    "input_tokens_details": {"cached_tokens": 0},
+    "output_tokens": 10,
+    "output_tokens_details": {"reasoning_tokens": 0},
+    "total_tokens": 27,
+}
+
+META_WITH_RATE_LIMIT_HEADERS = {
+    "id": "resp_123",
+    "created_at": 1786704941.0,
+    "model": "gpt-5-mini",
+    "object": "response",
+    "status": "completed",
+    "usage": SERIALIZED_RESPONSE_USAGE,
+    "finish_reason": "stop",
+    "rate_limit_headers": RATE_LIMIT_HEADERS,
+}
+
+
+class TestRateLimitHeaders:
+    @staticmethod
+    def _generator(response: httpx.Response, **kwargs: Any) -> OpenAIResponsesChatGenerator:
+        return OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(lambda _: response)},
+            **kwargs,
+        )
+
+    def test_not_included_by_default(self) -> None:
+        response = httpx.Response(200, json=RESPONSE_PAYLOAD, headers=RATE_LIMIT_HEADERS)
+        result = self._generator(response).run("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert "rate_limit_headers" not in result["replies"][0].meta
+
+    def test_included_in_meta(self) -> None:
+        response = httpx.Response(200, json=RESPONSE_PAYLOAD, headers=RATE_LIMIT_HEADERS)
+        result = self._generator(response, include_rate_limit_headers=True).run("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS
+
+    def test_included_in_meta_when_streaming(self) -> None:
+        events = [
+            {
+                "type": "response.output_text.delta",
+                "item_id": "msg_123",
+                "output_index": 0,
+                "content_index": 0,
+                "delta": "Paris",
+                "sequence_number": 0,
+            },
+            {"type": "response.completed", "response": RESPONSE_PAYLOAD, "sequence_number": 1},
+        ]
+        body = "".join(f"data: {json.dumps(event)}\n\n" for event in events).encode()
+        response = httpx.Response(
+            200, content=body, headers={"content-type": "text/event-stream", **RATE_LIMIT_HEADERS}
+        )
+        streamed: list[StreamingChunk] = []
+        generator = self._generator(response, include_rate_limit_headers=True, streaming_callback=streamed.append)
+        result = generator.run("What's the capital of France?")
+
+        assert all("rate_limit_headers" not in chunk.meta for chunk in streamed)
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS
+
+    async def test_included_in_meta_run_async(self) -> None:
+        response = httpx.Response(200, json=RESPONSE_PAYLOAD, headers=RATE_LIMIT_HEADERS)
+        generator = self._generator(response, include_rate_limit_headers=True)
+        result = await generator.run_async("What's the capital of France?")
+
+        assert result["replies"][0].text == "Paris"
+        assert result["replies"][0].meta == META_WITH_RATE_LIMIT_HEADERS

@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock
+import re
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -23,6 +24,13 @@ class TestSASEvaluator:
         assert evaluator._batch_size == 32
         assert evaluator._device is None
         assert evaluator._token.resolve_value() == "fake-token"
+
+    @pytest.mark.parametrize("batch_size", [0, -1, 0.5, 32.0, "32", None])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(
+            ValueError, match=re.escape(f"batch_size must be a positive integer, but got {batch_size!r}")
+        ):
+            SASEvaluator(batch_size=batch_size)
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("HF_API_TOKEN", "fake-token")
@@ -59,6 +67,21 @@ class TestSASEvaluator:
         assert evaluator._device is not None
         assert evaluator._device.to_torch_str() == "cuda:0"
         assert evaluator._token.resolve_value() == "fake-token"
+
+    @patch("haystack.components.evaluators.sas_evaluator.SentenceTransformer")
+    @patch("haystack.components.evaluators.sas_evaluator.CrossEncoder")
+    @patch("haystack.components.evaluators.sas_evaluator.AutoConfig")
+    def test_warm_up_passes_token_to_hf(
+        self, mock_auto_config, mock_cross_encoder, mock_sentence_transformer, monkeypatch
+    ):
+        monkeypatch.setenv("HF_API_TOKEN", "fake-token")
+        mock_auto_config.from_pretrained.return_value = MagicMock(architectures=["BertModel"])
+        evaluator = SASEvaluator(model="private/model", device=ComponentDevice.from_str("cpu"))
+        evaluator.warm_up()
+
+        mock_auto_config.from_pretrained.assert_called_once_with("private/model", token="fake-token")
+        mock_sentence_transformer.assert_called_once_with("private/model", device="cpu", token="fake-token")
+        mock_cross_encoder.assert_not_called()
 
     def test_run_with_empty_inputs(self):
         evaluator = SASEvaluator()

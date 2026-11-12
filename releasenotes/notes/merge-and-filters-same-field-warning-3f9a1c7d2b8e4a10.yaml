@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    With ``FilterPolicy.MERGE``, ``apply_filter_policy`` now logs a warning when the init and runtime filters are both
+    ``AND`` logical filters with conditions on the same field. Both conditions are still kept (intersection), as
+    before, so an empty result is no longer silent. The docstrings of ``FilterPolicy.MERGE`` and
+    ``apply_filter_policy`` now describe this behavior.

@@ -50,8 +50,8 @@ Each output document carries the metadata below. All fields from the parent docu
 | --- | --- |
 | `source_id` | ID of the originating document |
 | `split_id` | Sequential index of this chunk within its source document |
-| `start_line` | First line of the chunk in the original source (1-indexed). Oversized secondary chunks keep the originating unit's range. |
-| `end_line` | Last line of the chunk in the original source (1-indexed). Oversized secondary chunks keep the originating unit's range. |
+| `start_line` | First line of the chunk in the original source (1-indexed). Secondary pieces report their own line range, except when `strip_docstrings=True`, in which case they keep the originating unit's range. |
+| `end_line` | Last line of the chunk in the original source (1-indexed). Secondary pieces report their own line range, except when `strip_docstrings=True`, in which case they keep the originating unit's range. |
 | `unit_kinds` | List of syntactic unit kinds included in this chunk, such as `imports`, `function`, `class_header`, or `method` |
 | `include_classes` | *(when applicable)* Ordered list of class names whose members appear in this chunk |
 | `decorators` | *(when applicable)* Ordered list of decorator strings found on included functions, methods, or classes |

@@ -298,6 +298,204 @@ close_async() -> None
 
 Release the asynchronous resources of the underlying Document Store.
 
+## haystack_integrations.components.retrievers.falkordb.text_to_cypher_retriever
+
+### FalkorDBTextToCypherRetriever
+
+Retrieve documents from FalkorDB using natural-language queries and a chat generator.
+
+The generator translates the user query into read-only Cypher using a sampled graph schema
+cached during warm-up. Configure it for structured output using `RESPONSE_SCHEMA`. Query results
+must return document nodes or mappings in the first column.
+
+Schema sampling may miss rare patterns; close and warm up again to refresh it after graph changes.
+The user query and schema are sent to the generator's provider. Read-only queries can still expose
+sensitive data or be expensive: use least-privilege access and `recreate_graph=False` for existing graphs.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import FalkorDBTextToCypherRetriever
+
+store = FalkorDBDocumentStore()
+store.write_documents([Document(content="Haystack supports GraphRAG")])
+generator = OpenAIResponsesChatGenerator(generation_kwargs={
+    "text": {
+        "format": {
+            "type": "json_schema",
+            "name": "cypher_query",
+            "strict": True,
+            "schema": FalkorDBTextToCypherRetriever.RESPONSE_SCHEMA,
+        },
+    }
+})
+retriever = FalkorDBTextToCypherRetriever(
+    document_store=store,
+    chat_generator=generator,
+    schema_sample_size=100,
+)
+result = retriever.run(query="Find documents mentioning GraphRAG")
+print(result["documents"])  # Documents matching the generated query
+```
+
+#### __init__
+
+```python
+__init__(
+    document_store: FalkorDBDocumentStore,
+    chat_generator: ChatGenerator,
+    *,
+    schema_sample_size: int = 100,
+    top_k: int = 10,
+    timeout: int | None = None,
+    system_prompt: str | None = None
+) -> None
+```
+
+Initialize the retriever without opening connections.
+
+**Parameters:**
+
+- **document_store** (<code>FalkorDBDocumentStore</code>) – Store against which generated read-only queries are executed.
+- **chat_generator** (<code>ChatGenerator</code>) – Haystack chat generator configured for `RESPONSE_SCHEMA` structured output.
+- **schema_sample_size** (<code>int</code>) – Positive number of nodes sampled per label and of relationships sampled per type
+  at warm-up.
+- **top_k** (<code>int</code>) – Positive maximum number of unique documents to return. The generator is asked to add a matching
+  `LIMIT`, and results are deduplicated by document ID and truncated in case it does not.
+- **timeout** (<code>int | None</code>) – Positive maximum query runtime in milliseconds, enforced by the FalkorDB server; `None` uses
+  the server default. Bounds the cost of expensive generated queries, which `top_k` alone cannot.
+- **system_prompt** (<code>str | None</code>) – Template for the system prompt sent to the generator; `None` uses
+  `DEFAULT_SYSTEM_PROMPT`. Must contain a `{graph_schema}` placeholder, which is replaced with the sampled
+  graph schema as JSON at warm-up. Other braces are kept as-is, so Cypher examples need no escaping. A
+  `LIMIT` instruction based on `top_k` is appended on every run.
+
+**Raises:**
+
+- <code>ValueError</code> – `document_store` is not a `FalkorDBDocumentStore`, `schema_sample_size`, `top_k`, or
+  `timeout` is not positive, or `system_prompt` lacks the `{graph_schema}` placeholder.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the chat generator, then discover the sampled graph schema and cache the system prompt once.
+
+Called lazily by `run()`.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the chat generator, then discover the sampled graph schema asynchronously and cache the prompt once.
+
+Called lazily by `run_async()`. Uses the generator's `warm_up_async()` when available, otherwise
+its `warm_up()`. Concurrent async calls share a single schema discovery.
+
+#### close
+
+```python
+close() -> None
+```
+
+Clear the cached prompt and release the document store's synchronous resources.
+
+The next warm-up discovers the schema again. The caller owns the generator's lifecycle.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Clear the cached prompt and release the document store's asynchronous resources.
+
+The next warm-up discovers the schema again. The caller owns the generator's lifecycle.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the retriever and its nested components.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary containing the component type and constructor parameters.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> FalkorDBTextToCypherRetriever
+```
+
+Deserialize the retriever using Haystack's generator deserialization allowlist.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized component dictionary.
+
+**Returns:**
+
+- <code>FalkorDBTextToCypherRetriever</code> – Reconstructed retriever.
+
+#### run
+
+```python
+run(query: str, *, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Generate a Cypher query and execute it through FalkorDB's read-only command.
+
+Graph traversal can be expensive even when the query returns few documents.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Natural-language retrieval request.
+- **top_k** (<code>int | None</code>) – Positive maximum number of unique documents to return; overrides the init value.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Mapping with `documents` (list of at most `top_k` unique retrieved Documents).
+
+**Raises:**
+
+- <code>ValueError</code> – `top_k` is not positive, or the generator reply violates the structured-output contract.
+- <code>DocumentStoreError</code> – Database retrieval or document conversion fails, or the query exceeds `timeout`.
+
+#### run_async
+
+```python
+run_async(query: str, *, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Generate and execute a read-only Cypher query asynchronously.
+
+Warms up lazily and reuses the cached schema. Database operations use native async I/O. Generators
+without `run_async()` run in a worker thread; cancelling the await does not stop that thread.
+Graph traversal can be expensive even when few documents are returned.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Natural-language retrieval request.
+- **top_k** (<code>int | None</code>) – Positive maximum number of unique documents to return; overrides the init value.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Mapping with `documents` (list of at most `top_k` unique retrieved Documents).
+
+**Raises:**
+
+- <code>ValueError</code> – `top_k` is not positive, or the generator reply violates the structured-output contract.
+- <code>DocumentStoreError</code> – Database retrieval or document conversion fails, or the query exceeds `timeout`.
+
 ## haystack_integrations.document_stores.falkordb.document_store
 
 ### FalkorDBDocumentStore
@@ -346,7 +544,9 @@ __init__(
     similarity: SimilarityFunction = "cosine",
     write_batch_size: int = 100,
     recreate_graph: bool = False,
-    verify_connectivity: bool = False
+    verify_connectivity: bool = False,
+    labels_metadata_field: str | None = None,
+    relationships_metadata_field: str | None = None
 ) -> None
 ```
 
@@ -368,15 +568,23 @@ Create a new FalkorDBDocumentStore.
   vector.
 - **similarity** (<code>SimilarityFunction</code>) – Similarity function for the vector index. Accepted values
   are `"cosine"` and `"euclidean"`.
-- **write_batch_size** (<code>int</code>) – Number of documents written per `UNWIND` batch.
+- **write_batch_size** (<code>int</code>) – Maximum rows per graph-writing batch. Must be positive.
 - **recreate_graph** (<code>bool</code>) – When `True` the existing graph (and all its data) is
   dropped and recreated on initialisation. Useful for tests.
 - **verify_connectivity** (<code>bool</code>) – When `True` a connectivity probe is run
   immediately in `__init__` — raises if the server is unreachable.
+- **labels_metadata_field** (<code>str | None</code>) – `Document.meta` key containing extra node labels; `None` disables extraction.
+  Labels must be non-empty strings without backticks. `node_label` is always retained.
+- **relationships_metadata_field** (<code>str | None</code>) – `Document.meta` key containing outgoing relationships; `None` disables
+  extraction. Each entry requires `target_id` and `type`, with an optional `properties` dictionary.
+  Relationship types must be non-empty strings without backticks.
+  Targets must already exist or be included in the same write. Configured graph fields are consumed,
+  not stored or returned as metadata. See `write_documents` for write behavior and an example.
 
 **Raises:**
 
-- <code>ValueError</code> – If `similarity` is not `"cosine"` or `"euclidean"`.
+- <code>ValueError</code> – `similarity` is unsupported, `write_batch_size` is not a positive integer, or graph metadata
+  field names are identical.
 
 #### to_dict
 
@@ -492,6 +700,29 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 `content` — no prefix is added. This matches the layout used by the
 `neo4j-haystack` reference integration.
 
+Configured graph metadata fields are consumed rather than stored as properties. Extra labels are added;
+outgoing relationships are merged by source ID, type, and target ID, updating only supplied properties.
+Existing labels, edges, and unspecified edge properties are preserved even with `OVERWRITE`.
+`SKIP` leaves existing documents and their graph structure untouched. Relationships are written after
+all node batches, so targets can appear later in the input. Malformed graph metadata is rejected before
+document writes. Writes are not transactional: missing targets, backend failures, or concurrent changes
+can leave documents and some relationships written.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+
+store = FalkorDBDocumentStore(labels_metadata_field="labels", relationships_metadata_field="relationships")
+article = Document(id="article", content="GraphRAG", meta={
+    "labels": ["Article"],
+    "relationships": [{"target_id": "topic", "type": "ABOUT", "properties": {"weight": 0.9}}],
+})
+topic = Document(id="topic", content="Knowledge graphs")
+print(store.write_documents([article, topic]))  # 2; creates an ABOUT relationship from article to topic.
+```
+
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – List of :class:`haystack.dataclasses.Document` objects.
@@ -500,14 +731,15 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 
 **Returns:**
 
-- <code>int</code> – Number of documents written or updated.
+- <code>int</code> – Number of documents written or updated, not including relationships.
 
 **Raises:**
 
-- <code>ValueError</code> – If `documents` contains non-Document elements.
-- <code>DuplicateDocumentError</code> – If `policy` is FAIL / NONE and a duplicate
-  ID is encountered.
-- <code>DocumentStoreError</code> – If any other DB error occurs.
+- <code>TypeError</code> – Graph metadata has invalid types or property shapes.
+- <code>ValueError</code> – `documents` contains non-Document elements, required relationship keys are missing,
+  or a label or relationship type is empty or contains a backtick.
+- <code>DuplicateDocumentError</code> – `policy` is FAIL / NONE and a duplicate ID is encountered.
+- <code>DocumentStoreError</code> – A relationship target is missing or a document-node or relationship write fails.
 
 #### delete_documents
 
@@ -710,6 +942,9 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 `content` — no prefix is added. This matches the layout used by the
 `neo4j-haystack` reference integration.
 
+Graph metadata handling and duplicate policies match `write_documents`; see it for an example.
+Writes are not transactional: missing targets or backend failures can leave partial writes.
+
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – List of :class:`haystack.dataclasses.Document` objects.
@@ -718,14 +953,15 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 
 **Returns:**
 
-- <code>int</code> – Number of documents written or updated.
+- <code>int</code> – Number of documents written or updated, not including relationships.
 
 **Raises:**
 
-- <code>ValueError</code> – If `documents` contains non-Document elements.
-- <code>DuplicateDocumentError</code> – If `policy` is FAIL / NONE and a duplicate
-  ID is encountered.
-- <code>DocumentStoreError</code> – If any other DB error occurs.
+- <code>TypeError</code> – Graph metadata has invalid types or property shapes.
+- <code>ValueError</code> – `documents` contains non-Document elements, required relationship keys are missing,
+  or a label or relationship type is empty or contains a backtick.
+- <code>DuplicateDocumentError</code> – `policy` is FAIL / NONE and a duplicate ID is encountered.
+- <code>DocumentStoreError</code> – A relationship target is missing or a document-node or relationship write fails.
 
 #### delete_documents_async
 

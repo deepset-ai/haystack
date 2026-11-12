@@ -138,16 +138,13 @@ class SentenceWindowRetriever:
             if doc.content is None:
                 continue
 
-            start = doc.meta.get("split_idx_start", 0)  # start of the current content
+            split_idx_start = int(doc.meta["split_idx_start"])
 
-            # if the start of the current content is before the end of the last appended content, adjust it
-            start = max(start, last_idx_end)
+            # append only the part of the current content that is not already in the merged text
+            merged_text += doc.content[max(0, last_idx_end - split_idx_start) :]
 
-            # append the non-overlapping part to the merged text
-            merged_text += doc.content[start - int(doc.meta["split_idx_start"]) :]
-
-            # update the last end index
-            last_idx_end = int(doc.meta["split_idx_start"]) + len(doc.content)
+            # a document can lie entirely within an earlier one, so the end index must never move backwards
+            last_idx_end = max(last_idx_end, split_idx_start + len(doc.content))
 
         return merged_text
 

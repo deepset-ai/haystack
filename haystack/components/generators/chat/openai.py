@@ -23,6 +23,11 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat._rate_limit_headers import (
+    _attach_rate_limit_headers,
+    _build_http_client,
+    _reset_rate_limit_headers,
+)
 from haystack.components.generators.utils import (
     _convert_streaming_chunks_to_chat_message,
     _normalize_messages,
@@ -49,9 +54,12 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
+
+# These models reason by default, but Chat Completions accepts function tools for them only with
+# `reasoning_effort="none"` and returns HTTP 400 otherwise.
+_NO_REASONING_TOOL_CALL_MODEL_PREFIXES = ("gpt-5.6", "gpt-6-sol", "gpt-6-luna")
 
 
 @component
@@ -90,7 +98,7 @@ class OpenAIChatGenerator:
             that focuses on enabling computers to understand, interpret, and generate human language in
             a way that is meaningful and useful.")],
          _name=None,
-         _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5.6-terra', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
         ]
     }
@@ -98,22 +106,25 @@ class OpenAIChatGenerator:
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
-        "gpt-5-mini",
-        "gpt-5-nano",
-        "gpt-5",
-        "gpt-5.1",
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.4",
         "gpt-5.2",
         "gpt-5.2-pro",
-        "gpt-5.4",
+        "gpt-5.1",
+        "gpt-5",
         "gpt-5-pro",
+        "gpt-5-mini",
+        "gpt-5-nano",
         "gpt-4.1",
         "gpt-4.1-mini",
-        "gpt-4.1-nano",
         "gpt-4o",
         "gpt-4o-mini",
-        "gpt-4-turbo",
-        "gpt-4",
-        "gpt-3.5-turbo",
     ]
     """A non-exhaustive list of chat models supported by this component.
     See https://developers.openai.com/api/docs/models for the full list and snapshot IDs."""
@@ -121,7 +132,7 @@ class OpenAIChatGenerator:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-5-mini",
+        model: str = "gpt-5.6-terra",
         streaming_callback: StreamingCallbackT | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -131,9 +142,11 @@ class OpenAIChatGenerator:
         tools: ToolsType | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        *,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
-        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -157,6 +170,10 @@ class OpenAIChatGenerator:
                 when streaming. Set `{"include_usage": False}` to disable requesting token usage.
             - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
                 including visible output tokens and reasoning tokens.
+            - `reasoning_effort`: How much effort a reasoning model spends on reasoning, for example `"none"`,
+                `"low"`, or `"high"`. Over Chat Completions, gpt-5.6, gpt-6-sol, and gpt-6-luna models accept tools
+                only with `"none"`, so when you pass tools to these models without setting `reasoning_effort`, the
+                component sends `"none"`. To combine reasoning with tools, use `OpenAIResponsesChatGenerator`.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -195,6 +212,11 @@ class OpenAIChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
         """
         self.api_key = api_key
@@ -208,6 +230,7 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         # Check for duplicate tool names
         _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
@@ -234,7 +257,9 @@ class OpenAIChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -247,7 +272,9 @@ class OpenAIChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -312,6 +339,7 @@ class OpenAIChatGenerator:
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
@@ -387,6 +415,7 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
         chat_completion = openai_endpoint_method(**api_args)
 
@@ -405,10 +434,7 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
-        for message in completions:
-            _check_finish_reason(message.meta)
-
+        self._finalize_replies(completions)
         return {"replies": completions}
 
     @component.output_types(replies=list[ChatMessage])
@@ -472,6 +498,7 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
         chat_completion = await openai_endpoint_method(**api_args)
 
@@ -490,11 +517,13 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
+        self._finalize_replies(completions)
+        return {"replies": completions}
+
+    def _finalize_replies(self, completions: list[ChatMessage]) -> None:
         for message in completions:
             _check_finish_reason(message.meta)
-
-        return {"replies": completions}
+        _attach_rate_limit_headers(completions, enabled=self.include_rate_limit_headers)
 
     def _convert_chat_completion_to_chat_message(
         self, completion: ChatCompletion | ParsedChatCompletion, choice: Choice
@@ -546,6 +575,8 @@ class OpenAIChatGenerator:
                     function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
+            if self.model.startswith(_NO_REASONING_TOOL_CALL_MODEL_PREFIXES):
+                generation_kwargs.setdefault("reasoning_effort", "none")
 
         base_args = {
             "model": self.model,

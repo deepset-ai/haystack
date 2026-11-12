@@ -99,6 +99,20 @@ class TestDocumentToImageContent:
         assert image_contents[1] is not None
         assert image_contents[2] is None
 
+    def test_run_with_undecodable_image_document(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        corrupt_image = tmp_path / "corrupt.jpg"
+        corrupt_image.write_bytes(b"not an image")
+        # decoding only happens on the resize path, so set size to trigger it
+        converter = DocumentToImageContent(size=(64, 64))
+        corrupt_doc = Document(content="", meta={"file_path": str(corrupt_image)})
+        documents = [Document(content="", meta={"file_path": "test/test_files/images/apple.jpg"}), corrupt_doc]
+        image_contents = converter.run(documents=documents)["image_contents"]
+        assert image_contents[0] is not None
+        assert image_contents[1] is None
+        # the warning names the skipped document
+        assert f"Skipping document with ID {corrupt_doc.id}" in caplog.text
+        assert "cannot identify image file" in caplog.text
+
     def test_run_with_unconvertible_pdf_pages(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         unreadable_pdf = tmp_path / "unreadable.pdf"
         unreadable_pdf.write_bytes(b"%PDF-1.4 not a real PDF")
