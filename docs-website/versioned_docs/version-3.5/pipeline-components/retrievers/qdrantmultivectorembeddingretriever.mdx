@@ -1,0 +1,138 @@
+---
+title: "QdrantMultivectorEmbeddingRetriever"
+id: qdrantmultivectorembeddingretriever
+slug: "/qdrantmultivectorembeddingretriever"
+description: "A Retriever based on multivector embeddings, compatible with the Qdrant Document Store."
+---
+
+# QdrantMultivectorEmbeddingRetriever
+
+A Retriever based on multivector embeddings, compatible with the Qdrant Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a multivector Text Embedder, as the last component in a semantic search pipeline or before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) in a RAG pipeline |
+| **Mandatory init variables** | `document_store`: An instance of [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) with `multivector_embedding_dim` configured |
+| **Mandatory run variables** | `query_multivector_embedding`: A non-empty list of vectors representing the query (`list[list[float]]`) |
+| **Output variables** | `documents`: Up to `top_k` documents sorted by descending MaxSim score, with scores in `Document.score` |
+| **API reference** | [Qdrant](/reference/integrations-qdrant) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
+| **Package name** | `qdrant-haystack` |
+
+</div>
+
+## Overview
+
+`QdrantMultivectorEmbeddingRetriever` retrieves documents from a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) using multivector embeddings, which typically contain one vector per token. It ranks documents using **dot-product MaxSim**: for each query vector, it finds the highest dot product with any document vector, then sums these maxima into a relevance score.
+
+Before retrieval, store document vectors in `Document.multivector_embedding` and compute the query's multivector embedding with the same model. For example, you can use `SentenceTransformersMultivectorDocumentEmbedder` for indexing and `SentenceTransformersMultivectorTextEmbedder` for queries. Set the Document Store's `multivector_embedding_dim` to the dimension of each vector.
+
+The Retriever returns up to 10 documents by default and excludes documents without multivector embeddings. Set `top_k` to change the result limit and `filters` to narrow down the search space. Embeddings are omitted from results by default; set `return_embedding=True` to return all stored embeddings, including multivector embeddings. These parameters can be set at initialization or at runtime.
+
+:::tip[Retrieval on Large Collections]
+
+Direct multivector retrieval scans the documents matching the filters and can be expensive on large collections. To score a smaller candidate set, store both dense and multivector embeddings, retrieve candidates with [QdrantEmbeddingRetriever](qdrantembeddingretriever.mdx) using `return_embedding=True`, then rerank them with [MaxSimRanker](../rankers/maxsimranker.mdx).
+
+:::
+
+### Installation
+
+To start using Qdrant with Haystack, install the package:
+
+```shell
+pip install qdrant-haystack
+```
+
+## Usage
+
+### On its own
+
+This example retrieves the highest-scoring document from an in-memory Qdrant Document Store using manually defined multivector embeddings.
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(location=":memory:", multivector_embedding_dim=2)
+document_store.write_documents(
+    documents=[
+        Document(
+            content="Solar panels turn sunlight into electricity.",
+            multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
+        ),
+        Document(
+            content="Wind turbines generate electricity.",
+            multivector_embedding=[[0.5, 0.0]],
+        ),
+    ]
+)
+
+retriever = QdrantMultivectorEmbeddingRetriever(document_store=document_store, top_k=1)
+result = retriever.run(query_multivector_embedding=[[1.0, 0.0], [0.0, 1.0]])
+for document in result["documents"]:
+    print(f"{document.score:.2f}: {document.content}")
+# >> 2.00: Solar panels turn sunlight into electricity.
+```
+
+### In a pipeline
+
+This example computes document multivector embeddings at indexing time, stores them in Qdrant, then connects a multivector Text Embedder to the Retriever in a query pipeline.
+
+Install the embedding integration:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+    SentenceTransformersMultivectorTextEmbedder,
+)
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+model = "answerdotai/answerai-colbert-small-v1"
+# This model produces 96-dimensional token vectors.
+document_store = QdrantDocumentStore(location=":memory:", multivector_embedding_dim=96)
+documents = [
+    Document(content="Solar panels convert sunlight into electricity."),
+    Document(content="Wind turbines use wind to generate electricity."),
+    Document(
+        content="Hydroelectric power stations generate electricity from flowing water."
+    ),
+]
+
+document_embedder = SentenceTransformersMultivectorDocumentEmbedder(model=model)
+documents = document_embedder.run(documents=documents)["documents"]
+document_store.write_documents(documents=documents)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="text_embedder",
+    instance=SentenceTransformersMultivectorTextEmbedder(model=model),
+)
+query_pipeline.add_component(
+    name="retriever",
+    instance=QdrantMultivectorEmbeddingRetriever(
+        document_store=document_store, top_k=1
+    ),
+)
+query_pipeline.connect(
+    "text_embedder.multivector_embedding", "retriever.query_multivector_embedding"
+)
+
+result = query_pipeline.run(
+    data={"text_embedder": {"text": "What converts sunlight into electricity?"}}
+)
+print(result["retriever"]["documents"][0].content)
+# >> Solar panels convert sunlight into electricity.
+```

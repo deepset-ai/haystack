@@ -652,6 +652,7 @@ export default {
             'pipeline-components/retrievers/pineconedenseretriever',
             'pipeline-components/retrievers/qdrantembeddingretriever',
             'pipeline-components/retrievers/qdranthybridretriever',
+            'pipeline-components/retrievers/qdrantmultivectorembeddingretriever',
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretriever',
             'pipeline-components/retrievers/snowflaketableretriever',
