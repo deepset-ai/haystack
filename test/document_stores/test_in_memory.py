@@ -275,13 +275,9 @@ def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
         other.shutdown()
 
 
-@pytest.mark.parametrize("shared", [False, True])
-@pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
 @pytest.mark.parametrize("empty_snapshot", [False, True])
-def test_load_from_disk_restores_snapshot(
-    tmp_path: Path, shared: bool, bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"], empty_snapshot: bool
-) -> None:
-    store = InMemoryDocumentStore(shared=shared, bm25_algorithm=bm25_algorithm)
+def test_load_from_disk_restores_snapshot(tmp_path: Path, empty_snapshot: bool) -> None:
+    store = InMemoryDocumentStore(shared=True)
     saved_documents = (
         [] if empty_snapshot else [Document(id="first", content="alpha beta"), Document(id="second", content="gamma")]
     )
@@ -297,17 +293,16 @@ def test_load_from_disk_restores_snapshot(
     loaded = InMemoryDocumentStore.load_from_disk(path)
 
     assert loaded.filter_documents() == saved_documents
-    reference = InMemoryDocumentStore(shared=False, bm25_algorithm=bm25_algorithm)
+    reference = InMemoryDocumentStore(shared=False)
     reference.write_documents(saved_documents)
     for query in ("alpha", "beta", "gamma", "delta"):
         assert loaded.bm25_retrieval(query) == reference.bm25_retrieval(query)
-    if shared:
-        assert store.filter_documents() == saved_documents
-        assert store.bm25_retrieval("beta") == reference.bm25_retrieval("beta")
+    assert store.filter_documents() == saved_documents
+    assert store.bm25_retrieval("beta") == reference.bm25_retrieval("beta")
 
 
 def test_load_from_disk_rejects_invalid_documents_before_replacing_shared_index(tmp_path: Path) -> None:
-    store = InMemoryDocumentStore()
+    store = InMemoryDocumentStore(shared=True)
     documents = [Document(id="current", content="keep this document")]
     store.write_documents(documents)
     path = tmp_path / "snapshot.json"

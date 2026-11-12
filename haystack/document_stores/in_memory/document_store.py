@@ -467,8 +467,8 @@ class InMemoryDocumentStore:
         """
         Load the database and its data from disk as a JSON file.
 
-        The saved documents replace any existing documents in the saved index, including for other instances
-        sharing that index.
+        With `shared=True`, the saved documents replace all documents in the index, including for other
+        instances sharing it.
 
         :param path: The path to the JSON file.
         :returns: The loaded InMemoryDocumentStore.

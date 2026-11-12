@@ -1,15 +1,5 @@
-upgrade:
-  - |
-    ``InMemoryDocumentStore.load_from_disk()`` now restores exactly the saved documents
-    instead of retaining documents added to the same shared index after the snapshot.
-    This also restores the index seen by other instances sharing it. Applications that
-    intentionally merged snapshots with live documents should capture the current
-    full documents, including embeddings, before loading. For example, use
-    ``list(store.storage.values())`` while no concurrent writes occur, then explicitly
-    write those documents back afterward. Choose ``DuplicatePolicy.SKIP`` to retain snapshot versions of
-    conflicting IDs, or ``DuplicatePolicy.OVERWRITE`` to prefer the captured live versions.
 fixes:
   - |
-    Restore document contents and BM25 statistics together when loading an
-    ``InMemoryDocumentStore`` snapshot, including empty snapshots. Documents added
-    after the snapshot no longer appear in restored retrieval results.
+    ``InMemoryDocumentStore.load_from_disk()`` now restores exactly the saved documents and BM25 statistics.
+    Documents written to the same shared index after the snapshot are removed, including for other
+    instances sharing that index.
