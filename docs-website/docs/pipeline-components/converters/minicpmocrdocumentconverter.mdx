@@ -1,0 +1,165 @@
+---
+title: "MiniCPMOCRDocumentConverter"
+id: minicpmocrdocumentconverter
+slug: "/minicpmocrdocumentconverter"
+description: "`MiniCPMOCRDocumentConverter` extracts text from PDFs and images using MiniCPM-OCR, an open-weight OCR model that you run on your own inference server."
+hep_available: false
+---
+
+# MiniCPMOCRDocumentConverter
+
+`MiniCPMOCRDocumentConverter` extracts text from PDFs and images using [MiniCPM-OCR](https://github.com/OpenBMB/MiniCPM-OCR), a 1.3B open-weight OCR model specialized in document parsing. You run the model on your own inference server, so documents never leave your infrastructure.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `server_url`: The base URL of the MiniCPM-OCR inference server, for example `http://localhost:8000`. |
+| **Mandatory run variables** | `sources`: A list of PDF or image file paths or ByteStream objects. |
+| **Output variables** | `documents`: A list of documents. |
+| **API reference** | [MiniCPM OCR](/reference/integrations-minicpm-ocr) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/minicpm_ocr |
+| **Package name** | `minicpm-ocr-haystack` |
+
+</div>
+
+## Overview
+
+`MiniCPMOCRDocumentConverter` converts PDF, PNG, JPEG, BMP, TIFF, and WebP files in two stages:
+
+1. **Layout detection** runs locally, inside the component. The PP-DocLayoutV3 layout model finds the text, table, formula, and figure blocks on each page.
+2. **Recognition** runs on a MiniCPM-OCR inference server. The component sends each detected block to the server with a prompt that matches the block type, then assembles the results into Markdown.
+
+The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#document) per source, with all pages concatenated using form feed characters (`\f`) as separators. This format ensures compatibility with Haystack's [`DocumentSplitter`](../preprocessors/documentsplitter.mdx) for accurate page-wise splitting. Each document's metadata includes `page_count` and `ocr_engine`, together with any metadata from the source. By default, `file_path` only keeps the file name; set `store_full_path=True` to keep the full path.
+
+Sources that can't be read, have an unsupported file type, or fail to convert are skipped with a warning, so one bad file doesn't stop a batch.
+
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings and tables. For page-aware chunking, connect the converter directly to `DocumentSplitter`, or disable those options if you need custom cleanup.
+:::
+
+### Setting up the inference server
+
+The component needs a running MiniCPM-OCR inference server. Set `backend` to match it:
+
+| Server | `backend` |
+| --- | --- |
+| [vLLM](https://docs.vllm.ai/) | `vllm` (default) |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | `llamacpp` |
+| [Ollama](https://ollama.com/) | `ollama` |
+| SGLang, LMDeploy, or another OpenAI-compatible server | `openai` |
+
+With a GPU, start a vLLM server that serves the model under the component's default `model` name:
+
+```shell
+vllm serve openbmb/MiniCPM-OCR-1.0 --served-model-name minicpm-ocr --port 8000
+```
+
+Without a GPU, for example on a laptop or Apple Silicon, llama.cpp can serve the quantized GGUF weights:
+
+```shell
+llama-server -hf openbmb/MiniCPM-OCR-1.0-gguf:Q4_K_M --host 127.0.0.1 --port 8080
+```
+
+Pass the server's base URL as `server_url`. The component adds the `/v1/chat/completions` path itself, and a trailing `/v1` in the URL is ignored. If your server requires an API key, the component reads it from the `MINICPM_OCR_API_KEY` environment variable, or you can pass it as `api_key`.
+
+### Layout model
+
+The first call to `warm_up()` downloads the PP-DocLayoutV3 layout model (about 130 MB) into `~/.cache/minicpm-ocr/layout`, and later runs reuse it. To use a copy you already have, set `layout_model_dir`. Layout detection runs on CPU by default; set `layout_device`, for example to `cuda:0`, to run it on a GPU.
+
+## When to use it
+
+`MiniCPMOCRDocumentConverter` is a good fit when:
+
+- **Documents must stay on your infrastructure**, so a hosted OCR API isn't an option.
+- **You want an open-weight model** with no per-page API costs. MiniCPM-OCR is released under the Apache-2.0 license, including the model weights.
+- **Documents mix text, tables, and formulas**, such as reports, invoices, and scientific papers, where Markdown output preserves structure for later splitting and retrieval.
+- **You process Chinese and English documents**, which the model is trained on.
+
+## Useful configuration areas
+
+The full parameter list is available in the [API reference](/reference/integrations-minicpm-ocr). The options fall into these groups:
+
+- **Inference server**: `server_url`, `model`, `backend`, and `api_key` tell the component how to reach the server.
+- **Layout detection**: `layout_model_dir` and `layout_device` control where the layout model is stored and where it runs.
+- **Throughput**: `page_workers` sets how many pages are prepared in parallel, and `max_workers` how many recognition requests are in flight at once. Raise them to match your server's capacity. `request_timeout` sets the timeout in seconds for each recognition request.
+- **Metadata**: `store_full_path` keeps the full source path in `file_path` instead of only the file name.
+
+## Usage
+
+You need to install the `minicpm-ocr-haystack` integration to use `MiniCPMOCRDocumentConverter`:
+
+```shell
+pip install minicpm-ocr-haystack
+```
+
+The integration supports Python 3.11 to 3.13. Layout detection depends on PaddlePaddle, which makes the installation large.
+
+### On its own
+
+Basic usage with a vLLM server:
+
+```python
+from pathlib import Path
+
+from haystack_integrations.components.converters.minicpm_ocr import (
+    MiniCPMOCRDocumentConverter,
+)
+
+converter = MiniCPMOCRDocumentConverter(server_url="http://localhost:8000")
+converter.warm_up()
+
+result = converter.run(sources=[Path("report.pdf"), Path("scan.png")])
+documents = result["documents"]
+```
+
+With a llama.cpp server and a layout model you have already downloaded:
+
+```python
+from pathlib import Path
+
+from haystack_integrations.components.converters.minicpm_ocr import (
+    MiniCPMOCRDocumentConverter,
+)
+
+converter = MiniCPMOCRDocumentConverter(
+    server_url="http://127.0.0.1:8080",
+    backend="llamacpp",
+    layout_model_dir="/models/pp-doclayoutv3",
+)
+converter.warm_up()
+
+result = converter.run(sources=[Path("invoice.pdf")])
+print(result["documents"][0].meta["page_count"])
+```
+
+### In a pipeline
+
+Here's an example of an indexing pipeline that converts PDFs and images, splits them by page, and writes them to a Document Store:
+
+```python
+from haystack import Pipeline
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.minicpm_ocr import (
+    MiniCPMOCRDocumentConverter,
+)
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "converter",
+    MiniCPMOCRDocumentConverter(server_url="http://localhost:8000"),
+)
+pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+file_paths = ["invoice.pdf", "receipt.jpg", "contract.pdf"]
+pipeline.run({"converter": {"sources": file_paths}})
+```
