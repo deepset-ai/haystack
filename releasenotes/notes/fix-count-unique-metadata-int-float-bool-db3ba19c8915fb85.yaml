@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``InMemoryDocumentStore.count_unique_metadata_by_filter`` so int, float, and bool
+    metadata values that compare equal in Python (for example ``1``, ``1.0``, and ``True``) are
+    counted as distinct. Counts now match ``get_metadata_field_unique_values``.
