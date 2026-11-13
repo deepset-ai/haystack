@@ -1336,13 +1336,9 @@ class Pipeline(PipelineBase):
             )
             comp_inputs["streaming_callback"] = make_forwarder(user_callback)
 
-        async def runner() -> dict[str, Any]:
-            try:
-                return await self.run_async(
-                    new_data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
-                )
-            finally:
-                await queue.put(PipelineStreamHandle._END_OF_STREAM)
-
-        task = asyncio.create_task(runner())
+        task = asyncio.create_task(
+            self.run_async(new_data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit)
+        )
+        # A done callback, unlike a `finally` in the task, also fires when the task is cancelled before it starts.
+        task.add_done_callback(lambda _: queue.put_nowait(PipelineStreamHandle._END_OF_STREAM))
         return PipelineStreamHandle(queue=queue, task=task, cancel_on_abandon=cancel_on_abandon)
