@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +11,7 @@ import pytest
 from haystack import Document
 from haystack.utils.misc import (
     _deduplicate_documents,
+    _guess_mime_type,
     _normalize_metadata_field_name,
     _parse_dict_from_json,
     _reciprocal_rank_fusion,
@@ -211,3 +213,16 @@ class TestExpandPageRange:
 
     def test_equal_start_end_is_valid(self):
         assert expand_page_range(["3-3"]) == [3]
+
+
+class TestGuessMimeType:
+    @pytest.mark.parametrize("filename", ["data.csv", "DATA.CSV"])
+    def test_csv_is_text_csv_even_if_the_system_maps_it_elsewhere(self, filename):
+        # On Windows the mimetypes module reads the registry, where Excel registers .csv as
+        # application/vnd.ms-excel. CSV files must still match "text/csv".
+        with patch("haystack.utils.misc.mimetypes.guess_type", return_value=("application/vnd.ms-excel", None)):
+            assert _guess_mime_type(Path(filename)) == "text/csv"
+
+    def test_other_extensions_still_use_the_system_guess(self):
+        with patch("haystack.utils.misc.mimetypes.guess_type", return_value=("application/pdf", None)):
+            assert _guess_mime_type(Path("doc.pdf")) == "application/pdf"
