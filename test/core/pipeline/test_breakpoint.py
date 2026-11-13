@@ -152,6 +152,40 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
     assert loaded_snapshot.break_point.visit_count == 0
 
 
+def test_resume_from_snapshot_file_preserves_non_string_dict_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+    @component
+    class Src:
+        @component.output_types(v=dict[int, str])
+        def run(self):
+            return {"v": {1: "a", 2: "b"}}
+
+    @component
+    class Sink:
+        @component.output_types(v=dict[int, str])
+        def run(self, v: dict[int, str]):
+            return {"v": v}
+
+    pipeline = Pipeline()
+    pipeline.add_component("src", Src())
+    pipeline.add_component("sink", Sink())
+    pipeline.connect("src.v", "sink.v")
+
+    break_point = Breakpoint(component_name="sink", visit_count=0, snapshot_file_path=str(tmp_path))
+    with pytest.raises(BreakpointException):
+        pipeline.run(data={}, break_point=break_point)
+
+    # The snapshot goes through a real JSON file, where json.dump would stringify the int keys
+    # of the dict produced by "src" (the in-memory snapshot in the exception keeps them by
+    # accident). Resuming from the file must return the same result as a run without breakpoint.
+    snapshot_files = list(tmp_path.glob("sink_*.json"))
+    assert len(snapshot_files) == 1
+
+    resumed = pipeline.run(data={}, pipeline_snapshot=load_pipeline_snapshot(snapshot_files[0]))
+    assert resumed == {"sink": {"v": {1: "a", 2: "b"}}}
+
+
 @component
 class _AppendingComponent:
     @component.output_types(result=str)

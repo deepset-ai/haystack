@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Preserve non-string dictionary keys in data serialized with ``_serialize_value_with_schema``
+    (pipeline snapshots and Agent ``State`` data). Dicts with non-string keys are now stored as an
+    explicit list of key/value entries, each key with its own schema, so ``json.dump`` no longer
+    stringifies int/float/bool/None keys when a snapshot is saved to a file, and keys that
+    stringify alike no longer collide (e.g. ``{1: "a", "1": "b"}`` no longer comes back as
+    ``{"1": "b"}``). Dicts with only string keys keep the previous ``properties`` format, and
+    snapshots created by earlier Haystack versions still load. Snapshots saved by this version
+    that contain non-string dictionary keys cannot be read by older Haystack versions.

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from datetime import datetime
 from enum import Enum
 
@@ -10,7 +11,11 @@ import pytest
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.dataclasses import ChatMessage, Document, GeneratedAnswer
-from haystack.utils.base_serialization import _deserialize_value_with_schema, _serialize_value_with_schema
+from haystack.utils.base_serialization import (
+    _deserialize_value_with_schema,
+    _serialize_value_with_schema,
+    _serialize_with_field_fallback,
+)
 
 
 class PlainObject:
@@ -455,6 +460,85 @@ class TestMixedTypeArrays:
                     "serialized_data": [1],
                 }
             )
+
+
+class TestNonStringKeys:
+    """Dicts with non-string keys keep their key types across a JSON round-trip.
+
+    JSON object keys must be strings, so without the `entries` encoding an int key would come
+    back as a string, and keys that stringify alike would collide. The JSON round-trip below is
+    essential: an in-memory serialize/deserialize keeps the keys by accident.
+    """
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param({1: "a", 2: "b"}, id="int-keys"),
+            pytest.param({1.5: "x", 2.5: "y"}, id="float-keys"),
+            pytest.param({True: "yes", False: "no"}, id="bool-keys"),
+            pytest.param({None: "nothing"}, id="none-key"),
+            pytest.param({1: "a", "x": "b"}, id="mixed-string-and-int-keys"),
+            pytest.param({"outer": {1: "a"}}, id="nested-int-keys"),
+            pytest.param({(1, 2): "tuple-key"}, id="tuple-key"),
+            pytest.param({1: "int", "1": "str"}, id="stringified-collision-preserved"),
+        ],
+    )
+    def test_round_trip_through_json(self, value):
+        serialized = _serialize_value_with_schema(value)
+        through_json = json.loads(json.dumps(serialized))
+        deserialized = _deserialize_value_with_schema(through_json)
+        assert deserialized == value
+        assert [type(k) for k in deserialized] == [type(k) for k in value]
+
+    def test_string_keyed_dict_output_is_unchanged(self):
+        # Backward compatibility: dicts with only string keys keep the historical `properties`
+        # envelope, with no `entries` keyword — not even when a field is literally named "entries".
+        assert _serialize_value_with_schema({"a": 1, "entries": 2}) == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "entries": {"type": "integer"}},
+            },
+            "serialized_data": {"a": 1, "entries": 2},
+        }
+
+    def test_deserialize_entries_length_mismatch_raises(self):
+        with pytest.raises(DeserializationError, match="'entries' declares 2"):
+            _deserialize_value_with_schema(
+                {
+                    "serialization_schema": {
+                        "type": "object",
+                        "entries": [
+                            {"key": {"type": "integer"}, "value": {"type": "string"}},
+                            {"key": {"type": "integer"}, "value": {"type": "string"}},
+                        ],
+                    },
+                    "serialized_data": [{"key": 1, "value": "a"}],
+                }
+            )
+
+    def test_field_fallback_preserves_non_string_keys_through_json(self):
+        # A dict with non-string keys AND a value that cannot be serialized: the field-by-field
+        # fallback omits only the failing field and still keeps the key types of the surviving
+        # fields across a real JSON round-trip.
+        payload = {1: "a", 2: PlainObject("unserializable"), "keep": "me"}
+
+        serialized = _serialize_with_field_fallback(payload, description="the test payload")
+        deserialized = _deserialize_value_with_schema(json.loads(json.dumps(serialized)))
+
+        assert deserialized == {1: "a", "keep": "me"}
+        assert [type(k) for k in deserialized] == [int, str]
+
+    def test_field_fallback_string_keyed_output_is_unchanged(self):
+        # Backward compatibility: the fallback path for dicts with only string keys (and a
+        # failing value) keeps producing the historical `properties` envelope.
+        serialized = _serialize_with_field_fallback(
+            {"a": 1, "bad": PlainObject("unserializable")}, description="the test payload"
+        )
+
+        assert serialized == {
+            "serialization_schema": {"type": "object", "properties": {"a": {"type": "integer"}}},
+            "serialized_data": {"a": 1},
+        }
 
 
 class TestErrorHandling:
