@@ -38,6 +38,8 @@ pip install python-docx
 ### On its own
 
 ```python
+from datetime import datetime
+
 from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
 
 converter = DOCXToDocument()
