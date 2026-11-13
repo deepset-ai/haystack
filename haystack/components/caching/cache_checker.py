@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
 from haystack.utils.async_utils import _call_with_async_fallback
+from haystack.utils.filters import _parse_iso_date
 
 
 @component
@@ -38,7 +41,14 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        cache_field: str,
+        *,
+        ttl: float | timedelta | None = None,
+        time_field: str = "cached_at",
+    ) -> None:
         """
         Creates a CacheChecker component.
 
@@ -47,9 +57,35 @@ class CacheChecker:
         :param cache_field:
             Name of the document's metadata field
             to check for cache hits.
+        :param ttl:
+            Time-to-live for cache entries, as a `timedelta` or a number of seconds.
+            If set, a matching document only counts as a hit if the timestamp in `time_field` is younger than `ttl`.
+            Documents with a missing or expired timestamp are returned as misses.
+            If `None`, cache entries never expire.
+        :param time_field:
+            Name of the document's metadata field holding the time the document was cached,
+            as a `datetime` or an ISO 8601 string. Only used when `ttl` is set.
         """
+        if ttl is not None:
+            if isinstance(ttl, bool):
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
+
+            if isinstance(ttl, (int, float)):
+                if not math.isfinite(ttl) or ttl <= 0:
+                    raise ValueError("ttl must be a positive number of seconds.")
+
+                ttl = timedelta(seconds=ttl)
+
+            elif isinstance(ttl, timedelta):
+                if ttl <= timedelta(0):
+                    raise ValueError("ttl must be a positive timedelta.")
+
+            else:
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
         self.document_store = document_store
         self.cache_field = cache_field
+        self.ttl = ttl
+        self.time_field = time_field.removeprefix("meta.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -58,7 +94,44 @@ class CacheChecker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store, cache_field=self.cache_field)
+        return default_to_dict(
+            self,
+            document_store=self.document_store,
+            cache_field=self.cache_field,
+            ttl=self.ttl.total_seconds() if self.ttl is not None else None,
+            time_field=self.time_field,
+        )
+
+    def _is_fresh(self, document: Document) -> bool:
+        """
+        Checks whether a cached document is still within its TTL.
+
+        Always returns True when no `ttl` is configured, to preserve the original non-expiring behavior.
+
+        :param document:
+            The candidate cache-hit document.
+        :returns:
+            True if the document should count as a cache hit, False if it should be treated as expired.
+        """
+        if self.ttl is None:
+            return True
+
+        cached_at = document.meta.get(self.time_field)
+        if cached_at is None:
+            # ttl is enabled but the document was never stamped with a cache time: treat as stale
+            return False
+
+        if isinstance(cached_at, str):
+            cached_at = _parse_iso_date(cached_at)
+
+        if not isinstance(cached_at, datetime):
+            return False
+
+        if cached_at.tzinfo is None:
+            cached_at = cached_at.astimezone()
+
+        age = datetime.now(UTC) - cached_at
+        return timedelta(0) <= age < self.ttl
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
@@ -90,10 +163,12 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = self.document_store.filter_documents(filters=filters)
-            if found:
-                found_documents.extend(found)
+            fresh = [doc for doc in found if self._is_fresh(doc)]
+            if fresh:
+                found_documents.extend(fresh)
             else:
                 misses.append(item)
+
         return {"hits": found_documents, "misses": misses}
 
     @component.output_types(hits=list[Document], misses=list)
@@ -114,10 +189,12 @@ class CacheChecker:
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters)
-            if found:
-                found_documents.extend(found)
+            fresh = [doc for doc in found if self._is_fresh(doc)]
+            if fresh:
+                found_documents.extend(fresh)
             else:
                 misses.append(item)
+
         return {"hits": found_documents, "misses": misses}
 
     def close(self) -> None:
