@@ -167,8 +167,16 @@ class CSVToDocument:
                 # ``restkey`` ensures surplus fields on ragged rows (rows with more values than the
                 # header, e.g. an unquoted comma inside a value) land under an explicit string key
                 # instead of the default ``None`` key, which would break ``Document`` id generation.
+                # ``newline=""`` lets the csv module handle line endings (CR, LF or
+                # CRLF) itself and keeps a quoted field's own newlines intact, per
+                # https://docs.python.org/3/library/csv.html#csv.reader. Without it,
+                # StringIO's universal-newline translation leaves CR-separated records
+                # as one line and DictReader raises.
                 reader = csv.DictReader(
-                    io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar, restkey="extra_columns"
+                    io.StringIO(data, newline=""),
+                    delimiter=self.delimiter,
+                    quotechar=self.quotechar,
+                    restkey="extra_columns",
                 )
             except Exception as e:
                 raise RuntimeError(f"CSVToDocument(row): could not parse CSV rows for {source}: {e}") from e
