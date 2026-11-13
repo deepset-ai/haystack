@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    The ``haystack.agent.step.tool`` tracing span of the ``Agent`` now carries a ``haystack.agent.step.tool.result``
+    content tag with the tool result string the LLM receives, after any ``outputs_to_string`` source or handler is
+    applied. ``haystack.agent.step.tool.output`` still records the raw value returned by the tool.
