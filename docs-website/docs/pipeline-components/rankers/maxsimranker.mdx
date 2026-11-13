@@ -1,0 +1,159 @@
+---
+title: "MaxSimRanker"
+id: maxsimranker
+slug: "/maxsimranker"
+description: "Rank documents using MaxSim scoring over precomputed query and document multivector embeddings."
+hep_available: false
+---
+
+# MaxSimRanker
+
+Use this component to rank documents by their similarity to a query using precomputed multivector embeddings.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a [Retriever](../retrievers.mdx) that returns documents with multivector embeddings |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `documents`: A list of documents with multivector embeddings <br /> <br /> `query_multivector_embedding`: The query’s multivector embedding |
+| **Optional run variables** | `top_k`: The maximum number of documents to return, overriding the value set at initialization |
+| **Output variables** | `documents`: Up to `top_k` documents sorted by descending MaxSim score, with their `score` fields updated |
+| **API reference** | [MaxSimRanker](/reference/rankers-api#maxsimranker) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/max_sim.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`MaxSimRanker` reranks retrieved documents based on their relevance to a query. It uses **MaxSim scoring** to compare precomputed query and document multivector embeddings, which typically contain one vector per token. For each query vector, MaxSim finds the highest dot product with any document vector, then sums these maxima into a relevance score.
+
+`MaxSimRanker` is designed to rerank a small set of retrieved documents, since computing MaxSim scores across an entire collection can be slow. In a two-stage pipeline, a Retriever first selects candidates, for example using dense embeddings, and `MaxSimRanker` then scores those candidates using the vectors stored in `Document.multivector_embedding`, without encoding the documents again.
+
+Query and document multivector embeddings must come from the same model and have the same vector dimension. You can use multivector embedders such as [`SentenceTransformersMultivectorDocumentEmbedder`](../embedders/sentencetransformersmultivectordocumentembedder.mdx) and [`SentenceTransformersMultivectorTextEmbedder`](../embedders/sentencetransformersmultivectortextembedder.mdx), together with a Document Store that supports multivector embeddings, such as [Qdrant](../../document-stores/qdrant-document-store.mdx).
+
+Documents without multivector embeddings are skipped with a warning. The returned documents are sorted by descending MaxSim score, with their `score` fields updated. By default, the ranker returns up to 10 documents. Set `top_k` at initialization or in `run()` to change this limit. For details, see the [API reference](/reference/rankers-api#maxsimranker).
+
+## Usage
+
+### On its own
+
+This example ranks two documents using illustrative multivector embeddings.
+
+```python
+from haystack import Document
+from haystack.components.rankers import MaxSimRanker
+
+query_embedding = [[1.0, 0.0], [0.0, 1.0]]
+documents = [
+    Document(
+        content="Wind turbines generate electricity.",
+        multivector_embedding=[[1.0, 0.0], [0.0, 0.2]],
+    ),
+    Document(
+        content="Solar panels turn sunlight into power.",
+        multivector_embedding=[[0.95, 0.05], [0.15, 0.9]],
+    ),
+]
+
+ranker = MaxSimRanker(top_k=1)
+result = ranker.run(query_multivector_embedding=query_embedding, documents=documents)
+for document in result["documents"]:
+    print(f"{document.score:.2f}: {document.content}")
+# >> 1.85: Solar panels turn sunlight into power.
+```
+
+### In a pipeline
+
+This example combines dense retrieval with multivector reranking:
+
+1. At indexing time, compute dense and multivector embeddings for each document and store both in an in-memory Qdrant instance.
+2. At query time, use the dense query embedding with [QdrantEmbeddingRetriever](../retrievers/qdrantembeddingretriever.mdx) to retrieve three candidates.
+3. Use the multivector query embedding with `MaxSimRanker` to rerank the candidates and return the top two.
+
+Set `return_embedding=True` on the Retriever so the returned documents include the stored embeddings needed by the ranker.
+
+Install the required packages:
+
+```shell
+pip install sentence-transformers-haystack qdrant-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.rankers import MaxSimRanker
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersMultivectorDocumentEmbedder,
+    SentenceTransformersMultivectorTextEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+dense_model = "sentence-transformers/all-MiniLM-L6-v2"
+multivector_model = "answerdotai/answerai-colbert-small-v1"
+documents = [
+    Document(
+        content=(
+            "After baking, cool sourdough bread uncovered on a wire rack to keep the crust crispy. "
+            "Wrapping a warm loaf traps steam and softens the crust."
+        )
+    ),
+    Document(
+        content="Sourdough bread baking: how to get a crispy crust and a soft, airy crumb."
+    ),
+    Document(
+        content="Bake sourdough in a covered Dutch oven to trap steam during the first twenty minutes."
+    ),
+    Document(
+        content="Feed your sourdough starter with equal weights of flour and water."
+    ),
+]
+
+# Compute both document representations once, at indexing time.
+dense_embedder = SentenceTransformersDocumentEmbedder(model=dense_model)
+multivector_embedder = SentenceTransformersMultivectorDocumentEmbedder(
+    model=multivector_model
+)
+documents = dense_embedder.run(documents=documents)["documents"]
+documents = multivector_embedder.run(documents=documents)["documents"]
+
+document_store = QdrantDocumentStore(
+    location=":memory:", embedding_dim=384, multivector_embedding_dim=96
+)
+document_store.write_documents(documents=documents)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="dense_embedder", instance=SentenceTransformersTextEmbedder(model=dense_model)
+)
+query_pipeline.add_component(
+    name="multivector_embedder",
+    instance=SentenceTransformersMultivectorTextEmbedder(model=multivector_model),
+)
+query_pipeline.add_component(
+    name="retriever",
+    # Return stored multivector embeddings so the ranker can score the documents.
+    instance=QdrantEmbeddingRetriever(
+        document_store=document_store, top_k=3, return_embedding=True
+    ),
+)
+query_pipeline.add_component(name="ranker", instance=MaxSimRanker(top_k=2))
+query_pipeline.connect("dense_embedder.embedding", "retriever.query_embedding")
+query_pipeline.connect(
+    "multivector_embedder.multivector_embedding", "ranker.query_multivector_embedding"
+)
+query_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "How can I keep my sourdough bread crust crispy after baking?"
+result = query_pipeline.run(
+    data={"dense_embedder": {"text": query}, "multivector_embedder": {"text": query}},
+    include_outputs_from={"retriever"},
+)
+print("Before reranking:", result["retriever"]["documents"][0].content)
+print("After reranking:", result["ranker"]["documents"][0].content)
+# >> Before reranking: Sourdough bread baking: how to get a crispy crust and a soft, airy crumb.
+# >> After reranking: After baking, cool sourdough bread uncovered on a wire rack to keep the crust crispy. Wrapping a warm loaf traps steam and softens the crust.
+```

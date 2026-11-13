@@ -467,6 +467,9 @@ class InMemoryDocumentStore:
         """
         Load the database and its data from disk as a JSON file.
 
+        With `shared=True`, the saved documents replace all documents in the index, including for other
+        instances sharing it.
+
         :param path: The path to the JSON file.
         :returns: The loaded InMemoryDocumentStore.
         """
@@ -477,11 +480,13 @@ class InMemoryDocumentStore:
             except Exception as e:
                 raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e
 
-            documents = data.pop("documents")
+            # Parse the documents first so an invalid snapshot leaves the index untouched
+            documents = [Document.from_dict(doc) for doc in data.pop("documents")]
             cls_object = default_from_dict(cls, data)
-            cls_object.write_documents(
-                documents=[Document.from_dict(doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
-            )
+            # Hold the index lock so synchronized readers never see a partially restored index
+            with cls_object._lock:
+                cls_object.delete_all_documents()
+                cls_object.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
             return cls_object
 
         raise FileNotFoundError(f"File {path} not found.")

@@ -107,6 +107,68 @@ class TestJsonSchemaValidator:
 
         assert result == {"validated": [message]}
 
+    @pytest.mark.parametrize("schema_type", ["array", ["array", "null"]])
+    @pytest.mark.parametrize(
+        "constraints, content, error_schema_path",
+        [
+            ({"items": {"type": "integer"}}, "[1, 2]", None),
+            ({"items": {"type": "integer"}}, '[1, "two"]', "items -> type"),
+            ({"minItems": 1}, "[]", "minItems"),
+            ({"maxItems": 1}, "[1, 2]", "maxItems"),
+            ({"uniqueItems": True}, "[1, 1]", "uniqueItems"),
+        ],
+    )
+    def test_validates_top_level_array_as_a_whole(self, schema_type, constraints, content, error_schema_path):
+        validator = JsonSchemaValidator(json_schema={"type": schema_type, **constraints})
+        message = ChatMessage.from_assistant(content)
+
+        result = validator.run([message])
+
+        if error_schema_path is None:
+            assert result == {"validated": [message]}
+        else:
+            assert list(result) == ["validation_error"]
+            assert len(result["validation_error"]) == 1
+            recovery_text = result["validation_error"][0].text
+            assert recovery_text is not None
+            assert f"Schema Path: {error_schema_path}" in recovery_text
+
+    @pytest.mark.parametrize(
+        "schema_type, content, output", [(["array", "null"], "null", "validated"), ("array", "42", "validation_error")]
+    )
+    def test_array_schema_validates_non_array_content(self, schema_type, content, output):
+        validator = JsonSchemaValidator(json_schema={"type": schema_type})
+
+        result = validator.run([ChatMessage.from_assistant(content)])
+
+        assert list(result) == [output]
+
+    def test_nested_arrays_require_nested_schema(self):
+        inner_schema = {"type": "array", "items": {"type": "integer"}}
+        message = ChatMessage.from_assistant("[[1, 2], [3, 4]]")
+        validator = JsonSchemaValidator(json_schema=inner_schema)
+
+        result = validator.run([message])
+        assert list(result) == ["validation_error"]
+        recovery_text = result["validation_error"][0].text
+        assert recovery_text is not None
+        assert "Schema Path: items -> type" in recovery_text
+
+        result = validator.run([message], json_schema={"type": "array", "items": inner_schema})
+        assert result == {"validated": [message]}
+
+    def test_non_array_schema_validates_every_list_item(self):
+        validator = JsonSchemaValidator(json_schema={"type": "object", "required": ["name"]})
+        valid = ChatMessage.from_assistant('[{"name": "first"}, {"name": "second"}]')
+        invalid = ChatMessage.from_assistant('[{"name": "first"}, {}]')
+
+        assert validator.run([valid]) == {"validated": [valid]}
+        result = validator.run([invalid])
+        assert list(result) == ["validation_error"]
+        recovery_text = result["validation_error"][0].text
+        assert recovery_text is not None
+        assert "'name' is a required property" in recovery_text
+
     # Validates recursive_json_to_object method
     def test_recursive_json_to_object(self, genuine_fc_message):
         arguments_is_string = json.loads(genuine_fc_message)
@@ -190,6 +252,35 @@ class TestJsonSchemaValidator:
         assert "validated" in result
         assert len(result["validated"]) == 1
         assert result["validated"][0] == messages[1]
+
+    @pytest.mark.parametrize("parameters, output", [(True, "validated"), (False, "validation_error")])
+    def test_validates_function_call_with_boolean_schema(self, parameters, output):
+        validator = JsonSchemaValidator(
+            json_schema={"name": "collect", "description": "Collect values.", "parameters": parameters}
+        )
+        message = ChatMessage.from_assistant('{"function": {"arguments": "{}"}}')
+
+        result = validator.run([message])
+
+        assert list(result) == [output]
+        if parameters:
+            assert result == {"validated": [message]}
+
+    def test_validates_function_call_list_with_array_arguments(self):
+        validator = JsonSchemaValidator(
+            json_schema={
+                "name": "collect",
+                "description": "Collect integers.",
+                "parameters": {"type": "array", "items": {"type": "integer"}},
+            }
+        )
+        message = ChatMessage.from_assistant(
+            json.dumps([{"function": {"arguments": "[1, 2]"}}, {"function": {"arguments": "[3, 4]"}}])
+        )
+
+        result = validator.run([message])
+
+        assert result == {"validated": [message]}
 
     #  Constructs a custom error recovery message when validation fails.
     def test_construct_custom_error_recovery_message(self):

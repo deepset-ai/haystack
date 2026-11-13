@@ -4,6 +4,7 @@
 
 import asyncio
 import gc
+import json
 import logging
 import math
 import tempfile
@@ -272,6 +273,49 @@ def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
     finally:
         store.shutdown()
         other.shutdown()
+
+
+@pytest.mark.parametrize("empty_snapshot", [False, True])
+def test_load_from_disk_restores_snapshot(tmp_path: Path, empty_snapshot: bool) -> None:
+    store = InMemoryDocumentStore(shared=True)
+    saved_documents = (
+        [] if empty_snapshot else [Document(id="first", content="alpha beta"), Document(id="second", content="gamma")]
+    )
+    store.write_documents(saved_documents)
+    path = str(tmp_path / "snapshot.json")
+    store.save_to_disk(path)
+
+    store.write_documents(
+        [Document(id="first", content="changed"), Document(id="later", content="beta beta delta")],
+        policy=DuplicatePolicy.OVERWRITE,
+    )
+    store.delete_documents(["second"])
+    loaded = InMemoryDocumentStore.load_from_disk(path)
+
+    assert loaded.filter_documents() == saved_documents
+    reference = InMemoryDocumentStore(shared=False)
+    reference.write_documents(saved_documents)
+    for query in ("alpha", "beta", "gamma", "delta"):
+        assert loaded.bm25_retrieval(query) == reference.bm25_retrieval(query)
+    assert store.filter_documents() == saved_documents
+    assert store.bm25_retrieval("beta") == reference.bm25_retrieval("beta")
+
+
+def test_load_from_disk_rejects_invalid_documents_before_replacing_shared_index(tmp_path: Path) -> None:
+    store = InMemoryDocumentStore(shared=True)
+    documents = [Document(id="current", content="keep this document")]
+    store.write_documents(documents)
+    path = tmp_path / "snapshot.json"
+    store.save_to_disk(str(path))
+    data = json.loads(path.read_text())
+    data["documents"] = [{"id": "valid", "content": "snapshot"}, {"id": "invalid", "content": 1}]
+    path.write_text(json.dumps(data))
+
+    with pytest.raises(ValueError, match="The `content` field must be a string or None\\."):
+        InMemoryDocumentStore.load_from_disk(str(path))
+
+    assert store.filter_documents() == documents
+    assert [doc.id for doc in store.bm25_retrieval("keep")] == ["current"]
 
 
 class TestMemoryDocumentStore(
