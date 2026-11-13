@@ -306,6 +306,20 @@ x={{ x }}, y={{ y }}
         res = builder.run(existing_documents=None)
         assert res["prompt"] == "x=0, y=1"
 
+    def test_variables_correct_with_block_assignment(self):
+        template = """{% if existing_documents is not none -%}
+{% set x %}{{ existing_documents|length }} documents{% endset -%}
+{% else -%}
+{% set x %}no documents{% endset -%}
+{% endif -%}
+Found {{ x }}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
+        res = builder.run(existing_documents=None)
+        assert res["prompt"] == "Found no documents"
+
 
 class TestPromptBuilderWithJinja2TimeExtension:
     @pytest.fixture(autouse=True)
