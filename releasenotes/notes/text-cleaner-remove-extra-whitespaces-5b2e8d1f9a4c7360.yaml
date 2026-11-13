@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    ``TextCleaner`` has a new ``remove_extra_whitespaces`` parameter. When set to ``True``, every run of whitespace
+    is replaced with a single space and leading and trailing whitespace is removed. This runs after the other
+    cleaning steps, so it also closes the gaps left by removed punctuation, numbers, and regex matches.
+    For example, ``TextCleaner(remove_punctuation=True, remove_extra_whitespaces=True)`` turns ``"  Rome - Italy  "``
+    into ``"Rome Italy"`` instead of ``"  Rome  Italy  "``, so exact-match evaluation no longer fails on spacing.
+    The default is ``False``, so existing pipelines behave as before.
