@@ -27,7 +27,7 @@ A Retriever based on multivector embeddings, compatible with the Qdrant Document
 
 `QdrantMultivectorEmbeddingRetriever` retrieves documents from a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) using multivector embeddings, which typically contain one vector per token. It ranks documents using **dot-product MaxSim**: for each query vector, it finds the highest dot product with any document vector, then sums these maxima into a relevance score.
 
-Before retrieval, store document vectors in `Document.multivector_embedding` and compute the query's multivector embedding with the same model. For example, you can use `SentenceTransformersMultivectorDocumentEmbedder` for indexing and `SentenceTransformersMultivectorTextEmbedder` for queries. Set the Document Store's `multivector_embedding_dim` to the dimension of each vector.
+Before retrieval, store document vectors in `Document.multivector_embedding` and compute the query's multivector embedding with the same model. For example, you can use [`SentenceTransformersMultivectorDocumentEmbedder`](../embedders/sentencetransformersmultivectordocumentembedder.mdx) for indexing and [`SentenceTransformersMultivectorTextEmbedder`](../embedders/sentencetransformersmultivectortextembedder.mdx) for queries. Set the Document Store's `multivector_embedding_dim` to the dimension of each vector.
 
 The Retriever returns up to 10 documents by default and excludes documents without multivector embeddings. Set `top_k` to change the result limit and `filters` to narrow down the search space. Embeddings are omitted from results by default; set `return_embedding=True` to return all stored embeddings, including multivector embeddings. These parameters can be set at initialization or at runtime.
 
