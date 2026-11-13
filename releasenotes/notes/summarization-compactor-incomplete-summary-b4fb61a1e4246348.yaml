@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``SummarizationCompactor`` no longer replaces conversation history with an incomplete summary. When the summary
+    reply ends with ``finish_reason`` ``length`` (output limit reached) or ``content_filter``, the compaction now fails
+    instead of swapping in the partial text: by default the failure is logged and the previous history is kept, and
+    with ``raise_on_failure=True`` a ``RuntimeError`` is raised. Previously the partial summary silently replaced the
+    original messages, so facts it had not reached yet were lost for the rest of the run.
