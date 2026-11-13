@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta, timezone
+import math
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.filters import _parse_iso_date
 
 
 @component
@@ -54,11 +56,35 @@ class CacheChecker:
         :param cache_field:
             Name of the document's metadata field
             to check for cache hits.
+        :param ttl:
+            Time-to-live for cache entries, as a `timedelta` or a number of seconds.
+            If set, a matching document only counts as a hit if the timestamp in `time_field` is younger than `ttl`.
+            Documents with a missing or expired timestamp are returned as misses.
+            If `None`, cache entries never expire.
+        :param time_field:
+            Name of the document's metadata field holding the time the document was cached,
+            as a `datetime` or an ISO 8601 string. Only used when `ttl` is set.
         """
+        if ttl is not None:
+            if isinstance(ttl, bool):
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
+
+            if isinstance(ttl, (int, float)):
+                if not math.isfinite(ttl) or ttl <= 0:
+                    raise ValueError("ttl must be a positive number of seconds.")
+
+                ttl = timedelta(seconds=ttl)
+
+            elif isinstance(ttl, timedelta):
+                if ttl <= timedelta(0):
+                    raise ValueError("ttl must be a positive timedelta.")
+
+            else:
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
         self.document_store = document_store
         self.cache_field = cache_field
-        self.ttl = timedelta(seconds=ttl) if isinstance(ttl, (int, float)) else ttl
-        self.time_field = time_field
+        self.ttl = ttl
+        self.time_field = time_field.removeprefix("meta.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -95,18 +121,16 @@ class CacheChecker:
             return False
 
         if isinstance(cached_at, str):
-            try:
-                cached_at = datetime.fromisoformat(cached_at)
-            except ValueError:
-                return False
+            cached_at = _parse_iso_date(cached_at)
 
         if not isinstance(cached_at, datetime):
             return False
 
         if cached_at.tzinfo is None:
-            cached_at = cached_at.replace(tzinfo=timezone.utc)
+            cached_at = cached_at.astimezone()
 
-        return datetime.now(timezone.utc) - cached_at < self.ttl
+        age = datetime.now(UTC) - cached_at
+        return timedelta(0) <= age < self.ttl
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":

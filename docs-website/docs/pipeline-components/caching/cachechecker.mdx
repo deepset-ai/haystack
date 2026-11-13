@@ -96,9 +96,7 @@ cache_checker = CacheChecker(
     ttl=timedelta(hours=24),
 )
 ```
-
-With this configuration, `checker.run(items=["https://example.com/resource"])` only reports a hit if `cached_at` is less than 24 hours old. Anything older — or a document that never got a `cached_at` value in the first place — comes back in `misses`, exactly as if it had never been cached at all.
-
+With this configuration, `cache_checker.run(items=["https://example.com/resource"])` only reports a hit if `cached_at` is less than 24 hours old. Anything older — or a document that never got a `cached_at` value in the first place — comes back in `misses`, exactly as if it had never been cached at all.
 The timestamp field name is configurable via `time_field` (it defaults to `"cached_at"`), which is useful if your metadata already tracks time under a different key, such as `created_at` or `last_indexed`:
 
 ```python

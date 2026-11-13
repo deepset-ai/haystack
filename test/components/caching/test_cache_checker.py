@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -72,6 +72,25 @@ class TestCacheChecker:
         assert component.ttl == timedelta(hours=1)
         assert component.time_field == "my_time_field"
 
+    def test_from_dict_without_ttl_and_time_field(self):
+        data = {
+            "type": "haystack.components.caching.cache_checker.CacheChecker",
+            "init_parameters": {
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                },
+                "cache_field": "my_url_field",
+            },
+        }
+
+        component = CacheChecker.from_dict(data)
+
+        assert isinstance(component.document_store, InMemoryDocumentStore)
+        assert component.cache_field == "my_url_field"
+        assert component.ttl is None
+        assert component.time_field == "cached_at"
+
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}
         with pytest.raises(
@@ -126,8 +145,7 @@ class TestCacheChecker:
 
     def test_run_with_ttl_fresh_hit(self, in_memory_doc_store):
         fresh_doc = Document(
-            content="doc1",
-            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(minutes=5)},
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) - timedelta(minutes=5)}
         )
         in_memory_doc_store.write_documents([fresh_doc])
         checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
@@ -136,8 +154,7 @@ class TestCacheChecker:
 
     def test_run_with_ttl_expired_is_miss(self, in_memory_doc_store):
         stale_doc = Document(
-            content="doc1",
-            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(hours=2)},
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) - timedelta(hours=2)}
         )
         in_memory_doc_store.write_documents([stale_doc])
         checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
@@ -154,10 +171,7 @@ class TestCacheChecker:
     def test_run_with_ttl_iso_string_timestamp(self, in_memory_doc_store):
         fresh_doc = Document(
             content="doc1",
-            meta={
-                "url": "https://example.com/1",
-                "cached_at": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(),
-            },
+            meta={"url": "https://example.com/1", "cached_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat()},
         )
         in_memory_doc_store.write_documents([fresh_doc])
         checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
@@ -167,8 +181,7 @@ class TestCacheChecker:
     def test_run_without_ttl_ignores_time_field(self, in_memory_doc_store):
         # backward compatibility: no ttl configured means entries never expire, regardless of cached_at
         old_doc = Document(
-            content="doc1",
-            meta={"url": "https://example.com/1", "cached_at": datetime.now(timezone.utc) - timedelta(days=365)},
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) - timedelta(days=365)}
         )
         in_memory_doc_store.write_documents([old_doc])
         checker = CacheChecker(in_memory_doc_store, cache_field="url")
