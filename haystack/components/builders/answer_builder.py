@@ -274,10 +274,12 @@ class AnswerBuilder:
 
         if match := re.search(pattern, reply):
             # No capture group in pattern -> use the whole match as answer
-            if not match.lastindex:
+            if not match.groups():
                 return match.group(0)
-            # One capture group in pattern -> use the capture group as answer
-            return match.group(1)
+            # One capture group in pattern -> use the capture group as answer.
+            # An optional capture group that did not take part in the match yields ``None``,
+            # so treat it as an empty answer (matching ``RegexTextExtractor`` behaviour).
+            return match.group(1) or ""
         return ""
 
     @staticmethod

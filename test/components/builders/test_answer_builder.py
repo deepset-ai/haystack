@@ -93,6 +93,14 @@ class TestAnswerBuilder:
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
+    def test_run_with_pattern_with_optional_group_not_part_of_match(self):
+        component = AnswerBuilder(pattern=r"Answer: (\d+)?")
+        output = component.run(query="test query", replies=["Answer: not a number"], meta=[{}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == ""
+        assert isinstance(answers[0], GeneratedAnswer)
+
     def test_run_with_pattern_with_more_than_one_capturing_group(self):
         with pytest.raises(ValueError, match="contains multiple capture groups"):
             AnswerBuilder(pattern=r"Answer: (.*), (.*)")
