@@ -103,6 +103,7 @@ class RecursiveDocumentSplitter:
         )
         self.tokenizer_encoding = tokenizer_encoding
         self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
+        self._token_byte_lengths: dict[int, int] = {}
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -153,6 +154,46 @@ class RecursiveDocumentSplitter:
 
         return SentenceSplitter(**sentence_splitter_params)
 
+    def _decode_offsets(self, tokens: list[int]) -> tuple[str, list[int]]:
+        """
+        Decodes tokens keeping a mapping from token positions to character positions.
+
+        `tiktoken.decode` replaces with U+FFFD every character whose bytes are only partly inside the decoded slice,
+        which happens as soon as a token boundary falls inside a character: emoji and CJK text hit this constantly. The
+        returned text is the whole token sequence, so callers cut chunks with the offsets and never split a character.
+
+        :param tokens: The tokens to decode.
+        :returns:
+            A tuple with the decoded text and the character offset of every token, plus the length of the text.
+        """
+        lengths = self._token_byte_lengths
+        pieces = []
+        for token_id in tokens:
+            if token_id not in lengths:
+                lengths[token_id] = len(self.tiktoken_tokenizer.decode_single_token_bytes(token_id))  # type: ignore
+            pieces.append(self.tiktoken_tokenizer.decode_single_token_bytes(token_id))  # type: ignore
+        data = b"".join(pieces)
+        text = data.decode("utf-8", "replace")
+
+        # character offset of every byte position, including the end of the data. A byte that starts a character maps
+        # to where that character starts; continuation bytes map to where the character before them starts, so a token
+        # boundary inside a character is moved to the end of the previous character and never splits it.
+        byte_to_char = [0] * (len(data) + 1)
+        char_offset = 0
+        for index in range(len(data)):
+            byte_to_char[index] = char_offset
+            # a character ends before byte `index + 1` when the next byte is not a continuation byte
+            if index + 1 == len(data) or (data[index + 1] & 0xC0) != 0x80:
+                byte_to_char[index + 1] = char_offset + 1
+                char_offset += 1
+
+        cut_offsets = [0] * (len(tokens) + 1)
+        byte_offset = 0
+        for position, token_id in enumerate(tokens):
+            byte_offset += lengths[token_id]
+            cut_offsets[position + 1] = byte_to_char[byte_offset]
+        return text, cut_offsets
+
     def _split_chunk(self, current_chunk: str) -> tuple[str, str]:
         """
         Splits a chunk based on the split_length and split_units attribute.
@@ -169,9 +210,9 @@ class RecursiveDocumentSplitter:
 
         # at this point we know that the tokenizer is already initialized
         tokens = self.tiktoken_tokenizer.encode_ordinary(current_chunk)  # type: ignore
-        current_tokens = tokens[: self.split_length]
-        remaining_tokens = tokens[self.split_length :]
-        return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
+        text, offsets = self._decode_offsets(tokens)
+        cut = offsets[min(self.split_length, len(tokens))]
+        return text[:cut], text[cut:]
 
     def _apply_overlap(self, chunks: list[str]) -> list[str]:
         """
@@ -214,7 +255,8 @@ class RecursiveDocumentSplitter:
                         # at this point we know that the tokenizer is already initialized
                         remaining_tokens = self.tiktoken_tokenizer.encode_ordinary(remaining_text)  # type: ignore
                         next_chunk_tokens = self.tiktoken_tokenizer.encode_ordinary(chunks[idx + 1])  # type: ignore
-                        chunks[idx + 1] = self.tiktoken_tokenizer.decode(remaining_tokens + next_chunk_tokens)  # type: ignore
+                        merged_text, _ = self._decode_offsets(remaining_tokens + next_chunk_tokens)
+                        chunks[idx + 1] = merged_text
                     else:  # char
                         chunks[idx + 1] = remaining_text + chunks[idx + 1]
                 elif remaining_text:
@@ -255,7 +297,7 @@ class RecursiveDocumentSplitter:
             # at this point we know that the tokenizer is already initialized
             overlap_tokens = self.tiktoken_tokenizer.encode_ordinary(overlap)  # type: ignore
             chunk_tokens = self.tiktoken_tokenizer.encode_ordinary(chunk)  # type: ignore
-            current_chunk = self.tiktoken_tokenizer.decode(overlap_tokens + chunk_tokens)  # type: ignore
+            current_chunk, _ = self._decode_offsets(overlap_tokens + chunk_tokens)
         else:  # char
             current_chunk = overlap + chunk
         return current_chunk
@@ -269,8 +311,8 @@ class RecursiveDocumentSplitter:
             # For token-based splitting, handle overlap at token level
             # at this point we know that the tokenizer is already initialized
             tokens = self.tiktoken_tokenizer.encode_ordinary(prev_chunk)  # type: ignore
-            overlap_tokens = tokens[overlap_start:]
-            overlap = self.tiktoken_tokenizer.decode(overlap_tokens)  # type: ignore
+            overlap_text, offsets = self._decode_offsets(tokens)
+            overlap = overlap_text[offsets[overlap_start] :]
         else:  # char
             overlap = prev_chunk[overlap_start:]
 
@@ -488,9 +530,9 @@ class RecursiveDocumentSplitter:
         else:  # token
             # at this point we know that the tokenizer is already initialized
             tokens = self.tiktoken_tokenizer.encode_ordinary(text)  # type: ignore
+            chunk_text, offsets = self._decode_offsets(tokens)
             for i in range(0, len(tokens), self.split_length):
-                chunk_tokens = tokens[i : i + self.split_length]
-                chunks.append(self.tiktoken_tokenizer.decode(chunk_tokens))  # type: ignore
+                chunks.append(chunk_text[offsets[i] : offsets[min(i + self.split_length, len(tokens))]])
         return chunks
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: list[Document]) -> None:
