@@ -39,6 +39,8 @@ class ComponentTool(Tool):
     ComponentTool automatically generates LLM-compatible tool schemas from component input sockets,
     which are derived from the component's `run` method signature and type hints.
 
+    Dataclass default factories run when omitted field values are needed during invocation,
+    not during schema generation. Factory-backed fields remain optional without a captured JSON schema default.
 
     Key features:
     - Automatic LLM tool calling schema generation from component input sockets

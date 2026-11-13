@@ -32,6 +32,10 @@ It does input type conversion and offers support for components with run methods
 - Lists of dataclasses (such as list[Document])
 - Parameters with mixed types (such as list[Document], str...)
 
+Dataclass fields with a `default_factory` remain optional in the generated schema.
+Their factories run during invocation when a field is omitted, rather than when
+the tool is constructed. The schema does not include a captured factory result as a `default` value.
+
 If the wrapped component defines a `run_async` method, `ComponentTool` automatically wires an async invoker as well, so the tool supports async invocation (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
 
 To wrap an [`Agent`](../pipeline-components/agents-1/agent.mdx) as a tool, use [`AgentTool`](agenttool.mdx) instead. It is a specialization of `ComponentTool` with defaults tailored to Agents: the calling LLM is asked for the task to delegate as a single user message, and the tool result is the wrapped Agent's final reply.

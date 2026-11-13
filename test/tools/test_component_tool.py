@@ -5,7 +5,7 @@
 import json
 import os
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Any
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -239,6 +239,62 @@ class TestComponentTool:
         """Test that ComponentTool validates outputs_to_state source against component outputs"""
         with pytest.raises(ValueError, match="unknown output"):
             ComponentTool(component=SimpleComponent(), outputs_to_state={"result": {"source": "nonexistent"}})
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_async", [False, True])
+    async def test_dataclass_factory_runs_only_when_invoking(self, use_async):
+        factory_calls: list[int] = []
+
+        def next_token() -> str:
+            factory_calls.append(len(factory_calls))
+            return f"token-{len(factory_calls)}"
+
+        @dataclass
+        class Options:
+            token: str = field(default_factory=next_token)
+
+        @component
+        class EchoToken:
+            """Return a token generated when options are instantiated."""
+
+            @component.output_types(token=str)
+            def run(self, options: Options) -> dict[str, str]:
+                return {"token": options.token}
+
+        tool = ComponentTool(component=EchoToken())
+        assert factory_calls == []
+        schema = tool.parameters["$defs"]["Options"]
+        assert "default" not in schema["properties"]["token"]
+        assert "token" not in schema.get("required", [])
+        for expected in ["token-1", "token-2"]:
+            result = await tool.invoke_async(options={}) if use_async else tool.invoke(options={})
+            assert result == {"token": expected}
+        result = (
+            await tool.invoke_async(options={"token": "provided"})
+            if use_async
+            else tool.invoke(options={"token": "provided"})
+        )
+        assert result == {"token": "provided"}
+        assert len(factory_calls) == 2
+
+    def test_dataclass_factory_is_not_required_for_schema_construction(self):
+        def unavailable_factory() -> str:
+            raise RuntimeError("runtime resource is not ready")
+
+        @dataclass
+        class Options:
+            token: str = field(default_factory=unavailable_factory)
+
+        @component
+        class EchoToken:
+            """Echo a token without needing the default factory during setup."""
+
+            @component.output_types(token=str)
+            def run(self, options: Options) -> dict[str, str]:
+                return {"token": options.token}
+
+        tool = ComponentTool(component=EchoToken())
+        assert tool.invoke(options={"token": "provided"}) == {"token": "provided"}
 
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
