@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
-from pathlib import PurePosixPath
+from pathlib import Path
 from typing import Annotated, Any
 from unittest.mock import patch
 
@@ -851,7 +851,7 @@ class TestUtilities:
                     "tags": {"a"},
                     "day": datetime.date(2026, 1, 2),
                     "price": Decimal("1.50"),
-                    "path": PurePosixPath("/tmp/a.txt"),
+                    "path": Path("/tmp/a.txt"),
                 }
             )
         ) == {"color": "red", "tags": ["a"], "day": "2026-01-02", "price": "1.50", "path": "/tmp/a.txt"}
