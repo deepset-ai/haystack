@@ -66,6 +66,7 @@ def create_tool_from_function(
         to `async_function`).
         Parameters exposed in the Tool's schema must have type hints.
         Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+        Positional-only parameters are not supported because Tool arguments are passed by keyword.
         Parameters whose names start with an underscore are not exposed to the LLM.
         A required parameter with such a name must be provided through `inputs_from_state` or given a default.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
@@ -129,8 +130,9 @@ def create_tool_from_function(
         The Tool created from the function.
 
     :raises ValueError:
-        If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
-        starts with an underscore is not covered by `inputs_from_state`.
+        If a parameter exposed in the Tool's schema lacks a type hint, if the function has a positional-only
+        parameter, or if a required parameter whose name starts with an underscore is not covered by
+        `inputs_from_state`.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
@@ -148,6 +150,12 @@ def create_tool_from_function(
         # Skip *args and **kwargs because the LLM passes arguments by name
         if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
             continue
+
+        if param.kind is inspect.Parameter.POSITIONAL_ONLY:
+            raise ValueError(
+                f"Function '{function.__name__}': parameter '{param_name}' is positional-only. "
+                "Tool arguments are passed by keyword."
+            )
 
         annotation = param_types[param_name]
 
