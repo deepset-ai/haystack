@@ -1355,7 +1355,7 @@ def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
         start = chunk.meta["split_idx_start"]
         assert text[start : start + len(chunk.content)] == chunk.content
 
-    assert len(chunks) == 6
+    assert len(chunks) == 5
     assert chunks[0].content == "Overview\n"
     assert chunks[-1].content == "unks for embedding."
 
@@ -1580,3 +1580,72 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     for doc in result:
         assert doc.content is not None
         assert doc.content.strip()
+
+
+BLANK_LINES_TEXT = "A short first paragraph here." + "\n" * 24 + "Second paragraph."
+
+
+@pytest.mark.parametrize(
+    "split_unit, split_length, expected_contents, expected_starts",
+    [
+        pytest.param(
+            # whitespace isn't counted as words, so it always joins a neighbouring chunk
+            "word",
+            3,
+            ["A short first ", "paragraph here.\n\n", "\n" * 22 + "Second paragraph."],
+            [0, 14, 31],
+            id="word",
+        ),
+        pytest.param(
+            # the single "\n" joins the chunk before it; the run of 20 fits no neighbour within 20 characters
+            "char",
+            20,
+            ["A short first ", "paragraph here.\n\n", "\n" * 20, "\n\nSecond paragraph."],
+            [0, 14, 31, 51],
+            id="char",
+        ),
+        pytest.param(
+            "token",
+            5,
+            ["A short ", "first paragraph ", "here." + "\n" * 22, "\n\nSecond paragraph."],
+            [0, 8, 24, 51],
+            id="token",
+            marks=pytest.mark.integration,
+        ),
+    ],
+)
+def test_run_runs_of_blank_lines_join_whitespace_to_neighbouring_chunk(
+    split_unit, split_length, expected_contents, expected_starts
+):
+    text = BLANK_LINES_TEXT
+    splitter = RecursiveDocumentSplitter(split_length=split_length, split_overlap=0, split_unit=split_unit)
+
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    contents: list[str] = []
+    for chunk in chunks:
+        assert chunk.content is not None
+        contents.append(chunk.content)
+    assert contents == expected_contents
+    assert "".join(contents) == text
+    assert [chunk.meta["split_id"] for chunk in chunks] == list(range(len(expected_contents)))
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == expected_starts
+
+
+def test_run_sentence_separator_char_unit_whitespace_after_last_sentence_does_not_exceed_split_length():
+    # The whitespace after the last sentence of "eta zeta? iota\n\n" belongs to that sentence; adding it after the
+    # sentences were grouped into chunks made a chunk of 16 characters out of a split_length of 14.
+    text = "eta zeta? iota\n\nkappa lambda mu"
+    splitter = RecursiveDocumentSplitter(split_length=14, split_overlap=0, split_unit="char")
+
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    contents: list[str] = []
+    for chunk in chunks:
+        assert chunk.content is not None
+        assert len(chunk.content) <= 14
+        contents.append(chunk.content)
+    assert contents == ["eta zeta? ", "iota\n\n", "kappa lambda ", "mu"]
+    assert "".join(contents) == text
+    assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2, 3]
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 10, 16, 29]
