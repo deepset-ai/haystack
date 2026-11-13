@@ -6,11 +6,17 @@ import asyncio
 import datetime
 import json
 import time
+import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
+from decimal import Decimal
+from enum import Enum
+from pathlib import Path
 from typing import Annotated, Any
 from unittest.mock import patch
 
 import pytest
+from pydantic import BaseModel
 
 from haystack import Document
 from haystack.components.agents.state import State
@@ -812,6 +818,50 @@ class TestUtilities:
 
         assert "test_value" in result
         assert "value" in result
+
+    def test_result_to_string_with_common_python_types(self):
+        class Color(Enum):
+            RED = "red"
+
+        @dataclass
+        class Point:
+            x: int
+            color: Color = Color.RED
+
+        class Order(BaseModel):
+            id: uuid.UUID
+            placed_at: datetime.datetime
+            point: Point
+
+        order = Order(id=uuid.UUID(int=1), placed_at=datetime.datetime(2026, 1, 2, 3, 4, 5), point=Point(x=1))
+
+        assert json.loads(_result_to_string(order)) == {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "placed_at": "2026-01-02T03:04:05",
+            "point": {"x": 1, "color": "red"},
+        }
+        assert json.loads(_result_to_string([Point(x=1), Point(x=2)])) == [
+            {"x": 1, "color": "red"},
+            {"x": 2, "color": "red"},
+        ]
+        assert json.loads(
+            _result_to_string(
+                {
+                    "color": Color.RED,
+                    "tags": {"a"},
+                    "day": datetime.date(2026, 1, 2),
+                    "price": Decimal("1.50"),
+                    "path": Path("/tmp/a.txt"),
+                }
+            )
+        ) == {"color": "red", "tags": ["a"], "day": "2026-01-02", "price": "1.50", "path": "/tmp/a.txt"}
+
+    def test_result_to_string_falls_back_to_str_for_unsupported_types(self):
+        class Unsupported:
+            def __str__(self):
+                return "unsupported"
+
+        assert _result_to_string(Unsupported()) == "unsupported"
 
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
