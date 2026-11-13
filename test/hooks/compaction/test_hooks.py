@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import warnings
 from typing import Annotated, Any
 from unittest.mock import Mock
 
@@ -59,14 +60,24 @@ class _RecordingCompactor(Compactor):
         self.targets: list[int] = []
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         self.calls.append("compact")
         self.targets.append(target_tokens)
         return self.result
 
     async def compact_async(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,
     ) -> list[ChatMessage] | None:
         self.calls.append("compact_async")
         self.targets.append(target_tokens)
@@ -86,6 +97,34 @@ class _RecordingCompactor(Compactor):
 
     def to_dict(self) -> dict[str, Any]:
         return default_to_dict(self)
+
+
+class _CompactorWithoutRunContext(Compactor):
+    """A compactor whose `compact` does not take `run_context` and that keeps the protocol's default `compact_async`."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    # The missing `run_context` is what these tests exercise, so the override is deliberately incompatible.
+    def compact(  # type: ignore[override]
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
+        self.calls.append("compact")
+        return None
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+
+class _AsyncCompactorWithoutRunContext(_CompactorWithoutRunContext):
+    """A compactor whose `compact` and `compact_async` both do not take `run_context`."""
+
+    # The missing `run_context` is what these tests exercise, so the override is deliberately incompatible.
+    async def compact_async(  # type: ignore[override]
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
+        self.calls.append("compact_async")
+        return None
 
 
 def _hook(compactor: Compactor | None = None, **overrides: Any) -> CompactionHook:
@@ -206,6 +245,15 @@ class TestCompactionHookConfiguration:
     def test_warns_that_the_feature_is_experimental(self):
         with pytest.warns(ExperimentalWarning, match="CompactionHook.*experimental"):
             _hook()
+
+    def test_warns_when_the_compactor_does_not_take_run_context(self):
+        with pytest.warns(DeprecationWarning, match="run_context"):
+            _hook(_CompactorWithoutRunContext())
+
+    def test_does_not_warn_when_the_compactor_takes_run_context(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            _hook(_RecordingCompactor())
 
     def test_rejects_a_non_positive_window(self):
         with pytest.raises(ValueError, match="`context_window` must be a positive number of tokens"):
@@ -388,6 +436,14 @@ class TestCompactionHook:
         )
         assert compacted[-2:] == messages[-2:]
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    def test_calls_a_compactor_without_run_context(self):
+        compactor = _CompactorWithoutRunContext()
+        state = make_state(fresh_conversation_with_two_steps(), context_tokens=800)
+        state.data["hook_context"] = {"key": "value"}
+        _hook(compactor).run(state)
+        assert compactor.calls == ["compact"]
+
     def test_lifecycle_delegates_to_the_counter_and_compactor(self):
         counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
@@ -424,6 +480,22 @@ class TestCompactionHookAsync:
         compactor = _RecordingCompactor()
         await _hook(compactor).run_async(make_state(fresh_conversation_with_two_steps(), context_tokens=800))
         assert compactor.calls == ["compact_async"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.parametrize(
+        ("compactor_class", "expected_calls"),
+        [
+            pytest.param(_CompactorWithoutRunContext, ["compact"], id="default-compact-async"),
+            pytest.param(_AsyncCompactorWithoutRunContext, ["compact_async"], id="own-compact-async"),
+        ],
+    )
+    async def test_calls_a_compactor_without_run_context(self, compactor_class, expected_calls):
+        compactor = compactor_class()
+        state = make_state(fresh_conversation_with_two_steps(), context_tokens=800)
+        state.data["hook_context"] = {"key": "value"}
+        await _hook(compactor).run_async(state)
+        assert compactor.calls == expected_calls
 
     @pytest.mark.asyncio
     async def test_lifecycle_prefers_async_methods_with_sync_fallback(self):

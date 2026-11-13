@@ -11,11 +11,11 @@ from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextCon
 from haystack.dataclasses.chat_message import ChatMessageContentT
 from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
-from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+from haystack.hooks.tool_result_offloading import RESULT_STORE_CONTEXT_KEY, FileSystemToolResultStore
 from haystack.hooks.tool_result_offloading.utils import _content_block_payload
 from haystack.token_counters.utils import _rendered_conversation
 from haystack.tools import ToolsType
-from test.hooks.compaction.helpers import FakeCounter, conversation, tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, conversation, make_state, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -182,6 +182,23 @@ class TestToolResultOffloadCompactor:
         assert restored.min_tokens == 12
         assert restored.preview_chars == 42
 
+    def test_compaction_hook_writes_to_the_run_store_from_hook_context(self, tmp_path):
+        default_store = FileSystemToolResultStore(root=tmp_path / "default")
+        run_store = FileSystemToolResultStore(root=tmp_path / "run")
+        hook = CompactionHook(
+            compactor=ToolResultOffloadCompactor(store=default_store, min_tokens=0, preview_chars=0),
+            context_window=1000,
+            token_counter=COUNTER,
+        )
+        state = make_state(messages=conversation("a" * 1000, "newest"))
+        state.data["hook_context"] = {RESULT_STORE_CONTEXT_KEY: run_store}
+
+        hook.run(state)
+
+        reference = state.data["messages"][2].meta["tool_result_offloaded"][0]
+        assert run_store.read(reference) == "a" * 1000
+        assert not (tmp_path / "default").exists()
+
 
 class TestToolResultOffloadCompactorAsync:
     @pytest.mark.asyncio
@@ -195,3 +212,21 @@ class TestToolResultOffloadCompactorAsync:
         assert compacted is not None
         assert store.read(compacted[2].meta["tool_result_offloaded"][0]) == "old" * 200
         assert compacted[3:] == messages[3:]
+
+    @pytest.mark.asyncio
+    async def test_compaction_hook_writes_to_the_run_store_from_hook_context(self, tmp_path):
+        default_store = FileSystemToolResultStore(root=tmp_path / "default")
+        run_store = FileSystemToolResultStore(root=tmp_path / "run")
+        hook = CompactionHook(
+            compactor=ToolResultOffloadCompactor(store=default_store, min_tokens=0, preview_chars=0),
+            context_window=1000,
+            token_counter=COUNTER,
+        )
+        state = make_state(messages=conversation("a" * 1000, "newest"))
+        state.data["hook_context"] = {RESULT_STORE_CONTEXT_KEY: run_store}
+
+        await hook.run_async(state)
+
+        reference = state.data["messages"][2].meta["tool_result_offloaded"][0]
+        assert run_store.read(reference) == "a" * 1000
+        assert not (tmp_path / "default").exists()
