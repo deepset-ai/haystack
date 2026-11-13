@@ -18,6 +18,7 @@ _import_structure = {
     "markdown_header_splitter": ["MarkdownHeaderSplitter"],
     "python_code_splitter": ["PythonCodeSplitter"],
     "recursive_splitter": ["RecursiveDocumentSplitter"],
+    "semantic_resolver": ["SemanticResolver"],
     "text_cleaner": ["TextCleaner"],
 }
 
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from .markdown_header_splitter import MarkdownHeaderSplitter as MarkdownHeaderSplitter
     from .python_code_splitter import PythonCodeSplitter as PythonCodeSplitter
     from .recursive_splitter import RecursiveDocumentSplitter as RecursiveDocumentSplitter
+    from .semantic_resolver import SemanticResolver as SemanticResolver
     from .text_cleaner import TextCleaner as TextCleaner
 
 else:

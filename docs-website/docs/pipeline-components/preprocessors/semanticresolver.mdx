@@ -1,0 +1,83 @@
+---
+title: "SemanticResolver"
+id: semanticresolver
+slug: "/semanticresolver"
+description: "Use `SemanticResolver` to detect and resolve semantically equivalent entities across document metadata using Hugging Face Text Embeddings Inference (TEI)."
+hep_available: true
+---
+
+# SemanticResolver
+
+Use `SemanticResolver` to detect and resolve semantically equivalent entity names across document metadata using Hugging Face Text Embeddings Inference (TEI).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [`LLMMetadataExtractor`](../extractors/llmmetadataextractor.mdx), before ingestion into document stores or knowledge graphs |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                |
+| **Output variables**                   | `documents`: A list of documents with normalized entity names                                                  |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                  |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/semantic_resolver.py        |
+| **Package name**                       | `haystack-ai`                                                                                                  |
+
+</div>
+
+## Overview
+
+When generating knowledge graphs or structured metadata using LLMs (for example, with `LLMMetadataExtractor`), the same real-world entity often appears under slight name variations (such as `"deepset"` and `"deepset GmbH"`). Without resolution, these variations are ingested into knowledge graphs as duplicate nodes.
+
+`SemanticResolver` scans entities across document metadata and queries a Hugging Face Text Embeddings Inference (TEI) `/similarity` endpoint to compute pairwise semantic similarities. Entities with similarity at or above a configurable threshold are clustered using connected components and normalized under a single canonical name.
+
+### Key Features
+
+- **Entity Type Isolation**: By default (`group_by_type=True`), entities are clustered only within matching `entity_type` categories (preventing person vs. company accidental merges).
+- **Graph Clustering**: Uses Union-Find connected components to identify clusters, skipping redundant queries between nodes already connected via transitivity.
+- **Configurable Canonical Names**: Choose from `"most_frequent"` (default), `"shortest"`, `"longest"`, or `"first"`.
+- **Non-Destructive Metadata**: Input documents are not mutated in-place. If `keep_original_entity_name=True` (default), the original unnormalized name is preserved under `original_entity`.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import SemanticResolver
+
+docs = [
+    Document(
+        content="deepset created Haystack.",
+        meta={"entities": [{"entity": "deepset", "entity_type": "company"}]},
+    ),
+    Document(
+        content="deepset GmbH is based in Berlin.",
+        meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]},
+    ),
+]
+
+# Ensure a TEI server is running at the configured URL
+resolver = SemanticResolver(url="http://localhost:8080", threshold=0.85)
+result = resolver.run(documents=docs)
+
+for doc in result["documents"]:
+    print(doc.meta["entities"])
+# >> [{'entity': 'deepset', 'entity_type': 'company', 'original_entity': 'deepset'}]
+# >> [{'entity': 'deepset', 'entity_type': 'company', 'original_entity': 'deepset GmbH'}]
+```
+
+### In a Pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.preprocessors import SemanticResolver
+
+pipeline = Pipeline()
+pipeline.add_component("resolver", SemanticResolver(url="http://localhost:8080", threshold=0.85))
+
+docs = [
+    Document(content="deepset created Haystack.", meta={"entities": [{"entity": "deepset", "entity_type": "company"}]}),
+    Document(content="deepset GmbH is based in Berlin.", meta={"entities": [{"entity": "deepset GmbH", "entity_type": "company"}]}),
+]
+
+result = pipeline.run({"resolver": {"documents": docs}})
+```
