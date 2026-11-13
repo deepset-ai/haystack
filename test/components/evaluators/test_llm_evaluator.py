@@ -11,7 +11,7 @@ from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.chat_message import ChatMessage, ToolCall
 
 
 class TestLLMEvaluator:
@@ -395,6 +395,29 @@ class TestLLMEvaluator:
             "Setting the result for this input to None." in caplog.text
         )
         assert "LLMEvaluator failed for 1 out of 1 inputs. The results for these inputs are None." in caplog.text
+
+    def test_reply_without_text_raise_on_failure_false(self, monkeypatch, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+
+        def chat_generator_run(self, *args, **kwargs):
+            # for example a refusal or a content filter: the reply has no text
+            return {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool", arguments={})])]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with caplog.at_level(logging.WARNING):
+            result = component.run(predicted_answers=["answer"])
+        assert result["results"] == [None]
+        assert "LLMEvaluator failed to parse the ChatGenerator response" in caplog.text
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
