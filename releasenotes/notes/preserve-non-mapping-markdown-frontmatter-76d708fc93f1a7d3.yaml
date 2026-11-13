@@ -1,0 +1,6 @@
+fixes:
+  - |
+    ``MarkdownToDocument(extract_frontmatter=True)`` now preserves frontmatter containing
+    ``false``, ``0``, ``[]``, or an empty string as document content and logs a warning,
+    just like other non-mapping values. Previously these blocks were silently removed.
+    Empty/null frontmatter and empty mappings continue to be removed.

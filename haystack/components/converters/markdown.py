@@ -169,7 +169,7 @@ class MarkdownToDocument:
 
         frontmatter_text = match.group("frontmatter")
         try:
-            frontmatter = json.loads(json.dumps(yaml.safe_load(frontmatter_text), default=str)) or {}
+            frontmatter = json.loads(json.dumps(yaml.safe_load(frontmatter_text), default=str))
         except yaml.YAMLError as error:
             logger.warning(
                 "Could not parse YAML frontmatter in {source}. Keeping it as content. Error: {error}",
@@ -184,6 +184,9 @@ class MarkdownToDocument:
                 error=error,
             )
             return file_content, {}
+
+        if frontmatter is None:
+            frontmatter = {}
 
         if not isinstance(frontmatter, dict):
             logger.warning(
