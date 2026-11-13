@@ -293,6 +293,7 @@ export default {
             'pipeline-components/converters/libreofficefileconverter',
             'pipeline-components/converters/markdowntodocument',
             'pipeline-components/converters/markitdownconverter',
+            'pipeline-components/converters/minicpmocrdocumentconverter',
             'pipeline-components/converters/mistralocrdocumentconverter',
             'pipeline-components/converters/msgtodocument',
             'pipeline-components/converters/multifileconverter',
