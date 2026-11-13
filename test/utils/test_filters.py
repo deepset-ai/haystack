@@ -783,6 +783,15 @@ def test_document_matches_filter_raises_filter_error_for_datetime_and_numeric_va
         document_matches_filter(filters, Document(meta={"date": datetime(2025, 1, 1)}))
 
 
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+@pytest.mark.parametrize("document_value", [[1, 2], {"a": 1}])
+def test_document_matches_filter_raises_filter_error_for_incomparable_document_value(operator, document_value):
+    filters = {"field": "meta.page", "operator": operator, "value": 1}
+
+    with pytest.raises(FilterError, match=f"Can't compare a value of type '{type(document_value).__name__}'"):
+        document_matches_filter(filters, Document(meta={"page": document_value}))
+
+
 def test_dotted_field_with_unknown_root_is_treated_as_missing():
     # A dotted field whose root is not a Document attribute must be treated as a missing field
     # (matching the documented "treat it as None" behavior and non-dotted unknown fields),
