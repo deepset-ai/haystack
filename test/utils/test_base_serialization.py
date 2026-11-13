@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
 from json import dumps
@@ -300,6 +300,16 @@ class JsonNativeTypesModel(pydantic.BaseModel):
     amount: Decimal
 
 
+class StrictConfigModel(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(strict=True)
+    when: datetime
+    uid: UUID
+
+
+class StrictFieldModel(pydantic.BaseModel):
+    when: datetime = pydantic.Field(strict=True)
+
+
 class TestPydanticModelJsonSerialization:
     """Pydantic models serialize to JSON-native data, so snapshots survive `json.dump`."""
 
@@ -351,6 +361,23 @@ class TestPydanticModelJsonSerialization:
         )
         deserialized = _deserialize_value_with_schema(_serialize_value_with_schema({"model": model}))
         assert deserialized == {"model": model}
+
+    def test_strict_models_round_trip(self):
+        # JSON mode emits ISO strings and plain strings for datetime/UUID, which strict models reject
+        # on load unless the payload is validated laxly.
+        strict_model = StrictConfigModel(when=datetime(2024, 1, 2), uid=UUID("12345678-1234-5678-1234-567812345678"))
+        assert _deserialize_value_with_schema(_serialize_value_with_schema(strict_model)) == strict_model
+
+        strict_field_model = StrictFieldModel(when=datetime(2024, 1, 2))
+        assert _deserialize_value_with_schema(_serialize_value_with_schema(strict_field_model)) == strict_field_model
+
+    def test_timezone_aware_datetime_round_trips(self):
+        model = StrictConfigModel(
+            when=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC), uid=UUID("12345678-1234-5678-1234-567812345678")
+        )
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(model))
+        assert deserialized == model
+        assert deserialized.when.tzinfo is not None
 
 
 def test_serialize_and_deserialize_value_with_schema_with_various_types():
