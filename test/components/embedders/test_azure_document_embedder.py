@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -19,8 +20,8 @@ class TestAzureOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -37,14 +38,32 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.client is None
         assert embedder.async_client is None
 
+    @pytest.mark.parametrize("batch_size", [0, -1, 0.5, 32.0, "32", None])
+    def test_init_invalid_batch_size(self, batch_size):
+        with pytest.raises(
+            ValueError, match=re.escape(f"batch_size must be a positive integer, but got {batch_size!r}")
+        ):
+            AzureOpenAIDocumentEmbedder(
+                azure_endpoint="https://example-resource.azure.openai.com/",
+                api_key=Secret.from_token("fake-api-key"),
+                batch_size=batch_size,
+            )
+
+    def test_from_dict_invalid_batch_size(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        data = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/").to_dict()
+        data["init_parameters"]["batch_size"] = 0
+        with pytest.raises(ValueError, match="batch_size must be a positive integer, but got 0"):
+            AzureOpenAIDocumentEmbedder.from_dict(data)
+
     def test_init_with_0_max_retries(self, monkeypatch):
         """Tests that the max_retries init param is set correctly if equal 0"""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(
             azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0
         )
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -69,7 +88,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
-                "azure_deployment": "text-embedding-ada-002",
+                "azure_deployment": "text-embedding-3-small",
                 "dimensions": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "organization": None,
@@ -262,7 +281,7 @@ class TestAzureOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-        # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
+        # set the deployment explicitly instead of relying on the default
         embedder = AzureOpenAIDocumentEmbedder(
             azure_deployment="text-embedding-ada-002",
             meta_fields_to_embed=["topic"],

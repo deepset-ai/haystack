@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
 from haystack.tools import Tool, Toolset, flatten_tools_or_toolsets, warm_up_tools
+from haystack.tools.utils import close_tools, close_tools_async, warm_up_tools_async
 
 
 def add_numbers(a: int, b: int) -> int:
@@ -173,226 +176,93 @@ class TestFlattenToolsOrToolsets:
         assert result[2].name == "subtract"
 
 
-class WarmupTrackingTool(Tool):
-    """A tool that tracks whether warm_up was called."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.was_warmed_up = False
-
-    def warm_up(self):
-        self.was_warmed_up = True
-
-
-class WarmupTrackingToolset(Toolset):
-    """A toolset that tracks whether warm_up was called."""
-
-    def __init__(self, tools):
-        super().__init__(tools)
-        self.was_warmed_up = False
-
-    def warm_up(self):
-        self.was_warmed_up = True
-        # Call parent to warm up individual tools
-        super().warm_up()
-
-
 class TestWarmUpTools:
-    """Tests for the warm_up_tools() function"""
-
-    def test_warm_up_tools_with_none(self):
-        """Test that warm_up_tools with None does nothing."""
-        # Should not raise any errors
+    def test_ignores_none_and_tools_without_warm_up(self, add_tool):
         warm_up_tools(None)
+        warm_up_tools([add_tool])
 
-    def test_warm_up_tools_with_single_tool(self):
-        """Test that warm_up_tools works with a single tool in a list."""
-        tool = WarmupTrackingTool(
-            name="test_tool",
-            description="A test tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "test",
-        )
+    def test_warms_up_tools_in_mixed_list(self, add_tool, multiply_tool, subtract_tool, monkeypatch):
+        add_warm_up, multiply_warm_up, subtract_warm_up = Mock(), Mock(), Mock()
+        monkeypatch.setattr(add_tool, "warm_up", add_warm_up, raising=False)
+        monkeypatch.setattr(multiply_tool, "warm_up", multiply_warm_up, raising=False)
+        monkeypatch.setattr(subtract_tool, "warm_up", subtract_warm_up, raising=False)
+        warm_up_tools([add_tool, Toolset([multiply_tool]), Toolset([subtract_tool])])
+        add_warm_up.assert_called_once_with()
+        multiply_warm_up.assert_called_once_with()
+        subtract_warm_up.assert_called_once_with()
 
-        assert not tool.was_warmed_up
-        warm_up_tools([tool])
-        assert tool.was_warmed_up
-
-    def test_warm_up_tools_with_single_toolset(self):
-        """
-        Test that when passing a single Toolset, both the Toolset.warm_up()
-        and each individual tool's warm_up() are called.
-        """
-        tool1 = WarmupTrackingTool(
-            name="tool1",
-            description="First tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool1",
-        )
-        tool2 = WarmupTrackingTool(
-            name="tool2",
-            description="Second tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool2",
-        )
-
-        toolset = WarmupTrackingToolset([tool1, tool2])
-
-        assert not toolset.was_warmed_up
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-
+    def test_delegates_each_call_to_custom_toolset(self):
+        tool = Mock(spec=Tool, warm_up=Mock())
+        toolset = Mock(spec=Toolset, tools=[tool], warm_up=Mock())
         warm_up_tools(toolset)
-
-        # Both the toolset itself and individual tools should be warmed up
-        assert toolset.was_warmed_up
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-
-    def test_warm_up_tools_with_list_containing_toolset(self):
-        """Test that when a Toolset is in a list, individual tools inside get warmed up."""
-        tool1 = WarmupTrackingTool(
-            name="tool1",
-            description="First tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool1",
-        )
-        tool2 = WarmupTrackingTool(
-            name="tool2",
-            description="Second tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool2",
-        )
-
-        toolset = WarmupTrackingToolset([tool1, tool2])
-
-        assert not toolset.was_warmed_up
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-
-        warm_up_tools([toolset])
-
-        # Both the toolset itself and individual tools should be warmed up
-        assert toolset.was_warmed_up
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-
-    def test_warm_up_tools_with_multiple_toolsets(self):
-        """Test multiple Toolsets in a list."""
-        tool1 = WarmupTrackingTool(
-            name="tool1",
-            description="First tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool1",
-        )
-        tool2 = WarmupTrackingTool(
-            name="tool2",
-            description="Second tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool2",
-        )
-        tool3 = WarmupTrackingTool(
-            name="tool3",
-            description="Third tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "tool3",
-        )
-
-        toolset1 = WarmupTrackingToolset([tool1])
-        toolset2 = WarmupTrackingToolset([tool2, tool3])
-
-        assert not toolset1.was_warmed_up
-        assert not toolset2.was_warmed_up
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-        assert not tool3.was_warmed_up
-
-        warm_up_tools([toolset1, toolset2])
-
-        # Both toolsets and all individual tools should be warmed up
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-        assert tool3.was_warmed_up
-
-    def test_warm_up_tools_with_mixed_tools_and_toolsets(self):
-        """Test list with both Tool objects and Toolsets."""
-        standalone_tool = WarmupTrackingTool(
-            name="standalone",
-            description="Standalone tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "standalone",
-        )
-        toolset_tool1 = WarmupTrackingTool(
-            name="toolset_tool1",
-            description="Tool in toolset",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "toolset_tool1",
-        )
-        toolset_tool2 = WarmupTrackingTool(
-            name="toolset_tool2",
-            description="Another tool in toolset",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "toolset_tool2",
-        )
-
-        toolset = WarmupTrackingToolset([toolset_tool1, toolset_tool2])
-
-        assert not standalone_tool.was_warmed_up
-        assert not toolset.was_warmed_up
-        assert not toolset_tool1.was_warmed_up
-        assert not toolset_tool2.was_warmed_up
-
-        warm_up_tools([standalone_tool, toolset])
-
-        # All tools and the toolset should be warmed up
-        assert standalone_tool.was_warmed_up
-        assert toolset.was_warmed_up
-        assert toolset_tool1.was_warmed_up
-        assert toolset_tool2.was_warmed_up
-
-    def test_warm_up_tools_idempotency(self):
-        """Test that calling warm_up_tools() multiple times is safe."""
-
-        class WarmupCountingTool(Tool):
-            """A tool that counts how many times warm_up was called."""
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.warm_up_count = 0
-
-            def warm_up(self):
-                self.warm_up_count += 1
-
-        class WarmupCountingToolset(Toolset):
-            """A toolset that counts how many times warm_up did real work."""
-
-            def __init__(self, tools):
-                super().__init__(tools)
-                self.warm_up_count = 0
-                self._loaded = False
-
-            def warm_up(self):
-                if self._loaded:
-                    return
-                self.warm_up_count += 1
-                self._loaded = True
-                super().warm_up()  # Also warm up individual tools
-
-        tool = WarmupCountingTool(
-            name="counting_tool",
-            description="A counting tool",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "test",
-        )
-        toolset = WarmupCountingToolset([tool])
-
-        # Call warm_up_tools multiple times
+        toolset.warm_up.assert_called_once_with()
         warm_up_tools(toolset)
-        warm_up_tools(toolset)
-        warm_up_tools(toolset)
+        assert toolset.warm_up.call_count == 2
+        tool.warm_up.assert_not_called()
 
-        # warm_up is idempotent, so the toolset and its tools are only warmed up once
-        assert toolset.warm_up_count == 1
-        assert tool.warm_up_count == 1
+
+class TestWarmUpToolsAsync:
+    async def test_ignores_none_and_tools_without_warm_up(self, add_tool):
+        await warm_up_tools_async(None)
+        await warm_up_tools_async([add_tool])
+
+    async def test_prefers_async_warm_up_for_children(self):
+        tool = Mock(spec=Tool, warm_up=Mock(), warm_up_async=AsyncMock())
+        tool.name = "lookup"
+        await warm_up_tools_async(Toolset([tool]))
+        tool.warm_up_async.assert_awaited_once_with()
+        tool.warm_up.assert_not_called()
+
+    async def test_falls_back_to_sync_warm_up_for_children(self):
+        tool = Mock(spec=Tool, warm_up=Mock())
+        tool.name = "lookup"
+        await warm_up_tools_async(Toolset([tool]))
+        tool.warm_up.assert_called_once_with()
+
+    async def test_falls_back_to_custom_toolset_warm_up(self):
+        tool = Mock(spec=Tool, warm_up=Mock())
+        toolset = Mock(spec=Toolset, tools=[tool], warm_up=Mock())
+        await warm_up_tools_async(toolset)
+        toolset.warm_up.assert_called_once_with()
+        tool.warm_up.assert_not_called()
+
+
+class TestCloseTools:
+    def test_ignores_none_and_tools_without_close(self, add_tool):
+        close_tools(None)
+        close_tools([add_tool])
+
+    def test_closes_children_of_plain_toolset(self):
+        tool = Mock(spec=Tool, close=Mock())
+        tool.name = "lookup"
+        close_tools(Toolset([tool]))
+        tool.close.assert_called_once_with()
+
+    def test_custom_toolset_owns_cleanup(self):
+        tool = Mock(spec=Tool, close=Mock())
+        toolset = Mock(spec=Toolset, tools=[tool], close=Mock())
+
+        close_tools(toolset)
+
+        toolset.close.assert_called_once_with()
+        tool.close.assert_not_called()
+
+
+class TestCloseToolsAsync:
+    async def test_ignores_none_and_tools_without_close(self, add_tool):
+        await close_tools_async(None)
+        await close_tools_async([add_tool])
+
+    async def test_prefers_async_close_for_children(self):
+        tool = Mock(spec=Tool, close=Mock(), close_async=AsyncMock())
+        tool.name = "lookup"
+        await close_tools_async(Toolset([tool]))
+        tool.close_async.assert_awaited_once_with()
+        tool.close.assert_not_called()
+
+    async def test_falls_back_to_custom_toolset_close(self):
+        tool = Mock(spec=Tool, close=Mock())
+        toolset = Mock(spec=Toolset, tools=[tool], close=Mock())
+        await close_tools_async(toolset)
+        toolset.close.assert_called_once_with()
+        tool.close.assert_not_called()

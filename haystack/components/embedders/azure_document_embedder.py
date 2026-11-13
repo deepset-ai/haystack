@@ -40,7 +40,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",
-        azure_deployment: str = "text-embedding-ada-002",
+        azure_deployment: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -67,7 +67,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+            The name of the model deployed on Azure. The default is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only supported in text-embedding-3
             and later models.
@@ -90,7 +90,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param suffix:
             A string to add at the end of each text.
         :param batch_size:
-            Number of documents to embed at once.
+            Number of documents to embed at once. Must be a positive integer.
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
@@ -111,7 +111,12 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param raise_on_failure:
             Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
             and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+        :raises ValueError:
+            If `batch_size` is not a positive integer, if no Azure endpoint is provided, or if neither
+            `api_key` nor `azure_ad_token` is provided.
         """
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
 

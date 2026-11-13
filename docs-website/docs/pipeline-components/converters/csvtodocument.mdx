@@ -3,6 +3,7 @@ title: "CSVToDocument"
 id: csvtodocument
 slug: "/csvtodocument"
 description: "Converts CSV files to documents."
+hep_available: true
 ---
 
 # CSVToDocument
@@ -28,6 +29,9 @@ Converts CSV files to documents.
 
 The component uses UTF-8 encoding by default, but you may specify a different encoding if needed during initialization.
 You can optionally attach metadata to each document with a `meta` parameter when running the component.
+
+In row mode (`conversion_mode="row"`), `content_column` selects the column used as document content.
+The remaining columns become metadata, and `meta["row_number"]` records the zero-based row index.
 
 ## Usage
 

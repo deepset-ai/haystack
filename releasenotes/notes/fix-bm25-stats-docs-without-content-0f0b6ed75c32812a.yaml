@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``InMemoryDocumentStore`` no longer counts Documents without ``content``, such as image Documents that only have
+    an embedding, in its BM25 statistics. Previously they increased the document count and lowered the average
+    document length, which changed the BM25 scores and ranking of text Documents even though BM25 retrieval never
+    returns Documents without content.

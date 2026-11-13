@@ -252,6 +252,14 @@ class TestLinkContentFetcher:
         # Each URL failed once and succeeded on its first retry, so each one sends the second user agent.
         assert user_agent_on_success == dict.fromkeys(urls, user_agents[1])
 
+    @pytest.mark.parametrize("content_type", ["font/woff", "multipart/form-data", ""])
+    def test_resolve_handler_falls_back_to_text_handler_without_mutating_handlers(self, content_type):
+        fetcher = LinkContentFetcher()
+        registered = dict(fetcher.handlers)
+
+        assert fetcher._resolve_handler(content_type) is _text_content_handler
+        assert fetcher.handlers == registered
+
 
 class TestComponentLifecycle:
     def test_clients_are_none_after_init(self):
@@ -411,7 +419,7 @@ class TestLinkContentFetcherIntegration:
         for stream in streams:
             assert stream.meta["content_type"] in ("text/html", "application/pdf", "application/octet-stream")
             if stream.meta["content_type"] == "text/html":
-                assert "Haystack" in stream.data.decode("utf-8") or "Google" in stream.data.decode("utf-8")
+                assert b"Haystack" in stream.data or b"Google" in stream.data  # noqa: PLR2004
                 assert stream.mime_type == "text/html"
             elif stream.meta["content_type"] == "application/pdf":
                 assert len(stream.data) > 0

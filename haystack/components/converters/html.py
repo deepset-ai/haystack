@@ -36,7 +36,10 @@ class HTMLToDocument:
     """
 
     def __init__(
-        self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False, encoding: str = "utf-8"
+        self,
+        extraction_kwargs: dict[str, Any] | None = None,
+        store_full_path: bool = False,
+        encoding: str | None = None,
     ) -> None:
         """
         Create an HTMLToDocument component.
@@ -48,8 +51,9 @@ class HTMLToDocument:
         If True, the full path of the file is stored in the metadata of the document.
         If False, only the file name is stored.
         :param encoding:
-            The default encoding to use when converting HTML files. If the encoding is specified in the metadata of a
-            source ByteStream, it overrides this value.
+            The encoding to use when decoding HTML files. If None (the default), Trafilatura detects the encoding.
+            If detection produces incorrect characters, install `trafilatura[all]` for additional encoding detection
+            support, or set this parameter if you know the encoding.
         """
         trafilatura_import.check()
 
@@ -124,14 +128,19 @@ class HTMLToDocument:
                 continue
 
             try:
-                encoding = bytestream.meta.get("encoding", self.encoding)
-                text = extract(bytestream.data.decode(encoding), **merged_extraction_kwargs)
+                html_bytes = bytestream.data
+                html_content = html_bytes.decode(self.encoding) if self.encoding is not None else html_bytes
+                text = extract(html_content, **merged_extraction_kwargs)
             except Exception as conversion_e:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
                     source=source,
                     error=conversion_e,
                 )
+                continue
+
+            if text is None:
+                logger.warning("No text could be extracted from {source}. Skipping it.", source=source)
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}

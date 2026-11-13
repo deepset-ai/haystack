@@ -278,7 +278,9 @@ class TestContextRelevanceEvaluator:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = ContextRelevanceEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = evaluator.run(questions=questions, contexts=contexts)
 
         required_fields = {"results"}
@@ -366,7 +368,9 @@ class TestContextRelevanceEvaluatorAsync:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = ContextRelevanceEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = await evaluator.run_async(questions=questions, contexts=contexts)
 
         required_fields = {"results"}

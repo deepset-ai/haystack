@@ -81,13 +81,13 @@ class MockDocumentEmbedder:
         :param meta_fields_to_embed: List of metadata fields to embed along with the document text.
         :param embedding_separator: Separator used to concatenate the metadata fields to the document text.
         :param progress_bar: Accepted for interface compatibility with real Document Embedders and ignored.
-        :raises ValueError: If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
-            if `embedding` is an empty list.
+        :raises ValueError: If both `embedding` and `embedding_fn` are provided, if `embedding` is an empty list,
+            or if neither is provided and `dimension` is not positive.
         :raises TypeError: If `embedding` is not a sequence of numbers.
         """
         if embedding is not None and embedding_fn is not None:
             raise ValueError("Pass either 'embedding' or 'embedding_fn', not both.")
-        if dimension <= 0:
+        if embedding is None and embedding_fn is None and dimension <= 0:
             raise ValueError("'dimension' must be a positive integer.")
 
         self.embedding = _coerce_embedding(embedding, name="'embedding'") if embedding is not None else None

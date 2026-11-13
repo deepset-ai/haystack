@@ -53,6 +53,9 @@ class AnswerExactMatchEvaluator:
             - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
                          answer matched one of the ground truth answers.
         """
+        if len(ground_truth_answers) == 0 or len(predicted_answers) == 0:
+            raise ValueError("ground_truth_answers and predicted_answers must be provided.")
+
         if not len(ground_truth_answers) == len(predicted_answers):
             raise ValueError("The length of ground_truth_answers and predicted_answers must be the same.")
 

@@ -18,6 +18,7 @@ class TestMockDocumentEmbedder:
         ("args", "kwargs", "match"),
         [
             (([0.1],), {"embedding_fn": _ones}, "either 'embedding' or 'embedding_fn'"),
+            ((), {"dimension": 0}, "must be a positive integer"),
             ((), {"dimension": -1}, "must be a positive integer"),
         ],
     )
@@ -38,12 +39,16 @@ class TestMockDocumentEmbedder:
         doc_embedding = MockDocumentEmbedder(dimension=8).run([Document(content="pizza")])["documents"][0].embedding
         assert text_embedding == doc_embedding
 
-    def test_fixed_embedding(self):
-        result = MockDocumentEmbedder([0.5, 0.5]).run([Document(content="a"), Document(content="b")])
+    @pytest.mark.parametrize("dimension", [768, 0, -1])
+    def test_fixed_embedding(self, dimension):
+        embedder = MockDocumentEmbedder([0.5, 0.5], dimension=dimension)
+        result = embedder.run([Document(content="a"), Document(content="b")])
         assert all(doc.embedding == [0.5, 0.5] for doc in result["documents"])
 
-    def test_embedding_fn(self):
-        result = MockDocumentEmbedder(embedding_fn=_ones).run([Document(content="a")])
+    @pytest.mark.parametrize("dimension", [768, 0, -1])
+    def test_embedding_fn(self, dimension):
+        embedder = MockDocumentEmbedder(embedding_fn=_ones, dimension=dimension)
+        result = embedder.run([Document(content="a")])
         assert result["documents"][0].embedding == [1.0, 1.0, 1.0]
 
     def test_meta_fields_to_embed_affect_embedding(self):

@@ -39,7 +39,7 @@ class JsonSchemaValidator:
 
     ```python
     from haystack import Pipeline
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
     from haystack import component
@@ -55,7 +55,9 @@ class JsonSchemaValidator:
 
 
     p = Pipeline()
-    p.add_component("llm", OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component(
+        "llm", OpenAIResponsesChatGenerator(generation_kwargs={"text": {"format": {"type": "json_object"}}})
+    )
     p.add_component("schema_validator", JsonSchemaValidator())
     p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
@@ -129,9 +131,12 @@ class JsonSchemaValidator:
         :return:  A dictionary with the following keys:
             - "validated": A list of messages if the last message is valid.
             - "validation_error": A list of messages if the last message is invalid.
-        :raises ValueError: If the last message has no text content, or if no JSON schema is provided either in
-            the `run` method or in the component init.
+        :raises ValueError: If `messages` is empty, if the last message has no text content, or if no JSON schema is
+            provided either in the `run` method or in the component init.
         """
+        if not messages:
+            raise ValueError("The provided list of messages is empty.")
+
         last_message = messages[-1]
         if last_message.text is None:
             raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {last_message}")

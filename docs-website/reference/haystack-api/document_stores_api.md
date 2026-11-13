@@ -25,7 +25,7 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
 ```python
 __init__(
-    bm25_tokenization_regex: str = "(?u)\\b\\w+\\b",
+    bm25_tokenization_regex: str = _DEFAULT_BM25_TOKENIZATION_REGEX,
     bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
     bm25_parameters: dict | None = None,
     embedding_similarity_function: Literal[
@@ -44,7 +44,9 @@ Initializes the DocumentStore.
 
 **Parameters:**
 
-- **bm25_tokenization_regex** (<code>str</code>) – The regular expression used to tokenize the text for BM25 retrieval.
+- **bm25_tokenization_regex** (<code>str</code>) – The regular expression used to tokenize the text for BM25 retrieval. The default groups word
+  characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
+  Text is lowercased and NFC-normalized before tokenization.
 - **bm25_algorithm** (<code>Literal['BM25Okapi', 'BM25L', 'BM25Plus']</code>) – The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
 - **bm25_parameters** (<code>dict | None</code>) – Parameters for BM25 implementation in a dictionary format.
   For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -364,6 +366,10 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
 
+**Raises:**
+
+- <code>ValueError</code> – if top_k is negative.
+
 #### embedding_retrieval
 
 ```python
@@ -394,7 +400,7 @@ Retrieves documents that are most similar to the query embedding using a vector 
 
 **Raises:**
 
-- <code>ValueError</code> – if filters have invalid syntax.
+- <code>ValueError</code> – if top_k is negative or filters have invalid syntax.
 
 #### count_documents_async
 
@@ -444,6 +450,27 @@ Deletes all documents with matching document_ids from the DocumentStore.
 **Parameters:**
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
+
+#### delete_by_filter_async
+
+```python
+delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see filter_documents.
+
+**Returns:**
+
+- <code>int</code> – The number of documents deleted.
+
+**Raises:**
+
+- <code>ValueError</code> – if filters have invalid syntax.
 
 #### update_by_filter_async
 

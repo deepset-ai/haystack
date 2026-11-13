@@ -89,7 +89,7 @@ class Telemetry:
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
             try:
-                with open(CONFIG_PATH, "w") as outfile:
+                with open(CONFIG_PATH, "w", encoding="utf-8") as outfile:
                     yaml.dump({"user_id": self.user_id}, outfile, default_flow_style=False)
             except Exception as e:
                 logger.debug(

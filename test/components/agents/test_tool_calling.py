@@ -7,7 +7,7 @@ import datetime
 import json
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 from unittest.mock import patch
 
 import pytest
@@ -582,13 +582,15 @@ class TestRunTool:
         )
         assert len(tool_messages_2) == 3
 
-    def test_run_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_run_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -606,13 +608,15 @@ class TestRunTool:
         assert received_state["state"] is state
 
     @pytest.mark.asyncio
-    async def test_run_async_injects_state_object_into_tool(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    async def test_run_async_injects_state_object_into_tool(self, state_annotation: Any) -> None:
         received_state = {}
 
         def function_with_state(city: str, state: State) -> str:
             received_state["state"] = state
             return f"Weather in {city}: sunny"
 
+        function_with_state.__annotations__["state"] = state_annotation
         state_tool = Tool(
             name="state_tool",
             description="A tool that receives the live State object.",
@@ -688,19 +692,20 @@ class TestRunToolErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
 
-    def test_outputs_to_string_with_multiple_outputs(self):
+    @pytest.mark.parametrize("output_key", ["weather", "source", "handler", "raw_result"])
+    def test_outputs_to_string_with_multiple_outputs(self, output_key):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
             parameters=weather_parameters,
             function=weather_function,
-            outputs_to_string={"weather": {"source": "weather"}, "temp": {"source": "temperature"}},
+            outputs_to_string={output_key: {"source": "weather"}, "temp": {"source": "temperature"}},
         )
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
         chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
-        assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": "25"}'
+        assert chat_message.tool_call_results[0].result == json.dumps({output_key: "sunny", "temp": "25"})
 
     def test_output_handler_failure_falls_back_to_string(self):
         weather_tool = Tool(
@@ -996,12 +1001,13 @@ def _writer_tool(state_key: str = "documents", value: str = "written") -> Tool:
     )
 
 
-def _state_param_tool():
+def _state_param_tool(state_annotation: Any = State) -> Tool:
     """A tool that receives the live State object, so it may read/write any key."""
 
     def fn(state: State) -> str:
         return "done"
 
+    fn.__annotations__["state"] = state_annotation
     return Tool(
         name="state_tool",
         description="Receives the live State.",
@@ -1053,7 +1059,8 @@ class TestScheduleToolCalls:
         tools = [_make_retrieval_tool(), _make_retrieval_tool()]
         assert _schedule_tool_calls(calls, tools) == [[0], [1]]
 
-    def test_state_param_tool_is_a_barrier(self):
+    @pytest.mark.parametrize("state_annotation", [State, Annotated[State, "Live agent state"]])
+    def test_state_param_tool_is_a_barrier(self, state_annotation: Any) -> None:
         # A State-typed tool reads/writes every key, so it serializes everything around it even when the other
         # calls touch disjoint keys ("a" and "b"): writer("b") must run before the state tool (which reads "b"),
         # and reader("a") must run after it (the state tool may write "a").
@@ -1062,7 +1069,7 @@ class TestScheduleToolCalls:
             ToolCall(tool_name="state_tool", arguments={}),
             ToolCall(tool_name="writer_tool", arguments={}),
         ]
-        tools = [_reader_tool("a"), _state_param_tool(), _writer_tool("b")]
+        tools = [_reader_tool("a"), _state_param_tool(state_annotation=state_annotation), _writer_tool("b")]
         assert _schedule_tool_calls(calls, tools) == [[2], [1], [0]]
 
     def test_llm_supplied_arg_is_not_a_state_read(self):

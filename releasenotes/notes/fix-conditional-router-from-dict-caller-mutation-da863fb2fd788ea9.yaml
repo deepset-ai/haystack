@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``ConditionalRouter.from_dict`` mutating the caller's ``routes`` data in place: serialized
+    ``output_type`` strings were deserialized directly inside the caller's dictionaries, so reusing the same
+    serialized pipeline dict afterwards yielded already-deserialized type objects. ``from_dict`` now works on a
+    copy and the caller's data is left untouched. ``BranchJoiner.from_dict`` received the same treatment.

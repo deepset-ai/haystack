@@ -15,7 +15,7 @@ from haystack import component
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent
+from haystack.dataclasses.chat_message import ChatMessage, FileContent, ImageContent, ReasoningContent, TextContent
 from haystack.dataclasses.document import Document
 
 
@@ -118,6 +118,36 @@ class TestChatPromptBuilder:
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
         res = builder.run(variable="test")
         assert res == {"prompt": [ChatMessage.from_user("This is a test")]}
+
+    def test_run_with_multiple_text_parts(self):
+        template = [
+            ChatMessage.from_user(
+                content_parts=[TextContent(text="Hello, {{ name }}!"), TextContent(text="Goodbye, {{ other }}!")]
+            )
+        ]
+        builder = ChatPromptBuilder(template=template)
+
+        assert set(builder.variables) == {"name", "other"}
+        assert builder.run(name="John", other="Jane")["prompt"][0].texts == ["Hello, John!", "Goodbye, Jane!"]
+
+    @pytest.mark.parametrize(
+        "content_part",
+        [
+            ImageContent(base64_image="cHJldGVuZC1wbmctYnl0ZXM=", mime_type="image/png"),
+            FileContent(base64_data="dGVzdA==", mime_type="application/pdf", filename="document.pdf"),
+        ],
+        ids=["image", "file"],
+    )
+    def test_run_preserves_non_text_content_parts(self, content_part):
+        template = [ChatMessage.from_user(content_parts=["Describe {{ thing }}", content_part, "Also {{ other }}"])]
+        builder = ChatPromptBuilder(template=template)
+
+        assert builder.run(thing="this", other="that") == {
+            "prompt": [ChatMessage.from_user(content_parts=["Describe this", content_part, "Also that"])]
+        }
+        assert template == [
+            ChatMessage.from_user(content_parts=["Describe {{ thing }}", content_part, "Also {{ other }}"])
+        ]
 
     def test_run_template_variable(self):
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
@@ -720,14 +750,24 @@ class TestChatPromptBuilderDynamic:
         assert comp._variables is None
         assert comp._required_variables == "*"
 
-    def test_chat_message_list_with_templatize_part_init_raises_error(self):
-        template = [ChatMessage.from_user("This is a {{ variable | templatize_part }}")]
+    @pytest.mark.parametrize(
+        "content_parts",
+        [["This is a {{ variable | templatize_part }}"], ["First text", "This is a {{ variable | templatize_part }}"]],
+        ids=["first_text", "second_text"],
+    )
+    def test_chat_message_list_with_templatize_part_init_raises_error(self, content_parts):
+        template = [ChatMessage.from_user(content_parts=content_parts)]
         with pytest.raises(ValueError, match="templatize_part filter cannot be used"):
             ChatPromptBuilder(template=template)
 
-    def test_chat_message_list_with_templatize_part_run_raises_error(self):
+    @pytest.mark.parametrize(
+        "content_parts",
+        [["This is a {{ variable | templatize_part }}"], ["First text", "This is a {{ variable | templatize_part }}"]],
+        ids=["first_text", "second_text"],
+    )
+    def test_chat_message_list_with_templatize_part_run_raises_error(self, content_parts):
         builder = ChatPromptBuilder()
-        template = [ChatMessage.from_user("This is a {{ variable | templatize_part }}")]
+        template = [ChatMessage.from_user(content_parts=content_parts)]
         with pytest.raises(ValueError, match="templatize_part filter cannot be used"):
             builder.run(template=template, variable="test")
 

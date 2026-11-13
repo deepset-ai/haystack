@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import logging
 import os
 import threading
 from unittest.mock import AsyncMock, Mock, patch
@@ -87,6 +88,14 @@ class TestLLMDocumentContentExtractor:
             LLMDocumentContentExtractor(
                 chat_generator=chat_generator, prompt="Extract content from {{document.content}}"
             )
+
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, monkeypatch, max_workers):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            LLMDocumentContentExtractor(chat_generator=chat_generator, max_workers=max_workers)
 
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
@@ -181,7 +190,7 @@ class TestLLMDocumentContentExtractor:
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc.id
         assert "extraction_error" in failed_doc.meta
-        assert failed_doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
+        assert failed_doc.meta["extraction_error"] == "Document could not be converted to an image, skipping LLM call."
 
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run.assert_not_called()
@@ -224,18 +233,23 @@ class TestLLMDocumentContentExtractor:
         assert result["documents"][0].content == "Plain text, not JSON"
 
     @patch.object(DocumentToImageContent, "run")
-    def test_run_valid_json_not_object_reports_error(self, mock_doc_to_image_run):
+    def test_run_valid_json_not_object_reports_error(self, mock_doc_to_image_run, caplog):
         """When LLM returns valid JSON that is not an object (e.g. array or primitive), report error."""
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
         extractor = LLMDocumentContentExtractor(chat_generator=MockChatGenerator('["array", "not", "object"]'))
         docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
-        result = extractor.run(documents=docs)
+        with caplog.at_level(logging.WARNING):
+            result = extractor.run(documents=docs)
         assert len(result["documents"]) == 0
         assert len(result["failed_documents"]) == 1
         assert "extraction_error" in result["failed_documents"][0].meta
         assert "JSON object" in result["failed_documents"][0].meta["extraction_error"]
+        assert (
+            "LLMDocumentContentExtractor couldn't use the ChatGenerator response for document "
+            f"{docs[0].id}. Returning the document in failed_documents." in caplog.text
+        )
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_content_and_metadata_extraction(self, mock_doc_to_image_run):
@@ -278,9 +292,10 @@ class TestLLMDocumentContentExtractor:
         assert "extraction_error" in failed_doc.meta
         assert "LLM failed with exception: LLM API error" in failed_doc.meta["extraction_error"]
 
-        # Check that error was logged
-        assert "LLM" in caplog.text
-        assert "execution failed" in caplog.text
+        assert (
+            "LLMDocumentContentExtractor failed during chat generation. Returning the document in failed_documents. "
+            "Error: LLM API error" in caplog.text
+        )
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_llm_failure_raise_on_failure_true(self, mock_doc_to_image_run):
@@ -402,7 +417,7 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator())
         doc, success = extractor._run_on_thread(Document(content="", meta={"file_path": "missing.pdf"}), None)
         assert success is False
-        assert doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
+        assert doc.meta["extraction_error"] == "Document could not be converted to an image, skipping LLM call."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -411,7 +426,9 @@ class TestLLMDocumentContentExtractor:
     )
     def test_live_run(self, in_memory_doc_store):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
@@ -477,8 +494,9 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor(
             prompt=prompt,
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano",
+                model="gpt-5.6-luna",
                 generation_kwargs={
+                    "reasoning_effort": "none",
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -486,15 +504,17 @@ class TestLLMDocumentContentExtractor:
                             "schema": {
                                 "type": "object",
                                 "properties": {
+                                    "document_content": {"type": "string"},
                                     "author": {"type": "string"},
                                     "date": {"type": "string"},
                                     "document_type": {"type": "string"},
                                     "title": {"type": "string"},
                                 },
+                                "required": ["document_content"],
                                 "additionalProperties": False,
                             },
                         },
-                    }
+                    },
                 },
             ),
         )
@@ -684,7 +704,9 @@ class TestLLMDocumentContentExtractorAsync:
     @pytest.mark.asyncio
     async def test_live_run_async(self):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
 
         result = await extractor.run_async(documents=docs)
 

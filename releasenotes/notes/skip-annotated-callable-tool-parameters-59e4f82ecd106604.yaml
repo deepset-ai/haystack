@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and ``ComponentTool`` now exclude callback
+    parameters wrapped in ``typing.Annotated`` from their tool schemas, including
+    optional callbacks. Annotating a callback no longer causes tool construction
+    to fail with ``SchemaGenerationError``; the callback's default remains available
+    when the tool is invoked.

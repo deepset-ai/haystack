@@ -27,12 +27,16 @@ def _accumulate_usage(current: Any, new: Any) -> Any:
     Recursively sum numeric leaf values across two usage-like dicts.
 
     Used to aggregate `ChatMessage.meta["usage"]` payloads across LLM calls in a run. Nested dicts (e.g. OpenAI's
-    `completion_tokens_details`) are merged recursively; numeric leaves are summed; other types fall back to the new
-    value.
+    `completion_tokens_details`) are merged recursively; numeric leaves are summed; a `None` on either side counts as
+    not reported and keeps the other value; other types fall back to the new value.
 
     :param current: The current accumulated usage data.
     :param new: The new usage data to merge in.
     """
+    if new is None:
+        return current
+    if current is None:
+        return deepcopy(new)
     if isinstance(current, dict) and isinstance(new, dict):
         result = dict(current)
         for k, v in new.items():
@@ -115,7 +119,7 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
     Standalone Tools are kept when their name is requested. A Toolset with run-scoped state (one overriding
     `spawn()`, such as SearchableToolset) is replaced by a per-run copy carrying the requested names, so its
     dynamic behavior (search/lazy-loading) is preserved without mutating the shared, configured Toolset. Any
-    other Toolset is warmed up and reduced to the matching Tools.
+    other Toolset is reduced to the matching Tools. The caller must warm up the tools before selection.
 
     :param configured_tools: The tools configured on the Agent.
     :param names: The requested tool names.

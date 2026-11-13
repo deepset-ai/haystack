@@ -6,6 +6,7 @@
 import os
 from collections.abc import Callable
 from typing import Annotated, Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -204,6 +205,14 @@ class TestSearchableToolsetPassthrough:
         toolset.warm_up()
         assert toolset._passthrough is True
         assert len(list(toolset)) == 8
+
+    def test_passthrough_allows_catalog_name_matching_unused_search_tool(self):
+        """Test that passthrough mode accepts a catalog tool named like the bootstrap tool, since it isn't exposed."""
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=2)
+
+        assert [tool.name for tool in toolset] == ["search_tools"]
+        assert toolset[0].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
 
 
 class TestSearchableToolsetBM25Mode:
@@ -517,9 +526,7 @@ class TestSearchableToolsetWithToolset:
         assert any(t.name == "multiply_numbers" for t in search_toolset._catalog)
 
 
-class TestSearchableToolsetWarmUp:
-    """Tests for warm_up behavior."""
-
+class TestSearchableToolsetLifecycle:
     def test_not_warmed_up_after_agent_init(self, large_catalog, monkeypatch):
         """Initializing an Agent with a SearchableToolset must not warm it up (no premature flatten/connect)."""
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -534,6 +541,7 @@ class TestSearchableToolsetWarmUp:
         """Test that warm_up can be called multiple times safely."""
         toolset = SearchableToolset(catalog=large_catalog)
 
+        assert toolset._bootstrap_tool is None
         toolset.warm_up()
         first_bootstrap = toolset._bootstrap_tool
 
@@ -554,12 +562,6 @@ class TestSearchableToolsetWarmUp:
         toolset.warm_up()
         assert len(list(toolset)) == len(small_catalog)
 
-    def test_bootstrap_tool_before_warm_up(self, large_catalog):
-        """Test that bootstrap tool is None before warm_up."""
-        toolset = SearchableToolset(catalog=large_catalog)
-
-        assert toolset._bootstrap_tool is None
-
     def test_warm_up_raises_on_duplicate_tool_names(self):
         """Test that warm_up raises when the flattened catalog has duplicate tool names."""
         params = {"type": "object", "properties": {}}
@@ -569,6 +571,64 @@ class TestSearchableToolsetWarmUp:
 
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             toolset.warm_up()
+
+    @pytest.mark.parametrize("search_tool_name", ["search_tools", "find_tools"])
+    @pytest.mark.parametrize("async_warm_up", [False, True])
+    async def test_warm_up_rejects_catalog_name_matching_search_tool(self, search_tool_name, async_warm_up):
+        """Test that warm_up raises when a catalog tool collides with the bootstrap tool in search mode."""
+        catalog_tool = create_tool_from_function(get_weather, name=search_tool_name)
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name=search_tool_name)
+
+        # A failed warm-up must not leave the toolset initialized on a subsequent attempt.
+        for _ in range(2):
+            with pytest.raises(ValueError, match="conflicts with the bootstrap search tool"):
+                if async_warm_up:
+                    await toolset.warm_up_async()
+                else:
+                    toolset.warm_up()
+            assert toolset.get_selectable_tools() == []
+
+    async def test_spawn_and_iteration_do_not_repeat_warm_up_after_async_warm_up(self, large_catalog, monkeypatch):
+        catalog = Toolset(large_catalog)
+        catalog_warm_up_async = AsyncMock()
+        monkeypatch.setattr(catalog, "warm_up_async", catalog_warm_up_async, raising=False)
+        monkeypatch.setattr(catalog, "warm_up", Mock(side_effect=AssertionError), raising=False)
+        toolset = SearchableToolset(catalog=catalog)
+        await toolset.warm_up_async()
+        spawn = toolset.spawn()
+        search_tool = next(iter(spawn))
+        assert search_tool.name == "search_tools"
+        catalog_warm_up_async.assert_awaited_once_with()
+
+    def test_close_clears_discovery_and_allows_warm_up_again(self, large_catalog, monkeypatch):
+        catalog = Toolset(large_catalog)
+        catalog_close = Mock()
+        monkeypatch.setattr(catalog, "close", catalog_close, raising=False)
+        toolset = SearchableToolset(catalog=catalog)
+        search_tool = next(iter(toolset))
+        search_tool.invoke(tool_keywords="weather")
+        assert toolset._discovered_tools
+        toolset.close()
+        catalog_close.assert_called_once_with()
+        assert toolset._discovered_tools == {}
+        catalog.tools = [large_catalog[0]]
+        toolset.warm_up()
+        assert list(toolset) == catalog.tools
+
+    async def test_close_async_releases_catalog_and_allows_warm_up_again(self, small_catalog, monkeypatch):
+        tool_close_async = AsyncMock()
+        monkeypatch.setattr(small_catalog[0], "close_async", tool_close_async, raising=False)
+        toolset = SearchableToolset(catalog=small_catalog, search_threshold=1)
+        await toolset.warm_up_async()
+        search_tool = next(iter(toolset))
+        search_tool.invoke(tool_keywords="weather")
+        assert toolset._discovered_tools
+        await toolset.close_async()
+        tool_close_async.assert_awaited_once_with()
+        assert toolset._discovered_tools == {}
+        small_catalog.pop()
+        await toolset.warm_up_async()
+        assert toolset.get_selectable_tools() == small_catalog
 
 
 class TestSearchableToolsetEdgeCases:
@@ -786,6 +846,16 @@ class TestSearchableToolsetCustomSearchTool:
         assert "get_weather" in result
         assert "get_weather" in toolset._discovered_tools
 
+    def test_renamed_search_tool_can_discover_catalog_tool_named_search_tools(self):
+        """Test that renaming the bootstrap tool lets a catalog tool named `search_tools` be discovered and used."""
+        catalog_tool = create_tool_from_function(get_weather, name="search_tools")
+        toolset = SearchableToolset(catalog=[catalog_tool], search_threshold=1, search_tool_name="find_tools")
+
+        toolset[0].invoke(tool_keywords="weather")
+
+        assert [tool.name for tool in toolset] == ["find_tools", "search_tools"]
+        assert toolset[1].invoke(city="Berlin") == "Weather in Berlin: 22°C, sunny"
+
     def test_serialization(self, large_catalog):
         """Test to_dict includes all fields and serde roundtrip preserves settings."""
         toolset = SearchableToolset(
@@ -831,6 +901,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         # An isolated spawn is returned with the selection; the configured toolset is not mutated.
@@ -852,7 +923,6 @@ class TestSearchableToolsetAgentToolSelection:
     def test_spawns_have_independent_discovered_tools_and_selection(self, large_catalog):
         """Two spawns of one SearchableToolset don't share discovered tools or collide on the active selection."""
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
-        toolset.warm_up()
 
         spawn_a = toolset.spawn(selected_tool_names={"get_weather"})
         spawn_b = toolset.spawn()
@@ -879,6 +949,7 @@ class TestSearchableToolsetAgentToolSelection:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # 8 < 20 -> passthrough
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
+        toolset.warm_up()
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
         assert selected == [toolset]
@@ -948,7 +1019,11 @@ class TestSearchableToolsetAgentIntegration:
     def test_agent_discovers_and_uses_tools(self, large_catalog):
         """Agent discovers tools via BM25 search and uses them."""
         toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            tools=toolset,
+            max_agent_steps=5,
+        )
 
         assert len(agent.tools) == 1
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
@@ -969,16 +1044,21 @@ class TestSearchableToolsetAgentIntegration:
     def test_agent_discovers_multiple_tools_across_steps(self, large_catalog):
         """A task needing two different tools forces the agent to search for and load each one."""
         # Use two tools the model cannot answer on its own (live weather and stock price) so it is forced
-        # to call both. top_k=1 means a single search returns at most one tool, so the agent must search
-        # again for the second tool — exercising that discovered tools accumulate across agent steps.
+        # to call both. Request k=1 explicitly because the model can override the top_k default,
+        # ensuring discovery happens across steps and previously discovered tools remain available.
         toolset = SearchableToolset(catalog=large_catalog, top_k=1, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=8)
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"}),
+            tools=toolset,
+            max_agent_steps=8,
+        )
 
         result = agent.run(
             messages=[
                 ChatMessage.from_user(
                     "What is the current weather in Milan, and what is the current stock price of AAPL? "
-                    "Use the available tools to look up both."
+                    "Use the available tools to look up both. Search for one tool at a time with k=1, "
+                    "and use it before searching for the next tool."
                 )
             ]
         )

@@ -4,6 +4,7 @@
 
 import logging
 from typing import Annotated, Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -387,11 +388,14 @@ class TestCompactionHook:
         )
         assert compacted[-2:] == messages[-2:]
 
-    def test_lifecycle_delegates_to_the_compactor(self):
+    def test_lifecycle_delegates_to_the_counter_and_compactor(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         hook.warm_up()
         hook.close()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up", "close"]
 
 
@@ -422,11 +426,14 @@ class TestCompactionHookAsync:
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
-    async def test_lifecycle_prefers_the_async_methods(self):
+    async def test_lifecycle_prefers_async_methods_with_sync_fallback(self):
+        counter = Mock(spec=["warm_up", "close"])
         compactor = _RecordingCompactor()
-        hook = _hook(compactor)
+        hook = _hook(compactor=compactor, token_counter=counter)
         await hook.warm_up_async()
         await hook.close_async()
+        counter.warm_up.assert_called_once_with()
+        counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up_async", "close_async"]
 
     @pytest.mark.asyncio

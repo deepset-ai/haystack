@@ -10,10 +10,9 @@ from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar, Union, get_args
+from typing import Any, Self, TextIO, TypeVar, Union, get_args
 
 import networkx
-from typing_extensions import Self
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -163,8 +162,22 @@ class PipelineBase:  # noqa: PLW1641
         for name, instance in self.graph.nodes(data="instance"):
             components[name] = component_to_dict(instance, name)
 
+        edges = list(self.graph.edges.data())
+        # graph.edges lists connections by sender, so connections into the same socket are put back in the order they
+        # were made: that order is the order in which a variadic socket receives its inputs
+        slots_by_socket: dict[tuple[str, str], list[int]] = {}
+        for index, (_, receiver, edge_data) in enumerate(edges):
+            slots_by_socket.setdefault((receiver, edge_data["to_socket"].name), []).append(index)
+        for slots in slots_by_socket.values():
+            in_connection_order = sorted(
+                (edges[slot] for slot in slots),
+                key=lambda edge: _connection_index(socket=edge[2]["to_socket"], sender=edge[0]),
+            )
+            for slot, edge in zip(slots, in_connection_order, strict=True):
+                edges[slot] = edge
+
         connections = []
-        for sender, receiver, edge_data in self.graph.edges.data():
+        for sender, receiver, edge_data in edges:
             sender_socket = edge_data["from_socket"].name
             receiver_socket = edge_data["to_socket"].name
             connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
@@ -764,7 +777,8 @@ class PipelineBase:  # noqa: PLW1641
             receiver_socket_name=receiver_socket.name,
         )
 
-        if receiver_component_name in sender_socket.receivers and sender_component_name in receiver_socket.senders:
+        edge_key = f"{sender_socket.name}/{receiver_socket.name}"
+        if self.graph.has_edge(sender_component_name, receiver_component_name, key=edge_key):
             # This is already connected, nothing to do
             return self
 
@@ -1237,6 +1251,15 @@ class PipelineBase:  # noqa: PLW1641
         # check whether the data is a nested dictionary of component inputs where each key is a component name
         # and each value is a dictionary of input parameters for that component
         is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if data and is_nested_component_input and not any(name in self.graph.nodes for name in data):
+            # Dictionary values can also be flat inputs. Include connected sockets so the input format does not
+            # depend on the value type, but require every key to name a socket to preserve unknown-component errors.
+            socket_names = {
+                socket_name
+                for sockets in self.inputs(include_components_with_connected_inputs=True).values()
+                for socket_name in sockets
+            }
+            is_nested_component_input = not data.keys() <= socket_names
         if not is_nested_component_input:
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
@@ -1339,6 +1362,8 @@ class PipelineBase:  # noqa: PLW1641
         greedy_inputs_to_remove = set()
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
+            if socket.is_lazy_variadic:
+                socket_inputs = _sort_by_connection_order(socket=socket, socket_inputs=socket_inputs)
             socket_inputs_values = [
                 sock["value"] for sock in socket_inputs if not isinstance(sock["value"], _NoOutputProduced)
             ]
@@ -1784,9 +1809,7 @@ class PipelineBase:  # noqa: PLW1641
 
         :returns:
             A tuple containing:
-            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
-            - A dictionary mapping component names to boolean indicating that this component was part of a
-              SuperComponent
+            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all its SuperComponents
             - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()
@@ -1941,6 +1964,36 @@ def _validate_component_output_keys(
             component_type=component_type,
             extra_keys=extra_keys,
         )
+
+
+def _sort_by_connection_order(socket: InputSocket, socket_inputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Sorts the inputs of a lazy variadic socket in the order their senders were connected to it.
+
+    Senders write to the socket in the order they finish, which varies between runs in `Pipeline.run_async()`.
+    Connection order is the same in both run modes. The sort is stable, so values from the same sender keep the order
+    they were written in.
+
+    :param socket: The lazy variadic input socket.
+    :param socket_inputs: The inputs written to the socket, as `{"sender": ..., "value": ...}` entries.
+    :returns: The inputs sorted by connection order.
+    """
+    return sorted(socket_inputs, key=lambda sock: _connection_index(socket=socket, sender=sock["sender"]))
+
+
+def _connection_index(socket: InputSocket, sender: str | None) -> int:
+    """
+    Returns the position of a sender in the order senders were connected to a socket.
+
+    User inputs (`sender` is None) sort before every sender.
+
+    :param socket: The input socket.
+    :param sender: The name of the sending component, or None for a user input.
+    :returns: The sender's position in `socket.senders`.
+    """
+    if sender is None:
+        return -1
+    return socket.senders.index(sender)
 
 
 def _write_to_lazy_variadic_socket(

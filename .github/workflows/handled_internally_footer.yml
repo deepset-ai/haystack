@@ -1,0 +1,71 @@
+name: Handled internally footer
+
+# Maintainers mark issues the team will handle itself with the
+# `handled internally` label. This workflow keeps the issue description in sync
+# with that label: adding the label appends a footer telling contributors the
+# issue isn't open for external contributions, removing the label removes the
+# footer again. handled_internally_pr_guard.yml closes community PRs that target
+# such issues.
+
+on:
+  issues:
+    types: [labeled, unlabeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: handled-internally-footer-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  footer:
+    runs-on: ubuntu-slim
+    if: ${{ github.event.label.name == 'handled internally' }}
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const START = "<!-- handled-internally -->";
+            const END = "<!-- /handled-internally -->";
+            // Also matches footers maintainers added by hand before this workflow
+            // existed, so those issues don't get a second footer.
+            const FOOTER_PHRASE = "isn't open for external contributions";
+            const FOOTER = [
+              START,
+              "---",
+              "👋 Hello there! This issue will be handled internally and isn't open for " +
+                "external contributions. If you'd like to contribute, please take a look at " +
+                "issues labeled [contributions welcome](https://github.com/orgs/deepset-ai/projects/14) " +
+                "or [good first issue](https://github.com/deepset-ai/haystack/contribute). " +
+                "We'd really appreciate it!",
+              END,
+            ].join("\n");
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.issue.number;
+
+            // Re-fetch: the payload body is stale if the issue was edited meanwhile.
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            const body = issue.body ?? "";
+
+            let updated;
+            if (context.payload.action === "labeled") {
+              if (body.includes(FOOTER_PHRASE)) {
+                core.info(`Issue #${issue_number} already has the footer.`);
+                return;
+              }
+              updated = body.trimEnd() ? `${body.trimEnd()}\n\n${FOOTER}` : FOOTER;
+            } else {
+              // Only remove the footer this workflow added; hand-written ones stay.
+              const start = body.indexOf(START);
+              const end = body.indexOf(END, start);
+              if (start === -1 || end === -1) {
+                core.info(`Issue #${issue_number} has no automated footer to remove.`);
+                return;
+              }
+              updated = [body.slice(0, start).trimEnd(), body.slice(end + END.length).trim()]
+                .filter(Boolean)
+                .join("\n\n");
+            }
+            await github.rest.issues.update({ owner, repo, issue_number, body: updated });
+            core.info(`Updated footer on issue #${issue_number} (${context.payload.action}).`);
