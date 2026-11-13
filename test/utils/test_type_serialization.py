@@ -321,6 +321,15 @@ def test_output_type_deserialization_literal():
     assert deserialize_type("typing.Literal['int', 'str']") == Literal["int", "str"]
 
 
+def test_output_type_round_trip_annotated():
+    annotated_type = typing.Annotated[int, "a, b", {"key": "value"}]
+    serialized = "typing.Annotated[int, 'a, b', {'key': 'value'}]"
+
+    assert serialize_type(annotated_type) == serialized
+    assert deserialize_type(serialized) == annotated_type
+    assert deserialize_type(serialize_type(typing.Annotated[str, "metadata"])) == typing.Annotated[str, "metadata"]
+
+
 def test_output_type_round_trip_literal():
     for type_ in [
         Literal["yes", "no"],
