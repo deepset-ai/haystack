@@ -369,6 +369,8 @@ export default {
             'pipeline-components/embedders/perplexitytextembedder',
             'pipeline-components/embedders/sentencetransformersdocumentembedder',
             'pipeline-components/embedders/sentencetransformersdocumentimageembedder',
+            'pipeline-components/embedders/sentencetransformersmultivectordocumentembedder',
+            'pipeline-components/embedders/sentencetransformersmultivectortextembedder',
             'pipeline-components/embedders/sentencetransformerssparsedocumentembedder',
             'pipeline-components/embedders/sentencetransformerssparsetextembedder',
             'pipeline-components/embedders/sentencetransformerstextembedder',

@@ -1,0 +1,158 @@
+---
+title: "SentenceTransformersMultivectorDocumentEmbedder"
+id: sentencetransformersmultivectordocumentembedder
+slug: "/sentencetransformersmultivectordocumentembedder"
+description: "Use this component to enrich documents with token-level multivector embeddings using Sentence Transformers models."
+---
+
+# SentenceTransformersMultivectorDocumentEmbedder
+
+Use this component to enrich documents with token-level multivector embeddings using Sentence Transformers models.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: Copies of the input documents with `multivector_embedding` populated |
+| **API reference** | [Sentence Transformers](/reference/integrations-sentence-transformers) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
+
+</div>
+
+To embed a query string, use [`SentenceTransformersMultivectorTextEmbedder`](sentencetransformersmultivectortextembedder.mdx).
+
+## Overview
+
+`SentenceTransformersMultivectorDocumentEmbedder` computes multivector embeddings for a list of documents and stores them in the `multivector_embedding` field of each returned document.
+
+Unlike dense embedders, which produce a single vector for each document, this component produces multiple token-level vectors. Comparing individual query and document tokens with MaxSim scoring can capture more detailed matches and improve retrieval quality. However, these representations require more storage and memory, and scoring them is more computationally expensive than comparing single-vector embeddings.
+
+Use this component during indexing and store the resulting documents in a Document Store that supports multivector embeddings, such as [Qdrant](../../document-stores/qdrant-document-store.mdx). The stored embeddings can be reused for direct multivector retrieval or for reranking candidates with [`MaxSimRanker`](../rankers/maxsimranker.mdx). Reranking a small set of candidates limits the scoring cost. At query time, use [`SentenceTransformersMultivectorTextEmbedder`](sentencetransformersmultivectortextembedder.mdx) with the same model.
+
+### Compatible Models
+
+The default embedding model is [`answerdotai/answerai-colbert-small-v1`](https://huggingface.co/answerdotai/answerai-colbert-small-v1). You can specify another compatible model with the `model` parameter.
+
+Compatible models are multivector models supported by Sentence Transformers' `MultiVectorEncoder`, such as ColBERT models.
+
+### Authentication
+
+Authentication with a Hugging Face API token is only required to access private or gated models.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a token as a `Secret` through the `token` parameter at initialization. See [Secret Management](../../concepts/secret-management.mdx) for more information.
+
+### Embedding Metadata
+
+If document metadata is semantically meaningful, you can embed it along with the document text to improve retrieval. Use `meta_fields_to_embed` to select the fields:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+)
+
+doc = Document(
+    content="Solar panels convert sunlight into electricity.",
+    meta={"title": "Solar energy"},
+)
+model = "answerdotai/answerai-colbert-small-v1"
+embedder = SentenceTransformersMultivectorDocumentEmbedder(
+    model=model, meta_fields_to_embed=["title"]
+)
+documents_with_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersMultivectorDocumentEmbedder`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+)
+
+model = "answerdotai/answerai-colbert-small-v1"
+embedder = SentenceTransformersMultivectorDocumentEmbedder(model=model)
+result = embedder.run(
+    documents=[Document(content="Solar panels convert sunlight into electricity.")]
+)
+print(result["documents"][0].multivector_embedding)
+# >> [[-0.077234, 0.049449, -0.040090, ...], [-0.092901, 0.038636, -0.024584, ...], ...]
+
+print(len(result["documents"][0].multivector_embedding[0]))
+# >> 96
+```
+
+### In a pipeline
+
+This example uses `QdrantMultivectorEmbeddingRetriever` with an in-memory [Qdrant Document Store](../../document-stores/qdrant-document-store.mdx) to retrieve documents by their multivector embeddings.
+
+For two-stage retrieval with dense embeddings followed by multivector reranking, see the [`MaxSimRanker` pipeline example](../rankers/maxsimranker.mdx#in-a-pipeline).
+
+Install the additional integration:
+
+```shell
+pip install qdrant-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+    SentenceTransformersMultivectorTextEmbedder,
+)
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+documents = [
+    Document(content="Solar panels convert sunlight into electricity."),
+    Document(content="Wind turbines generate electricity from wind."),
+    Document(content="Batteries store energy for later use."),
+    Document(content="Solar thermal collectors use sunlight to heat water."),
+    Document(content="Trees absorb carbon dioxide from the atmosphere."),
+]
+
+model = "answerdotai/answerai-colbert-small-v1"
+document_embedder = SentenceTransformersMultivectorDocumentEmbedder(model=model)
+documents = document_embedder.run(documents=documents)["documents"]
+
+# This model produces 96-dimensional token vectors.
+document_store = QdrantDocumentStore(location=":memory:", multivector_embedding_dim=96)
+document_store.write_documents(documents=documents)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="embedder", instance=SentenceTransformersMultivectorTextEmbedder(model=model)
+)
+query_pipeline.add_component(
+    name="retriever",
+    instance=QdrantMultivectorEmbeddingRetriever(
+        document_store=document_store, top_k=2
+    ),
+)
+query_pipeline.connect(
+    "embedder.multivector_embedding", "retriever.query_multivector_embedding"
+)
+
+result = query_pipeline.run(
+    data={"embedder": {"text": "How do solar panels generate electricity?"}}
+)
+for document in result["retriever"]["documents"]:
+    print(document.content)
+# >> Solar panels convert sunlight into electricity.
+# >> Wind turbines generate electricity from wind.
+
+document_store.close()
+```

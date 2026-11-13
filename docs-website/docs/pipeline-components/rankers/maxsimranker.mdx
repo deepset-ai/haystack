@@ -3,6 +3,7 @@ title: "MaxSimRanker"
 id: maxsimranker
 slug: "/maxsimranker"
 description: "Rank documents using MaxSim scoring over precomputed query and document multivector embeddings."
+hep_available: false
 ---
 
 # MaxSimRanker
@@ -30,7 +31,7 @@ Use this component to rank documents by their similarity to a query using precom
 
 `MaxSimRanker` is designed to rerank a small set of retrieved documents, since computing MaxSim scores across an entire collection can be slow. In a two-stage pipeline, a Retriever first selects candidates, for example using dense embeddings, and `MaxSimRanker` then scores those candidates using the vectors stored in `Document.multivector_embedding`, without encoding the documents again.
 
-Query and document multivector embeddings must come from the same model and have the same vector dimension. You can use multivector embedders such as `SentenceTransformersMultivectorDocumentEmbedder` and `SentenceTransformersMultivectorTextEmbedder`, together with a Document Store that supports multivector embeddings, such as [Qdrant](../../document-stores/qdrant-document-store.mdx).
+Query and document multivector embeddings must come from the same model and have the same vector dimension. You can use multivector embedders such as [`SentenceTransformersMultivectorDocumentEmbedder`](../embedders/sentencetransformersmultivectordocumentembedder.mdx) and [`SentenceTransformersMultivectorTextEmbedder`](../embedders/sentencetransformersmultivectortextembedder.mdx), together with a Document Store that supports multivector embeddings, such as [Qdrant](../../document-stores/qdrant-document-store.mdx).
 
 Documents without multivector embeddings are skipped with a warning. The returned documents are sorted by descending MaxSim score, with their `score` fields updated. By default, the ranker returns up to 10 documents. Set `top_k` at initialization or in `run()` to change this limit. For details, see the [API reference](/reference/rankers-api#maxsimranker).
 
