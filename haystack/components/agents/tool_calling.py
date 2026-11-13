@@ -694,10 +694,14 @@ async def _run_tool_async(
                 parent_span=parent_span,
                 raise_on_failure=raise_on_failure,
             )()
-        batch_results = await asyncio.gather(*tasks.values())
+        # Wait for every call of the batch even if one raises, so no tool keeps running after the step fails
+        batch_results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
         # Merge results in call order within the batch so write-write merges stay deterministic.
         for idx, outcome in zip(tasks.keys(), batch_results, strict=True):
+            # A raised exception, such as a failing `outputs_to_string` handler, is re-raised in call order
+            if isinstance(outcome, BaseException) and not isinstance(outcome, ToolInvocationError):
+                raise outcome
             message = _finalize_tool_result(
                 outcome=outcome,
                 tool_call=tool_calls[idx],

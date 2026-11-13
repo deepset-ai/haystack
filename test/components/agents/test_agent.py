@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import threading
+import time
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from typing import Any
@@ -104,6 +105,12 @@ def uppercase_weather_tool():
 
 @pytest.fixture
 def failing_handler_weather_tool():
+    def slow_paris_weather_function(location: str) -> dict[str, Any]:
+        # Paris finishes after Berlin's handler has raised
+        if location == "Paris":
+            time.sleep(0.1)
+        return weather_function(location)
+
     def failing_handler(value: str) -> str:
         raise ValueError("cannot format weather")
 
@@ -111,7 +118,7 @@ def failing_handler_weather_tool():
         name="weather_tool",
         description="Provides weather information for a given location.",
         parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
-        function=weather_function,
+        function=slow_paris_weather_function,
         outputs_to_string={"source": "weather", "handler": failing_handler},
     )
 
