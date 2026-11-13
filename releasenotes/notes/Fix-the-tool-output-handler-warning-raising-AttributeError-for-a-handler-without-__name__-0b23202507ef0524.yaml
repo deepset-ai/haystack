@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed the warning logged when a tool's ``outputs_to_string`` handler raises. A handler without a
+    ``__name__``, such as a ``functools.partial`` or a callable object, made the warning itself raise
+    ``AttributeError`` instead of falling back to string conversion.

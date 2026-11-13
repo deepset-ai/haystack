@@ -4,6 +4,7 @@
 
 import asyncio
 import datetime
+import functools
 import json
 import time
 from collections.abc import Callable
@@ -722,6 +723,24 @@ class TestRunToolErrorHandling:
 
         assert not tool_message.tool_call_results[0].error
         assert isinstance(tool_message.tool_call_results[0].result, str)
+
+    def test_output_handler_without_a_name_falls_back_to_string(self):
+        def convert(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": functools.partial(convert)},
+        )
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_message = _build_tool_result_message("something", tool_call, weather_tool, raise_on_failure=False)
+
+        assert not tool_message.tool_call_results[0].error
+        assert tool_message.tool_call_results[0].result == "something"
 
     def test_output_handler_failure_falls_back_to_string_raw_result(self):
         def handler(result):
