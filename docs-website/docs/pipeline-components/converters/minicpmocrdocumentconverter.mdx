@@ -127,7 +127,6 @@ converter = MiniCPMOCRDocumentConverter(
     backend="llamacpp",
     layout_model_dir="/models/pp-doclayoutv3",
 )
-converter.warm_up()
 
 result = converter.run(sources=[Path("invoice.pdf")])
 print(result["documents"][0].meta["page_count"])
