@@ -4,10 +4,18 @@
 
 import asyncio
 import contextvars
+import dataclasses
 import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, time
+from decimal import Decimal
+from enum import Enum
+from pathlib import PurePath
 from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel
 
 from haystack import logging, tracing
 from haystack.components.agents.state.state import State
@@ -81,6 +89,31 @@ def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> Non
             raise RuntimeError(f"Tool '{tool.name}': failed to merge outputs into state. {e}") from e
 
 
+def _json_default(value: Any) -> Any:
+    """
+    Convert common Python types that `json.dumps` can't handle into JSON-compatible values.
+
+    Used as the `default` hook when serializing tool results, so values nested inside lists and dicts are covered too.
+
+    :param value: The value `json.dumps` could not serialize.
+    :returns: A JSON-compatible representation of the value.
+    :raises TypeError: If the value has an unsupported type.
+    """
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {field.name: getattr(value, field.name) for field in dataclasses.fields(value)}
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, (set, frozenset)):
+        return list(value)
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if isinstance(value, (UUID, Decimal, PurePath)):
+        return str(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def _result_to_string(result: Any) -> str:
     """
     Convert a tool result to a string.
@@ -95,7 +128,7 @@ def _result_to_string(result: Any) -> str:
         return result
     serializable = _serializable_value(value=result, use_placeholders=False)
     try:
-        return json.dumps(serializable, ensure_ascii=False)
+        return json.dumps(serializable, ensure_ascii=False, default=_json_default)
     except Exception as error:
         logger.warning(
             "Tool result is not JSON serializable. Falling back to str conversion. Result: {result}\nError: {err}",
