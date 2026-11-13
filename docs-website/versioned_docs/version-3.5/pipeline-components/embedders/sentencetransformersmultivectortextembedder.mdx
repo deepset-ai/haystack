@@ -30,7 +30,7 @@ To embed a list of documents, use [`SentenceTransformersMultivectorDocumentEmbed
 
 Unlike dense embedders, which represent the entire query with a single vector, this component produces multiple token-level vectors. Comparing these with document token vectors using MaxSim scoring can capture more detailed matches and improve retrieval quality. However, multivector representations require more storage and memory, and scoring them is more computationally expensive than comparing single-vector embeddings.
 
-Use this component before `QdrantMultivectorEmbeddingRetriever` for direct retrieval, or before [`MaxSimRanker`](../rankers/maxsimranker.mdx) to rerank candidates returned by another Retriever. Reranking a small set of candidates limits the scoring cost. Query and document embeddings must come from the same model; use [`SentenceTransformersMultivectorDocumentEmbedder`](sentencetransformersmultivectordocumentembedder.mdx) to prepare the document embeddings during indexing.
+Use this component before a compatible multivector Retriever, such as [`QdrantMultivectorEmbeddingRetriever`](../retrievers/qdrantmultivectorembeddingretriever.mdx), for direct retrieval, or before [`MaxSimRanker`](../rankers/maxsimranker.mdx) to rerank candidates returned by another Retriever. Reranking a small set of candidates limits the scoring cost. Query and document embeddings must come from the same model; use [`SentenceTransformersMultivectorDocumentEmbedder`](sentencetransformersmultivectordocumentembedder.mdx) to prepare the document embeddings during indexing.
 
 ### Compatible Models
 
@@ -71,7 +71,7 @@ print(len(result["multivector_embedding"][0]))
 
 ### In a pipeline
 
-This example uses `QdrantMultivectorEmbeddingRetriever` with an in-memory [Qdrant Document Store](../../document-stores/qdrant-document-store.mdx) to retrieve documents by their multivector embeddings.
+This example uses [`QdrantMultivectorEmbeddingRetriever`](../retrievers/qdrantmultivectorembeddingretriever.mdx) with an in-memory [Qdrant Document Store](../../document-stores/qdrant-document-store.mdx) to retrieve documents by their multivector embeddings.
 
 For two-stage retrieval with dense embeddings followed by multivector reranking, see the [`MaxSimRanker` pipeline example](../rankers/maxsimranker.mdx#in-a-pipeline).
 
