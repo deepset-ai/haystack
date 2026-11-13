@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from asyncio import gather
-from collections.abc import Awaitable
+import asyncio
 from copy import deepcopy
 from itertools import chain
 from typing import Any
@@ -15,7 +14,7 @@ from haystack.components.embedders.types import DocumentEmbedder
 from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
-from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -215,6 +214,7 @@ class EmbeddingBasedDocumentSplitter:
         Asynchronously split documents based on embedding similarity.
 
         This is the asynchronous version of the `run` method with the same parameters and return values.
+        If splitting a document fails, pending document tasks are cancelled and awaited before the error is raised.
 
         :param documents: The documents to split.
         :returns: A dictionary with the following key:
@@ -235,7 +235,7 @@ class EmbeddingBasedDocumentSplitter:
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
 
-        tasks: list[Awaitable[list[Document]]] = []
+        documents_to_split = []
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
@@ -246,9 +246,11 @@ class EmbeddingBasedDocumentSplitter:
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
 
-            tasks.append(self._split_document_async(doc=doc))
+            documents_to_split.append(doc)
 
-        return {"documents": [*chain.from_iterable(await gather(*tasks))]}
+        tasks = [asyncio.create_task(self._split_document_async(doc=doc)) for doc in documents_to_split]
+        split_documents = await _gather_tasks_with_cancel(tasks)
+        return {"documents": [*chain.from_iterable(split_documents)]}
 
     def _split_document(self, doc: Document) -> list[Document]:
         """
