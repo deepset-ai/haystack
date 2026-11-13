@@ -108,7 +108,6 @@ from haystack_integrations.components.converters.minicpm_ocr import (
 )
 
 converter = MiniCPMOCRDocumentConverter(server_url="http://localhost:8000")
-converter.warm_up()
 
 result = converter.run(sources=[Path("report.pdf"), Path("scan.png")])
 documents = result["documents"]
