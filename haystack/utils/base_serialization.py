@@ -46,7 +46,9 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     # Handle pydantic
     if isinstance(payload, pydantic.BaseModel):
         type_name = generate_qualified_class_name(type(payload))
-        return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump()}
+        # JSON mode turns datetime/date/UUID/Decimal fields into JSON-native values, so snapshots
+        # can be written with `json.dump`; `model_validate` parses them back on deserialization.
+        return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump(mode="json")}
 
     # Handle dictionary case - iterate through fields
     if isinstance(payload, dict):
@@ -314,7 +316,9 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     # handle pydantic models
     if issubclass(cls, pydantic.BaseModel):
         try:
-            return cls.model_validate(payload)
+            # Payloads are written in JSON mode, so datetime/date/UUID/Decimal fields arrive as
+            # strings. Validate laxly so models declaring `strict=True` still load their snapshots.
+            return cls.model_validate(payload, strict=False)
         except Exception as e:
             raise DeserializationError(
                 f"Failed to deserialize data '{payload}' into Pydantic model '{value_type}'"

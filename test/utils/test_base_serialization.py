@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from enum import Enum
+from json import dumps
+from uuid import UUID
 
 import pydantic
 import pytest
@@ -288,6 +291,93 @@ def test_serialize_and_deserialize_sequence_types(value, result):
 def test_serialize_and_deserialize_complex_types(value, result):
     assert _serialize_value_with_schema(value) == result
     assert _deserialize_value_with_schema(result) == value
+
+
+class JsonNativeTypesModel(pydantic.BaseModel):
+    when: datetime
+    day: date
+    uid: UUID
+    amount: Decimal
+
+
+class StrictConfigModel(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(strict=True)
+    when: datetime
+    uid: UUID
+
+
+class StrictFieldModel(pydantic.BaseModel):
+    when: datetime = pydantic.Field(strict=True)
+
+
+class TestPydanticModelJsonSerialization:
+    """Pydantic models serialize to JSON-native data, so snapshots survive `json.dump`."""
+
+    def test_serialized_data_is_json_dumpable(self):
+        model = JsonNativeTypesModel(
+            when=datetime(2024, 1, 2, 3, 4, 5),
+            day=date(2024, 1, 2),
+            uid=UUID("12345678-1234-5678-1234-567812345678"),
+            amount=Decimal("1.5"),
+        )
+        serialized = _serialize_value_with_schema(model)
+        # Before JSON mode was used this raised "TypeError: Object of type datetime is not JSON serializable"
+        assert dumps(serialized["serialized_data"])
+
+    def test_serialized_data_uses_json_native_values(self):
+        model = JsonNativeTypesModel(
+            when=datetime(2024, 1, 2, 3, 4, 5),
+            day=date(2024, 1, 2),
+            uid=UUID("12345678-1234-5678-1234-567812345678"),
+            amount=Decimal("1.5"),
+        )
+        assert _serialize_value_with_schema(model) == {
+            "serialization_schema": {"type": "test_base_serialization.JsonNativeTypesModel"},
+            "serialized_data": {
+                "when": "2024-01-02T03:04:05",
+                "day": "2024-01-02",
+                "uid": "12345678-1234-5678-1234-567812345678",
+                "amount": "1.5",
+            },
+        }
+
+    def test_round_trip_restores_field_types(self):
+        model = JsonNativeTypesModel(
+            when=datetime(2024, 1, 2, 3, 4, 5),
+            day=date(2024, 1, 2),
+            uid=UUID("12345678-1234-5678-1234-567812345678"),
+            amount=Decimal("1.5"),
+        )
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(model))
+        assert deserialized == model
+        assert deserialized.when == datetime(2024, 1, 2, 3, 4, 5)
+
+    def test_json_native_model_nested_in_dict_round_trips(self):
+        model = JsonNativeTypesModel(
+            when=datetime(2024, 1, 2),
+            day=date(2024, 1, 2),
+            uid=UUID("12345678-1234-5678-1234-567812345678"),
+            amount=Decimal("2.25"),
+        )
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema({"model": model}))
+        assert deserialized == {"model": model}
+
+    def test_strict_models_round_trip(self):
+        # JSON mode emits ISO strings and plain strings for datetime/UUID, which strict models reject
+        # on load unless the payload is validated laxly.
+        strict_model = StrictConfigModel(when=datetime(2024, 1, 2), uid=UUID("12345678-1234-5678-1234-567812345678"))
+        assert _deserialize_value_with_schema(_serialize_value_with_schema(strict_model)) == strict_model
+
+        strict_field_model = StrictFieldModel(when=datetime(2024, 1, 2))
+        assert _deserialize_value_with_schema(_serialize_value_with_schema(strict_field_model)) == strict_field_model
+
+    def test_timezone_aware_datetime_round_trips(self):
+        model = StrictConfigModel(
+            when=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC), uid=UUID("12345678-1234-5678-1234-567812345678")
+        )
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(model))
+        assert deserialized == model
+        assert deserialized.when.tzinfo is not None
 
 
 def test_serialize_and_deserialize_value_with_schema_with_various_types():

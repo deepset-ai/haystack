@@ -5,8 +5,10 @@
 import json
 import logging
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
+import pydantic
 import pytest
 
 from haystack import component
@@ -150,6 +152,40 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
     assert isinstance(loaded_snapshot.break_point, Breakpoint)
     assert loaded_snapshot.break_point.component_name == "comp2"
     assert loaded_snapshot.break_point.visit_count == 0
+
+
+class _TimestampedModel(pydantic.BaseModel):
+    t: datetime
+
+
+def test_breakpoint_snapshot_with_pydantic_datetime_field_saves_and_resumes(tmp_path, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+    @component
+    class Echo:
+        @component.output_types(v=_TimestampedModel)
+        def run(self, v: _TimestampedModel) -> dict[str, _TimestampedModel]:
+            return {"v": v}
+
+    pipeline = Pipeline()
+    pipeline.add_component("echo", Echo())
+
+    model = _TimestampedModel(t=datetime(2024, 1, 2))
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(
+            data={"echo": {"v": model}}, break_point=Breakpoint(component_name="echo", snapshot_file_path=str(tmp_path))
+        )
+
+    # Before the fix this raised "TypeError: Object of type datetime is not JSON serializable" and
+    # left a half-written snapshot file that failed to load.
+    snapshot_files = list(tmp_path.glob("echo_*.json"))
+    assert len(snapshot_files) == 1, f"Expected exactly one snapshot file, found {len(snapshot_files)}"
+
+    loaded_snapshot = load_pipeline_snapshot(snapshot_files[0])
+    assert exc_info.value.pipeline_snapshot is not None
+
+    result = pipeline.run(data={}, pipeline_snapshot=loaded_snapshot)
+    assert result == {"echo": {"v": model}}
 
 
 @component
