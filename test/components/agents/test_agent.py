@@ -103,6 +103,20 @@ def uppercase_weather_tool():
 
 
 @pytest.fixture
+def failing_handler_weather_tool():
+    def failing_handler(value: str) -> str:
+        raise ValueError("cannot format weather")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=weather_function,
+        outputs_to_string={"source": "weather", "handler": failing_handler},
+    )
+
+
+@pytest.fixture
 def failing_tool():
     def failing_function(location: str) -> dict[str, str]:
         raise RuntimeError("weather service unavailable")
@@ -1552,6 +1566,43 @@ class TestAgentTracing:
             (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
             for span in tool_spans
         } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    def test_tracing_span_run_with_failing_outputs_to_string_handler(self, spying_tracer, failing_handler_weather_tool):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_outputs_to_string_handler(
+        self, spying_tracer, failing_handler_weather_tool
+    ):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
 
     def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
