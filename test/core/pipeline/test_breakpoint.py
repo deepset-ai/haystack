@@ -5,6 +5,7 @@
 import json
 import logging
 from dataclasses import replace
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -24,7 +25,7 @@ from haystack.core.pipeline.breakpoint import (
     load_pipeline_snapshot,
 )
 from haystack.core.pipeline.component_checks import _NoOutputProduced
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, Document
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_value_with_schema
@@ -797,6 +798,28 @@ class TestSnapshotSaveEnabled:
         snapshot_files = list(tmp_path.glob("comp2_*.json"))
         assert len(snapshot_files) == 1
         assert result == str(snapshot_files[0])
+
+    def test_save_pipeline_snapshot_round_trips_document_metadata(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+        document = Document(content="content", meta={"created_at": datetime(2026, 11, 3, 12, 30, tzinfo=UTC)})
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={"document": document},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp2": 0},
+            original_input_data={"document": document},
+            ordered_component_names=["comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        snapshot_path = _save_pipeline_snapshot(snapshot)
+
+        assert snapshot_path is not None
+        loaded_snapshot = load_pipeline_snapshot(snapshot_path)
+        restored_inputs = _deserialize_value_with_schema(loaded_snapshot.pipeline_state.inputs)
+        assert restored_inputs["document"] == document
 
     def test_callback_still_invoked_when_env_var_disables_saving(self, tmp_path, monkeypatch):
         """

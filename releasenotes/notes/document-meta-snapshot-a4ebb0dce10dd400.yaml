@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Pipeline snapshots now preserve ``datetime``, ``date``, ``UUID``, and ``Decimal``
+    values in ``Document.meta``. Saving and resuming these snapshots keeps the
+    metadata values usable in their original types.

@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 import pydantic
 
@@ -15,6 +18,40 @@ from haystack.utils import deserialize_callable, serialize_callable
 logger = logging.getLogger(__name__)
 
 _PRIMITIVE_TO_SCHEMA_MAP = {type(None): "null", bool: "boolean", int: "integer", float: "number", str: "string"}
+_TYPED_VALUE_DESERIALIZERS = {
+    "datetime": datetime.fromisoformat,
+    "date": date.fromisoformat,
+    "uuid": UUID,
+    "decimal": Decimal,
+}
+
+
+def _serialize_typed_value(payload: Any) -> dict[str, Any] | None:
+    """Serialize a date/time, UUID, or Decimal value with its type information."""
+    if isinstance(payload, datetime):
+        type_name, serialized_data = "datetime", payload.isoformat()
+    elif isinstance(payload, date):
+        type_name, serialized_data = "date", payload.isoformat()
+    elif isinstance(payload, UUID):
+        type_name, serialized_data = "uuid", str(payload)
+    elif isinstance(payload, Decimal):
+        type_name, serialized_data = "decimal", str(payload)
+    else:
+        return None
+    return {"serialization_schema": {"type": type_name}, "serialized_data": serialized_data}
+
+
+def _serialize_document_with_typed_metadata(payload: Any, type_name: str) -> dict[str, Any] | None:
+    """Serialize Documents with typed metadata without changing the legacy JSON-native shape."""
+    from haystack.dataclasses.document import Document
+
+    if not isinstance(payload, Document) or not _contains_typed_metadata(payload.meta):
+        return None
+
+    data = payload.to_dict(flatten=False)
+    serialized_data = _serialize_value_with_schema(data)
+    schema = {"type": type_name, "properties": serialized_data["serialization_schema"]["properties"]}
+    return {"serialization_schema": schema, "serialized_data": serialized_data["serialized_data"]}
 
 
 def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR0911
@@ -31,7 +68,7 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     - Lists, tuples, and sets, including ones holding mixed types. A mixed-type array records one
       schema per position under the JSON Schema `prefixItems` keyword, while a homogeneous array
       keeps the single shared `items` schema.
-    - Primitive types (str, int, float, bool, None)
+    - Primitive types, Enums, callables, pydantic models, and date/time, UUID, and Decimal values
 
     This is for runtime values (Agent/State data, pipeline inputs/outputs at a breakpoint), not
     Component definitions — see `default_to_dict` in `core/serialization.py` for that other format.
@@ -47,6 +84,10 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     if isinstance(payload, pydantic.BaseModel):
         type_name = generate_qualified_class_name(type(payload))
         return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump()}
+
+    # Preserve common non-JSON metadata values in snapshots.
+    if (serialized_typed_value := _serialize_typed_value(payload)) is not None:
+        return serialized_typed_value
 
     # Handle dictionary case - iterate through fields
     if isinstance(payload, dict):
@@ -96,8 +137,11 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     # Handle Haystack style objects (e.g. dataclasses and Components)
     if hasattr(payload, "to_dict") and callable(payload.to_dict):
         type_name = generate_qualified_class_name(type(payload))
+        if (serialized_document := _serialize_document_with_typed_metadata(payload, type_name)) is not None:
+            return serialized_document
         schema = {"type": type_name}
-        return {"serialization_schema": schema, "serialized_data": payload.to_dict()}
+        data = payload.to_dict()
+        return {"serialization_schema": schema, "serialized_data": data}
 
     # Handle callable functions serialization
     if callable(payload) and not isinstance(payload, type):
@@ -117,9 +161,20 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     # instead of embedding a live, non-portable object in the output.
     raise SerializationError(
         f"Cannot serialize value of type '{type(payload).__name__}'. Supported values are primitives "
-        f"(str, int, float, bool, None), lists/tuples/sets/frozensets/dicts of supported values, Enums, "
-        f"callables, pydantic models, and objects exposing a 'to_dict' method."
+        f"(str, int, float, bool, None), date/time, UUID, Decimal, lists/tuples/sets/frozensets/dicts "
+        f"of supported values, Enums, callables, pydantic models, and objects exposing a 'to_dict' method."
     )
+
+
+def _contains_typed_metadata(value: Any) -> bool:
+    """Return whether a metadata value contains a supported non-JSON-native type."""
+    if isinstance(value, (datetime, date, UUID, Decimal)):
+        return True
+    if isinstance(value, dict):
+        return any(_contains_typed_metadata(item) for item in value.values())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_contains_typed_metadata(item) for item in value)
+    return False
 
 
 def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[str, Any]:
@@ -269,6 +324,9 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
             final_array = list(deserialized_items)
         return final_array
 
+    if schema_type in _TYPED_VALUE_DESERIALIZERS:
+        return _TYPED_VALUE_DESERIALIZERS[schema_type](data)
+
     # Handle primitive types
     if schema_type in _PRIMITIVE_TO_SCHEMA_MAP.values():
         return data
@@ -277,7 +335,12 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
     if schema_type == "typing.Callable":
         return deserialize_callable(data)
 
-    # Handle custom class types
+    # Handle custom class types. Newer Document snapshots carry child schemas so that
+    # metadata types are restored; older snapshots keep the original unannotated shape.
+    if "properties" in schema:
+        data = _deserialize_value_with_schema(
+            {"serialization_schema": {"type": "object", "properties": schema["properties"]}, "serialized_data": data}
+        )
     return _deserialize_value({"type": schema_type, "data": data})
 
 
