@@ -222,6 +222,11 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             Deserialized component.
         """
+        if not isinstance(data, dict):
+            raise DeserializationError(
+                f"Pipeline deserialization expects a dictionary, got {type(data).__name__}. "
+                "A serialized pipeline must be a mapping that holds the 'components' and 'connections' keys."
+            )
         with _deserialization_context(allowed_modules=allowed_modules, unsafe=unsafe):
             return cls._from_dict_impl(data, callbacks, **kwargs)
 

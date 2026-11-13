@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``Pipeline.from_dict`` and ``Pipeline.loads`` now raise a ``DeserializationError`` when the
+    deserialized data is not a mapping, for example an empty document, a list, or a bare scalar.
+    Previously those inputs raised a raw ``AttributeError`` from ``data.get(...)``. Loading
+    serialized pipelines from untrusted sources is an explicit attack surface documented in
+    ``SECURITY.md``, so malformed documents now fail with the same error type as other invalid
+    input.
