@@ -48,6 +48,21 @@ class FailingRetriever:
         raise RuntimeError("connection error")
 
 
+@component
+class WarmUpFailingRetriever:
+    def warm_up(self) -> None:
+        raise RuntimeError("inactive retriever was warmed")
+
+    async def warm_up_async(self) -> None:
+        raise RuntimeError("inactive retriever was warmed")
+
+    @component.output_types(documents=list[Document])
+    def run(
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+    ) -> dict[str, list[Document]]:
+        return {"documents": []}
+
+
 @pytest.fixture
 def sample_documents():
     return [
@@ -305,6 +320,48 @@ class TestMultiRetriever:
         result = retriever.run(query="energy", active_retrievers=["a"])
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "doc1"
+
+    def test_run_with_active_retrievers_does_not_warm_up_inactive_retrievers(self, sample_documents):
+        active = Mock(spec=["run", "warm_up"])
+        active.run.return_value = {"documents": [sample_documents[0]]}
+        retriever = MultiRetriever(retrievers={"active": active, "inactive": WarmUpFailingRetriever()})
+
+        result = retriever.run(query="energy", active_retrievers=["active"])
+
+        assert [document.id for document in result["documents"]] == ["doc1"]
+        active.warm_up.assert_called_once_with()
+
+    def test_run_with_active_retrievers_calls_overridden_warm_up(self, sample_documents):
+        warm_up_calls = 0
+
+        class OverridingMultiRetriever(MultiRetriever):
+            def warm_up(self) -> None:
+                nonlocal warm_up_calls
+                warm_up_calls += 1
+                super().warm_up()
+
+        retriever = OverridingMultiRetriever(
+            retrievers={"active": MockRetriever([sample_documents[0]]), "inactive": WarmUpFailingRetriever()}
+        )
+
+        result = retriever.run(query="energy", active_retrievers=["active"])
+
+        assert [document.id for document in result["documents"]] == ["doc1"]
+        assert warm_up_calls == 1
+
+    def test_run_restores_warm_up_context_after_warm_up_exception(self):
+        selected = Mock(spec=["run", "warm_up"])
+        selected.warm_up.side_effect = [RuntimeError("warm-up failed"), None]
+        other = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"selected": selected, "other": other})
+
+        with pytest.raises(RuntimeError, match="warm-up failed"):
+            retriever.run(query="energy", active_retrievers=["selected"])
+
+        retriever.warm_up()
+
+        assert selected.warm_up.call_count == 2
+        other.warm_up.assert_called_once_with()
 
     def test_run_with_unknown_active_retriever_raises(self):
         retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
@@ -609,6 +666,76 @@ class TestMultiRetrieverAsync:
         result = await retriever.run_async(query="energy", active_retrievers=["a"])
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_active_retrievers_does_not_warm_up_inactive_retrievers(self, sample_documents):
+        active = Mock(spec=["run", "warm_up_async"])
+        active.run.return_value = {"documents": [sample_documents[0]]}
+        active.warm_up_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"active": active, "inactive": WarmUpFailingRetriever()})
+
+        result = await retriever.run_async(query="energy", active_retrievers=["active"])
+
+        assert [document.id for document in result["documents"]] == ["doc1"]
+        active.warm_up_async.assert_awaited_once_with()
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_active_retrievers_calls_overridden_warm_up_async(self, sample_documents):
+        warm_up_calls = 0
+
+        class OverridingMultiRetriever(MultiRetriever):
+            async def warm_up_async(self) -> None:
+                nonlocal warm_up_calls
+                warm_up_calls += 1
+                await super().warm_up_async()
+
+        retriever = OverridingMultiRetriever(
+            retrievers={"active": MockRetriever([sample_documents[0]]), "inactive": WarmUpFailingRetriever()}
+        )
+
+        result = await retriever.run_async(query="energy", active_retrievers=["active"])
+
+        assert [document.id for document in result["documents"]] == ["doc1"]
+        assert warm_up_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_overlapping_run_async_calls_isolate_active_retrievers(self, sample_documents):
+        first_warm_up_started = asyncio.Event()
+        second_warm_up_started = asyncio.Event()
+        first_warm_up_finished = asyncio.Event()
+        warm_up_calls = 0
+
+        class OverlappingMultiRetriever(MultiRetriever):
+            async def warm_up_async(self) -> None:
+                nonlocal warm_up_calls
+                warm_up_calls += 1
+                if warm_up_calls == 1:
+                    first_warm_up_started.set()
+                    await second_warm_up_started.wait()
+                    await super().warm_up_async()
+                    first_warm_up_finished.set()
+                else:
+                    second_warm_up_started.set()
+                    await first_warm_up_finished.wait()
+                    await super().warm_up_async()
+
+        a = Mock(spec=["run", "warm_up_async"])
+        a.run.return_value = {"documents": [sample_documents[0]]}
+        a.warm_up_async = AsyncMock()
+        b = Mock(spec=["run", "warm_up_async"])
+        b.run.return_value = {"documents": [sample_documents[1]]}
+        b.warm_up_async = AsyncMock()
+        retriever = OverlappingMultiRetriever(retrievers={"a": a, "b": b})
+
+        run_a = asyncio.create_task(retriever.run_async(query="energy", active_retrievers=["a"]))
+        await first_warm_up_started.wait()
+        run_b = asyncio.create_task(retriever.run_async(query="energy", active_retrievers=["b"]))
+        result_a, result_b = await asyncio.wait_for(asyncio.gather(run_a, run_b), timeout=1)
+
+        assert [document.id for document in result_a["documents"]] == ["doc1"]
+        assert [document.id for document in result_b["documents"]] == ["doc2"]
+        a.warm_up_async.assert_awaited_once_with()
+        b.warm_up_async.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_run_async_with_unknown_active_retriever_raises(self):
