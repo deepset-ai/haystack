@@ -1,9 +1,10 @@
 ---
 fixes:
   - |
-    ``Pipeline.from_dict`` and ``Pipeline.loads`` now raise a ``DeserializationError`` when the
-    deserialized data is not a mapping, for example an empty document, a list, or a bare scalar.
-    Previously those inputs raised a raw ``AttributeError`` from ``data.get(...)``. Loading
-    serialized pipelines from untrusted sources is an explicit attack surface documented in
-    ``SECURITY.md``, so malformed documents now fail with the same error type as other invalid
-    input.
+    ``Pipeline.from_dict`` and ``Pipeline.loads`` now raise a ``DeserializationError`` for malformed
+    input instead of a raw ``AttributeError``: the deserialized data must be a mapping, and its
+    ``components`` entry must be a mapping of component names. An empty or comment-only document,
+    a list, a bare scalar, or a ``components`` value such as ``[]`` or ``null`` previously reached
+    ``data.get(...)`` or ``.items()`` and failed with ``AttributeError``. Loading serialized
+    pipelines from untrusted sources is an explicit attack surface documented in ``SECURITY.md``,
+    so malformed documents now fail with the same error type as other invalid input.

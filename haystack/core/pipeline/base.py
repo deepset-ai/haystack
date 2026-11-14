@@ -244,7 +244,12 @@ class PipelineBase:  # noqa: PLW1641
             connection_type_validation=connection_type_validation,
         )
         components_to_reuse = kwargs.get("components", {})
-        for name, component_data in data_copy.get("components", {}).items():
+        components_data = data_copy.get("components", {})
+        if not isinstance(components_data, dict):
+            raise DeserializationError(
+                f"Pipeline 'components' must be a mapping of component names, got {type(components_data).__name__}."
+            )
+        for name, component_data in components_data.items():
             if name in components_to_reuse:
                 # Reuse an instance
                 instance = components_to_reuse[name]
