@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+from collections.abc import Callable as ABCCallable
 from enum import Enum
 from functools import partial
 from inspect import Parameter
@@ -11,12 +12,14 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    Concatenate,
     Dict,
     Iterable,
     List,
     Literal,
     Mapping,
     Optional,
+    ParamSpec,
     Sequence,
     Set,
     Tuple,
@@ -447,6 +450,29 @@ asymmetric_cases = generate_strict_asymmetric_cases()
 )
 def test_type_name(type_, repr_):
     assert _type_name(type_) == repr_
+
+
+@pytest.mark.parametrize("callable_type", [Callable, ABCCallable])
+@pytest.mark.parametrize(
+    "parameters,return_type,expected",
+    [
+        ([int, str], bool, "Callable[[int, str], bool]"),
+        ([], str, "Callable[[], str]"),
+        (Ellipsis, str, "Callable[..., str]"),
+        ([str], None, "Callable[[str], None]"),
+        ([list[int]], dict[str, int], "Callable[[list[int]], dict[str, int]]"),
+        ([Callable[[int], str]], bool, "Callable[[Callable[[int], str]], bool]"),
+    ],
+)
+def test_type_name_preserves_callable_signature(callable_type, parameters, return_type, expected):
+    assert _type_name(callable_type[parameters, return_type]) == expected
+
+
+@pytest.mark.parametrize("callable_type", [Callable, ABCCallable])
+def test_type_name_preserves_callable_parameter_specification(callable_type):
+    parameters = ParamSpec("parameters")
+    assert _type_name(callable_type[parameters, str]) == "Callable[parameters, str]"
+    assert _type_name(callable_type[Concatenate[int, parameters], str]) == "Callable[Concatenate[int, parameters], str]"
 
 
 if sys.version_info < (3, 14):
