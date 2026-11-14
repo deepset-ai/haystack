@@ -273,6 +273,20 @@ class TestPipelineBase:
         with open(f"{test_files_path}/yaml/test_pipeline.yaml") as f:
             assert f.read() == result
 
+    @pytest.mark.parametrize("payload", ["", "[]", "- a\n- b", "42", "null", "just a string"])
+    def test_pipeline_loads_rejects_non_mapping_document(self, payload):
+        # A YAML document that is valid but not a mapping (empty, list, scalar) must
+        # surface as a DeserializationError, not as an AttributeError from .get().
+        with pytest.raises(DeserializationError, match="expects a dictionary"):
+            PipelineBase.loads(payload)
+
+    @pytest.mark.parametrize("payload", ["components:", "components: []", "components: abc", "components: 42"])
+    def test_pipeline_loads_rejects_non_mapping_components(self, payload):
+        # A nested `components` value that is not a mapping used to reach `.items()`
+        # and raise an AttributeError, which the fuzz target no longer tolerates.
+        with pytest.raises(DeserializationError, match="'components' must be a mapping"):
+            PipelineBase.loads(payload)
+
     def test_pipeline_loads_invalid_data(self):
         invalid_yaml = """components:
         Comp1:
@@ -1947,6 +1961,17 @@ class TestPipelineBaseFromDict:
 
     def test_from_dict_with_empty_dict(self):
         assert PipelineBase() == PipelineBase.from_dict({})
+
+    @pytest.mark.parametrize("components", [None, [], "abc", 42])
+    def test_from_dict_rejects_non_mapping_components(self, components):
+        with pytest.raises(DeserializationError, match="'components' must be a mapping"):
+            PipelineBase.from_dict({"components": components})
+
+    @pytest.mark.parametrize("data", [[], ["comp"], "pipeline", 42, None])
+    def test_from_dict_rejects_non_mapping(self, data):
+        # `data.get(...)` used to raise a bare AttributeError for these inputs.
+        with pytest.raises(DeserializationError, match="expects a dictionary"):
+            PipelineBase.from_dict(data)
 
     def test_from_dict_with_components_instances(self):
         add_two = AddFixedValue(add=2)

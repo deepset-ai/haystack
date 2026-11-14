@@ -222,6 +222,11 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             Deserialized component.
         """
+        if not isinstance(data, dict):
+            raise DeserializationError(
+                f"Pipeline deserialization expects a dictionary, got {type(data).__name__}. "
+                "A serialized pipeline must be a mapping that holds the 'components' and 'connections' keys."
+            )
         with _deserialization_context(allowed_modules=allowed_modules, unsafe=unsafe):
             return cls._from_dict_impl(data, callbacks, **kwargs)
 
@@ -239,7 +244,12 @@ class PipelineBase:  # noqa: PLW1641
             connection_type_validation=connection_type_validation,
         )
         components_to_reuse = kwargs.get("components", {})
-        for name, component_data in data_copy.get("components", {}).items():
+        components_data = data_copy.get("components", {})
+        if not isinstance(components_data, dict):
+            raise DeserializationError(
+                f"Pipeline 'components' must be a mapping of component names, got {type(components_data).__name__}."
+            )
+        for name, component_data in components_data.items():
             if name in components_to_reuse:
                 # Reuse an instance
                 instance = components_to_reuse[name]
