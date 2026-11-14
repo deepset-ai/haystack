@@ -256,7 +256,7 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing", "mismatch"])
     def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
@@ -265,6 +265,10 @@ class TestFaithfulnessEvaluator:
             if "Python" in kwargs["messages"][0].text:
                 if failure_mode == "generation":
                     raise Exception("OpenAI API request failed.")
+                if failure_mode == "mismatch":
+                    return {
+                        "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1]}')]
+                    }
                 return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
@@ -309,7 +313,25 @@ class TestFaithfulnessEvaluator:
         assert results["results"][1]["status"] == "error"
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
-        assert "FaithfulnessEvaluator failed for 1 out of 2 inputs." in caplog.text
+        if failure_mode == "mismatch":
+            assert "2 statements and 1 scores" in caplog.text
+        else:
+            assert "FaithfulnessEvaluator failed for 1 out of 2 inputs." in caplog.text
+
+    def test_run_raises_on_mismatched_statement_score_counts(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1]}')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with pytest.raises(
+            ValueError,
+            match=r"^FaithfulnessEvaluator expected one score per statement, but received 2 statements and 1 scores\.$",
+        ):
+            component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
 
     def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
