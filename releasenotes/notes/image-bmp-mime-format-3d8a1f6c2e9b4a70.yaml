@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Resizing BMP images no longer fails. ``image/bmp`` was mapped to Pillow's headerless ``DIB`` format instead of
+    ``BMP``, so ``ImageFileToImageContent`` and ``DocumentToImageContent`` skipped ``.bmp`` files when ``size`` was
+    set, and images whose MIME type was inferred were re-encoded as invalid ``image/bmp`` data.

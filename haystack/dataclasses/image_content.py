@@ -53,6 +53,9 @@ FORMAT_TO_MIME = {
 MIME_TO_FORMAT = {v: k for k, v in FORMAT_TO_MIME.items()}
 # Adding some common MIME types that are not in the PIL mapping
 MIME_TO_FORMAT["image/jpg"] = "JPEG"
+# "BMP" and "DIB" share "image/bmp", and inverting the mapping keeps the last one. DIB is a headerless bitmap, so
+# Pillow can neither open a regular .bmp file as DIB nor save one, so map the MIME type back to "BMP" explicitly.
+MIME_TO_FORMAT["image/bmp"] = "BMP"
 
 IMAGE_MIME_TYPES = set(MIME_TO_FORMAT.keys())
 
