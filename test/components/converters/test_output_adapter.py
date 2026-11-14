@@ -296,3 +296,12 @@ class TestOutputAdapter:
         }
         res = adapter.run(control="something")
         assert res["output"] == 1
+
+    def test_variables_correct_with_self_referencing_assignment(self) -> None:
+        template = "{% set documents = documents[:2] %}{{ documents }}"
+        adapter = OutputAdapter(template=template, output_type=list)
+        assert adapter.__haystack_input__._sockets_dict == {  # type: ignore[attr-defined]
+            "documents": InputSocket(name="documents", type=Any)
+        }
+        res = adapter.run(documents=[1, 2, 3])
+        assert res["output"] == [1, 2]

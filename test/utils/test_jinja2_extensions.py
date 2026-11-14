@@ -9,6 +9,7 @@ import pytest
 from jinja2 import Environment
 
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 
 class TestJinja2TimeExtension:
@@ -132,3 +133,26 @@ class TestJinja2TimeExtension:
     def test_invalid_operator(self, jinja_extension: Jinja2TimeExtension) -> None:
         with pytest.raises(ValueError, match="Invalid offset or operator"):
             jinja_extension._get_datetime("UTC", operator="*", offset="hours=2")
+
+
+class TestExtractTemplateVariablesAndAssignments:
+    def test_self_referencing_assignment_is_not_collected_as_assigned(self) -> None:
+        assigned, variables = _extract_template_variables_and_assignments(
+            Environment(), "{% set query = query | trim %}Q: {{ query }}"
+        )
+        assert assigned == set()
+        assert variables == {"query"}
+
+    def test_pure_assignment_is_collected_as_assigned(self) -> None:
+        assigned, variables = _extract_template_variables_and_assignments(
+            Environment(), "{% set x = 1 %}{{ x }} {{ name }}"
+        )
+        assert assigned == {"x"}
+        assert variables == {"name"}
+
+    def test_assignment_reading_another_variable_is_collected_as_assigned(self) -> None:
+        assigned, variables = _extract_template_variables_and_assignments(
+            Environment(), "{% set x = documents|length %}{{ x }}"
+        )
+        assert assigned == {"x"}
+        assert variables == {"documents"}
