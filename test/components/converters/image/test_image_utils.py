@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import glob
 import logging
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -123,6 +125,22 @@ class TestEncodeImageToBase64:
         bytestream = get_bytestream_from_source(Path("test/test_files/images/haystack-logo.png"))
         base64_str = _encode_image_to_base64(bytestream=bytestream, size=(128, 128))
         assert base64_str is not None
+
+    def test_encode_bmp_image_to_base64_with_size(self) -> None:
+        buffer = BytesIO()
+        Image.new("RGB", (100, 50), "red").save(buffer, format="BMP")
+        bytestream = ByteStream(data=buffer.getvalue(), mime_type="image/bmp")
+        mime_type, base64_str = _encode_image_to_base64(bytestream=bytestream, size=(50, 50))
+        assert mime_type == "image/bmp"
+        assert Image.open(BytesIO(base64.b64decode(base64_str))).format == "BMP"
+
+    def test_encode_bmp_image_to_base64_with_size_and_inferred_mime_type(self) -> None:
+        buffer = BytesIO()
+        Image.new("RGB", (100, 50), "red").save(buffer, format="BMP")
+        bytestream = ByteStream(data=buffer.getvalue())
+        mime_type, base64_str = _encode_image_to_base64(bytestream=bytestream, size=(50, 50))
+        assert mime_type == "image/bmp"
+        assert Image.open(BytesIO(base64.b64decode(base64_str))).format == "BMP"
 
 
 class TestExtractImageSourcesInfo:
