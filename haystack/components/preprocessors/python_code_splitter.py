@@ -350,6 +350,12 @@ class PythonCodeSplitter:
         while node_idx < node_count:
             node = body[node_idx]
 
+            # A statement that shares its line with the previous one (e.g. `x = 1; y = 2`) is already part of the
+            # previous unit's source, so it must not become an empty unit of its own.
+            if (node.end_lineno or node.lineno) < cursor:
+                node_idx += 1
+                continue
+
             # Module docstring (only valid as the very first statement).
             if (
                 node_idx == 0

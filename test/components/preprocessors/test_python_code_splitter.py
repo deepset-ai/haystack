@@ -285,6 +285,20 @@ class TestOrderingAndLineRanges:
         assert [(chunk.meta["start_line"], chunk.meta["end_line"]) for chunk in chunks] == [(2, 3), (5, 6)]
         assert "".join(content or "" for content in contents) == source
 
+    @pytest.mark.parametrize(
+        "source",
+        ["def first():\n    return 1\nx = 1; y = 2\n", "import os\nx = 1; y = 2\ndef first():\n    return 1\n"],
+    )
+    def test_statements_sharing_a_line_stay_in_one_chunk(self, source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, preserve_class_definition=False)
+        chunks = splitter.run(documents=[Document(content=source)])["documents"]
+
+        assert all(chunk.content for chunk in chunks)
+        assert "".join(chunk.content or "" for chunk in chunks) == source
+        lines = source.splitlines(keepends=True)
+        for chunk in chunks:
+            assert chunk.content == "".join(lines[chunk.meta["start_line"] - 1 : chunk.meta["end_line"]])
+
 
 class TestFileNamePropagation:
     def test_file_name_propagated_to_all_chunks(self, simple_module_source):
