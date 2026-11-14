@@ -223,11 +223,15 @@ class PyPDFToDocument:
                 layout_mode_strip_rotated=self.layout_mode_strip_rotated,
                 layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
+            extracted_text = extracted_text or ""
 
             if self.link_format != LinkFormat.NONE:
                 page_links = self._extract_links(page, page_number)
                 if page_links:
-                    extracted_text += "\n\n" + "\n".join(page_links)
+                    if extracted_text:
+                        extracted_text = f"{extracted_text}\n\n" + "\n".join(page_links)
+                    else:
+                        extracted_text = "\n".join(page_links)
 
             texts.append(extracted_text)
         return "\f".join(texts)

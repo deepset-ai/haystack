@@ -162,6 +162,30 @@ class TestPyPDFToDocument:
         text_plain = converter_plain._default_convert(mock_reader)
         assert "https://example.com (https://example.com)" in text_plain
 
+    def test_default_convert_with_link_format_and_null_page_text(self):
+        from unittest.mock import MagicMock
+
+        mock_page1 = MagicMock()
+        mock_page1.extract_text.return_value = None
+
+        mock_annot1 = MagicMock()
+        mock_annot1_obj = {"/Subtype": "/Link", "/A": {"/S": "/URI", "/URI": "https://example.com"}}
+        mock_annot1.get_object.return_value = mock_annot1_obj
+
+        mock_page1.__contains__.side_effect = lambda key: key == "/Annots"
+        mock_page1.__getitem__.side_effect = lambda key: [mock_annot1] if key == "/Annots" else None
+
+        mock_reader = Mock()
+        mock_reader.pages = [mock_page1]
+
+        converter_md = PyPDFToDocument(link_format="markdown")
+        text_md = converter_md._default_convert(mock_reader)
+        assert "[https://example.com](https://example.com)" in text_md
+
+        converter_plain = PyPDFToDocument(link_format="plain")
+        text_plain = converter_plain._default_convert(mock_reader)
+        assert "https://example.com (https://example.com)" in text_plain
+
     def test_malformed_annotation(self):
         from unittest.mock import MagicMock
 

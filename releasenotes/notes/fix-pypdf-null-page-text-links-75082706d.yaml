@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``PyPDFToDocument`` no longer fails when a PDF page has no extractable text but contains links and ``link_format``
+    is enabled. The links are now included in the page content.
