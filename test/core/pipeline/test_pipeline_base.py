@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from collections.abc import Iterable
+import re
+from collections.abc import Callable, Iterable
 from typing import Any
 from unittest.mock import patch
 
@@ -2291,6 +2292,22 @@ class TestPipelineConnect:
         pipe.add_component("comp2", comp2)
         with pytest.raises(PipelineConnectError):
             pipe.connect("comp1", "comp2")
+
+    def test_connect_error_displays_incompatible_callable_parameters(self):
+        producer = component_class(name="Producer", output_types={"callback": Callable[[int], str]})()
+        consumer = component_class(name="Consumer", input_types={"callback": Callable[[str], str]})()
+        pipe = Pipeline()
+        pipe.add_component(name="producer", instance=producer)
+        pipe.add_component(name="consumer", instance=consumer)
+
+        expected = (
+            "Cannot connect 'producer.callback' with 'consumer.callback': "
+            "their declared input and output types do not match.\n"
+            "'producer':\n - callback: Callable[[int], str]\n"
+            "'consumer':\n - callback: Callable[[str], str] (available)"
+        )
+        with pytest.raises(PipelineConnectError, match=re.escape(expected)):
+            pipe.connect(sender="producer.callback", receiver="consumer.callback")
 
     def test_connect_with_multiple_sender_connections_with_same_type_and_differing_name(self):
         comp1 = component_class("Comp1", output_types={"val1": int, "val2": int})()

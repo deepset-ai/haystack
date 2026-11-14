@@ -75,7 +75,7 @@ def _type_name(type_: Any) -> str:
     """
     Util methods to get a nice readable representation of a type.
 
-    Handles Optional and Literal in a special way to make it more readable.
+    Handles Optional, Literal, and Callable in a special way to make them more readable.
     """
     # Literal args are strings, so we wrap them in quotes to make it clear
     if isinstance(type_, str):
@@ -101,6 +101,16 @@ def _type_name(type_: Any) -> str:
         name = "Optional"
 
     if args:
+        if get_origin(type_) is Callable:
+            parameters, return_type = args
+            if isinstance(parameters, list):
+                parameters_str = f"[{', '.join(_type_name(parameter) for parameter in parameters)}]"
+            elif parameters is Ellipsis:
+                parameters_str = "..."
+            else:
+                parameters_str = _type_name(parameters)
+            return f"{name}[{parameters_str}, {_type_name(return_type)}]"
+
         args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
         return f"{name}[{args_str}]"
 
