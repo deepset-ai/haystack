@@ -205,6 +205,17 @@ class TestFileSystemSkillStore:
         store = FileSystemSkillStore(tmp_path)
         assert store.load_skill("pdf-forms") == ("Step 1. Do the thing.", [])
 
+    def test_list_and_load_skill_ignore_utf8_bom(self, tmp_path):
+        # A byte order mark in front of the opening '---' must not hide the frontmatter.
+        skill_dir = tmp_path / "pdf-forms"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: pdf-forms\ndescription: Fill PDF forms.\n---\nStep 1. Do the thing.", encoding="utf-8-sig"
+        )
+        store = FileSystemSkillStore(tmp_path)
+        assert store.list_skills()["pdf-forms"].description == "Fill PDF forms."
+        assert store.load_skill("pdf-forms") == ("Step 1. Do the thing.", [])
+
     @pytest.mark.skipif(sys.platform == "win32", reason="symlinks require elevated privileges on Windows")
     def test_load_skill_excludes_symlinks_outside_skill_directory(self, tmp_path):
         skill_dir = _write_skill(tmp_path, "pdf-forms", description="d", files={"inside.md": "inside"})
@@ -227,6 +238,12 @@ class TestFileSystemSkillStore:
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})
         store = FileSystemSkillStore(tmp_path)
         assert store.read_skill_file("pdf-forms", "reference/forms.md") == "form details"
+
+    def test_read_skill_file_strips_utf8_bom(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        (skill_dir / "forms.md").write_text("form details", encoding="utf-8-sig")
+        store = FileSystemSkillStore(tmp_path)
+        assert store.read_skill_file("pdf-forms", "forms.md") == "form details"
 
     def test_read_skill_file_blocks_traversal(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})

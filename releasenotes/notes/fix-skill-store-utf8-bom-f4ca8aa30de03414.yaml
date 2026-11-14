@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``FileSystemSkillStore`` now reads ``SKILL.md`` and bundled text files with ``utf-8-sig``, so a UTF-8 byte
+    order mark (BOM) is ignored. Previously a ``SKILL.md`` saved with a BOM failed to load with a ``ValueError``
+    about a missing ``description`` (also when warming up a ``SkillToolset``), and ``read_skill_file`` returned
+    text with a leading ``U+FEFF`` character. Files without a BOM are unaffected.
