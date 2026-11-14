@@ -239,8 +239,8 @@ class LLMEvaluator:
             If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
             in the output dictionary, under the key "meta".
         :raises ValueError:
-            Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
-            different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+            If the received inputs are missing, are not lists, have different lengths or are empty lists, or, only if
+            `raise_on_failure` is set to True, if the output is not a valid JSON or doesn't contain the expected keys.
         """
         self.warm_up()
 
@@ -312,8 +312,8 @@ class LLMEvaluator:
         :raises TypeError:
             If the chat generator does not support async execution.
         :raises ValueError:
-            Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
-            different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+            If the received inputs are missing, are not lists, have different lengths or are empty lists, or, only if
+            `raise_on_failure` is set to True, if the output is not a valid JSON or doesn't contain the expected keys.
         """
 
         await self.warm_up_async()
@@ -476,6 +476,7 @@ class LLMEvaluator:
         :raises ValueError:
             If not all expected inputs are present in the received inputs
             If the received inputs are not lists or have different lengths
+            If the received input lists are empty
         """
         # Validate that all expected inputs are present in the received inputs
         for param in expected:
@@ -499,4 +500,9 @@ class LLMEvaluator:
                 f"LLM evaluator expects all input lists to have the same length but received {inputs} with lengths "
                 f"{[len(_input) for _input in inputs]}."
             )
+            raise ValueError(msg)
+
+        # Validate that the received inputs are not empty
+        if length == 0:
+            msg = f"LLM evaluator expects non-empty input lists but received empty lists for {list(received.keys())}."
             raise ValueError(msg)

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LLMEvaluator``, ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator`` now raise a descriptive
+    ``ValueError`` when called with empty input lists. Previously ``LLMEvaluator`` returned empty ``results``, and
+    ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator`` returned a NaN ``score``, without an error or a
+    warning. This matches ``AnswerExactMatchEvaluator`` and the ``Document*Evaluator`` components.

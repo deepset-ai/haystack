@@ -256,6 +256,13 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
+    def test_run_with_empty_inputs(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+        # Without the check this returns a NaN score and empty results, with no error and no warning.
+        with pytest.raises(ValueError, match="non-empty input lists"):
+            component.run(questions=[], contexts=[], predicted_answers=[])
+
     @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
     def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

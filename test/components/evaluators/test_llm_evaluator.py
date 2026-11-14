@@ -271,6 +271,21 @@ class TestLLMEvaluator:
                 predicted_answers=[["Berlin"]],
             )
 
+    def test_run_with_empty_inputs(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+
+        # Empty (equal-length) inputs pass the length check; they must not reach the evaluation loop.
+        with pytest.raises(ValueError, match="non-empty input lists"):
+            component.run(questions=[], predicted_answers=[])
+
     def test_run_returns_parsed_result(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
@@ -449,6 +464,19 @@ class TestLLMEvaluatorAsync:
             questions=["What is the perimeter of a circle called?"], predicted_answers=["Circumference"]
         )
         assert results == {"results": [{"score": 1}], "meta": None}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_empty_inputs(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"questions": "What is 2 + 2?", "predicted_answers": "4"}, "outputs": {"score": 1}}],
+        )
+
+        with pytest.raises(ValueError, match="non-empty input lists"):
+            await component.run_async(questions=[], predicted_answers=[])
 
     @pytest.mark.asyncio
     async def test_run_async_fallback_to_thread_with_sync_generator(self, monkeypatch):
