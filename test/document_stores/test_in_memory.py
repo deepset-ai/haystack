@@ -275,6 +275,30 @@ def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
         other.shutdown()
 
 
+def test_update_by_filter_does_not_mutate_original_documents_or_other_stores() -> None:
+    doc = Document(content="hello", meta={"status": "draft", "source": "test"})
+    docs = [doc]
+
+    store_a = InMemoryDocumentStore()
+    store_b = InMemoryDocumentStore()
+
+    try:
+        store_a.write_documents(docs)
+        store_b.write_documents(docs)
+
+        updated_count = store_a.update_by_filter(
+            filters={"field": "meta.status", "operator": "==", "value": "draft"}, meta={"status": "published"}
+        )
+
+        assert updated_count == 1
+        assert store_a.filter_documents()[0].meta == {"status": "published", "source": "test"}
+        assert doc.meta == {"status": "draft", "source": "test"}
+        assert store_b.filter_documents()[0].meta == {"status": "draft", "source": "test"}
+    finally:
+        store_a.shutdown()
+        store_b.shutdown()
+
+
 @pytest.mark.parametrize("empty_snapshot", [False, True])
 def test_load_from_disk_restores_snapshot(tmp_path: Path, empty_snapshot: bool) -> None:
     store = InMemoryDocumentStore(shared=True)
