@@ -4,6 +4,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import ContextVar
 from math import inf
 from typing import Any, Literal
 
@@ -14,6 +15,10 @@ from haystack.dataclasses import Document
 from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
+
+_RETRIEVERS_TO_WARM_UP: ContextVar[tuple[object, dict[str, TextRetriever]] | None] = ContextVar(
+    "multi_retriever_retrievers_to_warm_up", default=None
+)
 
 
 @_experimental
@@ -194,7 +199,14 @@ class MultiRetriever:
         """
         Warm up the retrievers.
         """
-        for retriever in self.retrievers.values():
+        warm_up_context = _RETRIEVERS_TO_WARM_UP.get()
+        retrievers = self.retrievers
+        if warm_up_context is not None and warm_up_context[0] is self:
+            retrievers = warm_up_context[1]
+        self._warm_up_retrievers(retrievers)
+
+    def _warm_up_retrievers(self, retrievers: dict[str, TextRetriever]) -> None:
+        for retriever in retrievers.values():
             if hasattr(retriever, "warm_up"):
                 retriever.warm_up()
 
@@ -202,7 +214,14 @@ class MultiRetriever:
         """
         Warm up the retrievers on the serving event loop.
         """
-        for retriever in self.retrievers.values():
+        warm_up_context = _RETRIEVERS_TO_WARM_UP.get()
+        retrievers = self.retrievers
+        if warm_up_context is not None and warm_up_context[0] is self:
+            retrievers = warm_up_context[1]
+        await self._warm_up_retrievers_async(retrievers)
+
+    async def _warm_up_retrievers_async(self, retrievers: dict[str, TextRetriever]) -> None:
+        for retriever in retrievers.values():
             if hasattr(retriever, "warm_up_async"):
                 await retriever.warm_up_async()
             elif hasattr(retriever, "warm_up"):
@@ -264,12 +283,16 @@ class MultiRetriever:
             If any name in `active_retrievers` does not match a retriever name,
             or if the resolved `top_k` or `top_k_per_retriever` is negative.
         """
-        self.warm_up()
+        retrievers_to_run = self._resolve_retrievers(active_retrievers)
+        warm_up_token = _RETRIEVERS_TO_WARM_UP.set((self, retrievers_to_run))
+        try:
+            self.warm_up()
+        finally:
+            _RETRIEVERS_TO_WARM_UP.reset(warm_up_token)
 
         resolved_top_k_per_retriever, resolved_top_k = self._resolve_top_k(top_k_per_retriever, top_k)
         resolved_filters = filters if filters is not None else self.filters
 
-        retrievers_to_run = self._resolve_retrievers(active_retrievers)
         if resolved_top_k == 0 or resolved_top_k_per_retriever == 0:
             return {"documents": []}
 
@@ -334,12 +357,16 @@ class MultiRetriever:
             If any name in `active_retrievers` does not match a retriever name,
             or if the resolved `top_k` or `top_k_per_retriever` is negative.
         """
-        await self.warm_up_async()
+        retrievers_to_run = self._resolve_retrievers(active_retrievers)
+        warm_up_token = _RETRIEVERS_TO_WARM_UP.set((self, retrievers_to_run))
+        try:
+            await self.warm_up_async()
+        finally:
+            _RETRIEVERS_TO_WARM_UP.reset(warm_up_token)
 
         resolved_top_k_per_retriever, resolved_top_k = self._resolve_top_k(top_k_per_retriever, top_k)
         resolved_filters = filters if filters is not None else self.filters
 
-        retrievers_to_run = self._resolve_retrievers(active_retrievers)
         if resolved_top_k == 0 or resolved_top_k_per_retriever == 0:
             return {"documents": []}
 
