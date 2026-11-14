@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from haystack.components.converters.image.file_to_image import ImageFileToImageContent
 from haystack.components.converters.image.image_utils import _encode_image_to_base64
@@ -58,6 +61,14 @@ class TestImageFileToImageContent:
         assert results["image_contents"][0].mime_type == mime_type
         assert results["image_contents"][0].detail is None
         assert results["image_contents"][0].meta["file_path"] == str(Path(image_path))
+
+    def test_run_with_bmp_source_and_size(self, tmp_path: Path) -> None:
+        bmp_path = tmp_path / "red.bmp"
+        Image.new("RGB", (100, 50), "red").save(bmp_path)
+        results = ImageFileToImageContent(size=(50, 50)).run(sources=[str(bmp_path)])
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].mime_type == "image/bmp"
+        assert Image.open(BytesIO(base64.b64decode(results["image_contents"][0].base64_image))).format == "BMP"
 
     def test_run_with_no_sources(self) -> None:
         converter = ImageFileToImageContent()
