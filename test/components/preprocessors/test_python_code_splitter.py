@@ -287,7 +287,12 @@ class TestOrderingAndLineRanges:
 
     @pytest.mark.parametrize(
         "source",
-        ["def first():\n    return 1\nx = 1; y = 2\n", "import os\nx = 1; y = 2\ndef first():\n    return 1\n"],
+        [
+            "def first():\n    return 1\nx = 1; y = 2\n",
+            "import os\nx = 1; y = 2\ndef first():\n    return 1\n",
+            "x = 1; y = dict(\n    a=1,\n)\ndef first():\n    return 1\n",
+            "import os; from json import (\n    dumps,\n)\nx = 1\n",
+        ],
     )
     def test_statements_sharing_a_line_stay_in_one_chunk(self, source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1, preserve_class_definition=False)

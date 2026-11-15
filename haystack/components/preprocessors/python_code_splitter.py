@@ -350,9 +350,14 @@ class PythonCodeSplitter:
         while node_idx < node_count:
             node = body[node_idx]
 
-            # A statement that shares its line with the previous one (e.g. `x = 1; y = 2`) is already part of the
-            # previous unit's source, so it must not become an empty unit of its own.
-            if (node.end_lineno or node.lineno) < cursor:
+            # A statement that starts on the line the previous unit ended on (e.g. `x = 1; y = 2`) is already part
+            # of that unit's source. If it runs onto later lines, the previous unit takes those lines too.
+            if node.lineno < cursor:
+                end = node.end_lineno or node.lineno
+                if end >= cursor and units:
+                    units[-1].source += self._slice_lines(source_lines, cursor, end)
+                    units[-1].end_line = end
+                    cursor = end + 1
                 node_idx += 1
                 continue
 
