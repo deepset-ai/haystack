@@ -223,6 +223,20 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             if res is None:
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
                 continue
+            if not isinstance(res["relevant_statements"], list):
+                if self.raise_on_failure:
+                    msg = (
+                        "ContextRelevanceEvaluator expected `relevant_statements` to be a list but received "
+                        f"{type(res['relevant_statements']).__name__}: {res['relevant_statements']}"
+                    )
+                    raise ValueError(msg)
+                logger.warning(
+                    "ContextRelevanceEvaluator received an invalid `relevant_statements` value: {statements}. "
+                    "Setting the result for this input to None.",
+                    statements=res["relevant_statements"],
+                )
+                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
+                continue
             res["status"] = "evaluated"
             if len(res["relevant_statements"]) > 0:
                 res["score"] = 1

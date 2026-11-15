@@ -269,6 +269,44 @@ class TestContextRelevanceEvaluator:
         assert all(math.isnan(score) for score in results["individual_scores"])
         assert [result["status"] for result in results["results"]] == ["error", "error"]
 
+    def test_run_invalid_statements_value_raise_on_failure_false(self, monkeypatch, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            if "Python" in kwargs["messages"][0].text:
+                return {"replies": [ChatMessage.from_assistant('{"relevant_statements": null}')]}
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.context_relevance"):
+            results = component.run(
+                questions=["Which is the most popular global sport?", "Who created the Python language?"],
+                contexts=[["Football is the most popular sport."], ["Python was created by Guido van Rossum."]],
+            )
+
+        assert results["score"] == 1
+        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1, "status": "evaluated"}
+        assert results["results"][1]["relevant_statements"] == []
+        assert results["results"][1]["status"] == "error"
+        assert math.isnan(results["results"][1]["score"])
+        assert math.isnan(results["individual_scores"][1])
+        assert "invalid `relevant_statements` value" in caplog.text
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    def test_run_invalid_statements_value_raise_on_failure_true(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=True)
+
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": null}')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with pytest.raises(ValueError, match="expected `relevant_statements` to be a list"):
+            component.run(questions=["q1"], contexts=[["c1"]])
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",

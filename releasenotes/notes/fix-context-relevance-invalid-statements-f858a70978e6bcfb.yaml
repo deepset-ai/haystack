@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ContextRelevanceEvaluator`` no longer raises a ``TypeError`` when the LLM returns a ``relevant_statements``
+    value that is not a list, such as ``null``. Such malformed responses are now reported as an error result
+    when ``raise_on_failure`` is ``False``, and raise a ``ValueError`` instead when it is ``True``.
