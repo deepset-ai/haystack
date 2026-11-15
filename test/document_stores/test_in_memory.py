@@ -318,6 +318,42 @@ def test_load_from_disk_rejects_invalid_documents_before_replacing_shared_index(
     assert [doc.id for doc in store.bm25_retrieval("keep")] == ["current"]
 
 
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["delete", "overwrite"])
+def test_bm25_okapi_removing_all_tokens_keeps_empty_documents_searchable(
+    shared: bool, operation: Literal["delete", "overwrite"]
+) -> None:
+    writer = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=shared)
+    reader = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", index=writer.index) if shared else writer
+    reference = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+    documents = [Document(id=str(i), content="word " * length) for i, length in enumerate([5, 4, 5, 5, 5, 5])]
+    expected_ids = {"empty"}
+
+    try:
+        writer.write_documents(documents=[*documents, Document(id="empty", content="")])
+        if operation == "delete":
+            writer.delete_documents(document_ids=[doc.id for doc in documents])
+        else:
+            writer.write_documents(
+                documents=[Document(id=doc.id, content="") for doc in documents], policy=DuplicatePolicy.OVERWRITE
+            )
+            expected_ids.update(doc.id for doc in documents)
+
+        results = reader.bm25_retrieval(query="word")
+        assert {doc.id: doc.score for doc in results} == dict.fromkeys(expected_ids, 0.0)
+
+        writer.write_documents(
+            documents=[Document(id="new", content="word word extra"), Document(id="other", content="extra")]
+        )
+        reference.write_documents(documents=writer.filter_documents())
+        expected_scores = {doc.id: doc.score for doc in reference.bm25_retrieval(query="word")}
+        assert {doc.id: doc.score for doc in reader.bm25_retrieval(query="word")} == pytest.approx(expected_scores)
+    finally:
+        writer.shutdown()
+        reader.shutdown()
+        reference.shutdown()
+
+
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
     UpdateByFilterAsyncTest,
@@ -1363,7 +1399,7 @@ class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
             for storage in (
                 in_memory_module._STORAGES,
                 in_memory_module._BM25_STATS_STORAGES,
-                in_memory_module._AVERAGE_DOC_LEN_STORAGES,
+                in_memory_module._TOTAL_DOC_LEN_STORAGES,
                 in_memory_module._FREQ_VOCAB_FOR_IDF_STORAGES,
             ):
                 storage.pop(index, None)

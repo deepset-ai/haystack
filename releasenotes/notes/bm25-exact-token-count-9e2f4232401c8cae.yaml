@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``InMemoryDocumentStore`` BM25 statistics after deleting or overwriting
+    documents. Removing all indexed tokens now leaves an exact zero average
+    document length, so ``BM25Okapi`` returns zero-scored empty documents instead
+    of raising ``ZeroDivisionError``. This applies to shared and non-shared stores.

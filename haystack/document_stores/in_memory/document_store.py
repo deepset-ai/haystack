@@ -78,7 +78,7 @@ class BM25DocumentStats:
 # operate on the same data. Non-shared stores keep their data instance-local instead (see `__init__`).
 _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
-_AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
+_TOTAL_DOC_LEN_STORAGES: dict[str, int] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
 # Clearing the documents replaces the data dictionaries, but must preserve the lock shared by existing instances.
 _STORAGE_LOCKS: dict[str, RLock] = {}
@@ -163,12 +163,12 @@ class InMemoryDocumentStore:
                 if self.index not in _STORAGES:
                     _STORAGES[self.index] = {}
                     _BM25_STATS_STORAGES[self.index] = {}
-                    _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+                    _TOTAL_DOC_LEN_STORAGES[self.index] = 0
                     _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
         else:
             self._local_storage: dict[str, Document] = {}
             self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
-            self._local_avg_doc_len: float = 0.0
+            self._local_total_doc_len = 0
             self._local_freq_vocab_for_idf: Counter = Counter()
 
         self.bm25_algorithm = bm25_algorithm
@@ -213,14 +213,19 @@ class InMemoryDocumentStore:
 
     @property
     def _avg_doc_len(self) -> float:
-        return _AVERAGE_DOC_LEN_STORAGES[self.index] if self._shared else self._local_avg_doc_len
+        n_docs = len(self._bm25_attr)
+        return self._total_doc_len / n_docs if n_docs else 0.0
 
-    @_avg_doc_len.setter
-    def _avg_doc_len(self, value: float) -> None:
+    @property
+    def _total_doc_len(self) -> int:
+        return _TOTAL_DOC_LEN_STORAGES[self.index] if self._shared else self._local_total_doc_len
+
+    @_total_doc_len.setter
+    def _total_doc_len(self, value: int) -> None:
         if self._shared:
-            _AVERAGE_DOC_LEN_STORAGES[self.index] = value
+            _TOTAL_DOC_LEN_STORAGES[self.index] = value
         else:
-            self._local_avg_doc_len = value
+            self._local_total_doc_len = value
 
     @property
     def _freq_vocab_for_idf(self) -> Counter:
@@ -271,6 +276,7 @@ class InMemoryDocumentStore:
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
         delta = self.bm25_parameters.get("delta", 0.5)
+        avg_doc_len = self._avg_doc_len
 
         def _compute_idf(tokens: list[str]) -> dict[str, float]:
             """Per-token IDF computation for all tokens."""
@@ -288,7 +294,7 @@ class InMemoryDocumentStore:
             # a missing term contributes nothing.
             if freq_term == 0:
                 return 0.0
-            ctd = freq_term / (1 - b + b * doc_len / self._avg_doc_len)
+            ctd = freq_term / (1 - b + b * doc_len / avg_doc_len)
             return (1.0 + k) * (ctd + delta) / (k + ctd + delta)
 
         idf = _compute_idf(self._tokenize_bm25(query))
@@ -322,6 +328,7 @@ class InMemoryDocumentStore:
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
         epsilon = self.bm25_parameters.get("epsilon", 0.25)
+        avg_doc_len = self._avg_doc_len
 
         def _compute_idf(tokens: list[str]) -> dict[str, float]:
             """Per-token IDF computation for all tokens."""
@@ -346,7 +353,7 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25Okapi computation."""
             freq_term = freq.get(token, 0.0)
-            freq_norm = freq_term + k * (1 - b + b * doc_len / self._avg_doc_len)
+            freq_norm = freq_term + k * (1 - b + b * doc_len / avg_doc_len)
             return freq_term * (1.0 + k) / freq_norm
 
         idf = _compute_idf(self._tokenize_bm25(query))
@@ -383,6 +390,7 @@ class InMemoryDocumentStore:
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
         delta = self.bm25_parameters.get("delta", 1.0)
+        avg_doc_len = self._avg_doc_len
 
         def _compute_idf(tokens: list[str]) -> dict[str, float]:
             """Per-token IDF computation."""
@@ -400,7 +408,7 @@ class InMemoryDocumentStore:
             # a missing term contributes nothing.
             if freq_term == 0:
                 return 0.0
-            freq_damp = k * (1 - b + b * doc_len / self._avg_doc_len)
+            freq_damp = k * (1 - b + b * doc_len / avg_doc_len)
             return freq_term * (1.0 + k) / (freq_term + freq_damp) + delta
 
         idf = _compute_idf(self._tokenize_bm25(query))
@@ -565,9 +573,8 @@ class InMemoryDocumentStore:
             tokens = self._tokenize_bm25(document.content)
             self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
             self._freq_vocab_for_idf.update(set(tokens))
-            # Update avg doc len based on the new document and the previous average
-            n_docs = len(self._bm25_attr)
-            self._avg_doc_len = (len(tokens) + self._avg_doc_len * (n_docs - 1)) / n_docs
+            # An integer total avoids roundoff leaving a nonzero average after the last tokens are removed.
+            self._total_doc_len += len(tokens)
         return written_documents
 
     @_synchronized
@@ -593,10 +600,7 @@ class InMemoryDocumentStore:
             for token in freq:
                 if self._freq_vocab_for_idf[token] <= 0:
                     del self._freq_vocab_for_idf[token]
-            try:
-                self._avg_doc_len = (self._avg_doc_len * (len(self._bm25_attr) + 1) - doc_len) / len(self._bm25_attr)
-            except ZeroDivisionError:
-                self._avg_doc_len = 0
+            self._total_doc_len -= doc_len
 
     @staticmethod
     def _validate_filters(filters: dict[str, Any] | None) -> None:
@@ -613,12 +617,12 @@ class InMemoryDocumentStore:
         if self._shared:
             _STORAGES[self.index] = {}
             _BM25_STATS_STORAGES[self.index] = {}
-            _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+            _TOTAL_DOC_LEN_STORAGES[self.index] = 0
             _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
         else:
             self._local_storage = {}
             self._local_bm25_attr = {}
-            self._local_avg_doc_len = 0.0
+            self._local_total_doc_len = 0
             self._local_freq_vocab_for_idf = Counter()
 
     @_synchronized
