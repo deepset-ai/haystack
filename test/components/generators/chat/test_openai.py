@@ -850,6 +850,80 @@ class TestOpenAIChatGenerator:
         assert message_with_format.meta["finish_reason"] == "tool_calls"
         assert message_with_format.meta["usage"]["completion_tokens"] == 40
 
+    @pytest.mark.parametrize("run_async", [False, True])
+    @pytest.mark.parametrize(
+        "response_format",
+        [
+            {"type": "json_object"},
+            {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "weather_report",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {"weather": {"type": "string"}},
+                        "required": ["weather"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+        ],
+    )
+    async def test_json_response_format_with_non_strict_tools(
+        self, tools: list[Tool], response_format: dict[str, Any], run_async: bool
+    ) -> None:
+        completion = {
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5.6-luna",
+            "choices": [
+                {
+                    "index": 0,
+                    "finish_reason": "tool_calls",
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "call-123",
+                                "type": "function",
+                                "function": {"name": "weather", "arguments": '{"city": "Paris"}'},
+                            }
+                        ],
+                    },
+                }
+            ],
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content)
+            assert body["response_format"] == response_format
+            assert body["tools"] == [{"type": "function", "function": tools[0].tool_spec}]
+            return httpx.Response(200, json=completion)
+
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            tools=tools[:1],
+            generation_kwargs={"response_format": response_format},
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+        )
+        result = (
+            await generator.run_async("What's the weather in Paris?")
+            if run_async
+            else generator.run("What's the weather in Paris?")
+        )
+
+        assert result == {
+            "replies": [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(id="call-123", tool_name="weather", arguments={"city": "Paris"})],
+                    meta={"model": "gpt-5.6-luna", "index": 0, "finish_reason": "tool_calls", "usage": None},
+                )
+            ]
+        }
+
     def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools: Any, tools: list[Tool]) -> None:
 
         streaming_callback_called = False

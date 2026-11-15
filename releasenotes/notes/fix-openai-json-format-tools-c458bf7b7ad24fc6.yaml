@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix ``OpenAIChatGenerator.run()`` and ``run_async()`` rejecting non-strict tools
+    when ``response_format`` is a JSON mode or JSON schema dictionary. These formats
+    now work with the default ``tools_strict=False`` setting.
