@@ -322,6 +322,33 @@ class TestResumeFromPipelineSnapshot:
         assert any(isinstance(value, _NoOutputProduced) for value in restored_values)
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 
+    def test_resume_from_file_keeps_int_dict_keys(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+        @component
+        class Src:
+            @component.output_types(v=dict[int, str])
+            def run(self):
+                return {"v": {1: "a", 2: "b"}}
+
+        @component
+        class Sink:
+            @component.output_types(v=dict[int, str])
+            def run(self, v: dict[int, str]):
+                return {"v": v}
+
+        pipeline = Pipeline()
+        pipeline.add_component("src", Src())
+        pipeline.add_component("sink", Sink())
+        pipeline.connect("src.v", "sink.v")
+
+        with pytest.raises(BreakpointException) as exc_info:
+            pipeline.run({}, break_point=Breakpoint("sink", snapshot_file_path=str(tmp_path)))
+        assert exc_info.value.pipeline_snapshot_file_path is not None
+
+        result = pipeline.run({}, pipeline_snapshot=load_pipeline_snapshot(exc_info.value.pipeline_snapshot_file_path))
+        assert result == {"sink": {"v": {1: "a", 2: "b"}}}
+
 
 class TestResumeFromLegacyPipelineSnapshot:
     def test_resume_from_legacy_snapshot_without_sender_information(self):
