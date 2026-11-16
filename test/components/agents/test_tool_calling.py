@@ -851,10 +851,10 @@ class TestUtilities:
                     "tags": {"a"},
                     "day": datetime.date(2026, 1, 2),
                     "price": Decimal("1.50"),
-                    "path": Path("/tmp/a.txt"),
+                    "path": Path("a.txt"),
                 }
             )
-        ) == {"color": "red", "tags": ["a"], "day": "2026-01-02", "price": "1.50", "path": "/tmp/a.txt"}
+        ) == {"color": "red", "tags": ["a"], "day": "2026-01-02", "price": "1.50", "path": "a.txt"}
 
     def test_result_to_string_falls_back_to_str_for_unsupported_types(self):
         class Unsupported:
