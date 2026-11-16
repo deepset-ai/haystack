@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed list-form converter metadata so every output document receives its own deep copy. Mutating one
+    document's metadata no longer changes the caller's input or another document when the same dictionary is
+    supplied for multiple sources.
