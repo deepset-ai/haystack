@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed resuming a pipeline from a snapshot file turning dictionary keys that
+    are not strings into strings. A snapshot now records the type of each such
+    key, so int, float, bool, and None keys come back as they were when the
+    pipeline resumes from the file.
