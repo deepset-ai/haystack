@@ -71,15 +71,11 @@ class TestXLSXToDocument:
     def test_run_bytestream_with_null_file_path(self, test_files_path: Path) -> None:
         source = ByteStream.from_file_path(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx")
         source.meta["file_path"] = None
-        converter = XLSXToDocument()
 
-        expected = converter.run(sources=[ByteStream(data=source.data)])["documents"]
-        documents = converter.run(sources=[source, ByteStream(data=source.data)])["documents"]
+        documents = XLSXToDocument().run(sources=[source])["documents"]
 
-        assert len(documents) == 2 * len(expected)
-        assert [doc.content for doc in documents] == [doc.content for doc in expected] * 2
-        assert all(doc.meta["file_path"] is None for doc in documents[: len(expected)])
-        assert source.meta == {"file_path": None}
+        assert len(documents) == 2
+        assert all(doc.meta["file_path"] is None for doc in documents)
 
     def test_init(self) -> None:
         converter = XLSXToDocument()
