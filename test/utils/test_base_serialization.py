@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from datetime import datetime
 from enum import Enum
 
@@ -508,3 +509,50 @@ class TestErrorHandling:
                     "serialized_data": {"id": "not_an_integer", "name": "Test"},
                 }
             )
+
+
+class TestNonStringDictKeys:
+    """Dictionary keys that are not strings keep their type through a JSON round trip."""
+
+    def test_serialize_records_key_types(self):
+        assert _serialize_value_with_schema({1: "a", 2: "b"}) == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {1: {"type": "string"}, 2: {"type": "string"}},
+                "keyTypes": {1: "integer", 2: "integer"},
+            },
+            "serialized_data": {1: "a", 2: "b"},
+        }
+
+    def test_serialize_string_keys_have_no_key_types(self):
+        assert _serialize_value_with_schema({"a": 1}) == {
+            "serialization_schema": {"type": "object", "properties": {"a": {"type": "integer"}}},
+            "serialized_data": {"a": 1},
+        }
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param({1: "a", 2: "b"}, id="int-keys"),
+            pytest.param({1.5: "x"}, id="float-key"),
+            pytest.param({True: "y"}, id="bool-key"),
+            pytest.param({None: "z"}, id="none-key"),
+            pytest.param({"a": {1: "b"}}, id="nested-int-key"),
+            pytest.param({1: "a", "s": "b"}, id="mixed-keys"),
+        ],
+    )
+    def test_round_trip_through_json(self, value):
+        serialized = _serialize_value_with_schema(value)
+        restored = _deserialize_value_with_schema(json.loads(json.dumps(serialized)))
+        assert restored == value
+        # Equality alone cannot tell True apart from 1, so check the key types too.
+        assert [type(key) for key in restored] == [type(key) for key in value]
+
+    def test_deserialize_payload_without_key_types_keeps_string_keys(self):
+        # Payloads written before key types were recorded still load, with string keys as before.
+        assert _deserialize_value_with_schema(
+            {
+                "serialization_schema": {"type": "object", "properties": {"1": {"type": "string"}}},
+                "serialized_data": {"1": "a"},
+            }
+        ) == {"1": "a"}
