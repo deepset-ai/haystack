@@ -105,21 +105,14 @@ class TestTextfileToDocument:
         metadata = [shared, shared]
 
         documents = TextFileToDocument().run(
-            sources=[ByteStream.from_string("first"), ByteStream.from_string("second")],
-            meta=metadata,
+            sources=[ByteStream.from_string("first"), ByteStream.from_string("second")], meta=metadata
         )["documents"]
 
         documents[0].meta["tags"].append("updated")
         documents[0].meta["nested"]["enabled"] = False
 
-        assert documents[0].meta == {
-            "tags": ["original", "updated"],
-            "nested": {"enabled": False},
-        }
-        assert documents[1].meta == {
-            "tags": ["original"],
-            "nested": {"enabled": True},
-        }
+        assert documents[0].meta == {"tags": ["original", "updated"], "nested": {"enabled": False}}
+        assert documents[1].meta == {"tags": ["original"], "nested": {"enabled": True}}
         assert metadata == [
             {"tags": ["original"], "nested": {"enabled": True}},
             {"tags": ["original"], "nested": {"enabled": True}},
