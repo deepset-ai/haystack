@@ -742,7 +742,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
-  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
+  JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
+  a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
