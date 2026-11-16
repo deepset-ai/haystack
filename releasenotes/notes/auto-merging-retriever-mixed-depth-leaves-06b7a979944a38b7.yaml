@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``AutoMergingRetriever.run()`` and ``run_async()`` when retrieved leaves
+    from ``HierarchicalDocumentSplitter`` have different depths. Shallower leaves
+    now merge together with siblings promoted from deeper branches, preventing
+    missed parent merges and duplicate parent documents in the retrieved context.

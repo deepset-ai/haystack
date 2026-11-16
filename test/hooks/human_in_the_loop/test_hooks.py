@@ -10,7 +10,7 @@ import pytest
 from haystack import tracing
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import merge_lists, replace_values
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, ToolCall
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
@@ -22,6 +22,7 @@ from haystack.hooks.human_in_the_loop import (
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationUI
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -107,7 +108,7 @@ class TestConfirmationHook:
         )
         assert state.get("messages") == [
             ChatMessage.from_user("add"),
-            ChatMessage.from_user(explanation),
+            ChatMessage.from_user(explanation, meta={_SYSTEM_REMINDER_META_KEY: True}),
             ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 10, "b": 20})]),
         ]
 
@@ -152,6 +153,38 @@ class TestConfirmationHook:
         assert state.get("messages")[: len(earlier)] == earlier
         if ui_result.action == "confirm":
             assert state.get("messages") == [*earlier, tool_call_message]
+
+    @pytest.mark.parametrize(
+        "ui_result",
+        [
+            ConfirmationUIResult(action="confirm"),
+            ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}),
+            ConfirmationUIResult(action="reject"),
+        ],
+    )
+    def test_preserves_reasoning_and_tool_call_extra(self, tools, ui_result):
+        reasoning = ReasoningContent(
+            reasoning_text="Use the tool",
+            extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
+        )
+        message = ChatMessage.from_assistant(
+            text="Adding the numbers",
+            reasoning=reasoning,
+            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1", extra={"output_index": 3})],
+            meta={"model": "test-model"},
+            name="assistant",
+        )
+        state = _state_with([ChatMessage.from_user("add"), message], tools)
+        hook = _confirm_hook(ui_result)
+        hook.run(state)
+        rebuilt_messages = [item for item in state.get("messages") if item.tool_calls]
+        assert len(rebuilt_messages) == 1
+        assert rebuilt_messages[0].reasoning == reasoning
+        assert rebuilt_messages[0].tool_calls[0].extra == {"output_index": 3}
+        assert rebuilt_messages[0].text == message.text
+        assert rebuilt_messages[0].meta == message.meta
+        assert rebuilt_messages[0].name == message.name
+        assert message.reasoning == reasoning
 
     def test_hook_context_is_not_deepcopied(self, tools):
         # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy
@@ -313,6 +346,39 @@ class TestConfirmationHookAsync:
                 error=True,
             ),
         ]
+
+    @pytest.mark.parametrize(
+        "ui_result",
+        [
+            ConfirmationUIResult(action="confirm"),
+            ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}),
+            ConfirmationUIResult(action="reject"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_preserves_reasoning_and_tool_call_extra(self, tools, ui_result):
+        reasoning = ReasoningContent(
+            reasoning_text="Use the tool",
+            extra={"reasoning_items": [{"id": "rs_first", "output_index": 0}, {"id": "rs_last", "output_index": 2}]},
+        )
+        message = ChatMessage.from_assistant(
+            text="Adding the numbers",
+            reasoning=reasoning,
+            tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2}, id="call-1", extra={"output_index": 3})],
+            meta={"model": "test-model"},
+            name="assistant",
+        )
+        state = _state_with([ChatMessage.from_user("add"), message], tools)
+        hook = _confirm_hook(ui_result)
+        await hook.run_async(state)
+        rebuilt_messages = [item for item in state.get("messages") if item.tool_calls]
+        assert len(rebuilt_messages) == 1
+        assert rebuilt_messages[0].reasoning == reasoning
+        assert rebuilt_messages[0].tool_calls[0].extra == {"output_index": 3}
+        assert rebuilt_messages[0].text == message.text
+        assert rebuilt_messages[0].meta == message.meta
+        assert rebuilt_messages[0].name == message.name
+        assert message.reasoning == reasoning
 
 
 class TestConfirmationHookTracing:

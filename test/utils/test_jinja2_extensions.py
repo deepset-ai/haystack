@@ -64,6 +64,22 @@ class TestJinja2TimeExtension:
         expected = arrow.now("UTC").shift(days=-1, hours=-2).strftime("%Y-%m-%d %H:%M:%S")
         assert result == expected
 
+    @pytest.mark.parametrize(
+        "operator, offset, expected_shift",
+        [
+            ("+", "hours=-2", {"hours": -2}),
+            ("-", "hours=-2", {"hours": 2}),
+            ("+", "days=-1, hours=-2", {"days": -1, "hours": -2}),
+            ("-", "days=-1, hours=-2", {"days": 1, "hours": 2}),
+        ],
+    )
+    def test_get_datetime_with_signed_offset_values(
+        self, jinja_extension: Jinja2TimeExtension, operator: str, offset: str, expected_shift: dict
+    ) -> None:
+        result = jinja_extension._get_datetime("UTC", operator=operator, offset=offset)
+        expected = arrow.now("UTC").shift(**expected_shift).strftime("%Y-%m-%d %H:%M:%S")
+        assert result == expected
+
     def test_get_datetime_with_custom_format(self, jinja_extension: Jinja2TimeExtension) -> None:
         result = jinja_extension._get_datetime("UTC", datetime_format="%d-%m-%Y")
         expected = arrow.now("UTC").strftime("%d-%m-%Y")

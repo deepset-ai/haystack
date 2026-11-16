@@ -73,11 +73,13 @@ class TestAutoMergingRetriever:
     def test_run_mixed_valid_and_invalid_documents(self, in_memory_doc_store):
         docs = [
             Document(content="valid", meta={"__parent_id": "parent1", "__level": 1, "__block_size": 10}),
-            Document(content="invalid", meta={"__level": 1, "__block_size": 10}),
+            Document(content="invalid", id="root", meta={"__level": 0, "__block_size": 0}),
         ]
         retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
-            ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
+            ValueError,
+            match="The matched leaf documents do not have the required meta field '__parent_id': document 'root' has "
+            "none. AutoMergingRetriever only accepts leaf documents created by HierarchicalDocumentSplitter.",
         ):
             retriever.run(documents=docs)
 
@@ -274,6 +276,59 @@ class TestAutoMergingRetriever:
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
 
+    @pytest.mark.parametrize("threshold", [0.4, 0.5, 0.6, 0.9])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_run_merges_leaves_at_different_depths(self, in_memory_doc_store, threshold, reverse):
+        source = Document(content="one two three four five")
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run([source])["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if not doc.meta["__children_ids"]]
+        assert {doc.meta["__level"] for doc in leaves} == {1, 2}
+        if reverse:
+            leaves.reverse()
+
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=threshold)
+        assert retriever.run(documents=leaves) == {"documents": [hierarchy[0]]}
+
+    @pytest.mark.parametrize("threshold", [0.6, 0.7])
+    def test_run_applies_threshold_after_merging_deeper_leaves(self, in_memory_doc_store, threshold):
+        source = Document(content="one two three four five six seven eight nine")
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run([source])["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if doc.content in {"one two ", "three four ", "nine"}]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=threshold)
+
+        documents = retriever.run(documents=leaves)["documents"]
+
+        if threshold == 0.6:
+            assert documents == [hierarchy[0]]
+        else:
+            expected = [doc for doc in hierarchy if doc.content in {"one two three four ", "nine"}]
+            assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
+
+    def test_run_processes_shallow_leaves_when_deeper_leaves_do_not_merge(self, in_memory_doc_store):
+        sources = [Document(content="one two three four five"), Document(content="six seven eight")]
+        hierarchy = HierarchicalDocumentSplitter(block_sizes={4, 2}).run(sources)["documents"]
+        in_memory_doc_store.write_documents([doc for doc in hierarchy if doc.meta["__children_ids"]])
+        leaves = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven ", "eight"}]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=0.5)
+
+        documents = retriever.run(documents=leaves)["documents"]
+
+        expected = [doc for doc in hierarchy if doc.content in {"one two ", "five", "six seven eight"}]
+        assert sorted(doc.id for doc in documents) == sorted(doc.id for doc in expected)
+
+    def test_run_merges_into_parent_without_level(self, in_memory_doc_store):
+        parent = Document(id="p", content="ab", meta={"__children_ids": ["a", "b"]})
+        in_memory_doc_store.write_documents([parent])
+        leaves = [
+            Document(id=leaf_id, content=leaf_id, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+            for leaf_id in ["a", "b"]
+        ]
+        retriever = AutoMergingRetriever(document_store=in_memory_doc_store, threshold=0.5)
+
+        assert retriever.run(documents=leaves) == {"documents": [parent]}
+
     def test_close(self):
         closable_document_store = Mock(spec=["close"])
         retriever = AutoMergingRetriever(document_store=closable_document_store)
@@ -284,3 +339,31 @@ class TestAutoMergingRetriever:
         retriever = AutoMergingRetriever(document_store=nonclosable_document_store)
         retriever.close()
         assert nonclosable_document_store.mock_calls == []
+
+    def test_run_duplicate_leaf_documents(self, in_memory_doc_store):
+        parent = Document(
+            id="p", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        in_memory_doc_store.write_documents([parent])
+
+        leaf_low = Document(id="a", content="a", score=0.2, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+        leaf_high = Document(id="a", content="a", score=0.9, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
+        result = retriever.run([leaf_low, leaf_high])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]
+        assert result["documents"][0].score == 0.9
+
+    def test_run_duplicate_leaf_documents_below_threshold(self, in_memory_doc_store):
+        parent = Document(
+            id="p", content="abc", meta={"__children_ids": ["a", "b", "c"], "__level": 0, "__block_size": 3}
+        )
+        in_memory_doc_store.write_documents([parent])
+
+        leaf = Document(id="a", content="a", score=0.4, meta={"__parent_id": "p", "__level": 1, "__block_size": 1})
+
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.9)
+        result = retriever.run([leaf, leaf])
+
+        assert [doc.id for doc in result["documents"]] == ["a"]

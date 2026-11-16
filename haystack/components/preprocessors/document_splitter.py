@@ -624,6 +624,6 @@ class DocumentSplitter:
             if num_words > split_length:
                 break
             num_sentences_to_keep += 1
-            if num_words > split_overlap:
+            if num_words >= split_overlap:
                 break
         return num_sentences_to_keep

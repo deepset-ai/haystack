@@ -232,7 +232,8 @@ def select_streaming_callback(
     """
     Picks the correct streaming callback given an optional initial and runtime callback.
 
-    The runtime callback takes precedence over the initial callback.
+    The runtime callback takes precedence over the initial callback. Only the selected callback is checked for
+    compatibility with the execution context.
 
     In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
     the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because
@@ -247,7 +248,7 @@ def select_streaming_callback(
     :returns:
         The selected callback.
     """
-    if init_callback is not None:
+    if init_callback is not None and runtime_callback is None:
         if requires_async and not _is_callable_async_compatible(init_callback):
             logger.warning(
                 "A sync streaming callback was provided at initialization for use in an async context. "
@@ -265,7 +266,7 @@ def select_streaming_callback(
         if not requires_async and _is_callable_async_compatible(runtime_callback):
             raise ValueError("The runtime callback cannot be a coroutine.")
 
-    return runtime_callback or init_callback
+    return runtime_callback if runtime_callback is not None else init_callback
 
 
 async def _invoke_streaming_callback(callback: StreamingCallbackT, chunk: StreamingChunk) -> None:

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``MetaFieldRanker`` now treats a ``NaN`` relevance score as out of range in ``linear_score`` mode.
+    It logs the existing warning and defaults the score to 0 instead of sorting the document by a ``NaN`` score.

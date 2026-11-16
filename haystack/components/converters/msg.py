@@ -14,9 +14,12 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-oxmsg'") as oxmsg_import:
     from oxmsg import Message, recipient
+    from oxmsg.domain.constants import PID_RECIPIENT_TYPE
 
 
 logger = logging.getLogger(__name__)
+
+_MAPI_RESEND_FLAGS = 0x10000000 | 0x80000000
 
 
 @component
@@ -96,20 +99,29 @@ class MSGToDocument:
         if msg.sender is not None:
             txt += f"From: {msg.sender}\n"
 
-        # To
-        recipients_str = ",".join(self._create_recipient_str(r) for r in msg.recipients)
-        if recipients_str != "":
-            txt += f"To: {recipients_str}\n"
+        # Extract To/Cc/Bcc from transport headers; fall back to Outlook recipients when headers are missing or blank.
+        headers = {name.lower(): value for name, value in msg.message_headers.items()}
+        recipients = msg.recipients
+        for recipient_type, label in ((1, "To"), (2, "Cc"), (3, "Bcc")):
+            header = headers.get(label.lower(), "")
+            if header.strip():
+                txt += f"{label}: {header}\n"
+                continue
 
-        # CC
-        cc_header = msg.message_headers.get("Cc") or msg.message_headers.get("CC")
-        if cc_header is not None:
-            txt += f"Cc: {cc_header}\n"
+            addresses = []
+            for recip in recipients:
+                kind = recip.properties.int_prop_value(PID_RECIPIENT_TYPE)
+                if kind is None:
+                    continue
 
-        # BCC
-        bcc_header = msg.message_headers.get("Bcc") or msg.message_headers.get("BCC")
-        if bcc_header is not None:
-            txt += f"Bcc: {bcc_header}\n"
+                # Ignore resend flags when identifying the recipient type.
+                if (kind & ~_MAPI_RESEND_FLAGS) == recipient_type:
+                    address = self._create_recipient_str(recip)
+                    if address.strip():
+                        addresses.append(address)
+
+            if addresses:
+                txt += f"{label}: {','.join(addresses)}\n"
 
         # Subject
         if msg.subject != "":

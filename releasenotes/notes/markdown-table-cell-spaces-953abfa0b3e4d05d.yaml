@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MarkdownToDocument`` with ``table_to_single_line=True`` now separates table cells with spaces and tables from
+    surrounding content with newlines. Previously, cell contents and consecutive tables were concatenated without
+    separators, losing word boundaries.

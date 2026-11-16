@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from dataclasses import replace
 from enum import Enum
-from math import inf
+from math import inf, isfinite
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -14,6 +14,17 @@ from haystack.core.component.types import Variadic
 from haystack.utils.misc import _reciprocal_rank_fusion
 
 logger = logging.getLogger(__name__)
+
+
+def _finite_score(score: float | None) -> float:
+    """
+    Return the score to use in the arithmetic of a join mode.
+
+    Missing and non-finite (NaN or infinity) scores are both treated as 0. A non-finite score that reaches the
+    arithmetic of a join mode does not stay local to its own Document, it turns the scores of the other Documents
+    into NaN as well.
+    """
+    return score if score is not None and isfinite(score) else 0.0
 
 
 class JoinMode(Enum):
@@ -50,7 +61,8 @@ class DocumentJoiner:
 
     It supports different join modes:
     - concatenate: Keeps the highest-scored document in case of duplicates.
-    - merge_embeddings: Combines the `embedding` and `sparse_embedding` fields of documents with the same ID.
+    - merge_embeddings: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+      of documents with the same ID.
     - merge: Calculates a weighted sum of scores for duplicates and merges them.
     - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
     - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
@@ -100,18 +112,22 @@ class DocumentJoiner:
         :param join_mode:
             Specifies the join mode to use. Available modes:
             - `concatenate`: Keeps the highest-scored document in case of duplicates.
-            - `merge_embeddings`: Combines the `embedding` and `sparse_embedding` fields of documents with the same ID.
+            - `merge_embeddings`: Combines the `embedding`, `sparse_embedding`, and `multivector_embedding` fields
+              of documents with the same ID.
               All other fields, including `content`, `meta`, and `score`, are kept from the first document
               received with that ID.
             - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
             - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
             - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-            distribution in each Retriever.
+            distribution in each Retriever. Documents without a score or with a non-finite score are treated as
+            having a score of 0.
         :param weights:
             Assign importance to each list of documents to influence how they're joined.
             This parameter is ignored for
             `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
+            `weights[i]` applies to the documents from the i-th connection made to `documents`
+            with `Pipeline.connect()`.
             Each weight must be a non-negative number.
         :param top_k:
             The maximum number of documents to return. Must be `None` or greater than 0.
@@ -121,7 +137,7 @@ class DocumentJoiner:
 
         :raises ValueError:
             If `top_k` is not `None` and is less than or equal to 0,
-            or if any value in `weights` is negative.
+            or if any value in `weights` is negative, NaN, or infinite.
         """
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be greater than 0.")
@@ -137,8 +153,8 @@ class DocumentJoiner:
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         if weights:
-            if any(weight < 0 for weight in weights):
-                raise ValueError("The provided `weights` must not be negative.")
+            if any(not isfinite(weight) or weight < 0 for weight in weights):
+                raise ValueError("The provided `weights` must be finite and must not be negative.")
             weight_sum = sum(weights)
             if weight_sum == 0:
                 raise ValueError("The provided `weights` must not sum to zero.")
@@ -224,7 +240,7 @@ class DocumentJoiner:
     @staticmethod
     def _merge_embeddings(document_lists: list[list[Document]]) -> list[Document]:
         """
-        Combine `embedding` and `sparse_embedding` fields of documents with the same ID.
+        Combine `embedding`, `sparse_embedding`, and `multivector_embedding` fields of documents with the same ID.
 
         Keep all other fields, including `content`, `meta`, and `score`, from the first document.
         """
@@ -238,7 +254,7 @@ class DocumentJoiner:
             current = merged[doc.id]
             updates = {}
 
-            for field in ("embedding", "sparse_embedding"):
+            for field in ("embedding", "sparse_embedding", "multivector_embedding"):
                 old, new = getattr(current, field), getattr(doc, field)
                 if old is not None and new is not None and old != new:
                     raise ValueError(f"Conflicting {field} for document '{doc.id}'")
@@ -268,7 +284,15 @@ class DocumentJoiner:
                 rescaled_lists.append(documents)
                 continue
 
-            scores_list = [doc.score if doc.score is not None else 0 for doc in documents]
+            scores_list = [_finite_score(doc.score) for doc in documents]
+            non_finite_ids = [doc.id for doc in documents if doc.score is not None and not isfinite(doc.score)]
+            if non_finite_ids:
+                logger.warning(
+                    "Some of the Documents DocumentJoiner got have a non-finite score. They were treated as if their "
+                    "score was 0 while rescaling the scores of the list, otherwise every score in the list would "
+                    "become NaN. Documents with IDs: {document_ids}",
+                    document_ids=",".join(non_finite_ids),
+                )
 
             mean_score = sum(scores_list) / len(scores_list)
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
@@ -278,17 +302,12 @@ class DocumentJoiner:
             scores_vary = min(scores_list) != max(scores_list)
 
             # If all docs have the same score, rescaling cannot add information; preserve their original scores.
-            rescaled_lists.append(
-                [
-                    replace(
-                        doc,
-                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
-                        if scores_vary and delta_score != 0.0
-                        else (doc.score if doc.score is not None else 0.0),
-                    )
-                    for doc in documents
-                ]
-            )
+            rescaled_documents = []
+            for doc, score in zip(documents, scores_list, strict=True):
+                if scores_vary and delta_score != 0.0:
+                    score = (score - min_score) / delta_score
+                rescaled_documents.append(replace(doc, score=score))
+            rescaled_lists.append(rescaled_documents)
 
         return DocumentJoiner._concatenate(document_lists=rescaled_lists)
 

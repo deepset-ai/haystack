@@ -12,9 +12,16 @@ slug: "/retrievers-api"
 
 A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
-The AutoMergingRetriever assumes you have a hierarchical tree structure of documents, where the leaf nodes
-are indexed in a document store. See the HierarchicalDocumentSplitter for more information on how to create
-such a structure. During retrieval, if the number of matched leaf documents below the same parent is
+The AutoMergingRetriever assumes you have a hierarchical tree structure of documents, created by the
+HierarchicalDocumentSplitter, stored in two document stores:
+
+- the leaf documents, in the document store searched by the retriever that runs before the AutoMergingRetriever;
+- the root and parent documents, in the document store passed to the AutoMergingRetriever.
+
+The AutoMergingRetriever only accepts leaf documents as input. Indexing the root or parent documents in the
+store searched by the upstream retriever is not supported.
+
+During retrieval, if the number of matched leaf documents below the same parent is
 higher than a defined threshold, the retriever will return the parent document instead of the individual leaf
 documents.
 
@@ -71,7 +78,8 @@ Initialize the AutoMergingRetriever.
 
 **Parameters:**
 
-- **document_store** (<code>DocumentStore</code>) – DocumentStore from which to retrieve the parent documents
+- **document_store** (<code>DocumentStore</code>) – DocumentStore holding the root and parent documents created by the
+  HierarchicalDocumentSplitter. It's used to look up the parents of the matched leaf documents.
 - **threshold** (<code>float</code>) – Threshold to decide whether the parent instead of the individual documents is returned
 
 #### to_dict
@@ -111,15 +119,22 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 Run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score. Each document must have the `__parent_id`,
+  `__level`, and `__block_size` meta fields set by HierarchicalDocumentSplitter.
 
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – List of documents (could be a mix of different hierarchy levels)
+
+**Raises:**
+
+- <code>ValueError</code> – If a document is missing the `__parent_id`, `__level`, or `__block_size` meta field.
 
 #### run_async
 
@@ -130,15 +145,22 @@ run_async(documents: list[Document]) -> dict[str, list[Document]]
 Asynchronously run the AutoMergingRetriever.
 
 Recursively groups documents by their parents and merges them if they meet the threshold,
-continuing up the hierarchy until no more merges are possible.
+continuing up the hierarchy until no more merges are possible. Deeper levels are processed
+first so leaves at different depths can merge with their promoted siblings.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever
+- **documents** (<code>list\[Document\]</code>) – List of leaf documents that were matched by a retriever. Documents with the same ID are
+  counted once, keeping the one with the highest score. Each document must have the `__parent_id`,
+  `__level`, and `__block_size` meta fields set by HierarchicalDocumentSplitter.
 
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – List of documents (could be a mix of different hierarchy levels)
+
+**Raises:**
+
+- <code>ValueError</code> – If a document is missing the `__parent_id`, `__level`, or `__block_size` meta field.
 
 #### close
 
@@ -1045,8 +1067,8 @@ Create the MultiRetriever component.
 
 **Raises:**
 
-- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, or if `max_workers` is not
-  greater than 0.
+- <code>ValueError</code> – If `top_k` or `top_k_per_retriever` is set and is not greater than 0, if `max_workers` is not
+  greater than 0, or if `join_mode` is not one of the available modes.
 
 #### warm_up
 

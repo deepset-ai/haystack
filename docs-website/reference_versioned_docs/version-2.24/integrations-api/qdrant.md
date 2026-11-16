@@ -6,6 +6,176 @@ slug: "/integrations-qdrant"
 ---
 
 
+## haystack_integrations.components.retrievers.qdrant.multivector_retriever
+
+### QdrantMultivectorEmbeddingRetriever
+
+A component for retrieving documents from a QdrantDocumentStore using multivector embeddings.
+
+Documents are ranked by dot-product MaxSim. Documents without multivector embeddings are excluded.
+Direct retrieval scans the filtered documents and can be computationally expensive on large collections.
+To limit MaxSim scoring to a smaller set of candidates, use `QdrantEmbeddingRetriever(return_embedding=True)`
+followed by `MaxSimRanker`.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from haystack_integrations.components.retrievers.qdrant import QdrantMultivectorEmbeddingRetriever
+
+store = QdrantDocumentStore(location=":memory:", multivector_embedding_dim=2)
+store.write_documents([
+    Document(id="solar", content="Solar energy.", multivector_embedding=[[1.0, 0.0], [0.0, 1.0]]),
+    Document(id="wind", content="Wind energy.", multivector_embedding=[[0.5, 0.0]]),
+])
+retriever = QdrantMultivectorEmbeddingRetriever(document_store=store, top_k=1)
+result = retriever.run(query_multivector_embedding=[[1.0, 0.0], [0.0, 1.0]])
+print(result["documents"][0].id, result["documents"][0].score)
+# >> solar 2.0
+retriever.close()
+```
+
+#### __init__
+
+```python
+__init__(
+    document_store: QdrantDocumentStore,
+    *,
+    filters: dict[str, Any] | models.Filter | None = None,
+    top_k: int = 10,
+    return_embedding: bool = False,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
+) -> None
+```
+
+Create a QdrantMultivectorEmbeddingRetriever component.
+
+**Parameters:**
+
+- **document_store** (<code>QdrantDocumentStore</code>) – An instance of QdrantDocumentStore with `multivector_embedding_dim` configured.
+- **filters** (<code>dict\[str, Any\] | Filter | None</code>) – Haystack or native Qdrant filters to narrow down the search space.
+- **top_k** (<code>int</code>) – The maximum number of documents to retrieve. Must be greater than zero.
+- **return_embedding** (<code>bool</code>) – Whether to return all stored embeddings of the retrieved Documents.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied. Native Qdrant filters only support REPLACE.
+
+**Raises:**
+
+- <code>TypeError</code> – `document_store` is not an instance of `QdrantDocumentStore`.
+- <code>ValueError</code> – Multivector support is disabled, `top_k` is not positive, or `filter_policy` is invalid.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> QdrantMultivectorEmbeddingRetriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>QdrantMultivectorEmbeddingRetriever</code> – Deserialized component.
+
+#### run
+
+```python
+run(
+    query_multivector_embedding: list[list[float]],
+    *,
+    filters: dict[str, Any] | models.Filter | None = None,
+    top_k: int | None = None,
+    return_embedding: bool | None = None
+) -> dict[str, list[Document]]
+```
+
+Run the Multivector Embedding Retriever on the given input data.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – Multivector embedding of the query. Must be non-empty and match
+  the Document Store's per-vector dimension.
+- **filters** (<code>dict\[str, Any\] | Filter | None</code>) – Haystack or native Qdrant filters, applied according to `filter_policy`.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be greater than zero.
+  If None, the initialization value is used.
+- **return_embedding** (<code>bool | None</code>) – Whether to return all stored embeddings of the retrieved Documents.
+  If None, the initialization value is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with `documents`: a list of Documents ordered by descending dot-product MaxSim score.
+
+**Raises:**
+
+- <code>ValueError</code> – The query is empty or has an incompatible dimension, `top_k` is not positive,
+  or native Qdrant filters are used with MERGE.
+- <code>QdrantStoreError</code> – The backend query fails or the collection is incompatible.
+
+#### run_async
+
+```python
+run_async(
+    query_multivector_embedding: list[list[float]],
+    *,
+    filters: dict[str, Any] | models.Filter | None = None,
+    top_k: int | None = None,
+    return_embedding: bool | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously run the Multivector Embedding Retriever on the given input data.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – Multivector embedding of the query. Must be non-empty and match
+  the Document Store's per-vector dimension.
+- **filters** (<code>dict\[str, Any\] | Filter | None</code>) – Haystack or native Qdrant filters, applied according to `filter_policy`.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be greater than zero.
+  If None, the initialization value is used.
+- **return_embedding** (<code>bool | None</code>) – Whether to return all stored embeddings of the retrieved Documents.
+  If None, the initialization value is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with `documents`: a list of Documents ordered by descending dot-product MaxSim score.
+
+**Raises:**
+
+- <code>ValueError</code> – The query is empty or has an incompatible dimension, `top_k` is not positive,
+  or native Qdrant filters are used with MERGE.
+- <code>QdrantStoreError</code> – The backend query fails or the collection is incompatible.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 ## haystack_integrations.components.retrievers.qdrant.retriever
 
 ### QdrantEmbeddingRetriever
@@ -702,6 +872,8 @@ __init__(
     scroll_size: int = 10000,
     payload_fields_to_index: list[dict] | None = None,
     client_kwargs: dict[str, Any] | None = None,
+    *,
+    multivector_embedding_dim: int | None = None
 ) -> None
 ```
 
@@ -764,6 +936,11 @@ Initializes a QdrantDocumentStore.
   The same arguments are used for sync and async clients. For example, an async
   `auth_token_provider` is also passed to `QdrantClient`, where it may not work with
   synchronous requests.
+- **multivector_embedding_dim** (<code>int | None</code>) – Dimension of each vector in a multivector embedding. Set to enable multivector support.
+
+**Raises:**
+
+- <code>ValueError</code> – `multivector_embedding_dim` is not positive.
 
 #### close
 
@@ -1080,9 +1257,9 @@ get_metadata_fields_info() -> dict[str, dict[str, str]]
 
 Returns the information about the metadata fields in the collection.
 
-Since Qdrant may not have a payload schema for unindexed metadata,
-this method scrolls through documents to infer field types from
-payload["meta"].
+Indexed metadata fields take their type from the collection's payload schema.
+Qdrant has no schema for unindexed metadata, so this method also scrolls
+through documents to infer the type of every other field from payload["meta"].
 
 **Returns:**
 
@@ -1104,9 +1281,9 @@ get_metadata_fields_info_async() -> dict[str, dict[str, str]]
 
 Asynchronously returns the information about the metadata fields in the collection.
 
-Since Qdrant may not have a payload schema for unindexed metadata,
-this method scrolls through documents to infer field types from
-payload["meta"].
+Indexed metadata fields take their type from the collection's payload schema.
+Qdrant has no schema for unindexed metadata, so this method also scrolls
+through documents to infer the type of every other field from payload["meta"].
 
 **Returns:**
 

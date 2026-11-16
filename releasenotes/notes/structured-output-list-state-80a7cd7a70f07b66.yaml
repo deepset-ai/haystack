@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Fix ``StructuredOutputHook`` for list-typed state keys, such as ``{"type": list[str]}``.
+    The hook now replaces the state value with the validated result, or ``None`` on failure,
+    instead of appending to it. Previously, a failed attempt followed by a successful retry
+    returned ``[None, "Paris"]`` instead of ``["Paris"]``.

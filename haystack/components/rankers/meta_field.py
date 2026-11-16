@@ -120,7 +120,7 @@ class MetaFieldRanker:
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        if weight < 0 or weight > 1:
+        if not 0 <= weight <= 1:
             raise ValueError(
                 f"Parameter <weight> must be in range [0,1] but is currently set to '{weight}'.\n'0' disables sorting "
                 "by a meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and "
@@ -398,7 +398,7 @@ class MetaFieldRanker:
                 score = float(0)
                 if document.score is None:
                     logger.warning("The score wasn't provided; defaulting to 0.")
-                elif document.score < 0 or document.score > 1:
+                elif not 0 <= document.score <= 1:
                     logger.warning(
                         "The score {score} for Document {document_id} is outside the [0,1] range; defaulting to 0",
                         score=document.score,

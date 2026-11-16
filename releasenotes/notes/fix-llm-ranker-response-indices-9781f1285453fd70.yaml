@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``LLMRanker`` now skips response indices that do not represent valid integers.

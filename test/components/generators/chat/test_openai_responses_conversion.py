@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Literal
+from typing import Any, Literal
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -14,6 +14,9 @@ from openai.types.responses import (
     ResponseContentPartAddedEvent,
     ResponseContentPartDoneEvent,
     ResponseCreatedEvent,
+    ResponseError,
+    ResponseErrorEvent,
+    ResponseFailedEvent,
     ResponseFunctionCallArgumentsDeltaEvent,
     ResponseFunctionCallArgumentsDoneEvent,
     ResponseFunctionToolCall,
@@ -234,6 +237,128 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 
 class TestConversionToStreamingChunks:
+    def test_interleaved_reasoning_deltas_keep_output_order_without_item_events(self):
+        chunks = [
+            StreamingChunk(
+                content="",
+                index=index,
+                reasoning=ReasoningContent(
+                    reasoning_text=text, extra={"item_id": item_id, "type": "response.reasoning_summary_text.delta"}
+                ),
+            )
+            for index, item_id, text in [
+                (2, "rs_a", "second "),
+                (0, "rs_z", "first "),
+                (2, "rs_a", "item"),
+                (0, "rs_z", "item"),
+            ]
+        ]
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"id": "rs_z", "type": "reasoning", "summary": [{"text": "first item", "type": "summary_text"}]},
+            {"id": "rs_a", "type": "reasoning", "summary": [{"text": "second item", "type": "summary_text"}]},
+        ]
+
+    @pytest.mark.parametrize("include_added_event", [False, True])
+    @pytest.mark.parametrize(("include_summary", "include_deltas"), [(False, False), (True, False), (True, True)])
+    def test_multiple_reasoning_items_survive_streaming_round_trip(
+        self, include_summary, include_added_event, include_deltas
+    ):
+        events: list[ResponseStreamEvent] = []
+        for index, item_id, encrypted in [(0, "rs_z", "encrypted_z"), (2, "rs_a", "encrypted_a")]:
+            if include_added_event:
+                events.append(
+                    ResponseOutputItemAddedEvent(
+                        item=ResponseReasoningItem(id=item_id, summary=[], type="reasoning", status="in_progress"),
+                        output_index=index,
+                        sequence_number=len(events),
+                        type="response.output_item.added",
+                    )
+                )
+            if include_summary and include_deltas:
+                for text in ["Thinking ", item_id]:
+                    events.append(
+                        ResponseReasoningSummaryTextDeltaEvent(
+                            delta=text,
+                            item_id=item_id,
+                            output_index=index,
+                            sequence_number=len(events),
+                            summary_index=0,
+                            type="response.reasoning_summary_text.delta",
+                        )
+                    )
+            events.append(
+                ResponseOutputItemDoneEvent(
+                    item=ResponseReasoningItem(
+                        id=item_id,
+                        summary=[Summary(text=f"Thinking {item_id}", type="summary_text")] if include_summary else [],
+                        type="reasoning",
+                        encrypted_content=encrypted,
+                        status="completed",
+                    ),
+                    output_index=index,
+                    sequence_number=len(events),
+                    type="response.output_item.done",
+                )
+            )
+            events.append(
+                ResponseOutputItemAddedEvent(
+                    item=ResponseFunctionToolCall(
+                        id=f"fc_{item_id}",
+                        call_id=f"call_{index}",
+                        name="weather",
+                        arguments="{}",
+                        type="function_call",
+                    ),
+                    output_index=index + 1,
+                    sequence_number=len(events),
+                    type="response.output_item.added",
+                )
+            )
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(event, previous_chunks=chunks))
+        original_chunks = [chunk.to_dict() for chunk in chunks]
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+        replay = _convert_chat_message_to_responses_api_format(message)
+
+        assert len(message.reasonings) == 1
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == ("Thinking rs_z\nThinking rs_a" if include_summary else "")
+        assert [item["id"] for item in message.reasoning.extra["reasoning_items"]] == ["rs_z", "rs_a"]
+        assert [item["output_index"] for item in message.reasoning.extra["reasoning_items"]] == [0, 2]
+        assert [call.id for call in message.tool_calls] == ["fc_rs_z", "fc_rs_a"]
+        assert [call.extra for call in message.tool_calls] == [
+            {"call_id": "call_0", "output_index": 1},
+            {"call_id": "call_2", "output_index": 3},
+        ]
+        expected = []
+        for index, item_id, encrypted in [(0, "rs_z", "encrypted_z"), (2, "rs_a", "encrypted_a")]:
+            expected.extend(
+                [
+                    {
+                        "id": item_id,
+                        "type": "reasoning",
+                        "status": "completed",
+                        "encrypted_content": encrypted,
+                        "summary": [{"text": f"Thinking {item_id}", "type": "summary_text"}] if include_summary else [],
+                    },
+                    {
+                        "id": f"fc_{item_id}",
+                        "call_id": f"call_{index}",
+                        "name": "weather",
+                        "arguments": "{}",
+                        "type": "function_call",
+                    },
+                ]
+            )
+        assert replay == expected
+        assert _convert_chat_message_to_responses_api_format(ChatMessage.from_dict(message.to_dict())) == expected
+        assert [chunk.to_dict() for chunk in chunks] == original_chunks
+
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
@@ -253,6 +378,29 @@ class TestConversionToStreamingChunks:
         assert chunk.finish_reason == finish_reason
         message = _convert_streaming_chunks_to_chat_message([chunk])
         assert message.meta["finish_reason"] == finish_reason
+
+    def test_convert_failed_response_raises(self) -> None:
+        response = Response.model_construct(
+            output=[],
+            status="failed",
+            error=ResponseError(code="server_error", message="The model failed to generate a response."),
+        )
+        event = ResponseFailedEvent.model_construct(response=response, type="response.failed", sequence_number=1)
+
+        with pytest.raises(RuntimeError, match="server_error: The model failed to generate a response."):
+            _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
+
+    def test_convert_error_event_raises(self) -> None:
+        event = ResponseErrorEvent(
+            type="error",
+            code="server_error",
+            message="The model failed to generate a response.",
+            param=None,
+            sequence_number=1,
+        )
+
+        with pytest.raises(RuntimeError, match="server_error: The model failed to generate a response."):
+            _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
 
     def test_convert_streaming_chunks_scans_for_final_response_and_finish_reason(self) -> None:
         chunks = [
@@ -353,16 +501,21 @@ class TestConversionToStreamingChunks:
                 ReasoningContent(
                     reasoning_text="",
                     extra={
-                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
-                        "summary": [],
-                        "type": "reasoning",
+                        "reasoning_items": [
+                            {
+                                "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                                "summary": [],
+                                "type": "reasoning",
+                                "output_index": 0,
+                            }
+                        ]
                     },
                 ),
                 ToolCall(
                     tool_name="weather",
                     arguments={"city": "Paris"},
                     id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                    extra={"call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv"},
+                    extra={"call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv", "output_index": 1},
                 ),
             ],
             _name=None,
@@ -1489,6 +1642,63 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
+    @pytest.mark.parametrize("include_summary", [False, True])
+    def test_multiple_reasoning_items_survive_response_round_trip(self, include_summary):
+        response = Response.model_construct(
+            status="completed",
+            output=[
+                ResponseReasoningItem(
+                    id="rs_z",
+                    summary=[Summary(text="first", type="summary_text")] if include_summary else [],
+                    type="reasoning",
+                    encrypted_content="encrypted_z",
+                    status="completed",
+                ),
+                ResponseFunctionToolCall(id="fc_1", call_id="call_1", name="a", arguments="{}", type="function_call"),
+                ResponseReasoningItem(
+                    id="rs_a",
+                    summary=[],
+                    content=[Content(text="second", type="reasoning_text")],
+                    type="reasoning",
+                    encrypted_content="encrypted_a",
+                    status="completed",
+                ),
+                ResponseFunctionToolCall(id="fc_2", call_id="call_2", name="b", arguments="{}", type="function_call"),
+            ],
+        )
+
+        message = _convert_response_to_chat_message(response)
+
+        assert len(message.reasonings) == 1
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == ("first\nsecond" if include_summary else "second")
+        assert message.reasoning.extra == {
+            "reasoning_items": [{**response.output[index].to_dict(), "output_index": index} for index in (0, 2)]
+        }
+        assert [call.extra for call in message.tool_calls] == [
+            {"call_id": "call_1", "output_index": 1},
+            {"call_id": "call_2", "output_index": 3},
+        ]
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "id": "rs_z",
+                "type": "reasoning",
+                "encrypted_content": "encrypted_z",
+                "status": "completed",
+                "summary": [{"text": "first", "type": "summary_text"}] if include_summary else [],
+            },
+            {"id": "fc_1", "call_id": "call_1", "name": "a", "arguments": "{}", "type": "function_call"},
+            {
+                "id": "rs_a",
+                "type": "reasoning",
+                "encrypted_content": "encrypted_a",
+                "status": "completed",
+                "content": [{"text": "second", "type": "reasoning_text"}],
+                "summary": [],
+            },
+            {"id": "fc_2", "call_id": "call_2", "name": "b", "arguments": "{}", "type": "function_call"},
+        ]
+
     def test_convert_text_with_annotations(self) -> None:
         text = (
             "- **Python 3.13.0** release date: **October 7, 2024**. "
@@ -1554,7 +1764,7 @@ class TestResponseToChatMessage:
         message = _convert_response_to_chat_message(response)
 
         assert message.tool_calls == [
-            ToolCall(id="fc_1", tool_name="get_time", arguments={}, extra={"call_id": "call_1"})
+            ToolCall(id="fc_1", tool_name="get_time", arguments={}, extra={"call_id": "call_1", "output_index": 0})
         ]
 
     @pytest.mark.parametrize(
@@ -1584,7 +1794,7 @@ class TestResponseToChatMessage:
 
         message = _convert_response_to_chat_message(response)
 
-        extra = {key: value for key, value in item.to_dict().items() if key != "summary"}
+        extra = {"reasoning_items": [{**item.to_dict(), "output_index": 0}]}
         assert message.reasoning == ReasoningContent(reasoning_text=expected_text, extra=extra)
 
     def test_convert_response_with_refusal(self) -> None:
@@ -1823,6 +2033,39 @@ class TestResponseToChatMessage:
             }
         ]
 
+    @pytest.mark.parametrize(
+        "reasoning_extra",
+        [
+            {},
+            # reasoning produced by AmazonBedrockChatGenerator
+            {"signature": "EqQBCkYIBxgC"},
+            {"type": "reasoning"},
+            {"type": "thinking", "id": "foreign_id"},
+        ],
+    )
+    def test_convert_messages_from_other_providers(self, reasoning_extra: dict[str, Any]) -> None:
+        tool_call = ToolCall(id="tooluse_abc123", tool_name="weather", arguments={"location": "Berlin"})
+        assistant_message = ChatMessage.from_assistant(
+            tool_calls=[tool_call], reasoning=ReasoningContent(reasoning_text="Let me think.", extra=reasoning_extra)
+        )
+        tool_message = ChatMessage.from_tool(tool_result="sunny", origin=tool_call)
+
+        assert _convert_chat_message_to_responses_api_format(assistant_message) == [
+            {
+                "type": "function_call",
+                "name": "weather",
+                "arguments": '{"location": "Berlin"}',
+                "call_id": "tooluse_abc123",
+            }
+        ]
+        assert _convert_chat_message_to_responses_api_format(tool_message) == [
+            {
+                "type": "function_call_output",
+                "call_id": "tooluse_abc123",
+                "output": [{"type": "input_text", "text": "sunny"}],
+            }
+        ]
+
     def test_convert_tool_message(self) -> None:
 
         tool_call_result = ChatMessage(
@@ -1911,9 +2154,11 @@ class TestResponseToChatMessage:
 
     def test_convert_reasoning_only_message_adds_no_empty_message(self) -> None:
         # Reasoning already produces an input item, so no empty assistant message is appended alongside it.
-        message = ChatMessage.from_assistant(reasoning="thinking")
+        message = ChatMessage.from_assistant(
+            reasoning=ReasoningContent(reasoning_text="thinking", extra={"id": "rs_1", "type": "reasoning"})
+        )
         assert _convert_chat_message_to_responses_api_format(message) == [
-            {"summary": [{"text": "thinking", "type": "summary_text"}]}
+            {"id": "rs_1", "type": "reasoning", "summary": [{"text": "thinking", "type": "summary_text"}]}
         ]
 
     def test_convert_invalid(self) -> None:
@@ -1985,10 +2230,16 @@ class TestResponseToChatMessage:
         assert message.reasoning.reasoning_text == ""
 
         # Verify encrypted_content is preserved along with id and type
-        assert message.reasoning.extra.get("id") == "rs_095b57053855eac100690491f54e308196878239be3ba6133c"
-        assert message.reasoning.extra.get("type") == "reasoning"
-        assert message.reasoning.extra.get("encrypted_content") == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        assert message.reasoning.extra.get("status") == "in_progress"
+        assert message.reasoning.extra["reasoning_items"] == [
+            {
+                "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                "type": "reasoning",
+                "encrypted_content": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "status": "in_progress",
+                "output_index": 0,
+                "summary": [],
+            }
+        ]
 
     def test_encrypted_content_preserved_through_full_streaming_pipeline(self) -> None:
         """
@@ -2036,8 +2287,8 @@ class TestResponseToChatMessage:
         message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
 
         assert message.reasoning is not None
-        assert message.reasoning.extra.get("id") == REASONING_ID
-        assert message.reasoning.extra.get("encrypted_content") == ENCRYPTED, (
+        assert message.reasoning.extra["reasoning_items"][0]["id"] == REASONING_ID
+        assert message.reasoning.extra["reasoning_items"][0]["encrypted_content"] == ENCRYPTED, (
             "encrypted_content was dropped — the response.output_item.done event for reasoning items "
             "must be handled in _convert_response_chunk_to_streaming_chunk"
         )

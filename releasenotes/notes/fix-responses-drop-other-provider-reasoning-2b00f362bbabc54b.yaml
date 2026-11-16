@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` now accept chat histories with
+    assistant messages produced by other providers, for example when ``FallbackChatGenerator`` switches from
+    ``AmazonBedrockChatGenerator``. Reasoning without a Responses API reasoning item ``id`` is dropped instead of
+    being sent as an invalid input item, and tool calls without a ``call_id`` in ``extra`` use the tool call ``id``
+    as ``call_id``. Previously, the API rejected these requests with a 400 error.

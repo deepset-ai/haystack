@@ -6,6 +6,7 @@ import json
 import logging
 import warnings
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -47,6 +48,15 @@ class TestTextContent:
     def test_text_content_from_dict(self):
         tc = TextContent.from_dict({"text": "Hello"})
         assert tc.text == "Hello"
+
+    def test_text_content_subclass_from_dict(self):
+        @dataclass
+        class MyText(TextContent):
+            pass
+
+        result = MyText.from_dict(MyText(text="hello").to_dict())
+        assert type(result) is MyText
+        assert result == MyText(text="hello")
 
     def test_text_content_no_warning_on_init(self):
         with warnings.catch_warnings():

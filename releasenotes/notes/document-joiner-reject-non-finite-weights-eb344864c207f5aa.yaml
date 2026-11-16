@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` now raises a ``ValueError`` when ``weights`` contains NaN or infinite values.
+    Previously, these values were accepted and turned the document scores into NaN in the ``merge``
+    and ``reciprocal_rank_fusion`` join modes.

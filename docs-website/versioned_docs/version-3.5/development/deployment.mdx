@@ -1,0 +1,44 @@
+---
+title: "Deployment"
+id: deployment
+slug: "/deployment"
+description: "Deploy your Haystack pipelines through various services such as Docker, Kubernetes, Ray, or a variety of Serverless options."
+---
+
+# Deployment
+
+Deploy your Haystack pipelines through various services such as Docker, Kubernetes, Ray, or a variety of Serverless options.
+
+As a framework, Haystack is typically integrated into a variety of applications and environments, and there is no single, specific deployment strategy to follow. However, it is very common to make Haystack pipelines accessible through a service that can be easily called from other software systems.
+
+These guides focus on tools and techniques that can be used to run Haystack pipelines in common scenarios. While these suggestions should not be considered the only way to do so, they should provide inspiration and the ability to customize them according to your needs.
+
+### Guides
+
+Here are the currently available guides on Haystack pipeline deployment:
+
+- [Haystack Enterprise Platform](deployment/haystack-enterprise-platform.mdx)
+- [Deploying with Docker](deployment/docker.mdx)
+- [Deploying with Kubernetes](deployment/kubernetes.mdx)
+- [Deploying with OpenShift](deployment/openshift.mdx)
+
+### Other Integrations
+
+| Integration | Description |
+| --- | --- |
+| [Ray](https://haystack.deepset.ai/integrations/ray) | Run and scale your pipelines in a distributed manner. |
+
+### Hayhooks
+
+Haystack can be easily integrated into any HTTP application, but if you don’t have one, you can use Hayhooks, a ready-made application that serves Haystack pipelines as REST endpoints. We’ll be using Hayhooks throughout this guide to streamline the code examples. Refer to the Hayhooks [overview](hayhooks.mdx) for a quick start, or the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/) for comprehensive guides and reference.
+
+:::tip[Looking to scale with confidence?]
+
+The **Haystack Enterprise Platform** gives you production infrastructure without the operational overhead:
+
+- **Built-in tracing** — every deployed pipeline is traced automatically, no setup required
+- **Zero-downtime deploys** — auto-scaling replicas absorb demand spikes without dropping traffic
+- **Built-in testing and analytics** — a Playground for testing pipelines, plus dashboards for monitoring them in production
+
+[Explore the Haystack Enterprise Platform](https://www.deepset.ai/haystack-platform)
+:::

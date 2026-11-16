@@ -476,8 +476,9 @@ into ImageContent objects.
 - <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
 - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
   data and metadata. The order corresponds to the order of the input documents. A document that is
-  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
-  to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
+  missing the required metadata keys, has an invalid file path, has an unsupported MIME type, has an
+  image file that cannot be decoded, or points to a PDF page that cannot be converted gets None in its
+  position and a logged warning with the reason.
 
 ## image/file_to_document
 
@@ -610,7 +611,7 @@ run(
 ) -> dict[str, list[ImageContent]]
 ```
 
-Converts files to ImageContent objects.
+Converts files to ImageContent objects. Sources that fail conversion or validation are logged and skipped.
 
 **Parameters:**
 
@@ -631,7 +632,7 @@ Converts files to ImageContent objects.
 **Returns:**
 
 - <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
-- `image_contents`: A list of ImageContent objects.
+- `image_contents`: Successfully converted images in source order, or an empty list if none succeed.
 
 ## image/pdf_to_image
 
@@ -1670,6 +1671,10 @@ Creates a XLSXToDocument component.
   behavior is used: `na_values` alone adds to pandas' default NA strings, and `keep_default_na=False`
   alone doesn't treat empty cells as missing unless `""` is in `na_values`.
   Set `keep_default_na=True` to restore pandas' default NA parsing.
+  Custom parsing options may cause conversion errors or unexpected output.
+  For example, `skiprows` can produce incorrect row numbers, and `index_col`
+  can cause values to change or the entire file to be skipped.
+  Validate the output on representative inputs when using these options.
   See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
 - **table_format_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to the table format function.
 - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
