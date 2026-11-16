@@ -173,9 +173,8 @@ def _parse_date(value: str) -> datetime:
     """
     Try parsing the value as an ISO format date, then fall back to dateutil.parser.
 
-    Partial dates (e.g. "2024" or "2024-06") are filled with the start of the period (January 1st, or the 1st of the
-    month) instead of dateutil's default of taking the missing parts from the current date, so that filters behave
-    the same on every day.
+    Partial dates (e.g. "2024" or "2024-06") are completed to the start of the period, so "2024" becomes
+    2024-01-01.
     """
     try:
         return datetime.fromisoformat(value)
