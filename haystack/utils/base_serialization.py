@@ -27,7 +27,8 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     The function handles:
     - Objects with to_dict() methods (e.g. dataclasses)
     - Objects with __dict__ attributes
-    - Dictionaries
+    - Dictionaries, including the type of each key that is not a string, so those keys
+      survive a JSON round trip
     - Lists, tuples, and sets, including ones holding mixed types. A mixed-type array records one
       schema per position under the JSON Schema `prefixItems` keyword, while a homogeneous array
       keeps the single shared `items` schema.
@@ -52,14 +53,22 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     if isinstance(payload, dict):
         schema: dict[str, Any] = {}
         data: dict[str, Any] = {}
+        key_types: dict[Any, str] = {}
 
         for field, val in payload.items():
             # Recursively serialize each field
             serialized_value = _serialize_value_with_schema(val)
             schema[field] = serialized_value["serialization_schema"]
             data[field] = serialized_value["serialized_data"]
+            # JSON object keys are always strings, so the type of a key that is not a string
+            # is recorded here and restored on deserialization.
+            if field is None or isinstance(field, (bool, int, float)):
+                key_types[field] = _primitive_schema_type(field)
 
-        return {"serialization_schema": {"type": "object", "properties": schema}, "serialized_data": data}
+        object_schema: dict[str, Any] = {"type": "object", "properties": schema}
+        if key_types:
+            object_schema["keyTypes"] = key_types
+        return {"serialization_schema": object_schema, "serialized_data": data}
 
     # Handle array case - iterate through elements
     if isinstance(payload, (list, tuple, set, frozenset)):
@@ -189,6 +198,29 @@ def _primitive_schema_type(value: Any) -> str:
     return "string"  # fallback
 
 
+def _restore_key(field: Any, key_type: str | None) -> Any:
+    """
+    Restore a dictionary key to the type recorded for it at serialization time.
+
+    JSON object keys are always strings, so a key that was an int, float, bool, or None
+    arrives here as its string form. A key that already has the recorded type, as in a
+    payload that never went through JSON, is returned unchanged.
+    """
+    if key_type is None or key_type == "string":
+        return field
+    if isinstance(field, (bool, int, float)) or field is None:
+        return field
+    if key_type == "integer":
+        return int(field)
+    if key_type == "number":
+        return float(field)
+    if key_type == "boolean":
+        return field == "true"
+    if key_type == "null":
+        return None
+    return field
+
+
 def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
     """
     Deserializes a value with schema information back to its original form.
@@ -228,11 +260,12 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
     # Handle object case (dictionary with properties)
     if schema_type == "object":
         properties = schema["properties"]
+        key_types = schema.get("keyTypes") or {}
         result: dict[str, Any] = {}
         for field, raw_value in data.items():
             field_schema = properties[field]
             # Recursively deserialize each field - avoid creating temporary dict
-            result[field] = _deserialize_value_with_schema(
+            result[_restore_key(field, key_types.get(field))] = _deserialize_value_with_schema(
                 {"serialization_schema": field_schema, "serialized_data": raw_value}
             )
         return result
