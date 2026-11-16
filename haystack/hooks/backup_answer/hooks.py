@@ -146,6 +146,7 @@ class BackupAnswerHook:
             the chat generator itself are re-raised when `raise_on_failure` is set.
         """
         prompt = self._build_prompt(state=state)
+        # None is the normal case: the run ended with a final answer, so no backup answer is needed
         if prompt is None:
             return
         try:
@@ -170,6 +171,7 @@ class BackupAnswerHook:
             the chat generator itself are re-raised when `raise_on_failure` is set.
         """
         prompt = self._build_prompt(state=state)
+        # None is the normal case: the run ended with a final answer, so no backup answer is needed
         if prompt is None:
             return
         try:
@@ -189,8 +191,8 @@ class BackupAnswerHook:
         if exit_reason not in self.exit_reasons:
             return None
         messages = state.data.get("messages") or []
-        transcript = [m for m in messages if not m.is_from(ChatRole.SYSTEM)]
-        if not transcript:
+        non_system_messages = [m for m in messages if not m.is_from(ChatRole.SYSTEM)]
+        if not non_system_messages:
             return None
         logger.info(
             "The Agent stopped with exit reason '{exit_reason}', writing a backup answer.", exit_reason=exit_reason
@@ -198,7 +200,7 @@ class BackupAnswerHook:
         # Pass the Agent's system messages to the template, so the answer can keep their language and format
         agent_system_prompt = "\n\n".join(m.text for m in messages if m.is_from(ChatRole.SYSTEM) and m.text)
         system_prompt = self._prompt_builder.run(system_prompt=agent_system_prompt)["prompt"]
-        return [ChatMessage.from_system(system_prompt), *transcript]
+        return [ChatMessage.from_system(system_prompt), *non_system_messages]
 
     def _reply_from_result(self, result: dict[str, Any]) -> ChatMessage:
         """
