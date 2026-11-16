@@ -574,7 +574,10 @@ class DocumentSplitter:
 
                 # Get the number of sentences that overlap with the next chunk
                 num_sentences_to_keep = DocumentSplitter._number_of_sentences_to_keep(
-                    sentences=current_chunk, split_length=split_length, split_overlap=split_overlap
+                    sentences=current_chunk,
+                    split_length=split_length,
+                    split_overlap=split_overlap,
+                    next_sentence_word_count=next_sentence_word_count,
                 )
                 # Set up information for the new chunk
                 if num_sentences_to_keep > 0:
@@ -602,13 +605,18 @@ class DocumentSplitter:
         return text_splits, split_start_page_numbers, split_start_indices
 
     @staticmethod
-    def _number_of_sentences_to_keep(sentences: list[str], split_length: int, split_overlap: int) -> int:
+    def _number_of_sentences_to_keep(
+        sentences: list[str], split_length: int, split_overlap: int, next_sentence_word_count: int = 0
+    ) -> int:
         """
         Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
 
         :param sentences: The list of sentences to split.
         :param split_length: The maximum number of words in each split.
         :param split_overlap: The number of overlapping words in each split.
+        :param next_sentence_word_count: The number of words in the first new sentence of the next chunk.
+            The kept sentences are prepended to that chunk, so they must leave room for it or the
+            chunk would exceed `split_length`.
         :returns: The number of sentences to keep in the next chunk.
         """
         # If the split_overlap is 0, we don't need to keep any sentences
@@ -620,8 +628,9 @@ class DocumentSplitter:
         # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
         for sent in reversed(sentences[1:]):
             num_words += len(sent.split())
-            # If the number of words is larger than the split_length then don't add any more sentences
-            if num_words > split_length:
+            # The kept words prefix the next chunk; keeping a sentence that leaves no room for the
+            # following sentence would push that chunk over split_length.
+            if num_words + next_sentence_word_count > split_length:
                 break
             num_sentences_to_keep += 1
             if num_words >= split_overlap:

@@ -757,6 +757,30 @@ class TestSplittingNLTKSentenceSplitter:
             "Epsilon zeta. Eta theta.",
         ]
 
+    def test_number_of_sentences_to_keep_leaves_room_for_next_sentence(self) -> None:
+        # Keeping both trailing sentences (5 words) would leave no room for the next chunk's
+        # 2-word first sentence under split_length=5, so only the last sentence is carried.
+        num_sentences = DocumentSplitter._number_of_sentences_to_keep(
+            sentences=["A. ", "B B. ", "C C C. "], split_length=5, split_overlap=4, next_sentence_word_count=2
+        )
+        assert num_sentences == 1
+
+    def test_sentence_overlap_carry_does_not_exceed_split_length(self) -> None:
+        # Carrying "Go. " into the next chunk would push it to 6 words > split_length=5,
+        # so nothing is carried and the five-word sentence is emitted on its own.
+        text = "Blue sky. Go. We walk into the woods."
+        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=1, respect_sentence_boundary=True)
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.content for doc in documents] == ["Blue sky. Go. ", "We walk into the woods."]
+
+    def test_sentence_overlap_carry_kept_when_it_fits(self) -> None:
+        # The carry is kept whenever it fits alongside the next sentence: "Cold rain. " is
+        # repeated in the second chunk and both chunks stay within split_length=5.
+        text = "Blue sky. Go. Cold rain. Night falls."
+        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=1, respect_sentence_boundary=True)
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.content for doc in documents] == ["Blue sky. Go. Cold rain. ", "Cold rain. Night falls."]
+
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="sentence",
