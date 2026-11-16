@@ -878,8 +878,8 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         )
 
     elif chunk.type == "response.output_text.delta":
-        # A text output starts when no earlier chunk with the same output_index has content. Scanning backwards stops
-        # at the previous text delta instead of rescanning every earlier chunk, such as a long reasoning summary.
+        # A text output starts when no earlier chunk with the same output_index has content.
+        # Scanning backwards stops at the previous text delta.
         start = all(c.content == "" for c in reversed(previous_chunks) if c.index == chunk.output_index)
         return StreamingChunk(
             content=chunk.delta,
