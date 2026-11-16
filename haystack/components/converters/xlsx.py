@@ -153,8 +153,7 @@ class XLSXToDocument:
             for table, excel_metadata in zip(tables, tables_metadata, strict=True):
                 merged_metadata = {**bytestream.meta, **metadata, **excel_metadata}
 
-                if not self.store_full_path and "file_path" in bytestream.meta:
-                    file_path = bytestream.meta["file_path"]
+                if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
                 document = Document(content=table, meta=merged_metadata)

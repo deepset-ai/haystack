@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix ``XLSXToDocument`` raising ``TypeError`` when a source ``ByteStream``
+    has ``file_path=None`` in its metadata. Conversion now preserves the null
+    metadata value and continues processing the remaining sources.
