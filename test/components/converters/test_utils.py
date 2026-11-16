@@ -37,6 +37,35 @@ def test_normalize_metadata_list_of_right_size():
     assert normalize_metadata([{"a": 1}], sources_count=1) == [{"a": 1}]
     assert normalize_metadata([{"a": 1}, {"b": 2}, {"c": 3}], sources_count=3) == [{"a": 1}, {"b": 2}, {"c": 3}]
 
+def test_normalize_metadata_list_returns_independent_copies():
+    metadata = [{"nested": {"values": ["first"]}}, {"nested": {"values": ["second"]}}]
+
+    result = normalize_metadata(metadata, sources_count=2)
+    result[0]["nested"]["values"].append("updated")
+
+    assert result == [
+        {"nested": {"values": ["first", "updated"]}},
+        {"nested": {"values": ["second"]}},
+    ]
+    assert metadata == [
+        {"nested": {"values": ["first"]}},
+        {"nested": {"values": ["second"]}},
+    ]
+
+
+def test_normalize_metadata_list_copies_repeated_dictionary_per_source():
+    shared = {"nested": {"values": ["original"]}}
+
+    result = normalize_metadata([shared, shared], sources_count=2)
+    result[0]["nested"]["values"].append("updated")
+
+    assert result == [
+        {"nested": {"values": ["original", "updated"]}},
+        {"nested": {"values": ["original"]}},
+    ]
+    assert shared == {"nested": {"values": ["original"]}}
+
+
 
 def test_normalize_metadata_list_of_wrong_size():
     with pytest.raises(ValueError, match="The length of the metadata list must match the number of sources."):
