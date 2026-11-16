@@ -826,17 +826,19 @@ class InMemoryDocumentStore:
         if top_k < 0:
             raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
 
-        content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
             if "operator" not in filters:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-            filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
+            content_type_filter = {"field": "content", "operator": "!=", "value": None}
+            all_documents = self.filter_documents(
+                filters={"operator": "AND", "conditions": [content_type_filter, filters]}
+            )
         else:
-            filters = content_type_filter
-
-        all_documents = self.filter_documents(filters=filters)
+            # Only documents with content can be scored. Without user filters, checking it directly
+            # avoids evaluating a filter on every stored document.
+            all_documents = [doc for doc in self.storage.values() if doc.content is not None]
         if len(all_documents) == 0:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []

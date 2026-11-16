@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``InMemoryDocumentStore.bm25_retrieval`` is faster when no filters are given. Documents without content are now
+    skipped directly instead of evaluating a filter on every stored document.

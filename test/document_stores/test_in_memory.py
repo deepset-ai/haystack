@@ -1336,6 +1336,26 @@ class TestMemoryDocumentStore(
         assert mixed_scores == pytest.approx(text_scores)
         assert mixed_store._avg_doc_len == pytest.approx(text_store._avg_doc_len)
 
+    @pytest.mark.parametrize("return_embedding", [True, False])
+    def test_bm25_retrieval_never_returns_documents_without_content(self, return_embedding):
+        # BM25Okapi keeps documents that score zero, so every document with content is returned
+        store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", return_embedding=return_embedding, shared=False)
+        store.write_documents(
+            [
+                Document(id="text", content="python tips", embedding=[0.1, 0.2]),
+                Document(id="empty", content="", embedding=[0.3, 0.4]),
+                Document(id="image", embedding=[0.5, 0.6]),
+            ]
+        )
+
+        results = store.bm25_retrieval(query="cooking", top_k=10)
+
+        assert sorted(doc.id for doc in results) == ["empty", "text"]
+        if return_embedding:
+            assert {doc.id: doc.embedding for doc in results} == {"text": [0.1, 0.2], "empty": [0.3, 0.4]}
+        else:
+            assert all(doc.embedding is None for doc in results)
+
     def test_bm25_avg_doc_len_with_documents_without_content(self):
         store = InMemoryDocumentStore(shared=False)
         store.write_documents(
