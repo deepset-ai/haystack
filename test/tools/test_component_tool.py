@@ -7,7 +7,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Annotated, Any
+from typing import Annotated, Any, Union
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -22,6 +22,7 @@ from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGen
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
+from haystack.utils import Secret
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 # Component and Model Definitions
@@ -777,6 +778,33 @@ class TestComponentTool:
         tool = ComponentTool(component=ComponentWithUnionMessages())
         result = tool._convert_param([{"role": "user", "content": "Hello"}], list[ChatMessage] | str)  # type: ignore[arg-type]
         assert result == [ChatMessage.from_user("Hello")]
+
+    def test_convert_param_secret_union_passes_value_through(self):
+        @component
+        class ComponentWithSecretParam:
+            @component.output_types(token=str)
+            def run(self, query: str, access_token: str | Secret) -> dict:
+                if isinstance(access_token, Secret):
+                    return {"token": access_token.resolve_value()}
+                return {"token": access_token}
+
+        tool = ComponentTool(component=ComponentWithSecretParam(), inputs_from_state={"access_token": "access_token"})
+        assert tool.invoke(query="q", access_token="tok") == {"token": "tok"}
+        assert tool.invoke(query="q", access_token=Secret.from_token("tok")) == {"token": "tok"}
+
+    def test_convert_param_secret_typing_union_passes_value_through(self):
+        @component
+        class ComponentWithSecretParam:
+            @component.output_types(token=str)
+            def run(self, query: str, access_token: Union[str, Secret]) -> dict:  # noqa: UP007
+                if isinstance(access_token, Secret):
+                    return {"token": access_token.resolve_value()}
+                return {"token": access_token}
+
+        tool = ComponentTool(component=ComponentWithSecretParam(), inputs_from_state={"access_token": "access_token"})
+        secret = Secret.from_token("tok")
+        assert tool._convert_param("tok", Union[str, Secret]) == "tok"  # noqa: UP007
+        assert tool._convert_param(secret, Union[str, Secret]) is secret  # noqa: UP007
 
 
 def _agent_tool_messages(result: dict[str, Any]) -> list[ChatMessage]:
