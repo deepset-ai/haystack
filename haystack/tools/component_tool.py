@@ -26,10 +26,22 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils import Secret
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
+
+
+def _includes_secret(param_type: Any) -> bool:
+    """
+    Check whether a type is Secret (or a subclass) or a union including one.
+    """
+    if isinstance(param_type, type) and issubclass(param_type, Secret):
+        return True
+    return _is_union_type(param_type) and any(
+        isinstance(arg, type) and issubclass(arg, Secret) for arg in get_args(param_type)
+    )
 
 
 class ComponentTool(Tool):
@@ -450,6 +462,11 @@ class ComponentTool(Tool):
                 return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
             if isinstance(param_value, dict):
                 return target_type.from_dict(param_value)
+            return param_value
+
+        # Pydantic cannot build a schema for Secret, so a value typed as Secret (or a union
+        # including it) is passed through unchanged.
+        if _includes_secret(param_type):
             return param_value
 
         # Use the original type for pydantic validation
