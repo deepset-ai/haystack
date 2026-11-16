@@ -1,12 +1,13 @@
 name: PR flood guard
 
 # Ask community contributors to slow down when review capacity is the
-# bottleneck. On every newly opened PR from outside the org, warn if:
-#  - another open PR already targets the same linked issue (duplicate), or
-#  - the author already has more than two PRs open in this repository.
+# bottleneck. On every newly opened PR from outside the org:
+#  - close it if another open PR already targets the same linked issue
+#    (duplicate), pointing the author to the existing PR, or
+#  - warn if the author already has more than two PRs open in this repository.
 #
-# Uses pull_request_target so it can comment on fork PRs; this is safe because
-# the workflow never checks out or executes PR code.
+# Uses pull_request_target so it can comment on and close fork PRs; this is safe
+# because the workflow never checks out or executes PR code.
 
 on:
   pull_request_target:
@@ -14,9 +15,10 @@ on:
 
 permissions:
   contents: read
-  # The warning is posted on the PR itself, which counts as a pull request (not
-  # an issue) for token scopes, so this needs pull-requests: write. issues: write
-  # alone yields "Resource not accessible by integration" on the comment.
+  # Comments are posted on the PR itself, which counts as a pull request (not an
+  # issue) for token scopes, so this needs pull-requests: write. issues: write
+  # alone yields "Resource not accessible by integration" on the comment. The
+  # same scope covers closing the PR.
   pull-requests: write
 
 jobs:
@@ -49,7 +51,8 @@ jobs:
             if (["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association)) return;
             if (await isTeamMember(pr.user.login)) return;
 
-            const warnings = [];
+            const greeting = `Hi @${pr.user.login}, thanks for your interest in contributing to Haystack! :pray:`;
+            const footer = "_This is an automated message to help us keep the review queue healthy._";
 
             // --- Duplicate check: other open PRs linked to the same issue(s) --
             const result = await github.graphql(
@@ -73,20 +76,43 @@ jobs:
             const linkedIssues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
               (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
             );
+            const duplicates = [];
             for (const issue of linkedIssues) {
               const others = issue.closedByPullRequestsReferences.nodes.filter(
                 (other) => other.number !== pr.number && other.state === "OPEN",
               );
               if (others.length) {
                 const list = others.map((o) => `#${o.number}`).join(", ");
-                warnings.push(
-                  `Issue #${issue.number} is already being addressed by open pull ` +
-                    `request(s) ${list}. Before opening a PR for an issue, please check ` +
-                    "whether a PR is already linked to it, and consider contributing to " +
-                    "the existing PR instead. We may close duplicate PRs to keep the " +
-                    "review queue manageable.",
-                );
+                duplicates.push(`- Issue #${issue.number} is already being addressed by ${list}.`);
               }
+            }
+
+            // A duplicate is closed right away, so the flood check is skipped.
+            if (duplicates.length) {
+              const body = [
+                "<!-- pr-flood-guard -->",
+                greeting,
+                "",
+                "We're closing this pull request because the issue it links already has an open PR:",
+                "",
+                ...duplicates,
+                "",
+                "To keep the review queue manageable, we review one PR per issue. If you think " +
+                  "your approach has something to add, please leave a comment on the existing PR " +
+                  "so we can discuss it there. Before picking up an issue, please check whether a " +
+                  "PR is already linked to it.",
+                "",
+                "Thanks for understanding!",
+                "",
+                footer,
+              ].join("\n");
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number, body,
+              });
+              await github.rest.pulls.update({
+                owner, repo, pull_number: pr.number, state: "closed",
+              });
+              return;
             }
 
             // --- Flood check: author has too many open PRs --------------------
@@ -94,29 +120,23 @@ jobs:
               owner, repo, state: "open", per_page: 100,
             });
             const authored = openPrs.filter((p) => p.user?.login === pr.user.login);
-            if (authored.length > MAX_OPEN_PRS) {
-              const others = authored
-                .filter((p) => p.number !== pr.number)
-                .map((p) => `#${p.number}`)
-                .join(", ");
-              warnings.push(
-                `You currently have ${authored.length} open pull requests in this ` +
-                  `repository (${others} and this one). Our review capacity is limited, ` +
-                  "so please hold off opening more PRs until we've had a chance to " +
-                  `review your first ${MAX_OPEN_PRS} open PRs. This helps us give each ` +
-                  "contribution the attention it deserves. Thank you!",
-              );
-            }
+            if (authored.length <= MAX_OPEN_PRS) return;
 
-            if (!warnings.length) return;
-
+            const others = authored
+              .filter((p) => p.number !== pr.number)
+              .map((p) => `#${p.number}`)
+              .join(", ");
             const body = [
               "<!-- pr-flood-guard -->",
-              `Hi @${pr.user.login}, thanks for your interest in contributing to Haystack! :pray:`,
+              greeting,
               "",
-              warnings.map((w) => `:warning: ${w}`).join("\n\n"),
+              `:warning: You currently have ${authored.length} open pull requests in this ` +
+                `repository (${others} and this one). Our review capacity is limited, ` +
+                "so please hold off opening more PRs until we've had a chance to " +
+                `review your first ${MAX_OPEN_PRS} open PRs. This helps us give each ` +
+                "contribution the attention it deserves. Thank you!",
               "",
-              "_This is an automated message to help us keep the review queue healthy._",
+              footer,
             ].join("\n");
             await github.rest.issues.createComment({
               owner, repo, issue_number: pr.number, body,
