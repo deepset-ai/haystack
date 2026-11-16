@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed BM25 tokenization in ``InMemoryDocumentStore`` for scripts that write vowels and other signs as combining
+    marks, such as Sinhala, Tamil, Hindi and other Devanagari languages, Bengali, and fully vowelled Arabic and
+    Hebrew. Python's ``\w`` does not match combining marks, so the default ``bm25_tokenization_regex`` used to cut
+    these words into fragments (Sinhala "ජනාධිපතිවරයා" became "ජන", "ධ", "පත", "වරය"). Words now stay whole, and a
+    zero-width joiner inside a word, as in Sinhala "ශ්‍රී", no longer splits it.

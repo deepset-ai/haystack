@@ -58,7 +58,40 @@ _CJK_CHAR_CLASS = (
     r"\uff66-\uff9f"  # Halfwidth Katakana
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
-_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
+
+
+def _combining_mark_char_class() -> str:
+    r"""
+    Build a regex character class body that matches every combining mark (Unicode categories Mn, Mc and Me).
+
+    Python's `re` does not count combining marks as word characters, so `\w` alone cuts words apart in every
+    script that writes vowels and other signs as marks. For example, Sinhala "ජනාධිපති" becomes "ජන", "ධ", "පත",
+    and Tamil, Devanagari, Bengali and fully vowelled Arabic or Hebrew break the same way. The marks of all modern
+    scripts are in the Basic Multilingual Plane, so only that plane is scanned. The kana voicing marks
+    (U+3099-U+309A) are left out so kana keeps its one-token-per-character behaviour.
+    """
+    ranges = []
+    start = None
+    for code_point in range(0x10001):
+        is_mark = (
+            code_point < 0x10000
+            and unicodedata.category(chr(code_point)).startswith("M")
+            and not 0x3099 <= code_point <= 0x309A
+        )
+        if is_mark and start is None:
+            start = code_point
+        elif not is_mark and start is not None:
+            end = code_point - 1
+            ranges.append(rf"\u{start:04x}" if start == end else rf"\u{start:04x}-\u{end:04x}")
+            start = None
+    return "".join(ranges)
+
+
+_COMBINING_MARK_CHAR_CLASS = _combining_mark_char_class()
+# A word is a run of word characters and combining marks. Zero-width joiners and non-joiners (U+200C, U+200D) may
+# join two parts of one word, as in Sinhala conjuncts such as "ශ්‍රී". CJK characters are still one token each.
+_WORD_CHAR = rf"[^\W{_CJK_CHAR_CLASS}]|[{_COMBINING_MARK_CHAR_CLASS}]"
+_DEFAULT_BM25_TOKENIZATION_REGEX = rf"(?:{_WORD_CHAR})+(?:[\u200c\u200d](?:{_WORD_CHAR})+)*|[{_CJK_CHAR_CLASS}]"
 
 
 @dataclass
