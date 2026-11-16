@@ -152,7 +152,7 @@
 | haystack/core/pipeline/component\_checks.py                                |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                     |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                             |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                         |      331 |        9 |     97% |174, 181, 427, 570, 605, 968, 973, 1009, 1085 |
+| haystack/core/pipeline/pipeline.py                                         |      331 |       11 |     97% |174, 181, 427, 570, 605, 965-969, 973, 1009, 1085 |
 | haystack/core/pipeline/utils.py                                            |       74 |        1 |     99% |       215 |
 | haystack/core/serialization.py                                             |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                   |      135 |        0 |    100% |           |
@@ -175,7 +175,7 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                 |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                    |      475 |       15 |     97% |480-481, 492, 604, 689, 742, 744, 772-773, 833, 978, 980, 998, 1003-1004 |
+| haystack/document\_stores/in\_memory/document\_store.py                    |      474 |       15 |     97% |480-481, 492, 604, 688, 741, 743, 771-772, 832, 977, 979, 997, 1002-1003 |
 | haystack/document\_stores/types/\_\_init\_\_.py                            |        4 |        0 |    100% |           |
 | haystack/document\_stores/types/filter\_policy.py                          |       70 |       10 |     86% |27, 40-41, 203, 211-217, 263-268, 272-278 |
 | haystack/document\_stores/types/policy.py                                  |        6 |        0 |    100% |           |
@@ -277,7 +277,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18788** |  **660** | **96%** |           |
+| **TOTAL**                                                                  | **18787** |  **662** | **96%** |           |
 
 
 ## Setup coverage badge
