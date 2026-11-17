@@ -6,6 +6,7 @@ import base64
 import colorsys
 import json
 import random
+import re
 import zlib
 from typing import Any
 
@@ -18,6 +19,18 @@ from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipel
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
+
+# Keys of the extra nodes that stand for the pipeline's inputs and outputs. They are not strings, so they can't clash
+# with a component name.
+_INPUT_NODE = object()
+_OUTPUT_NODE = object()
+
+# Characters a Mermaid ID can safely be made of. Others, such as a space or a parenthesis, break the diagram.
+_MERMAID_ID_PATTERN = re.compile(r"[A-Za-z0-9_]+")
+# Words Mermaid reads as keywords rather than as IDs, plus `i` and `o`, the IDs of the input and output nodes.
+_RESERVED_MERMAID_IDS = frozenset(
+    {"end", "graph", "flowchart", "subgraph", "style", "linkStyle", "class", "classDef", "i", "o"}
+)
 
 
 def generate_color_variations(n: int, base_color: str | None = "#3498DB", variation_range: float = 0.4) -> list[str]:
@@ -72,22 +85,43 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
         graph.add_edge(inp, outp, key=key, **data)
 
     # Add inputs fake node
-    graph.add_node("input")
+    graph.add_node(_INPUT_NODE)
     for node, in_sockets in find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
             if not in_socket.senders and in_socket.is_mandatory:
                 # If this socket has no sender it could be a socket that receives input
                 # directly when running the Pipeline. We can't know that for sure, in doubt
                 # we draw it as receiving input directly.
-                graph.add_edge("input", node, label=in_socket.name, conn_type=_type_name(in_socket.type))
+                graph.add_edge(_INPUT_NODE, node, label=in_socket.name, conn_type=_type_name(in_socket.type))
 
     # Add outputs fake node
-    graph.add_node("output")
+    graph.add_node(_OUTPUT_NODE)
     for node, out_sockets in find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
-            graph.add_edge(node, "output", label=out_socket.name, conn_type=_type_name(out_socket.type))
+            graph.add_edge(node, _OUTPUT_NODE, label=out_socket.name, conn_type=_type_name(out_socket.type))
 
     return graph
+
+
+def _to_mermaid_ids(names: list[str]) -> dict[str, str]:
+    """
+    Map each name to a unique ID that Mermaid can parse.
+
+    A name that is already a valid ID is used as is. Any other name, such as one with a space or the keyword `end`,
+    gets an ID with the unsafe characters replaced by `_` and a numeric suffix added.
+    """
+    ids = {name: name for name in names if _MERMAID_ID_PATTERN.fullmatch(name) and name not in _RESERVED_MERMAID_IDS}
+    taken = set(ids.values()) | _RESERVED_MERMAID_IDS
+    for name in names:
+        if name in ids:
+            continue
+        base = re.sub(r"[^A-Za-z0-9_]", "_", name)
+        suffix = 1
+        while f"{base}_{suffix}" in taken:
+            suffix += 1
+        ids[name] = f"{base}_{suffix}"
+        taken.add(ids[name])
+    return ids
 
 
 ARROWTAIL_MANDATORY = "--"
@@ -374,32 +408,37 @@ def _to_mermaid_text(
 
     # color variations for super components
     super_component_colors = {}
+    super_component_classes: dict[str, str] = {}
     if super_component_components:
         unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
         super_component_colors = dict(zip(unique_super_components, color_variations, strict=True))
+        super_component_classes = _to_mermaid_ids(names=list(super_component_colors))
 
     # Generate style definitions for each super component
     style_definitions = []
     for super_comp, color in super_component_colors.items():
-        style_definitions.append(f"classDef {super_comp} fill:{color},color:white;")
+        style_definitions.append(f"classDef {super_component_classes[super_comp]} fill:{color},color:white;")
+
+    # Not every component name is a valid Mermaid ID: a name like "my retriever" would break the diagram
+    node_ids = _to_mermaid_ids(names=[comp for comp in graph.nodes if comp not in (_INPUT_NODE, _OUTPUT_NODE)])
 
     for comp, data in graph.nodes(data=True):
-        if comp in ["input", "output"]:
+        if comp in (_INPUT_NODE, _OUTPUT_NODE):
             continue
 
         # styling based on whether the component is a SuperComponent
         if comp in super_component_components:
             super_component_name = super_component_mapping[comp]  # type:ignore
-            style = super_component_name
+            style = super_component_classes[super_component_name]
         else:
             style = "component"
-        node_def = f'{comp}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
+        node_def = f'{node_ids[comp]}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
         states[comp] = node_def
 
     connections_list = []
     for from_comp, to_comp, conn_data in graph.edges(data=True):
-        if from_comp != "input" and to_comp != "output":
+        if from_comp is not _INPUT_NODE and to_comp is not _OUTPUT_NODE:
             arrowtail = ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
             arrowhead = ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
             label = f'"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"'
@@ -408,11 +447,11 @@ def _to_mermaid_text(
 
     input_connections = [
         f'i{{&ast;}}--"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"--> {states[to_comp]}'
-        for _, to_comp, conn_data in graph.out_edges("input", data=True)
+        for _, to_comp, conn_data in graph.out_edges(_INPUT_NODE, data=True)
     ]
     output_connections = [
         f'{states[from_comp]}--"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"--> o{{&ast;}}'
-        for from_comp, _, conn_data in graph.in_edges("output", data=True)
+        for from_comp, _, conn_data in graph.in_edges(_OUTPUT_NODE, data=True)
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
@@ -421,8 +460,8 @@ def _to_mermaid_text(
     if super_component_colors:
         legend_nodes.append("subgraph Legend")
         for super_comp in super_component_colors:
-            legend_id = f"legend_{super_comp}"
-            legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_comp}')
+            legend_id = f"legend_{super_component_classes[super_comp]}"
+            legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_component_classes[super_comp]}')
         legend_nodes.append("end")
         connections += "\n" + "\n".join(legend_nodes)
 
