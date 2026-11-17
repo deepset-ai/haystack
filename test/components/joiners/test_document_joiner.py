@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 import re
 
 import pytest
@@ -382,6 +383,65 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         assert all(doc.score is not None for doc in output["documents"])
+
+    @pytest.mark.parametrize("non_finite_score", [float("nan"), float("inf"), float("-inf")])
+    def test_distribution_based_rank_fusion_treats_non_finite_score_as_zero(self, non_finite_score):
+        # A non-finite score must not reach the mean/std computation: one NaN or infinity turns the rescaled
+        # score of every Document in the list into NaN.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=0.9),
+            Document(content="b", score=0.5),
+            Document(content="non-finite", score=non_finite_score),
+            Document(content="d", score=0.2),
+        ]
+
+        output = joiner.run([documents])
+
+        assert all(math.isfinite(doc.score) for doc in output["documents"])
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert (
+            scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"] > scores_by_content["non-finite"]
+        )
+
+    def test_distribution_based_rank_fusion_non_finite_score_outranks_negative_scores(self):
+        # A non-finite score is read as 0, exactly like a missing score. In a list of negative
+        # scores that 0 is the highest value, so the Document with the non-finite score ends up
+        # first. This pins the "missing/0" reading so the behavior stays explicit and does not
+        # silently change when every other score is negative.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=-0.1),
+            Document(content="b", score=-0.5),
+            Document(content="non-finite", score=float("nan")),
+            Document(content="d", score=-0.9),
+        ]
+
+        output = joiner.run([documents])
+
+        assert all(math.isfinite(doc.score) for doc in output["documents"])
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert (
+            scores_by_content["non-finite"] > scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"]
+        )
+
+    def test_distribution_based_rank_fusion_handles_a_list_of_non_finite_scores(self):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+
+        output = joiner.run([[Document(content="a", score=float("nan")), Document(content="b", score=float("inf"))]])
+
+        assert [doc.score for doc in output["documents"]] == [0.0, 0.0]
+
+    def test_distribution_based_rank_fusion_warns_about_non_finite_scores(self, caplog):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [Document(content="a", score=0.9), Document(content="b", score=float("nan"))]
+
+        with caplog.at_level(logging.WARNING):
+            joiner.run([documents])
+
+        assert "have a non-finite score" in caplog.text
+        assert documents[1].id in caplog.text
+        assert documents[0].id not in caplog.text
 
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()

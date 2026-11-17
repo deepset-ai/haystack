@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Speed up streaming in ``OpenAIResponsesChatGenerator``. Determining whether a text or refusal delta starts a new
+    content block no longer rescans every previously received chunk, which made processing a stream quadratic when
+    long reasoning summaries precede the answer.

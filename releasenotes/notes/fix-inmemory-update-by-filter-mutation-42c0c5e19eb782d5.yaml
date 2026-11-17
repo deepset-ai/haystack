@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevent ``InMemoryDocumentStore.update_by_filter`` from mutating the
+    original ``Document`` objects or affecting other stores that share them.

@@ -177,6 +177,336 @@ Asynchronously embed a list of Documents.
 - `documents`: The input documents with their `embedding` field populated.
 - `meta`: Information about the usage of the model.
 
+## haystack_integrations.components.embedders.vllm.multivector_document_embedder
+
+### VLLMMultivectorDocumentEmbedder
+
+A component for computing Document multivector embeddings using models served with [vLLM](https://docs.vllm.ai/).
+
+The multivector embedding of each Document is stored in its `multivector_embedding` field.
+It uses the `/pooling` endpoint of a running vLLM server with the `token_embed` task.
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with a model that supports token embeddings:
+
+```bash
+vllm serve answerdotai/answerai-colbert-small-v1 --runner pooling --pooler-config '{"task":"token_embed"}'
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.vllm import VLLMMultivectorDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+document_embedder = VLLMMultivectorDocumentEmbedder(model="answerdotai/answerai-colbert-small-v1")
+
+result = document_embedder.run([doc])
+print(result["documents"][0].multivector_embedding)
+```
+
+### Usage example with vLLM-specific parameters
+
+Pass vLLM-specific parameters via the `extra_parameters` dictionary. They are merged into the
+request body sent to the `/pooling` endpoint.
+
+```python
+document_embedder = VLLMMultivectorDocumentEmbedder(
+    model="answerdotai/answerai-colbert-small-v1",
+    extra_parameters={"truncate_prompt_tokens": 256},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str,
+    api_key: Secret | None = Secret.from_env_var("VLLM_API_KEY", strict=False),
+    api_base_url: str = "http://localhost:8000",
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 32,
+    progress_bar: bool = True,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    timeout: float | None = None,
+    http_client_kwargs: dict[str, Any] | None = None,
+    extra_parameters: dict[str, Any] | None = None,
+    concurrency_limit: int = 4
+) -> None
+```
+
+Creates an instance of VLLMMultivectorDocumentEmbedder.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The name of the token-embedding model served by vLLM. See the
+  [vLLM token embedding docs](https://docs.vllm.ai/en/stable/models/pooling_models/token_embed/)
+  for information on supported models.
+- **api_key** (<code>Secret | None</code>) – The vLLM API key. Defaults to the `VLLM_API_KEY` environment variable.
+  Only required if the server was started with `--api-key`.
+- **api_base_url** (<code>str</code>) – Base URL of the vLLM server. Do not append `/v1`; the native `/pooling` endpoint is used.
+- **prefix** (<code>str</code>) – String added before every Document text.
+- **suffix** (<code>str</code>) – String added after every Document text.
+- **batch_size** (<code>int</code>) – Number of Documents sent in each request. Must be greater than zero.
+- **progress_bar** (<code>bool</code>) – Whether to display embedding progress.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Metadata fields prepended to the Document content.
+- **embedding_separator** (<code>str</code>) – Separator joining metadata values and Document content.
+- **timeout** (<code>float | None</code>) – Timeout in seconds for vLLM client calls. When set, this takes precedence over
+  `http_client_kwargs["timeout"]`. If `None`, the timeout from `http_client_kwargs` is used;
+  if neither is set, the HTTPX default applies.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client` or
+  `httpx.AsyncClient`. For more information, see the
+  [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **extra_parameters** (<code>dict\[str, Any\] | None</code>) – Additional parameters merged into the request body sent to the vLLM
+  `/pooling` endpoint, such as `truncate_prompt_tokens`. `model`, `input`, and `task` cannot be
+  overridden. See the
+  [vLLM Pooling API docs](https://docs.vllm.ai/en/stable/models/pooling_models/#pooling-api).
+- **concurrency_limit** (<code>int</code>) – Maximum number of asynchronous batch requests in flight at once. Values below
+  one use sequential execution. Synchronous embedding is unaffected.
+
+**Raises:**
+
+- <code>ValueError</code> – `batch_size` is not positive.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous HTTP client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous HTTP client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous HTTP client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous HTTP client.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Embed Documents into token-level multivectors.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
+- `documents`: Documents with their `multivector_embedding` field populated.
+
+**Raises:**
+
+- <code>TypeError</code> – `documents` is not a list containing only Documents.
+- <code>httpx.HTTPError</code> – A request fails.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously embed Documents into token-level multivectors.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
+- `documents`: Documents with their `multivector_embedding` field populated.
+
+**Raises:**
+
+- <code>TypeError</code> – `documents` is not a list containing only Documents.
+- <code>httpx.HTTPError</code> – A request fails.
+
+## haystack_integrations.components.embedders.vllm.multivector_text_embedder
+
+### VLLMMultivectorTextEmbedder
+
+A component for computing text multivector embeddings using models served with [vLLM](https://docs.vllm.ai/).
+
+It uses the `/pooling` endpoint of a running vLLM server with the `token_embed` task.
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with a model that supports token embeddings:
+
+```bash
+vllm serve answerdotai/answerai-colbert-small-v1 --runner pooling --pooler-config '{"task":"token_embed"}'
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### Usage example
+
+```python
+from haystack_integrations.components.embedders.vllm import VLLMMultivectorTextEmbedder
+
+text_embedder = VLLMMultivectorTextEmbedder(model="answerdotai/answerai-colbert-small-v1")
+print(text_embedder.run("I love pizza!"))
+```
+
+### Usage example with vLLM-specific parameters
+
+Pass vLLM-specific parameters via the `extra_parameters` dictionary. They are merged into the
+request body sent to the `/pooling` endpoint.
+
+```python
+text_embedder = VLLMMultivectorTextEmbedder(
+    model="answerdotai/answerai-colbert-small-v1",
+    extra_parameters={"truncate_prompt_tokens": 256},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str,
+    api_key: Secret | None = Secret.from_env_var("VLLM_API_KEY", strict=False),
+    api_base_url: str = "http://localhost:8000",
+    prefix: str = "",
+    suffix: str = "",
+    timeout: float | None = None,
+    http_client_kwargs: dict[str, Any] | None = None,
+    extra_parameters: dict[str, Any] | None = None
+) -> None
+```
+
+Creates an instance of VLLMMultivectorTextEmbedder.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The name of the token-embedding model served by vLLM. See the
+  [vLLM token embedding docs](https://docs.vllm.ai/en/stable/models/pooling_models/token_embed/)
+  for information on supported models.
+- **api_key** (<code>Secret | None</code>) – The vLLM API key. Defaults to the `VLLM_API_KEY` environment variable.
+  Only required if the server was started with `--api-key`.
+- **api_base_url** (<code>str</code>) – Base URL of the vLLM server. Do not append `/v1`; the native `/pooling` endpoint is used.
+- **prefix** (<code>str</code>) – String added before the text.
+- **suffix** (<code>str</code>) – String added after the text.
+- **timeout** (<code>float | None</code>) – Timeout in seconds for vLLM client calls. When set, this takes precedence over
+  `http_client_kwargs["timeout"]`. If `None`, the timeout from `http_client_kwargs` is used;
+  if neither is set, the HTTPX default applies.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client` or
+  `httpx.AsyncClient`. For more information, see the
+  [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **extra_parameters** (<code>dict\[str, Any\] | None</code>) – Additional parameters merged into the request body sent to the vLLM
+  `/pooling` endpoint, such as `truncate_prompt_tokens`. `model`, `input`, and `task` cannot be
+  overridden. See the
+  [vLLM Pooling API docs](https://docs.vllm.ai/en/stable/models/pooling_models/#pooling-api).
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the synchronous HTTP client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Create the asynchronous HTTP client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous HTTP client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous HTTP client.
+
+#### run
+
+```python
+run(text: str) -> dict[str, list[list[float]]]
+```
+
+Embed a string into a token-level multivector.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – Text to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[list\[float\]\]\]</code> – A dictionary with:
+- `multivector_embedding`: The token embeddings as a list of lists of floats, with shape
+  `[number_of_tokens, embedding_dimension]`.
+
+**Raises:**
+
+- <code>TypeError</code> – `text` is not a string.
+- <code>httpx.HTTPError</code> – A request fails.
+
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, list[list[float]]]
+```
+
+Asynchronously embed a string into a token-level multivector.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – Text to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[list\[float\]\]\]</code> – A dictionary with:
+- `multivector_embedding`: The token embeddings as a list of lists of floats, with shape
+  `[number_of_tokens, embedding_dimension]`.
+
+**Raises:**
+
+- <code>TypeError</code> – `text` is not a string.
+- <code>httpx.HTTPError</code> – A request fails.
+
 ## haystack_integrations.components.embedders.vllm.text_embedder
 
 ### VLLMTextEmbedder

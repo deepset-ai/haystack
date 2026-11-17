@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``PPTXToDocument`` no longer drops soft line breaks (Shift+Enter) when ``link_format`` is ``"markdown"`` or
+    ``"plain"``. Previously, the text before and after the break was glued together. The break is now kept as a
+    vertical tab (``\v``), matching the default ``link_format="none"``.

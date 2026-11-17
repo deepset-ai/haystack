@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``SASEvaluator`` now raises a ``ValueError`` at init if ``batch_size`` is not a positive integer.

@@ -371,11 +371,14 @@ Creates a DocumentJoiner component.
 - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
 - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
 - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-  distribution in each Retriever.
+  distribution in each Retriever. Documents without a score or with a non-finite score are treated as
+  having a score of 0.
 - **weights** (<code>list\[float\] | None</code>) – Assign importance to each list of documents to influence how they're joined.
   This parameter is ignored for
   `concatenate`, `merge_embeddings`, or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
+  `weights[i]` applies to the documents from the i-th connection made to `documents`
+  with `Pipeline.connect()`.
   Each weight must be a non-negative number.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.

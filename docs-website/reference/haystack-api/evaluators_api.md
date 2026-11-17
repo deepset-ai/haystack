@@ -742,7 +742,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
-  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
+  JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
+  a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -1132,10 +1133,15 @@ Creates a new instance of SASEvaluator.
 
 - **model** (<code>str</code>) – SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
   model.
-- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once.
+  Cross Encoder models must return exactly one score per pair.
+- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once. Must be a positive integer.
 - **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically selected.
 - **token** (<code>Secret</code>) – The Hugging Face token for HTTP bearer authorization.
   You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+
+**Raises:**
+
+- <code>ValueError</code> – If `batch_size` is not a positive integer.
 
 #### to_dict
 
@@ -1173,6 +1179,10 @@ warm_up() -> None
 
 Initializes the component.
 
+**Raises:**
+
+- <code>ValueError</code> – If the Cross Encoder model has more than one output label.
+
 #### run
 
 ```python
@@ -1196,3 +1206,8 @@ and a list of ground truth answers. Both must be list of strings of same length.
 - <code>dict\[str, float | list\[float\]\]</code> – A dictionary with the following outputs:
   - `score`: Mean SAS score over all the predictions/ground-truth pairs.
   - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+
+**Raises:**
+
+- <code>ValueError</code> – If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
+  has more than one output label.
