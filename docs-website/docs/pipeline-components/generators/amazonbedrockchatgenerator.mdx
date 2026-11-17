@@ -170,7 +170,7 @@ generator = AmazonBedrockChatGenerator(
 
 When the guardrail blocks a prompt or a reply, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. With `"trace": "enabled"`, the guardrail trace is in the reply's `meta["trace"]`. When streaming, you can also set `streamProcessingMode` in `guardrail_config`. See the [Guardrails streaming documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-streaming.html).
 
-For other ways to moderate an Agent, see [Guardrails](../../concepts/agents/guardrails.mdx).
+For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
 
 ## Usage
 

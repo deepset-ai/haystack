@@ -280,7 +280,7 @@ print(result.get("report"))
 
 ## Ready-made hooks
 
-Haystack ships several ready-made hooks, each in its own submodule of `haystack.hooks`. For the hooks that act as guardrails, alongside the pipeline components and provider settings that do the same, see [Guardrails](../../concepts/agents/guardrails.mdx).
+Haystack ships several ready-made hooks, each in its own submodule of `haystack.hooks`. For the hooks that act as guardrails, alongside the pipeline components and provider settings that do the same, see [Guardrails](../../concepts/guardrails.mdx).
 
 - `CompactionHook` (from `haystack.hooks.compaction`): A `before_llm` hook that shortens an Agent's conversation when it reaches a configured fraction of the model's context window. A `Compactor` determines how the conversation is shortened. See [Context Compaction](./compaction.mdx).
 - `ConfirmationHook` (from `haystack.hooks.human_in_the_loop`): A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).

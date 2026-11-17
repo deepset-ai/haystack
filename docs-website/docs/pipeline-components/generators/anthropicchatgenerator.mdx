@@ -147,7 +147,7 @@ For more details, refer to Anthropic's [documentation](https://docs.anthropic.co
 
 ### Content moderation
 
-Anthropic has no moderation settings. When a Claude model refuses a request for safety reasons, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. For other ways to moderate an Agent, see [Guardrails](../../concepts/agents/guardrails.mdx).
+Anthropic has no moderation settings. When a Claude model refuses a request for safety reasons, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
 
 ## Usage
 

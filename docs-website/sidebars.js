@@ -77,7 +77,6 @@ export default {
           items: [
             'concepts/agents/choosing-between-pipelines-and-agents',
             'concepts/agents/multi-agent-systems',
-            'concepts/agents/guardrails',
           ],
         },
         {
@@ -85,6 +84,7 @@ export default {
           id: 'tools/tool',
           label: 'Agent Tools',
         },
+        'concepts/guardrails',
         {
           type: 'category',
           label: 'Data Classes',
