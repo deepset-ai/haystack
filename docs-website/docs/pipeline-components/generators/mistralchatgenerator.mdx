@@ -87,11 +87,36 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 
 ### Content moderation
 
-Mistral can add a safety system prompt in front of the conversation that steers the model away from harmful replies. Turn it on with `safe_prompt` in `generation_kwargs`:
+Mistral offers two built-in options.
+
+[Guardrails](https://docs.mistral.ai/capabilities/guardrailing) check the request with Mistral's moderation model and block it when a category score crosses your threshold. `MistralChatGenerator` has no dedicated parameter for them, so pass them in `extra_body` in `generation_kwargs`:
 
 ```python
 from haystack_integrations.components.generators.mistral import MistralChatGenerator
 
+generator = MistralChatGenerator(
+    generation_kwargs={
+        "extra_body": {
+            "guardrails": [
+                {
+                    "block_on_error": True,
+                    "moderation_llm_v2": {
+                        "custom_category_thresholds": {"sexual": 0.1, "selfharm": 0.1},
+                        "ignore_other_categories": False,
+                        "action": "block",
+                    },
+                },
+            ],
+        },
+    },
+)
+```
+
+A blocked request doesn't return a reply with a `"content_filter"` finish reason. Mistral rejects it with an HTTP 403 error, and the generator raises it.
+
+The safety system prompt adds a system prompt in front of the conversation that steers the model away from harmful replies. Turn it on with `safe_prompt` in `generation_kwargs`:
+
+```python
 generator = MistralChatGenerator(generation_kwargs={"safe_prompt": True})
 ```
 

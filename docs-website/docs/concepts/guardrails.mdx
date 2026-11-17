@@ -58,9 +58,10 @@ These examples need the `OPENAI_API_KEY` environment variable.
 | --- | --- | --- |
 | Amazon Bedrock | Guardrails | [`guardrail_config` init parameter](../pipeline-components/generators/amazonbedrockchatgenerator.mdx#content-moderation) |
 | Google Gemini | Safety settings | [`safety_settings` init parameter](../pipeline-components/generators/googlegenaichatgenerator.mdx#content-moderation) |
-| Mistral | Safety system prompt | [`safe_prompt` in `generation_kwargs`](../pipeline-components/generators/mistralchatgenerator.mdx#content-moderation) |
+| Mistral | Guardrails, safety system prompt | [`guardrails` in `extra_body`, `safe_prompt` in `generation_kwargs`](../pipeline-components/generators/mistralchatgenerator.mdx#content-moderation) |
 | Azure OpenAI | Content filters | Configured on the Azure deployment, see [AzureOpenAIChatGenerator](../pipeline-components/generators/azureopenaichatgenerator.mdx#content-moderation) and [AzureOpenAIResponsesChatGenerator](../pipeline-components/generators/azureopenairesponseschatgenerator.mdx#content-moderation) |
 | Anthropic | The model refuses on its own | Nothing to set, see [AnthropicChatGenerator](../pipeline-components/generators/anthropicchatgenerator.mdx#content-moderation) |
+| Cohere | Safety modes | [`safety_mode` in `generation_kwargs`](../pipeline-components/generators/coherechatgenerator.mdx#content-moderation) |
 
 ### Content moderation with a guard model
 
@@ -88,16 +89,15 @@ These guardrails are specific to the Agent.
 | `StepBudgetReminderHook` | The Agent hitting `max_agent_steps` before it answers | Agent hook (`before_llm`) | [Step Budget Reminder](../pipeline-components/agents-1/step-budget-reminder.mdx) |
 | `ConfirmationHook` | Tools running without a human's approval | Agent hook (`before_tool`) | [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) |
 | `StructuredOutputHook` | A final reply that doesn't match a Pydantic model or JSON schema | Agent hook (`on_exit`) | [Structured Output](../pipeline-components/agents-1/structured-output.mdx) |
-| `BackupAnswerHook` | A run that ends at `max_agent_steps` without an answer | Agent hook (`after_run`) | [Backup Answer](../pipeline-components/agents-1/backup-answer.mdx) |
 
 ### Budgets and step limits
 
-`TokenBudgetHook` stops the run before the next LLM call once the run has used `max_total_tokens`. The run ends with `exit_reason="token_budget_exceeded"`.
+[`TokenBudgetHook`](../pipeline-components/agents-1/token-budget.mdx) stops the run before the next LLM call once the run has used `max_total_tokens`. The run ends with `exit_reason="token_budget_exceeded"`.
 
-`max_agent_steps` caps the number of LLM and tool call iterations. It defaults to `100`. When the Agent reaches it, the run ends with `exit_reason="max_agent_steps"`. Two hooks help the Agent still return an answer:
+[`max_agent_steps`](../pipeline-components/agents-1/agent.mdx#parameters) caps the number of LLM and tool call iterations. It defaults to `100`. When the Agent reaches it, the run ends with `exit_reason="max_agent_steps"`. Two hooks help the Agent still return an answer:
 
-- `StepBudgetReminderHook` tells the model how many steps it has left, so it can wrap up in time.
-- `BackupAnswerHook` writes a final answer with its own chat generator when the run stops at the limit.
+- [`StepBudgetReminderHook`](../pipeline-components/agents-1/step-budget-reminder.mdx) tells the model how many steps it has left, so it can wrap up in time.
+- [`BackupAnswerHook`](../pipeline-components/agents-1/backup-answer.mdx) writes a final answer with its own chat generator when the run stops at the limit.
 
 ### Stopping a run from a hook
 
@@ -118,17 +118,8 @@ Register it with `hooks={"before_llm": [limit_searches]}`. See [State keys for h
 
 ### Tool approval
 
-`ConfirmationHook` lets a human confirm, modify, or reject a tool call before it runs. A policy decides when to ask: `AlwaysAskPolicy` asks on every call, `AskOncePolicy` asks once per tool and set of arguments, and `NeverAskPolicy` never asks. You set a strategy per tool, so you can require approval only for risky tools such as `send_email`. See [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx).
+[`ConfirmationHook`](../pipeline-components/agents-1/human-in-the-loop.mdx) lets a human confirm, modify, or reject a tool call before it runs. A policy decides when to ask: `AlwaysAskPolicy` asks on every call, `AskOncePolicy` asks once per tool and set of arguments, and `NeverAskPolicy` never asks. You set a strategy per tool, so you can require approval only for risky tools such as `send_email`.
 
 ### Output validation
 
-`StructuredOutputHook` parses the Agent's final reply as JSON and validates it against a Pydantic model or a JSON schema. When the reply is invalid, the hook sends the error back to the model and asks it to fix the reply, up to `max_retries` times. See [Structured Output](../pipeline-components/agents-1/structured-output.mdx).
-
-## Not supported yet
-
-- **OpenAI moderation**: Haystack doesn't ship a component or hook that calls the OpenAI Moderation API. `OpenAIChatGenerator` and `OpenAIResponsesChatGenerator` return `"content_filter"` only when OpenAI blocks a reply itself.
-- **Prompt injection**: Haystack has no prompt injection classifier yet.
-- **PII and moderation checks as hooks**: Haystack doesn't ship ready-made hooks that check, redact, or block messages inside the Agent's run loop. Put the Presidio components or `LLMMessagesRouter` before or after the Agent in a pipeline.
-- **PII in chat messages**: The Presidio components work on strings and documents, not on a `list[ChatMessage]`.
-- **Tool call budget**: There is no ready-made hook that limits tool calls per tool or per run. Write your own with the `tool_call_counts` state key, as in [Stopping a run from a hook](#stopping-a-run-from-a-hook).
-- **Streamed output**: The output checks on this page run after the reply is complete, so text streamed with `streaming_callback` has already been shown when a check fails.
+[`StructuredOutputHook`](../pipeline-components/agents-1/structured-output.mdx) parses the Agent's final reply as JSON and validates it against a Pydantic model or a JSON schema. When the reply is invalid, the hook sends the error back to the model and asks it to fix the reply, up to `max_retries` times.
