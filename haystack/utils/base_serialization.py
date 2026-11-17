@@ -175,20 +175,16 @@ def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[st
             e=error,
         )
 
-    serialized_fields: list[tuple[Any, dict[str, Any], dict[str, Any] | None]] = []
-
+    kept: dict[Any, Any] = {}
     if isinstance(payload, dict):
         for field_name, value in payload.items():
             try:
-                serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
-                # Non-string keys need their own schema to survive a JSON round-trip: serialize
-                # them here so that a key which cannot be serialized degrades like a failing
-                # value, instead of breaking the whole snapshot when it is written as JSON.
-                serialized_key = (
-                    _serialize_value_with_schema(_deepcopy_with_exceptions(field_name))
-                    if not isinstance(field_name, str)
-                    else None
-                )
+                # Keys are checked too: a non-string key is serialized with its own schema, so a
+                # key that cannot be serialized drops its field like a failing value does.
+                key = _deepcopy_with_exceptions(field_name)
+                val = _deepcopy_with_exceptions(value)
+                _serialize_value_with_schema(key)
+                _serialize_value_with_schema(val)
             except Exception as field_error:
                 logger.warning(
                     "Failed to serialize the '{field_name}' field of {description}. "
@@ -198,33 +194,9 @@ def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[st
                     e=field_error,
                 )
                 continue
+            kept[key] = val
 
-            serialized_fields.append((field_name, serialized_value, serialized_key))
-
-    if any(not isinstance(field_name, str) for field_name, _, _ in serialized_fields):
-        # The dict holds non-string keys: emit the same `entries` encoding as
-        # `_serialize_value_with_schema`, so each key round-trips with its own schema instead of
-        # being stringified (and colliding) when the snapshot is written as JSON.
-        entries_schema: list[dict[str, Any]] = []
-        entries_data: list[dict[str, Any]] = []
-        for field_name, serialized_value, serialized_key in serialized_fields:
-            wrapped_key = serialized_key if serialized_key is not None else _serialize_value_with_schema(field_name)
-            entries_schema.append(
-                {"key": wrapped_key["serialization_schema"], "value": serialized_value["serialization_schema"]}
-            )
-            entries_data.append({"key": wrapped_key["serialized_data"], "value": serialized_value["serialized_data"]})
-        return {"serialization_schema": {"type": "object", "entries": entries_schema}, "serialized_data": entries_data}
-
-    serialized_properties: dict[str, Any] = {}
-    serialized_data: dict[str, Any] = {}
-    for field_name, serialized_value, _ in serialized_fields:
-        serialized_properties[field_name] = serialized_value["serialization_schema"]
-        serialized_data[field_name] = serialized_value["serialized_data"]
-
-    return {
-        "serialization_schema": {"type": "object", "properties": serialized_properties},
-        "serialized_data": serialized_data,
-    }
+    return _serialize_value_with_schema(kept)
 
 
 def _primitive_schema_type(value: Any) -> str:

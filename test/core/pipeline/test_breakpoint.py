@@ -158,13 +158,13 @@ def test_resume_from_snapshot_file_preserves_non_string_dict_keys(tmp_path, monk
     @component
     class Src:
         @component.output_types(v=dict[int, str])
-        def run(self):
+        def run(self) -> dict[str, dict[int, str]]:
             return {"v": {1: "a", 2: "b"}}
 
     @component
     class Sink:
         @component.output_types(v=dict[int, str])
-        def run(self, v: dict[int, str]):
+        def run(self, v: dict[int, str]) -> dict[str, dict[int, str]]:
             return {"v": v}
 
     pipeline = Pipeline()

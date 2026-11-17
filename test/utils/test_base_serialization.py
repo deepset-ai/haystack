@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 from datetime import datetime
 from enum import Enum
 
@@ -527,6 +528,17 @@ class TestNonStringKeys:
 
         assert deserialized == {1: "a", "keep": "me"}
         assert [type(k) for k in deserialized] == [int, str]
+
+    def test_field_fallback_omits_field_with_unserializable_key(self, caplog):
+        payload = {PlainObject("bad-key"): "dropped", 1: "a", "keep": "me"}
+
+        with caplog.at_level(logging.WARNING):
+            serialized = _serialize_with_field_fallback(payload, description="the test payload")
+        deserialized = _deserialize_value_with_schema(json.loads(json.dumps(serialized)))
+
+        assert deserialized == {1: "a", "keep": "me"}
+        assert [type(k) for k in deserialized] == [int, str]
+        assert any("field of the test payload. The field will be omitted" in msg for msg in caplog.messages)
 
     def test_field_fallback_string_keyed_output_is_unchanged(self):
         # Backward compatibility: the fallback path for dicts with only string keys (and a
