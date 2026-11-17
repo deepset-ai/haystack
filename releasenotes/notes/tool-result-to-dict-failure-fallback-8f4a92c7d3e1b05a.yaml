@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``Agent`` tool results whose objects have a failing ``to_dict`` (raising, non-callable, or requiring
+    arguments) now fall back to ``str()`` conversion, as already documented. Previously the exception escaped
+    ``_result_to_string`` and aborted the whole run, even with ``raise_on_failure=False``.

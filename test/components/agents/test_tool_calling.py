@@ -863,6 +863,34 @@ class TestUtilities:
 
         assert _result_to_string(Unsupported()) == "unsupported"
 
+    def test_result_to_string_falls_back_to_str_when_to_dict_fails(self):
+        # Objects with a `to_dict` attribute go through it during serialization; when calling it fails,
+        # the documented str() fallback must still apply instead of the exception escaping.
+        class RaisingToDict:
+            def to_dict(self):
+                msg = "object not fully initialized"
+                raise ValueError(msg)
+
+            def __str__(self):
+                return "<raising>"
+
+        class NonCallableToDict:
+            to_dict = {"not": "callable"}
+
+            def __str__(self):
+                return "<non-callable>"
+
+        class ToDictRequiringArgument:
+            def to_dict(self, required_arg):
+                return {}
+
+            def __str__(self):
+                return "<requires-argument>"
+
+        assert _result_to_string(RaisingToDict()) == "<raising>"
+        assert _result_to_string(NonCallableToDict()) == "<non-callable>"
+        assert _result_to_string(ToDictRequiringArgument()) == "<requires-argument>"
+
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
         _merge_tool_outputs_into_state(tool=weather_tool, result="test", state=state)
