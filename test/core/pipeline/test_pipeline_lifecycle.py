@@ -207,3 +207,70 @@ async def test_async_client_bound_to_run_loop():
     await pipe.warm_up_async()
     # Would raise if warm_up_async had bound the client to a different loop than run_async
     await pipe.run_async({"client_component": {}})
+
+
+@component
+class _ClosingFails:
+    @component.output_types(v=str)
+    def run(self):
+        return {"v": "bad"}
+
+    def close(self):
+        raise RuntimeError("close failed")
+
+    async def close_async(self):
+        raise RuntimeError("close failed")
+
+
+@component
+class _ClosingSucceeds:
+    def __init__(self):
+        self.closed = False
+
+    @component.output_types(v=str)
+    def run(self):
+        return {"v": "good"}
+
+    def close(self):
+        self.closed = True
+
+    async def close_async(self):
+        self.closed = True
+
+
+def test_close_continues_after_a_component_error():
+    pipeline = Pipeline()
+    good = _ClosingSucceeds()
+    pipeline.add_component("bad", _ClosingFails())
+    pipeline.add_component("good", good)
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        pipeline.close()
+
+    assert good.closed
+
+
+async def test_close_async_continues_after_a_component_error():
+    pipeline = Pipeline()
+    good = _ClosingSucceeds()
+    pipeline.add_component("bad", _ClosingFails())
+    pipeline.add_component("good", good)
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        await pipeline.close_async()
+
+    assert good.closed
+
+
+def test_close_raises_an_exception_group_when_several_components_fail():
+    pipeline = Pipeline()
+    good = _ClosingSucceeds()
+    pipeline.add_component("bad1", _ClosingFails())
+    pipeline.add_component("good", good)
+    pipeline.add_component("bad2", _ClosingFails())
+
+    with pytest.raises(ExceptionGroup) as exc_info:
+        pipeline.close()
+
+    assert len(exc_info.value.exceptions) == 2
+    assert good.closed

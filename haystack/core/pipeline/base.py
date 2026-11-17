@@ -1086,27 +1086,66 @@ class PipelineBase:  # noqa: PLW1641
         Release resources held by the pipeline's components by calling each component's `close` method.
 
         Only the synchronous side of each component is released here; use `close_async` to release async clients.
+        If one component's `close` raises, the remaining components are still closed before the error is re-raised.
+
+        :raises Exception: The component's own exception when exactly one component fails to close.
+        :raises ExceptionGroup: When more than one component fails to close; it holds every error.
         """
+        errors: list[Exception] = []
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
             if hasattr(instance, "close"):
                 logger.info("Closing component {component_name}...", component_name=component_name)
-                instance.close()
+                try:
+                    instance.close()
+                except Exception as e:
+                    self._record_close_error(component_name, e, errors)
+        self._raise_close_errors(errors)
 
     async def close_async(self) -> None:
         """
         Release resources held by the pipeline's components, using the async close path where available.
 
         Each component is closed with `close_async` if it has one, otherwise with its sync `close`.
+        If one component's close raises, the remaining components are still closed before the error is re-raised.
+
+        :raises Exception: The component's own exception when exactly one component fails to close.
+        :raises ExceptionGroup: When more than one component fails to close; it holds every error.
         """
+        errors: list[Exception] = []
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
-            if hasattr(instance, "close_async"):
-                logger.info("Closing component {component_name}...", component_name=component_name)
-                await instance.close_async()
-            elif hasattr(instance, "close"):
-                logger.info("Closing component {component_name}...", component_name=component_name)
-                instance.close()
+            try:
+                if hasattr(instance, "close_async"):
+                    logger.info("Closing component {component_name}...", component_name=component_name)
+                    await instance.close_async()
+                elif hasattr(instance, "close"):
+                    logger.info("Closing component {component_name}...", component_name=component_name)
+                    instance.close()
+            except Exception as e:
+                self._record_close_error(component_name, e, errors)
+        self._raise_close_errors(errors)
+
+    @staticmethod
+    def _record_close_error(component_name: str, error: Exception, errors: list[Exception]) -> None:
+        """
+        Log a failed component close with its traceback and keep the error to re-raise once every component is closed.
+        """
+        logger.exception("Failed to close component {component_name}", component_name=component_name)
+        errors.append(error)
+
+    @staticmethod
+    def _raise_close_errors(errors: list[Exception]) -> None:
+        """
+        Re-raise the errors collected while closing components, if any.
+
+        :raises Exception: The single error when only one component failed to close.
+        :raises ExceptionGroup: Every error when more than one component failed to close.
+        """
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise ExceptionGroup("Failed to close one or more pipeline components", errors)
 
     @staticmethod
     def _create_component_span(
