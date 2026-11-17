@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix pipeline breakpoints raising ``TypeError`` instead of ``BreakpointException`` when a pipeline input or
+    output is a pydantic model with a ``datetime``, ``date``, ``UUID`` or ``Decimal`` field and snapshot saving is
+    enabled. Pydantic models are now serialized in JSON mode, so the snapshot file is written correctly and can be
+    loaded to resume the pipeline. The same serialization is used for the ``Agent`` ``State``.

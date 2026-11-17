@@ -4,8 +4,10 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
+from uuid import UUID
 
 import pydantic
 import pytest
@@ -29,6 +31,13 @@ class PlainObject:
 class CustomModel(pydantic.BaseModel):
     id: int
     name: str
+
+
+class ModelWithNonJsonFields(pydantic.BaseModel):
+    created_at: datetime
+    day: date
+    ident: UUID
+    amount: Decimal
 
 
 class CustomEnum(Enum):
@@ -294,6 +303,21 @@ def test_serialize_and_deserialize_sequence_types(value, result):
 def test_serialize_and_deserialize_complex_types(value, result):
     assert _serialize_value_with_schema(value) == result
     assert _deserialize_value_with_schema(result) == value
+
+
+def test_serialize_pydantic_model_with_non_json_fields_is_json_safe():
+    model = ModelWithNonJsonFields(
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
+        day=date(2024, 1, 2),
+        ident=UUID("12345678-1234-5678-1234-567812345678"),
+        amount=Decimal("1.50"),
+    )
+
+    serialized = _serialize_value_with_schema(model)
+
+    # `json.dumps` raises TypeError if a datetime, date, UUID or Decimal is left in the payload
+    restored = _deserialize_value_with_schema(json.loads(json.dumps(serialized)))
+    assert restored == model
 
 
 def test_serialize_and_deserialize_value_with_schema_with_various_types():
