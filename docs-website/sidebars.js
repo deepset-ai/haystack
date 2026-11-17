@@ -77,6 +77,7 @@ export default {
           items: [
             'concepts/agents/choosing-between-pipelines-and-agents',
             'concepts/agents/multi-agent-systems',
+            'concepts/agents/guardrails',
           ],
         },
         {

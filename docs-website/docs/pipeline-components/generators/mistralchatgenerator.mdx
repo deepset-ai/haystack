@@ -85,6 +85,18 @@ For more details on working with tools, see the [Tool](../../tools/tool.mdx) and
 
 This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
+### Content moderation
+
+Mistral can add a safety system prompt in front of the conversation that steers the model away from harmful replies. Turn it on with `safe_prompt` in `generation_kwargs`:
+
+```python
+from haystack_integrations.components.generators.mistral import MistralChatGenerator
+
+generator = MistralChatGenerator(generation_kwargs={"safe_prompt": True})
+```
+
+`safe_prompt` guides the model but doesn't block content. For other ways to moderate an Agent, see [Guardrails](../../concepts/agents/guardrails.mdx).
+
 ## Usage
 
 Install the `mistral-haystack` package to use the  `MistralChatGenerator`:

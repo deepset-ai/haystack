@@ -145,6 +145,10 @@ result = claude_llm.run(messages)
 
 For more details, refer to Anthropic's [documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) and integration [examples](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic/example).
 
+### Content moderation
+
+Anthropic has no moderation settings. When a Claude model refuses a request for safety reasons, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. For other ways to moderate an Agent, see [Guardrails](../../concepts/agents/guardrails.mdx).
+
 ## Usage
 
 Install the`anthropic-haystack` package to use the `AnthropicChatGenerator`:
