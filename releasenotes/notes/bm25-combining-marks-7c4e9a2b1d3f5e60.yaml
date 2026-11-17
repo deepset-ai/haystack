@@ -6,3 +6,7 @@ fixes:
     Hebrew. Python's ``\w`` does not match combining marks, so the default ``bm25_tokenization_regex`` used to cut
     these words into fragments (Sinhala "ජනාධිපතිවරයා" became "ජන", "ධ", "පත", "වරය"). Words now stay whole, and a
     zero-width joiner inside a word, as in Sinhala "ශ්‍රී", no longer splits it.
+    The default ``bm25_tokenization_regex`` is now serialized as ``None`` and rebuilt when the store is loaded,
+    because it is several kilobytes long and built from the running Python's Unicode data. Passing ``None`` to
+    ``InMemoryDocumentStore`` also selects the default. Pipelines saved with an older default regex keep using
+    that saved regex until it is removed or set to ``None``.
