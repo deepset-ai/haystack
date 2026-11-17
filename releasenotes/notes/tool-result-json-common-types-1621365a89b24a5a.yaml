@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Tool results that are Pydantic models, dataclasses, enums, sets, ``datetime``/``date``/``time``, ``UUID``,
+    ``Decimal`` or paths (directly or nested inside lists and dicts) are now converted to JSON before they are
+    sent back to the LLM in ``Agent``. Previously the whole result fell back to ``str()``, so the model received
+    Python reprs such as ``{'when': datetime.datetime(2026, 1, 2, 0, 0)}`` and a warning was logged for every call.
