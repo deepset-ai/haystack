@@ -104,3 +104,31 @@ class TestCacheCheckerAsync:
         checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
         results = await checker.run_async(items=["https://example.com/1"])
         assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_missing_time_field_is_miss(self, in_memory_doc_store):
+        undated_doc = Document(content="doc1", meta={"url": "https://example.com/1"})
+        in_memory_doc_store.write_documents([undated_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_future_timestamp_is_miss(self, in_memory_doc_store):
+        future_doc = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) + timedelta(hours=1)}
+        )
+        in_memory_doc_store.write_documents([future_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_filters_syntax_with_ttl(self):
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=[])
+        checker = CacheChecker(document_store=mock_store, cache_field="url", ttl=timedelta(hours=1))
+        await checker.run_async(items=["https://example.com/1"])
+        filters = mock_store.filter_documents_async.await_args.kwargs["filters"]
+        assert filters["operator"] == "AND"
+        assert len(filters["conditions"]) == 3
