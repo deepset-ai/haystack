@@ -1,0 +1,139 @@
+---
+title: "VLLMMultivectorTextEmbedder"
+id: vllmmultivectortextembedder
+slug: "/vllmmultivectortextembedder"
+description: "Use this component to embed a string (such as a query) into token-level multivector embeddings using models served with vLLM."
+hep_available: false
+---
+
+# VLLMMultivectorTextEmbedder
+
+Use this component to embed a string (such as a query) into token-level multivector embeddings using models served with vLLM.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a multivector [Retriever](../retrievers.mdx) or [`MaxSimRanker`](../rankers/maxsimranker.mdx) in a query pipeline |
+| **Mandatory init variables** | `model`: The name of the token-embedding model served by vLLM |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `multivector_embedding`: Token vectors as a `list[list[float]]` |
+| **API reference** | [vLLM](/reference/integrations-vllm) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+`VLLMMultivectorTextEmbedder` computes token-level multivector embeddings for a string (such as a query) using models served with [vLLM](https://docs.vllm.ai/). It returns the embedding under `multivector_embedding` as a list of token vectors.
+
+Unlike dense embedders, which represent the entire query with a single vector, this component produces multiple token-level vectors. Comparing individual query and document tokens with MaxSim scoring can capture more detailed matches and improve retrieval quality. However, these representations require more storage and memory, and scoring them is more computationally expensive than comparing single-vector embeddings.
+
+Use this component at query time before a multivector Retriever, such as [`QdrantMultivectorEmbeddingRetriever`](../retrievers/qdrantmultivectorembeddingretriever.mdx). During indexing, use [`VLLMMultivectorDocumentEmbedder`](vllmmultivectordocumentembedder.mdx) with the same model to prepare the document embeddings. You can also use the query embedding with [`MaxSimRanker`](../rankers/maxsimranker.mdx) to rerank a smaller set of candidates returned by another Retriever, limiting the scoring cost.
+
+### Compatible models
+
+Use a model that supports vLLM's `token_embed` task. See the [vLLM token embedding documentation](https://docs.vllm.ai/en/stable/models/pooling_models/token_embed/) for supported models.
+
+### vLLM-specific parameters
+
+Pass additional request options, such as `truncate_prompt_tokens`, through `extra_parameters`. These are merged into the `/pooling` request body; `model`, `input`, and `task` cannot be overridden. See the [vLLM Pooling API documentation](https://docs.vllm.ai/en/stable/models/pooling_models/#pooling-api) for available options.
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMMultivectorTextEmbedder`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+[Install vLLM](https://docs.vllm.ai/en/stable/getting_started/installation/), then start a server with a model that supports token embeddings:
+
+```bash
+vllm serve answerdotai/answerai-colbert-small-v1 \
+    --runner pooling --pooler-config '{"task":"token_embed"}'
+```
+
+For details on server options, see the [vLLM CLI documentation](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.vllm import (
+    VLLMMultivectorTextEmbedder,
+)
+
+model = "answerdotai/answerai-colbert-small-v1"
+embedder = VLLMMultivectorTextEmbedder(model=model)
+result = embedder.run(text="How do solar panels generate electricity?")
+print(result["multivector_embedding"])
+# >> [[-0.073830, 0.045672, -0.038848, ...], [-0.079294, -0.015159, -0.080046, ...], ...]
+
+print(len(result["multivector_embedding"][0]))
+# >> 96
+```
+
+### In a pipeline
+
+This example uses [`QdrantMultivectorEmbeddingRetriever`](../retrievers/qdrantmultivectorembeddingretriever.mdx) with an in-memory [Qdrant Document Store](../../document-stores/qdrant-document-store.mdx) to retrieve documents by their multivector embeddings.
+
+For two-stage retrieval with dense embeddings followed by multivector reranking, see the [`MaxSimRanker` pipeline example](../rankers/maxsimranker.mdx#in-a-pipeline).
+
+Install the additional integration:
+
+```shell
+pip install qdrant-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack_integrations.components.embedders.vllm import (
+    VLLMMultivectorDocumentEmbedder,
+    VLLMMultivectorTextEmbedder,
+)
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+documents = [
+    Document(content="Solar panels convert sunlight into electricity."),
+    Document(content="Wind turbines generate electricity from wind."),
+    Document(content="Batteries store energy for later use."),
+    Document(content="Solar thermal collectors use sunlight to heat water."),
+    Document(content="Trees absorb carbon dioxide from the atmosphere."),
+]
+
+model = "answerdotai/answerai-colbert-small-v1"
+document_embedder = VLLMMultivectorDocumentEmbedder(model=model)
+documents = document_embedder.run(documents=documents)["documents"]
+
+# This model produces 96-dimensional token vectors.
+document_store = QdrantDocumentStore(location=":memory:", multivector_embedding_dim=96)
+document_store.write_documents(documents=documents)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="embedder", instance=VLLMMultivectorTextEmbedder(model=model)
+)
+query_pipeline.add_component(
+    name="retriever",
+    instance=QdrantMultivectorEmbeddingRetriever(
+        document_store=document_store, top_k=2
+    ),
+)
+query_pipeline.connect(
+    "embedder.multivector_embedding", "retriever.query_multivector_embedding"
+)
+
+result = query_pipeline.run(
+    data={"embedder": {"text": "How do solar panels generate electricity?"}}
+)
+for document in result["retriever"]["documents"]:
+    print(document.content)
+# >> Solar panels convert sunlight into electricity.
+# >> Wind turbines generate electricity from wind.
+```
