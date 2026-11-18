@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix source offsets for repeated overlapping chunks returned by a custom
+    ``DocumentSplitter`` splitting function when ``split_overlap`` is enabled.
+    This also prevents duplicated text in ``SentenceWindowRetriever`` windows.
