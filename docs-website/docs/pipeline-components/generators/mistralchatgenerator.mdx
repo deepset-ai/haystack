@@ -89,7 +89,7 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 
 Mistral offers two built-in options.
 
-[Guardrails](https://docs.mistral.ai/capabilities/guardrailing) check the request with Mistral's moderation model and block it when a category score crosses your threshold. `MistralChatGenerator` has no dedicated parameter for them, so pass them in `extra_body` in `generation_kwargs`:
+[Guardrails](https://docs.mistral.ai/capabilities/guardrailing) check the request with Mistral's moderation model and block it when a category score crosses your threshold. Pass them in `extra_body` in `generation_kwargs`:
 
 ```python
 from haystack_integrations.components.generators.mistral import MistralChatGenerator
