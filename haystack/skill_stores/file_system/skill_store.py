@@ -21,6 +21,10 @@ SKILL_FILE_NAME = "SKILL.md"
 # Scoped to PDF, which is what the major providers accept as a file input; everything else falls back to text.
 _SUPPORTED_FILE_MIME_TYPES = {"application/pdf"}
 
+# Reads UTF-8 without a byte order mark (BOM) unchanged and drops a leading BOM, which some editors, notably on
+# Windows, add. A BOM before the opening `---` would otherwise hide the frontmatter of a `SKILL.md`.
+_TEXT_ENCODING = "utf-8-sig"
+
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """
@@ -70,6 +74,8 @@ class FileSystemSkillStore:
 
     The skill catalog is built by reading the frontmatter of each `SKILL.md` on `warm_up`; bodies and bundled files
     are read lazily when the agent calls the corresponding tool.
+
+    `SKILL.md` and bundled text files are read as UTF-8. A leading byte order mark (BOM) is ignored.
     """
 
     def __init__(self, skills_dir: str | Path | Secret) -> None:
@@ -126,7 +132,7 @@ class FileSystemSkillStore:
         skill_dirs: dict[str, Path] = {}
         for skill_file in sorted(skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
-            frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
+            frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding=_TEXT_ENCODING))
 
             name = frontmatter.get("name", skill_dir.name)
             description = frontmatter.get("description")
@@ -190,7 +196,7 @@ class FileSystemSkillStore:
             the skill bundles no extras.
         :raises KeyError: If no skill with `name` exists.
         """
-        _, body = _parse_frontmatter((self._skill_dir(name) / SKILL_FILE_NAME).read_text(encoding="utf-8"))
+        _, body = _parse_frontmatter((self._skill_dir(name) / SKILL_FILE_NAME).read_text(encoding=_TEXT_ENCODING))
         return body, self._list_skill_files(name)
 
     def _list_skill_files(self, name: str) -> list[str]:
@@ -247,7 +253,7 @@ class FileSystemSkillStore:
             encoded = base64.b64encode(target.read_bytes()).decode("utf-8")
             return ImageContent(base64_image=encoded, mime_type=mime_type, validation=False)
         try:
-            return target.read_text(encoding="utf-8")
+            return target.read_text(encoding=_TEXT_ENCODING)
         except UnicodeDecodeError as e:
             raise ValueError(
                 f"File '{path}' in skill '{name}' is not a readable asset. Only UTF-8 text, images, and PDFs "

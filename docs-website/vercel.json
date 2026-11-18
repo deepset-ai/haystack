@@ -345,6 +345,16 @@
       "source": "/reference/3.0/:slug*",
       "destination": "/reference/:slug*",
       "permanent": true
+    },
+    {
+      "source": "/docs/3.1/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/3.1/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
     }
   ]
 }
