@@ -18,7 +18,7 @@ def _required_tool_parameters(agent: Agent, inputs_from_state: dict[str, Any] | 
     Return the additional required Tool parameters for the wrapped Agent.
 
     These are mandatory Agent inputs that are not supplied through `inputs_from_state`.
-    `messages` is excluded because AgentTool always adds it to the generated schema.
+    `messages` is excluded because the generated schema handles it separately.
 
     :param agent: The wrapped Agent.
     :param inputs_from_state: Maps the calling Agent's state keys to Agent inputs.
@@ -122,7 +122,8 @@ class AgentTool(ComponentTool):
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to a schema with the task to delegate as a single user message, plus one string parameter
-            for every other mandatory input of the Agent, if not provided.
+            for every other mandatory input of the Agent, if not provided. Inputs mapped through `inputs_from_state`,
+            including `messages`, are left out of this schema.
         :param outputs_to_string:
             Optional dictionary defining how tool outputs should be converted into string(s) or results.
             If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
@@ -209,15 +210,17 @@ class AgentTool(ComponentTool):
         """
         Override ComponentTool schema generation for AgentTool defaults.
 
-        ComponentTool calls this when users do not provide an explicit `parameters` schema. The generated schema always
-        includes `messages` for the delegated task, plus one string parameter for each mandatory Agent input not
-        supplied through `inputs_from_state`.
+        ComponentTool calls this when users do not provide an explicit `parameters` schema. The generated schema
+        includes `messages` for the delegated task unless `inputs_from_state` supplies it, plus one string parameter
+        for each mandatory Agent input not supplied through `inputs_from_state`.
         """
         additional_required_parameters = _required_tool_parameters(agent=component, inputs_from_state=inputs_from_state)
-        additional_properties = {name: {"type": "string"} for name in additional_required_parameters}
-        return {
-            "type": "object",
-            "properties": {
+        properties: dict[str, Any] = {name: {"type": "string"} for name in additional_required_parameters}
+        required = list(additional_required_parameters)
+
+        # LLM arguments take precedence over state, so `messages` stays out of the schema when state supplies it
+        if "messages" not in inputs_from_state.values():
+            properties = {
                 "messages": {
                     "type": "array",
                     "description": "Exactly one user message.",
@@ -232,10 +235,11 @@ class AgentTool(ComponentTool):
                         "required": ["role", "content"],
                     },
                 },
-                **additional_properties,
-            },
-            "required": ["messages", *additional_required_parameters],
-        }
+                **properties,
+            }
+            required = ["messages", *required]
+
+        return {"type": "object", "properties": properties, "required": required}
 
     def to_dict(self) -> dict[str, Any]:
         """
