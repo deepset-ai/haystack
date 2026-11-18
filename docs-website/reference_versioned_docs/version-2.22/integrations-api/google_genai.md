@@ -924,11 +924,12 @@ Run the Google Gen AI chat generator on the given input data.
   keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
   thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
-  default settings.
+  default settings. Pass an empty list to send no safety settings for this call.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
   received from the stream.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If provided, it will override the tools set during initialization.
+  If provided, it will override the tools set during initialization. Pass an empty list to disable tools for
+  this call.
 
 **Returns:**
 
@@ -965,11 +966,12 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
   thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
-  default settings.
+  default settings. Pass an empty list to send no safety settings for this call.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
   received from the stream.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If provided, it will override the tools set during initialization.
+  If provided, it will override the tools set during initialization. Pass an empty list to disable tools for
+  this call.
 
 **Returns:**
 

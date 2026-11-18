@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -547,6 +548,14 @@ class TestState:
         assert state_dict["data"]["serialized_data"] == {"good": 1}
         assert "bad" not in state_dict["data"]["serialization_schema"]["properties"]
         assert any("Failed to serialize the 'bad' field of the agent's State data" in msg for msg in caplog.messages)
+
+    def test_state_round_trip_through_json_preserves_non_string_keys(self):
+        state = State({"lookup": {"type": dict}}, {"lookup": {1: "a", 2: "b"}})
+
+        restored = State.from_dict(json.loads(json.dumps(state.to_dict())))
+
+        assert restored.get("lookup") == {1: "a", 2: "b"}
+        assert [type(k) for k in restored.get("lookup")] == [int, int]
 
     def test_state_from_dict_typing_list(self):
         state_dict = {

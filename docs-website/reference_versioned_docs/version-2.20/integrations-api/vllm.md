@@ -662,6 +662,8 @@ Asynchronously embed a single string.
 
 ### VLLMChatGenerator
 
+Bases: <code>OpenAIChatGenerator</code>
+
 A component for generating chat completions using models served with [vLLM](https://docs.vllm.ai/).
 
 It expects a vLLM server to be running and accessible at the `api_base_url` parameter.
@@ -816,38 +818,6 @@ Creates an instance of VLLMChatGenerator.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client` or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Create the synchronous OpenAI client.
-
-#### warm_up_async
-
-```python
-warm_up_async() -> None
-```
-
-Create the asynchronous OpenAI client.
-
-#### close
-
-```python
-close() -> None
-```
-
-Close the synchronous OpenAI client.
-
-#### close_async
-
-```python
-close_async() -> None
-```
-
-Close the asynchronous OpenAI client.
-
 #### to_dict
 
 ```python
@@ -859,87 +829,6 @@ Serialize this component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> VLLMChatGenerator
-```
-
-Deserialize this component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
-
-**Returns:**
-
-- <code>VLLMChatGenerator</code> – The deserialized component instance.
-
-#### run
-
-```python
-run(
-    messages: list[ChatMessage] | str,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    *,
-    tools: ToolsType | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Run the VLLM chat generator on the given input data.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
-  If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
-  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
-  at initialization are kept.
-  For details on vLLM API parameters, see
-  [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter provided during initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-#### run_async
-
-```python
-run_async(
-    messages: list[ChatMessage] | str,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    *,
-    tools: ToolsType | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Run the VLLM chat generator on the given input data asynchronously.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
-  If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-  Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
-  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
-  at initialization are kept.
-  For details on vLLM API parameters, see
-  [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter provided during initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
 
 ## haystack_integrations.components.rankers.vllm.ranker
 
