@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pipeline snapshots saved to a file and Agent ``State`` data now preserve non-string dictionary keys.
+    Previously, a ``dict[int, str]`` like ``{1: "a"}`` came back as ``{"1": "a"}`` after resuming from a snapshot file.

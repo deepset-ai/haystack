@@ -26,6 +26,11 @@ assert results["documents"]
 assert results["links"]
 ```
 
+SearchApi's AI answer engines are supported through `search_params`. With `{"engine": "google_ai_mode"}`,
+`{"engine": "chatgpt"}`, `{"engine": "gemini"}` or `{"engine": "bing_copilot"}`, the first document holds the
+synthesized answer as Markdown. The following documents and `links` hold the reference links it cites and,
+for `google_ai_mode` and `chatgpt`, the web results the engine retrieved.
+
 #### __init__
 
 ```python

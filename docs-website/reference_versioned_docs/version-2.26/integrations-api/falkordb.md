@@ -544,7 +544,9 @@ __init__(
     similarity: SimilarityFunction = "cosine",
     write_batch_size: int = 100,
     recreate_graph: bool = False,
-    verify_connectivity: bool = False
+    verify_connectivity: bool = False,
+    labels_metadata_field: str | None = None,
+    relationships_metadata_field: str | None = None
 ) -> None
 ```
 
@@ -566,15 +568,23 @@ Create a new FalkorDBDocumentStore.
   vector.
 - **similarity** (<code>SimilarityFunction</code>) – Similarity function for the vector index. Accepted values
   are `"cosine"` and `"euclidean"`.
-- **write_batch_size** (<code>int</code>) – Number of documents written per `UNWIND` batch.
+- **write_batch_size** (<code>int</code>) – Maximum rows per graph-writing batch. Must be positive.
 - **recreate_graph** (<code>bool</code>) – When `True` the existing graph (and all its data) is
   dropped and recreated on initialisation. Useful for tests.
 - **verify_connectivity** (<code>bool</code>) – When `True` a connectivity probe is run
   immediately in `__init__` — raises if the server is unreachable.
+- **labels_metadata_field** (<code>str | None</code>) – `Document.meta` key containing extra node labels; `None` disables extraction.
+  Labels must be non-empty strings without backticks. `node_label` is always retained.
+- **relationships_metadata_field** (<code>str | None</code>) – `Document.meta` key containing outgoing relationships; `None` disables
+  extraction. Each entry requires `target_id` and `type`, with an optional `properties` dictionary.
+  Relationship types must be non-empty strings without backticks.
+  Targets must already exist or be included in the same write. Configured graph fields are consumed,
+  not stored or returned as metadata. See `write_documents` for write behavior and an example.
 
 **Raises:**
 
-- <code>ValueError</code> – If `similarity` is not `"cosine"` or `"euclidean"`.
+- <code>ValueError</code> – `similarity` is unsupported, `write_batch_size` is not a positive integer, or graph metadata
+  field names are identical.
 
 #### to_dict
 
@@ -690,6 +700,29 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 `content` — no prefix is added. This matches the layout used by the
 `neo4j-haystack` reference integration.
 
+Configured graph metadata fields are consumed rather than stored as properties. Extra labels are added;
+outgoing relationships are merged by source ID, type, and target ID, updating only supplied properties.
+Existing labels, edges, and unspecified edge properties are preserved even with `OVERWRITE`.
+`SKIP` leaves existing documents and their graph structure untouched. Relationships are written after
+all node batches, so targets can appear later in the input. Malformed graph metadata is rejected before
+document writes. Writes are not transactional: missing targets, backend failures, or concurrent changes
+can leave documents and some relationships written.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+
+store = FalkorDBDocumentStore(labels_metadata_field="labels", relationships_metadata_field="relationships")
+article = Document(id="article", content="GraphRAG", meta={
+    "labels": ["Article"],
+    "relationships": [{"target_id": "topic", "type": "ABOUT", "properties": {"weight": 0.9}}],
+})
+topic = Document(id="topic", content="Knowledge graphs")
+print(store.write_documents([article, topic]))  # 2; creates an ABOUT relationship from article to topic.
+```
+
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – List of :class:`haystack.dataclasses.Document` objects.
@@ -698,14 +731,15 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 
 **Returns:**
 
-- <code>int</code> – Number of documents written or updated.
+- <code>int</code> – Number of documents written or updated, not including relationships.
 
 **Raises:**
 
-- <code>ValueError</code> – If `documents` contains non-Document elements.
-- <code>DuplicateDocumentError</code> – If `policy` is FAIL / NONE and a duplicate
-  ID is encountered.
-- <code>DocumentStoreError</code> – If any other DB error occurs.
+- <code>TypeError</code> – Graph metadata has invalid types or property shapes.
+- <code>ValueError</code> – `documents` contains non-Document elements, required relationship keys are missing,
+  or a label or relationship type is empty or contains a backtick.
+- <code>DuplicateDocumentError</code> – `policy` is FAIL / NONE and a duplicate ID is encountered.
+- <code>DocumentStoreError</code> – A relationship target is missing or a document-node or relationship write fails.
 
 #### delete_documents
 
@@ -908,6 +942,9 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 `content` — no prefix is added. This matches the layout used by the
 `neo4j-haystack` reference integration.
 
+Graph metadata handling and duplicate policies match `write_documents`; see it for an example.
+Writes are not transactional: missing targets or backend failures can leave partial writes.
+
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – List of :class:`haystack.dataclasses.Document` objects.
@@ -916,14 +953,15 @@ Document `meta` fields are stored **flat** at the same level as `id` and
 
 **Returns:**
 
-- <code>int</code> – Number of documents written or updated.
+- <code>int</code> – Number of documents written or updated, not including relationships.
 
 **Raises:**
 
-- <code>ValueError</code> – If `documents` contains non-Document elements.
-- <code>DuplicateDocumentError</code> – If `policy` is FAIL / NONE and a duplicate
-  ID is encountered.
-- <code>DocumentStoreError</code> – If any other DB error occurs.
+- <code>TypeError</code> – Graph metadata has invalid types or property shapes.
+- <code>ValueError</code> – `documents` contains non-Document elements, required relationship keys are missing,
+  or a label or relationship type is empty or contains a backtick.
+- <code>DuplicateDocumentError</code> – `policy` is FAIL / NONE and a duplicate ID is encountered.
+- <code>DocumentStoreError</code> – A relationship target is missing or a document-node or relationship write fails.
 
 #### delete_documents_async
 

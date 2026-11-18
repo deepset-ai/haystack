@@ -223,6 +223,19 @@ document_matches_filter_data = [
         id=">= operator with equal datetime in different ISO 8601 format",
     ),
     pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": ">=", "value": "1969"},
+        Document(meta={"date": "1969-01-01"}),
+        True,
+        id=">= operator with partial year filter value matches start of the year",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07"},
+        Document(meta={"date": "1969-07-01"}),
+        True,
+        id=">= operator with partial year-month filter value matches start of the month",
+    ),
+    pytest.param(
         {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40+00:00"},
         Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
         True,
@@ -276,6 +289,13 @@ document_matches_filter_data = [
         Document(meta={"date": "1969-07-21T20:17:40"}),
         False,
         id="< operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": "<", "value": "1969"},
+        Document(meta={"date": "1969-12-31"}),
+        False,
+        id="< operator with partial year filter value excludes same year",
     ),
     pytest.param(
         {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},

@@ -596,7 +596,8 @@ Extracts text from input using the configured regex pattern.
 **Returns:**
 
 - <code>dict\[str, str\]</code> – - `{"captured_text": "matched text"}` if a match is found
-- `{"captured_text": ""}` if no match is found
+- `{"captured_text": ""}` if no match is found, or if the first capture group
+  does not take part in the match
 
 **Raises:**
 

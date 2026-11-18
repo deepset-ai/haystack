@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+import re
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -24,6 +25,11 @@ from haystack.tools.utils import (
 
 if TYPE_CHECKING:
     from haystack.tools import ToolsType
+
+
+def _split_tool_name(name: str) -> str:
+    """Return the tool name with snake_case and camelCase boundaries replaced by spaces."""
+    return re.sub(r"_|(?<=[a-z0-9])(?=[A-Z])", " ", name)
 
 
 class SearchableToolset(Toolset):
@@ -200,8 +206,12 @@ class SearchableToolset(Toolset):
             # accumulating in InMemoryDocumentStore's process-global storage (e.g. when a SearchableToolset is
             # built per request in a served application).
             self._document_store = InMemoryDocumentStore(shared=False)
+            # Also index the name split into words so "weather" matches get_weather and getWeather
             documents = [
-                Document(content=f"{tool.name} {tool.description}", meta={"tool_name": tool.name})
+                Document(
+                    content=f"{tool.name} {_split_tool_name(tool.name)} {tool.description}",
+                    meta={"tool_name": tool.name},
+                )
                 for tool in self._catalog
             ]
             self._document_store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
