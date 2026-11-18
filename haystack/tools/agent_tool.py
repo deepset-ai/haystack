@@ -218,7 +218,7 @@ class AgentTool(ComponentTool):
         properties: dict[str, Any] = {name: {"type": "string"} for name in additional_required_parameters}
         required = list(additional_required_parameters)
 
-        # LLM arguments take precedence over state, so `messages` stays out of the schema when state supplies it
+        # `messages` is only added to the schema if it is not provided from state
         if "messages" not in inputs_from_state.values():
             properties = {
                 "messages": {

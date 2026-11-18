@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    ``AgentTool`` now leaves ``messages`` out of its generated parameters schema when ``inputs_from_state`` maps a
-    state key to ``messages``. Previously the calling LLM was always asked for ``messages``, and since LLM arguments
-    take precedence over state, the mapped state value never reached the wrapped Agent.
+    ``AgentTool`` now drops ``messages`` from its generated parameters schema when ``messages`` is provided through
+    ``inputs_from_state``. Inputs supplied from state should not be filled in by the calling LLM, and ``messages`` is
+    now handled the same way as every other input mapped through ``inputs_from_state``.
