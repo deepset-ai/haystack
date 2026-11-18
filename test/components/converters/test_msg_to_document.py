@@ -36,6 +36,7 @@ class TestMSGToDocument:
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["file_path"] is None
         assert len(result["attachments"]) == 1
+        assert result["attachments"][0].meta["parent_file_path"] is None
 
     def test_run(self, test_files_path):
         converter = MSGToDocument(store_full_path=True)
