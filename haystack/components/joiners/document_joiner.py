@@ -221,6 +221,9 @@ class DocumentJoiner:
     def _merge(self, document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
+
+        Missing and non-finite scores count as 0 in the sum, so a single NaN or infinity cannot turn the merged
+        score of a Document into a non-finite value that is then sorted arbitrarily among the other Documents.
         """
         # This check prevents a division by zero when no documents are passed
         if not document_lists:
@@ -232,7 +235,7 @@ class DocumentJoiner:
 
         for documents, weight in zip(document_lists, weights, strict=True):
             for doc in documents:
-                scores_map[doc.id] += (doc.score if doc.score is not None else 0) * weight
+                scores_map[doc.id] += _finite_score(doc.score) * weight
                 documents_map[doc.id] = doc
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]

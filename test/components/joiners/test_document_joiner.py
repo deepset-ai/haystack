@@ -210,6 +210,24 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert output["documents"][0].score == 0.0
 
+    @pytest.mark.parametrize("non_finite_score", [float("nan"), float("inf"), float("-inf")])
+    def test_run_with_merge_join_mode_treats_non_finite_score_as_zero(self, non_finite_score):
+        # A non-finite score must not reach the weighted sum: it turns the merged score of its Document into
+        # NaN, and NaN compares false against every other score, so that Document is then sorted arbitrarily
+        # among the others instead of by its score. Like a missing score, it counts as 0 in the sum.
+        joiner = DocumentJoiner(join_mode="merge", weights=[0.5, 0.5])
+        documents_1 = [Document(content="non-finite", score=non_finite_score)]
+        documents_2 = [Document(content="finite", score=1.0)]
+
+        output = joiner.run([documents_1, documents_2])
+
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert all(math.isfinite(score) for score in scores_by_content.values())
+        assert scores_by_content["non-finite"] == 0.0
+        assert scores_by_content["finite"] == 0.5
+        # The finite score is the highest one, so its Document must be returned first
+        assert [doc.content for doc in output["documents"]] == ["finite", "non-finite"]
+
     def test_run_with_merge_join_mode(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[1.5, 0.5])
         documents_1 = [Document(content="a", score=1.0), Document(content="b", score=2.0)]
