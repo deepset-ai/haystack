@@ -31,6 +31,9 @@ _MERMAID_ID_PATTERN = re.compile(r"[A-Za-z0-9_]+")
 _RESERVED_MERMAID_IDS = frozenset(
     {"end", "graph", "flowchart", "subgraph", "style", "linkStyle", "class", "classDef", "i", "o"}
 )
+# Class names a SuperComponent class must not reuse: `component` is the class of every other component and `default`
+# styles every node.
+_RESERVED_MERMAID_CLASS_NAMES = _RESERVED_MERMAID_IDS | {"component", "default"}
 
 
 def generate_color_variations(n: int, base_color: str | None = "#3498DB", variation_range: float = 0.4) -> list[str]:
@@ -103,15 +106,18 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
     return graph
 
 
-def _to_mermaid_ids(names: list[str]) -> dict[str, str]:
+def _to_mermaid_ids(names: list[str], reserved: frozenset[str] = _RESERVED_MERMAID_IDS) -> dict[str, str]:
     """
     Map each name to a unique ID that Mermaid can parse.
 
     A name that is already a valid ID is used as is. Any other name, such as one with a space or the keyword `end`,
     gets an ID with the unsafe characters replaced by `_` and a numeric suffix added.
+
+    :param names: The names to map.
+    :param reserved: IDs that must not be used, such as Mermaid keywords.
     """
-    ids = {name: name for name in names if _MERMAID_ID_PATTERN.fullmatch(name) and name not in _RESERVED_MERMAID_IDS}
-    taken = set(ids.values()) | _RESERVED_MERMAID_IDS
+    ids = {name: name for name in names if _MERMAID_ID_PATTERN.fullmatch(name) and name not in reserved}
+    taken = set(ids.values()) | reserved
     for name in names:
         if name in ids:
             continue
@@ -413,7 +419,10 @@ def _to_mermaid_text(
         unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
         super_component_colors = dict(zip(unique_super_components, color_variations, strict=True))
-        super_component_classes = _to_mermaid_ids(names=list(super_component_colors))
+        # sorted, so the same names always get the same IDs
+        super_component_classes = _to_mermaid_ids(
+            names=sorted(super_component_colors), reserved=_RESERVED_MERMAID_CLASS_NAMES
+        )
 
     # Generate style definitions for each super component
     style_definitions = []

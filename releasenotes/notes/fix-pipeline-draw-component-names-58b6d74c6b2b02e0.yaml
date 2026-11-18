@@ -6,5 +6,5 @@ fixes:
     ``"query embedder"``), or a Mermaid keyword such as ``end`` or ``graph``, made the Mermaid server reject the
     diagram. A component named ``input`` or ``output`` raised a ``KeyError``, and one named ``i`` or ``o`` was merged
     into the pipeline's input or output node in the drawing. SuperComponent names had the same problem with
-    ``super_component_expansion=True``. Such names now get a valid node ID, and the diagram still shows the original
-    name.
+    ``super_component_expansion=True``, and a SuperComponent named ``component`` or ``default`` restyled every other
+    component. Such names now get a valid node ID or class name, and the diagram still shows the original name.

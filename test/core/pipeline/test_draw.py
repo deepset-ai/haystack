@@ -173,6 +173,22 @@ def test_to_mermaid_text_gives_super_component_names_that_are_not_mermaid_ids_a_
     assert ":::rag pipeline" not in text
 
 
+@pytest.mark.parametrize("name", ["component", "default"])
+def test_to_mermaid_text_does_not_reuse_a_base_class_for_a_super_component(name):
+    inner = Pipeline()
+    inner.add_component("double", Double())
+    pipe = Pipeline()
+    pipe.add_component(name, SuperComponent(pipeline=inner))
+    pipe.add_component("x", Double())
+    graph, super_component_mapping = pipe._merge_super_component_pipelines()
+
+    text = _to_mermaid_text(graph, {"theme": "neutral"}, super_component_mapping)
+    assert f'double["<b>double</b><br><small><i>Double</i></small>"]:::{name}_1' in text
+    assert 'x["<b>x</b><br><small><i>Double</i></small>"]:::component' in text
+    assert f"classDef {name}_1 fill:" in text
+    assert f"classDef {name} fill:" not in text
+
+
 def test_to_mermaid_ids_does_not_reuse_a_taken_id():
     ids = _to_mermaid_ids(names=["my retriever", "my_retriever_1", "graph", "comp1"])
     assert ids == {
