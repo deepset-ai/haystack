@@ -112,7 +112,20 @@ generator = MistralChatGenerator(
 )
 ```
 
-A blocked request doesn't return a reply with a `"content_filter"` finish reason. Mistral rejects it with an HTTP 403 error, and the generator raises it.
+Guardrails check only the request, before it reaches the model. When a guardrail blocks a request, the generator raises an `openai.PermissionDeniedError` instead of returning a reply. An Agent using this generator raises the same error, rather than stopping with `exit_reason="content_filter"`. The error's `body["guardrails"]` lists, for each guardrail, the action it took and each category's `score` and whether it was `violated`:
+
+```python
+import openai
+
+from haystack.dataclasses import ChatMessage
+
+try:
+    result = generator.run(messages=[ChatMessage.from_user("Your question here")])
+except openai.PermissionDeniedError as e:
+    print(e.body["guardrails"])
+```
+
+Guardrails don't work with streaming. If you set a `streaming_callback`, Mistral rejects every request that has guardrails with an `openai.BadRequestError`.
 
 The safety system prompt adds a system prompt in front of the conversation that steers the model away from harmful replies. Turn it on with `safe_prompt` in `generation_kwargs`:
 
