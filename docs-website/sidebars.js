@@ -84,6 +84,7 @@ export default {
           id: 'tools/tool',
           label: 'Agent Tools',
         },
+        'concepts/guardrails',
         {
           type: 'category',
           label: 'Data Classes',
