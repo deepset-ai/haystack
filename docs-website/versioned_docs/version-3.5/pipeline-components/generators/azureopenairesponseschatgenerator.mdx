@@ -272,6 +272,14 @@ See our [Streaming Support](guides-to-generators/choosing-the-right-generator.md
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
+### Content moderation
+
+Azure OpenAI checks prompts and replies with [content filters](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/concepts/content-filter) that you configure on the Azure deployment. There is nothing to set in Haystack.
+
+When the filter blocks a reply, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. When the filter blocks the prompt, Azure rejects the request and the generator raises an error.
+
+For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
+
 ## Usage
 
 ### On its own
