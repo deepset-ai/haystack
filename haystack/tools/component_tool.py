@@ -184,13 +184,16 @@ class ComponentTool(Tool):
 
         def convert_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
             input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            state_params = set((self.inputs_from_state or {}).values())
             unknown = set(kwargs) - set(input_sockets)
             if unknown:
                 logger.warning(
                     "Skipping unknown component input parameter(s): {names}.", names=", ".join(sorted(unknown))
                 )
+            # Values mapped from State are already Python objects, so they are passed to the component as-is.
+            # Only LLM-provided JSON values are converted to the input socket type.
             return {
-                name: self._convert_param(value, input_sockets[name].type)
+                name: value if name in state_params else self._convert_param(value, input_sockets[name].type)
                 for name, value in kwargs.items()
                 if name in input_sockets
             }

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _CORRECTION_META_KEY = "structured_output_correction"
 
 # A markdown code fence wrapping the whole reply, with an optional language tag such as `json`.
-_CODE_FENCE_PATTERN = re.compile(r"^```[\w-]*[ \t]*\n(.*?)\n?[ \t]*```$", re.DOTALL)
+_CODE_FENCE_PATTERN = re.compile(r"^```[\w-]*[ \t]*\r?\n(.*?)(?:\r?\n)?[ \t]*```$", re.DOTALL)
 
 
 class StructuredOutputHook:

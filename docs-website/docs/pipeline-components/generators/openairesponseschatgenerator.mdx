@@ -78,6 +78,8 @@ OpenAI does not return the actual reasoning tokens, but you can view the summary
 If a provider returns the raw reasoning as `reasoning_text` content instead, it is mapped to `reasoning.reasoning_text` in the reply when no summary is returned.
 :::
 
+When a response contains several reasoning items, their summaries are joined into a single `reply.reasoning.reasoning_text`. The individual items, including their IDs and encrypted content, are kept in `reply.reasoning.extra["reasoning_items"]`. Pass the reply back in the conversation history unchanged so these items are sent back to OpenAI.
+
 ### Multi-turn Conversations
 
 The Responses API supports multi-turn conversations using `previous_response_id`. You can pass the response ID from a previous turn to maintain conversation context:
@@ -262,6 +264,10 @@ for annotation, offset in zip(
     end = offset + annotation["end_index"]
     print(reply.text[start:end], annotation["url"])
 ```
+
+### Rate Limit Headers
+
+To keep track of your OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response are then added to the `meta` of the reply under the `rate_limit_headers` key. Headers are only added for successful requests and, when streaming, only to the final reply. `AzureOpenAIResponsesChatGenerator` supports the same parameter.
 
 ## Usage
 

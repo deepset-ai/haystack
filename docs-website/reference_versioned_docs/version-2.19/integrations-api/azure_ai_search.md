@@ -358,6 +358,8 @@ Writes the provided documents to search index.
 
 - <code>ValueError</code> – If the documents are not of type Document.
 - <code>TypeError</code> – If the document ids are not strings.
+- <code>AzureAISearchDocumentStoreError</code> – If Azure AI Search reports that any document was not indexed.
+  The documents it did index stay in the index.
 
 #### delete_documents
 
@@ -425,6 +427,11 @@ first searches for matching documents, then updates them using merge operations.
 
 - <code>int</code> – The number of documents updated.
 
+**Raises:**
+
+- <code>AzureAISearchDocumentStoreError</code> – If the search or the update fails, including when Azure AI Search
+  reports that any matching document was not updated.
+
 #### get_documents_by_id
 
 ```python
@@ -470,6 +477,9 @@ Returns the documents that match the provided filters.
 
 Filters should be given as a dictionary supporting filtering by metadata. For details on
 filters, see the [metadata filtering documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+
+Azure AI Search pages through results with `$skip`, which is capped at 100,000. If that many documents
+match, a warning is logged and the result may be incomplete; use a narrower filter to retrieve the rest.
 
 **Parameters:**
 

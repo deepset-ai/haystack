@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the ``>``, ``>=``, ``<`` and ``<=`` filter operators in ``InMemoryDocumentStore`` and
+    ``MetadataRouter`` completing partial dates such as ``"2024"`` with the current month and day,
+    which silently dropped matching documents. Partial dates are now completed to the start of the
+    period, so ``"2024"`` becomes 2024-01-01.

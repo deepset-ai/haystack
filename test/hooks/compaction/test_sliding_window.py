@@ -237,6 +237,57 @@ class TestSlidingWindowCompactor:
         assert compacted == [*messages[:2], compacted[2], *messages[5:]]
         assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 3
 
+    def test_keeps_a_summary_at_the_start_of_history_when_it_fits(self):
+        summary = ChatMessage.from_user(
+            text="<conversation_summary>\nasked about pricing\n</conversation_summary>",
+            meta={_COMPACTION_META_KEY: {"strategy": "summarization"}},
+        )
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(
+                text="Earlier messages were removed. " * 10, meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
+            ),
+            # Where a `SummarizationCompactor` leaves its summary: in place of the oldest history it replaced.
+            summary,
+            ChatMessage.from_user(text="old question"),
+            ChatMessage.from_assistant(text="old answer"),
+            ChatMessage.from_user(text="current task"),
+            ChatMessage.from_assistant(text="current answer"),
+        ]
+        # Enough for everything except the padded earlier note.
+        compacted = SlidingWindowCompactor(omission_note=None).compact(
+            messages=messages, target_tokens=50, token_counter=COUNTER
+        )
+        # Only the earlier note is removed, and the summary stays at the start of history.
+        assert compacted == [messages[0], *messages[2:]]
+
+    def test_keeps_or_removes_a_current_task_summary_with_the_step_after_it(self):
+        def summary(text: str) -> ChatMessage:
+            return ChatMessage.from_user(
+                text=f"<conversation_summary>\n{text}\n</conversation_summary>",
+                meta={_COMPACTION_META_KEY: {"strategy": "summarization"}},
+            )
+
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="current task"),
+            # Two summaries a `SummarizationCompactor` left of the task's oldest steps on separate runs.
+            summary("first summary"),
+            tool_call("c1"),
+            tool_result(result="first result " * 20, call_id="c1"),
+            summary("second summary"),
+            tool_call("c2"),
+            tool_result(result="second result", call_id="c2"),
+            tool_call("c3"),
+            tool_result(result="third result", call_id="c3"),
+        ]
+        # Enough for everything except the first summary and the padded step after it.
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=65, token_counter=COUNTER)
+        assert compacted is not None
+        # The first summary is removed with the oldest step, and the second is kept with the step after it.
+        assert compacted == [*messages[:2], compacted[2], *messages[5:]]
+        assert compacted[2].meta[_COMPACTION_META_KEY]["removed_messages"] == 3
+
     def test_keeps_a_pruned_tool_result_inside_a_kept_turn(self):
         messages = [
             # System
