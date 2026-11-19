@@ -22,7 +22,8 @@ it was resolved.
 The run input depends on the token source. A source that needs a per-request credential (it sets
 `requires_subject_token = True`, like `OAuthTokenExchangeSource`) makes the resolver declare a **mandatory**
 `subject_token` input — a controller-injected per-request credential (for example an incoming user assertion),
-not chosen by an end user. A config-only source declares no run input, so the resolver is a source node.
+not chosen by an end user, and accepted as either a `Secret` or a plain `str`. A config-only source declares no
+run input, so the resolver is a source node.
 
 ### Usage example
 
@@ -63,7 +64,7 @@ Initialize the resolver.
 #### run
 
 ```python
-run(**kwargs: Any) -> dict[str, str]
+run(**kwargs: Any) -> dict[str, Secret]
 ```
 
 Resolve an access token and emit it.
@@ -71,36 +72,43 @@ Resolve an access token and emit it.
 **Parameters:**
 
 - **kwargs** (<code>Any</code>) – Carries `subject_token` when the configured source requires it (declared as a mandatory
-  input in that case, injected by the application/controller per request). For config-only sources no
-  input is declared and `kwargs` is empty.
+  input in that case, injected by the application/controller per request as a `Secret` or a plain `str`).
+  For config-only sources no input is declared and `kwargs` is empty.
 
 **Returns:**
 
-- <code>dict\[str, str\]</code> – A dictionary with a single `access_token` key containing a bearer token string.
+- <code>dict\[str, Secret\]</code> – A dictionary with a single `access_token` key holding the bearer token as a `Secret`. Call
+  `resolve_value()` on it to read the token string.
 
 **Raises:**
 
-- <code>OAuthConfigError</code> – If the source requires a `subject_token` but it is missing or empty.
+- <code>OAuthConfigError</code> – If the source requires a `subject_token` but it is missing, empty, or a `Secret`
+  that does not resolve.
+- <code>TokenRefreshError</code> – If the source returns an empty access token.
 
 #### run_async
 
 ```python
-run_async(**kwargs: Any) -> dict[str, str]
+run_async(**kwargs: Any) -> dict[str, Secret]
 ```
 
 Asynchronously resolve an access token and emit it.
 
 **Parameters:**
 
-- **kwargs** (<code>Any</code>) – Carries `subject_token` when the configured source requires it.
+- **kwargs** (<code>Any</code>) – Carries `subject_token` when the configured source requires it, as a `Secret` or a plain
+  `str`.
 
 **Returns:**
 
-- <code>dict\[str, str\]</code> – A dictionary with a single `access_token` key containing a bearer token string.
+- <code>dict\[str, Secret\]</code> – A dictionary with a single `access_token` key holding the bearer token as a `Secret`. Call
+  `resolve_value()` on it to read the token string.
 
 **Raises:**
 
-- <code>OAuthConfigError</code> – If the source requires a `subject_token` but it is missing or empty.
+- <code>OAuthConfigError</code> – If the source requires a `subject_token` but it is missing, empty, or a `Secret`
+  that does not resolve.
+- <code>TokenRefreshError</code> – If the source returns an empty access token.
 
 #### to_dict
 
