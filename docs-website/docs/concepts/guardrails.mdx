@@ -52,7 +52,7 @@ if result["exit_reason"] == "content_filter":
     print("The provider blocked this reply.")
 ```
 
-These examples need the `OPENAI_API_KEY` environment variable.
+These examples use `OpenAIResponsesChatGenerator`, so they need the `OPENAI_API_KEY` environment variable. With another provider from the table below, swap in its chat generator and set that provider's credentials instead.
 
 | Provider | Built-in moderation | How to turn it on |
 | --- | --- | --- |
