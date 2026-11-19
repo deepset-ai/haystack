@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter`` no longer replaces the parts of a character that fall on either side of a token
+    boundary with ``�`` when splitting by ``split_unit="token"``. Emoji and CJK text were the most affected, and the
+    corruption also happened when the splitter overlap re-encoded the chunks.
