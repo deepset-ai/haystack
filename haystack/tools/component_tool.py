@@ -5,7 +5,7 @@
 from collections.abc import Callable
 from typing import Any, get_args, get_origin
 
-from pydantic import Field, TypeAdapter, create_model
+from pydantic import Field, TypeAdapter, ValidationError, create_model
 
 from haystack import logging
 from haystack.core.component import Component
@@ -30,6 +30,19 @@ from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_input_error(param_name: str, error: Exception) -> ValueError:
+    """Build a conversion error that identifies the input without echoing its value."""
+    if isinstance(error, ValidationError):
+        details = []
+        for item in error.errors(include_input=False, include_url=False, include_context=False):
+            detail = f"{item['msg']} [{item['type']}]"
+            if item["loc"]:
+                detail = f"{'.'.join(map(str, item['loc']))}: {detail}"
+            details.append(detail)
+        return ValueError(f"Invalid value for component input '{param_name}': {'; '.join(details)}")
+    return ValueError(f"Invalid value for component input '{param_name}'.")
 
 
 class ComponentTool(Tool):
@@ -189,11 +202,15 @@ class ComponentTool(Tool):
                 logger.warning(
                     "Skipping unknown component input parameter(s): {names}.", names=", ".join(sorted(unknown))
                 )
-            return {
-                name: self._convert_param(value, input_sockets[name].type)
-                for name, value in kwargs.items()
-                if name in input_sockets
-            }
+            converted = {}
+            for name, value in kwargs.items():
+                if name not in input_sockets:
+                    continue
+                try:
+                    converted[name] = self._convert_param(value, input_sockets[name].type)
+                except Exception as error:
+                    raise _safe_input_error(name, error) from None
+            return converted
 
         def component_invoker(**kwargs: Any) -> dict[str, Any]:
             """

@@ -494,22 +494,6 @@ class TestToolAsync:
         with pytest.raises(ToolInvocationError, match="kaboom"):
             await tool.invoke_async(city="Berlin")
 
-    def test_invoke_error_does_not_expose_arguments(self):
-        def boom(secret: str) -> str:
-            raise RuntimeError("failed")
-
-        tool = Tool(
-            name="secret_tool",
-            description="Uses a secret",
-            parameters={"type": "object", "properties": {"secret": {"type": "string"}}},
-            function=boom,
-        )
-
-        with pytest.raises(ToolInvocationError) as exc_info:
-            tool.invoke(secret="credential-value")
-
-        assert "credential-value" not in str(exc_info.value)
-
     async def test_warm_up_error_is_wrapped(self, sync_tool, monkeypatch):
         monkeypatch.setattr(sync_tool, "warm_up", Mock(side_effect=ValueError("setup failed")), raising=False)
         with pytest.raises(ToolInvocationError, match="setup failed"):

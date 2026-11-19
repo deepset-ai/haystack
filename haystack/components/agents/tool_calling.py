@@ -205,7 +205,13 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall, parent_span: tracing.Span
 
 
 def _make_context_bound_invoke(
-    tool: Tool, args: dict[str, Any], tool_call: ToolCall, parent_span: tracing.Span | None, *, raise_on_failure: bool
+    tool: Tool,
+    args: dict[str, Any],
+    injected_arg_names: set[str],
+    tool_call: ToolCall,
+    parent_span: tracing.Span | None,
+    *,
+    raise_on_failure: bool,
 ) -> Callable[[], ToolInvocationError | tuple[Any, ChatMessage]]:
     """
     Return a zero-arg callable that runs `tool.invoke(**args)` under the current contextvars snapshot.
@@ -223,6 +229,7 @@ def _make_context_bound_invoke(
             try:
                 result = tool.invoke(**args)
             except ToolInvocationError as e:
+                e = _sanitize_tool_invocation_error(e, tool=tool, args=args, injected_arg_names=injected_arg_names)
                 span.set_tag("haystack.tool.error", True)
                 span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                 return e
@@ -242,6 +249,7 @@ def _make_context_bound_invoke(
 def _make_bounded_invoke_async(
     tool: Tool,
     args: dict[str, Any],
+    injected_arg_names: set[str],
     semaphore: asyncio.Semaphore,
     tool_call: ToolCall,
     parent_span: tracing.Span | None,
@@ -267,6 +275,7 @@ def _make_bounded_invoke_async(
                 try:
                     result = await tool.invoke_async(**args)
                 except ToolInvocationError as e:
+                    e = _sanitize_tool_invocation_error(e, tool=tool, args=args, injected_arg_names=injected_arg_names)
                     span.set_tag("haystack.tool.error", True)
                     span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
                     return e
@@ -366,6 +375,45 @@ def _prepare_tool_args(
     ):
         final_args["streaming_callback"] = streaming_callback
     return final_args
+
+
+def _state_injected_arg_names(
+    *,
+    tool: Tool,
+    llm_args: dict[str, Any],
+    state: State,
+    streaming_callback: StreamingCallbackT | None = None,
+    enable_streaming_passthrough: bool = False,
+) -> set[str]:
+    """Return parameters whose values were supplied by Agent state or runtime context."""
+    func_params = _get_func_params(tool)
+    injected = {
+        param_name
+        for state_key, param_name in (tool.inputs_from_state or {}).items()
+        if param_name not in llm_args and state.has(state_key)
+    }
+    injected.update(param_name for param_name, param_type in func_params.items() if _is_state_annotation(param_type))
+    if (
+        enable_streaming_passthrough
+        and streaming_callback is not None
+        and "streaming_callback" not in llm_args
+        and "streaming_callback" in func_params
+    ):
+        injected.add("streaming_callback")
+    return injected
+
+
+def _sanitize_tool_invocation_error(
+    error: ToolInvocationError, *, tool: Tool, args: dict[str, Any], injected_arg_names: set[str]
+) -> ToolInvocationError:
+    """Keep model-provided arguments in diagnostics while omitting runtime-injected values."""
+    if error.__cause__ is None:
+        return error
+    safe_args = {name: value for name, value in args.items() if name not in injected_arg_names}
+    return ToolInvocationError(
+        f"Failed to invoke Tool `{tool.name}` with parameters {safe_args}. Error: {error.__cause__}",
+        tool_name=tool.name,
+    )
 
 
 def _resolve_tool_calls(
@@ -593,10 +641,18 @@ def _run_tool(
                     streaming_callback=streaming_callback,
                     enable_streaming_passthrough=enable_streaming_callback_passthrough,
                 )
+                injected_arg_names = _state_injected_arg_names(
+                    tool=resolved_tools[idx],
+                    llm_args=tool_calls[idx].arguments,
+                    state=state,
+                    streaming_callback=streaming_callback,
+                    enable_streaming_passthrough=enable_streaming_callback_passthrough,
+                )
                 futures[idx] = executor.submit(
                     _make_context_bound_invoke(
                         tool=resolved_tools[idx],
                         args=args,
+                        injected_arg_names=injected_arg_names,
                         tool_call=tool_calls[idx],
                         parent_span=parent_span,
                         raise_on_failure=raise_on_failure,
@@ -688,9 +744,17 @@ async def _run_tool_async(
                 streaming_callback=streaming_callback,
                 enable_streaming_passthrough=enable_streaming_callback_passthrough,
             )
+            injected_arg_names = _state_injected_arg_names(
+                tool=resolved_tools[idx],
+                llm_args=tool_calls[idx].arguments,
+                state=state,
+                streaming_callback=streaming_callback,
+                enable_streaming_passthrough=enable_streaming_callback_passthrough,
+            )
             tasks[idx] = _make_bounded_invoke_async(
                 tool=resolved_tools[idx],
                 args=args,
+                injected_arg_names=injected_arg_names,
                 semaphore=semaphore,
                 tool_call=tool_calls[idx],
                 parent_span=parent_span,

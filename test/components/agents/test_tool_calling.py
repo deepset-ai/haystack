@@ -18,7 +18,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import BaseModel
 
-from haystack import Document
+from haystack import Document, component
 from haystack.components.agents.state import State
 from haystack.components.agents.tool_calling import (
     ToolNotFoundException,
@@ -697,6 +697,72 @@ class TestRunToolErrorHandling:
         tool_message = tool_messages[0]
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
+
+    def test_state_injected_values_are_redacted_from_tool_errors(self):
+        def secret_tool(public: str, secret: str) -> str:
+            raise RuntimeError("simulated outage")
+
+        tool = Tool(
+            name="secret_tool",
+            description="Uses a state-injected secret.",
+            parameters={"type": "object", "properties": {"public": {"type": "string"}}},
+            function=secret_tool,
+            inputs_from_state={"secret": "secret"},
+        )
+        state = State(schema={"secret": {"type": str}}, data={"secret": "credential-value"})
+        tool_call = ToolCall(tool_name="secret_tool", arguments={"public": "model-value"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        tool_messages, _ = _run_tool(messages=[tool_call_message], state=state, tools=[tool], raise_on_failure=False)
+        result = tool_messages[0].tool_call_results[0].result
+
+        assert "credential-value" not in result
+        assert "model-value" in result
+        assert "simulated outage" in result
+
+    @pytest.mark.asyncio
+    async def test_state_injected_values_are_redacted_from_async_tool_errors(self):
+        async def secret_tool(public: str, secret: str) -> str:
+            raise RuntimeError("simulated outage")
+
+        tool = Tool(
+            name="secret_tool",
+            description="Uses a state-injected secret.",
+            parameters={"type": "object", "properties": {"public": {"type": "string"}}},
+            async_function=secret_tool,
+            inputs_from_state={"secret": "secret"},
+        )
+        state = State(schema={"secret": {"type": str}}, data={"secret": "credential-value"})
+        tool_call = ToolCall(tool_name="secret_tool", arguments={"public": "model-value"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        tool_messages, _ = await _run_tool_async(
+            messages=[tool_call_message], state=state, tools=[tool], raise_on_failure=False
+        )
+        result = tool_messages[0].tool_call_results[0].result
+
+        assert "credential-value" not in result
+        assert "model-value" in result
+        assert "simulated outage" in result
+
+    def test_component_conversion_error_redacts_state_injected_value(self):
+        @component
+        class IntegerComponent:
+            @component.output_types(result=int)
+            def run(self, value: int) -> dict[str, int]:
+                return {"result": value}
+
+        tool = ComponentTool(component=IntegerComponent(), inputs_from_state={"secret": "value"})
+        state = State(schema={"secret": {"type": str}}, data={"secret": "credential-value"})
+        tool_call = ToolCall(tool_name=tool.name, arguments={})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        tool_messages, _ = _run_tool(messages=[tool_call_message], state=state, tools=[tool], raise_on_failure=False)
+        result = tool_messages[0].tool_call_results[0].result
+
+        assert "credential-value" not in result
+        assert "component input 'value'" in result
+        assert "int_parsing" in result
 
     @pytest.mark.parametrize("output_key", ["weather", "source", "handler", "raw_result"])
     def test_outputs_to_string_with_multiple_outputs(self, output_key):
