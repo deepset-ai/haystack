@@ -1,3 +1,25 @@
+<!--
+⚠️  We receive a large number of PRs, many of them opened by automated coding agents.
+    We are selective about which PRs we review. Follow these guidelines to make sure
+    yours gets reviewed.
+
+1. Show a real use case
+   Explain what you're trying to do. If you can, link to the project, library,
+   or application that needs this change. A real use case is the strongest argument.
+
+2. Solve problems people actually have
+   Skip edge cases that are unlikely to happen in practice.
+
+3. Keep the description short and factual
+   Don't paste your coding agent's output as-is. Write what a reviewer needs to know.
+
+4. Test what you change, and only that
+   Tests should cover the change without going beyond it.
+
+5. Keep the release note brief
+   Say what changed for users. Skip algorithms and internal details.
+-->
+
 ### Related Issues
 
 - fixes #issue-number
