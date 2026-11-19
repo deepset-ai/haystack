@@ -3,20 +3,21 @@
     We are selective about which PRs we review. Follow these guidelines to make sure
     yours gets reviewed.
 
-1. Show a real use case
-   Explain what you're trying to do. If you can, link to the project, library,
-   or application that needs this change. A real use case is the strongest argument.
+1. Show the use case behind your PR
+   In the PR description, explain what you're trying to do. If you can, link to the
+   project, library, or application that needs this change. A real use case is the
+   strongest argument for merging it.
 
-2. Solve problems people actually have
-   Skip edge cases that are unlikely to happen in practice.
+2. Make sure your PR solves a problem people actually have
+   Don't open PRs for edge cases that are unlikely to happen in practice.
 
-3. Keep the description short and factual
+3. Keep the PR description short and factual
    Don't paste your coding agent's output as-is. Write what a reviewer needs to know.
 
 4. Test what you change, and only that
    Tests should cover the change without going beyond it.
 
-5. Keep the release note brief
+5. Keep your PR's release note brief
    Say what changed for users. Skip algorithms and internal details.
 -->
 
