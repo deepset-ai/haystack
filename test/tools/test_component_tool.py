@@ -268,6 +268,13 @@ class TestComponentTool:
     def test_from_component_with_inputs_from_state(self):
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"text": "text"})
         assert tool.inputs_from_state == {"text": "text"}
+
+    def test_invocation_logs_only_input_names(self, caplog):
+        tool = ComponentTool(component=SimpleComponent())
+
+        tool.invoke(text="credential-value")
+
+        assert "credential-value" not in caplog.text
         # Inputs should be excluded from schema generation
         assert tool.parameters == {"type": "object", "properties": {}}
 

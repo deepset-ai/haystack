@@ -204,9 +204,9 @@ class ComponentTool(Tool):
             """
             converted_kwargs = convert_kwargs(kwargs)
             logger.debug(
-                "Invoking component {component_type} with kwargs: {converted_kwargs}",
+                "Invoking component {component_type} with input names: {input_names}",
                 component_type=type(component),
-                converted_kwargs=converted_kwargs,
+                input_names=", ".join(sorted(converted_kwargs)),
             )
             return dict(component.run(**converted_kwargs))
 
@@ -219,9 +219,9 @@ class ComponentTool(Tool):
             """
             converted_kwargs = convert_kwargs(kwargs)
             logger.debug(
-                "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
+                "Invoking component {component_type} asynchronously with input names: {input_names}",
                 component_type=type(component),
-                converted_kwargs=converted_kwargs,
+                input_names=", ".join(sorted(converted_kwargs)),
             )
             # We know run_async exists at this point b/c we only pass the async invoker if the component has
             # __haystack_supports_async__ = True

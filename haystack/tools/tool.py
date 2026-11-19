@@ -284,7 +284,7 @@ class Tool:
             result = self.function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
-                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
+                f"Failed to invoke Tool `{self.name}`. Error: {e}", tool_name=self.name
             ) from e
         return result
 
@@ -309,7 +309,7 @@ class Tool:
             return await self.async_function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
-                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
+                f"Failed to invoke Tool `{self.name}`. Error: {e}", tool_name=self.name
             ) from e
 
     def to_dict(self) -> dict[str, Any]:
