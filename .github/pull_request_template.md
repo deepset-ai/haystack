@@ -1,3 +1,13 @@
+<!--
+Before opening a PR, please keep in mind:
+
+- Show us your use case: explain what you're trying to do and, if possible, point to the project, library, or application that needs this change. A real use case is the strongest argument for a change or feature.
+- Don't aim at edge cases that rarely occur in real life. It's not that they're not fixing real problems; it's that they're fixing problems that nobody is ever likely to encounter.
+- When you describe an issue or a change, be concise and factual. Avoid long, uninformative descriptions. Don't blindly copy-paste everything the coding agent generates. Use your judgement and intuition; think about how you can make it easier for the developer/maintainer that is going to review it.
+- Make sure the tests actually cover what you are proposing to change. Also, make sure they don't overdo it.
+- The release notes should be short and factual. No need to explain algorithms or internal logic.
+-->
+
 ### Related Issues
 
 - fixes #issue-number
