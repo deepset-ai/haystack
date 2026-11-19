@@ -193,6 +193,46 @@ result = agent.run(
 print(result["last_message"].text)
 ```
 
+#### Passing Credentials Through State
+
+Don't store API keys or other credentials in State as plain strings.
+State values show up in several places outside your tool:
+
+- State keys are returned in the Agent's result dictionary.
+- With [content tracing](../../development/tracing.mdx#content-tracing) enabled, the Agent's inputs and outputs, including State, are recorded in traces.
+- When a tool fails, the error message sent back to the LLM and written to the logs includes the tool's arguments, including those injected from State.
+
+Store credentials as a [`Secret`](../../concepts/secret-management.mdx) instead.
+A `Secret` hides its value when printed, so it appears as `<redacted>` in all of these places.
+Type the tool parameter as `Secret` and resolve the value inside the tool:
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.utils import Secret
+
+
+@tool(inputs_from_state={"api_key": "api_key"})
+def fetch_report(
+    report_id: Annotated[str, "The ID of the report to fetch"],
+    api_key: Secret,  # injected from state; excluded from LLM schema
+) -> str:
+    """Fetch a report from the reporting service."""
+    token = api_key.resolve_value()
+    return f"Fetched report {report_id}"
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-6-luna"),
+    tools=[fetch_report],
+    state_schema={"api_key": {"type": Secret}},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Fetch report 42")],
+    api_key=Secret.from_env_var("REPORTING_API_KEY"),
+)
+```
+
 ### Writing to State: `outputs_to_state`
 
 The `outputs_to_state` parameter maps tool output keys to state keys. Each entry supports two optional fields:
