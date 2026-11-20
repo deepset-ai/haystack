@@ -35,6 +35,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
+from haystack.hooks.structured_output import StructuredOutputHook
 from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
@@ -720,6 +721,14 @@ class TestGetModelExitReason:
             (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "length"}), "length"),
             (ChatMessage.from_assistant("", meta={"finish_reason": "content_filter"}), "content_filter"),
             (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "content_filter"}), "content_filter"),
+            (
+                ChatMessage.from_assistant(meta={"refusal": "I cannot answer.", "finish_reason": "stop"}),
+                "content_filter",
+            ),
+            (ChatMessage.from_assistant("I cannot answer.", meta={"refusal": "I cannot answer."}), "content_filter"),
+            (ChatMessage.from_assistant(meta={"refusal": "I cannot answer.", "finish_reason": "length"}), "length"),
+            (ChatMessage.from_assistant(meta={"refusal": "   "}), None),
+            (ChatMessage.from_assistant(meta={"refusal": {"message": "not a refusal string"}}), None),
             (ChatMessage.from_assistant(""), None),
             (ChatMessage.from_user("Not an assistant reply."), None),
         ],
@@ -729,6 +738,13 @@ class TestGetModelExitReason:
 
     def test_empty_message_batch_is_not_an_exit(self):
         assert _get_model_exit_reason([]) is None
+
+    def test_refusal_metadata_does_not_override_tool_calls(self):
+        reply = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather", arguments={"city": "Berlin"}, id="call-1")],
+            meta={"refusal": "I cannot answer."},
+        )
+        assert _get_model_exit_reason([reply]) is None
 
 
 class TestAgentRun:
@@ -1265,6 +1281,30 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 1
         assert result["exit_reason"] == finish_reason
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("async_mode", [False, True])
+    @pytest.mark.parametrize("with_tools", [False, True])
+    @pytest.mark.parametrize("structured_output", [False, True])
+    async def test_refusal_stops_without_retrying(self, weather_tool, async_mode, with_tools, structured_output):
+        refusal = ChatMessage.from_assistant(meta={"refusal": "I cannot answer.", "finish_reason": "stop"})
+        agent = Agent(
+            chat_generator=MockChatGenerator([refusal, "This reply must not be requested."]),
+            tools=[weather_tool] if with_tools else [],
+            state_schema={"structured_output": {"type": dict}} if structured_output else None,
+            hooks={"on_exit": [StructuredOutputHook(schema={"type": "object"})]} if structured_output else None,
+        )
+        messages = [ChatMessage.from_user("A synthetic request.")]
+
+        result = await agent.run_async(messages) if async_mode else agent.run(messages)
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == "content_filter"
+        assert result["last_message"].text is None
+        assert result["last_message"].meta["refusal"] == "I cannot answer."
+        assert result["last_message"].meta["finish_reason"] == "stop"
+        if structured_output:
+            assert result["structured_output"] is None
 
     def test_exits_on_empty_assistant_message_truncated_by_output_limit(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
