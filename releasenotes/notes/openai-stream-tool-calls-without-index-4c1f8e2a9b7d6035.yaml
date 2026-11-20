@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``OpenAIChatGenerator`` with a ``streaming_callback`` no longer fails on tool calls from OpenAI-compatible
+    servers that leave out the tool call ``index`` (Gemini's OpenAI-compatible endpoint, Mistral). Before, the stream
+    raised ``ValueError: If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set``; now
+    each tool call gets its own index, so parallel calls stay separate.
+    Streamed tool calls also keep their id when a provider sends an empty ``id`` on the later chunks of the same call
+    (Alibaba Cloud Model Studio); before, the reply's ``ToolCall.id`` came back as ``""``.
