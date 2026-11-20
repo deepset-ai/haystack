@@ -1044,6 +1044,9 @@ class TestConversion:
 
         assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
         assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a"], receiver=list[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a", "b"], receiver=List[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a"], receiver=list[int]) == (False, None)
 
         assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (
             True,
