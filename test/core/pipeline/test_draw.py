@@ -9,7 +9,8 @@ import pytest
 
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.draw import _to_mermaid_image, _to_mermaid_text, _validate_image_response
+from haystack.core.pipeline.draw import _to_mermaid_ids, _to_mermaid_image, _to_mermaid_text, _validate_image_response
+from haystack.core.super_component import SuperComponent
 from haystack.testing.sample_components import AddFixedValue, Double
 
 
@@ -102,6 +103,100 @@ classDef component text-align:center;
 
 """  # noqa: E501
     )
+
+
+def test_to_mermaid_text_gives_component_names_that_are_not_mermaid_ids_a_valid_id():
+    pipe = Pipeline()
+    pipe.add_component("query embedder", Double())
+    pipe.add_component("end", Double())
+    pipe.connect("query embedder.value", "end.value")
+
+    text = _to_mermaid_text(pipe.graph, {"theme": "neutral"})
+    assert (
+        text
+        == """
+%%{ init: {'theme': 'neutral'} }%%
+
+graph TD;
+
+query_embedder_1["<b>query embedder</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> end_1["<b>end</b><br><small><i>Double</i></small>"]:::component
+i{&ast;}--"value<br><small><i>int</i></small>"--> query_embedder_1["<b>query embedder</b><br><small><i>Double</i></small>"]:::component
+end_1["<b>end</b><br><small><i>Double</i></small>"]:::component--"value<br><small><i>int</i></small>"--> o{&ast;}
+
+classDef component text-align:center;
+
+"""  # noqa: E501
+    )
+
+
+def test_to_mermaid_text_keeps_components_apart_from_the_input_and_output_nodes():
+    pipe = Pipeline()
+    pipe.add_component("input", Double())
+    pipe.add_component("i", Double())
+    pipe.add_component("o", Double())
+    pipe.add_component("output", Double())
+    pipe.connect("input.value", "i.value")
+    pipe.connect("i.value", "o.value")
+    pipe.connect("o.value", "output.value")
+
+    text = _to_mermaid_text(pipe.graph, {"theme": "neutral"})
+    assert (
+        text
+        == """
+%%{ init: {'theme': 'neutral'} }%%
+
+graph TD;
+
+input["<b>input</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> i_1["<b>i</b><br><small><i>Double</i></small>"]:::component
+i_1["<b>i</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> o_1["<b>o</b><br><small><i>Double</i></small>"]:::component
+o_1["<b>o</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> output["<b>output</b><br><small><i>Double</i></small>"]:::component
+i{&ast;}--"value<br><small><i>int</i></small>"--> input["<b>input</b><br><small><i>Double</i></small>"]:::component
+output["<b>output</b><br><small><i>Double</i></small>"]:::component--"value<br><small><i>int</i></small>"--> o{&ast;}
+
+classDef component text-align:center;
+
+"""  # noqa: E501
+    )
+
+
+def test_to_mermaid_text_gives_super_component_names_that_are_not_mermaid_ids_a_valid_class():
+    inner = Pipeline()
+    inner.add_component("double", Double())
+    pipe = Pipeline()
+    pipe.add_component("rag pipeline", SuperComponent(pipeline=inner))
+    graph, super_component_mapping = pipe._merge_super_component_pipelines()
+
+    text = _to_mermaid_text(graph, {"theme": "neutral"}, super_component_mapping)
+    assert 'double["<b>double</b><br><small><i>Double</i></small>"]:::rag_pipeline_1' in text
+    assert 'legend_rag_pipeline_1["rag pipeline"]:::rag_pipeline_1' in text
+    assert "classDef rag_pipeline_1 fill:" in text
+    assert ":::rag pipeline" not in text
+
+
+@pytest.mark.parametrize("name", ["component", "default"])
+def test_to_mermaid_text_does_not_reuse_a_base_class_for_a_super_component(name):
+    inner = Pipeline()
+    inner.add_component("double", Double())
+    pipe = Pipeline()
+    pipe.add_component(name, SuperComponent(pipeline=inner))
+    pipe.add_component("x", Double())
+    graph, super_component_mapping = pipe._merge_super_component_pipelines()
+
+    text = _to_mermaid_text(graph, {"theme": "neutral"}, super_component_mapping)
+    assert f'double["<b>double</b><br><small><i>Double</i></small>"]:::{name}_1' in text
+    assert 'x["<b>x</b><br><small><i>Double</i></small>"]:::component' in text
+    assert f"classDef {name}_1 fill:" in text
+    assert f"classDef {name} fill:" not in text
+
+
+def test_to_mermaid_ids_does_not_reuse_a_taken_id():
+    ids = _to_mermaid_ids(names=["my retriever", "my_retriever_1", "graph", "comp1"])
+    assert ids == {
+        "my retriever": "my_retriever_2",
+        "my_retriever_1": "my_retriever_1",
+        "graph": "graph_1",
+        "comp1": "comp1",
+    }
 
 
 def test_to_mermaid_text_does_not_edit_graph():
