@@ -380,7 +380,7 @@ Process messages and execute tools until an exit condition is met.
   `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
   the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
   meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
-- Any additional keys defined in the `state_schema`.
+- Additional keys from `state_schema` passed as inputs or set during the run.
 
 #### run_async
 
@@ -439,7 +439,7 @@ if available.
   `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
   the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
   meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
-- Any additional keys defined in the `state_schema`.
+- Additional keys from `state_schema` passed as inputs or set during the run.
 
 ## state/state
 

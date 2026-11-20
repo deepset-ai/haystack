@@ -1,0 +1,169 @@
+---
+title: "OpenSearchMultivectorEmbeddingRetriever"
+id: opensearchmultivectorembeddingretriever
+slug: "/opensearchmultivectorembeddingretriever"
+description: "A Retriever based on multivector embeddings, compatible with the OpenSearch Document Store."
+hep_available: false
+---
+
+# OpenSearchMultivectorEmbeddingRetriever
+
+A Retriever based on multivector embeddings, compatible with the OpenSearch Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a multivector Text Embedder, as the last component in a semantic search pipeline or before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) in a RAG pipeline |
+| **Mandatory init variables** | `document_store`: An instance of [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx) with `multivector_embedding_dim` configured |
+| **Mandatory run variables** | `query_multivector_embedding`: A non-empty list of vectors representing the query (`list[list[float]]`) |
+| **Output variables** | `documents`: Up to `top_k` documents sorted by descending OpenSearch score, with scores in `Document.score` |
+| **API reference** | [OpenSearch](/reference/integrations-opensearch) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch |
+| **Package name** | `opensearch-haystack` |
+
+</div>
+
+## Overview
+
+`OpenSearchMultivectorEmbeddingRetriever` retrieves documents from an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx) using multivector embeddings, which typically contain one vector per token. OpenSearch 3.3 or later ranks documents with `lateInteractionScore` using `innerproduct` similarity. For each query vector, it takes the best OpenSearch inner-product similarity score across the document vectors and sums those scores.
+
+Before retrieval, store document vectors in `Document.multivector_embedding` and compute the query's multivector embedding with the same model. For example, you can use [`SentenceTransformersMultivectorDocumentEmbedder`](../embedders/sentencetransformersmultivectordocumentembedder.mdx) for indexing and [`SentenceTransformersMultivectorTextEmbedder`](../embedders/sentencetransformersmultivectortextembedder.mdx) for queries. Set the Document Store's `multivector_embedding_dim` to the dimension of each vector.
+
+The Retriever returns up to 10 documents by default and excludes documents without multivector embeddings. Set `top_k` to change the result limit and `filters` to narrow down the search space. Set either parameter at initialization or at runtime. The Document Store omits dense and multivector embeddings from results by default. Set `return_embedding=True` on the Document Store to include them.
+
+:::tip[Retrieval on Large Collections]
+
+Direct multivector retrieval scans the documents matching the filters and can be expensive on large collections. To score a smaller candidate set, store both dense and multivector embeddings, set `return_embedding=True` on the Document Store, retrieve candidates with [OpenSearchEmbeddingRetriever](opensearchembeddingretriever.mdx), and rerank them with [MaxSimRanker](../rankers/maxsimranker.mdx).
+
+:::
+
+### Installation
+
+Install the OpenSearch integration.
+
+```shell
+pip install opensearch-haystack
+```
+
+To try the Retriever locally, you can start a single-node OpenSearch cluster.
+
+```shell
+docker run -d -p 127.0.0.1:9200:9200 \
+    -e discovery.type=single-node -e 'OPENSEARCH_INITIAL_ADMIN_PASSWORD=SecureHaystack!2026' \
+    opensearchproject/opensearch:3.5.0
+```
+
+For other deployment and connection options, see [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx#initialization).
+
+## Usage
+
+### On its own
+
+This example retrieves the highest-scoring document from a local OpenSearch index using manually defined multivector embeddings.
+
+```python
+from haystack import Document
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.retrievers.opensearch import (
+    OpenSearchMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+
+document_store = OpenSearchDocumentStore(
+    hosts="https://localhost:9200",
+    http_auth=("admin", "SecureHaystack!2026"),
+    verify_certs=False,
+    index="multivector-token-demo",
+    multivector_embedding_dim=2,
+)
+document_store.write_documents(
+    documents=[
+        Document(
+            id="solar",
+            content="Solar panels turn sunlight into electricity.",
+            multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
+        ),
+        Document(
+            id="wind",
+            content="Wind turbines generate electricity.",
+            multivector_embedding=[[0.5, 0.0]],
+        ),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+retriever = OpenSearchMultivectorEmbeddingRetriever(
+    document_store=document_store, top_k=1
+)
+result = retriever.run(query_multivector_embedding=[[1.0, 0.0], [0.0, 1.0]])
+for document in result["documents"]:
+    print(f"{document.score:.2f}: {document.content}")
+# >> 4.00: Solar panels turn sunlight into electricity.
+```
+
+### In a pipeline
+
+This example computes document multivector embeddings at indexing time, stores them in OpenSearch, then connects a multivector Text Embedder to the Retriever in a query pipeline.
+
+Install the Sentence Transformers integration.
+
+```shell
+pip install sentence-transformers-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+    SentenceTransformersMultivectorTextEmbedder,
+)
+from haystack_integrations.components.retrievers.opensearch import (
+    OpenSearchMultivectorEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+
+model = "answerdotai/answerai-colbert-small-v1"
+# This model produces 96-dimensional token vectors.
+document_store = OpenSearchDocumentStore(
+    hosts="https://localhost:9200",
+    http_auth=("admin", "SecureHaystack!2026"),
+    verify_certs=False,
+    index="multivector-colbert-demo",
+    multivector_embedding_dim=96,
+)
+documents = [
+    Document(id="solar", content="Solar panels convert sunlight into electricity."),
+    Document(id="wind", content="Wind turbines use wind to generate electricity."),
+    Document(
+        id="hydro",
+        content="Hydroelectric power stations generate electricity from flowing water.",
+    ),
+]
+
+document_embedder = SentenceTransformersMultivectorDocumentEmbedder(model=model)
+documents = document_embedder.run(documents=documents)["documents"]
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    name="text_embedder",
+    instance=SentenceTransformersMultivectorTextEmbedder(model=model),
+)
+query_pipeline.add_component(
+    name="retriever",
+    instance=OpenSearchMultivectorEmbeddingRetriever(
+        document_store=document_store, top_k=1
+    ),
+)
+query_pipeline.connect(
+    "text_embedder.multivector_embedding", "retriever.query_multivector_embedding"
+)
+
+result = query_pipeline.run(
+    data={"text_embedder": {"text": "What converts sunlight into electricity?"}}
+)
+print(result["retriever"]["documents"][0].content)
+# >> Solar panels convert sunlight into electricity.
+```
