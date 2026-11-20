@@ -227,11 +227,15 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                     res["status"] = "evaluated"
                     continue
 
-                msg_template = "Input {idx}: expected `relevant_statements` to be a list, got {value_type}."
-                msg_fields = {"idx": idx, "value_type": type(statements).__name__}
+                value_type = type(statements).__name__
                 if self.raise_on_failure:
-                    raise ValueError(msg_template.format(**msg_fields))
-                logger.warning(msg_template, **msg_fields)
+                    msg = f"Input {idx}: expected `relevant_statements` to be a list, got {value_type}."
+                    raise ValueError(msg)
+                logger.warning(
+                    "Input {idx}: expected `relevant_statements` to be a list, got {value_type}.",
+                    idx=idx,
+                    value_type=value_type,
+                )
 
             result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
 
