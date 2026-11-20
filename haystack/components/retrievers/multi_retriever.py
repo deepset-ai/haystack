@@ -211,20 +211,38 @@ class MultiRetriever:
     def close(self) -> None:
         """
         Release the retrievers' resources.
+
+        Every retriever is closed even if one of them raises, so a failing retriever cannot keep the others open.
+        The first error is re-raised once all retrievers have been given the chance to release their resources.
         """
+        first_error: Exception | None = None
         for retriever in self.retrievers.values():
-            if hasattr(retriever, "close"):
-                retriever.close()
+            try:
+                if hasattr(retriever, "close"):
+                    retriever.close()
+            except Exception as error:
+                first_error = first_error or error
+        if first_error is not None:
+            raise first_error
 
     async def close_async(self) -> None:
         """
         Release the retrievers' async resources.
+
+        Every retriever is closed even if one of them raises, so a failing retriever cannot keep the others open.
+        The first error is re-raised once all retrievers have been given the chance to release their resources.
         """
+        first_error: Exception | None = None
         for retriever in self.retrievers.values():
-            if hasattr(retriever, "close_async"):
-                await retriever.close_async()
-            elif hasattr(retriever, "close"):
-                retriever.close()
+            try:
+                if hasattr(retriever, "close_async"):
+                    await retriever.close_async()
+                elif hasattr(retriever, "close"):
+                    retriever.close()
+            except Exception as error:
+                first_error = first_error or error
+        if first_error is not None:
+            raise first_error
 
     @component.output_types(documents=list[Document])
     def run(

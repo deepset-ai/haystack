@@ -811,6 +811,42 @@ class TestComponentLifecycle:
         a.close_async.assert_awaited_once()
         b.close_async.assert_awaited_once()
 
+    def test_close_closes_remaining_retrievers_after_an_error(self):
+        # A retriever that fails to close must not keep the following ones open.
+        failing = Mock(spec=["run", "close"])
+        failing.close.side_effect = RuntimeError("close failed")
+        healthy = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"failing": failing, "healthy": healthy})
+
+        with pytest.raises(RuntimeError, match="close failed"):
+            retriever.close()
+
+        healthy.close.assert_called_once()
+
+    async def test_close_async_closes_remaining_retrievers_after_an_error(self):
+        failing = Mock(spec=["run", "close_async"])
+        failing.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        healthy = Mock(spec=["run", "close_async"])
+        healthy.close_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"failing": failing, "healthy": healthy})
+
+        with pytest.raises(RuntimeError, match="close failed"):
+            await retriever.close_async()
+
+        healthy.close_async.assert_awaited_once()
+
+    async def test_close_async_closes_remaining_retrievers_after_a_sync_fallback_error(self):
+        failing = Mock(spec=["run", "close"])
+        failing.close.side_effect = RuntimeError("close failed")
+        healthy = Mock(spec=["run", "close_async"])
+        healthy.close_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"failing": failing, "healthy": healthy})
+
+        with pytest.raises(RuntimeError, match="close failed"):
+            await retriever.close_async()
+
+        healthy.close_async.assert_awaited_once()
+
     async def test_close_async_falls_back_to_sync_close(self):
         a = Mock(spec=["run", "close"])
         b = Mock(spec=["run", "close"])
