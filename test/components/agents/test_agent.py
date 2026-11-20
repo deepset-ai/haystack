@@ -808,6 +808,34 @@ class TestAgentRun:
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    def test_run_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        output = pipeline.run(data={"agent": inputs})["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    async def test_run_async_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        result = await pipeline.run_async(data={"agent": inputs})
+        output = result["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
+
     @pytest.mark.asyncio
     async def test_generation_kwargs(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
