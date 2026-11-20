@@ -843,17 +843,21 @@ class TestAgentHooksAsync:
         assert result["tool_call_counts"]["save"] == 1
 
     @pytest.mark.asyncio
-    async def test_incomplete_generation_can_recover(self):
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            ChatMessage.from_assistant("Partial", meta={"finish_reason": "content_filter"}),
+            ChatMessage.from_assistant(meta={"refusal": "I cannot answer.", "finish_reason": "stop"}),
+        ],
+    )
+    async def test_incomplete_generation_can_recover(self, reply):
         agent = _agent(
             MockChatGenerator(),
             state_schema={"seen_reasons": {"type": list[str]}},
             hooks={"on_exit": [request_safe_answer]},
         )
         agent.chat_generator.run_async = AsyncMock(
-            side_effect=[
-                {"replies": [ChatMessage.from_assistant("Partial", meta={"finish_reason": "content_filter"})]},
-                {"replies": [ChatMessage.from_assistant("Safe recovered answer")]},
-            ]
+            side_effect=[{"replies": [reply]}, {"replies": [ChatMessage.from_assistant("Safe recovered answer")]}]
         )
 
         result = await agent.run_async(messages=[ChatMessage.from_user("hi")])

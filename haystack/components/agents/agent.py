@@ -178,8 +178,9 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     Return the exit reason for a terminal assistant reply without tool calls.
 
     Incomplete generation reasons take precedence over text so callers can distinguish a partial response from a
-    complete answer. An empty response without a recognized terminal reason does not trigger an exit, preserving the
-    Agent's recovery behavior for malformed tool calls that a Chat Generator discarded.
+    complete answer. Refusal metadata also ends the run with the content_filter reason. An empty response without a
+    recognized terminal reason does not trigger an exit, preserving the Agent's recovery behavior for malformed tool
+    calls that a Chat Generator discarded.
     """
     # If the messages list is empty or the last message has tool calls, don't exit.
     if not messages or any(message.tool_call for message in messages):
@@ -195,6 +196,9 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     if last.meta.get("finish_reason") == _EXIT_REASON_LENGTH:
         return _EXIT_REASON_LENGTH
     if last.meta.get("finish_reason") == _EXIT_REASON_CONTENT_FILTER:
+        return _EXIT_REASON_CONTENT_FILTER
+
+    if isinstance(refusal := last.meta.get("refusal"), str) and refusal.strip():
         return _EXIT_REASON_CONTENT_FILTER
 
     # If the last message has text, exit with the text reason.
