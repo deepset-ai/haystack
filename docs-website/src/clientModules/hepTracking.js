@@ -16,6 +16,10 @@ const CTA_HOSTS = new Set([
   'landing.deepset.ai',
 ]);
 
+// haystack.deepset.ai mostly hosts tutorials and cookbooks, so only its enterprise posts count as CTAs.
+const HAYSTACK_SITE_HOST = 'haystack.deepset.ai';
+const HAYSTACK_SITE_ENTERPRISE_PATH = /^\/blog\/[^/]*haystack-enterprise/;
+
 // Page slug (last path segment, version prefix stripped) -> callout location
 const CALLOUT_LOCATIONS = {
   intro: 'callout_intro',
@@ -70,6 +74,9 @@ function isHepAvailable(pathname) {
 
 function getCtaType(url) {
   const path = url.pathname.replace(/\/+$/, '');
+  if (url.hostname === HAYSTACK_SITE_HOST) {
+    return 'enterprise_support';
+  }
   if (url.hostname === 'docs.cloud.deepset.ai') {
     return path.startsWith('/docs/quick-start-guide') ? 'quickstart' : 'platform_docs';
   }
@@ -115,7 +122,10 @@ function toCtaUrl(anchor) {
   } catch {
     return null;
   }
-  return CTA_HOSTS.has(url.hostname) ? url : null;
+  const isCta =
+    CTA_HOSTS.has(url.hostname) ||
+    (url.hostname === HAYSTACK_SITE_HOST && HAYSTACK_SITE_ENTERPRISE_PATH.test(url.pathname));
+  return isCta ? url : null;
 }
 
 function handleClick(event) {
