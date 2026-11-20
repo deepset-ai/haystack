@@ -48,6 +48,7 @@ from haystack_integrations.components.embedders.mistral.text_embedder import (
 
 embedder = MistralTextEmbedder(
     api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
 )
 ```
 
@@ -62,7 +63,7 @@ from haystack_integrations.components.embedders.mistral.text_embedder import (
     MistralTextEmbedder,
 )
 
-embedder = MistralTextEmbedder()
+embedder = MistralTextEmbedder(model="mistral-embed")
 
 result = embedder.run(text="How can I use the Mistral embedding models with Haystack?")
 
