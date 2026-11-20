@@ -5,7 +5,7 @@
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal, overload
+from typing import Any, Literal, Self, overload
 
 from haystack import logging
 from haystack.core.component import Component
@@ -48,14 +48,14 @@ class ToolCallDelta:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolCallDelta":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Creates a ToolCallDelta from a serialized representation.
 
         :param data: Dictionary containing ToolCallDelta's attributes.
         :returns: A ToolCallDelta instance.
         """
-        return ToolCallDelta(**data)
+        return cls(**data)
 
 
 @_warn_on_inplace_mutation
@@ -95,14 +95,14 @@ class ComponentInfo:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ComponentInfo":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Creates a ComponentInfo from a serialized representation.
 
         :param data: Dictionary containing ComponentInfo's attributes.
         :returns: A ComponentInfo instance.
         """
-        return ComponentInfo(**data)
+        return cls(**data)
 
 
 @_warn_on_inplace_mutation

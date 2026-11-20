@@ -58,6 +58,38 @@ class TestTextContent:
         assert type(result) is MyText
         assert result == MyText(text="hello")
 
+    def test_tool_call_subclass_from_dict(self):
+        @dataclass
+        class MyToolCall(ToolCall):
+            pass
+
+        original = MyToolCall(tool_name="get_weather", arguments={"city": "Paris"}, id="1")
+        result = MyToolCall.from_dict(original.to_dict())
+        assert type(result) is MyToolCall
+        assert result == original
+
+    def test_tool_call_result_subclass_from_dict(self):
+        @dataclass
+        class MyToolCallResult(ToolCallResult):
+            pass
+
+        original = MyToolCallResult(
+            result="sunny", origin=ToolCall(tool_name="get_weather", arguments={"city": "Paris"}, id="1"), error=False
+        )
+        result = MyToolCallResult.from_dict(original.to_dict())
+        assert type(result) is MyToolCallResult
+        assert result == original
+
+    def test_reasoning_content_subclass_from_dict(self):
+        @dataclass
+        class MyReasoning(ReasoningContent):
+            pass
+
+        original = MyReasoning(reasoning_text="thinking")
+        result = MyReasoning.from_dict(original.to_dict())
+        assert type(result) is MyReasoning
+        assert result == original
+
     def test_text_content_no_warning_on_init(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error", Warning)

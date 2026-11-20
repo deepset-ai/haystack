@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``ToolCall.from_dict``, ``ToolCallResult.from_dict`` and ``ReasoningContent.from_dict`` in ``haystack.dataclasses.chat_message``,
+    as well as ``ToolCallDelta.from_dict`` and ``ComponentInfo.from_dict`` in ``haystack.dataclasses.streaming_chunk``, now
+    instantiate ``cls`` instead of hardcoding their own class. Calling them on a subclass returns the subclass again, so
+    extra fields are no longer dropped on a ``to_dict()`` / ``from_dict()`` round trip, matching ``TextContent``, ``FileContent``,
+    ``ImageContent`` and ``ByteStream``.
