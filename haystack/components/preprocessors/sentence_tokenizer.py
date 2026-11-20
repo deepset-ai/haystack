@@ -77,6 +77,11 @@ QUOTE_SPANS_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 # Closing brackets and quotes that can trail a sentence ending, as in `He said "Hi." Bye.` or `(Hi.) Bye.`
 SENTENCE_CLOSING_CHARS_RE = r"[\)\]}\"'’”»]*"
 
+# Full-width sentence terminators of Chinese and Japanese. These scripts put no space between sentences, so NLTK,
+# which looks for whitespace after a sentence ending, never splits there. A terminator that a closing quote or
+# bracket follows ends quoted or bracketed text, not the sentence, so it is not a split point.
+_CJK_SENTENCE_END_RE = re.compile(r"[。！？｡]+(?![」』”’）】〕》〉\)\]}\"'])")
+
 if nltk_imports.is_successful():
 
     def load_sentence_tokenizer(
@@ -199,11 +204,33 @@ class SentenceSplitter:
         :param text: The text to split.
         :returns: list of sentences with positions.
         """
-        sentence_spans = list(self.sentence_tokenizer.span_tokenize(text))
+        sentence_spans = self._split_at_cjk_sentence_ends(text, list(self.sentence_tokenizer.span_tokenize(text)))
         if self.use_split_rules:
             sentence_spans = SentenceSplitter._apply_split_rules(text, sentence_spans)
 
         return [{"sentence": text[start:end], "start": start, "end": end} for start, end in sentence_spans]
+
+    def _split_at_cjk_sentence_ends(self, text: str, sentence_spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+        """
+        Splits the sentence spans after the full-width sentence terminators of Chinese and Japanese (。！？).
+
+        :param text: The text to split.
+        :param sentence_spans: The sentence spans found by the NLTK tokenizer.
+        :returns: The sentence spans, split after each full-width terminator that has more text after it.
+        """
+        new_sentence_spans = []
+        for start, end in sentence_spans:
+            for match in _CJK_SENTENCE_END_RE.finditer(text, start, end):
+                next_start = match.end()
+                while next_start < end and text[next_start].isspace():
+                    next_start += 1
+                if next_start == end:
+                    break
+                # with keep_white_spaces=True a sentence keeps the whitespace up to the next one
+                new_sentence_spans.append((start, next_start if self.keep_white_spaces else match.end()))
+                start = next_start
+            new_sentence_spans.append((start, end))
+        return new_sentence_spans
 
     @staticmethod
     def _apply_split_rules(text: str, sentence_spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
