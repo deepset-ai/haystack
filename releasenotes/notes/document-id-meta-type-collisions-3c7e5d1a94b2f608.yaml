@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    ``Document`` no longer generates the same ID for metadata values that only differ in type. ``_create_id`` hashed the
+    metadata with ``json.dumps(..., default=str)``, and both that and JSON itself flatten the type away: a tuple became
+    a list, and a set went through ``str()``. ``Document(content="x", meta={"tags": [1, 2]})`` and
+    ``Document(content="x", meta={"tags": (1, 2)})`` ended up with the same ID, so writing both either raised
+    ``DuplicateDocumentError`` or, with ``DuplicatePolicy.OVERWRITE``, silently kept only one of them.
+
+    Tuples and sets are now serialized with a type marker for the ID. Sets are sorted by their JSON representation, so
+    building one in a different order still gives the same ID, while the element order of a tuple still matters. IDs of
+    documents whose metadata only uses types JSON supports are unchanged.
