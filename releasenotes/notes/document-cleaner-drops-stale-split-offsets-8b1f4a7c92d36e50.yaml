@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    ``DocumentCleaner`` now drops ``split_idx_start`` and ``_split_overlap`` from the chunks it rewrites. Those values
+    are computed by the splitters over the text of the whole source document, and cleaning a chunk changes its length,
+    so after cleaning they no longer matched the chunks they were attached to. ``SentenceWindowRetriever`` read them to
+    merge neighbouring chunks and produced windows with the text glued together, for example
+    ``'Sentence 1.Sentence 2.Sentence 3.'`` instead of ``'Sentence 1. Sentence 2. Sentence 3.'``. This affected
+    ``DocumentPreprocessor`` out of the box, since it cleans the chunks produced by the splitter.
+
+    The other split metadata (``split_id``, ``source_id``, ``page_number``) is kept, so the retriever still groups the
+    chunks by source and orders them. Chunks that the cleaner leaves untouched keep their offsets, unless another chunk
+    of the same source was rewritten, because in that case the offsets of the whole source are off.

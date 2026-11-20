@@ -9,7 +9,7 @@ from unittest.mock import ANY, Mock, patch
 import pytest
 
 from haystack import DeserializationError, Document, Pipeline
-from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -316,8 +316,21 @@ class TestSentenceWindowRetriever:
         assert len(result["context_documents"]) == 7
         assert [doc.meta["split_id_test"] for doc in result["context_documents"]] == [1, 2, 3, 4, 5, 6, 7]
         assert result["context_windows"] == [
-            "Sentence 1.Sentence 2.Sentence 3.Sentence 4.Sentence 5.Sentence 6.Sentence 7."
+            "Sentence 1. Sentence 2. Sentence 3. Sentence 4. Sentence 5. Sentence 6. Sentence 7."
         ]
+
+    def test_run_after_cleaning_does_not_glue_chunks_together(self, in_memory_doc_store):
+        text = "Alpha beta.  Gamma   delta.  Epsilon zeta."
+        chunks = DocumentSplitter(split_by="sentence", split_length=1, split_overlap=0, split_threshold=0).run(
+            documents=[Document(content=text)]
+        )["documents"]
+        cleaned = DocumentCleaner().run(documents=chunks)["documents"]
+        in_memory_doc_store.write_documents(cleaned)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=1)
+
+        result = retriever.run(retrieved_documents=[cleaned[1]])
+
+        assert result["context_windows"] == ["Alpha beta. Gamma delta. Epsilon zeta."]
 
     def test_run_with_multiple_source_ids(self, in_memory_doc_store):
         docs = [
@@ -362,7 +375,7 @@ class TestSentenceWindowRetriever:
 
         filter_documents.assert_called_once()
         assert len(filter_documents.call_args.args[0]["conditions"]) == 2
-        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert result["context_windows"] == ["a1. a2. a3.", "b4. b5. b6.", "a1. a2. a3."]
         assert [doc.content for doc in result["context_documents"]] == [
             "a1.",
             "a2.",
@@ -391,7 +404,7 @@ class TestSentenceWindowRetriever:
             result = retriever.run(retrieved_documents=[doc_without_meta, docs[2]])
 
         filter_documents.assert_called_once()
-        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_windows"] == ["No metadata.", "1. 2. 3."]
         assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
 
     def test_run_does_not_query_document_store_without_documents_to_expand(self, in_memory_doc_store):

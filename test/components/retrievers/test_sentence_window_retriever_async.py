@@ -179,7 +179,7 @@ class TestSentenceWindowRetrieverAsync:
         assert len(result["context_documents"]) == 7
         assert [doc.meta["split_id_test"] for doc in result["context_documents"]] == [1, 2, 3, 4, 5, 6, 7]
         assert result["context_windows"] == [
-            "Sentence 1.Sentence 2.Sentence 3.Sentence 4.Sentence 5.Sentence 6.Sentence 7."
+            "Sentence 1. Sentence 2. Sentence 3. Sentence 4. Sentence 5. Sentence 6. Sentence 7."
         ]
 
     @pytest.mark.asyncio
@@ -227,7 +227,7 @@ class TestSentenceWindowRetrieverAsync:
 
         filter_documents_async.assert_awaited_once()
         assert len(filter_documents_async.call_args.kwargs["filters"]["conditions"]) == 2
-        assert result["context_windows"] == ["a1.a2.a3.", "b4.b5.b6.", "a1.a2.a3."]
+        assert result["context_windows"] == ["a1. a2. a3.", "b4. b5. b6.", "a1. a2. a3."]
         assert [doc.content for doc in result["context_documents"]] == [
             "a1.",
             "a2.",
@@ -257,7 +257,7 @@ class TestSentenceWindowRetrieverAsync:
             result = await retriever.run_async(retrieved_documents=[doc_without_meta, docs[2]])
 
         filter_documents_async.assert_awaited_once()
-        assert result["context_windows"] == ["No metadata.", "1.2.3."]
+        assert result["context_windows"] == ["No metadata.", "1. 2. 3."]
         assert result["context_documents"] == [doc_without_meta, docs[1], docs[2], docs[3]]
 
     @pytest.mark.asyncio

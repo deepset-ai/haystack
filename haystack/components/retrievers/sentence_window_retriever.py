@@ -128,8 +128,9 @@ class SentenceWindowRetriever:
         :param documents: List of Documents to merge.
         """
         if any("split_idx_start" not in doc.meta for doc in documents):
-            # If any of the documents is missing the 'split_idx_start' metadata we just concatenate their content.
-            return "".join(doc.content for doc in documents if doc.content)
+            # Without the offsets we can't tell where one chunk ends and the next one begins, so join the
+            # contents with a space instead of gluing the last word of one chunk to the first of the next.
+            return " ".join(doc.content for doc in documents if doc.content)
 
         sorted_docs = sorted(documents, key=lambda doc: doc.meta["split_idx_start"])
         merged_text = ""

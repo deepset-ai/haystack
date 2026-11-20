@@ -8,12 +8,15 @@ from copy import deepcopy
 from dataclasses import replace
 from functools import partial, reduce
 from itertools import chain
-from typing import Literal
+from typing import Any, Literal
 from unicodedata import normalize
 
 from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
+
+# metadata written by the splitters that is only valid for the text they produced
+_SPLIT_OFFSET_FIELDS = ("split_idx_start", "_split_overlap")
 
 
 @component
@@ -123,7 +126,8 @@ class DocumentCleaner:
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError("DocumentCleaner expects a List of Documents as input.")
 
-        cleaned_docs = []
+        cleaned_docs: list[Document] = []
+        rewritten_sources: set[Any] = set()
         for doc in documents:
             if doc.content is None:
                 logger.warning(
@@ -166,10 +170,33 @@ class DocumentCleaner:
                     )
                     continue
 
+            if text != doc.content:
+                rewritten_sources.add(doc.meta.get("source_id"))
+
             clean_doc = replace(doc, id=doc.id if self.keep_id else "", content=text, meta=deepcopy(doc.meta))
             cleaned_docs.append(clean_doc)
 
-        return {"documents": cleaned_docs}
+        return {"documents": self._drop_stale_split_offsets(cleaned_docs, rewritten_sources)}
+
+    @staticmethod
+    def _drop_stale_split_offsets(documents: list[Document], rewritten_sources: set[Any]) -> list[Document]:
+        """
+        Remove split offsets that no longer describe the document they are attached to.
+
+        Splitters record `split_idx_start` and `_split_overlap` against the text of the whole source document, so the
+        values of one chunk only make sense next to the values of its siblings. Once the cleaner changes the text of
+        any chunk, the offsets of the whole source are stale and components that read them, like
+        `SentenceWindowRetriever`, would merge the chunks at the wrong places.
+        """
+        if not rewritten_sources:
+            return documents
+
+        for doc in documents:
+            if "split_id" in doc.meta and doc.meta.get("source_id") in rewritten_sources:
+                for field in _SPLIT_OFFSET_FIELDS:
+                    doc.meta.pop(field, None)
+
+        return documents
 
     def _normalize_unicode(self, text: str, form: Literal["NFC", "NFKC", "NFD", "NFKD"]) -> str:
         """

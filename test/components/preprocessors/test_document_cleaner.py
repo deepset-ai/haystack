@@ -7,7 +7,7 @@ import logging
 import pytest
 
 from haystack import Document
-from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.dataclasses import ByteStream, SparseEmbedding
 
 
@@ -210,6 +210,51 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 2
         assert result["documents"][0].id == "1"
         assert result["documents"][1].id == "2"
+
+    def test_drops_split_offsets_of_rewritten_chunks(self):
+        splitter = DocumentSplitter(split_by="sentence", split_length=2, split_overlap=1, split_threshold=0)
+        chunks = splitter.run(documents=[Document(content="First  one.  Second one.  Third one.")])["documents"]
+        assert all("split_idx_start" in doc.meta and "_split_overlap" in doc.meta for doc in chunks)
+
+        cleaned = DocumentCleaner().run(documents=chunks)["documents"]
+
+        # the offsets were computed on the text before cleaning, so they can't be used to merge the chunks anymore
+        for doc in cleaned:
+            assert "split_idx_start" not in doc.meta
+            assert "_split_overlap" not in doc.meta
+            # everything else the splitter wrote is still there
+            assert "split_id" in doc.meta
+            assert "source_id" in doc.meta
+
+    def test_drops_split_offsets_for_all_chunks_of_a_rewritten_source(self):
+        source_id = "source"
+        documents = [
+            Document(content="Already clean.", meta={"source_id": source_id, "split_id": 0, "split_idx_start": 0}),
+            Document(content="Needs   cleaning.", meta={"source_id": source_id, "split_id": 1, "split_idx_start": 14}),
+        ]
+
+        cleaned = DocumentCleaner().run(documents=documents)["documents"]
+
+        # the first chunk didn't change, but its offset only makes sense together with the ones of its siblings
+        assert all("split_idx_start" not in doc.meta for doc in cleaned)
+        assert [doc.content for doc in cleaned] == ["Already clean.", "Needs cleaning."]
+
+    def test_keeps_split_offsets_of_untouched_chunks(self):
+        splitter = DocumentSplitter(split_by="sentence", split_length=1, split_overlap=0, split_threshold=0)
+        documents = splitter.run(documents=[Document(content="First one. Second one.")])["documents"]
+
+        cleaned = DocumentCleaner(remove_extra_whitespaces=False).run(documents=documents)["documents"]
+
+        assert [doc.meta["split_idx_start"] for doc in cleaned] == [0, 11]
+
+    def test_split_offsets_survive_on_documents_without_split_id(self):
+        # metadata we don't know the meaning of is left alone
+        documents = [Document(content="Some   text.", meta={"split_idx_start": 7})]
+
+        cleaned = DocumentCleaner().run(documents=documents)["documents"]
+
+        assert cleaned[0].content == "Some text."
+        assert cleaned[0].meta["split_idx_start"] == 7
 
     def test_unicode_normalization(self):
         text = """\
