@@ -239,8 +239,9 @@ class LLMEvaluator:
             If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
             in the output dictionary, under the key "meta".
         :raises ValueError:
-            If the received inputs are missing, are not lists, have different lengths or are empty lists, or, only if
-            `raise_on_failure` is set to True, if the output is not a valid JSON or doesn't contain the expected keys.
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+            expected keys.
         """
         self.warm_up()
 
@@ -312,8 +313,9 @@ class LLMEvaluator:
         :raises TypeError:
             If the chat generator does not support async execution.
         :raises ValueError:
-            If the received inputs are missing, are not lists, have different lengths or are empty lists, or, only if
-            `raise_on_failure` is set to True, if the output is not a valid JSON or doesn't contain the expected keys.
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+            expected keys.
         """
 
         await self.warm_up_async()
