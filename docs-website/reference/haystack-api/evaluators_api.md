@@ -972,8 +972,9 @@ Run the LLM evaluator.
 
 **Raises:**
 
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### run_async
 
@@ -999,8 +1000,9 @@ Run the LLM evaluator asynchronously
 **Raises:**
 
 - <code>TypeError</code> – If the chat generator does not support async execution.
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### prepare_template
 
@@ -1076,6 +1078,7 @@ Validate the input parameters.
 
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
+  If the received input lists are empty
 
 ## sas_evaluator
 
