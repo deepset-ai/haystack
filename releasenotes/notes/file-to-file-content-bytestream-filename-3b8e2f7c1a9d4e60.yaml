@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``FileToFileContent`` now sets ``FileContent.filename`` for ``ByteStream`` sources from ``meta["file_name"]``,
+    or else from the base name of ``meta["file_path"]``. Previously the filename was always ``None`` for
+    ``ByteStream`` sources, so providers like OpenAI received a placeholder filename.
