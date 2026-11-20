@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``Pipeline.close()`` and ``Pipeline.close_async()`` so an exception raised while closing one component no
+    longer skips closing the remaining components. Errors are logged as warnings and the first exception is re-raised
+    after every component has been attempted.

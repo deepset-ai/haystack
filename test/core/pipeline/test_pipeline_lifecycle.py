@@ -200,6 +200,52 @@ def test_loop_bound_client_rejects_other_loop():
         asyncio.run(client.use())
 
 
+@component
+class FailingCloseComponent:
+    """Raises an error during close and close_async while recording that close was attempted."""
+
+    def __init__(self, error: Exception):
+        self.error = error
+        self.events: list[str] = []
+
+    @component.output_types(value=int)
+    def run(self):
+        return {"value": 1}
+
+    @component.output_types(value=int)
+    async def run_async(self):
+        return {"value": 1}
+
+    def close(self):
+        self.events.append("close")
+        raise self.error
+
+    async def close_async(self):
+        self.events.append("close_async")
+        raise self.error
+
+
+@component
+class FailingSyncOnlyCloseComponent:
+    """Implements only a failing sync close, to exercise sync-fallback error handling in close_async."""
+
+    def __init__(self, error: Exception):
+        self.error = error
+        self.events: list[str] = []
+
+    @component.output_types(value=int)
+    def run(self):
+        return {"value": 1}
+
+    @component.output_types(value=int)
+    async def run_async(self):
+        return {"value": 1}
+
+    def close(self):
+        self.events.append("close")
+        raise self.error
+
+
 async def test_async_client_bound_to_run_loop():
     """warm_up_async creates the async client on the loop run_async uses, so it stays usable there."""
     pipe = Pipeline()
@@ -207,3 +253,47 @@ async def test_async_client_bound_to_run_loop():
     await pipe.warm_up_async()
     # Would raise if warm_up_async had bound the client to a different loop than run_async
     await pipe.run_async({"client_component": {}})
+
+
+def test_pipeline_close_continues_after_error_and_raises_first():
+    """Pipeline.close() attempts every component even when earlier ones raise, then re-raises the first error."""
+    first_failing = FailingCloseComponent(RuntimeError("first close error"))
+    healthy = LifecycleRecorder()
+    second_failing = FailingCloseComponent(ValueError("second close error"))
+    last_healthy = SyncOnlyRecorder()
+
+    pipe = Pipeline()
+    pipe.add_component("first_failing", first_failing)
+    pipe.add_component("healthy", healthy)
+    pipe.add_component("second_failing", second_failing)
+    pipe.add_component("last_healthy", last_healthy)
+
+    with pytest.raises(RuntimeError, match="first close error"):
+        pipe.close()
+
+    assert first_failing.events == ["close"]
+    assert healthy.events == ["close"]
+    assert second_failing.events == ["close"]
+    assert last_healthy.events == ["close"]
+
+
+async def test_pipeline_close_async_continues_after_error_and_raises_first():
+    """Pipeline.close_async() attempts all async and sync-fallback components, then re-raises the first error."""
+    first_failing = FailingCloseComponent(RuntimeError("first async close error"))
+    healthy_async = LifecycleRecorder()
+    failing_sync = FailingSyncOnlyCloseComponent(ValueError("sync fallback close error"))
+    healthy_sync = SyncOnlyRecorder()
+
+    pipe = Pipeline()
+    pipe.add_component("first_failing", first_failing)
+    pipe.add_component("healthy_async", healthy_async)
+    pipe.add_component("failing_sync", failing_sync)
+    pipe.add_component("healthy_sync", healthy_sync)
+
+    with pytest.raises(RuntimeError, match="first async close error"):
+        await pipe.close_async()
+
+    assert first_failing.events == ["close_async"]
+    assert healthy_async.events == ["close_async"]
+    assert failing_sync.events == ["close"]
+    assert healthy_sync.events == ["close"]
