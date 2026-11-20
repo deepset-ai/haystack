@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` no longer emits an empty chunk, or a chunk with a wrong ``start_line``, when top-level
+    statements share a line separated by a semicolon (for example ``x = 1; y = 2``). The second statement was turned
+    into a unit with no content, which became an empty chunk at the end of the file or was merged into the next chunk
+    and moved its ``start_line`` back to the previous line. Such statements now stay in the chunk of the line they
+    are on.
