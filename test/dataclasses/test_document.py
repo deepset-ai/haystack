@@ -12,6 +12,7 @@ import pytest
 from haystack import Document
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 @pytest.mark.parametrize(
@@ -165,6 +166,45 @@ def test_id_is_independent_of_nested_meta_key_order():
     doc2 = Document(content="hello", meta={"outer": {"b": 2, "a": 1}})
 
     assert doc1.id == doc2.id
+
+
+@pytest.mark.parametrize(
+    "meta_a,meta_b",
+    [
+        pytest.param({"tags": [1, 2]}, {"tags": (1, 2)}, id="list_vs_tuple"),
+        pytest.param({"tags": {1, 2}}, {"tags": "{1, 2}"}, id="set_vs_its_str"),
+        pytest.param({"tags": {1, 2}}, {"tags": [1, 2]}, id="set_vs_list"),
+        pytest.param({"a": ([1], [2, 3])}, {"a": [(1,), (2, 3)]}, id="nested"),
+        pytest.param({"a": (1, (2, 3))}, {"a": ((1, 2), 3)}, id="nested_tuple_order"),
+    ],
+)
+def test_id_distinguishes_meta_value_types(meta_a, meta_b):
+    doc_a = Document(content="same content", meta=meta_a)
+    doc_b = Document(content="same content", meta=meta_b)
+
+    assert doc_a.meta != doc_b.meta
+    assert doc_a.id != doc_b.id
+
+
+def test_id_of_set_meta_is_independent_of_iteration_order():
+    doc1 = Document(content="hello", meta={"tags": {1, 2, 3}})
+    doc2 = Document(content="hello", meta={"tags": {3, 2, 1}})
+
+    assert doc1.id == doc2.id
+
+
+def test_id_of_tuple_meta_depends_on_element_order():
+    doc1 = Document(content="hello", meta={"point": (1, 2)})
+    doc2 = Document(content="hello", meta={"point": (2, 1)})
+
+    assert doc1.id != doc2.id
+
+
+def test_documents_with_different_meta_types_can_be_stored_together():
+    store = InMemoryDocumentStore()
+    store.write_documents([Document(content="x", meta={"tags": [1, 2]}), Document(content="x", meta={"tags": (1, 2)})])
+
+    assert store.count_documents() == 2
 
 
 def test_to_dict():

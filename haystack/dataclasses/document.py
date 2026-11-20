@@ -17,6 +17,27 @@ from haystack.utils.dataclasses import _warn_on_inplace_mutation
 _LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
 
 
+def _meta_for_id(value: Any) -> Any:
+    """
+    Recursively turn the values of `meta` into something that hashes to a stable and unique string.
+
+    `json.dumps` alone loses the distinction between types that it can't represent natively: a tuple becomes a list, and
+    a set goes through `default=str`. Two documents with `{"tags": [1, 2]}` and `{"tags": (1, 2)}` then end up with the
+    same ID, which makes document stores reject the second one or quietly overwrite it. Sets are converted to a sorted
+    list so that iteration order doesn't leak into the ID either.
+    """
+    if isinstance(value, dict):
+        return {key: _meta_for_id(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_meta_for_id(item) for item in value]
+    if isinstance(value, tuple):
+        return {"__tuple__": [_meta_for_id(item) for item in value]}
+    if isinstance(value, (set, frozenset)):
+        items = [_meta_for_id(item) for item in value]
+        return {"__set__": sorted(items, key=lambda item: json.dumps(item, sort_keys=True, default=str))}
+    return value
+
+
 class _RemoveLegacyFields(type):
     def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
@@ -138,7 +159,7 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None
         # Sort keys so meta order doesn't affect the ID. Keep "{}" for empty meta so existing IDs stay stable.
-        meta = json.dumps(self.meta, sort_keys=True, default=str) if self.meta else "{}"
+        meta = json.dumps(_meta_for_id(self.meta), sort_keys=True, default=str) if self.meta else "{}"
         embedding = self.embedding if self.embedding is not None else None
         sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
         data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
