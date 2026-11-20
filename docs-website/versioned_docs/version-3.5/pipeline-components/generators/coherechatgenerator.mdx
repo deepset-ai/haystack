@@ -74,6 +74,18 @@ For more details on working with tools, see the [Tool](../../tools/tool.mdx) and
 
 This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
+### Content moderation
+
+Cohere's [safety modes](https://docs.cohere.com/v2/docs/safety-modes) steer the model's replies. `CONTEXTUAL`, the default, suits open-ended chat, and `STRICT` avoids sensitive topics. Set the mode with `safety_mode` in `generation_kwargs`:
+
+```python
+from haystack_integrations.components.generators.cohere import CohereChatGenerator
+
+generator = CohereChatGenerator(generation_kwargs={"safety_mode": "STRICT"})
+```
+
+Cohere applies `CONTEXTUAL` to requests that include tools or documents, whatever mode you set. Safety modes guide the model but don't block content. For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
+
 ## Usage
 
 You need to install `cohere-haystack` package to use the  `CohereChatGenerator`:

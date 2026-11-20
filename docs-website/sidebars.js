@@ -84,6 +84,7 @@ export default {
           id: 'tools/tool',
           label: 'Agent Tools',
         },
+        'concepts/guardrails',
         {
           type: 'category',
           label: 'Data Classes',
@@ -650,6 +651,7 @@ export default {
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
             'pipeline-components/retrievers/opensearchmetadataretriever',
+            'pipeline-components/retrievers/opensearchmultivectorembeddingretriever',
             'pipeline-components/retrievers/opensearchsqlretriever',
             'pipeline-components/retrievers/oracleembeddingretriever',
             'pipeline-components/retrievers/oraclekeywordretriever',
