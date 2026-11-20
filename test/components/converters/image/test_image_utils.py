@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import glob
+import io
 import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -119,10 +121,23 @@ class TestEncodeImageToBase64:
         base64_str = _encode_image_to_base64(bytestream=bytestream)
         assert base64_str is not None
 
-    def test_encode_image_to_base64_downsize(self) -> None:
-        bytestream = get_bytestream_from_source(Path("test/test_files/images/haystack-logo.png"))
-        base64_str = _encode_image_to_base64(bytestream=bytestream, size=(128, 128))
-        assert base64_str is not None
+    @pytest.mark.parametrize(
+        ("image_format", "mime_type", "expected_mime_type"),
+        [("PNG", "image/png", "image/png"), ("BMP", "image/bmp", "image/bmp"), ("BMP", None, "image/bmp")],
+    )
+    def test_encode_image_to_base64_downsize(
+        self, image_format: str, mime_type: str | None, expected_mime_type: str
+    ) -> None:
+        buffer = io.BytesIO()
+        Image.new("RGB", (100, 50)).save(buffer, format=image_format)
+        bytestream = ByteStream(data=buffer.getvalue(), mime_type=mime_type)
+
+        inferred_mime_type, base64_str = _encode_image_to_base64(bytestream=bytestream, size=(50, 50))
+
+        assert inferred_mime_type == expected_mime_type
+        with Image.open(io.BytesIO(base64.b64decode(base64_str))) as resized:
+            assert resized.format == image_format
+            assert resized.size == (50, 25)
 
 
 class TestExtractImageSourcesInfo:
