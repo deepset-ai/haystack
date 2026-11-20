@@ -370,6 +370,45 @@ class TestSplittingByFunctionOrCharacterRegex:
         # split_overlap=1 was requested.
         assert docs[1].meta["_split_overlap"] != []
 
+    def test_split_by_function_with_repeated_overlapping_windows(self):
+        def sliding_window(text):
+            words = text.split(" ")
+            return [" ".join(words[i : i + 3]) for i in range(len(words) - 2)]
+
+        text = "go go go go go go"
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=sliding_window, split_length=3, split_overlap=2
+        )
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 3, 6, 9]
+        for doc in docs:
+            start = doc.meta["split_idx_start"]
+            assert text[start : start + len(doc.content)] == doc.content
+        assert docs[0].meta["_split_overlap"] == [{"doc_id": docs[1].id, "range": (0, 5)}]
+        assert docs[1].meta["_split_overlap"][0] == {"doc_id": docs[0].id, "range": (3, 8)}
+
+        store = InMemoryDocumentStore()
+        store.write_documents(docs)
+        result = SentenceWindowRetriever(document_store=store, window_size=len(docs)).run(retrieved_documents=[docs[2]])
+        assert result["context_windows"] == [text]
+
+    def test_split_by_function_with_overlap_keeps_empty_splits(self):
+        splitter = DocumentSplitter(
+            split_by="function",
+            splitting_function=lambda text: text.split("|"),
+            split_overlap=1,
+            skip_empty_documents=False,
+        )
+        docs = splitter.run(documents=[Document(content="a||b")])["documents"]
+        assert [doc.content for doc in docs] == ["a", "", "b"]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 1, 3]
+
+    def test_split_by_function_preserves_repeated_non_overlapping_chunks(self):
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda text: text.split("|"))
+        docs = splitter.run(documents=[Document(content="go go go|go go go|go go go")])["documents"]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 9, 18]
+
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."

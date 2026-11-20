@@ -352,7 +352,12 @@ class DocumentSplitter:
 
             # A splitting function may transform the text, so a split is not guaranteed to appear
             # verbatim in the source. Locate it when possible and fall back to the running offset.
-            found_idx = content.find(split, cur_start_idx)
+            # With overlap enabled, prefer the earliest occurrence after the previous start.
+            # Searching from its end first can skip the real window when chunks repeat.
+            search_start = (
+                prev_start_idx + 1 if self.split_overlap > 0 and text_splits and text_splits[-1] else cur_start_idx
+            )
+            found_idx = content.find(split, search_start)
             if found_idx == -1 and text_splits:
                 # The split may legitimately start before the end of the previous split, e.g. an
                 # overlapping/sliding-window splitting function. Retry allowing it to be found
