@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import os
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 _EMPTY_BYTE_STRING = b""
+
+
+def _filename_from_meta(meta: dict[str, Any]) -> str | None:
+    """
+    Get a file name from ByteStream metadata.
+
+    :param meta: The ByteStream metadata.
+    :returns: The `file_name` value if set, otherwise the base name of `file_path`, otherwise `None`.
+    """
+    if file_name := meta.get("file_name"):
+        return str(file_name)
+    if file_path := meta.get("file_path"):
+        return os.path.basename(str(file_path))
+    return None
 
 
 @component
@@ -46,6 +61,8 @@ class FileToFileContent:
 
         :param sources:
             List of file paths or ByteStream objects to convert.
+            For a ByteStream, the file name is taken from `meta["file_name"]`, or else from the base name of
+            `meta["file_path"]`.
         :param extra:
             Optional extra information to attach to the FileContent objects. Can be used to store provider-specific
             information.
@@ -69,13 +86,13 @@ class FileToFileContent:
             if isinstance(source, str):
                 source = Path(source)
 
-            filename = source.name if isinstance(source, Path) else None
-
             try:
                 bytestream = get_bytestream_from_source(source, guess_mime_type=True)
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
+
+            filename = source.name if isinstance(source, Path) else _filename_from_meta(meta=bytestream.meta)
 
             if bytestream.data == _EMPTY_BYTE_STRING:
                 logger.warning("File {source} is empty. Skipping it.", source=source)
