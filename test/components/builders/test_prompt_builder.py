@@ -320,6 +320,20 @@ Found {{ x }}
         res = builder.run(existing_documents=None)
         assert res["prompt"] == "Found no documents"
 
+    def test_variables_correct_with_self_referencing_assignment(self):
+        template = "{% set query = query | trim %}Q: {{ query }}"
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["query"]
+        assert builder.required_variables == "*"
+        res = builder.run(query="  hello  ")
+        assert res["prompt"] == "Q: hello"
+
+    def test_variables_correct_with_self_referencing_slice_assignment(self):
+        template = "{% set documents = documents[:3] %}{{ documents }}"
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["documents"]
+        assert builder.required_variables == "*"
+
 
 class TestPromptBuilderWithJinja2TimeExtension:
     @pytest.fixture(autouse=True)

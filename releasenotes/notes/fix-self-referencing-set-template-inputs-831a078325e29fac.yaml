@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``PromptBuilder``, ``ChatPromptBuilder``, and ``OutputAdapter`` dropping a template
+    input when the template reassigns it with a self-referencing ``{% set %}`` statement, for
+    example ``{% set query = query | trim %}`` or ``{% set documents = documents[:3] %}``.
+    Such variables are now correctly detected as inputs of the component instead of being
+    treated as purely template-internal, which previously raised
+    ``ValueError: Input 'query' not found`` in pipelines.

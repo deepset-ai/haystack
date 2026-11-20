@@ -120,12 +120,25 @@ def _collect_assigned_variables(ast: nodes.Template) -> set[str]:
     ]
 
     for node in assignments:
+        targets: set[str] = set()
         if isinstance(node.target, nodes.Name):
-            assigned_variables.add(node.target.name)
+            targets.add(node.target.name)
         elif isinstance(node.target, (nodes.List, nodes.Tuple)):
             for name_node in node.target.items:
                 if isinstance(name_node, nodes.Name):
-                    assigned_variables.add(name_node.name)
+                    targets.add(name_node.name)
+
+        # A target that its own assignment reads (e.g. {% set query = query | trim %})
+        # is not purely template-internal: the value comes from the caller, so the
+        # name must stay a template input instead of being subtracted as assigned.
+        value_nodes: list[nodes.Node] = [node.node] if isinstance(node, nodes.Assign) else list(node.body)
+        read_names = {
+            name_node.name
+            for value_node in value_nodes
+            for name_node in value_node.find_all(nodes.Name)
+            if name_node.ctx == "load"
+        }
+        assigned_variables |= targets - read_names
 
     return assigned_variables
 
