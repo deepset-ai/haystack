@@ -220,28 +220,26 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             The updated dictionary containing final scores and tracking metrics.
         """
         for idx, res in enumerate(result["results"]):
-            if res is None:
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
-                continue
-            if not isinstance(res["relevant_statements"], list):
+            if res is not None:
+                statements = res["relevant_statements"]
+                if isinstance(statements, list):
+                    res["score"] = 1 if statements else 0
+                    res["status"] = "evaluated"
+                    continue
+
                 if self.raise_on_failure:
                     msg = (
-                        "ContextRelevanceEvaluator expected `relevant_statements` to be a list but received "
-                        f"{type(res['relevant_statements']).__name__}: {res['relevant_statements']}"
+                        f"ContextRelevanceEvaluator expected `relevant_statements` to be a list for input {idx}, "
+                        f"got {type(statements).__name__}."
                     )
                     raise ValueError(msg)
                 logger.warning(
-                    "ContextRelevanceEvaluator received an invalid `relevant_statements` value: {statements}. "
-                    "Setting the result for this input to None.",
-                    statements=res["relevant_statements"],
+                    "Input {idx} has an invalid `relevant_statements` value of type {value_type}.",
+                    idx=idx,
+                    value_type=type(statements).__name__,
                 )
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
-                continue
-            res["status"] = "evaluated"
-            if len(res["relevant_statements"]) > 0:
-                res["score"] = 1
-            else:
-                res["score"] = 0
+
+            result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
 
         # calculate average context relevance score over all queries
         scores = [res["score"] for res in result["results"]]
