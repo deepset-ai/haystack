@@ -58,7 +58,44 @@ _CJK_CHAR_CLASS = (
     r"\uff66-\uff9f"  # Halfwidth Katakana
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
-_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
+
+
+def _combining_mark_char_class() -> str:
+    r"""
+    Build a regex character class body that matches every combining mark (Unicode categories Mn, Mc and Me).
+
+    Python's `re` does not count combining marks as word characters, so `\w` alone cuts words apart in every
+    script that writes vowels and other signs as marks. For example, Sinhala "ජනාධිපති" becomes "ජන", "ධ", "පත",
+    and Tamil, Devanagari, Bengali and fully vowelled Arabic or Hebrew break the same way. The marks of all modern
+    scripts are in the Basic Multilingual Plane, so only that plane is scanned. The kana voicing marks
+    (U+3099-U+309A) are left out so kana keeps its one-token-per-character behaviour.
+    """
+    ranges = []
+    start = None
+    for code_point in range(0x10001):
+        is_mark = (
+            code_point < 0x10000
+            and unicodedata.category(chr(code_point)).startswith("M")
+            and not 0x3099 <= code_point <= 0x309A
+        )
+        if is_mark and start is None:
+            start = code_point
+        elif not is_mark and start is not None:
+            end = code_point - 1
+            ranges.append(rf"\u{start:04x}" if start == end else rf"\u{start:04x}-\u{end:04x}")
+            start = None
+    return "".join(ranges)
+
+
+_COMBINING_MARK_CHAR_CLASS = _combining_mark_char_class()
+# A word starts with a word character and continues with word characters and combining marks, so a mark with no base
+# character is not a token. Zero-width joiners and non-joiners (U+200C, U+200D) may join two parts of one word, as in
+# Sinhala conjuncts such as "ශ්‍රී". CJK characters are still one token each.
+_WORD_START = rf"[^\W{_CJK_CHAR_CLASS}]"
+_WORD_CHAR = rf"{_WORD_START}|[{_COMBINING_MARK_CHAR_CLASS}]"
+_DEFAULT_BM25_TOKENIZATION_REGEX = (
+    rf"{_WORD_START}(?:{_WORD_CHAR})*(?:[\u200c\u200d](?:{_WORD_CHAR})+)*|[{_CJK_CHAR_CLASS}]"
+)
 
 
 @dataclass
@@ -108,7 +145,7 @@ class InMemoryDocumentStore:
 
     def __init__(
         self,
-        bm25_tokenization_regex: str = _DEFAULT_BM25_TOKENIZATION_REGEX,
+        bm25_tokenization_regex: str | None = _DEFAULT_BM25_TOKENIZATION_REGEX,
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
@@ -125,7 +162,10 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex:
             The regular expression used to tokenize the text for BM25 retrieval. The default groups word
             characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
-            Text is lowercased and NFC-normalized before tokenization.
+            Text is lowercased and NFC-normalized before tokenization. Combining marks (such as the vowel signs of
+            Sinhala, Tamil or Devanagari) stay part of the word. `None` also selects the default. The default is
+            serialized as `None`, because it is built from the running Python's Unicode data and is several kilobytes
+            long.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -148,6 +188,8 @@ class InMemoryDocumentStore:
             If `False` (the default), the timezone from the aware datetime is copied to the naive one before
             comparing.
         """
+        if bm25_tokenization_regex is None:
+            bm25_tokenization_regex = _DEFAULT_BM25_TOKENIZATION_REGEX
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
 
@@ -428,7 +470,12 @@ class InMemoryDocumentStore:
         """
         return default_to_dict(
             self,
-            bm25_tokenization_regex=self.bm25_tokenization_regex,
+            # The default is stored as None: it is long and depends on the Python version's Unicode data.
+            bm25_tokenization_regex=(
+                None
+                if self.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
+                else self.bm25_tokenization_regex
+            ),
             bm25_algorithm=self.bm25_algorithm,
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,

@@ -441,7 +441,7 @@ class TestMemoryDocumentStore(
         assert data == {
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
-                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
+                "bm25_tokenization_regex": None,
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
@@ -476,6 +476,21 @@ class TestMemoryDocumentStore(
                 "strict_datetime_comparison": True,
             },
         }
+
+    def test_to_dict_from_dict_round_trip_keeps_default_tokenizer(self):
+        # The default regex is long and depends on the Python version's Unicode data, so it is saved as None and
+        # rebuilt on load.
+        store = InMemoryDocumentStore()
+        data = store.to_dict()
+        assert data["init_parameters"]["bm25_tokenization_regex"] is None
+
+        loaded = InMemoryDocumentStore.from_dict(data)
+        assert loaded.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
+        assert loaded._tokenize_bm25("ජනාධිපතිවරයා ගියේය") == ["ජනාධිපතිවරයා", "ගියේය"]
+
+    def test_init_with_none_regex_uses_default(self):
+        store = InMemoryDocumentStore(bm25_tokenization_regex=None)
+        assert store.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
 
     @patch("haystack.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
@@ -1234,6 +1249,45 @@ class TestMemoryDocumentStore(
         nfd = unicodedata.normalize("NFD", nfc)
         assert nfd != nfc
         assert tokenize(nfd) == tokenize(nfc) == ["\uc11c", "\uc6b8", "\uc740"]
+
+    def test_bm25_tokenization_keeps_combining_marks(self, in_memory_doc_store):
+        tokenize = in_memory_doc_store._tokenize_bm25
+
+        # Vowel signs are combining marks, which `\w` does not match, so words in these scripts used to be cut
+        # into fragments (Sinhala "ජනාධිපතිවරයා" became "ජන", "ධ", "පත", "වරය").
+        sinhala = "ජනාධිපතිවරයා පාර්ලිමේන්තුවට ගියේය."
+        assert tokenize(sinhala) == ["ජනාධිපතිවරයා", "පාර්ලිමේන්තුවට", "ගියේය"]
+        assert tokenize("தமிழ் மொழி") == ["தமிழ்", "மொழி"]
+        assert tokenize("বাংলা ভাষা") == ["বাংলা", "ভাষা"]
+        assert tokenize("كَتَبَ الطَّالِبُ") == ["كَتَبَ", "الطَّالِبُ"]
+
+        # The danda (।, ॥) is punctuation, so it still separates words.
+        hindi = "भारत की राजधानी नई दिल्ली है। ठीक है॥"
+        assert tokenize(hindi) == ["भारत", "की", "राजधानी", "नई", "दिल्ली", "है", "ठीक", "है"]
+
+        # A zero-width joiner inside a word (Sinhala "ශ්‍රී") keeps the word whole, and is not a token alone.
+        assert tokenize("ශ්\u200dරී ලංකාව") == ["ශ්\u200dරී", "ලංකාව"]
+        assert tokenize("a \u200d b") == ["a", "b"]
+
+        # Decomposed Latin letters stay whole too.
+        assert tokenize("cafe\u0301") == ["café"]
+        # A combining mark with no base character is not a token on its own.
+        assert tokenize("a \u0301 b") == ["a", "b"]
+
+    def test_bm25_retrieval_with_combining_mark_script_query(self, in_memory_doc_store):
+        # With words cut into fragments, the Tamil query "தமிழ்" (Tamil) also matched "தம்பி" (younger brother)
+        # and "மகிழ்ச்சியாக" (happily), which only share fragments with it. Only the document with the word
+        # itself should match.
+        tamil = "தமிழ் மொழி இலங்கையில் பேசப்படுகிறது."
+        docs = [
+            Document(content=tamil),
+            Document(content="தம்பி மழையில் நனைந்தான்."),
+            Document(content="அவன் மிகவும் மகிழ்ச்சியாக இருந்தான்."),
+        ]
+        in_memory_doc_store.write_documents(docs)
+
+        results = in_memory_doc_store.bm25_retrieval(query="தமிழ்", top_k=3)
+        assert [doc.content for doc in results] == [tamil]
 
     def test_bm25_retrieval_with_single_char_query(self, in_memory_doc_store):
         docs = [

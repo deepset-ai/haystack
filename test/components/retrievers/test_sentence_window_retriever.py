@@ -13,7 +13,6 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.document_stores.in_memory.document_store import _DEFAULT_BM25_TOKENIZATION_REGEX
 
 
 class TestSentenceWindowRetriever:
@@ -105,7 +104,7 @@ class TestSentenceWindowRetriever:
                     "init_parameters": {
                         "bm25_algorithm": "BM25L",
                         "bm25_parameters": {},
-                        "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
+                        "bm25_tokenization_regex": None,
                         "embedding_similarity_function": "dot_product",
                         "index": ANY,
                         "shared": True,
