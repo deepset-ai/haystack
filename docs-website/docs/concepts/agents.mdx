@@ -52,7 +52,7 @@ Check out the [Agent](../pipeline-components/agents-1/agent.mdx) documentation, 
 ### State
 
 [`State`](../pipeline-components/agents-1/state.mdx) is Haystack's built-in mechanism for sharing data between tools and accumulating results across multiple tool calls.
-You define a `state_schema` on the `Agent`, and any keys declared there are returned alongside `messages` and `last_message` in the agent's result dict.
+You define a `state_schema` on the `Agent`. State keys that you pass as inputs or that are set during the run appear alongside `messages` and `last_message` in the agent's result dict.
 
 ### Tools
 

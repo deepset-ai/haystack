@@ -143,7 +143,7 @@ print(state.get("user_name"))  # "Alice-Bob"
 ## Using State
 
 Define a `state_schema` when creating the Agent.
-State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`.
+State keys that you pass as inputs or that are set during the run appear alongside `messages` and `last_message` in the agent's result dict.
 
 Tools interact with State through three mechanisms:
 
@@ -155,6 +155,7 @@ Tools interact with State through three mechanisms:
 
 `inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
 The value is injected from state before the tool runs, so the LLM never needs to provide it.
+If a state key is absent, the tool can use its parameter default. An explicit `None` is passed to the tool.
 
 Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema.
 The model never sees or provides them:
