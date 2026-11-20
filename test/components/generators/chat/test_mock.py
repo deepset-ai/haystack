@@ -205,6 +205,24 @@ class TestMockChatGenerator:
         # the returned reply matches the predefined response
         assert result["replies"][0].text == "hello there friend"
 
+    @pytest.mark.parametrize("reply_text", ["\n\nhello there", "  indented reply\n", "   "])
+    def test_streamed_chunks_join_back_into_the_reply(self, reply_text: str) -> None:
+        r"""Chunks must concatenate to the reply that run() returns (#13810).
+
+        The stream split on ``\S+\s*`` dropped leading whitespace and streamed a
+        whitespace-only reply as nothing at all, so tests asserting on streamed
+        text saw different content than the returned reply. Real generators
+        stream the text unchanged.
+        """
+
+        chunks: list[StreamingChunk] = []
+        result = MockChatGenerator(reply_text).run([ChatMessage.from_user("hi")], streaming_callback=chunks.append)
+
+        assert result["replies"][0].text == reply_text
+        assert "".join(chunk.content for chunk in chunks) == reply_text
+        assert chunks[0].start is True
+        assert chunks[-1].finish_reason == "stop"
+
     def test_run_signature_matches_openai_order(self) -> None:
 
         # run()/run_async() must mirror OpenAIChatGenerator's parameter order so the mock is a positional drop-in.
