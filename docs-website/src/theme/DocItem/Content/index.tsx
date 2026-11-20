@@ -45,7 +45,7 @@ export default function ContentWrapper(props) {
       <div ref={containerRef}>
         <OriginalContent {...props} />
       </div>
-      {badgeHost && createPortal(<PlatformBadge available={frontMatter.hep_available} />, badgeHost)}
+      {badgeHost && createPortal(<PlatformBadge available={frontMatter.hep_available} componentName={metadata.title} />, badgeHost)}
     </>
   );
 }

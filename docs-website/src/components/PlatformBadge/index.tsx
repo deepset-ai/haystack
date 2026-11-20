@@ -8,6 +8,7 @@ import styles from './styles.module.css';
 
 type PlatformBadgeProps = {
   available?: boolean;
+  componentName?: string;
 };
 
 const CheckIcon = () => (
@@ -27,10 +28,15 @@ const ChevronIcon = () => (
  * `hep_available` (written automatically by scripts/generate_platform_components_table.py).
  * Absent on any page without that field, so non-component pages render nothing.
  */
-const PlatformBadge: React.FC<PlatformBadgeProps> = ({ available }) => {
+const PlatformBadge: React.FC<PlatformBadgeProps> = ({ available, componentName }) => {
   if (available) {
     return (
-      <Link className={`${styles.badge} ${styles.available}`} to="/docs/platform-components">
+      <Link
+        className={`${styles.badge} ${styles.available}`}
+        to="/docs/platform-components"
+        data-cta="badge"
+        data-component={componentName}
+      >
         <CheckIcon />
         Available on Haystack Enterprise Platform
         <span className={styles.chevron}>
