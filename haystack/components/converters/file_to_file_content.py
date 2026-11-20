@@ -92,7 +92,7 @@ class FileToFileContent:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
-            filename = source.name if isinstance(source, Path) else _filename_from_meta(bytestream.meta)
+            filename = source.name if isinstance(source, Path) else _filename_from_meta(meta=bytestream.meta)
 
             if bytestream.data == _EMPTY_BYTE_STRING:
                 logger.warning("File {source} is empty. Skipping it.", source=source)
