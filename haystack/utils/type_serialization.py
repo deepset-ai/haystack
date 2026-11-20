@@ -7,6 +7,7 @@ import builtins
 import importlib
 import inspect
 import typing
+from enum import Enum
 from threading import Lock
 from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
@@ -69,6 +70,18 @@ def _serialize_type_arg(arg: Any) -> str:
     return serialize_type(arg)
 
 
+def _serialize_literal_value(value: Any) -> str:
+    """
+    Serialize a single value of a `Literal`.
+
+    Most values are written with `repr()`, which `ast.literal_eval` reads back. Enum members are the exception: their
+    `repr()` (`<Color.RED: 1>`) is not valid Python, so they are written as `module.EnumClass.MEMBER`.
+    """
+    if isinstance(value, Enum):
+        return f"{serialize_type(type(value))}.{value.name}"
+    return repr(value)
+
+
 def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation, including the module name.
@@ -94,7 +107,7 @@ def serialize_type(target: Any) -> str:
     # Literal holds values (e.g. Literal["yes", "no"]), not types. Serialize each value with repr() so
     # strings keep their quotes.
     if typing.get_origin(target) is typing.Literal:
-        return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
+        return f"typing.Literal[{', '.join(_serialize_literal_value(a) for a in get_args(target))}]"
 
     args = get_args(target)
 
@@ -205,6 +218,59 @@ def _deserialize_type_arg(arg_str: str) -> Any:
     return deserialize_type(arg_str)
 
 
+def _dotted_name(node: ast.expr) -> str | None:
+    """Return `a.b.c` for an attribute chain of plain names, or `None` for any other expression."""
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name) or not parts:
+        return None
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+@mark_deserialization_internal
+def _deserialize_enum_member(path: str) -> Enum:
+    """
+    Resolve an Enum member written as `module.EnumClass.MEMBER`.
+
+    The class is resolved with `deserialize_type`, so it goes through the deserialization allowlist.
+    """
+    enum_path, member_name = path.rsplit(".", 1)
+    enum_class = deserialize_type(enum_path)
+    if not (isinstance(enum_class, type) and issubclass(enum_class, Enum)) or member_name not in enum_class.__members__:
+        raise DeserializationError(f"Could not deserialize Literal value '{path}': it is not a member of an Enum.")
+    return enum_class[member_name]
+
+
+@mark_deserialization_internal
+def _deserialize_literal_args(args_str: str) -> tuple[Any, ...]:
+    """
+    Parse the comma-separated arguments of a serialized `Literal`.
+
+    Plain values (str, int, bool, None, bytes) are read with `ast.literal_eval`, which is quote-aware, so a comma
+    inside a string value does not split the arguments. Dotted names are Enum members.
+    """
+    try:
+        parsed = ast.parse(f"({args_str},)", mode="eval").body
+    except SyntaxError as error:
+        raise DeserializationError(f"Could not deserialize Literal arguments: {args_str}") from error
+
+    values = []
+    for node in parsed.elts if isinstance(parsed, ast.Tuple) else [parsed]:
+        if (path := _dotted_name(node)) is not None:
+            values.append(_deserialize_enum_member(path))
+            continue
+        try:
+            values.append(ast.literal_eval(node))
+        except ValueError as error:
+            raise DeserializationError(
+                f"Could not deserialize Literal value '{ast.unparse(node)}' in: {args_str}"
+            ) from error
+    return tuple(values)
+
+
 @mark_deserialization_internal
 def deserialize_type(type_str: str) -> Any:
     """
@@ -246,11 +312,8 @@ def deserialize_type(type_str: str) -> Any:
 
         main_type = deserialize_type(main_type_str)
 
-        # Parse literal args with ast.literal_eval, which safely handles
-        # str/int/bool/None/bytes and is quote-aware, so a comma inside a string value does not split the
-        # arguments.
         if main_type is typing.Literal:
-            return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+            return typing.Literal[_deserialize_literal_args(generics_str)]
 
         generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 

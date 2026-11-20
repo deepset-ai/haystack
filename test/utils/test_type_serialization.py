@@ -6,6 +6,7 @@ import builtins
 import sys
 import typing
 from collections import deque
+from enum import Enum
 from types import UnionType
 from typing import Any, Callable, Deque, Dict, FrozenSet, List, Literal, Optional, Set, Tuple, Union
 
@@ -21,6 +22,12 @@ from haystack.utils.type_serialization import (
     deserialize_type,
     serialize_type,
 )
+
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+
 
 TYPING_AND_TYPE_TESTS = [
     # dict
@@ -335,6 +342,44 @@ def test_output_type_round_trip_literal():
         Union[Literal["a"], int],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_serialization_literal_of_enum_members():
+    color_path = serialize_type(Color)
+    assert serialize_type(Literal[Color.RED, Color.GREEN]) == f"typing.Literal[{color_path}.RED, {color_path}.GREEN]"
+    assert deserialize_type(f"typing.Literal[{color_path}.RED, {color_path}.GREEN]") == Literal[Color.RED, Color.GREEN]
+
+
+def test_round_trip_literal_of_enum_members():
+    for type_ in [
+        Literal[Color.RED],
+        Literal[Color.RED, Color.GREEN],
+        Literal["a", Color.RED, 1],
+        Optional[Literal[Color.RED]],
+        Literal[Color.RED] | None,
+        list[Literal[Color.RED, Color.GREEN]],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_deserialization_literal_rejects_dotted_name_that_is_not_an_enum_member():
+    color_path = serialize_type(Color)
+    with pytest.raises(DeserializationError, match="not a member of an Enum"):
+        deserialize_type(f"typing.Literal[{color_path}.BLUE]")
+    with pytest.raises(DeserializationError, match="not a member of an Enum"):
+        deserialize_type("typing.Literal[haystack.dataclasses.document.Document.content]")
+
+
+def test_deserialization_literal_of_enum_member_checks_allowlist():
+    with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+        deserialize_type("typing.Literal[some_untrusted_module.Color.RED]")
+
+
+def test_deserialization_literal_rejects_values_that_are_not_literals():
+    with pytest.raises(DeserializationError, match="Could not deserialize Literal value 'print\\('x'\\)'"):
+        deserialize_type("typing.Literal[print('x')]")
+    with pytest.raises(DeserializationError, match="Could not deserialize Literal arguments"):
+        deserialize_type("typing.Literal[<Color.RED: 1>]")
 
 
 def test_output_type_serialization_haystack_dataclasses():

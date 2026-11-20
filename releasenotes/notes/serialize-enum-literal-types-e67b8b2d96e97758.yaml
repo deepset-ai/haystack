@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``serialize_type()`` and ``deserialize_type()`` now round-trip a ``Literal`` whose values are Enum members,
+    such as ``Literal[Mode.FAST, Mode.SLOW]``. Before, the members were written with their ``repr()``
+    (``<Mode.FAST: 'fast'>``), so loading a component saved with such a type, for example an ``OutputAdapter``
+    with that ``output_type``, raised a ``SyntaxError``. Enum members are now written as
+    ``module.EnumClass.MEMBER`` and the Enum class is resolved through the deserialization allowlist.
+    A ``Literal`` value that cannot be parsed now raises a ``DeserializationError``.

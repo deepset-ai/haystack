@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, List
+from enum import Enum
+from typing import Any, Callable, List, Literal
 
 import pytest
 from jinja2.nativetypes import NativeEnvironment
@@ -23,6 +24,11 @@ def custom_filter_to_sede(value):
 
 def another_custom_filter(value):
     return value.upper()
+
+
+class Mode(Enum):
+    FAST = "fast"
+    SLOW = "slow"
 
 
 class TestOutputAdapter:
@@ -175,6 +181,13 @@ class TestOutputAdapter:
         deserialized_adapter = deserialized_pipe.get_component("adapter")
         assert isinstance(deserialized_adapter, OutputAdapter)
         assert deserialized_adapter.output_type == List[str]
+
+    def test_to_dict_from_dict_with_literal_of_enum_output_type(self):
+        adapter = OutputAdapter(template="{{ mode }}", output_type=Literal[Mode.FAST, Mode.SLOW])
+
+        restored = OutputAdapter.from_dict(adapter.to_dict())
+
+        assert restored.output_type == Literal[Mode.FAST, Mode.SLOW]
 
     def test_output_adapter_from_dict_custom_filters_none(self):
         component = OutputAdapter.from_dict(
