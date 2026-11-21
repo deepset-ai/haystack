@@ -26,18 +26,18 @@ This component recursively breaks down text into smaller chunks by applying a gi
 
 The `RecursiveDocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. You can set the following parameters when initializing the component:
 
-- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the unit.
-- `split_overlap`: The number of characters or words that overlap between consecutive chunks.
+- `split_length`: The target maximum length of each chunk, in words by default. See `split_unit` to change the unit.
+- `split_overlap`: The number of words, characters, or tokens to repeat between consecutive chunks.
 - `split_unit`: The unit of the `split_length` parameter. Can be either `"word"`, `"char"`, or `"token"`.
 - `separators`: An optional list of separator strings to use for splitting the text. If you don’t provide any separators, the default ones are `["\n\n", "sentence", "\n", " "]`. The string separators will be treated as regular expressions. If the separator is `"sentence"`, the text will be split into sentences using a custom sentence tokenizer based on NLTK. See [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116) code for more information.
 - `sentence_splitter_params`: Optional parameters to pass to the [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116).
-- `tokenizer_encoding`: The tiktoken encoding used when `split_unit="token"`. Defaults to `"o200k_base"`, used by current OpenAI models. Set it to match your model, for example `"cl100k_base"` for OpenAI's `text-embedding-3` embedding models, so that chunks fit the model's token limit.
+- `tokenizer_encoding`: The tiktoken encoding used when `split_unit="token"`. Defaults to `"o200k_base"`, used by current OpenAI models. Set it to match your model, for example `"cl100k_base"` for OpenAI's `text-embedding-3` embedding models.
 
-When `split_unit="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
+When `split_unit="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit. If a token boundary falls inside a Unicode character, the splitter moves the cut past that character. This can shorten the overlap. A chunk can exceed `split_length` to preserve a whole character or include new text after an overlap.
 
 A meta field `"page_number"` is added to each chunk with the page it starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on, matching [`DocumentSplitter`](documentsplitter.mdx).
 
-The separators are applied in the same order as they are defined in the list. The first separator is used on the text; any resulting chunk that is within the specified `chunk_size` is retained. For chunks that exceed the defined `chunk_size`, the next separator in the list is applied. If all separators are used and the chunk still exceeds the `chunk_size`, a hard split occurs based on the `chunk_size`, taking into account whether words or characters are used as counting units. This process is repeated until all chunks are within the limits of the specified `chunk_size`.
+The splitter tries separators in the order you provide them. It keeps chunks that fit within `split_length` and applies the next separator to larger chunks. If the separators are exhausted, it splits the remaining text by the configured unit.
 
 ## Usage
 
