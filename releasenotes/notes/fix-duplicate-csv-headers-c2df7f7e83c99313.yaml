@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed silent data loss in ``CSVToDocument`` row mode when a CSV file
+    contains duplicate column names. Previously, values from earlier
+    duplicated columns were overwritten and lost. Duplicate columns are now
+    renamed deterministically (for example, a second ``text`` column becomes
+    ``text_1``) so every value is preserved in the resulting Documents.

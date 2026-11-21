@@ -5,6 +5,7 @@
 import csv
 import io
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
 
@@ -65,6 +66,8 @@ class CSVToDocument:
         :param conversion_mode:
             - "file" (default): one Document per CSV file whose content is the raw CSV text.
             - "row": convert each CSV row to its own Document (requires `content_column` in `run()`).
+                If the header contains duplicate column names, later duplicates are renamed
+                with a numeric suffix (for example, `name_1`) so that no values are lost.
         :param delimiter:
             CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
         :param quotechar:
@@ -173,8 +176,21 @@ class CSVToDocument:
             except Exception as e:
                 raise RuntimeError(f"CSVToDocument(row): could not parse CSV rows for {source}: {e}") from e
 
-            # Validate header contains content_column; strict error if missing
+            # Rename duplicate header names so DictReader does not silently
+            # overwrite earlier columns that share a name
             header = reader.fieldnames or []
+            deduped_header = self._dedupe_fieldnames(header)
+            if deduped_header != header:
+                logger.warning(
+                    "CSVToDocument(row): duplicate column names in header {header} "
+                    "were renamed to {deduped_header} so that no values are lost.",
+                    header=header,
+                    deduped_header=deduped_header,
+                )
+                reader.fieldnames = deduped_header
+                header = deduped_header
+
+            # Validate header contains content_column; strict error if missing
             if content_column not in header:
                 raise ValueError(
                     f"CSVToDocument(row): content_column='{content_column}' not found in header "
@@ -194,6 +210,33 @@ class CSVToDocument:
         return {"documents": documents}
 
     # ----- helpers -----
+    def _dedupe_fieldnames(self, fieldnames: Sequence[str]) -> list[str]:
+        """
+        Rename duplicate column names so that no column value is lost.
+
+        The first occurrence keeps its name; later duplicates get a numeric
+        suffix (``name_1``, ``name_2``, ...), skipping any candidate name
+        that is already present in the header.
+        """
+        seen: set[str] = set()
+        counts: dict[str, int] = {}
+        deduped: list[str] = []
+        for name in fieldnames:
+            if name not in seen:
+                seen.add(name)
+                counts[name] = 1
+                deduped.append(name)
+                continue
+            suffix = counts[name]
+            candidate = f"{name}_{suffix}"
+            while candidate in seen:
+                suffix += 1
+                candidate = f"{name}_{suffix}"
+            counts[name] = suffix + 1
+            seen.add(candidate)
+            deduped.append(candidate)
+        return deduped
+
     def _safe_value(self, value: Any) -> str:
         """Normalize CSV cell values: None -> '', everything -> str."""
         return "" if value is None else str(value)
