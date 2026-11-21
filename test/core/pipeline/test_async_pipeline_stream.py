@@ -375,6 +375,20 @@ async def test_aclose_cancels_pipeline_and_result_reports_cancelled():
 
 
 @pytest.mark.asyncio
+async def test_aclose_before_pipeline_starts_ends_iteration():
+    pipeline = Pipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=5))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
+    reader = asyncio.create_task(anext(aiter(handle), None))
+    # no await between `stream()` and `aclose()`, so the pipeline task is cancelled before it starts
+    await handle.aclose()
+
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(reader, timeout=1)
+
+
+@pytest.mark.asyncio
 async def test_consumer_cancellation_cancels_pipeline():
     pipeline = Pipeline()
     # chunk_delay keeps the producer running so the consumer can be cancelled mid-stream
