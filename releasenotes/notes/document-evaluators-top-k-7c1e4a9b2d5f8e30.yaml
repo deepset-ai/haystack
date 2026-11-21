@@ -1,0 +1,16 @@
+---
+enhancements:
+  - |
+    Added an optional ``top_k`` parameter to ``DocumentRecallEvaluator``, ``DocumentMRREvaluator``,
+    ``DocumentMAPEvaluator``, and ``DocumentNDCGEvaluator`` to compute metrics at a cutoff, such as Recall@5 or NDCG@10.
+
+    When ``top_k`` is set, only the first ``top_k`` retrieved documents of each question are scored, so you can retrieve
+    once and evaluate several cutoffs. ``DocumentNDCGEvaluator`` also cuts the ideal ranking at ``top_k``, so a perfect
+    top-k ranking scores 1.0. The default, ``top_k=None``, scores all retrieved documents as before.
+
+    .. code:: python
+
+        from haystack.components.evaluators import DocumentRecallEvaluator
+
+        recall_at_5 = DocumentRecallEvaluator(top_k=5)
+        result = recall_at_5.run(ground_truth_documents=ground_truth, retrieved_documents=retrieved)

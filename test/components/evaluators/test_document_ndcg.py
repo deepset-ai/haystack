@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document, default_from_dict
 from haystack.components.evaluators.document_ndcg import DocumentNDCGEvaluator
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 @pytest.mark.parametrize(
@@ -243,7 +244,7 @@ def test_to_dict_default():
     data = evaluator.to_dict()
     assert data == {
         "type": "haystack.components.evaluators.document_ndcg.DocumentNDCGEvaluator",
-        "init_parameters": {"document_comparison_field": "content"},
+        "init_parameters": {"document_comparison_field": "content", "top_k": None},
     }
 
 
@@ -252,7 +253,7 @@ def test_to_dict_custom_field():
     data = evaluator.to_dict()
     assert data == {
         "type": "haystack.components.evaluators.document_ndcg.DocumentNDCGEvaluator",
-        "init_parameters": {"document_comparison_field": "id"},
+        "init_parameters": {"document_comparison_field": "id", "top_k": None},
     }
 
 
@@ -454,3 +455,102 @@ def test_run_with_meta_missing_key_can_still_reach_perfect_ndcg():
     # Perfect retrieval of the one matchable document should yield NDCG of exactly 1.0
     assert result["individual_scores"] == [1.0]
     assert result["score"] == 1.0
+
+
+def test_init_top_k_defaults_to_none():
+    assert DocumentNDCGEvaluator().top_k is None
+
+
+@pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
+def test_init_with_invalid_top_k_raises(top_k):
+    with pytest.raises(ValueError, match="top_k must be a positive integer or None"):
+        DocumentNDCGEvaluator(top_k=top_k)
+
+
+def test_init_with_zero_top_k_error_message():
+    with pytest.raises(ValueError, match=r"^top_k must be a positive integer or None, got 0\.$"):
+        DocumentNDCGEvaluator(top_k=0)
+
+
+def test_top_k_serialization_round_trip():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="id", top_k=3)
+    data = component_to_dict(evaluator, name="evaluator")
+    assert data["init_parameters"]["top_k"] == 3
+    restored = component_from_dict(DocumentNDCGEvaluator, data, name="evaluator")
+    assert restored.top_k == 3
+    assert restored.document_comparison_field == evaluator.document_comparison_field
+
+
+def test_from_dict_without_top_k_defaults_to_none():
+    data = {
+        "type": f"{DocumentNDCGEvaluator.__module__}.DocumentNDCGEvaluator",
+        "init_parameters": {"document_comparison_field": "id"},
+    }
+    restored = component_from_dict(DocumentNDCGEvaluator, data, name="evaluator")
+    assert restored.top_k is None
+
+
+def test_run_with_top_k_scores_perfect_top_k_ranking_as_one():
+    # 3 relevant documents, but only 2 slots: retrieving 2 of them first is the best possible top 2
+    evaluator = DocumentNDCGEvaluator(top_k=2)
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="a"), Document(content="b"), Document(content="c")]],
+        retrieved_documents=[[Document(content="a"), Document(content="b"), Document(content="x")]],
+    )
+    assert result["individual_scores"] == [pytest.approx(1.0)]
+
+
+def test_run_with_top_k_differs_from_slicing_retrieved_documents_by_hand():
+    ground_truth_documents = [[Document(content="a"), Document(content="b"), Document(content="c")]]
+    sliced_retrieved_documents = [[Document(content="a"), Document(content="b")]]
+    sliced_by_hand = DocumentNDCGEvaluator().run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=sliced_retrieved_documents
+    )
+    with_top_k = DocumentNDCGEvaluator(top_k=2).run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=sliced_retrieved_documents
+    )
+    expected_dcg = 1 / log2(2) + 1 / log2(3)
+    assert sliced_by_hand["score"] == pytest.approx(expected_dcg / (expected_dcg + 1 / log2(4)))
+    assert with_top_k["score"] == pytest.approx(1.0)
+
+
+def test_run_with_top_k_and_relevance_scores():
+    evaluator = DocumentNDCGEvaluator(top_k=2)
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="a", score=3.0), Document(content="b", score=2.0), Document(content="c", score=1.0)]
+        ],
+        retrieved_documents=[[Document(content="b"), Document(content="c"), Document(content="a")]],
+    )
+    dcg = 2.0 / log2(2) + 1.0 / log2(3)
+    idcg = 3.0 / log2(2) + 2.0 / log2(3)
+    assert result["individual_scores"] == [pytest.approx(dcg / idcg)]
+
+
+def test_run_with_top_k_ignores_relevant_documents_below_cutoff():
+    evaluator = DocumentNDCGEvaluator(top_k=2)
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="a")]],
+        retrieved_documents=[[Document(content="x"), Document(content="y"), Document(content="a")]],
+    )
+    assert result["individual_scores"] == [0.0]
+
+
+def test_calculate_dcg_and_idcg_with_top_k():
+    evaluator = DocumentNDCGEvaluator(top_k=1)
+    gt_docs = [Document(content="a", score=1.0), Document(content="b", score=5.0)]
+    ret_docs = [Document(content="a"), Document(content="b")]
+    assert evaluator.calculate_dcg(gt_docs, ret_docs) == pytest.approx(1.0)
+    assert evaluator.calculate_idcg(gt_docs) == pytest.approx(5.0)
+
+
+def test_run_with_top_k_larger_than_retrieved_documents_matches_no_cutoff():
+    ground_truth_documents = [[Document(content="a"), Document(content="b")]]
+    retrieved_documents = [[Document(content="b"), Document(content="x"), Document(content="a")]]
+    with_cutoff = DocumentNDCGEvaluator(top_k=10).run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    without_cutoff = DocumentNDCGEvaluator().run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    assert with_cutoff == without_cutoff

@@ -8,6 +8,7 @@ import pytest
 
 from haystack import default_from_dict
 from haystack.components.evaluators.document_recall import DocumentRecallEvaluator, RecallMode
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.dataclasses import Document
 
 
@@ -181,7 +182,7 @@ class TestDocumentRecallEvaluatorSingleHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "single_hit", "document_comparison_field": "content"},
+            "init_parameters": {"mode": "single_hit", "document_comparison_field": "content", "top_k": None},
         }
 
     def test_from_dict(self):
@@ -311,7 +312,7 @@ class TestDocumentRecallEvaluatorMultiHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "multi_hit", "document_comparison_field": "content"},
+            "init_parameters": {"mode": "multi_hit", "document_comparison_field": "content", "top_k": None},
         }
 
     def test_from_dict(self):
@@ -361,3 +362,94 @@ class TestDocumentRecallEvaluatorMultiHit:
             retrieved_documents=[[Document(meta={"file_id": "f1"})]],
         )
         assert result == {"individual_scores": [1.0], "score": 1.0}
+
+
+def test_init_top_k_defaults_to_none():
+    assert DocumentRecallEvaluator().top_k is None
+
+
+@pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
+def test_init_with_invalid_top_k_raises(top_k):
+    with pytest.raises(ValueError, match="top_k must be a positive integer or None"):
+        DocumentRecallEvaluator(top_k=top_k)
+
+
+def test_init_with_zero_top_k_error_message():
+    with pytest.raises(ValueError, match=r"^top_k must be a positive integer or None, got 0\.$"):
+        DocumentRecallEvaluator(top_k=0)
+
+
+def test_top_k_serialization_round_trip():
+    evaluator = DocumentRecallEvaluator(mode="multi_hit", document_comparison_field="id", top_k=3)
+    data = component_to_dict(evaluator, name="evaluator")
+    assert data["init_parameters"]["top_k"] == 3
+    restored = component_from_dict(DocumentRecallEvaluator, data, name="evaluator")
+    assert restored.top_k == 3
+    assert restored.document_comparison_field == evaluator.document_comparison_field
+
+
+def test_from_dict_without_top_k_defaults_to_none():
+    data = {
+        "type": f"{DocumentRecallEvaluator.__module__}.DocumentRecallEvaluator",
+        "init_parameters": {"document_comparison_field": "id"},
+    }
+    restored = component_from_dict(DocumentRecallEvaluator, data, name="evaluator")
+    assert restored.top_k is None
+
+
+def _ranked(*contents: str) -> list[Document]:
+    return [Document(content=content) for content in contents]
+
+
+@pytest.mark.parametrize("top_k, expected_scores", [(1, [1.0, 0.0, 0.0]), (3, [1.0, 1.0, 0.0]), (5, [1.0, 1.0, 1.0])])
+def test_run_single_hit_with_top_k_only_scores_first_k_documents(top_k, expected_scores):
+    evaluator = DocumentRecallEvaluator(top_k=top_k)
+    result = evaluator.run(
+        ground_truth_documents=[_ranked("install"), _ranked("pipelines"), _ranked("qdrant")],
+        retrieved_documents=[
+            _ranked("install", "faq", "intro", "docs", "blog"),
+            _ranked("intro", "faq", "pipelines", "agents", "tools"),
+            _ranked("weaviate", "chroma", "faq", "intro", "qdrant"),
+        ],
+    )
+    assert result["individual_scores"] == expected_scores
+    assert result["score"] == pytest.approx(sum(expected_scores) / 3)
+
+
+@pytest.mark.parametrize("top_k, expected_score", [(1, 1 / 3), (2, 1 / 3), (3, 2 / 3), (4, 1.0)])
+def test_run_multi_hit_with_top_k_divides_by_all_ground_truth_documents(top_k, expected_score):
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, top_k=top_k)
+    result = evaluator.run(
+        ground_truth_documents=[_ranked("a", "b", "c")], retrieved_documents=[_ranked("a", "x", "b", "c")]
+    )
+    assert result["individual_scores"] == [pytest.approx(expected_score)]
+
+
+@pytest.mark.parametrize("mode", [RecallMode.SINGLE_HIT, RecallMode.MULTI_HIT])
+def test_run_with_top_k_larger_than_retrieved_documents_matches_no_cutoff(mode):
+    ground_truth_documents = [_ranked("a", "b"), _ranked("c")]
+    retrieved_documents = [_ranked("x", "a"), _ranked("c", "y", "z")]
+    with_cutoff = DocumentRecallEvaluator(mode=mode, top_k=10).run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    without_cutoff = DocumentRecallEvaluator(mode=mode).run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    assert with_cutoff == without_cutoff
+
+
+def test_run_with_top_k_does_not_modify_inputs():
+    retrieved_documents = [_ranked("x", "y", "a")]
+    DocumentRecallEvaluator(top_k=1).run(ground_truth_documents=[_ranked("a")], retrieved_documents=retrieved_documents)
+    assert [doc.content for doc in retrieved_documents[0]] == ["x", "y", "a"]
+
+
+def test_run_with_top_k_and_meta_comparison():
+    evaluator = DocumentRecallEvaluator(document_comparison_field="meta.file_id", top_k=1)
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="chunk", meta={"file_id": "f1"})]],
+        retrieved_documents=[
+            [Document(content="other", meta={"file_id": "f2"}), Document(content="chunk", meta={"file_id": "f1"})]
+        ],
+    )
+    assert result["individual_scores"] == [0.0]
