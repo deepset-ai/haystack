@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    ``DocumentNDCGEvaluator`` now raises ``ValueError`` for negative or non-finite
+    ground truth relevance scores used to compute NDCG. These values previously
+    could produce an invalid evaluation result. Correct affected relevance
+    annotations to use finite, non-negative scores before evaluating.

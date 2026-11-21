@@ -70,6 +70,26 @@ def test_run_with_scores():
     assert result["score"] == pytest.approx(0.6592, abs=1e-4)
 
 
+@pytest.mark.parametrize("score", [-1.0, float("nan"), float("inf"), float("-inf")])
+def test_run_rejects_invalid_ground_truth_scores(score: float) -> None:
+    evaluator = DocumentNDCGEvaluator()
+    with pytest.raises(ValueError, match=r"^Ground truth document scores must be finite and non-negative\.$"):
+        evaluator.run(
+            ground_truth_documents=[[Document(content="doc1", score=1.0), Document(content="doc2", score=score)]],
+            retrieved_documents=[[Document(content="doc1")]],
+        )
+
+
+def test_run_validates_ground_truth_scores_only() -> None:
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="doc1", score=1.0), Document(content="doc2", score=0.0)]],
+        retrieved_documents=[[Document(content="doc1", score=-1.0)]],
+    )
+
+    assert result == {"score": 1.0, "individual_scores": [1.0]}
+
+
 def test_run_without_scores():
     evaluator = DocumentNDCGEvaluator()
     result = evaluator.run(

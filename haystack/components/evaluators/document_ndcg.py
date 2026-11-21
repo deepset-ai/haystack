@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from math import log2
+from math import isfinite, log2
 from typing import Any
 
 from haystack import Document, component, default_to_dict
@@ -87,6 +87,9 @@ class DocumentNDCGEvaluator:
             if value in ("", None):
                 continue
             relevance = doc.score if doc.score is not None else 1.0
+            if not isfinite(relevance) or relevance < 0:
+                msg = "Ground truth document scores must be finite and non-negative."
+                raise ValueError(msg)
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
         return relevant_value_to_score
 
@@ -110,7 +113,8 @@ class DocumentNDCGEvaluator:
         The list items within `ground_truth_documents` and `retrieved_documents` can differ in length.
 
         :param ground_truth_documents:
-            Lists of expected documents, one list per question. Binary relevance is used if documents have no scores.
+            Lists of expected documents, one list per question. Supply finite, non-negative scores for graded relevance.
+            Binary relevance is used if documents have no scores.
         :param retrieved_documents:
             Lists of retrieved documents, one list per question.
         :returns:
@@ -171,6 +175,8 @@ class DocumentNDCGEvaluator:
         :returns:
             The discounted cumulative gain (DCG) of the retrieved
             documents based on the ground truth documents.
+        :raises ValueError:
+            A ground truth relevance score used in the calculation is negative or non-finite.
         """
         dcg = 0.0
         relevant_value_to_score = self._build_relevance_map(gt_docs)
@@ -197,6 +203,8 @@ class DocumentNDCGEvaluator:
             The ground truth documents.
         :returns:
             The ideal discounted cumulative gain (IDCG) of the ground truth documents.
+        :raises ValueError:
+            A ground truth relevance score used in the calculation is negative or non-finite.
         """
         relevant_value_to_score = self._build_relevance_map(gt_docs)
 
