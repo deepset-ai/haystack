@@ -20,6 +20,27 @@ from haystack.dataclasses.document import Document
 
 
 class TestChatPromptBuilder:
+    def test_a_set_that_reads_its_own_name_keeps_that_variable_required(self):
+        """`{% set quantity = quantity | default(1) %}` defaults a value the caller supplies."""
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("{% set quantity = quantity | default(1) %}Order {{ quantity }} cartons.")]
+        )
+
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+
+        assert "quantity" in inputs
+        assert builder.variables == ["quantity"]
+
+    def test_a_set_that_does_not_read_its_own_name_is_still_the_templates(self):
+        """`{% set quantity = 12 %}` is the template's own value, not a caller's."""
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("{% set quantity = 12 %}Order {{ quantity }} cartons.")]
+        )
+
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+
+        assert "quantity" not in inputs
+
     def test_init(self):
         builder = ChatPromptBuilder(
             template=[
