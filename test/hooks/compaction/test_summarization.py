@@ -440,6 +440,37 @@ class TestFailureHandling:
         with pytest.raises(RuntimeError, match="no usable text"):
             compactor.compact(messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER)
 
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    def test_keeps_the_conversation_when_the_summary_is_incomplete(self, finish_reason):
+        generator = MockChatGenerator(
+            response_fn=lambda messages: ChatMessage.from_assistant("partial", meta={"finish_reason": finish_reason})
+        )
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
+            messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER
+        )
+        assert compacted is None
+
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    def test_raises_when_the_summary_is_incomplete(self, finish_reason):
+        generator = MockChatGenerator(
+            response_fn=lambda messages: ChatMessage.from_assistant("partial", meta={"finish_reason": finish_reason})
+        )
+        compactor = SummarizationCompactor(generator, approximate_summary_tokens=1, raise_on_failure=True)
+        with pytest.raises(RuntimeError, match=f"incomplete conversation summary \\(finish reason: {finish_reason}\\)"):
+            compactor.compact(messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER)
+
+    def test_accepts_a_summary_that_finished_normally(self):
+        generator = MockChatGenerator(
+            response_fn=lambda messages: ChatMessage.from_assistant("history", meta={"finish_reason": "stop"})
+        )
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
+            messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER
+        )
+        assert compacted is not None
+        assert [message.text for message in summaries(messages=compacted)] == [
+            "<conversation_summary>\nhistory\n</conversation_summary>"
+        ]
+
 
 class TestConfiguration:
     @pytest.mark.parametrize(
@@ -506,3 +537,13 @@ class TestSummarizationCompactorAsync:
         assert compacted == SummarizationCompactor(
             MockChatGenerator("async summary"), approximate_summary_tokens=1
         ).compact(messages=messages, target_tokens=1, token_counter=COUNTER)
+
+    @pytest.mark.asyncio
+    async def test_compact_async_keeps_the_conversation_when_the_summary_is_incomplete(self):
+        generator = MockChatGenerator(
+            response_fn=lambda messages: ChatMessage.from_assistant("partial", meta={"finish_reason": "length"})
+        )
+        compacted = await SummarizationCompactor(generator, approximate_summary_tokens=1).compact_async(
+            messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER
+        )
+        assert compacted is None
