@@ -25,6 +25,9 @@ CUSTOM_MIMETYPES = {
     ".markdown": "text/markdown",
     # we add msg because it is not added by the mimetypes module
     ".msg": "application/vnd.ms-outlook",
+    # we pin csv because on Windows the mimetypes module reads the registry, where Excel registers
+    # .csv as application/vnd.ms-excel, so CSV files would not match "text/csv" routers
+    ".csv": "text/csv",
 }
 
 logger = logging.getLogger(__name__)
