@@ -88,7 +88,7 @@ def _offloaded_message(
     :param message: The tool-result message being offloaded. Must carry a tool result.
     :param content_blocks: The result's content blocks, as returned by `_offloadable_content_blocks`.
     :param store: The store to write the content blocks to.
-    :param key_prefix: The result's store key prefix, unique within the run.
+    :param key_prefix: The result's store key prefix, unique across runs that share the store.
     :param preview_chars: Number of leading characters of each offloaded text to include in the pointer.
     :param additional_meta: Extra metadata to record on the offloaded message, such as a compaction marker.
     :returns: A new tool-result message whose content points at the stored result, or None when a store write fails.

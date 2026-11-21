@@ -4,6 +4,7 @@
 
 import json
 from typing import Any
+from uuid import uuid4
 
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
@@ -260,14 +261,16 @@ class ToolResultOffloadHook:
         if not policy.should_offload(tool_name=tool_name, result=payload, state=state):
             return message
 
-        # Step, tool name, and call id keep results from different tools and steps from colliding. A tool call id is
-        # optional, so an id-less call falls back to its position in this step's batch.
+        # Step, tool name, and call id make the key readable. A tool call id is optional, so an id-less call falls back
+        # to its position in this step's batch. The step count restarts at 0 on every run and some providers omit or
+        # repeat call ids, so a random suffix keeps a later run in the same conversation from overwriting the results
+        # an earlier run's pointers still reference.
         step = state.data.get("step_count", 0)
         offloaded = _offloaded_message(
             message=message,
             content_blocks=content_blocks,
             store=store,
-            key_prefix=f"{step}_{tool_name}_{result.origin.id or f'call{index}'}",
+            key_prefix=f"{step}_{tool_name}_{result.origin.id or f'call{index}'}_{uuid4().hex}",
             preview_chars=self.preview_chars,
         )
         # A failed store write leaves the result in context.
