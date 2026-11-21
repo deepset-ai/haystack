@@ -2,9 +2,10 @@
 enhancements:
   - |
     ``DocumentSplitter`` and ``RecursiveDocumentSplitter`` now split Chinese and Japanese text into sentences at the
-    full-width sentence terminators ``。``, ``！`` and ``？``. Before, a Chinese or Japanese document was one sentence,
-    because these languages put no space after a sentence. A terminator followed by a closing quote or bracket is not
-    a split point. This works with every ``language`` setting.
+    full-width sentence terminators ``。``, ``！``, ``？`` and ``．``. Before, a Chinese or Japanese document was one
+    sentence, because these languages put no space after a sentence. A terminator followed by a closing quote or
+    bracket is not a split point, and neither is a ``．`` next to a digit, as in ``３．５``. This works with every
+    ``language`` setting.
 
     .. code-block:: python
 

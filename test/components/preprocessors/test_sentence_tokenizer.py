@@ -228,15 +228,25 @@ def test_split_sentences_splits_on_full_width_terminators(keep_white_spaces: boo
 
 @pytest.mark.parametrize("keep_white_spaces", [False, True])
 def test_split_sentences_does_not_split_on_a_full_width_terminator_inside_quotes(keep_white_spaces: bool) -> None:
-    text = "他说：“我走了。”然后离开了。「利息はいくらですか？」と聞きました。"
+    # stacked terminators before a closing quote, as in `？！」`, must not be split in the middle either
+    text = "他说：“我走了。”然后离开了。「利息はいくらですか？！」と聞きました。"
     splitter = SentenceSplitter(language="en", keep_white_spaces=keep_white_spaces)
 
     sentences = splitter.split_sentences(text)
 
     assert [sentence["sentence"] for sentence in sentences] == [
         "他说：“我走了。”然后离开了。",
-        "「利息はいくらですか？」と聞きました。",
+        "「利息はいくらですか？！」と聞きました。",
     ]
+
+
+def test_split_sentences_splits_on_full_width_full_stop_but_not_next_to_digits() -> None:
+    text = "１．はじめに\n結果は３．５でした．次の文．"
+    splitter = SentenceSplitter(language="en")
+
+    sentences = splitter.split_sentences(text)
+
+    assert [sentence["sentence"] for sentence in sentences] == ["１．はじめに\n結果は３．５でした．", "次の文．"]
 
 
 def test_split_sentences_performance() -> None:

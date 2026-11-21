@@ -79,8 +79,12 @@ SENTENCE_CLOSING_CHARS_RE = r"[\)\]}\"'’”»]*"
 
 # Full-width sentence terminators of Chinese and Japanese. These scripts put no space between sentences, so NLTK,
 # which looks for whitespace after a sentence ending, never splits there. A terminator that a closing quote or
-# bracket follows ends quoted or bracketed text, not the sentence, so it is not a split point.
-_CJK_SENTENCE_END_RE = re.compile(r"[。！？｡]+(?![」』”’）】〕》〉\)\]}\"'])")
+# bracket follows ends quoted or bracketed text, not the sentence, so it is not a split point. The full-width full
+# stop `．` (common in Japanese technical writing) is also a decimal point and a list number, as in `３．５` and
+# `１．はじめに`, so a lone `．` next to a digit is not a split point either. The terminators are in the lookahead too,
+# so that a run like `？！」` is never split in the middle.
+_CJK_SENTENCE_END_RE = re.compile(r"[。！？｡．]+(?![。！？｡．」』”’）】〕》〉\)\]}\"'])")
+_DIGITS = frozenset("0123456789０１２３４５６７８９")
 
 if nltk_imports.is_successful():
 
@@ -212,7 +216,7 @@ class SentenceSplitter:
 
     def _split_at_cjk_sentence_ends(self, text: str, sentence_spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
         """
-        Splits the sentence spans after the full-width sentence terminators of Chinese and Japanese (。！？).
+        Splits the sentence spans after the full-width sentence terminators of Chinese and Japanese (。！？．).
 
         :param text: The text to split.
         :param sentence_spans: The sentence spans found by the NLTK tokenizer.
@@ -221,6 +225,11 @@ class SentenceSplitter:
         new_sentence_spans = []
         for start, end in sentence_spans:
             for match in _CJK_SENTENCE_END_RE.finditer(text, start, end):
+                if match.group() == "．" and (
+                    (match.start() > 0 and text[match.start() - 1] in _DIGITS)
+                    or (match.end() < len(text) and text[match.end()] in _DIGITS)
+                ):
+                    continue
                 next_start = match.end()
                 while next_start < end and text[next_start].isspace():
                     next_start += 1
