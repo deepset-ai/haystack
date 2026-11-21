@@ -9,7 +9,7 @@ from pathlib import Path
 
 from haystack import component
 from haystack.dataclasses import Document
-from haystack.utils.misc import _guess_mime_type
+from haystack.utils.misc import _guess_mime_type, _normalize_mime_type
 
 
 @component
@@ -128,6 +128,7 @@ class DocumentTypeRouter:
         :returns:
             A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of documents.
         """
+
         mime_types = defaultdict(list)
 
         for doc in documents:
@@ -140,14 +141,25 @@ class DocumentTypeRouter:
 
             matched = False
             if mime_type:
+                # First preserve the existing exact and regex matching behaviour.
                 for bucket_key, pattern in zip(self.mime_types, self._mime_type_patterns, strict=True):
-                    # Match an exact MIME type first, so literal types containing regex
-                    # metacharacters (e.g. the '+' in 'image/svg+xml') are not misread as
-                    # a regex; fall back to regex matching for patterns like 'audio/.*'.
                     if mime_type == bucket_key or pattern.fullmatch(mime_type):
                         mime_types[bucket_key].append(doc)
                         matched = True
                         break
+
+                # If no pattern matched, try matching the normalized MIME type.
+                if not matched:
+                    normalized_mime_type = _normalize_mime_type(mime_type)
+
+                    for bucket_key, pattern in zip(self.mime_types, self._mime_type_patterns, strict=True):
+                        normalized_bucket_key = _normalize_mime_type(bucket_key)
+
+                        if normalized_mime_type == normalized_bucket_key or pattern.fullmatch(normalized_mime_type):
+                            mime_types[bucket_key].append(doc)
+                            matched = True
+                            break
+
             if not matched:
                 mime_types["unclassified"].append(doc)
 

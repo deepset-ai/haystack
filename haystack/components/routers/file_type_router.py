@@ -13,7 +13,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
-from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
+from haystack.utils.misc import _guess_mime_type, _normalize_mime_type  # ruff: isort: skip
 
 # We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
 from haystack.utils.misc import CUSTOM_MIMETYPES  # noqa: F401
@@ -207,13 +207,25 @@ class FileTypeRouter:
 
             matched = False
             if mime_type:
-                # Try exact equality first so MIMEs containing regex metacharacters (e.g. the `+` in
-                # `image/svg+xml`) match themselves before the regex fallback gets a chance to misread them.
+                # Try the original MIME type first.
                 for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
                     if mime_type == bucket_key or pattern.fullmatch(mime_type):
                         mime_types[bucket_key].append(source)
                         matched = True
                         break
+
+                # If no pattern matched, try the normalized MIME type.
+                if not matched:
+                    normalized_mime_type = _normalize_mime_type(mime_type)
+
+                    for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
+                        normalized_bucket_key = _normalize_mime_type(bucket_key)
+
+                        if normalized_mime_type == normalized_bucket_key or pattern.fullmatch(normalized_mime_type):
+                            mime_types[bucket_key].append(source)
+                            matched = True
+                            break
+
             if not matched:
                 mime_types["unclassified"].append(source)
 

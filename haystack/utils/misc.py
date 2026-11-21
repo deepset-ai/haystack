@@ -120,6 +120,16 @@ def _guess_mime_type(path: Path) -> str | None:
     return CUSTOM_MIMETYPES.get(extension, mime_type)
 
 
+def _normalize_mime_type(mime_type: str) -> str:
+    """
+    Normalize a MIME type by removing parameters and converting it to lowercase.
+
+    :param mime_type: The MIME type to normalize.
+    :returns: The normalized MIME type.
+    """
+    return mime_type.split(";", maxsplit=1)[0].strip().lower()
+
+
 def _get_output_dir(out_dir: str) -> str:
     """
     Find or create a writable directory for saving status files.

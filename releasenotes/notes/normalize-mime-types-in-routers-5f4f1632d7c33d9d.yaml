@@ -1,0 +1,8 @@
+
+fixes:
+  - |
+    FileTypeRouter and DocumentTypeRouter now normalize MIME types
+    before matching. MIME types with different casing or additional
+    parameters, such as `Text/Plain` and
+    `text/plain; charset=utf-8`, are now correctly recognized
+    and routed.
