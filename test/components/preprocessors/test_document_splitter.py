@@ -1289,3 +1289,15 @@ class TestSplittingByTokenIntegration:
             expected_page = 1 + text[: d.meta["split_idx_start"] + leading_breaks].count("\f")
             assert d.meta["page_number"] == expected_page
         assert docs[-1].meta["page_number"] == 3
+
+
+class TestSplitBySentenceKeepsTrailingWhiteSpace:
+    @pytest.mark.parametrize("split_by, kwargs", [("sentence", {}), ("word", {"respect_sentence_boundary": True})])
+    def test_chunks_reassemble_the_original_text(self, split_by: str, kwargs: dict) -> None:
+        text = "One two. Three four.\n\n"
+        splitter = DocumentSplitter(split_by=split_by, split_length=2, split_overlap=0, **kwargs)
+        splitter.warm_up()
+
+        result = splitter.run(documents=[Document(content=text)])
+
+        assert "".join(doc.content for doc in result["documents"]) == text

@@ -230,3 +230,19 @@ def test_period_context_re_does_not_swallow_unexpected_errors() -> None:
 
     with pytest.raises(RuntimeError, match="unexpected"):
         FailingLanguageVars().period_context_re()
+
+
+@pytest.mark.parametrize("text", ["One. Two.\n", "One. Two.\n\n", "One. Two.\f", "One. Two.  ", "One.   "])
+def test_split_sentences_keeps_trailing_white_spaces(text: str) -> None:
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+    sentences = splitter.split_sentences(text)
+
+    assert "".join(sentence["sentence"] for sentence in sentences) == text
+    assert sentences[-1]["end"] == len(text)
+
+
+def test_split_sentences_drops_trailing_white_spaces_when_not_kept() -> None:
+    splitter = SentenceSplitter(language="en", keep_white_spaces=False)
+    sentences = splitter.split_sentences("One. Two.\n\n")
+
+    assert sentences[-1]["sentence"] == "Two."

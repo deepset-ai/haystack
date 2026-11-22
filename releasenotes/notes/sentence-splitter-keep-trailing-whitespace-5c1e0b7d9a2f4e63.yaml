@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `DocumentSplitter` with `split_by="sentence"` (or `split_by="word"` with `respect_sentence_boundary=True`) no longer
+    drops the whitespace at the end of a text, such as a trailing newline. The chunks now add up to the original text.
