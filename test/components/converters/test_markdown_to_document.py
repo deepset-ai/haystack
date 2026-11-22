@@ -140,6 +140,30 @@ class TestMarkdownToDocument:
         assert document.meta["tags"] == ["guidance"]
         assert document.meta["file_path"] == "aapl.md"
 
+    @pytest.mark.parametrize("line_ending", ["\n", "\r\n"])
+    def test_run_extracts_empty_frontmatter_without_consuming_body(self, line_ending):
+        bytestream = ByteStream.from_string(
+            line_ending.join(
+                [
+                    "---",
+                    "---",
+                    "# Important heading",
+                    "",
+                    "Summary: evidence must be preserved.",
+                    "",
+                    "---",
+                    "",
+                    "Tail.",
+                ]
+            )
+        )
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        document = converter.run(sources=[bytestream])["documents"][0]
+
+        assert document.content == "# Important heading\n\nSummary: evidence must be preserved.\n\n---\n\nTail.\n"
+        assert document.meta == {}
+
     def test_run_keeps_frontmatter_as_content_by_default(self):
         bytestream = ByteStream(data=b"---\nticker: AAPL\n---\n# Thesis\n")
 
