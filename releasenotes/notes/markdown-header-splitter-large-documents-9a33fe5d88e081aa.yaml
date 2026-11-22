@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``MarkdownHeaderSplitter`` splits large documents with many headings, fenced code blocks,
+    or page breaks faster while preserving chunk contents and page numbers.

@@ -936,6 +936,16 @@ def test_secondary_split_with_threshold():
     assert split_docs[2].meta["split_id"] == 2
 
 
+def test_header_page_counts_only_complete_custom_page_breaks():
+    source = Document(content="# First\nAlpha\n# Second\nBeta\n# Third\nGamma")
+    splitter = MarkdownHeaderSplitter(page_break_character="a\n# ")
+
+    chunks = splitter.run(documents=[source])["documents"]
+
+    assert [chunk.meta["page_number"] for chunk in chunks] == [1, 1, 2]
+    assert "".join(chunk.content for chunk in chunks) == source.content
+
+
 def test_page_break_handling_in_secondary_split():
     text = "# Header\nFirst page\f Second page\f Third page"
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from bisect import bisect_right
 from copy import deepcopy
 from typing import Literal
 
@@ -134,10 +135,6 @@ class MarkdownHeaderSplitter:
             self.secondary_splitter.warm_up()
             self._is_warmed_up = True
 
-    def _code_block_spans(self, text: str) -> list[tuple[int, int]]:
-        """Return the (start, end) character spans of all fenced code blocks in text."""
-        return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
-
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """
         Split text by ATX-style headers (#) and create chunks with appropriate metadata.
@@ -148,18 +145,17 @@ class MarkdownHeaderSplitter:
         """
         logger.debug("Splitting text by markdown headers")
 
-        # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python comments) are not
-        # mistaken for Markdown headers.
-        code_spans = self._code_block_spans(text)
-
-        # find headers at the configured levels only, excluding any that fall inside a code block. Content between
-        # skipped headers is absorbed into the preceding chunk's span since end = next_match.start().
-        matches = [
-            m
-            for m in re.finditer(self._header_pattern, text)
-            if len(m.group(1)) in self._header_split_levels_set
-            and not any(start <= m.start() < end for start, end in code_spans)
-        ]
+        # Headers and fenced code blocks both arrive in source order. Each fence only needs to be visited once.
+        code_blocks = self._code_block_pattern.finditer(text)
+        code_block = next(code_blocks, None)
+        matches = []
+        for match in self._header_pattern.finditer(text):
+            if len(match.group(1)) not in self._header_split_levels_set:
+                continue
+            while code_block is not None and code_block.end() <= match.start():
+                code_block = next(code_blocks, None)
+            if code_block is None or match.start() < code_block.start():
+                matches.append(match)
 
         # return unsplit if no headers found
         if not matches:
@@ -379,7 +375,8 @@ class MarkdownHeaderSplitter:
             docs: list[tuple[Document, bool, int]] = []
 
             document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
-            total_page_breaks = doc.content.count(self.page_break_character)
+            page_break_ends = [match.end() for match in re.finditer(re.escape(self.page_break_character), doc.content)]
+            total_page_breaks = len(page_break_ends)
             logger.debug(
                 "Processing document with id={doc_id}: starting at page {start_page}, "
                 "contains {page_breaks} page breaks in total",
@@ -391,7 +388,7 @@ class MarkdownHeaderSplitter:
                 meta = deepcopy(doc.meta) if doc.meta else {}
                 chunk_start_page = (
                     document_start_page
-                    + doc.content.count(self.page_break_character, 0, split["source_start_idx"])
+                    + bisect_right(page_break_ends, split["source_start_idx"])
                     # breaks the chunk opens with end the previous page, so its text is on a later one
                     + _leading_page_breaks(split["content"], self.page_break_character)
                 )
