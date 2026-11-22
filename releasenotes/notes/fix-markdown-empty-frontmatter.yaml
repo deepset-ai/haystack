@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes Markdown frontmatter extraction when the YAML block is empty, preserving the document body.
