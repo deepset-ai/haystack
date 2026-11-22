@@ -398,6 +398,15 @@ class TestCompactionHook:
         counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up", "close"]
 
+    def test_close_still_closes_the_compactor_when_the_counter_raises(self):
+        counter = Mock(spec=["close"])
+        counter.close.side_effect = RuntimeError("counter close failed")
+        compactor = _RecordingCompactor()
+        hook = _hook(compactor=compactor, token_counter=counter)
+        with pytest.raises(RuntimeError, match="counter close failed"):
+            hook.close()
+        assert compactor.calls == ["close"]
+
 
 class TestCompactionHookInAgent:
     def test_compacts_a_multi_step_run(self):
@@ -435,6 +444,16 @@ class TestCompactionHookAsync:
         counter.warm_up.assert_called_once_with()
         counter.close.assert_called_once_with()
         assert compactor.calls == ["warm_up_async", "close_async"]
+
+    @pytest.mark.asyncio
+    async def test_close_async_still_closes_the_compactor_when_the_counter_raises(self):
+        counter = Mock(spec=["close"])
+        counter.close.side_effect = RuntimeError("counter close failed")
+        compactor = _RecordingCompactor()
+        hook = _hook(compactor=compactor, token_counter=counter)
+        with pytest.raises(RuntimeError, match="counter close failed"):
+            await hook.close_async()
+        assert compactor.calls == ["close_async"]
 
     @pytest.mark.asyncio
     async def test_compacts_a_multi_step_async_run(self):

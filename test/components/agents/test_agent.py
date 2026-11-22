@@ -2481,6 +2481,31 @@ class TestComponentLifecycle:
         generator_close.assert_called_once_with()
         tool.close.assert_called_once_with()
 
+    def test_close_keeps_going_after_a_tool_raises(self, monkeypatch):
+        chat_generator = MockChatGenerator("Hello")
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        failing_tool = MagicMock(spec=Tool, close=MagicMock(side_effect=RuntimeError("tool close failed")))
+        good_tool = MagicMock(spec=Tool, close=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[failing_tool, good_tool])
+        with pytest.raises(RuntimeError, match="tool close failed"):
+            agent.close()
+        good_tool.close.assert_called_once_with()
+        generator_close.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_close_async_keeps_going_after_a_tool_raises(self, monkeypatch):
+        chat_generator = MockChatGenerator("Hello")
+        generator_close_async = AsyncMock()
+        monkeypatch.setattr(chat_generator, "close_async", generator_close_async, raising=False)
+        failing_tool = MagicMock(spec=Tool, close_async=AsyncMock(side_effect=RuntimeError("tool close failed")))
+        good_tool = MagicMock(spec=Tool, close_async=AsyncMock())
+        agent = Agent(chat_generator=chat_generator, tools=[failing_tool, good_tool])
+        with pytest.raises(RuntimeError, match="tool close failed"):
+            await agent.close_async()
+        good_tool.close_async.assert_awaited_once_with()
+        generator_close_async.assert_awaited_once_with()
+
     @pytest.mark.asyncio
     async def test_lifecycle_is_safe_when_tools_and_chat_generator_lack_methods(self, weather_tool):
         agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])

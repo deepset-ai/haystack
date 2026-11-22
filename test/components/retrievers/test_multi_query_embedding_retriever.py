@@ -372,6 +372,25 @@ class TestComponentLifecycle:
         query_embedder.close.assert_called_once()
         retriever.close.assert_called_once()
 
+    def test_close_keeps_going_after_one_raises(self):
+        query_embedder = Mock(spec=["run", "close"])
+        query_embedder.close.side_effect = RuntimeError("close failed")
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        with pytest.raises(RuntimeError, match="close failed"):
+            component.close()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_keeps_going_after_one_raises(self):
+        query_embedder = Mock(spec=["run", "close_async"])
+        query_embedder.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        with pytest.raises(RuntimeError, match="close failed"):
+            await component.close_async()
+        retriever.close_async.assert_awaited_once()
+
     async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
         query_embedder = Mock(spec=["run"])
         retriever = Mock(spec=["run"])

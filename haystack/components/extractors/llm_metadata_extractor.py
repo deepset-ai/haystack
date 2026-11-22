@@ -21,7 +21,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
 from haystack.utils.async_utils import _execute_component_async
-from haystack.utils.misc import _parse_dict_from_json
+from haystack.utils.misc import _CloseErrors, _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -222,19 +222,25 @@ class LLMMetadataExtractor:
         """
         Release the underlying chat generator's and splitter's resources.
         """
+        errors = _CloseErrors()
         for inner in (self._chat_generator, self.splitter):
-            if hasattr(inner, "close"):
-                inner.close()
+            with errors.capture(type(inner).__name__):
+                if hasattr(inner, "close"):
+                    inner.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """
         Release the underlying chat generator's and splitter's async resources.
         """
+        errors = _CloseErrors()
         for inner in (self._chat_generator, self.splitter):
-            if hasattr(inner, "close_async"):
-                await inner.close_async()
-            elif hasattr(inner, "close"):
-                inner.close()
+            with errors.capture(type(inner).__name__):
+                if hasattr(inner, "close_async"):
+                    await inner.close_async()
+                elif hasattr(inner, "close"):
+                    inner.close()
+        errors.raise_first()
 
     def to_dict(self) -> dict[str, Any]:
         """

@@ -8,6 +8,8 @@ import os
 import tempfile
 import warnings
 from collections import defaultdict
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import replace
 from math import inf
 from pathlib import Path
@@ -290,3 +292,37 @@ def _warn_if_using_openai_env_vars(*, timeout: float | None, max_retries: int | 
             FutureWarning,
             stacklevel=2,
         )
+
+
+class _CloseErrors:
+    """
+    Keeps closing a set of resources when one of them raises.
+
+    Wrap each resource's close call in `capture`, then call `raise_first` once every resource has been attempted.
+    Each error is logged as a warning and the first one is re-raised, so a single failing resource doesn't leave the
+    others open.
+    """
+
+    def __init__(self) -> None:
+        self._first_error: Exception | None = None
+
+    @contextmanager
+    def capture(self, resource: str) -> Iterator[None]:
+        """
+        Record an exception raised inside the block instead of propagating it.
+
+        :param resource: Name of the resource being closed, used in the warning.
+        """
+        try:
+            yield
+        except Exception as error:
+            logger.warning("Failed to close {resource}: {error}", resource=resource, error=error)
+            if self._first_error is None:
+                self._first_error = error
+
+    def raise_first(self) -> None:
+        """
+        Re-raise the first recorded exception, if any.
+        """
+        if self._first_error is not None:
+            raise self._first_error

@@ -8,6 +8,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.protocol import Hook, HookPoint
 from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.misc import _CloseErrors
 
 # Meta key marking a user message that a system reminder hook added rather than the user.
 _SYSTEM_REMINDER_META_KEY = "system_reminder"
@@ -102,22 +103,32 @@ def close_hooks(hooks: dict[HookPoint, list[Hook]]) -> None:
     """
     Release the resources of every hook that defines a `close` method.
 
+    If closing one hook raises, the remaining hooks are still closed and the first error is re-raised at the end.
+
     :param hooks: Hooks keyed by hook point. Each distinct hook is closed at most once.
     """
+    errors = _CloseErrors()
     for h in _unique_hooks(hooks):
-        if hasattr(h, "close"):
-            h.close()
+        with errors.capture(type(h).__name__):
+            if hasattr(h, "close"):
+                h.close()
+    errors.raise_first()
 
 
 async def close_hooks_async(hooks: dict[HookPoint, list[Hook]]) -> None:
     """
     Release hook resources, awaiting `close_async` when defined and falling back to `close` otherwise.
 
+    If closing one hook raises, the remaining hooks are still closed and the first error is re-raised at the end.
+
     :param hooks: Hooks keyed by hook point. Each distinct hook is closed at most once.
     """
+    errors = _CloseErrors()
     for h in _unique_hooks(hooks):
-        close_async = getattr(h, "close_async", None)
-        if close_async is not None:
-            await close_async()
-        elif hasattr(h, "close"):
-            h.close()
+        with errors.capture(type(h).__name__):
+            close_async = getattr(h, "close_async", None)
+            if close_async is not None:
+                await close_async()
+            elif hasattr(h, "close"):
+                h.close()
+    errors.raise_first()
