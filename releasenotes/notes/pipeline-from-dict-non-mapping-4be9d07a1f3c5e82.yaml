@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``Pipeline.from_dict`` and ``Pipeline.loads`` (and the ``AsyncPipeline`` equivalents) now raise a ``DeserializationError``
+    when the data is not a mapping, for example a YAML list, a plain string, or an empty document. Previously they
+    failed with an ``AttributeError``.
