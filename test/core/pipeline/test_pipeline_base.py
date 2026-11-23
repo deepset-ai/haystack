@@ -2057,6 +2057,16 @@ class TestPipelineBaseFromDict:
         with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
             PipelineBase.from_dict(data)
 
+    @pytest.mark.parametrize("data", [[], "a string", 42, None])
+    def test_from_dict_raises_deserialization_error_for_non_mapping(self, data):
+        with pytest.raises(DeserializationError, match="must be a mapping"):
+            PipelineBase.from_dict(data)
+
+    @pytest.mark.parametrize("data", ["- a\n- b\n", "just a string", "42", ""])
+    def test_loads_raises_deserialization_error_for_non_mapping_document(self, data):
+        with pytest.raises(DeserializationError, match="must be a mapping"):
+            PipelineBase.loads(data)
+
     def test_from_dict_with_unsafe_bypasses_allowlist(self):
         # `unsafe=True` bypasses the allowlist but the import itself still fails because the module
         # is nonexistent — proving that the allowlist check (not the import) is what changes.
