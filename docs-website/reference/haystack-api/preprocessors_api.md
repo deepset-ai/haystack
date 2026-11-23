@@ -428,7 +428,8 @@ Initialize DocumentSplitter.
 - `line` for splitting each line ("\\n")
 - `sentence` for splitting by NLTK sentence tokenizer
 - `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
-- **split_length** (<code>int</code>) – The maximum number of units in each split.
+- **split_length** (<code>int</code>) – The maximum number of units in each split. When splitting by word with
+  `respect_sentence_boundary=True`, a single sentence longer than this limit is kept whole in its own split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split has fewer units
   than the threshold, it's attached to the previous split.
