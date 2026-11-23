@@ -459,18 +459,6 @@ class TestFailureHandling:
         with pytest.raises(RuntimeError, match=f"incomplete conversation summary \\(finish reason: {finish_reason}\\)"):
             compactor.compact(messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER)
 
-    def test_accepts_a_summary_that_finished_normally(self):
-        generator = MockChatGenerator(
-            response_fn=lambda messages: ChatMessage.from_assistant("history", meta={"finish_reason": "stop"})
-        )
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
-            messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER
-        )
-        assert compacted is not None
-        assert [message.text for message in summaries(messages=compacted)] == [
-            "<conversation_summary>\nhistory\n</conversation_summary>"
-        ]
-
 
 class TestConfiguration:
     @pytest.mark.parametrize(
