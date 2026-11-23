@@ -732,7 +732,7 @@ class TestSplittingNLTKSentenceSplitter:
     )
     def test_number_of_sentences_to_keep(self, sentences: list[str], expected_num_sentences: int) -> None:
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
-            sentences=sentences, split_length=5, split_overlap=2
+            sentences=sentences, split_overlap=2, overlap_word_budget=5
         )
         assert num_sentences == expected_num_sentences
 
@@ -743,7 +743,7 @@ class TestSplittingNLTKSentenceSplitter:
             " The moon was full.",
         ]
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
-            sentences=sentences, split_length=5, split_overlap=0
+            sentences=sentences, split_overlap=0, overlap_word_budget=5
         )
         assert num_sentences == 0
 
@@ -757,29 +757,23 @@ class TestSplittingNLTKSentenceSplitter:
             "Epsilon zeta. Eta theta.",
         ]
 
-    def test_number_of_sentences_to_keep_leaves_room_for_next_sentence(self) -> None:
-        # Keeping both trailing sentences (5 words) would leave no room for the next chunk's
-        # 2-word first sentence under split_length=5, so only the last sentence is carried.
-        num_sentences = DocumentSplitter._number_of_sentences_to_keep(
-            sentences=["A. ", "B B. ", "C C C. "], split_length=5, split_overlap=4, next_sentence_word_count=2
-        )
-        assert num_sentences == 1
-
-    def test_sentence_overlap_carry_does_not_exceed_split_length(self) -> None:
-        # Carrying "Go. " into the next chunk would push it to 6 words > split_length=5,
-        # so nothing is carried and the five-word sentence is emitted on its own.
-        text = "Blue sky. Go. We walk into the woods."
-        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=1, respect_sentence_boundary=True)
+    @pytest.mark.parametrize(
+        "next_sentence, expected_second_chunk",
+        [
+            pytest.param("Night falls.", "Go. Cold rain. Night falls.", id="full-overlap"),
+            pytest.param("Night falls quickly.", "Cold rain. Night falls quickly.", id="reduced-overlap"),
+            pytest.param("We walk into the woods.", "We walk into the woods.", id="no-overlap"),
+            pytest.param(
+                "We walk into the woods together.", "We walk into the woods together.", id="long-sentence-kept-whole"
+            ),
+        ],
+    )
+    def test_sentence_overlap_respects_split_length(self, next_sentence: str, expected_second_chunk: str) -> None:
+        first_chunk = "Blue sky. Go. Cold rain. "
+        text = first_chunk + next_sentence
+        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=3, respect_sentence_boundary=True)
         documents = splitter.run(documents=[Document(content=text)])["documents"]
-        assert [doc.content for doc in documents] == ["Blue sky. Go. ", "We walk into the woods."]
-
-    def test_sentence_overlap_carry_kept_when_it_fits(self) -> None:
-        # The carry is kept whenever it fits alongside the next sentence: "Cold rain. " is
-        # repeated in the second chunk and both chunks stay within split_length=5.
-        text = "Blue sky. Go. Cold rain. Night falls."
-        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=1, respect_sentence_boundary=True)
-        documents = splitter.run(documents=[Document(content=text)])["documents"]
-        assert [doc.content for doc in documents] == ["Blue sky. Go. Cold rain. ", "Cold rain. Night falls."]
+        assert [doc.content for doc in documents] == [first_chunk, expected_second_chunk]
 
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
