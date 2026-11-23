@@ -54,7 +54,7 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
 
     :param page_range: List of page numbers and ranges
     :returns:
-        An expanded list of page integers
+        An expanded list of unique page integers, preserving their first-occurrence order
     :raises ValueError:
         If any element is not a valid integer or a range string in the format `'start-end'`.
 
@@ -90,7 +90,7 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
     if not expanded_page_range:
         raise ValueError("No valid page numbers or ranges found in the input list")
 
-    return expanded_page_range
+    return list(dict.fromkeys(expanded_page_range))
 
 
 @overload
