@@ -61,7 +61,6 @@ These examples use `OpenAIResponsesChatGenerator`, so they need the `OPENAI_API_
 | Mistral | Guardrails, safety system prompt | [`guardrails` in `extra_body`, `safe_prompt` in `generation_kwargs`](../pipeline-components/generators/mistralchatgenerator.mdx#content-moderation) |
 | Azure OpenAI | Content filters | Configured on the Azure deployment, see [AzureOpenAIChatGenerator](../pipeline-components/generators/azureopenaichatgenerator.mdx#content-moderation) and [AzureOpenAIResponsesChatGenerator](../pipeline-components/generators/azureopenairesponseschatgenerator.mdx#content-moderation) |
 | Anthropic | The model refuses on its own | Nothing to set, see [AnthropicChatGenerator](../pipeline-components/generators/anthropicchatgenerator.mdx#content-moderation) |
-| OpenAI | The model refuses on its own | Nothing to set. The refusal text is in the reply's `meta["refusal"]`, see [OpenAIChatGenerator](../pipeline-components/generators/openaichatgenerator.mdx) and [OpenAIResponsesChatGenerator](../pipeline-components/generators/openairesponseschatgenerator.mdx) |
 | Cohere | Safety modes | [`safety_mode` in `generation_kwargs`](../pipeline-components/generators/coherechatgenerator.mdx#content-moderation) |
 
 ### Content moderation with a guard model
