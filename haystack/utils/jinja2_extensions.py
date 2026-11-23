@@ -112,10 +112,14 @@ def _collect_assigned_variables(ast: nodes.Template) -> set[str]:
     :returns:
         A set of variable names that are assigned within the template.
     """
-    # Collect all variables assigned inside the template via {% set %}
+    # Collect all variables assigned inside the template via {% set x = ... %} or {% set x %}...{% endset %}
     assigned_variables = set()
+    assignments: list[nodes.Assign | nodes.AssignBlock] = [
+        *ast.find_all(nodes.Assign),
+        *ast.find_all(nodes.AssignBlock),
+    ]
 
-    for node in ast.find_all(nodes.Assign):
+    for node in assignments:
         if isinstance(node.target, nodes.Name):
             assigned_variables.add(node.target.name)
         elif isinstance(node.target, (nodes.List, nodes.Tuple)):

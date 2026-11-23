@@ -4,6 +4,7 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from typing import Literal
 
 import pytest
 
@@ -551,3 +552,32 @@ class TestPipeline:
         p.add_component("consumer", SingleStrConsumer())
         p.connect("producer.texts", "consumer.text")
         assert p.run({}) == {"consumer": {"out": "only-one"}}
+
+    def test_run_wraps_literal_output_into_list_input(self):
+        @component
+        class LiteralProducer:
+            @component.output_types(label=Literal["a", "b"])
+            def run(self) -> dict[str, str]:
+                return {"label": "a"}
+
+        p = Pipeline()
+        p.add_component("producer", LiteralProducer())
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer.label", "receiver.texts")
+
+        assert p.run({}) == {"receiver": {"result": ["a"]}}
+
+    @pytest.mark.asyncio
+    async def test_run_async_wraps_literal_output_into_list_input(self):
+        @component
+        class LiteralProducer:
+            @component.output_types(label=Literal["a", "b"])
+            def run(self) -> dict[str, str]:
+                return {"label": "a"}
+
+        p = Pipeline()
+        p.add_component("producer", LiteralProducer())
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer.label", "receiver.texts")
+
+        assert await p.run_async({}) == {"receiver": {"result": ["a"]}}

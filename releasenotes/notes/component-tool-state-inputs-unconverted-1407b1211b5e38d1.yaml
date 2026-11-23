@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``ComponentTool`` now passes values mapped through ``inputs_from_state`` to the component as they are stored in
+    the Agent's State, without running them through type conversion. This lets a component input typed with a class
+    that Pydantic can't validate, such as ``access_token: str | Secret``, receive its value from State. Before, the
+    tool call failed with ``PydanticSchemaGenerationError``.

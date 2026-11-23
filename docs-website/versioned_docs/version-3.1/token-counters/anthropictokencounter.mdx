@@ -44,7 +44,7 @@ messages = [
     ChatMessage.from_user("Explain retrieval-augmented generation."),
 ]
 
-counter = AnthropicTokenCounter(model="claude-sonnet-4-5")
+counter = AnthropicTokenCounter(model="claude-sonnet-5-5")
 token_count = counter.count(messages)
 print(token_count)
 ```
@@ -55,7 +55,7 @@ By default, the counter reads the API key from the `ANTHROPIC_API_KEY` environme
 from haystack.utils import Secret
 
 counter = AnthropicTokenCounter(
-    model="claude-sonnet-4-5",
+    model="claude-sonnet-5-5",
     api_key=Secret.from_env_var("MY_ANTHROPIC_API_KEY"),
     timeout=30.0,
     max_retries=3,
@@ -90,7 +90,7 @@ from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 compaction_hook = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=200_000,
-    token_counter=AnthropicTokenCounter(model="claude-sonnet-4-5"),
+    token_counter=AnthropicTokenCounter(model="claude-sonnet-5-5"),
 )
 ```
 

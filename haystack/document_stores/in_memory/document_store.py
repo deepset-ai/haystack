@@ -641,8 +641,7 @@ class InMemoryDocumentStore:
             )
         ]
         for doc in matching:
-            doc.meta.update(meta)
-            self.storage[doc.id] = doc
+            self.storage[doc.id] = replace(doc, meta={**doc.meta, **meta})
         return len(matching)
 
     @_synchronized

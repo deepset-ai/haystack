@@ -742,7 +742,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
-  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
+  JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
+  a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -971,8 +972,9 @@ Run the LLM evaluator.
 
 **Raises:**
 
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### run_async
 
@@ -998,8 +1000,9 @@ Run the LLM evaluator asynchronously
 **Raises:**
 
 - <code>TypeError</code> – If the chat generator does not support async execution.
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### prepare_template
 
@@ -1075,6 +1078,7 @@ Validate the input parameters.
 
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
+  If the received input lists are empty
 
 ## sas_evaluator
 

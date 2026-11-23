@@ -72,6 +72,22 @@ class TestFileToFileContent:
         expected_base64 = base64.b64encode(byte_stream.data).decode("utf-8")
         assert file_content.base64_data == expected_base64
 
+    @pytest.mark.parametrize(
+        ("meta", "expected_filename"),
+        [
+            ({"file_name": "report.pdf"}, "report.pdf"),
+            ({"file_path": "/tmp/uploads/report.pdf"}, "report.pdf"),
+            ({"file_name": "report.pdf", "file_path": "/tmp/uploads/1234.pdf"}, "report.pdf"),
+        ],
+    )
+    def test_run_with_bytestream_uses_meta_filename(self, meta: dict[str, str], expected_filename: str) -> None:
+        byte_stream = ByteStream.from_file_path(Path("./test/test_files/pdf/sample_pdf_1.pdf"), meta=meta)
+
+        converter = FileToFileContent()
+        results = converter.run(sources=[byte_stream])
+
+        assert results["file_contents"][0].filename == expected_filename
+
     def test_run_with_no_sources(self) -> None:
         converter = FileToFileContent()
         results = converter.run(sources=[])
