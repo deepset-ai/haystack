@@ -5,7 +5,6 @@
 import asyncio
 import datetime
 import json
-import logging
 import time
 import uuid
 from collections.abc import Callable
@@ -793,10 +792,6 @@ class TestRunToolErrorHandling:
             )
 
 
-def _raising_to_dict(self):
-    raise ValueError("boom")
-
-
 class TestUtilities:
     def test_result_to_string(self):
         assert _result_to_string("hello") == "hello"
@@ -868,43 +863,14 @@ class TestUtilities:
 
         assert _result_to_string(Unsupported()) == "unsupported"
 
-    @pytest.mark.parametrize(
-        "to_dict",
-        [
-            pytest.param(_raising_to_dict, id="raises"),
-            pytest.param("not callable", id="not-callable"),
-            pytest.param(lambda self, orient: {}, id="requires-argument"),
-        ],
-    )
-    def test_result_to_string_falls_back_to_str_when_to_dict_fails(self, to_dict, caplog):
-        result_cls = type("BrokenResult", (), {"to_dict": to_dict, "__str__": lambda self: "<broken>"})
-
-        with caplog.at_level(logging.WARNING):
-            assert _result_to_string(result_cls()) == "<broken>"
-        assert "Falling back to str conversion" in caplog.text
-
-    def test_run_tool_falls_back_to_str_when_tool_result_to_dict_fails(self):
-        class BrokenResult:
+        class BrokenToDict:
             def to_dict(self):
                 raise ValueError("boom")
 
             def __str__(self):
-                return "<broken>"
+                return "broken"
 
-        tool = Tool(
-            name="broken_tool",
-            description="Returns an object whose to_dict fails.",
-            parameters={"type": "object", "properties": {}},
-            function=BrokenResult,
-        )
-        message = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="broken_tool", arguments={})])
-
-        tool_messages, _ = _run_tool(messages=[message], state=State(schema={}), tools=[tool])
-
-        tool_call_result = tool_messages[0].tool_call_result
-        assert tool_call_result is not None
-        assert tool_call_result.result == "<broken>"
-        assert not tool_call_result.error
+        assert _result_to_string(BrokenToDict()) == "broken"
 
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})

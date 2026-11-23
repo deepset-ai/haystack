@@ -1,7 +1,5 @@
 ---
 fixes:
   - |
-    ``Agent`` no longer aborts the run when a tool returns an object whose ``to_dict`` attribute raises, is not
-    callable, or requires arguments. The tool result is now converted with ``str()`` and a warning is logged, as
-    already happened for results that cannot be JSON-serialized. Previously the error escaped the fallback and
-    stopped the run, even with ``raise_on_failure=False``.
+    ``Agent`` no longer stops the run when a tool returns an object whose ``to_dict`` fails.
+    The result is now converted with ``str()`` and a warning is logged.
