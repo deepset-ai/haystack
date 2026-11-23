@@ -87,7 +87,8 @@ class MarkdownHeaderSplitter:
         self.keep_headers = keep_headers
         self.header_split_levels = header_split_levels
         self._header_split_levels_set = set(header_split_levels)
-        self._header_pattern = re.compile(r"(?m)^ {0,3}(#{1,6})[ \t](.+)$")  # ATX-style .md-headers
+        pbc_prefix = rf"(?:{re.escape(page_break_character)}+)?" if page_break_character else ""
+        self._header_pattern = re.compile(rf"(?m)^{pbc_prefix} {{0,3}}(#{{1,6}})[ \t](.+)$")  # ATX-style .md-headers
         # Optional closing sequence of an ATX header, e.g. the trailing "##" in "## Install ##". It is not part of
         # the header text. Only spaces/tabs may surround it, with an optional carriage return for Windows line endings.
         self._closing_sequence_pattern = re.compile(r"(?:^|[ \t])#+[ \t]*\r?$")
@@ -316,7 +317,8 @@ class MarkdownHeaderSplitter:
             # The page this header chunk's first character is on; its splits are numbered relative to it.
             # doc.meta holds the page the chunk's *text* starts on, which already counts the breaks the chunk
             # opens with, and page_break_ends below counts those same breaks again - so take them back off.
-            chunk_start_page = doc.meta.get("page_number", 1) - _leading_page_breaks(
+            start_page = doc.meta.get("page_number", 1) if doc.meta else 1
+            chunk_start_page = (start_page if start_page is not None else 1) - _leading_page_breaks(
                 doc.content, self.page_break_character
             )
 
@@ -379,7 +381,8 @@ class MarkdownHeaderSplitter:
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
             docs: list[tuple[Document, bool, int]] = []
 
-            document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
+            start_page = doc.meta.get("page_number", 1) if doc.meta else 1
+            document_start_page = start_page if start_page is not None else 1
             total_page_breaks = doc.content.count(self.page_break_character)
             logger.debug(
                 "Processing document with id={doc_id}: starting at page {start_page}, "
