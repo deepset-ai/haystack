@@ -4,6 +4,7 @@
 
 import io
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
     import openpyxl
     import pandas as pd
+    from openpyxl.styles.numbers import is_datetime
 
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
@@ -181,11 +183,32 @@ class XLSXToDocument:
             return workbook.active
         return workbook[sheet_key]
 
-    def _map_hyperlinks_to_dataframe(
-        self, workbook: Any, hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]]
-    ) -> dict[str | int | None, dict[tuple[int, int], str]]:
+    @staticmethod
+    def _date_only_cells(worksheet: Any) -> dict[tuple[int, int], str]:
+        """
+        Find cells that hold a date and whose number format shows no time.
+
+        pandas reads such a cell as a datetime at midnight, and because the converter reads with `header=None` every
+        column has object dtype, so the cell would be written as "2025-03-14 00:00:00". Returns the ISO date text to
+        write instead, keyed by 0-based Excel coordinates.
+        """
+        cells: dict[tuple[int, int], str] = {}
+        for row in worksheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if (
+                    isinstance(value, datetime)
+                    and value.time() == datetime.min.time()
+                    and is_datetime(cell.number_format) == "date"
+                ):
+                    cells[(cell.row - 1, cell.column - 1)] = value.date().isoformat()
+        return cells
+
+    def _map_cells_to_dataframe(
+        self, workbook: Any, cells_by_sheet: dict[str | int | None, dict[tuple[int, int], Any]]
+    ) -> dict[str | int | None, dict[tuple[int, int], Any]]:
         """Re-key 0-based Excel cell coordinates to their positions in the filtered DataFrame."""
-        for sheet_key in hyperlinks_by_sheet:
+        for sheet_key in cells_by_sheet:
             for row in self._get_worksheet(workbook, sheet_key).iter_rows():
                 for cell in row:
                     # Empty cells must stay empty: pandas sizes the sheet by its non-empty cells, and the placeholder
@@ -203,18 +226,79 @@ class XLSXToDocument:
         if isinstance(tagged_sheets, pd.DataFrame):
             tagged_sheets = {self.sheet_name: tagged_sheets}
 
-        mapped_hyperlinks = {}
-        for sheet_key, cell_links in hyperlinks_by_sheet.items():
+        mapped_cells = {}
+        for sheet_key, cell_values in cells_by_sheet.items():
             positions = {}
             for row_idx, values in enumerate(tagged_sheets[sheet_key].itertuples(index=False, name=None)):
                 for col_idx, value in enumerate(values):
                     if isinstance(value, str) and value.startswith(_CELL_TAG):
                         excel_row, excel_col = value.removeprefix(_CELL_TAG).split(",")
                         positions[(int(excel_row), int(excel_col))] = (row_idx, col_idx)
-            mapped_hyperlinks[sheet_key] = {
-                positions[cell]: url for cell, url in cell_links.items() if cell in positions
+            mapped_cells[sheet_key] = {
+                positions[cell]: cell_value for cell, cell_value in cell_values.items() if cell in positions
             }
-        return mapped_hyperlinks
+        return mapped_cells
+
+    def _collect_cell_overrides(
+        self, file_bytes: io.BytesIO, sheet_to_dataframe: dict[str | int | None, pd.DataFrame]
+    ) -> dict[str | int | None, dict[tuple[int, int], tuple[str | None, str | None]]]:
+        """
+        Find the cells whose text must differ from what pandas read.
+
+        Returns, per sheet, DataFrame positions mapped to (date text or None, hyperlink target or None). The workbook
+        is only loaded with openpyxl when it is needed: for hyperlinks, or for date cells whose number format has no
+        time part (pandas gives those a midnight time).
+        """
+        has_midnight_dates = any(
+            isinstance(value, datetime) and pd.notna(value) and value.time() == datetime.min.time()
+            for df in sheet_to_dataframe.values()
+            for value in df.to_numpy().ravel()
+        )
+        cell_overrides: dict[str | int | None, dict[tuple[int, int], tuple[str | None, str | None]]] = {}
+        if self.link_format == "none" and not has_midnight_dates:
+            return cell_overrides
+
+        file_bytes.seek(0)
+        wb = openpyxl.load_workbook(file_bytes, data_only=True)
+        for sheet_key in sheet_to_dataframe:
+            ws = self._get_worksheet(wb, sheet_key)
+            overrides: dict[tuple[int, int], tuple[str | None, str | None]] = {}
+            if has_midnight_dates:
+                for coordinates, iso_date in self._date_only_cells(ws).items():
+                    overrides[coordinates] = (iso_date, None)
+            if self.link_format != "none":
+                for row in ws.iter_rows():
+                    for cell in row:
+                        if cell.hyperlink and cell.hyperlink.target:
+                            # Zero-based Excel coordinates; translated to filtered positions below.
+                            link_cell = (cell.row - 1, cell.column - 1)
+                            overrides[link_cell] = (overrides.get(link_cell, (None, None))[0], cell.hyperlink.target)
+            cell_overrides[sheet_key] = overrides
+        if any(cell_overrides.values()) and any(key in self.read_excel_kwargs for key in _POSITION_KWARGS):
+            cell_overrides = self._map_cells_to_dataframe(wb, cell_overrides)
+        wb.close()
+        return cell_overrides
+
+    def _apply_cell_overrides(
+        self, df: pd.DataFrame, overrides: dict[tuple[int, int], tuple[str | None, str | None]]
+    ) -> None:
+        """Write date text and hyperlinks into the DataFrame cells at the given positions."""
+        for (row_idx, col_idx), (date_text, url) in overrides.items():
+            if row_idx >= len(df) or col_idx >= len(df.columns):
+                continue
+            # Text must be assignable to numeric and other typed columns.
+            column = df.columns[col_idx]
+            if df[column].dtype != object:
+                df[column] = df[column].astype(object)
+            if date_text is not None:
+                df.iat[row_idx, col_idx] = date_text
+            if url is not None:
+                cell_value: Any = df.iat[row_idx, col_idx]
+                text = str(cell_value) if pd.notna(cell_value) else ""
+                if self.link_format == "markdown":
+                    df.iat[row_idx, col_idx] = f"[{text}]({url})"
+                else:
+                    df.iat[row_idx, col_idx] = f"{text} ({url})"
 
     def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
@@ -233,23 +317,7 @@ class XLSXToDocument:
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
 
-        # If link extraction is enabled, load the workbook with openpyxl to read hyperlinks
-        hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]] = {}
-        if self.link_format != "none":
-            file_bytes.seek(0)
-            wb = openpyxl.load_workbook(file_bytes, data_only=True)
-            for sheet_key in sheet_to_dataframe:
-                ws = self._get_worksheet(wb, sheet_key)
-                cell_links: dict[tuple[int, int], str] = {}
-                for row in ws.iter_rows():
-                    for cell in row:
-                        if cell.hyperlink and cell.hyperlink.target:
-                            # Store zero-based Excel coordinates; they are translated to filtered positions below.
-                            cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
-                hyperlinks_by_sheet[sheet_key] = cell_links
-            if any(hyperlinks_by_sheet.values()) and any(key in self.read_excel_kwargs for key in _POSITION_KWARGS):
-                hyperlinks_by_sheet = self._map_hyperlinks_to_dataframe(wb, hyperlinks_by_sheet)
-            wb.close()
+        cell_overrides = self._collect_cell_overrides(file_bytes, sheet_to_dataframe)
 
         updated_sheet_to_dataframe = {}
         for key in sheet_to_dataframe:
@@ -260,21 +328,7 @@ class XLSXToDocument:
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
 
-            # Apply hyperlinks to cell values
-            if key in hyperlinks_by_sheet:
-                for (row_idx, col_idx), url in hyperlinks_by_sheet[key].items():
-                    if row_idx < len(df) and col_idx < len(df.columns):
-                        cell_value = df.iat[row_idx, col_idx]
-                        text = str(cell_value) if pd.notna(cell_value) else ""
-                        # Hyperlink text must be assignable to numeric and other typed columns.
-                        column = df.columns[col_idx]
-                        if df[column].dtype != object:
-                            df[column] = df[column].astype(object)
-                        if self.link_format == "markdown":
-                            df.iat[row_idx, col_idx] = f"[{text}]({url})"
-                        else:
-                            df.iat[row_idx, col_idx] = f"{text} ({url})"
-
+            self._apply_cell_overrides(df, cell_overrides.get(key, {}))
             updated_sheet_to_dataframe[key] = df
 
         tables = []

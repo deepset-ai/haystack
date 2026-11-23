@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``XLSXToDocument`` now writes cells formatted as a date without a time (for example ``2025-03-14``) as the date
+    alone. Before, they came out with a midnight time, such as ``2025-03-14 00:00:00``. Cells whose number format shows
+    a time keep their time.

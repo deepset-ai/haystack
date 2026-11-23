@@ -6,6 +6,7 @@ import csv
 import io
 import logging
 from copy import deepcopy
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -543,3 +544,48 @@ class TestXLSXToDocument:
         rows = _convert_rows(tmp_path, [[1, "x"], [None, "foo"], [2, "y"]], read_excel_kwargs=read_excel_kwargs)
         expected_foo = "foo" if na_values is None else "<missing>"
         assert rows == [["1", "x"], ["", expected_foo], ["2", "y"]]
+
+    @pytest.mark.parametrize("table_format", ["csv", "markdown"])
+    def test_run_writes_date_only_cells_without_a_time(self, tmp_path: Path, table_format: Any) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Item", "Date only", "Date and time", "Midnight with a time format"])
+        sheet.append(["Revenue", date(2025, 3, 14), datetime(2025, 3, 14, 9, 30), datetime(2025, 3, 15)])
+        sheet["B2"].number_format = "dd/mm/yyyy"
+        sheet["D2"].number_format = "yyyy-mm-dd hh:mm"
+        path = tmp_path / "dates.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        content = XLSXToDocument(table_format=table_format).run(sources=[path])["documents"][0].content
+        assert content is not None
+        rows = (
+            [row[1:] for row in list(csv.reader(io.StringIO(content)))[1:]]
+            if table_format == "csv"
+            else [[cell.strip() for cell in row.split("|")[2:-1]] for row in content.splitlines()[2:]]
+        )
+        # A date-only format gets the ISO date; any format with a time keeps the time pandas reads.
+        assert rows[1] == ["Revenue", "2025-03-14", "2025-03-14 09:30:00", "2025-03-15 00:00:00"]
+
+    def test_run_date_only_cell_follows_skiprows_and_usecols(self, tmp_path: Path) -> None:
+        rows = _convert_rows(
+            tmp_path,
+            [["Title"], ["Item", "Note", "Date"], ["Revenue", "ignored", date(2025, 3, 14)]],
+            read_excel_kwargs={"skiprows": 1, "usecols": [0, 2]},
+        )
+        assert rows == [["Item", "Date"], ["Revenue", "2025-03-14"]]
+
+    def test_link_extraction_on_date_only_cell(self, tmp_path: Path) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Filed"])
+        sheet.append([date(2025, 3, 14)])
+        sheet["A2"].hyperlink = "https://example.com/filing"
+        path = tmp_path / "linked_date.xlsx"
+        workbook.save(path)
+        workbook.close()
+
+        content = XLSXToDocument(link_format="markdown").run(sources=[path])["documents"][0].content
+        assert content == ",A\n1,Filed\n2,[2025-03-14](https://example.com/filing)\n"
