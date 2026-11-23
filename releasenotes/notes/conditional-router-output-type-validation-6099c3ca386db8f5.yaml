@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    When ``ConditionalRouter`` is used with ``validate_output_type=True``, validation now requires the output value
+    to match the declared container type. For example, ``list[int]`` no longer accepts a tuple and
+    ``tuple[int, ...]`` no longer accepts a list. Previously both were accepted through a shared sequence check.
+    This only affects components that opt into output type validation; use the declared container type or disable
+    ``validate_output_type`` if a route intentionally emits a different container.
+issues:
+  - |
+    ``ConditionalRouter`` validation for ``Literal`` and ``Annotated`` string values still runs after the router's
+    existing template value evaluation, so numeric-looking strings such as ``"1"`` may be coerced before validation.
+fixes:
+  - |
+    Fixed ``ConditionalRouter`` output type validation with ``validate_output_type=True``. Validation now supports
+    ``typing.Sequence``, ``typing.Mapping``, bare ``typing.List``/``typing.Dict``/``typing.Set``, ``typing.Counter``,
+    ``Literal``, ``Annotated``, typed ``set``/``frozenset``, fixed-length tuples, and generic ``Collection``/
+    ``Iterable`` annotations instead of crashing or reporting false type mismatches. One-shot iterables are accepted
+    without being consumed. ``Annotated`` output types are validated but not yet supported by pipeline serialization.

@@ -266,6 +266,15 @@ strict_router.run(value="not_a_number")
 # ValueError: Route 'result' type doesn't match expected type
 ```
 
+Validation supports concrete types, `list`/`dict`/`set`/`tuple`, other `Collection`/`Iterable` annotations,
+`Literal`, `Annotated`, and unions. Strings and bytes are treated as scalars rather than collections, and one-shot
+iterables such as generators are accepted without being consumed. The value must match the declared container type:
+for example, `list[int]` does not accept a tuple.
+
+`Annotated` output types are validated against their underlying type, but pipeline serialization of `Annotated`
+output types is not yet supported. String values for `Literal` and `Annotated` are still subject to the router's
+template value evaluation, so numeric-looking strings such as `"1"` may be coerced before validation.
+
 <br />
 
 ## Additional References
