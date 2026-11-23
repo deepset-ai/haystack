@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    When ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` stream reasoning, the
+    streaming callback now gets a blank line between reasoning summary parts and between reasoning items.
+    Before, these pieces were streamed with no separator, so the streamed text ran together
+    (for example ``...satellite.**Describing the Moon's Formation**``) and did not match
+    ``ChatMessage.reasoning.reasoning_text``. Joining the streamed ``chunk.reasoning.reasoning_text`` values now
+    gives exactly the final reasoning text.
+upgrade:
+  - |
+    ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` now separate reasoning summary parts
+    and reasoning items in ``ChatMessage.reasoning.reasoning_text`` with a blank line (``"\n\n"``) instead of a single
+    newline (``"\n"``). Each part becomes its own markdown paragraph instead of running into the previous one.
+    Update any code that splits ``reasoning_text`` on ``"\n"`` to get the parts, or read them from
+    ``reasoning.extra["reasoning_items"]``.
