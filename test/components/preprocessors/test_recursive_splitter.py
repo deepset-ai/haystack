@@ -686,10 +686,11 @@ def test_run_cjk_document_splits_by_word():
     splitter = RecursiveDocumentSplitter(split_length=50, split_unit="word")
     chunks = splitter.run([Document(content=text)])["documents"]
     assert [chunk.content for chunk in chunks] == [text[0:50], text[50:100], text[100:120]]
-    assert "".join(chunk.content for chunk in chunks) == text
+    assert "".join(chunk.content or "" for chunk in chunks) == text
     assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2]
     assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 50, 100]
     for chunk in chunks:
+        assert chunk.content is not None
         assert splitter._chunk_length(chunk.content) <= 50
 
 
@@ -699,7 +700,7 @@ def test_run_mixed_cjk_and_latin_word_unit():
     chunks = splitter.run([Document(content=text)])["documents"]
     cjk = "检索增强生成" * 5
     assert [chunk.content for chunk in chunks] == ["aa bb cc ", cjk[0:10], cjk[10:20], cjk[20:30]]
-    assert "".join(chunk.content for chunk in chunks) == text
+    assert "".join(chunk.content or "" for chunk in chunks) == text
     assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 9, 19, 29]
 
 
@@ -708,7 +709,7 @@ def test_run_word_unit_latin_text_unchanged():
     splitter = RecursiveDocumentSplitter(split_length=2, separators=[" "], split_unit="word")
     chunks = splitter.run([Document(content=text)])["documents"]
     assert [chunk.content for chunk in chunks] == ["one two ", "three four ", "five six"]
-    assert "".join(chunk.content for chunk in chunks) == text
+    assert "".join(chunk.content or "" for chunk in chunks) == text
 
 
 def test_run_word_overlap_cjk_document():

@@ -98,13 +98,13 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_word_cjk_document(self):
         # Each CJK character counts as one word, so a spaceless Chinese document splits into
-        # chunks of split_length characters instead of coming back as one chunk.
+        # chunks of split_length characters.
         text = "检索增强生成" * 20  # 120 characters
         splitter = DocumentSplitter(split_by="word", split_length=50)
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
         assert [doc.content for doc in docs] == [text[0:50], text[50:100], text[100:120]]
-        assert "".join(doc.content for doc in docs) == text
+        assert "".join(doc.content or "" for doc in docs) == text
         assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
         assert [doc.meta["split_idx_start"] for doc in docs] == [0, 50, 100]
 
@@ -114,18 +114,17 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
         assert [doc.content for doc in docs] == ["hello 检索 ", "world"]
-        assert "".join(doc.content for doc in docs) == text
+        assert "".join(doc.content or "" for doc in docs) == text
         assert [doc.meta["split_idx_start"] for doc in docs] == [0, 9]
 
     def test_split_by_word_double_space_unchanged(self):
-        # A run of spaces still produces the same units as str.split(" ") does, so Latin text
-        # splits exactly as before the CJK change.
+        # A run of spaces still produces the same units as str.split(" ") does.
         text = "a  b c d e f"
         splitter = DocumentSplitter(split_by="word", split_length=3)
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
         assert [doc.content for doc in docs] == ["a  b ", "c d e ", "f"]
-        assert "".join(doc.content for doc in docs) == text
+        assert "".join(doc.content or "" for doc in docs) == text
 
     def test_concatenate_sentences_based_on_word_amount_cjk(self):
         # Each sentence counts its CJK characters as words, so two long sentences do not fit
@@ -137,6 +136,21 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert text_splits == sentences
         assert splits_pages == [1, 1]
         assert splits_start_idxs == [0, len(sentences[0])]
+
+    def test_split_by_word_respect_sentence_boundary_newlines(self):
+        # Newlines separate words when counting, as len(text.split()) does, so a sentence
+        # containing newlines does not swallow the next sentence into its chunk.
+        text = "Item one\nitem two\nitem three\nitem four. Next sentence has five words. Last one here."
+        splitter = DocumentSplitter(split_by="word", split_length=10, respect_sentence_boundary=True)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == [
+            "Item one\nitem two\nitem three\nitem four. ",
+            "Next sentence has five words. Last one here.",
+        ]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, text.index("Next sentence")]
 
     def test_split_by_word_with_threshold(self):
         splitter = DocumentSplitter(split_by="word", split_length=15, split_threshold=10)

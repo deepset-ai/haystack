@@ -32,6 +32,8 @@ hep_available: true
 - `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks.
 - `split_threshold` is an integer indicating the minimum number of words, sentences, or passages that the document fragment should have. If the fragment is below the threshold, it will be attached to the previous one.
 
+When `split_by="word"`, each Chinese or Japanese character (Han, Hiragana, Katakana) counts as one word, so documents written without spaces split into chunks of about `split_length` words instead of coming back as a single chunk. Korean text is unaffected, since Korean separates words with spaces. For real word segmentation of Chinese text, use [`ChineseDocumentSplitter`](chinesedocumentsplitter.mdx), which uses HanLP.
+
 When `split_by="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
 
 A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document with the page the chunk starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on. Other metadata are copied from the original document.

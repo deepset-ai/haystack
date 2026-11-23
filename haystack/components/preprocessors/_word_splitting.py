@@ -4,38 +4,21 @@
 
 import re
 
-# Unicode ranges for scripts written without spaces between words (Chinese, Japanese, Korean).
-# Each character in these ranges counts as one word when splitting by word, following the same
-# convention as the BM25 tokenizer in haystack/document_stores/in_memory/document_store.py.
-# The kana ranges intentionally exclude punctuation such as the katakana middle dot (・) so it
-# does not become a word on its own.
-_CJK_CHAR_CLASS = (
-    r"\u1100-\u11ff"  # Hangul Jamo
-    r"\ua960-\ua97f"  # Hangul Jamo Extended-A
-    r"\ud7b0-\ud7ff"  # Hangul Jamo Extended-B
-    r"\u3130-\u318f"  # Hangul Compatibility Jamo
-    r"\uac00-\ud7af"  # Hangul Syllables
-    r"\u3041-\u3096"  # Hiragana letters (excludes combining marks and kana iteration marks)
-    r"\u30a1-\u30fa\u30fc"  # Katakana letters + prolonged sound mark, excludes ・ middle dot
-    r"\u31f0-\u31ff"  # Katakana Phonetic Extensions
-    r"\u3400-\u4dbf"  # CJK Unified Ideographs Extension A
-    r"\u4e00-\u9fff"  # CJK Unified Ideographs
-    r"\uf900-\ufaff"  # CJK Compatibility Ideographs
-    r"\uff66-\uff9f"  # Halfwidth Katakana
-    r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
-)
+from haystack.utils.misc import _CJK_HAN_KANA_CHAR_CLASS
 
-# Matches a single CJK character.
-_CJK_CHAR_RE = re.compile(rf"[{_CJK_CHAR_CLASS}]")
+# Matches a single CJK character (Han, Hiragana, Katakana). Korean is not included: Korean separates
+# words with spaces, so it does not need per-character splitting. The kana ranges intentionally
+# exclude punctuation such as the katakana middle dot (・) so it does not become a word on its own.
+_CJK_CHAR_RE = re.compile(rf"[{_CJK_HAN_KANA_CHAR_CLASS}]")
 
 # Matches one word: a single CJK character, or a run of non-space characters that contains no
 # CJK characters. For text without CJK characters this is exactly `[^ ]+`.
-_WORD_RE = re.compile(rf"[{_CJK_CHAR_CLASS}]|[^ {_CJK_CHAR_CLASS}]+")
+_WORD_RE = re.compile(rf"[{_CJK_HAN_KANA_CHAR_CLASS}]|[^ {_CJK_HAN_KANA_CHAR_CLASS}]+")
 
 # Matches one token for fixed word chunking: a single CJK character, a run of non-whitespace
 # characters without CJK characters, or a run of whitespace. For text without CJK characters
 # this is exactly `\S+|\s+`.
-_WORD_TOKEN_RE = re.compile(rf"[{_CJK_CHAR_CLASS}]|[^\s{_CJK_CHAR_CLASS}]+|\s+")
+_WORD_TOKEN_RE = re.compile(rf"[{_CJK_HAN_KANA_CHAR_CLASS}]|[^\s{_CJK_HAN_KANA_CHAR_CLASS}]+|\s+")
 
 
 def _split_words(text: str) -> list[str]:
@@ -51,7 +34,7 @@ def _split_words(text: str) -> list[str]:
     pieces = text.split(" ")
     for piece_index, piece in enumerate(pieces):
         if not piece:
-            piece_units = [piece]
+            piece_units: list[str] = [piece]
         else:
             piece_units = []
             start = 0
@@ -70,8 +53,27 @@ def _split_words(text: str) -> list[str]:
 
 def _count_words(text: str) -> int:
     """
-    Count the words in text, as `len(text.split(" "))` does, but with each CJK character as one word.
+    Count the words in text, as `len(text.split())` does, but with each CJK character as one word.
 
-    Whitespace-only pieces, such as the empty units a run of spaces produces, are not counted.
+    Non-CJK text is split on any whitespace, so newlines and tabs separate words just like spaces
+    do. Whitespace-only tokens, such as the space between words, are not counted.
     """
-    return len([unit for unit in _split_words(text) if unit.strip()])
+    return len([token for token in _WORD_TOKEN_RE.findall(text) if token.strip()])
+
+
+def _count_space_separated_words(text: str) -> int:
+    """
+    Count the words in text, splitting on spaces only, with each CJK character as one word.
+
+    This is `len([word for word in text.split(" ") if word.strip()])`, but with each CJK
+    character as one word. Unlike `_count_words`, only spaces separate words here: a piece such
+    as `"bb\\fcc"` counts as one word, because the form feed marks a page break rather than a
+    word boundary. This is the counting the recursive splitter uses, so its chunks stay aligned
+    with the plain word split.
+    """
+    count = 0
+    for piece in text.split(" "):
+        count += len(_CJK_CHAR_RE.findall(piece))
+        if _CJK_CHAR_RE.sub("", piece).strip():
+            count += 1
+    return count

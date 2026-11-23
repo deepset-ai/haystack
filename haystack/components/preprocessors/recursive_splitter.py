@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from haystack import Document, component, default_to_dict, logging
 from haystack.components.preprocessors._page_numbers import _leading_page_breaks
-from haystack.components.preprocessors._word_splitting import _WORD_RE, _WORD_TOKEN_RE, _count_words
+from haystack.components.preprocessors._word_splitting import _WORD_RE, _WORD_TOKEN_RE, _count_space_separated_words
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
@@ -78,7 +78,7 @@ class RecursiveDocumentSplitter:
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
             If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
             Special-token strings in document content are encoded as ordinary text.
-            When "word" is selected, each CJK character (Han, Hiragana, Katakana, Hangul) counts as
+            When "word" is selected, each CJK character (Han, Hiragana, Katakana) counts as
             one word, so documents in Chinese or Japanese split like space-separated text does.
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -344,7 +344,7 @@ class RecursiveDocumentSplitter:
         """
         if self.split_units == "word":
             # like _fall_back_to_fixed_chunking, don't count whitespace-only pieces such as "\f" as words
-            return _count_words(text)
+            return _count_space_separated_words(text)
         if self.split_units == "char":
             return len(text)
         # token

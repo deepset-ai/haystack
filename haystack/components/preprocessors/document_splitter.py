@@ -77,8 +77,8 @@ class DocumentSplitter:
         Initialize DocumentSplitter.
 
         :param split_by: The unit for splitting your documents. Choose from:
-            - `word` for splitting by spaces (" "). Each CJK character (Han, Hiragana, Katakana,
-              Hangul) counts as one word, so documents in Chinese or Japanese split like
+            - `word` for splitting by spaces (" "). Each CJK character (Han, Hiragana, Katakana)
+              counts as one word, so documents in Chinese or Japanese split like
               space-separated text does.
             - `period` for splitting by periods (".")
             - `page` for splitting by form feed ("\\f")
@@ -324,12 +324,17 @@ class DocumentSplitter:
 
     def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
+        content = doc.content
+        if content is None:
+            # run() rejects documents without content, so this is unreachable in practice.
+            # The guard keeps the type checker from flagging the uses below.
+            return []
         if self.split_by == "word":
             # Each CJK character is its own unit. The units already carry the space that
             # followed them in the text, so the delimiter is not added back here.
-            units = _split_words(doc.content)  # type: ignore[union-attr]
+            units = _split_words(content)
         else:
-            units = doc.content.split(split_at)  # type: ignore[union-attr]
+            units = content.split(split_at)
             # Add the delimiter back to all units except the last one
             for i in range(len(units) - 1):
                 units[i] += split_at
