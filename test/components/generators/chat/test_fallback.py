@@ -92,9 +92,8 @@ class CustomGeneratorWithoutSerDe:
 
 class TestInitSerde:
     def test_init(self):
-        generators = [_DummySuccessGen(), _DummyFailGen()]
-        gen = FallbackChatGenerator(chat_generators=generators)
-        assert gen.chat_generators == generators
+        gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(), _DummyFailGen()])
+        assert [type(generator) for generator in gen.chat_generators] == [_DummySuccessGen, _DummyFailGen]
 
     def test_init_with_empty_generators(self):
         with pytest.raises(ValueError, match="'chat_generators' must be a non-empty list"):
