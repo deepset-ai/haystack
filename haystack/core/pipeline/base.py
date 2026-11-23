@@ -229,6 +229,10 @@ class PipelineBase:  # noqa: PLW1641
     def _from_dict_impl(
         cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
     ) -> T:
+        if not isinstance(data, dict):
+            raise DeserializationError(
+                f"Pipeline data must be a mapping (dictionary) of pipeline settings, got {type(data).__name__}."
+            )
         data_copy = _deepcopy_with_exceptions(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
