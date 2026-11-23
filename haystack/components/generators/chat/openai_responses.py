@@ -65,6 +65,14 @@ def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishRe
             return finish_reason
     if any(output.type == "function_call" for output in response.output):
         return "tool_calls"
+    # A refusal completes the response normally, so report it as "content_filter" like other providers' refusals
+    if any(
+        isinstance(content, ResponseOutputRefusal)
+        for output in response.output
+        if output.type == "message"
+        for content in output.content
+    ):
+        return "content_filter"
     return "stop"
 
 
