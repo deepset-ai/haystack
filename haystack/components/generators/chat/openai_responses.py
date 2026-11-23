@@ -52,6 +52,9 @@ _INCOMPLETE_REASON_MAPPING: dict[str, FinishReason] = {
     "content_filter": "content_filter",
 }
 
+# Summary parts read as separate markdown sections, each usually opening with a bold title
+_REASONING_SEPARATOR = "\n\n"
+
 
 def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishReason:
     """Return the normalized finish reason for a terminal OpenAI Responses API response."""
@@ -689,12 +692,27 @@ def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningConte
 
     texts = []
     for item in items:
-        text = "\n".join(part["text"] for part in item.get("summary") or [])
+        text = _REASONING_SEPARATOR.join(part["text"] for part in item.get("summary") or [] if part["text"])
         if not text:
-            text = "\n".join(part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text")
+            text = _REASONING_SEPARATOR.join(
+                part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text" and part["text"]
+            )
         if text:
             texts.append(text)
-    return ReasoningContent(reasoning_text="\n".join(texts), extra={"reasoning_items": items})
+    return ReasoningContent(reasoning_text=_REASONING_SEPARATOR.join(texts), extra={"reasoning_items": items})
+
+
+def _starts_new_reasoning_segment(
+    output_index: int, extra: dict[str, Any], previous_chunks: list[StreamingChunk]
+) -> bool:
+    """Whether a reasoning delta follows streamed reasoning text from another reasoning item or part."""
+    for previous_chunk in reversed(previous_chunks):
+        if previous_chunk.reasoning and previous_chunk.reasoning.reasoning_text:
+            previous_extra = previous_chunk.reasoning.extra
+            return previous_chunk.index != output_index or any(
+                previous_extra.get(key) != extra.get(key) for key in ("summary_index", "content_index")
+            )
+    return False
 
 
 def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str, Any]]:
@@ -894,7 +912,13 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
         extra.pop("delta")
-        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
+        delta = chunk.delta
+        # Separate parts and items as _reasoning_content_from_items does, so the stream matches the final message
+        if delta and _starts_new_reasoning_segment(
+            output_index=chunk.output_index, extra=extra, previous_chunks=previous_chunks
+        ):
+            delta = _REASONING_SEPARATOR + delta
+        reasoning = ReasoningContent(reasoning_text=delta, extra=extra)
         return StreamingChunk(
             content="",
             component_info=component_info,
@@ -1026,9 +1050,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         # The API rejects reasoning input without an id, so items without one are dropped
         if reasoning_id:
             reasoning_extra.update({"id": reasoning_id, "type": "reasoning", "output_index": index})
-            # No done event supplied the text, so rebuild the summary from the streamed deltas
+            # No done event supplied the text, so rebuild the summary from the streamed deltas.
+            # A later item's first delta starts with the separator to the previous item, which the final join re-adds.
             if not reasoning_extra.get("summary") and not reasoning_extra.get("content"):
-                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks)
+                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks).removeprefix(
+                    _REASONING_SEPARATOR
+                )
                 reasoning_extra["summary"] = (
                     [{"text": reasoning_text, "type": "summary_text"}] if reasoning_text else []
                 )

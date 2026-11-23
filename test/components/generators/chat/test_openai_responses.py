@@ -910,11 +910,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
-        # The stream has no separator between summary parts, so compare against the parts joined without one
-        summary_parts = [
-            part["text"] for item in message.reasoning.extra["reasoning_items"] for part in item["summary"]
-        ]
-        assert callback.reasoning == "".join(summary_parts)
+        assert callback.reasoning == message.reasoning.reasoning_text
         assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
