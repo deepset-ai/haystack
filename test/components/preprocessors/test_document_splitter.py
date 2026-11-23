@@ -96,6 +96,48 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[1].meta["split_id"] == 1
         assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
 
+    def test_split_by_word_cjk_document(self):
+        # Each CJK character counts as one word, so a spaceless Chinese document splits into
+        # chunks of split_length characters instead of coming back as one chunk.
+        text = "检索增强生成" * 20  # 120 characters
+        splitter = DocumentSplitter(split_by="word", split_length=50)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == [text[0:50], text[50:100], text[100:120]]
+        assert "".join(doc.content for doc in docs) == text
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 50, 100]
+
+    def test_split_by_word_mixed_cjk_and_latin(self):
+        text = "hello 检索 world"
+        splitter = DocumentSplitter(split_by="word", split_length=3)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["hello 检索 ", "world"]
+        assert "".join(doc.content for doc in docs) == text
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 9]
+
+    def test_split_by_word_double_space_unchanged(self):
+        # A run of spaces still produces the same units as str.split(" ") does, so Latin text
+        # splits exactly as before the CJK change.
+        text = "a  b c d e f"
+        splitter = DocumentSplitter(split_by="word", split_length=3)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["a  b ", "c d e ", "f"]
+        assert "".join(doc.content for doc in docs) == text
+
+    def test_concatenate_sentences_based_on_word_amount_cjk(self):
+        # Each sentence counts its CJK characters as words, so two long sentences do not fit
+        # into one chunk of split_length=10 words the way two one-word sentences would.
+        sentences = ["检索增强生成先从文档库中找出相关段落，", "再把它们交给语言模型。"]
+        text_splits, splits_pages, splits_start_idxs = DocumentSplitter._concatenate_sentences_based_on_word_amount(
+            sentences=sentences, split_length=10, split_overlap=0
+        )
+        assert text_splits == sentences
+        assert splits_pages == [1, 1]
+        assert splits_start_idxs == [0, len(sentences[0])]
+
     def test_split_by_word_with_threshold(self):
         splitter = DocumentSplitter(split_by="word", split_length=15, split_threshold=10)
         result = splitter.run(
