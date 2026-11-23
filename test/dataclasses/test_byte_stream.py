@@ -64,6 +64,20 @@ def test_from_file_path_guess_mime_type(file_path, expected_mime_types, tmp_path
     assert b.mime_type in expected_mime_types
 
 
+def test_from_file_path_guess_mime_type_ignores_host_mime_database(tmp_path, monkeypatch):
+    # The `mimetypes` module builds its table from the host's MIME database, which maps .csv to Excel's type on
+    # machines where Excel is installed, and from the `mimetypes.add_type()` calls made elsewhere in the process.
+    # The guess must not depend on either.
+    import mimetypes
+
+    monkeypatch.setattr("mimetypes.types_map", {**mimetypes.types_map, ".csv": "application/vnd.ms-excel"})
+    test_file = tmp_path / "spam.csv"
+    test_file.touch()
+
+    b = ByteStream.from_file_path(test_file, guess_mime_type=True)
+    assert b.mime_type == "text/csv"
+
+
 def test_explicit_mime_type_is_not_overwritten_by_guessing(tmp_path):
     # create empty file with correct extension
     test_file = tmp_path / "sample.md"

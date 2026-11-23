@@ -25,7 +25,19 @@ CUSTOM_MIMETYPES = {
     ".markdown": "text/markdown",
     # we add msg because it is not added by the mimetypes module
     ".msg": "application/vnd.ms-outlook",
+    # The stdlib table omits the Office Open XML types, which the host MIME database supplies on some machines only,
+    # so they are pinned here to keep the result independent of the host.
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
+
+# MIME types are looked up on a private `MimeTypes` instance, which holds only the table built into the stdlib. The
+# module-level `mimetypes.guess_type` is not used: it also reads the host's MIME database (the Windows registry,
+# `/etc/mime.types`) and every `mimetypes.add_type()` call made elsewhere in the process, so the same file was guessed
+# as a different type depending on the machine. On Windows, for example, a `.csv` file was reported as
+# `application/vnd.ms-excel` because Excel registered the extension.
+_MIME_TYPES = mimetypes.MimeTypes()
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +127,7 @@ def _guess_mime_type(path: Path) -> str | None:
     :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
     """
     extension = path.suffix.lower()
-    mime_type = mimetypes.guess_type(path.as_posix())[0]
+    mime_type = _MIME_TYPES.guess_type(path.as_posix())[0]
     # lookup custom mappings if the mime type is not found
     return CUSTOM_MIMETYPES.get(extension, mime_type)
 

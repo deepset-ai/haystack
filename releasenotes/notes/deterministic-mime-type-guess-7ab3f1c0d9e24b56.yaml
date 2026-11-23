@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `ByteStream.from_file_path(..., guess_mime_type=True)` and the components that read files through it now guess the
+    MIME type from a fixed table instead of the host's MIME database. Previously the same file could be reported as a
+    different type depending on the machine, for example a `.csv` file was reported as `application/vnd.ms-excel` on
+    Windows, where Excel registers the extension.
