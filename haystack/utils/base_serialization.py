@@ -48,8 +48,6 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     # Handle pydantic
     if isinstance(payload, pydantic.BaseModel):
         type_name = generate_qualified_class_name(type(payload))
-        # JSON mode turns fields such as datetime, date, UUID and Decimal into JSON-native values so the result
-        # can be written to a snapshot file. `model_validate` in the deserialization path parses them back.
         return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump(mode="json")}
 
     # Handle dictionary case - iterate through fields
