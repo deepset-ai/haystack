@@ -51,6 +51,11 @@ document_store.write_documents(
 print(document_store.count_documents())
 ```
 
+:::note[In-Memory Sync and Async Usage]
+
+With `location=":memory:"`, synchronous and asynchronous methods use separate in-memory databases. For example, `count_documents_async()` returns zero after a write made through `write_documents()` on a fresh store. Use one API consistently with an in-memory store, or connect to a Qdrant server via `url` or `host` to share data between synchronous and asynchronous calls.
+:::
+
 :::warning[Collections Created Outside Haystack]
 
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
