@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 # Recorded as the strategy on every summary this compactor produces, so a later run can recognize its own summaries.
 _STRATEGY = "summarization"
 
+# A summary cut off by the output limit or a content filter is partial and must not replace the original messages.
+_INCOMPLETE_FINISH_REASONS = ("length", "content_filter")
+
 _DEFAULT_SUMMARY_INSTRUCTION = """You are compacting one portion of a conversation between a user and an AI agent so \
 the agent can keep working with fewer tokens. You are shown only the portion being replaced. The rest of the \
 conversation, including the user's current request, stays in place and is not shown to you. Summarize only what you \
@@ -222,9 +225,9 @@ class SummarizationCompactor(Compactor):
         :param summary_instruction: The prompt instructions for how to summarize a portion of the conversation.
             The default instructions ask for a summary with fixed sections covering the objective, decisions and
             constraints, completed work, exact identifiers, and unresolved work.
-        :param raise_on_failure: Whether to raise an exception if the chat generator fails or returns a summary that
-            does not shrink the conversation. By default the failure is logged and any successful partial compaction
-            is returned.
+        :param raise_on_failure: Whether to raise an exception if the chat generator fails, returns an incomplete
+            summary (finish reason `length` or `content_filter`), or returns a summary that does not shrink the
+            conversation. By default the failure is logged and any successful partial compaction is returned.
         :raises ValueError: If `min_keep_steps` is negative or `approximate_summary_tokens` is not positive.
         """
         if min_keep_steps < 0:
@@ -431,10 +434,15 @@ class SummarizationCompactor(Compactor):
         :param before_tokens: The already measured size of `messages`.
         :param token_counter: The counter used to verify that the summary actually shrinks the conversation.
         :returns: The conversation with the selected messages replaced by the summary, and its measured token count.
-        :raises RuntimeError: If the generator returned no usable text, or if the swap did not make the conversation
-            smaller, in which case keeping the raw messages is the better outcome.
+        :raises RuntimeError: If the generator returned no usable text or an incomplete summary, or if the swap did not
+            make the conversation smaller, in which case keeping the raw messages is the better outcome.
         """
         replies = result.get("replies") or []
+        finish_reason = replies[-1].meta.get("finish_reason") if replies else None
+        if finish_reason in _INCOMPLETE_FINISH_REASONS:
+            raise RuntimeError(
+                f"The Chat Generator returned an incomplete conversation summary (finish reason: {finish_reason})."
+            )
         text = replies[-1].text if replies else None
         if not text or not text.strip():
             raise RuntimeError(
