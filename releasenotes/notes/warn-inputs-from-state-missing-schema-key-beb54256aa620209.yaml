@@ -11,8 +11,16 @@ deprecations:
 
     .. code-block:: python
 
+        # Requires the OPENAI_API_KEY and MEM0_API_KEY environment variables
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.dataclasses import ChatMessage
+        from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+        from haystack_integrations.tools.mem0 import Mem0MemoryRetrieverTool
+
         agent = Agent(
-            chat_generator=OpenAIChatGenerator(),
-            tools=[Mem0MemoryRetrieverTool(memory_store=memory_store)],
+            chat_generator=OpenAIResponsesChatGenerator(),
+            tools=[Mem0MemoryRetrieverTool(memory_store=Mem0MemoryStore())],
             state_schema={"user_id": {"type": str}},
         )
+        result = agent.run(messages=[ChatMessage.from_user("What do you remember about me?")], user_id="alice")

@@ -814,27 +814,22 @@ class TestAgentRun:
             name="recall",
             description="Recall memories for a user.",
             parameters={"type": "object", "properties": {}},
-            function=lambda user_id=None: user_id,
-            inputs_from_state={"user_id": "user_id"},
+            function=lambda user_id=None, session_id=None: user_id,
+            inputs_from_state={"user_id": "user_id", "session_id": "session_id"},
         )
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool] if pass_tools_at == "init" else [])
+        # Only `session_id` is declared, so only `user_id` should warn
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[tool] if pass_tools_at == "init" else [],
+            state_schema={"session_id": {"type": str}},
+        )
 
-        with pytest.warns(FutureWarning, match="Tool 'recall' reads state key 'user_id' through `inputs_from_state`"):
+        with pytest.warns(FutureWarning) as record:
             agent.run([ChatMessage.from_user("Hi")], tools=[tool] if pass_tools_at == "run" else None)
 
-    def test_run_does_not_warn_when_inputs_from_state_key_in_state_schema(self, recwarn):
-        tool = Tool(
-            name="recall",
-            description="Recall memories for a user.",
-            parameters={"type": "object", "properties": {}},
-            function=lambda user_id=None: user_id,
-            inputs_from_state={"user_id": "user_id"},
-        )
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool], state_schema={"user_id": {"type": str}})
-
-        agent.run([ChatMessage.from_user("Hi")], user_id="alice")
-
-        assert not [w for w in recwarn if issubclass(w.category, FutureWarning)]
+        messages = [str(w.message) for w in record if issubclass(w.category, FutureWarning)]
+        assert len(messages) == 1
+        assert "Tool 'recall' reads state key 'user_id' through `inputs_from_state`" in messages[0]
 
     @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
     def test_run_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
