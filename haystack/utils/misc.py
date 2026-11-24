@@ -29,6 +29,31 @@ CUSTOM_MIMETYPES = {
 
 logger = logging.getLogger(__name__)
 
+# Unicode ranges for scripts written without spaces between words. Characters in these ranges are
+# tokenized one per token by the BM25 tokenizer, so bare-term queries for individual characters or
+# short words can match, while every other script keeps the usual word-based behaviour. The kana
+# ranges intentionally exclude punctuation such as the katakana middle dot (・) so it does not
+# become a token on its own. The word splitters use only the Han and kana ranges: Korean separates
+# words with spaces, so Hangul does not need per-character handling.
+_CJK_HAN_KANA_CHAR_CLASS = (
+    r"\u3041-\u3096"  # Hiragana letters (excludes combining marks and kana iteration marks)
+    r"\u30a1-\u30fa\u30fc"  # Katakana letters + prolonged sound mark, excludes ・ middle dot
+    r"\u31f0-\u31ff"  # Katakana Phonetic Extensions
+    r"\u3400-\u4dbf"  # CJK Unified Ideographs Extension A
+    r"\u4e00-\u9fff"  # CJK Unified Ideographs
+    r"\uf900-\ufaff"  # CJK Compatibility Ideographs
+    r"\uff66-\uff9f"  # Halfwidth Katakana
+)
+
+_HANGUL_CHAR_CLASS = (
+    r"\u1100-\u11ff"  # Hangul Jamo
+    r"\ua960-\ua97f"  # Hangul Jamo Extended-A
+    r"\ud7b0-\ud7ff"  # Hangul Jamo Extended-B
+    r"\u3130-\u318f"  # Hangul Compatibility Jamo
+    r"\uac00-\ud7af"  # Hangul Syllables
+    r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
+)
+
 
 def _make_metadata_value_hashable(value: Any) -> Any:
     """Convert nested metadata values into values that can be used for deduplication."""

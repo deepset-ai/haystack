@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``DocumentSplitter`` with ``split_by="word"`` and ``RecursiveDocumentSplitter`` with
+    ``split_unit="word"`` now split Chinese and Japanese documents into chunks of about
+    ``split_length`` words. Previously, a document written without spaces came back as a
+    single chunk however long it was, because the whole text counted as one word. Each
+    CJK character (Han, Hiragana, Katakana) now counts as one word, following the
+    same convention as the BM25 tokenizer in ``InMemoryDocumentStore``. Space-separated
+    text splits exactly as before.

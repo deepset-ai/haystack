@@ -10,6 +10,7 @@ from more_itertools import windowed
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors._page_numbers import _leading_page_breaks
+from haystack.components.preprocessors._word_splitting import _count_words, _split_words
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -76,7 +77,9 @@ class DocumentSplitter:
         Initialize DocumentSplitter.
 
         :param split_by: The unit for splitting your documents. Choose from:
-            - `word` for splitting by spaces (" ")
+            - `word` for splitting by spaces (" "). Each CJK character (Han, Hiragana, Katakana)
+              counts as one word, so documents in Chinese or Japanese split like
+              space-separated text does.
             - `period` for splitting by periods (".")
             - `page` for splitting by form feed ("\\f")
             - `passage` for splitting by double line breaks ("\\n\\n")
@@ -322,10 +325,20 @@ class DocumentSplitter:
 
     def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
-        units = doc.content.split(split_at)  # type: ignore[union-attr]
-        # Add the delimiter back to all units except the last one
-        for i in range(len(units) - 1):
-            units[i] += split_at
+        content = doc.content
+        if content is None:
+            # run() rejects documents without content, so this is unreachable in practice.
+            # The guard keeps the type checker from flagging the uses below.
+            return []
+        if self.split_by == "word":
+            # Each CJK character is its own unit. The units already carry the space that
+            # followed them in the text, so the delimiter is not added back here.
+            units = _split_words(content)
+        else:
+            units = content.split(split_at)
+            # Add the delimiter back to all units except the last one
+            for i in range(len(units) - 1):
+                units[i] += split_at
         text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
             units, self.split_length, self.split_overlap, self.split_threshold
         )
@@ -560,9 +573,9 @@ class DocumentSplitter:
 
         for sentence_idx, sentence in enumerate(sentences):
             current_chunk.append(sentence)
-            chunk_word_count += len(sentence.split())
+            chunk_word_count += _count_words(sentence)
             next_sentence_word_count = (
-                len(sentences[sentence_idx + 1].split()) if sentence_idx < len(sentences) - 1 else 0
+                _count_words(sentences[sentence_idx + 1]) if sentence_idx < len(sentences) - 1 else 0
             )
 
             # Number of words in the current chunk plus the next sentence is larger than the split_length,
@@ -587,7 +600,7 @@ class DocumentSplitter:
                     chunk_start_idx += len("".join(processed_sentences))
                     # Next chunk starts with the sentences that were overlapping with the previous chunk
                     current_chunk = current_chunk[-num_sentences_to_keep:]
-                    chunk_word_count = sum(len(s.split()) for s in current_chunk)
+                    chunk_word_count = sum(_count_words(s) for s in current_chunk)
                 else:
                     # Here processed_sentences is the same as current_chunk since there is no overlap
                     chunk_starting_page_number += sum(sent.count("\f") for sent in current_chunk)
@@ -622,7 +635,8 @@ class DocumentSplitter:
         num_words = 0
         # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
         for sent in reversed(sentences[1:]):
-            num_words += len(sent.split())
+            num_words += _count_words(sent)
+            # If the number of words is larger than the overlap budget then don't add any more sentences
             if num_words > overlap_word_budget:
                 break
             num_sentences_to_keep += 1

@@ -33,6 +33,8 @@ The `RecursiveDocumentSplitter` expects a list of documents as input and returns
 - `sentence_splitter_params`: Optional parameters to pass to the [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116).
 - `tokenizer_encoding`: The tiktoken encoding used when `split_unit="token"`. Defaults to `"o200k_base"`, used by current OpenAI models. Set it to match your model, for example `"cl100k_base"` for OpenAI's `text-embedding-3` embedding models, so that chunks fit the model's token limit.
 
+When `split_unit="word"`, each Chinese or Japanese character (Han, Hiragana, Katakana) counts as one word, so documents written without spaces split into chunks of about `split_length` words instead of coming back as a single chunk. Korean text is unaffected, since Korean separates words with spaces. For real word segmentation of Chinese text, use [`ChineseDocumentSplitter`](chinesedocumentsplitter.mdx), which uses HanLP.
+
 When `split_unit="token"`, strings such as `<|endoftext|>` in the source document are tokenized as ordinary text. They are preserved in the chunks and count toward the token limit.
 
 A meta field `"page_number"` is added to each chunk with the page it starts on, counted from the form feed (`\f`) characters in the original document. A chunk that spans a page break reports the page its text begins on, matching [`DocumentSplitter`](documentsplitter.mdx).

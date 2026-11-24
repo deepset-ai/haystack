@@ -25,7 +25,7 @@ from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumen
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils import expit
 from haystack.utils.filters import document_matches_filter
-from haystack.utils.misc import _make_metadata_value_hashable
+from haystack.utils.misc import _CJK_HAN_KANA_CHAR_CLASS, _HANGUL_CHAR_CLASS, _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -39,26 +39,12 @@ logger = logging.getLogger(__name__)
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
-# Unicode ranges for scripts that are written without spaces between words (Chinese, Japanese, Korean). These
-# characters are tokenized one per token so that bare-term queries for individual characters or short words can
-# match, while every other script keeps the usual word-based behaviour. The kana ranges intentionally exclude
-# punctuation such as the katakana middle dot (・) so it does not become a token on its own.
-_CJK_CHAR_CLASS = (
-    r"\u1100-\u11ff"  # Hangul Jamo
-    r"\ua960-\ua97f"  # Hangul Jamo Extended-A
-    r"\ud7b0-\ud7ff"  # Hangul Jamo Extended-B
-    r"\u3130-\u318f"  # Hangul Compatibility Jamo
-    r"\uac00-\ud7af"  # Hangul Syllables
-    r"\u3041-\u3096"  # Hiragana letters (excludes combining marks and kana iteration marks)
-    r"\u30a1-\u30fa\u30fc"  # Katakana letters + prolonged sound mark, excludes ・ middle dot
-    r"\u31f0-\u31ff"  # Katakana Phonetic Extensions
-    r"\u3400-\u4dbf"  # CJK Unified Ideographs Extension A
-    r"\u4e00-\u9fff"  # CJK Unified Ideographs
-    r"\uf900-\ufaff"  # CJK Compatibility Ideographs
-    r"\uff66-\uff9f"  # Halfwidth Katakana
-    r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
+# Characters in scripts written without spaces between words (Chinese, Japanese, Korean) are
+# tokenized one per token, so bare-term queries for individual characters or short words can match.
+# The ranges live in haystack.utils.misc and are shared with the word splitters.
+_DEFAULT_BM25_TOKENIZATION_REGEX = (
+    rf"[^\W{_CJK_HAN_KANA_CHAR_CLASS}{_HANGUL_CHAR_CLASS}]+|[{_CJK_HAN_KANA_CHAR_CLASS}{_HANGUL_CHAR_CLASS}]"
 )
-_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
 
 
 @dataclass
