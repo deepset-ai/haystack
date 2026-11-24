@@ -282,6 +282,7 @@ __init__(
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
     tokenizer_encoding: str = "o200k_base",
+    skip_empty_documents: bool = True,
     remove_empty_lines: bool = True,
     remove_extra_whitespaces: bool = True,
     remove_repeated_substrings: bool = False,
@@ -289,7 +290,10 @@ __init__(
     remove_substrings: list[str] | None = None,
     remove_regex: str | None = None,
     unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
-    ascii_only: bool = False
+    ascii_only: bool = False,
+    strip_whitespaces: bool = False,
+    replace_regexes: dict[str, str] | None = None,
+    min_content_length: int = 0
 ) -> None
 ```
 
@@ -314,6 +318,10 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
   languages.
 - **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
   `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+- **skip_empty_documents** (<code>bool</code>) – If `True`, skips input documents with empty content. Set to `False` when a
+  downstream component can extract text from non-textual documents, such as `LLMDocumentContentExtractor`.
+  With `False`, text ending in a separator can also produce an empty chunk. Empty documents are still
+  dropped with `split_by="sentence"` or `respect_sentence_boundary=True`.
 
 **Cleaner Parameters**:
 
@@ -325,6 +333,11 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 - **remove_regex** (<code>str | None</code>) – A regex pattern whose matches will be removed from the document content.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text, for example `"NFC"`.
 - **ascii_only** (<code>bool</code>) – If `True`, converts text to ASCII only.
+- **strip_whitespaces** (<code>bool</code>) – If `True`, removes leading and trailing whitespace from the document content.
+- **replace_regexes** (<code>dict\[str, str\] | None</code>) – A dictionary mapping regex patterns to their replacement strings.
+- **min_content_length** (<code>int</code>) – Minimum length of each cleaned chunk after stripping leading and trailing
+  whitespace. Shorter chunks are dropped, including empty documents kept by
+  `skip_empty_documents=False`. A value of `0` keeps all chunks.
 
 #### to_dict
 
