@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Tracing now replaces the binary data of a ``Document``'s ``blob`` with a placeholder, as it already did for a
+    bare ``ByteStream``. Previously a ``Document`` with a blob was sent to the tracing backend with every byte of
+    the blob as a JSON list of integers.
