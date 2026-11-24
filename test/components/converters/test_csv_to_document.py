@@ -21,6 +21,10 @@ class TestCSVToDocument:
     def test_init(self, csv_converter):
         assert isinstance(csv_converter, CSVToDocument)
 
+    def test_init_invalid_conversion_mode(self):
+        with pytest.raises(ValueError, match="conversion_mode must be one of 'file' or 'row'"):
+            CSVToDocument(conversion_mode="invalid")
+
     def test_run(self, test_files_path):
         """
         Test if the component runs correctly.
