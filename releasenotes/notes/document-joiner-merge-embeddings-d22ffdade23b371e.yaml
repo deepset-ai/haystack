@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    ``DocumentJoiner`` now supports ``join_mode="merge_embeddings"`` to combine the
+    ``embedding`` and ``sparse_embedding`` fields of documents with the same ID.
+    This allows dense and sparse document embedders to run in parallel and their
+    outputs to be combined before passing them to ``DocumentWriter``.

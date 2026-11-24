@@ -186,7 +186,7 @@ class MockChatGenerator:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MockChatGenerator:
         """Deserialize the component from a dictionary."""
-        init_params = data.get("init_parameters", {})
+        init_params = dict(data.get("init_parameters", {}))
         responses = init_params.get("responses")
         if responses is not None:
             init_params["responses"] = [ChatMessage.from_dict(msg) for msg in responses]
@@ -196,7 +196,7 @@ class MockChatGenerator:
         streaming_callback = init_params.get("streaming_callback")
         if streaming_callback:
             init_params["streaming_callback"] = deserialize_callable(streaming_callback)
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": init_params})
 
     def warm_up(self) -> None:
         """No-op warm up, provided for interface compatibility with real Chat Generators."""

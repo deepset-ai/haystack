@@ -4,6 +4,7 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from typing import Literal
 
 import pytest
 
@@ -425,7 +426,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.texts")
         p.connect("list_producer.texts", "receiver.texts")
         result = p.run({})
-        assert result["receiver"]["result"] == ["world", "!", "hello"]
+        assert result["receiver"]["result"] == ["hello", "world", "!"]
 
     def test_run_auto_variadic_chat_message_to_list_str(self):
         """Two ChatMessage producers connected to a list[str] input are converted and auto-joined at runtime."""
@@ -447,7 +448,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.texts")
         p.connect("chat_producer.message", "receiver.texts")
         result = p.run({})
-        assert result["receiver"]["result"] == ["world", "hello"]
+        assert result["receiver"]["result"] == ["hello", "world"]
 
     def test_run_auto_variadic_chat_message_to_list_chat_message(self):
         """Two ChatMessage producers connected to a list[ChatMessage] input are auto-joined at runtime."""
@@ -480,7 +481,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.messages")
         p.connect("chat_producer.message", "receiver.messages")
         result = p.run({})
-        assert [m.text for m in result["receiver"]["result"]] == ["world", "hello"]
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world"]
 
     def test_run_auto_variadic_chat_message_and_list_chat_message_to_list_chat_message(self):
         """A ChatMessage and a list[ChatMessage] producer connected to list[ChatMessage] are auto-joined at runtime."""
@@ -551,3 +552,32 @@ class TestPipeline:
         p.add_component("consumer", SingleStrConsumer())
         p.connect("producer.texts", "consumer.text")
         assert p.run({}) == {"consumer": {"out": "only-one"}}
+
+    def test_run_wraps_literal_output_into_list_input(self):
+        @component
+        class LiteralProducer:
+            @component.output_types(label=Literal["a", "b"])
+            def run(self) -> dict[str, str]:
+                return {"label": "a"}
+
+        p = Pipeline()
+        p.add_component("producer", LiteralProducer())
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer.label", "receiver.texts")
+
+        assert p.run({}) == {"receiver": {"result": ["a"]}}
+
+    @pytest.mark.asyncio
+    async def test_run_async_wraps_literal_output_into_list_input(self):
+        @component
+        class LiteralProducer:
+            @component.output_types(label=Literal["a", "b"])
+            def run(self) -> dict[str, str]:
+                return {"label": "a"}
+
+        p = Pipeline()
+        p.add_component("producer", LiteralProducer())
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer.label", "receiver.texts")
+
+        assert await p.run_async({}) == {"receiver": {"result": ["a"]}}

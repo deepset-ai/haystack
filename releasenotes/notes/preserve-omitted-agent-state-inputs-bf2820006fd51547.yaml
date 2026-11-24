@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed a bug where an ``Agent`` running in a ``Pipeline`` set omitted state inputs to ``None``.
+    The Agent now leaves those keys out of its state, just as it does when called directly.
+    An explicitly supplied ``None`` is still stored in the state.
+
+    For example, suppose a search tool reads ``top_k`` from the Agent’s state and defaults to ``5``.
+    Previously, omitting ``top_k`` in a Pipeline caused the tool to receive ``None``.
+    Now the tool uses ``5``. If you pass ``top_k=None``, the tool still receives ``None``.

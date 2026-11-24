@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``SlidingWindowCompactor`` no longer removes system reminders from the current task, such as the ones
+    ``StepBudgetReminderHook`` adds. Before, every compaction removed them, including a reminder added for the LLM
+    call about to happen, which the model then never saw. Now a reminder is kept or removed together with the next
+    assistant message and its tool results, and reminders after the last assistant message are always kept.

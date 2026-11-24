@@ -5,6 +5,7 @@
 import re
 from collections.abc import Generator
 from copy import deepcopy
+from dataclasses import replace
 from functools import partial, reduce
 from itertools import chain
 from typing import Literal
@@ -63,6 +64,7 @@ class DocumentCleaner:
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
+            Pages where the regex matches are also stripped of leading and trailing whitespace.
         :param keep_id: If `True`, keeps the IDs of the original documents.
         :param unicode_normalization: Unicode normalization form to apply to the text.
             Note: This will run before any other steps.
@@ -164,15 +166,7 @@ class DocumentCleaner:
                     )
                     continue
 
-            clean_doc = Document(
-                id=doc.id if self.keep_id else "",
-                content=text,
-                blob=doc.blob,
-                meta=deepcopy(doc.meta),
-                score=doc.score,
-                embedding=doc.embedding,
-                sparse_embedding=doc.sparse_embedding,
-            )
+            clean_doc = replace(doc, id=doc.id if self.keep_id else "", content=text, meta=deepcopy(doc.meta))
             cleaned_docs.append(clean_doc)
 
         return {"documents": cleaned_docs}
@@ -231,11 +225,15 @@ class DocumentCleaner:
 
         :param text: Text to clean.
         :param regex: Regex to match and replace substrings by "".
-        :returns: The text without the substrings that match the regex.
+        :returns: The text without the substrings that match the regex. Pages with at least one match are also
+            stripped of leading and trailing whitespace; other pages are left unchanged.
         """
-        texts = text.split("\f")
-        cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
-        return "\f".join(cleaned_text)
+        pages = text.split("\f")
+        cleaned_pages = []
+        for page in pages:
+            cleaned_page, n_matches = re.subn(regex, "", page)
+            cleaned_pages.append(cleaned_page.strip() if n_matches > 0 else cleaned_page)
+        return "\f".join(cleaned_pages)
 
     def _replace_regexes(self, text: str, replace_regexes: dict[str, str]) -> str:
         """

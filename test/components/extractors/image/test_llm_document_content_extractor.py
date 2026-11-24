@@ -89,6 +89,14 @@ class TestLLMDocumentContentExtractor:
                 chat_generator=chat_generator, prompt="Extract content from {{document.content}}"
             )
 
+    @pytest.mark.parametrize("max_workers", [-1, 0])
+    def test_init_with_invalid_max_workers_raises(self, monkeypatch, max_workers):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="max_workers must be greater than 0"):
+            LLMDocumentContentExtractor(chat_generator=chat_generator, max_workers=max_workers)
+
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
             LLMDocumentContentExtractor()  # type: ignore[call-arg]

@@ -103,3 +103,4 @@ document_store = FalkorDBDocumentStore(
 
 - [`FalkorDBEmbeddingRetriever`](../pipeline-components/retrievers/falkordbembeddingretriever.mdx): Retrieves documents from the `FalkorDBDocumentStore` based on vector similarity using FalkorDB's native vector index.
 - [`FalkorDBCypherRetriever`](../pipeline-components/retrievers/falkordbcypherretriever.mdx): Retrieves documents by executing arbitrary OpenCypher queries, enabling graph traversal and multi-hop queries for GraphRAG pipelines.
+- [`FalkorDBTextToCypherRetriever`](../pipeline-components/retrievers/falkordbtexttocypherretriever.mdx): Retrieves documents from natural-language queries by translating them into read-only OpenCypher with a Chat Generator.

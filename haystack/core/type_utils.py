@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable, Iterable
 from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
 
 from haystack.dataclasses import ChatMessage
 
@@ -165,8 +165,24 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
 
+    # A Literal stands for its values: each one must match the receiver, either by its type or, when the receiver is
+    # a Union, as a member of one of its Literal arguments. Literal receivers are matched by membership below.
+    if sender_origin is Literal and receiver_origin is not Literal:
+        if receiver_origin is Union:
+            return all(
+                any(_strict_types_are_compatible(Literal[value], union_arg) for union_arg in receiver_args)
+                for value in sender_args
+            )
+        return all(_strict_types_are_compatible(type(value), receiver) for value in sender_args)
+
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)
+
+    # Union and Literal arguments are unordered sets: match them by membership, not by position
+    if sender_origin is receiver_origin is Union:
+        return all(_strict_types_are_compatible(union_arg, receiver) for union_arg in sender_args)
+    if sender_origin is receiver_origin is Literal:
+        return all(value in receiver_args for value in sender_args)
 
     # Special case to allow list[T] -> Iterable[T] and list[T] -> Iterable[Any]
     if sender_origin is list and receiver_origin is Iterable:

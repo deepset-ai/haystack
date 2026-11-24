@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
+from dataclasses import replace
 from io import StringIO
 from typing import Optional
 
@@ -106,14 +107,11 @@ class CSVDocumentCleaner:
 
             final_df = self._clean_df(df=df, ignore_rows=ignore_rows, ignore_columns=ignore_columns)
 
-            clean_doc = Document(
+            clean_doc = replace(
+                document,
                 id=document.id if self.keep_id else "",
                 content=final_df.to_csv(index=False, header=False, lineterminator="\n"),
-                blob=document.blob,
                 meta=deepcopy(document.meta),
-                score=document.score,
-                embedding=document.embedding,
-                sparse_embedding=document.sparse_embedding,
             )
             cleaned_documents.append(clean_doc)
         return {"documents": cleaned_documents}

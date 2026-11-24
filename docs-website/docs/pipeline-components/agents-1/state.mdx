@@ -71,7 +71,7 @@ If you don't specify a handler, State automatically assigns a default based on t
 The `Agent` manages some state keys itself and rejects them in a user-provided `state_schema` with a `ValueError`:
 
 - The run-metadata keys `step_count`, `token_usage`, `tool_call_counts`, and `exit_reason`, which the Agent populates automatically during a run: tools and hooks can read them from the live `State`, and they are returned in the result dictionary. `exit_reason` reports why the Agent stopped (`"text"`, `"length"`, `"content_filter"`, the name of the tool that triggered a tool exit condition, `"max_agent_steps"`, or a custom reason a hook set through `stop_run`).
-- The hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `stop_run` (set by any hook to stop the run, read before each LLM call and used as the `exit_reason`), `tools` (the tools available in the current step, for hooks to inspect), `hook_context` (the request-scoped resources passed to `Agent.run(hook_context={...})`), and `context_tokens` (an approximate count of the tokens currently in the context window, refreshed after each LLM call for hooks to read — for example, to trigger context compaction). Unlike the run-metadata keys, these are not returned in the result dictionary.
+- The hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `stop_run` (set by any hook to stop the run, read before each LLM call and used as the `exit_reason`), `tools` (the tools available in the current step, for hooks to inspect), `hook_context` (the request-scoped resources passed to `Agent.run(hook_context={...})`), `context_tokens` (an approximate count of the tokens currently in the context window, refreshed after each LLM call for hooks to read — for example, to trigger context compaction), and `max_agent_steps` (the Agent's step limit, for hooks to compare with `step_count`). Unlike the run-metadata keys, these are not returned in the result dictionary.
 
 If one of your state keys clashes, rename it (for example, `my_token_usage`).
 :::
@@ -143,7 +143,7 @@ print(state.get("user_name"))  # "Alice-Bob"
 ## Using State
 
 Define a `state_schema` when creating the Agent.
-State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`.
+State keys that you pass as inputs or that are set during the run appear alongside `messages` and `last_message` in the agent's result dict.
 
 Tools interact with State through three mechanisms:
 
@@ -155,6 +155,7 @@ Tools interact with State through three mechanisms:
 
 `inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
 The value is injected from state before the tool runs, so the LLM never needs to provide it.
+If a state key is absent, the tool can use its parameter default. An explicit `None` is passed to the tool.
 
 Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema.
 The model never sees or provides them:
@@ -191,6 +192,46 @@ result = agent.run(
 )
 
 print(result["last_message"].text)
+```
+
+#### Passing Credentials Through State
+
+Don't store API keys or other credentials in State as plain strings.
+State values show up in several places outside your tool:
+
+- State keys are returned in the Agent's result dictionary.
+- With [content tracing](../../development/tracing.mdx#content-tracing) enabled, the Agent's inputs and outputs, including State, are recorded in traces.
+- When a tool fails, the error message sent back to the LLM and written to the logs includes the tool's arguments, including those injected from State.
+
+Store credentials as a [`Secret`](../../concepts/secret-management.mdx) instead.
+A `Secret` hides its value when printed, so it appears as `<redacted>` in all of these places.
+Type the tool parameter as `Secret` and resolve the value inside the tool:
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.utils import Secret
+
+
+@tool(inputs_from_state={"api_key": "api_key"})
+def fetch_report(
+    report_id: Annotated[str, "The ID of the report to fetch"],
+    api_key: Secret,  # injected from state; excluded from LLM schema
+) -> str:
+    """Fetch a report from the reporting service."""
+    token = api_key.resolve_value()
+    return f"Fetched report {report_id}"
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-6-luna"),
+    tools=[fetch_report],
+    state_schema={"api_key": {"type": Secret}},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Fetch report 42")],
+    api_key=Secret.from_env_var("REPORTING_API_KEY"),
+)
 ```
 
 ### Writing to State: `outputs_to_state`

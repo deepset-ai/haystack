@@ -86,11 +86,10 @@ class LLM(Agent):
                 )
             component.set_input_type(self, "messages", list[ChatMessage], None)
 
-        # The Agent base class declares `step_count` and `tool_call_counts` as outputs, but an LLM never has tools
-        # and always runs exactly one step — those values are uninformative, so drop them from the public surface.
-        # `token_usage` is still meaningful and stays exposed.
+        # An LLM never has tools and always runs exactly one step, so `step_count` and `tool_call_counts` are not
+        # exposed as outputs.
         component.set_output_types(
-            self, messages=list[ChatMessage], last_message=ChatMessage, token_usage=dict[str, Any]
+            self, messages=list[ChatMessage], last_message=ChatMessage, token_usage=dict[str, Any], exit_reason=str
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -150,6 +149,10 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
             - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
               chat generator did not return usage data.
+            - "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+              cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+              filter). Taken from the chat generator's `finish_reason`.
         """
         # `messages` is intentionally omitted from the signature so the framework can treat it as required
         # or optional depending on init configuration. See __init__ for details.
@@ -191,6 +194,10 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
             - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
               chat generator did not return usage data.
+            - "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+              cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+              filter). Taken from the chat generator's `finish_reason`.
         """
         # `messages` is intentionally omitted from the signature so the framework can treat it as required
         # or optional depending on init configuration. See __init__ for details.

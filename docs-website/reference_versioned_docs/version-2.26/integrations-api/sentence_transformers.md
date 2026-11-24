@@ -97,6 +97,9 @@ Creates a SentenceTransformersDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -250,6 +253,9 @@ Creates a SentenceTransformersDocumentEmbedder component.
   truncating embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -327,6 +333,302 @@ Embed a list of documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
+## haystack_integrations.components.embedders.sentence_transformers.sentence_transformers_multivector_document_embedder
+
+### SentenceTransformersMultivectorDocumentEmbedder
+
+Embeds documents into multiple vectors using Sentence Transformers.
+
+Multivector embeddings represent document content at the token level, enabling fine-grained comparison with a query
+through late-interaction scoring. You can include document metadata in the text to embed.
+
+Use this component in indexing pipelines to populate each document's `multivector_embedding` field before writing it
+to a document store that supports these embeddings. The embeddings can support multivector retrieval or reranking
+with `MaxSimRanker` after an initial retrieval step.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorDocumentEmbedder,
+)
+
+embedder = SentenceTransformersMultivectorDocumentEmbedder()
+result = embedder.run(documents=[Document(content="Paris is the capital of France.")])
+print(result["documents"][0].multivector_embedding)
+# [[-0.0796336, 0.0318462, -0.0450180, ...], ...]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str = "answerdotai/answerai-colbert-small-v1",
+    device: ComponentDevice | None = None,
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    ),
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 32,
+    progress_bar: bool = True,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    trust_remote_code: bool = False,
+    local_files_only: bool = False,
+    model_kwargs: dict[str, Any] | None = None,
+    tokenizer_kwargs: dict[str, Any] | None = None,
+    config_kwargs: dict[str, Any] | None = None,
+    encode_kwargs: dict[str, Any] | None = None,
+    backend: Literal["torch", "onnx", "openvino"] = "torch",
+    revision: str | None = None
+) -> None
+```
+
+Creates a SentenceTransformersMultivectorDocumentEmbedder component.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The model to use for calculating multi-vector embeddings.
+  Pass a local path or ID of the model on Hugging Face.
+- **device** (<code>ComponentDevice | None</code>) – Device used to load the model. With `None`, Haystack selects an available device.
+- **token** (<code>Secret | None</code>) – Token for private Hugging Face models. Defaults to `HF_API_TOKEN` or `HF_TOKEN`, if set.
+  With `None`, authentication follows the Hugging Face Hub defaults.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each document text.
+  Sentence Transformers already adds the model's document prompt (for example, the `[D]` marker of
+  ColBERT models) before this prefix, so don't repeat it here.
+- **suffix** (<code>str</code>) – A string to add at the end of each document text.
+- **batch_size** (<code>int</code>) – Positive number of documents to embed at once.
+- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
+- **trust_remote_code** (<code>bool</code>) – If `False`, allows only Hugging Face verified model architectures.
+  If `True`, allows custom models and scripts.
+- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying model's `from_pretrained`
+  when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/multi_vector_encoder/model.html)
+  for available kwargs.
+- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
+- **encode_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `MultiVectorEncoder.encode_document` when embedding documents.
+  This parameter is provided for fine customization. Be careful not to clash with already set parameters and
+  avoid passing parameters that change the output type.
+- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
+  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
+  for more information on acceleration and quantization options.
+- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
+  for a stored model on Hugging Face.
+
+**Raises:**
+
+- <code>ValueError</code> – `batch_size` is not positive.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(
+    data: dict[str, Any],
+) -> SentenceTransformersMultivectorDocumentEmbedder
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>SentenceTransformersMultivectorDocumentEmbedder</code> – Deserialized component.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the component.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Embed a list of documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: A `list[Document]` of copies with `multivector_embedding` populated.
+
+**Raises:**
+
+- <code>TypeError</code> – The input is not a list of Documents.
+
+## haystack_integrations.components.embedders.sentence_transformers.sentence_transformers_multivector_text_embedder
+
+### SentenceTransformersMultivectorTextEmbedder
+
+Embeds a text query into multiple vectors using Sentence Transformers.
+
+Multivector embeddings represent a query at the token level, enabling fine-grained comparison with document content
+through late-interaction scoring.
+
+The query embedding can be passed to a multivector retriever or to `MaxSimRanker` to rank documents with precomputed
+multivector embeddings.
+
+### Usage example
+
+```python
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersMultivectorTextEmbedder,
+)
+
+embedder = SentenceTransformersMultivectorTextEmbedder()
+result = embedder.run(text="What is the capital of France?")
+print(result["multivector_embedding"])
+# [[-0.0761594, 0.0336303, -0.0392666, ...], ...]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str = "answerdotai/answerai-colbert-small-v1",
+    device: ComponentDevice | None = None,
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    ),
+    prefix: str = "",
+    suffix: str = "",
+    trust_remote_code: bool = False,
+    local_files_only: bool = False,
+    model_kwargs: dict[str, Any] | None = None,
+    tokenizer_kwargs: dict[str, Any] | None = None,
+    config_kwargs: dict[str, Any] | None = None,
+    encode_kwargs: dict[str, Any] | None = None,
+    backend: Literal["torch", "onnx", "openvino"] = "torch",
+    revision: str | None = None
+) -> None
+```
+
+Create a SentenceTransformersMultivectorTextEmbedder component.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The model to use for calculating multi-vector embeddings.
+  Specify the path to a local model or the ID of the model on Hugging Face.
+- **device** (<code>ComponentDevice | None</code>) – Device used to load the model. With `None`, Haystack selects an available device.
+- **token** (<code>Secret | None</code>) – Token for private Hugging Face models. Defaults to `HF_API_TOKEN` or `HF_TOKEN`, if set.
+  With `None`, authentication follows the Hugging Face Hub defaults.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
+  Sentence Transformers already adds the model's query prompt (for example, the `[Q]` marker of
+  ColBERT models) before this prefix, so don't repeat it here.
+- **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
+- **trust_remote_code** (<code>bool</code>) – If `False`, permits only Hugging Face verified model architectures.
+  If `True`, permits custom models and scripts.
+- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying model's `from_pretrained`
+  when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
+- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
+  when loading it. Refer to the
+  [Sentence Transformers documentation](https://sbert.net/docs/package_reference/multi_vector_encoder/model.html)
+  for available kwargs.
+- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
+- **encode_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `MultiVectorEncoder.encode_query` when embedding texts.
+  This parameter is provided for fine customization. Be careful not to clash with already set parameters and
+  avoid passing parameters that change the output type.
+- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
+  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
+  for more information on acceleration and quantization options.
+- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
+  for a stored model on Hugging Face.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SentenceTransformersMultivectorTextEmbedder
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>SentenceTransformersMultivectorTextEmbedder</code> – Deserialized component.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the component.
+
+#### run
+
+```python
+run(text: str) -> dict[str, list[list[float]]]
+```
+
+Embed a single string.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – Text to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[list\[float\]\]\]</code> – A dictionary with the following keys:
+- `multivector_embedding`: Token vectors as a `list[list[float]]`.
+
+**Raises:**
+
+- <code>TypeError</code> – The input is not a string.
+
 ## haystack_integrations.components.embedders.sentence_transformers.sentence_transformers_sparse_document_embedder
 
 ### SentenceTransformersSparseDocumentEmbedder
@@ -401,6 +703,9 @@ Creates a SentenceTransformersSparseDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -524,6 +829,9 @@ Create a SentenceTransformersSparseTextEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -665,6 +973,9 @@ Create a SentenceTransformersTextEmbedder component.
   truncation of embeddings can significantly affect performance.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -872,6 +1183,9 @@ Initialize a SentenceTransformersDiversityRanker.
   "maximum_margin_relevance".
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
@@ -1022,6 +1336,9 @@ Creates an instance of SentenceTransformersSimilarityRanker.
   If `True`, allows custom models and scripts.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
   when loading the model. Refer to specific model documentation for available kwargs.
+  With `backend="onnx"`, a `session_options` dict is turned into an `onnxruntime.SessionOptions` with
+  those attributes set, for example `{"session_options": {"intra_op_num_threads": 1}}` to limit
+  the threads each inference call uses.
 - **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments forwarded as `processor_kwargs` to the Sentence Transformers model
   when loading it. Refer to the
   [Sentence Transformers documentation](https://sbert.net/docs/package_reference/sentence_transformer/model.html)

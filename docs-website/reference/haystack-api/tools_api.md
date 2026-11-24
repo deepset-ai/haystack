@@ -97,7 +97,8 @@ Create a Tool instance from a Haystack Agent.
   and when to delegate to it.
 - **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
   Will fall back to a schema with the task to delegate as a single user message, plus one string parameter
-  for every other mandatory input of the Agent, if not provided.
+  for every other mandatory input of the Agent, if not provided. Inputs mapped through `inputs_from_state`,
+  including `messages`, are left out of this schema.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
   the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,
@@ -276,6 +277,7 @@ Create a Tool instance from a Haystack component.
 - **name** (<code>str | None</code>) – Optional name for the tool (defaults to snake_case of component class name).
 - **description** (<code>str | None</code>) – Optional description (defaults to component's docstring).
 - **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
+  Unknown top-level properties produce a warning; unknown invocation arguments are skipped with a warning.
   Will fall back to the parameters defined in the component's run method signature if not provided.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is converted to a string using a default handler.
@@ -334,7 +336,8 @@ Example:
 **Raises:**
 
 - <code>TypeError</code> – If the object passed is not a Haystack Component instance.
-- <code>ValueError</code> – If the component has already been added to a pipeline, or if schema generation fails.
+- <code>ValueError</code> – If the component has already been added to a pipeline, schema generation fails,
+  or custom parameters omit mandatory inputs not supplied through state.
 
 #### warm_up
 
@@ -442,6 +445,8 @@ print(tool)
   to `async_function`).
   Parameters exposed in the Tool's schema must have type hints.
   Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
   The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
   Other input types may work but are not guaranteed.
   If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -509,7 +514,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ### tool
@@ -570,6 +576,8 @@ print(get_weather)
 - **function** (<code>Callable | None</code>) – The function to decorate (when used without parameters).
   Parameters exposed in the Tool's schema must have type hints.
   Variadic parameters (`*args` and `**kwargs`) are excluded from the schema and do not require type hints.
+  Parameters whose names start with an underscore are not exposed to the LLM.
+  A required parameter with such a name must be provided through `inputs_from_state` or given a default.
 - **name** (<code>str | None</code>) – Optional custom name for the tool
 - **description** (<code>str | None</code>) – Optional custom description
 - **inputs_from_state** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping state keys to tool parameter names.
@@ -633,7 +641,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint.
+- <code>ValueError</code> – If a parameter exposed in the Tool's schema lacks a type hint, or if a required parameter whose name
+  starts with an underscore is not covered by `inputs_from_state`.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
 ## pipeline_tool
@@ -925,6 +934,7 @@ Initialize the SearchableToolset.
 - **search_threshold** (<code>int</code>) – Minimum catalog size to activate search. If catalog has fewer tools, acts as
   passthrough (all tools visible). Default is 8.
 - **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
+  Must differ from every catalog tool name when the catalog has at least `search_threshold` tools.
 - **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool. If not provided, uses a
   default description.
 - **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
@@ -947,6 +957,11 @@ warm_up() -> None
 
 Warm up the catalog tools and initialize tool discovery.
 
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
+
 #### warm_up_async
 
 ```python
@@ -954,6 +969,11 @@ warm_up_async() -> None
 ```
 
 Warm up the catalog tools asynchronously and initialize tool discovery.
+
+**Raises:**
+
+- <code>ValueError</code> – If the catalog contains duplicate tool names, or if a catalog tool has the same name as
+  the bootstrap search tool while the catalog has at least `search_threshold` tools.
 
 #### get_selectable_tools
 

@@ -5,8 +5,17 @@
 from typing import Any
 
 from haystack.core.serialization import component_to_dict
+from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.protocol import Hook, HookPoint
 from haystack.utils.deserialization import deserialize_component_inplace
+
+# Meta key marking a user message that a system reminder hook added rather than the user.
+_SYSTEM_REMINDER_META_KEY = "system_reminder"
+
+
+def _is_system_reminder(message: ChatMessage) -> bool:
+    """Return whether a message is a user message that a system reminder hook added."""
+    return message.is_from(role=ChatRole.USER) and _SYSTEM_REMINDER_META_KEY in message.meta
 
 
 # Hooks are (de)serialized with `component_to_dict` / `deserialize_component_inplace` even though they aren't

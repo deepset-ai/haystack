@@ -27,6 +27,7 @@ from haystack.hooks.human_in_the_loop.strategies import (
     _run_confirmation_strategies_async,
     _update_chat_history,
 )
+from haystack.hooks.utils import _SYSTEM_REMINDER_META_KEY
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -323,7 +324,8 @@ class TestApplyToolExecutionDecisions:
         assert rejection_messages == []
         assert new_tool_call_messages == [
             ChatMessage.from_user(
-                "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 5, 'b': 6}"
+                "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
             ),
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name=tools[0].name, arguments={"a": 5, "b": 6}, id="1")]
@@ -462,8 +464,14 @@ class TestUpdateChatHistory:
         )
         assert updated_messages == [
             chat_history[0],
-            ChatMessage.from_user("The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}"),
-            ChatMessage.from_user("The parameters for tool 'tool2' were updated by the user to:\n{'a': 7, 'b': 8}'"),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool2' were updated by the user to:\n{'a': 7, 'b': 8}'",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
             ChatMessage.from_assistant(
                 tool_calls=[
                     ToolCall(tool_name="tool1", arguments={"a": 5, "b": 6}, id="1", extra=None),
@@ -510,7 +518,10 @@ class TestUpdateChatHistory:
                 origin=ToolCall(tool_name="tool2", arguments={"a": 3, "b": 4}, id="2", extra=None),
                 error=True,
             ),
-            ChatMessage.from_user("The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}"),
+            ChatMessage.from_user(
+                "The parameters for tool 'tool1' were updated by the user to:\n{'a': 5, 'b': 6}",
+                meta={_SYSTEM_REMINDER_META_KEY: True},
+            ),
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name="tool1", arguments={"a": 5, "b": 6}, id="1", extra=None)]
             ),

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed a bug that caused ``ImageFileToImageContent`` and ``DocumentToImageContent`` to skip BMP files during
+    resizing or return invalid BMP data when the MIME type was inferred.

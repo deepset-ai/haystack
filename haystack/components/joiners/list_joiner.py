@@ -98,7 +98,10 @@ class ListJoiner:
         """
         init_parameters = data.get("init_parameters")
         if init_parameters is not None and init_parameters.get("list_type_") is not None:
-            data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
+            # Copy so the caller's data keeps the serialized type and can be deserialized again
+            init_parameters = dict(init_parameters)
+            init_parameters["list_type_"] = deserialize_type(init_parameters["list_type_"])
+            data = {**data, "init_parameters": init_parameters}
         return default_from_dict(cls, data)
 
     def run(self, values: Variadic[list[Any]]) -> dict[str, list[Any]]:

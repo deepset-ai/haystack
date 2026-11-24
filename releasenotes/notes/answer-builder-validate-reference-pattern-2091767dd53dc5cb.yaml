@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``AnswerBuilder`` now validates ``reference_pattern`` like ``pattern``: a pattern with more than one capture
+    group raises a ``ValueError`` at initialization, or in ``run()`` when passed there.
+    When a reference pattern matches text that is not a document index, for example ``\[\d+\]`` matching ``[1]``,
+    ``run()`` now raises a ``ValueError`` naming the pattern and the match, instead of an unclear ``int()`` error.
+    A capture group that matches an empty string, such as ``\[(\d*)\]`` on ``[]``, is now ignored instead of
+    crashing ``run()``.

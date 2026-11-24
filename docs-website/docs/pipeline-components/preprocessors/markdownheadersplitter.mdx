@@ -28,20 +28,22 @@ Split documents at ATX-style Markdown headers (`#`, `##`, and so on), with optio
 The `MarkdownHeaderSplitter` processes text documents by:
 
 - Splitting them into chunks at ATX-style Markdown headers (`#`, `##`, …, `######`), preserving header hierarchy as metadata.
-- Optionally applying a secondary split (by word, passage, period, or line) to each chunk using Haystack's [`DocumentSplitter`](documentsplitter.mdx).
+- Optionally applying a secondary split (by word, passage, period, line, or token) to each chunk using Haystack's [`DocumentSplitter`](documentsplitter.mdx).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
 Only ATX-style headers are recognized (e.g. `# Title`). Setext-style headers (`Underline with ===`) aren't supported.
+Headers may have up to three leading spaces; lines indented by four or more spaces are not treated as headers.
 
 Parameters you can set when initializing the component:
 
 - `page_break_character`: Character used to identify page breaks. Defaults to form feed `\f`.
 - `keep_headers`: If `True`, headers remain in the chunk content. If `False`, headers are moved to metadata only. Defaults to `True`.
-- `secondary_split`: Optional secondary split after header splitting. Options: `None`, `"word"`, `"passage"`, `"period"`, `"line"`. Defaults to `None`.
+- `secondary_split`: Optional secondary split after header splitting. Options: `None`, `"word"`, `"passage"`, `"period"`, `"line"`, `"token"`. Defaults to `None`. `"token"` counts tokens with [tiktoken](https://github.com/openai/tiktoken) and needs `pip install tiktoken`.
 - `split_length`: Maximum number of units per split when using secondary splitting. Defaults to `200`.
 - `split_overlap`: Number of overlapping units between splits when using secondary splitting. Defaults to `0`.
 - `split_threshold`: Minimum number of units per split when using secondary splitting. Defaults to `0`.
 - `skip_empty_documents`: Whether to skip documents with empty content. Defaults to `True`.
+- `tokenizer_encoding`: The tiktoken encoding used when `secondary_split="token"`. Defaults to `"o200k_base"` (current OpenAI models).
 
 Each output document's metadata includes:
 
@@ -94,6 +96,28 @@ splitter = MarkdownHeaderSplitter(
     split_overlap=2,
 )
 result = splitter.run(documents=[doc])
+```
+
+### With secondary splitting by token
+
+Embedding models and LLMs limit their input in tokens, not words. Code, URLs, and non-English text use more tokens per word, so a word-based split can still produce chunks that are too long for the model. Split by token to make sure every chunk fits. This requires `pip install tiktoken`.
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import MarkdownHeaderSplitter
+
+text = (
+    "# Section\n"
+    + "Some long body text with `code` and https://example.com links. " * 50
+)
+doc = Document(content=text)
+splitter = MarkdownHeaderSplitter(
+    secondary_split="token",
+    split_length=256,
+    split_overlap=32,
+)
+result = splitter.run(documents=[doc])
+# >> every chunk in result["documents"] has at most 256 tokens
 ```
 
 ### In a pipeline

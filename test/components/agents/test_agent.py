@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import threading
+import time
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from typing import Any
@@ -88,6 +89,37 @@ def weather_tool():
         description="Provides weather information for a given location.",
         parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
         function=weather_function,
+    )
+
+
+@pytest.fixture
+def uppercase_weather_tool():
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=weather_function,
+        outputs_to_string={"source": "weather", "handler": str.upper},
+    )
+
+
+@pytest.fixture
+def failing_handler_weather_tool():
+    def slow_paris_weather_function(location: str) -> dict[str, Any]:
+        # Paris finishes after Berlin's handler has raised
+        if location == "Paris":
+            time.sleep(0.1)
+        return weather_function(location)
+
+    def failing_handler(value: str) -> str:
+        raise ValueError("cannot format weather")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=slow_paris_weather_function,
+        outputs_to_string={"source": "weather", "handler": failing_handler},
     )
 
 
@@ -246,6 +278,7 @@ class TestAgentInit:
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
             "context_tokens": {"type": int, "handler": replace_values},
+            "max_agent_steps": {"type": int, "handler": replace_values},
         }
 
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
@@ -267,7 +300,7 @@ class TestAgentInit:
             agent.__haystack_input__._sockets_dict.keys()
         )
         # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
-        for internal_key in ("continue_run", "context_tokens"):
+        for internal_key in ("continue_run", "context_tokens", "max_agent_steps"):
             assert internal_key not in agent.__haystack_input__._sockets_dict
             assert internal_key not in agent.__haystack_output__._sockets_dict
 
@@ -352,6 +385,7 @@ class TestAgentSerialization:
                         "tools": None,
                         "tools_strict": False,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 },
                 "tools": [
@@ -773,6 +807,34 @@ class TestAgentRun:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
+
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    def test_run_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        output = pipeline.run(data={"agent": inputs})["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    async def test_run_async_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        result = await pipeline.run_async(data={"agent": inputs})
+        output = result["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
 
     @pytest.mark.asyncio
     async def test_generation_kwargs(self, monkeypatch):
@@ -1430,6 +1492,10 @@ class TestAgentTracing:
                     "type": "int",
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
+                "max_agent_steps": {
+                    "type": "int",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
             },
             "haystack.agent.input": {
                 "messages": [ChatMessage.from_user("What's the weather in Paris?")],
@@ -1504,9 +1570,74 @@ class TestAgentTracing:
             "haystack.tool.description": "Provides weather information for a given location.",
             "haystack.agent.step.tool.input": {"location": "Berlin"},
             "haystack.agent.step.tool.output": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+            "haystack.agent.step.tool.result": '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}',
         }
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
+
+    def test_tracing_span_tool_result_uses_outputs_to_string(self, spying_tracer, uppercase_weather_tool):
+        """The tool span records the result the LLM sees, after the `outputs_to_string` handler ran."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_tool_result_uses_outputs_to_string(
+        self, spying_tracer, uppercase_weather_tool
+    ):
+        """The async path also records the `outputs_to_string` result on each tool span."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    def test_tracing_span_run_with_failing_outputs_to_string_handler(self, spying_tracer, failing_handler_weather_tool):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_outputs_to_string_handler(
+        self, spying_tracer, failing_handler_weather_tool
+    ):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
 
     def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])

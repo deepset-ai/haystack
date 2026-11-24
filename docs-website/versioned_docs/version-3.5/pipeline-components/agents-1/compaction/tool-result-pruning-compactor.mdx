@@ -1,0 +1,105 @@
+---
+title: "ToolResultPruningCompactor"
+id: tool-result-pruning-compactor
+slug: "/tool-result-pruning-compactor"
+description: "Use ToolResultPruningCompactor to replace older tool results with short placeholders while preserving the conversation structure."
+---
+
+# ToolResultPruningCompactor
+
+`ToolResultPruningCompactor` reduces an Agent's context by replacing older tool results with short placeholders. It keeps every tool call paired with a result, allowing the model to see which tool it called and call it again if needed.
+
+:::warning[Experimental]
+
+`ToolResultPruningCompactor` is experimental and may change without a deprecation cycle. Pruning is lossy: removed tool output cannot be recovered unless it was stored separately.
+:::
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Used by** | [`CompactionHook`](compaction-hook.mdx) |
+| **Mandatory init variables** | None |
+| **Import path** | `haystack.hooks.compaction.ToolResultPruningCompactor` |
+| **API reference** | [Hooks](/reference/hooks-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/tool_result_pruning.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Pass the compactor to a `CompactionHook`:
+
+```python
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
+
+compaction_hook = CompactionHook(
+    compactor=ToolResultPruningCompactor(
+        min_keep_steps=1,
+        min_tokens=200,
+    ),
+    context_window=200_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+```
+
+`CompactionHook` determines when compaction runs and provides the target token count. `ToolResultPruningCompactor` replaces only as many eligible results as needed to reach that target.
+
+## How pruning works
+
+The compactor processes tool results from oldest to newest:
+
+1. It leaves the conversation unchanged when it already fits within the target.
+2. It protects results from at least the configured number of recent tool-calling Agent steps. Since at least one step must be kept, the current result batch remains intact until the model has acted on it.
+3. It skips results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
+4. It replaces eligible results with the configured placeholder until the estimated conversation size reaches the target.
+
+The replacement preserves the originating tool call, error flag, and message metadata. This keeps the tool-call exchange valid for chat-completion providers while discarding the expensive result content.
+
+The target is a goal rather than a guarantee. Protected recent results and results that do not meet the pruning rules can leave the conversation above the requested target.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. |
+| `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
+| `placeholder` | ``"[Tool result removed to free up context. Call `{tool_name}` again if you need it.]"`` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
+| `skip_meta_keys` | `("tool_result_offloaded",)` | Leave a result unchanged when its metadata contains any listed key. The default protects pointers created by `ToolResultOffloadHook`. |
+
+`min_keep_steps` must be at least `1`, and `min_tokens` cannot be negative.
+
+### Custom placeholders
+
+Keep custom placeholders short so replacing a result saves context. If a placeholder costs at least as many tokens as the original result, the compactor leaves that result unchanged.
+
+```python
+compactor = ToolResultPruningCompactor(
+    placeholder="Previous output from {tool_name} was removed. Call the tool again if needed.",
+)
+```
+
+The compactor records `context_compaction` metadata on each rewritten result with the strategy name and the original tool-result message's token count.
+
+## Token counting
+
+The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `CompactionHook` to determine whether a result exceeds `min_tokens` and whether replacing it saves context.
+
+The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its short replacement. The compactor updates its running total using the difference between those two counts.
+
+## Interaction with tool result offloading
+
+[`ToolResultOffloadHook`](../tool-result-offloading.mdx) stores a tool result outside the conversation and replaces it with a reference. Pruning that reference would prevent the model from retrieving the stored content.
+
+By default, `ToolResultPruningCompactor` skips messages with `tool_result_offloaded` metadata. These pointer messages are already small, so pruning them would save little context while removing the model's only reference to the full stored result. Add other metadata keys to `skip_meta_keys` when another hook or application feature leaves references that must remain available.
+
+## When the conversation is unchanged
+
+The compactor returns `None` without changing the conversation when:
+
+- The conversation already fits within `target_tokens`.
+- There are no results older than the protected steps.
+- Every older result is already compacted, protected by metadata, or no larger than `min_tokens`.
+- A replacement would not reduce the result's measured token count.

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``InMemoryDocumentStore`` raising errors or returning wrong BM25 results when documents are written or
+    deleted while another thread reads or writes the same index. Operations on the same index are now
+    serialized, including across store instances that share the index. Different indexes remain independent.

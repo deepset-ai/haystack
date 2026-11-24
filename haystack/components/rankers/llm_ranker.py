@@ -413,13 +413,17 @@ class LLMRanker:
                 raise TypeError("Expected each ranked document entry to be a JSON object.")
 
             document_index = entry.get("index")
-            if document_index is None:
+            if not (
+                type(document_index) is int
+                or type(document_index) is str
+                or (isinstance(document_index, float) and document_index.is_integer())
+            ):
                 continue
 
             try:
                 # LLMs can return numeric indices as strings even when asked for integers.
                 document_index = int(document_index)
-            except (TypeError, ValueError):
+            except ValueError:
                 continue
 
             # Jinja's `loop.index` is 1-based:

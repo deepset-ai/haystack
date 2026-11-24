@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``OpenAIDocumentEmbedder`` and ``AzureOpenAIDocumentEmbedder`` now check ``batch_size`` when the component
+    is created and raise a ``ValueError`` if it is not a positive integer, such as ``0``, ``-1``, or ``0.5``
+    (for example ``ValueError: batch_size must be a positive integer, but got 0``).
+    Before this fix, an invalid ``batch_size`` was accepted without any error. The problem only appeared later,
+    when ``run`` or ``run_async`` was called, with errors such as ``ValueError: n must be at least one`` that do
+    not mention ``batch_size``.

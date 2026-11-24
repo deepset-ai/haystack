@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    If you read ``id``, ``encrypted_content``, or ``status`` directly from
+    ``reply.reasoning.extra`` in ``OpenAIResponsesChatGenerator`` replies, read
+    them from entries in ``reply.reasoning.extra["reasoning_items"]`` instead.
+    For example, replace ``reply.reasoning.extra["id"]`` with
+    ``reply.reasoning.extra["reasoning_items"][0]["id"]`` for the first item,
+    or iterate over the list to handle all reasoning items.
+fixes:
+  - |
+    Preserve all reasoning items returned by ``OpenAIResponsesChatGenerator`` in both
+    streaming and non-streaming responses, including each item's ID and encrypted content.
+    Individual items are stored in a single ``ReasoningContent.extra["reasoning_items"]``
+    list. Reasoning items and function
+    calls retain their original relative order when replayed in a multi-turn conversation.
+    Previously serialized single-item reasoning metadata remains supported.

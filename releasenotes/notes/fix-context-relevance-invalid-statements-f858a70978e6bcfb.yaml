@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed two issues in how ``ContextRelevanceEvaluator`` scores malformed responses. When ``relevant_statements`` was
+    ``null``, evaluation stopped with a ``TypeError`` even when ``raise_on_failure=False``. When it was a non-empty
+    string, the evaluator incorrectly assigned a relevance score of 1 and included it in the average. Both cases now
+    raise a ``ValueError`` when ``raise_on_failure=True``. Otherwise, the evaluator marks the input as failed and
+    excludes it from the average.

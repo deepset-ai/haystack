@@ -165,7 +165,10 @@ class LLMDocumentContentExtractor:
         :param raise_on_failure: If True, exceptions from the LLM are raised. If False, documents that fail extraction
             are returned in `failed_documents` with the error in their `extraction_error` metadata field.
         :param max_workers: Maximum number of threads for parallel LLM calls.
+        :raises ValueError: If `max_workers` is not greater than 0.
         """
+        if max_workers <= 0:
+            raise ValueError(f"max_workers must be greater than 0, but got {max_workers}")
         self._chat_generator = chat_generator
         self.prompt = prompt
         self.file_path_meta_field = file_path_meta_field
@@ -445,7 +448,7 @@ class LLMDocumentContentExtractor:
         parent_span = tracing.tracer.current_span()
 
         # Run the LLM on each image content, bounding concurrency per task so max_workers is enforced.
-        sem = asyncio.Semaphore(max(1, self.max_workers))
+        sem = asyncio.Semaphore(self.max_workers)
 
         async def _bounded_run(document: Document, image_content: ImageContent | None) -> tuple[Document, bool]:
             async with sem:

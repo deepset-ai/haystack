@@ -3,12 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 import re
 
 import pytest
 
 from haystack import Document
 from haystack.components.joiners.document_joiner import DocumentJoiner, JoinMode
+from haystack.dataclasses import SparseEmbedding
 
 
 class TestDocumentJoiner:
@@ -36,6 +38,12 @@ class TestDocumentJoiner:
         # Regression: negative weights were normalized by their (possibly negative) sum, which flipped their sign
         # and produced negative document scores in merge mode.
         with pytest.raises(ValueError, match="must not be negative"):
+            DocumentJoiner(join_mode="merge", weights=weights)
+
+    @pytest.mark.parametrize("weights", [[float("nan"), 1.0], [float("inf"), 1.0], [1.0, float("-inf")]])
+    def test_init_with_non_finite_weights_raises(self, weights):
+        # NaN passed the negative check, and both NaN and inf turned the normalized weights and all scores into NaN
+        with pytest.raises(ValueError, match="must be finite"):
             DocumentJoiner(join_mode="merge", weights=weights)
 
     def test_init_with_zero_weight_is_allowed(self):
@@ -96,6 +104,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -110,6 +119,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -124,6 +134,7 @@ class TestDocumentJoiner:
         [
             JoinMode.CONCATENATE,
             JoinMode.MERGE,
+            JoinMode.MERGE_EMBEDDINGS,
             JoinMode.RECIPROCAL_RANK_FUSION,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
@@ -218,6 +229,51 @@ class TestDocumentJoiner:
             ]
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
+
+    def test_run_with_merge_embeddings_join_mode(self):
+        joiner = DocumentJoiner(join_mode="merge_embeddings", sort_by_score=False)
+        sparse_embedding = SparseEmbedding(indices=[1], values=[0.5])
+        first = Document(id="a", embedding=[0.1])
+        second = Document(id="a", sparse_embedding=sparse_embedding)
+        third = Document(id="a", multivector_embedding=[[0.1, 0.2], [0.3, 0.4]])
+
+        output = joiner.run(documents=[[first], [second], [third]])
+
+        assert output == {
+            "documents": [
+                Document(
+                    id="a",
+                    embedding=[0.1],
+                    sparse_embedding=sparse_embedding,
+                    multivector_embedding=[[0.1, 0.2], [0.3, 0.4]],
+                )
+            ]
+        }
+        assert first.sparse_embedding is None
+        assert first.multivector_embedding is None
+        assert second.embedding is None
+        assert second.multivector_embedding is None
+        assert third.embedding is None
+        assert third.sparse_embedding is None
+
+    @pytest.mark.parametrize(
+        "field,first,second",
+        [
+            ("embedding", [0.1], [0.2]),
+            ("multivector_embedding", [[0.1, 0.2]], [[0.3, 0.4]]),
+            (
+                "sparse_embedding",
+                SparseEmbedding(indices=[1], values=[0.5]),
+                SparseEmbedding(indices=[2], values=[0.5]),
+            ),
+        ],
+    )
+    def test_merge_embeddings_rejects_conflicting_embeddings(self, field, first, second):
+        joiner = DocumentJoiner(join_mode="merge_embeddings")
+        documents = [[Document(id="a", **{field: first})], [Document(id="a", **{field: second})]]
+
+        with pytest.raises(ValueError, match=f"Conflicting {field}"):
+            joiner.run(documents=documents)
 
     def test_run_with_reciprocal_rank_fusion_join_mode(self):
         joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion")
@@ -327,6 +383,65 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         assert all(doc.score is not None for doc in output["documents"])
+
+    @pytest.mark.parametrize("non_finite_score", [float("nan"), float("inf"), float("-inf")])
+    def test_distribution_based_rank_fusion_treats_non_finite_score_as_zero(self, non_finite_score):
+        # A non-finite score must not reach the mean/std computation: one NaN or infinity turns the rescaled
+        # score of every Document in the list into NaN.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=0.9),
+            Document(content="b", score=0.5),
+            Document(content="non-finite", score=non_finite_score),
+            Document(content="d", score=0.2),
+        ]
+
+        output = joiner.run([documents])
+
+        assert all(math.isfinite(doc.score) for doc in output["documents"])
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert (
+            scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"] > scores_by_content["non-finite"]
+        )
+
+    def test_distribution_based_rank_fusion_non_finite_score_outranks_negative_scores(self):
+        # A non-finite score is read as 0, exactly like a missing score. In a list of negative
+        # scores that 0 is the highest value, so the Document with the non-finite score ends up
+        # first. This pins the "missing/0" reading so the behavior stays explicit and does not
+        # silently change when every other score is negative.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=-0.1),
+            Document(content="b", score=-0.5),
+            Document(content="non-finite", score=float("nan")),
+            Document(content="d", score=-0.9),
+        ]
+
+        output = joiner.run([documents])
+
+        assert all(math.isfinite(doc.score) for doc in output["documents"])
+        scores_by_content = {doc.content: doc.score for doc in output["documents"]}
+        assert (
+            scores_by_content["non-finite"] > scores_by_content["a"] > scores_by_content["b"] > scores_by_content["d"]
+        )
+
+    def test_distribution_based_rank_fusion_handles_a_list_of_non_finite_scores(self):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+
+        output = joiner.run([[Document(content="a", score=float("nan")), Document(content="b", score=float("inf"))]])
+
+        assert [doc.score for doc in output["documents"]] == [0.0, 0.0]
+
+    def test_distribution_based_rank_fusion_warns_about_non_finite_scores(self, caplog):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents = [Document(content="a", score=0.9), Document(content="b", score=float("nan"))]
+
+        with caplog.at_level(logging.WARNING):
+            joiner.run([documents])
+
+        assert "have a non-finite score" in caplog.text
+        assert documents[1].id in caplog.text
+        assert documents[0].id not in caplog.text
 
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()

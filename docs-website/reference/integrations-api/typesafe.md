@@ -204,6 +204,205 @@ This is the asynchronous version of the `run` method with the same parameters an
 
 - <code>TypeSafeError</code> – If a request fails and `raise_on_failure` is `True`.
 
+## haystack_integrations.components.rankers.typesafe.ranker
+
+### TypeSafeRanker
+
+Ranks documents by relevance to a query with a TypeSafe System One model such as Jev.
+
+Each document is judged on its own with a `score` question, in one request per document. The model sees the query
+and the passage as a JSON object, `{"query": ..., "passage": ...}`, so `instructions` and `criteria` can refer to
+both. The score is the model's expected level, divided by the highest level, so it is a relevance from 0 to 1.
+
+Because each document is a separate request, latency and token usage grow with the number of documents. Place
+the ranker after a retriever with a small `top_k`, and tune `max_workers` to the server's capacity.
+
+The ranker also reports what the requests cost. Its `meta` output holds the model and the summed `usage`, in the
+same shape generators use, so that tools reading usage from pipeline traces can pick it up.
+
+Documents whose request failed are kept after every scored document, with the reason in `meta["ranking_error"]`,
+unless `raise_on_failure` is `True`. They are only part of the output if fewer than `top_k` documents were scored.
+
+The component also works with servers that implement the TypeSafe API, such as [Ollaya](https://ollaya.dev).
+Set `api_base_url` to the server and `model` to one of its models.
+
+### Usage example
+
+```python
+from haystack import Document
+
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+ranker = TypeSafeRanker(top_k=2)
+result = ranker.run(
+    query="How do I reset my password?",
+    documents=[
+        Document(content="Click 'Forgot password' on the login page to reset it."),
+        Document(content="Our offices are closed on public holidays."),
+    ],
+)
+print(result["documents"][0].content)
+# Click 'Forgot password' on the login page to reset it.
+print(result["meta"])
+# {'model': 'jev-latest', 'usage': {'input_tokens': 96, 'output_tokens': 0}}
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str = "jev-latest",
+    api_key: Secret = Secret.from_env_var("TYPESAFE_API_KEY"),
+    api_base_url: str | None = None,
+    instructions: str = DEFAULT_INSTRUCTIONS,
+    criteria: list[str] | None = None,
+    meta_fields_to_embed: list[str] | None = None,
+    max_chars: int | None = None,
+    metadata_field: str = "typesafe",
+    top_k: int = 10,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    max_workers: int = 3,
+    raise_on_failure: bool = False
+) -> None
+```
+
+Creates a TypeSafeRanker.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – Name of the System One model to use.
+- **api_key** (<code>Secret</code>) – The TypeSafe API key. Servers such as Ollaya accept any non-empty value unless they are configured
+  with a key.
+- **api_base_url** (<code>str | None</code>) – Base URL of the API. If `None`, the `TYPESAFE_BASE_URL` environment variable is used, or
+  `https://api.typesafe.ai` if it is unset.
+- **instructions** (<code>str</code>) – The question the model answers about each document. It can refer to the `query` and the `passage`.
+- **criteria** (<code>list\[str\] | None</code>) – The ordered score levels, from the least to the most relevant, each described by a concrete situation. At
+  least two. Levels are judged independently and never see their index. If `None`, five generic levels are
+  used.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Names of metadata fields to show the model next to the text, under their own names in the passage. Fields a
+  document doesn't have are left out. Named like the other rankers' parameter, but nothing is embedded:
+  the fields are sent as structured keys next to `text`, not concatenated into it.
+- **max_chars** (<code>int | None</code>) – Truncate each document's text to this many characters. If `None`, the text is sent in full.
+- **metadata_field** (<code>str</code>) – Name of the metadata field the raw answer is written to, under the `relevance` key. Answers already in
+  this field, such as those of a `TypeSafeDocumentClassifier` using the same field, are kept.
+- **top_k** (<code>int</code>) – Maximum number of documents to return. Can be overridden in `run`.
+- **timeout** (<code>float | None</code>) – Timeout in seconds for each request attempt. If `None`, the SDK default of 10 seconds is used.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries after a failed request attempt. If `None`, the SDK default of 2 is used.
+- **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent requests in `run_async`. Must be at least 1.
+- **raise_on_failure** (<code>bool</code>) – If `True`, the first failed request raises its error. If `False`, documents whose request failed are
+  ranked last.
+
+**Raises:**
+
+- <code>ValueError</code> – If `criteria` has fewer than two levels, `top_k` is smaller than 1, `max_chars` is smaller than 1, or
+  `max_workers` is smaller than 1.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Creates the synchronous TypeSafe client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Creates the asynchronous TypeSafe client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous TypeSafe client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous TypeSafe client.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### run
+
+```python
+run(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, Any]
+```
+
+Ranks the documents by their relevance to the query.
+
+Each document is sent as its own request, with up to `max_workers` requests running at once.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query to rank the documents against.
+- **documents** (<code>list\[Document\]</code>) – Documents to rank.
+- **top_k** (<code>int | None</code>) – Maximum number of documents to return. If `None`, the `top_k` set at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- `documents`: Up to `top_k` documents, most relevant first. Each has its relevance from 0 to 1 as `score`
+  and the raw answer under `meta[metadata_field]["relevance"]`.
+- `meta`: The `model` and the `usage` (`input_tokens` and `output_tokens`) summed over all requests.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is smaller than 1.
+- <code>TypeSafeError</code> – If a request fails and `raise_on_failure` is `True`.
+- <code>TypeError</code> – If the server answers the relevance question with something other than a `score` answer.
+
+#### run_async
+
+```python
+run_async(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, Any]
+```
+
+Asynchronously ranks the documents by their relevance to the query.
+
+This is the asynchronous version of the `run` method with the same parameters and return values. Up to
+`max_workers` requests run concurrently.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query to rank the documents against.
+- **documents** (<code>list\[Document\]</code>) – Documents to rank.
+- **top_k** (<code>int | None</code>) – Maximum number of documents to return. If `None`, the `top_k` set at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the `documents` and `meta` keys, as in `run`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is smaller than 1.
+- <code>TypeSafeError</code> – If a request fails and `raise_on_failure` is `True`.
+- <code>TypeError</code> – If the server answers the relevance question with something other than a `score` answer.
+
 ## haystack_integrations.components.routers.typesafe.text_router
 
 ### TypeSafeTextRouter

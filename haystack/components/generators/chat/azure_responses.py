@@ -103,6 +103,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Initialize the AzureOpenAIResponsesChatGenerator component.
@@ -161,6 +162,11 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
         """
         azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         if azure_endpoint is None:
@@ -181,6 +187,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             tools=tools,
             tools_strict=tools_strict,
             http_client_kwargs=http_client_kwargs,
+            include_rate_limit_headers=include_rate_limit_headers,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -238,6 +245,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             tools=serialized_tools,
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod

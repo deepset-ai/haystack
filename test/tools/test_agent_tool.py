@@ -125,6 +125,26 @@ class TestAgentTool:
             "required": ["messages"],
         }
 
+    def test_init_with_messages_from_state(self):
+        sub_agent = Agent(
+            chat_generator=MockChatGenerator(responses=["done"]),
+            user_prompt="Answer: {{ question }}",
+            required_variables=["question"],
+        )
+
+        agent_tool = AgentTool(
+            agent=sub_agent,
+            name="research",
+            description="Research a question.",
+            inputs_from_state={"history": "messages"},
+        )
+
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
+        }
+
     def test_init_with_custom_parameters(self):
         sub_agent = Agent(chat_generator=MockChatGenerator(responses=["done"]))
         parameters = {"type": "object", "properties": {"messages": {"type": "array"}}, "required": ["messages"]}
@@ -141,6 +161,27 @@ class TestAgentTool:
 
         with pytest.raises(ValueError, match=r"requires the inputs \['topic'\]"):
             AgentTool(agent=sub_agent, name="research", description="Research a question.", parameters=parameters)
+
+    def test_custom_parameters_require_messages(self):
+        sub_agent = Agent(chat_generator=MockChatGenerator(response_fn=_echo_last_message))
+        parameters = {"type": "object", "properties": {}}
+
+        with pytest.raises(ValueError, match=r"requires the inputs \['messages'\]"):
+            AgentTool(agent=sub_agent, name="research", description="Research a question.", parameters=parameters)
+
+    def test_custom_parameters_allow_messages_from_state(self):
+        sub_agent = Agent(chat_generator=MockChatGenerator(response_fn=_echo_last_message))
+        parameters = {"type": "object", "properties": {}}
+
+        agent_tool = AgentTool(
+            agent=sub_agent,
+            name="research",
+            description="Research a question.",
+            parameters=parameters,
+            inputs_from_state={"history": "messages"},
+        )
+        result = agent_tool.invoke(messages=[ChatMessage.from_user("hello")])
+        assert result["last_message"].text == "hello"
 
     def test_to_dict(self):
         sub_agent = Agent(chat_generator=MockChatGenerator(response_fn=_echo_last_message))

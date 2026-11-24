@@ -46,7 +46,8 @@ class PythonCodeSplitter:
     A function whose effective length exceeds ``oversized_factor * max_effective_lines``
     is the only case where chunks may overlap: it is broken down with a line-based
     secondary split (:class:`DocumentSplitter`, ``split_by="line"``) and the resulting
-    pieces carry ``secondary_split=True`` along with the originating function's metadata.
+    pieces carry ``secondary_split=True`` along with the originating function's metadata,
+    with ``start_line`` and ``end_line`` narrowed to the lines each piece covers.
     The primary split never adds overlap.
 
     Per-chunk metadata: ``source_id``, ``split_id``, ``start_line``, ``end_line``,
@@ -157,6 +158,11 @@ class PythonCodeSplitter:
         return self._effective_lines(unit.source) > self.oversized_factor * self.max_effective_lines
 
     @staticmethod
+    def _count_lines(text: str) -> int:
+        """Count lines in `text` the way `ast` does (only \\n, \\r\\n and \\r end a line)."""
+        return len(io.StringIO(text, newline="").readlines())
+
+    @staticmethod
     def _slice_lines(source_lines: list[str], start: int, end: int) -> str:
         """Slice ``source_lines`` between the 1-indexed ``start`` and ``end`` (inclusive)."""
         start = max(start, 1)
@@ -198,6 +204,12 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # Stripping removes whole lines, so also skip it when the next statement
+        # starts on the docstring's last line (``"""Docs."""; return 5``); otherwise
+        # that statement would be silently dropped.
+        if len(body) > 1 and body[1].lineno == ds_end:
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         # Removing the only statement from a function or class would leave an
@@ -208,9 +220,19 @@ class PythonCodeSplitter:
             after.insert(0, f"{indentation}pass\n")
         return "".join(before + after), docstring
 
+    @staticmethod
+    def _definition_start(node: ast.stmt, source_lines: list[str]) -> int:
+        """Include the decorator marker, which may precede the AST expression's first line."""
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) or not node.decorator_list:
+            return node.lineno
+        start = node.decorator_list[0].lineno
+        while start > 1 and not source_lines[start - 1].lstrip().startswith("@"):
+            start -= 1
+        return start
+
     def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
         """Emit class header and per-method units for ``cls``; return the next cursor (1-indexed)."""
-        class_start = cls.decorator_list[0].lineno if cls.decorator_list else cls.lineno
+        class_start = self._definition_start(cls, source_lines)
         class_end = cls.end_lineno or cls.lineno
         class_name = cls.name
         class_decorators = [self._safe_unparse(d) for d in cls.decorator_list]
@@ -227,7 +249,7 @@ class PythonCodeSplitter:
         # ``preserve_class_definition`` to prefix later chunks of the same class.
         class_signature: str | None = None
         if cls.body:
-            body_start = cls.body[0].lineno
+            body_start = self._definition_start(cls.body[0], source_lines)
             if body_start > class_start:
                 class_signature = self._slice_lines(source_lines, class_start, body_start - 1)
 
@@ -253,14 +275,7 @@ class PythonCodeSplitter:
             return class_end + 1
 
         # Class header: from outer cursor up to (but excluding) the first split child.
-        first_child = cls.body[split_children_idx[0]]
-        if (
-            isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-            and first_child.decorator_list
-        ):
-            first_child_start = first_child.decorator_list[0].lineno
-        else:
-            first_child_start = first_child.lineno
+        first_child_start = self._definition_start(cls.body[split_children_idx[0]], source_lines)
         header_end = first_child_start - 1
         header_slice = self._slice_lines(source_lines, cursor, header_end)
         header_docstring: str | None = None
@@ -286,7 +301,7 @@ class PythonCodeSplitter:
             child = cls.body[idx]
             if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 continue  # narrowed above; kept for the type checker
-            child_start = child.decorator_list[0].lineno if child.decorator_list else child.lineno
+            child_start = self._definition_start(child, source_lines)
             child_end = child.end_lineno or child.lineno
             decorators = [self._safe_unparse(d) for d in child.decorator_list]
 
@@ -380,7 +395,7 @@ class PythonCodeSplitter:
                 continue
 
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                start = node.decorator_list[0].lineno if node.decorator_list else node.lineno
+                start = self._definition_start(node, source_lines)
                 end = node.end_lineno or node.lineno
                 decorators = [self._safe_unparse(d) for d in node.decorator_list]
                 unit_slice = self._slice_lines(source_lines, cursor, end)
@@ -559,14 +574,26 @@ class PythonCodeSplitter:
         intermediate = splitter.run(documents=[Document(content=unit.source)])["documents"]
 
         base_meta = self._build_chunk_meta([unit], parent_doc)
+        # The unit source ends at ``unit.end_line`` but may start earlier (blank lines and comments
+        # before the definition). Map each piece back to the physical lines it covers. When the
+        # docstring was stripped, the source no longer lines up with the file, so keep the unit range.
+        source_first_line = unit.end_line - self._count_lines(unit.source) + 1
         results: list[Document] = []
         for idx, piece in enumerate(intermediate):
             meta = deepcopy(base_meta)
+            piece_content = piece.content or ""
+            piece_offset = piece.meta.get("split_idx_start")
+            if unit.docstring is None and piece_offset is not None and piece_content:
+                piece_start = source_first_line + self._count_lines(unit.source[:piece_offset])
+                piece_end = piece_start + self._count_lines(piece_content) - 1
+                # The clamp trims leading blank lines and comments to match primary chunks.
+                meta["start_line"] = min(max(piece_start, unit.start_line), unit.end_line)
+                meta["end_line"] = max(min(piece_end, unit.end_line), meta["start_line"])
             meta["secondary_split"] = True
             meta["secondary_split_index"] = idx
             meta["secondary_split_total"] = len(intermediate)
             meta["qualified_name"] = qualified_name
-            results.append(Document(content=piece.content or "", meta=meta))
+            results.append(Document(content=piece_content, meta=meta))
 
         return results
 

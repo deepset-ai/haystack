@@ -4,6 +4,7 @@
 
 from haystack import Document
 from haystack.components.preprocessors.csv_document_cleaner import CSVDocumentCleaner
+from haystack.dataclasses import ByteStream, SparseEmbedding
 
 
 def test_empty_column() -> None:
@@ -170,6 +171,29 @@ def test_keep_id() -> None:
     cleaned_document = result["documents"][0]
     assert cleaned_document.id == "123"
     assert cleaned_document.content == ",A,B,C\n1,item,s,\n"
+
+
+def test_other_document_fields_are_not_lost() -> None:
+    document = Document(
+        content="a,b\n1,2\n",
+        blob=ByteStream.from_string("some_data"),
+        meta={"nested": {"source": "test.csv"}},
+        score=0.1,
+        embedding=[0.1, 0.2],
+        sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.1, 0.3]),
+        multivector_embedding=[[1.0, 0.0], [0.0, 1.0]],
+    )
+    cleaner = CSVDocumentCleaner()
+
+    cleaned_document = cleaner.run(documents=[document])["documents"][0]
+
+    assert cleaned_document.blob == document.blob
+    assert cleaned_document.meta == document.meta
+    assert cleaned_document.score == document.score
+    assert cleaned_document.embedding == document.embedding
+    assert cleaned_document.sparse_embedding == document.sparse_embedding
+    assert cleaned_document.multivector_embedding == document.multivector_embedding
+    assert cleaned_document.meta["nested"] is not document.meta["nested"]
 
 
 def test_id_not_none() -> None:

@@ -112,6 +112,8 @@ agent = Agent(
 
 If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes historical turns and then, if needed, the current task's oldest Agent steps. A result the pruning compactor already replaced with a placeholder stays with the historical turn it belongs to, so its tool call keeps an answer. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
 
+The same applies when a summarization compactor runs before a sliding window: the sliding window keeps the summary it leaves when it fits, and removes it together with the history around it when it doesn't.
+
 ### Creating a custom compactor
 
 Implement the `Compactor` protocol when you need a different strategy, such as preserving application-specific messages or selectively shortening content using custom metadata.
@@ -148,6 +150,27 @@ A compactor must follow these rules:
 The `target_tokens` value is a goal rather than a guarantee. When the target conflicts with context the Agent must retain, preserve the required context and get as close to the target as possible.
 
 `compact_async()` calls `compact()` by default. Override it when compaction performs I/O, such as calling an LLM, so asynchronous Agent runs are not blocked. Use `to_dict()` to serialize constructor settings. The protocol's default `from_dict()` handles plain constructor values; override it when serialized values must be reconstructed first, such as a `Secret` or nested component.
+
+## Messages added by hooks
+
+`SlidingWindowCompactor` and `SummarizationCompactor` treat the latest user message as the current task and keep it. Messages that compaction added itself, such as omission notes and summaries, don't count, and neither do user messages marked with `meta={"system_reminder": True}`. Haystack's hooks mark every user message they add this way:
+
+- the reminders [`StepBudgetReminderHook`](./step-budget-reminder.mdx) adds,
+- the correction [`StructuredOutputHook`](./structured-output.mdx) sends when a reply doesn't match the schema,
+- the message [`ConfirmationHook`](./human-in-the-loop.mdx) adds when the user modifies a tool call's arguments.
+
+`SlidingWindowCompactor` also keeps these reminders, and removes one only together with the model's reply to it. See [How the sliding window is selected](compaction/sliding-window-compactor.mdx#how-the-sliding-window-is-selected).
+
+If your own hook adds a user message, mark it the same way so compaction doesn't mistake it for the user's task:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+reminder = ChatMessage.from_user(
+    "<system-reminder>\nCite a source URL for every claim.\n</system-reminder>",
+    meta={"system_reminder": True},
+)
+```
 
 ## Token counters
 
