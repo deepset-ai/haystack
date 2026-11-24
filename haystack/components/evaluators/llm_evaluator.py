@@ -237,7 +237,9 @@ class LLMEvaluator:
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
             If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
-            in the output dictionary, under the key "meta".
+            in the output dictionary, under the key "meta". `meta` has one entry per input, in the same order as
+            `results`: the reply's metadata, or an empty dictionary when the chat generator raised an error for that
+            input or the reply had no metadata. `meta` is `None` when no reply had metadata.
         :raises ValueError:
             If the received inputs are missing, are not lists, have different lengths, or are empty lists.
             If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
@@ -253,7 +255,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
         results: list[dict[str, Any] | None] = []
-        metadata = []
+        metadata: list[dict[str, Any]] = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
@@ -273,6 +275,7 @@ class LLMEvaluator:
                     e=e,
                 )
                 results.append(None)
+                metadata.append({})
                 errors += 1
                 continue
 
@@ -283,8 +286,7 @@ class LLMEvaluator:
             else:
                 results.append(parsed_result)
 
-            if result["replies"][0].meta:
-                metadata.append(result["replies"][0].meta)
+            metadata.append(result["replies"][0].meta or {})
 
         if errors > 0:
             logger.warning(
@@ -294,7 +296,7 @@ class LLMEvaluator:
                 total=len(list_of_input_names_to_values),
             )
 
-        return {"results": results, "meta": metadata or None}
+        return {"results": results, "meta": metadata if any(metadata) else None}
 
     @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
@@ -309,7 +311,9 @@ class LLMEvaluator:
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
             If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
-            in the output dictionary, under the key "meta".
+            in the output dictionary, under the key "meta". `meta` has one entry per input, in the same order as
+            `results`: the reply's metadata, or an empty dictionary when the chat generator raised an error for that
+            input or the reply had no metadata. `meta` is `None` when no reply had metadata.
         :raises TypeError:
             If the chat generator does not support async execution.
         :raises ValueError:
@@ -328,7 +332,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
         results: list[dict[str, Any] | None] = []
-        metadata = []
+        metadata: list[dict[str, Any]] = []
         errors = 0
 
         generator_has_async = hasattr(self._chat_generator, "run_async")
@@ -358,6 +362,7 @@ class LLMEvaluator:
                     e=e,
                 )
                 results.append(None)
+                metadata.append({})
                 errors += 1
                 continue
 
@@ -368,8 +373,7 @@ class LLMEvaluator:
             else:
                 results.append(parsed_result)
 
-            if result["replies"][0].meta:
-                metadata.append(result["replies"][0].meta)
+            metadata.append(result["replies"][0].meta or {})
 
         if errors > 0:
             logger.warning(
@@ -379,7 +383,7 @@ class LLMEvaluator:
                 total=len(list_of_input_names_to_values),
             )
 
-        return {"results": results, "meta": metadata or None}
+        return {"results": results, "meta": metadata if any(metadata) else None}
 
     def prepare_template(self) -> str:
         """

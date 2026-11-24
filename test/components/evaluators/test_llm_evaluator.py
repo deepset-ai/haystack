@@ -290,6 +290,35 @@ class TestLLMEvaluator:
         results = component.run(questions=["What is the capital of Germany?"], predicted_answers=["Berlin"])
         assert results == {"results": [{"score": 0.5}], "meta": None}
 
+    def test_run_meta_aligned_with_results(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+
+        def chat_generator_run(self, *args, **kwargs):
+            prompt = kwargs["messages"][0].text
+            if "q1" in prompt:
+                raise Exception("OpenAI API request failed.")
+            if "q2" in prompt:
+                return {"replies": [ChatMessage.from_assistant('{"score": 0}')]}
+            item = "q0" if "q0" in prompt else "q3"
+            return {"replies": [ChatMessage.from_assistant('{"score": 1}', meta={"item": item})]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q0", "q1", "q2", "q3"], predicted_answers=[["a"], ["a"], ["a"], ["a"]])
+
+        # q1 failed and q2's reply has no metadata; meta[i] must still belong to results[i]
+        assert results["results"] == [{"score": 1}, None, {"score": 0}, {"score": 1}]
+        assert results["meta"] == [{"item": "q0"}, {}, {}, {"item": "q3"}]
+
     def test_prepare_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
@@ -541,6 +570,39 @@ class TestLLMEvaluatorAsync:
 
         with pytest.raises(ValueError):
             await component.run_async(questions=["question"], predicted_answers=["answer"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_meta_aligned_with_results(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            prompt = kwargs["messages"][0].text
+            if "q1" in prompt:
+                raise Exception("OpenAI API request failed.")
+            if "q2" in prompt:
+                return {"replies": [ChatMessage.from_assistant('{"score": 0}')]}
+            item = "q0" if "q0" in prompt else "q3"
+            return {"replies": [ChatMessage.from_assistant('{"score": 1}', meta={"item": item})]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        results = await component.run_async(
+            questions=["q0", "q1", "q2", "q3"], predicted_answers=[["a"], ["a"], ["a"], ["a"]]
+        )
+
+        assert results["results"] == [{"score": 1}, None, {"score": 0}, {"score": 1}]
+        assert results["meta"] == [{"item": "q0"}, {}, {}, {"item": "q3"}]
 
 
 class TestComponentLifecycle:
