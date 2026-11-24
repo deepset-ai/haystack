@@ -1580,3 +1580,17 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     for doc in result:
         assert doc.content is not None
         assert doc.content.strip()
+
+
+def test_sentence_split_does_not_make_a_whitespace_only_chunk_of_the_trailing_whitespace():
+    # the last sentence is longer than split_length, so it is chunked again, and the "\n\n" after it must stay
+    # with its last chunk instead of becoming a chunk of its own
+    text = "One two three. Four five six seven eight nine.\n\n"
+    splitter = RecursiveDocumentSplitter(split_length=4, split_unit="word")
+
+    chunks = [doc.content for doc in splitter.run([Document(content=text)])["documents"]]
+
+    assert all(chunk is not None and chunk.strip() for chunk in chunks)
+    assert "".join(chunk for chunk in chunks if chunk is not None) == text
+    assert chunks[-1] is not None
+    assert chunks[-1].endswith("\n\n")
