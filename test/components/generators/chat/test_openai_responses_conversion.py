@@ -1368,6 +1368,7 @@ class TestConversionToStreamingChunks:
 
         assert message.text is None
         assert message.meta["refusal"] == "I cannot help."
+        assert message.meta["finish_reason"] == "content_filter"
 
     def test_convert_only_function_call(self) -> None:
 
@@ -1891,6 +1892,7 @@ class TestResponseToChatMessage:
         message = _convert_response_to_chat_message(response)
         assert message.text is None
         assert message.meta["refusal"] == "I cannot help."
+        assert message.meta["finish_reason"] == "content_filter"
 
     def test_convert_system_message(self) -> None:
 
