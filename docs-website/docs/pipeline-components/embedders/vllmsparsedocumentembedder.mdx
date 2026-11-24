@@ -17,7 +17,7 @@ This component computes the sparse embeddings of a list of documents using SPLAD
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
 | **Mandatory init variables** | `model`: The name of the SPLADE model served by vLLM |
 | **Mandatory run variables** | `documents`: A list of documents |
-| **Output variables** | `documents`: A list of documents (enriched with sparse embeddings) |
+| **Output variables** | `documents`: A list of documents (enriched with sparse embeddings) <br /> <br />`meta`: A dictionary with the model name and token usage |
 | **API reference** | [vLLM](/reference/integrations-vllm) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm |
 | **Package name** | `vllm-haystack` |
@@ -36,26 +36,32 @@ If the vLLM server was started with `--api-key`, provide the API key through the
 
 ### Compatible models
 
-`VLLMSparseDocumentEmbedder` works with SPLADE models that vLLM serves with its `BertSpladeSparseEmbeddingModel` architecture, such as [prithivida/Splade_PP_en_v1](https://huggingface.co/prithivida/Splade_PP_en_v1). For these models, vLLM returns one weight per vocabulary token, and the component keeps the nonzero weights as a `SparseEmbedding`.
+`VLLMSparseDocumentEmbedder` works with SPLADE models that vLLM serves with its [`BertSpladeSparseEmbeddingModel`](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#supported-models) architecture, such as [prithivida/Splade_PP_en_v1](https://huggingface.co/prithivida/Splade_PP_en_v1). For these models, vLLM returns one weight per vocabulary token, and the component keeps the nonzero weights as a `SparseEmbedding`.
 
 SPLADE checkpoints declare a masked language model architecture, so you must tell vLLM to serve them as sparse embedding models with `--hf-overrides` (see [Starting the vLLM server](#starting-the-vllm-server)). vLLM supports BERT-based SPLADE checkpoints.
 
 ### vLLM-specific parameters
 
-You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+vLLM rejects texts longer than the model's context length, which is 512 tokens for BERT-based SPLADE models. Set `truncate_prompt_tokens` to truncate longer texts instead:
 
 ```python
 embedder = VLLMSparseDocumentEmbedder(
     model="prithivida/Splade_PP_en_v1",
-    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+    extra_parameters={"truncate_prompt_tokens": 256},
 )
 ```
+
+Leave `truncation_side` unset. With it, vLLM truncates after adding the special tokens, and a SPLADE model returns weights unrelated to the text once the final `[SEP]` token is cut off.
 
 ### Batching and failure handling
 
 `VLLMSparseDocumentEmbedder` encodes documents in batches. Use `batch_size` (default `32`) to control how many documents are sent in a single request to the vLLM server, and `progress_bar` to toggle the progress indicator.
 
-By default (`raise_on_failure=False`), failed embedding requests are logged and processing continues with the remaining documents. Set `raise_on_failure=True` to raise an exception instead.
+By default (`raise_on_failure=False`), failed embedding requests are logged and processing continues with the remaining documents. The documents of a failed batch are returned without a sparse embedding. Set `raise_on_failure=True` to raise an exception instead.
+
+vLLM rejects a whole request when one of its texts is longer than the model's context length, so a single long document leaves every document in its batch without a sparse embedding. Split long documents with a [`DocumentSplitter`](../preprocessors/documentsplitter.mdx) before embedding them, or set `truncate_prompt_tokens` as described in [vLLM-specific parameters](#vllm-specific-parameters).
 
 ### Embedding metadata
 
@@ -85,7 +91,7 @@ pip install vllm-haystack
 
 ### Starting the vLLM server
 
-Before using this component, start a vLLM server with a SPLADE model:
+[Install vLLM](https://docs.vllm.ai/en/stable/getting_started/installation/), then start a server with a SPLADE model:
 
 ```bash
 vllm serve prithivida/Splade_PP_en_v1 --runner pooling \
@@ -106,7 +112,7 @@ document_embedder = VLLMSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1
 
 result = document_embedder.run([doc])
 print(result["documents"][0].sparse_embedding)
-# >> SparseEmbedding(indices=[999, 1045, 2000, ...], values=[1.670898, 0.981445, 0.197265, ...])
+# >> SparseEmbedding(indices=[999, 1045, 2000, ...], values=[1.6708984, 0.9814453, 0.19726562, ...])
 ```
 
 ### In a pipeline

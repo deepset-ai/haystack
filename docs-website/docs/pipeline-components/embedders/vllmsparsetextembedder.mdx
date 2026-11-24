@@ -17,7 +17,7 @@ This component computes the sparse embedding of a string using SPLADE models ser
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline |
 | **Mandatory init variables** | `model`: The name of the SPLADE model served by vLLM |
 | **Mandatory run variables** | `text`: A string |
-| **Output variables** | `sparse_embedding`: A [`SparseEmbedding`](/reference/data-classes-api#sparseembedding) object |
+| **Output variables** | `sparse_embedding`: A [`SparseEmbedding`](/reference/data-classes-api#sparseembedding) object <br /> <br />`meta`: A dictionary with the model name and token usage |
 | **API reference** | [vLLM](/reference/integrations-vllm) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm |
 | **Package name** | `vllm-haystack` |
@@ -36,20 +36,24 @@ If the vLLM server was started with `--api-key`, provide the API key through the
 
 ### Compatible models
 
-`VLLMSparseTextEmbedder` works with SPLADE models that vLLM serves with its `BertSpladeSparseEmbeddingModel` architecture, such as [prithivida/Splade_PP_en_v1](https://huggingface.co/prithivida/Splade_PP_en_v1). For these models, vLLM returns one weight per vocabulary token, and the component keeps the nonzero weights as a `SparseEmbedding`.
+`VLLMSparseTextEmbedder` works with SPLADE models that vLLM serves with its [`BertSpladeSparseEmbeddingModel`](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#supported-models) architecture, such as [prithivida/Splade_PP_en_v1](https://huggingface.co/prithivida/Splade_PP_en_v1). For these models, vLLM returns one weight per vocabulary token, and the component keeps the nonzero weights as a `SparseEmbedding`.
 
 SPLADE checkpoints declare a masked language model architecture, so you must tell vLLM to serve them as sparse embedding models with `--hf-overrides` (see [Starting the vLLM server](#starting-the-vllm-server)). vLLM supports BERT-based SPLADE checkpoints.
 
 ### vLLM-specific parameters
 
-You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+vLLM rejects texts longer than the model's context length, which is 512 tokens for BERT-based SPLADE models. Set `truncate_prompt_tokens` to truncate longer texts instead:
 
 ```python
 embedder = VLLMSparseTextEmbedder(
     model="prithivida/Splade_PP_en_v1",
-    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+    extra_parameters={"truncate_prompt_tokens": 256},
 )
 ```
+
+Leave `truncation_side` unset. With it, vLLM truncates after adding the special tokens, and a SPLADE model returns weights unrelated to the text once the final `[SEP]` token is cut off.
 
 ## Usage
 
@@ -61,7 +65,7 @@ pip install vllm-haystack
 
 ### Starting the vLLM server
 
-Before using this component, start a vLLM server with a SPLADE model:
+[Install vLLM](https://docs.vllm.ai/en/stable/getting_started/installation/), then start a server with a SPLADE model:
 
 ```bash
 vllm serve prithivida/Splade_PP_en_v1 --runner pooling \
@@ -77,7 +81,7 @@ from haystack_integrations.components.embedders.vllm import VLLMSparseTextEmbedd
 
 text_embedder = VLLMSparseTextEmbedder(model="prithivida/Splade_PP_en_v1")
 print(text_embedder.run("I love pizza!"))
-# >> {'sparse_embedding': SparseEmbedding(indices=[999, 1045, 2000, ...], values=[1.670898, 0.981445, 0.197265, ...]), 'meta': {...}}
+# >> {'sparse_embedding': SparseEmbedding(indices=[999, 1045, 2000, ...], values=[1.6708984, 0.9814453, 0.19726562, ...]), 'meta': {...}}
 ```
 
 ### In a pipeline
