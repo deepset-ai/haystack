@@ -808,6 +808,34 @@ class TestAgentRun:
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
+    @pytest.mark.parametrize("pass_tools_at", ["init", "run"])
+    def test_run_warns_when_inputs_from_state_key_missing_from_state_schema(self, pass_tools_at):
+        tool = Tool(
+            name="recall",
+            description="Recall memories for a user.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda user_id=None: user_id,
+            inputs_from_state={"user_id": "user_id"},
+        )
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool] if pass_tools_at == "init" else [])
+
+        with pytest.warns(FutureWarning, match="Tool 'recall' reads state key 'user_id' through `inputs_from_state`"):
+            agent.run([ChatMessage.from_user("Hi")], tools=[tool] if pass_tools_at == "run" else None)
+
+    def test_run_does_not_warn_when_inputs_from_state_key_in_state_schema(self, recwarn):
+        tool = Tool(
+            name="recall",
+            description="Recall memories for a user.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda user_id=None: user_id,
+            inputs_from_state={"user_id": "user_id"},
+        )
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool], state_schema={"user_id": {"type": str}})
+
+        agent.run([ChatMessage.from_user("Hi")], user_id="alice")
+
+        assert not [w for w in recwarn if issubclass(w.category, FutureWarning)]
+
     @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
     def test_run_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
         agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})

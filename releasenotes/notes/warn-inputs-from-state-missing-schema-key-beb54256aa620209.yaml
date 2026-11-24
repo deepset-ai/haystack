@@ -1,0 +1,18 @@
+---
+deprecations:
+  - |
+    ``Agent`` now emits a ``FutureWarning`` at the start of a run when a tool's ``inputs_from_state`` reads a key
+    that is not in the Agent's ``state_schema``. The Agent's state only holds keys declared in ``state_schema``, so
+    the tool never receives that value and runs with its default, or fails if the parameter has none.
+    Starting with Haystack 3.7, this will raise a ``ValueError``.
+
+    To fix the warning, add the key to ``state_schema``. For example, the Mem0 memory tools read ``user_id`` from
+    state by default:
+
+    .. code-block:: python
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(),
+            tools=[Mem0MemoryRetrieverTool(memory_store=memory_store)],
+            state_schema={"user_id": {"type": str}},
+        )

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import warnings
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, cast
@@ -219,6 +220,25 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
         return []
     last_message = messages[-1]
     return [last_message] if last_message.tool_calls else []
+
+
+def _warn_on_inputs_from_state_missing_from_schema(tools: list[Tool], state_schema: dict[str, Any]) -> None:
+    """
+    Emit a `FutureWarning` for each `inputs_from_state` key that is not declared in the Agent's state schema.
+
+    State only holds keys from the schema, so such a key is never injected and the tool runs without it.
+    """
+    for tool in tools:
+        for state_key in tool.inputs_from_state or {}:
+            if state_key in state_schema:
+                continue
+            warnings.warn(
+                f"Tool '{tool.name}' reads state key '{state_key}' through `inputs_from_state`, but '{state_key}' is "
+                f"not in the Agent's `state_schema`, so the tool will never receive it. Add '{state_key}' to "
+                "`state_schema` to fix this. Starting with Haystack 3.7, this will raise a `ValueError`.",
+                FutureWarning,
+                stacklevel=2,
+            )
 
 
 def _get_tool_telemetry_data(tool: Tool) -> dict[str, Any]:
@@ -824,6 +844,7 @@ class Agent:
                 f"{type(self.chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
+        _warn_on_inputs_from_state_missing_from_schema(tools=flat_tools, state_schema=self.resolved_state_schema)
 
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs}
         state = State(schema=self.resolved_state_schema, data=state_kwargs)
