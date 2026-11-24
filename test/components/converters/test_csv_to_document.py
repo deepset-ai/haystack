@@ -23,7 +23,7 @@ class TestCSVToDocument:
 
     def test_init_invalid_conversion_mode(self):
         with pytest.raises(ValueError, match="conversion_mode must be one of 'file' or 'row'"):
-            CSVToDocument(conversion_mode="invalid")
+            CSVToDocument(conversion_mode="invalid")  # type: ignore[arg-type]
 
     def test_run(self, test_files_path):
         """
