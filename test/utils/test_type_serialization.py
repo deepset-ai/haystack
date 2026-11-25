@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import builtins
+import re
 import sys
 import typing
 from collections import deque
@@ -322,12 +323,33 @@ def test_output_type_deserialization_literal():
 
 
 def test_output_type_round_trip_annotated():
-    annotated_type = typing.Annotated[int, "a, b", {"key": "value"}]
-    serialized = "typing.Annotated[int, 'a, b', {'key': 'value'}]"
+    annotated_type = typing.Annotated[dict[str, int], "a, b", {"a": 1, "b": 2}, ("x", "y"), Document, ...]
+    serialized = (
+        "typing.Annotated[dict[str, int], 'a, b', {'a': 1, 'b': 2}, ('x', 'y'), "
+        "haystack.dataclasses.document.Document, ...]"
+    )
 
     assert serialize_type(annotated_type) == serialized
     assert deserialize_type(serialized) == annotated_type
-    assert deserialize_type(serialize_type(typing.Annotated[str, "metadata"])) == typing.Annotated[str, "metadata"]
+
+
+@pytest.mark.parametrize(
+    "annotated_type",
+    [Optional[list[typing.Annotated[float, "in [0, 1)"]]], list[typing.Annotated[float, "in [0, 1)"]] | None],
+)
+def test_output_type_round_trip_optional_annotated(annotated_type):
+    assert deserialize_type(serialize_type(annotated_type)) == annotated_type
+
+
+def test_output_type_deserialization_legacy_annotated():
+    assert deserialize_type("typing.Annotated[int, str]") == typing.Annotated[int, str]
+
+
+@pytest.mark.parametrize("metadata", ["{'a': }", "missing_type", "{[]}"])
+def test_output_type_deserialization_malformed_annotated_metadata(metadata):
+    error_match = rf"^Could not deserialize Annotated metadata: {re.escape(metadata)}$"
+    with pytest.raises(DeserializationError, match=error_match):
+        deserialize_type(f"typing.Annotated[int, {metadata}]")
 
 
 def test_output_type_round_trip_literal():

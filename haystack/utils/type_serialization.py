@@ -69,6 +69,12 @@ def _serialize_type_arg(arg: Any) -> str:
     return serialize_type(arg)
 
 
+def _serialize_annotated_metadata(value: Any) -> str:
+    if isinstance(value, type) or value is Ellipsis:
+        return serialize_type(value)
+    return repr(value)
+
+
 def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation, including the module name.
@@ -97,8 +103,9 @@ def serialize_type(target: Any) -> str:
     if origin is typing.Literal:
         return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
     if origin is typing.Annotated:
-        args = get_args(target)
-        return f"typing.Annotated[{serialize_type(args[0])}, {', '.join(repr(a) for a in args[1:])}]"
+        base, *metadata = get_args(target)
+        metadata_str = ", ".join(_serialize_annotated_metadata(value) for value in metadata)
+        return f"typing.Annotated[{serialize_type(base)}, {metadata_str}]"
 
     args = get_args(target)
 
@@ -137,14 +144,15 @@ def serialize_type(target: Any) -> str:
     return f"{module_name}.{name}" if module_name else f"{name}"
 
 
-def _parse_generic_args(args_str: str) -> list[str]:
+def _split_type_args(args_str: str, *, separator: str, maxsplit: int = -1) -> list[str]:
+    """Split type arguments outside square brackets and quoted strings."""
     args = []
     bracket_count = 0
     quote = None
     escaped = False
-    current_arg = ""
+    start = 0
 
-    for char in args_str:
+    for index, char in enumerate(args_str):
         if escaped:
             escaped = False
         elif char == "\\" and quote:
@@ -159,16 +167,20 @@ def _parse_generic_args(args_str: str) -> list[str]:
         elif quote is None and char == "]":
             bracket_count -= 1
 
-        if char == "," and bracket_count == 0 and quote is None:
-            args.append(current_arg.strip())
-            current_arg = ""
-        else:
-            current_arg += char
+        if char == separator and bracket_count == 0 and quote is None:
+            args.append(args_str[start:index].strip())
+            start = index + 1
+            if len(args) == maxsplit:
+                break
 
-    if current_arg:
-        args.append(current_arg.strip())
+    if tail := args_str[start:].strip():
+        args.append(tail)
 
     return args
+
+
+def _parse_generic_args(args_str: str) -> list[str]:
+    return _split_type_args(args_str, separator=",")
 
 
 def _parse_pep604_union_args(union_str: str) -> list[str]:
@@ -180,26 +192,22 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     :param union_str: The union string to parse
     :returns: A list of individual type strings
     """
-    args = []
-    bracket_count = 0
-    current_arg = ""
+    return _split_type_args(union_str, separator="|")
 
-    for char in union_str:
-        if char == "[":
-            bracket_count += 1
-        elif char == "]":
-            bracket_count -= 1
 
-        if char == "|" and bracket_count == 0:
-            args.append(current_arg.strip())
-            current_arg = ""
-        else:
-            current_arg += char
-
-    if current_arg.strip():
-        args.append(current_arg.strip())
-
-    return args
+def _deserialize_annotated_metadata(metadata_str: str) -> list[Any]:
+    try:
+        metadata = ast.parse(f"({metadata_str},)", mode="eval").body
+        values = []
+        for node in metadata.elts if isinstance(metadata, ast.Tuple) else [metadata]:
+            try:
+                values.append(ast.literal_eval(node))
+            except ValueError:
+                # Older serializations store type metadata as type expressions.
+                values.append(deserialize_type(ast.unparse(node)))
+    except (DeserializationError, SyntaxError, TypeError, ValueError) as e:
+        raise DeserializationError(f"Could not deserialize Annotated metadata: {metadata_str}") from e
+    return values
 
 
 def _deserialize_type_arg(arg_str: str) -> Any:
@@ -267,8 +275,11 @@ def deserialize_type(type_str: str) -> Any:
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
         if main_type is typing.Annotated:
-            annotated_args = _parse_generic_args(generics_str)
-            generic_args = [deserialize_type(annotated_args[0]), *(ast.literal_eval(arg) for arg in annotated_args[1:])]
+            annotated_args = _split_type_args(generics_str, separator=",", maxsplit=1)
+            if len(annotated_args) != 2:
+                raise DeserializationError("Could not deserialize Annotated metadata: expected at least one value")
+            base_str, metadata_str = annotated_args
+            generic_args = [deserialize_type(base_str), *_deserialize_annotated_metadata(metadata_str)]
         else:
             generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
