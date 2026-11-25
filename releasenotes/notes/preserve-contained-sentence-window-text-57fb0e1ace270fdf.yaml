@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``SentenceWindowRetriever`` no longer repeats text in a context window when a document in the window lies
+    entirely within an earlier, overlapping document, for example a short split inside a longer one. In this case,
+    ``SentenceWindowRetriever.merge_documents_text`` now returns the original text.

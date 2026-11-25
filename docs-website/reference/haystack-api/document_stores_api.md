@@ -21,6 +21,8 @@ A dataclass for managing document statistics for BM25 retrieval.
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
+Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
+
 #### __init__
 
 ```python
@@ -130,6 +132,9 @@ load_from_disk(path: str) -> InMemoryDocumentStore
 ```
 
 Load the database and its data from disk as a JSON file.
+
+With `shared=True`, the saved documents replace all documents in the index, including for other
+instances sharing it.
 
 **Parameters:**
 

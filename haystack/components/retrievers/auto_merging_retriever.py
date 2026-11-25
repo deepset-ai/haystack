@@ -16,9 +16,15 @@ class AutoMergingRetriever:
     """
     A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
-    The AutoMergingRetriever assumes you have a hierarchical tree structure of documents, where the leaf nodes
-    are indexed in a document store. See the HierarchicalDocumentSplitter for more information on how to create
-    such a structure. During retrieval, if the number of matched leaf documents below the same parent is
+    The AutoMergingRetriever assumes you have a hierarchical tree structure of documents, created by the
+    HierarchicalDocumentSplitter, stored in two document stores:
+    - the leaf documents, in the document store searched by the retriever that runs before the AutoMergingRetriever;
+    - the root and parent documents, in the document store passed to the AutoMergingRetriever.
+
+    The AutoMergingRetriever only accepts leaf documents as input. Indexing the root or parent documents in the
+    store searched by the upstream retriever is not supported.
+
+    During retrieval, if the number of matched leaf documents below the same parent is
     higher than a defined threshold, the retriever will return the parent document instead of the individual leaf
     documents.
 
@@ -69,7 +75,8 @@ class AutoMergingRetriever:
         """
         Initialize the AutoMergingRetriever.
 
-        :param document_store: DocumentStore from which to retrieve the parent documents
+        :param document_store: DocumentStore holding the root and parent documents created by the
+            HierarchicalDocumentSplitter. It's used to look up the parents of the matched leaf documents.
         :param threshold: Threshold to decide whether the parent instead of the individual documents is returned
         """
 
@@ -102,9 +109,17 @@ class AutoMergingRetriever:
 
     @staticmethod
     def _check_valid_documents(matched_leaf_documents: list[Document]) -> None:
-        # check if the matched leaf documents have the required meta fields
-        if not all(doc.meta.get("__parent_id") for doc in matched_leaf_documents):
-            raise ValueError("The matched leaf documents do not have the required meta field '__parent_id'")
+        # A document without a parent is the root or a document not created by HierarchicalDocumentSplitter,
+        # which means more than the leaf documents were indexed in the store searched by the upstream retriever.
+        parentless_doc = next((doc for doc in matched_leaf_documents if not doc.meta.get("__parent_id")), None)
+        if parentless_doc is not None:
+            raise ValueError(
+                f"The matched leaf documents do not have the required meta field '__parent_id': document "
+                f"'{parentless_doc.id}' has none. AutoMergingRetriever only accepts leaf documents created by "
+                "HierarchicalDocumentSplitter. Write only the leaf documents to the document store searched by the "
+                "upstream retriever, and the root and parent documents to the document store passed to "
+                "AutoMergingRetriever."
+            )
 
         # HierarchicalDocumentSplitter uses __level=0 and __block_size=0 for the root, so these
         # fields must be checked for presence rather than truthiness.
@@ -124,9 +139,11 @@ class AutoMergingRetriever:
         first so leaves at different depths can merge with their promoted siblings.
 
         :param documents: List of leaf documents that were matched by a retriever. Documents with the same ID are
-            counted once, keeping the one with the highest score.
+            counted once, keeping the one with the highest score. Each document must have the `__parent_id`,
+            `__level`, and `__block_size` meta fields set by HierarchicalDocumentSplitter.
         :returns:
             List of documents (could be a mix of different hierarchy levels)
+        :raises ValueError: If a document is missing the `__parent_id`, `__level`, or `__block_size` meta field.
         """
 
         AutoMergingRetriever._check_valid_documents(documents)
@@ -186,9 +203,11 @@ class AutoMergingRetriever:
         first so leaves at different depths can merge with their promoted siblings.
 
         :param documents: List of leaf documents that were matched by a retriever. Documents with the same ID are
-            counted once, keeping the one with the highest score.
+            counted once, keeping the one with the highest score. Each document must have the `__parent_id`,
+            `__level`, and `__block_size` meta fields set by HierarchicalDocumentSplitter.
         :returns:
             List of documents (could be a mix of different hierarchy levels)
+        :raises ValueError: If a document is missing the `__parent_id`, `__level`, or `__block_size` meta field.
         """
 
         AutoMergingRetriever._check_valid_documents(documents)

@@ -18,7 +18,9 @@ class FilterPolicy(Enum):
     # Runtime filters replace init filters during retriever run invocation.
     REPLACE = "replace"
 
-    # Runtime filters are merged with init filters, with runtime filters overwriting init values.
+    # Runtime filters are merged with init filters. When both filters are combined with `AND`, all of their
+    # conditions apply (intersection). When an init and a runtime condition are on the same field and at least one
+    # of the two filters is a comparison filter, the runtime condition takes precedence.
     MERGE = "merge"
 
     def __str__(self) -> str:
@@ -66,7 +68,9 @@ def combine_two_logical_filters(
     """
     Combine two logical filters.
 
-    If both operators are `"AND"`, a single `"AND"` holding the conditions of both is returned. If both use the
+    If both operators are `"AND"`, a single `"AND"` holding the conditions of both is returned, so all conditions
+    from both filters apply (intersection). Conditions on the same field are not overwritten: both are kept and a
+    warning is logged, as the combined filter can match fewer documents than expected. If both use the
     same other operator, both filters are nested under an `"AND"`. Otherwise, `init_logical_filter` is ignored and
     `runtime_logical_filter` is returned.
 
@@ -118,6 +122,15 @@ def combine_two_logical_filters(
     """
     if init_logical_filter["operator"] == runtime_logical_filter["operator"]:
         if init_logical_filter["operator"] == "AND":
+            init_fields = {c.get("field") for c in init_logical_filter["conditions"]} - {None}
+            runtime_fields = {c.get("field") for c in runtime_logical_filter["conditions"]} - {None}
+            shared_fields = sorted(init_fields & runtime_fields)
+            if shared_fields:
+                logger.warning(
+                    "The init and runtime filters both contain conditions on the field(s) {fields}. Both conditions "
+                    "are kept and combined with AND, so only documents matching both are returned.",
+                    fields=shared_fields,
+                )
             return {
                 "operator": "AND",
                 "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
@@ -319,8 +332,15 @@ def apply_filter_policy(
 
     :param filter_policy: The policy to apply when handling the filters. It can be one of the following:
         - `FilterPolicy.REPLACE`: Runtime filters will replace the initial filters.
-        - `FilterPolicy.MERGE`: Runtime filters will be merged with the initial filters. If there are overlapping keys,
-          values from the runtime filters will overwrite those from the initial filters.
+        - `FilterPolicy.MERGE`: Runtime filters will be merged with the initial filters. If both filters are logical
+          filters combined with `AND`, all of their conditions apply (intersection) and a warning is logged when
+          they have conditions on the same field. If both are logical filters with the same operator other than
+          `AND`, they are nested under an `AND`, so both apply with no precedence. If both are logical filters with
+          different operators, the initial filters are ignored and only the runtime filters are used. If one is a
+          comparison filter and the other a logical filter, they are combined only when the logical filter's
+          operator matches `default_logical_operator`; otherwise the initial filters are ignored. When a comparison
+          filter is combined, a runtime condition on a field that is also in the initial filters takes precedence
+          over the initial one.
     :param init_filters: The initial filters set during the initialization of the relevant retriever.
     :param runtime_filters: The filters provided at runtime, usually during a query operation execution. These filters
                             can change for each query/retriever run invocation.

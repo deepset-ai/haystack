@@ -1,0 +1,4 @@
+fixes:
+  - |
+    Fix ``XLSXToDocument`` raising ``TypeError`` when a source ``ByteStream``
+    has ``file_path=None`` in its metadata. The ``None`` value is now kept in the document metadata.

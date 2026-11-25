@@ -474,11 +474,13 @@ class LinkContentFetcher:
         """
         Get the content type of the response.
 
+        Media types are case-insensitive, so the type is lowercased and stripped of parameters and whitespace.
+
         :param response: The response object.
         :returns: The content type of the response.
         """
         content_type = response.headers.get("Content-Type", "")
-        return content_type.split(";")[0]
+        return content_type.split(";")[0].strip().lower()
 
     def _resolve_handler(self, content_type: str) -> Callable[[httpx.Response], ByteStream]:
         """

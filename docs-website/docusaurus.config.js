@@ -10,7 +10,7 @@ import versions from './versions.json' with { type: 'json' };
 // Keep the total number of built versions constant to keep memory/build time reasonable
 // Build the current version (docs/), the unstable version (e.g. 3.x-unstable, only present during the release process)
 // and fill the remaining slots with the most recent stable versions (e.g. 3.x)
-const MAX_TOTAL_VERSIONS = 6;
+const MAX_TOTAL_VERSIONS = 5;
 const unstableVersions = versions.filter(v => v.endsWith('-unstable'));
 const activeVersions = [
   'current',
@@ -90,12 +90,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.5-unstable',
+              label: '3.6-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '3.4',
+          lastVersion: '3.5',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -143,12 +143,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.5-unstable',
+            label: '3.6-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '3.4',
+        lastVersion: '3.5',
       },
     ],
     [

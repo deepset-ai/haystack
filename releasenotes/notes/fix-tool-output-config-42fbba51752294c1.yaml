@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix ``Tool.outputs_to_string`` handling of multiple outputs named ``source``,
+    ``handler``, or ``raw_result``, including serialization of their handlers.

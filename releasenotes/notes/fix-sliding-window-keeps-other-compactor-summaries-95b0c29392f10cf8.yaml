@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``SlidingWindowCompactor`` no longer always removes the summary a ``SummarizationCompactor`` leaves in the
+    current task. The summary is now kept or removed together with the Agent step after it. A summary at the start
+    of history is now treated as the oldest historical turn.

@@ -68,6 +68,15 @@ def _write_linked_workbook(path: Path) -> None:
 
 
 class TestXLSXToDocument:
+    def test_run_bytestream_with_null_file_path(self, test_files_path: Path) -> None:
+        source = ByteStream.from_file_path(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx")
+        source.meta["file_path"] = None
+
+        documents = XLSXToDocument().run(sources=[source])["documents"]
+
+        assert len(documents) == 2
+        assert all(doc.meta["file_path"] is None for doc in documents)
+
     def test_init(self) -> None:
         converter = XLSXToDocument()
         assert converter.sheet_name is None

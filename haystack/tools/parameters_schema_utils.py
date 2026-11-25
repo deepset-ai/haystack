@@ -9,7 +9,7 @@ from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from types import NoneType
-from typing import Annotated, Any, Union, get_args, get_origin
+from typing import Annotated, Any, ForwardRef, Union, get_args, get_origin, get_type_hints
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
@@ -164,11 +164,44 @@ def _get_component_param_descriptions(component: Any) -> dict[str, str]:
     return param_descriptions
 
 
-def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
+def _replace_back_references(type_hint: Any, *, converting: frozenset[type]) -> Any:
+    """
+    Replace references to the dataclasses whose conversion is in progress with forward references to their models.
+
+    References are replaced at any depth of the type hint.
+
+    :param type_hint: The type hint of a dataclass field.
+    :param converting: Dataclasses whose conversion is in progress.
+    :returns: The type hint with forward references, or `type_hint` itself if it refers to none of these dataclasses.
+    """
+    if isinstance(type_hint, type) and type_hint in converting:
+        return ForwardRef(type_hint.__name__)
+
+    origin = get_origin(type_hint)
+    if origin is None:
+        return type_hint
+
+    args = get_args(type_hint)
+    new_args = tuple(_replace_back_references(arg, converting=converting) for arg in args)
+    if all(new_arg is arg for new_arg, arg in zip(new_args, args, strict=True)):
+        return type_hint
+    if _is_union_type(origin):
+        return Union[new_args]
+    # Special forms such as `Final` take a single argument, not a tuple
+    return origin[new_args[0] if len(new_args) == 1 else new_args]
+
+
+def _dataclass_to_pydantic_model(dc_type: Any, *, converting: frozenset[type] = frozenset()) -> type[BaseModel]:
     """
     Convert a Python dataclass to an equivalent Pydantic model.
 
+    Field annotations are resolved in the module that defines the dataclass, so string annotations, such as forward
+    references or annotations postponed by `from __future__ import annotations`, are supported.
+
     :param dc_type: The dataclass type to convert.
+    :param converting:
+        Dataclasses whose conversion is already in progress. Fields that refer back to one of them become forward
+        references to its model, so recursive dataclasses don't lead to infinite recursion.
     :returns:
         A dynamically generated Pydantic model class with fields and types derived from the dataclass definition.
         Field descriptions are extracted from docstrings when available.
@@ -176,9 +209,18 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     _, param_descriptions = _get_param_descriptions(dc_type)
     cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
 
+    try:
+        type_hints = get_type_hints(cls, include_extras=True)
+    except Exception:
+        # NameError is raised for names that are not available at runtime, for example names imported only for type
+        # checking. In that case we fall back to the annotations as they are written.
+        type_hints = {}
+    converting = converting | {cls}
+
     field_defs: dict[str, Any] = {}
     for field in fields(dc_type):
-        f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
+        type_hint = _replace_back_references(type_hints.get(field.name, field.type), converting=converting)
+        f_type = _resolve_type(type_hint, converting=converting)
         default = field.default if field.default is not MISSING else ...
         default = field.default_factory() if callable(field.default_factory) else default
 
@@ -194,7 +236,7 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     return create_model(cls.__name__, **field_defs)
 
 
-def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
+def _resolve_type(_type: Any, *, converting: frozenset[type] = frozenset()) -> Any:  # noqa: PLR0911
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 
@@ -203,6 +245,8 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
 
     :param _type: The type annotation to resolve. If the type is a dataclass, it will be converted to a Pydantic model.
         For generic types (like list[SomeDataclass]), the inner types are also resolved recursively.
+    :param converting:
+        Dataclasses whose conversion is already in progress, passed on when nested dataclasses are converted.
 
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models
@@ -219,21 +263,22 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
         return _ToolsetSchemaPlaceholder
 
     if is_dataclass(_type):
-        return _dataclass_to_pydantic_model(_type)
+        return _dataclass_to_pydantic_model(_type, converting=converting)
 
     origin = get_origin(_type)
     args = get_args(_type)
 
     if origin is list:
-        return list[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
+        return list[_resolve_type(args[0], converting=converting) if args else Any]  # type: ignore[misc]
 
     if origin is collections.abc.Sequence:
-        return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
+        return Sequence[_resolve_type(args[0], converting=converting) if args else Any]  # type: ignore[misc]
 
     if _is_union_type(origin):
-        return Union[tuple(_resolve_type(a) for a in args)]
+        return Union[tuple(_resolve_type(a, converting=converting) for a in args)]
 
     if origin is dict:
-        return dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore[misc]
+        value_type = _resolve_type(args[1], converting=converting) if args else Any
+        return dict[args[0] if args else Any, value_type]  # type: ignore[misc]
 
     return _type

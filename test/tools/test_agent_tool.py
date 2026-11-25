@@ -125,6 +125,26 @@ class TestAgentTool:
             "required": ["messages"],
         }
 
+    def test_init_with_messages_from_state(self):
+        sub_agent = Agent(
+            chat_generator=MockChatGenerator(responses=["done"]),
+            user_prompt="Answer: {{ question }}",
+            required_variables=["question"],
+        )
+
+        agent_tool = AgentTool(
+            agent=sub_agent,
+            name="research",
+            description="Research a question.",
+            inputs_from_state={"history": "messages"},
+        )
+
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
+        }
+
     def test_init_with_custom_parameters(self):
         sub_agent = Agent(chat_generator=MockChatGenerator(responses=["done"]))
         parameters = {"type": "object", "properties": {"messages": {"type": "array"}}, "required": ["messages"]}

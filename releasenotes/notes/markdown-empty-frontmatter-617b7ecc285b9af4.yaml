@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``MarkdownToDocument`` with ``extract_frontmatter=True`` now correctly handles an empty YAML frontmatter block.
+    Previously, it could consume body text after the frontmatter into metadata.

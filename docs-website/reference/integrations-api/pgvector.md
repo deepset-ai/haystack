@@ -499,6 +499,186 @@ delete_table_async() -> None
 
 Async method to delete the table used to store Haystack documents.
 
+#### replace_table
+
+```python
+replace_table(
+    staging_store: PgvectorDocumentStore,
+    *,
+    backup_table_name: str | None = None,
+    lock_timeout_ms: int = 5000
+) -> str
+```
+
+Atomically replace this store's table with the table of a populated staging store.
+
+Use this to rebuild a document store without downtime: write the new documents into a staging store, then
+swap it in. Queries see either the old or the new documents, never a partially filled table. The former
+table is kept as a backup until you drop it.
+
+Requirements:
+
+- `staging_store` must connect to the same PostgreSQL database and use the same `schema_name`,
+  `embedding_dimension`, `vector_type`, `vector_function`, `language`, and `search_strategy`, plus the same
+  `hnsw_index_creation_kwargs` with the `hnsw` search strategy.
+- Index names are unique per schema, so `staging_store` needs its own `keyword_index_name` and, with the
+  `hnsw` search strategy, its own `hnsw_index_name`. A staging store with the default index names fails
+  when it creates its table.
+- The staging table must already exist. This method never creates it.
+- Pause writes to this store during the swap. A write that is in flight when the swap starts lands in the
+  backup table, not in the promoted one.
+
+Locking: the swap takes an `ACCESS EXCLUSIVE` lock on both tables, so it first waits for running queries on
+them to finish. While it waits, new reads and writes on both tables wait too. If the locks are not acquired
+within `lock_timeout_ms`, nothing is changed. The renames themselves are fast.
+
+After a successful swap, this store serves the promoted documents under its own table and index names, and
+`staging_store` is repointed to the backup: its `table_name`, `keyword_index_name`, and, with the `hnsw`
+search strategy, `hnsw_index_name` are set to the backup names. Call `staging_store.delete_table()` to
+drop the former documents once you no longer need them. Because these attributes change,
+`staging_store.to_dict()` also returns the backup names after the swap.
+
+Don't create stores that serve queries with `recreate_table=True`. Any new instance with that setting, for
+example in another process or a pipeline loaded from YAML, drops the live table when it first connects.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+
+live_store = PgvectorDocumentStore(table_name="docs", embedding_dimension=768)
+live_store.write_documents([Document(content="The current corpus")])  # already serving queries
+
+# The staging store can reuse the same names on every rebuild: after a swap they are free again.
+staging_store = PgvectorDocumentStore(
+    table_name="docs_staging",
+    embedding_dimension=768,
+    keyword_index_name="docs_staging_keyword_index",
+)
+staging_store.write_documents([Document(content="The rebuilt corpus")])
+
+# Pause writes to live_store, then swap.
+backup_table_name = live_store.replace_table(staging_store)
+
+# live_store now serves the rebuilt corpus. staging_store points at the backup table.
+staging_store.delete_table()
+```
+
+**Parameters:**
+
+- **staging_store** (<code>PgvectorDocumentStore</code>) – A populated store whose table replaces this store's table. Must meet the
+  requirements above.
+- **backup_table_name** (<code>str | None</code>) – Name to keep the former table under. Must not exist yet. If not set, a unique
+  name of the form `<table_name>_backup_<suffix>` is generated.
+- **lock_timeout_ms** (<code>int</code>) – How long to wait for the table locks, in milliseconds, before giving up. Reads and
+  writes on both tables also wait during this time. Must be a positive integer.
+
+**Returns:**
+
+- <code>str</code> – The name of the backup table that now holds the former documents.
+
+**Raises:**
+
+- <code>TypeError</code> – If `lock_timeout_ms` is not an `int`.
+- <code>ValueError</code> – If `staging_store` is configured incompatibly with this store as described in the
+  requirements above, connects to a different database, or if `backup_table_name` is invalid or
+  `lock_timeout_ms` is not positive.
+- <code>DocumentStoreError</code> – If either table doesn't exist, the tables have different columns or
+  constraints, an expected index is missing, `backup_table_name` or a generated backup index name is
+  already taken, the locks are not acquired within `lock_timeout_ms`, or the database reports another
+  error. In every case the swap is rolled back and nothing is changed.
+
+#### replace_table_async
+
+```python
+replace_table_async(
+    staging_store: PgvectorDocumentStore,
+    *,
+    backup_table_name: str | None = None,
+    lock_timeout_ms: int = 5000
+) -> str
+```
+
+Asynchronously and atomically replace this store's table with the table of a populated staging store.
+
+Use this to rebuild a document store without downtime: write the new documents into a staging store, then
+swap it in. Queries see either the old or the new documents, never a partially filled table. The former
+table is kept as a backup until you drop it.
+
+Requirements:
+
+- `staging_store` must connect to the same PostgreSQL database and use the same `schema_name`,
+  `embedding_dimension`, `vector_type`, `vector_function`, `language`, and `search_strategy`, plus the same
+  `hnsw_index_creation_kwargs` with the `hnsw` search strategy.
+- Index names are unique per schema, so `staging_store` needs its own `keyword_index_name` and, with the
+  `hnsw` search strategy, its own `hnsw_index_name`. A staging store with the default index names fails
+  when it creates its table.
+- The staging table must already exist. This method never creates it.
+- Pause writes to this store during the swap. A write that is in flight when the swap starts lands in the
+  backup table, not in the promoted one.
+
+Locking: the swap takes an `ACCESS EXCLUSIVE` lock on both tables, so it first waits for running queries on
+them to finish. While it waits, new reads and writes on both tables wait too. If the locks are not acquired
+within `lock_timeout_ms`, nothing is changed. The renames themselves are fast.
+
+After a successful swap, this store serves the promoted documents under its own table and index names, and
+`staging_store` is repointed to the backup: its `table_name`, `keyword_index_name`, and, with the `hnsw`
+search strategy, `hnsw_index_name` are set to the backup names. Call `staging_store.delete_table_async()` to
+drop the former documents once you no longer need them. Because these attributes change,
+`staging_store.to_dict()` also returns the backup names after the swap.
+
+Don't create stores that serve queries with `recreate_table=True`. Any new instance with that setting, for
+example in another process or a pipeline loaded from YAML, drops the live table when it first connects.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+
+live_store = PgvectorDocumentStore(table_name="docs", embedding_dimension=768)
+await live_store.write_documents_async([Document(content="The current corpus")])  # already serving queries
+
+# The staging store can reuse the same names on every rebuild: after a swap they are free again.
+staging_store = PgvectorDocumentStore(
+    table_name="docs_staging",
+    embedding_dimension=768,
+    keyword_index_name="docs_staging_keyword_index",
+)
+await staging_store.write_documents_async([Document(content="The rebuilt corpus")])
+
+# Pause writes to live_store, then swap.
+backup_table_name = await live_store.replace_table_async(staging_store)
+
+# live_store now serves the rebuilt corpus. staging_store points at the backup table.
+await staging_store.delete_table_async()
+```
+
+**Parameters:**
+
+- **staging_store** (<code>PgvectorDocumentStore</code>) – A populated store whose table replaces this store's table. Must meet the
+  requirements above.
+- **backup_table_name** (<code>str | None</code>) – Name to keep the former table under. Must not exist yet. If not set, a unique
+  name of the form `<table_name>_backup_<suffix>` is generated.
+- **lock_timeout_ms** (<code>int</code>) – How long to wait for the table locks, in milliseconds, before giving up. Reads and
+  writes on both tables also wait during this time. Must be a positive integer.
+
+**Returns:**
+
+- <code>str</code> – The name of the backup table that now holds the former documents.
+
+**Raises:**
+
+- <code>TypeError</code> – If `lock_timeout_ms` is not an `int`.
+- <code>ValueError</code> – If `staging_store` is configured incompatibly with this store as described in the
+  requirements above, connects to a different database, or if `backup_table_name` is invalid or
+  `lock_timeout_ms` is not positive.
+- <code>DocumentStoreError</code> – If either table doesn't exist, the tables have different columns or
+  constraints, an expected index is missing, `backup_table_name` or a generated backup index name is
+  already taken, the locks are not acquired within `lock_timeout_ms`, or the database reports another
+  error. In every case the swap is rolled back and nothing is changed.
+
 #### count_documents
 
 ```python

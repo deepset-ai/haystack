@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` now raise a ``RuntimeError`` when a
+    streamed response fails, that is when the stream ends with a ``response.failed`` event or contains an ``error``
+    event. Previously these events were ignored and the generator returned an empty reply without a finish reason,
+    so the failure went unnoticed.

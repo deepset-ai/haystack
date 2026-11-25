@@ -42,6 +42,10 @@ See [Pipeline Loops](pipelines/pipeline-loops.mdx) for a deeper explanation of h
 
 <ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
 
+### Guardrails
+
+A pipeline can check what goes in and out of the model. For example, it can remove PII from a query before it reaches a chat generator, or route unsafe messages away with a guard model. See [Guardrails](guardrails.mdx) for guardrails Haystack offers.
+
 ### Async Execution and Streaming
 
 When run asynchronously, pipelines execute components in parallel when their dependencies allow it. This improves performance in complex pipelines with independent operations. For example, a pipeline can run multiple Retrievers or LLM calls simultaneously, execute independent pipeline branches in parallel, and efficiently handle I/O-bound operations that would otherwise cause delays. You can cap the number of components running at the same time with the `concurrency_limit` argument of the async run methods (`run_async`, `run_async_generator`, and `stream`). The synchronous `run` method executes components sequentially.

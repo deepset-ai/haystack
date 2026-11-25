@@ -13,6 +13,7 @@ from pytest import LogCaptureFixture
 from haystack.components.preprocessors.sentence_tokenizer import (
     QUOTE_SPANS_RE,
     CustomPunktLanguageVars,
+    Language,
     SentenceSplitter,
 )
 
@@ -179,6 +180,32 @@ def test_split_sentences_keeps_a_quote_with_trailing_punctuation_joined(text: st
     sentences = splitter.split_sentences(text)
 
     assert [sentence["sentence"] for sentence in sentences] == [text]
+
+
+@pytest.mark.parametrize("language", ["hi", "ml"])
+@pytest.mark.parametrize("keep_white_spaces", [False, True])
+def test_split_sentences_splits_on_danda(language: Language, keep_white_spaces: bool) -> None:
+    text = "भारत एक विशाल देश है।  \nइसकी राजधानी नई दिल्ली है। हिमालय उत्तर में स्थित है॥ गंगा एक नदी है।"
+    splitter = SentenceSplitter(language=language, keep_white_spaces=keep_white_spaces)
+
+    sentences = splitter.split_sentences(text)
+    expected = ["भारत एक विशाल देश है।  \n", "इसकी राजधानी नई दिल्ली है। ", "हिमालय उत्तर में स्थित है॥ ", "गंगा एक नदी है।"]
+    if not keep_white_spaces:
+        expected = [sentence.rstrip() for sentence in expected]
+
+    assert [sentence["sentence"] for sentence in sentences] == expected
+    for sentence in sentences:
+        assert text[sentence["start"] : sentence["end"]] == sentence["sentence"]
+    if keep_white_spaces:
+        assert "".join(sentence["sentence"] for sentence in sentences) == text
+
+
+@pytest.mark.parametrize("keep_white_spaces", [False, True])
+def test_split_sentences_does_not_split_on_danda_for_english(keep_white_spaces: bool) -> None:
+    text = "भारत एक विशाल देश है। हिमालय उत्तर में स्थित है॥ गंगा एक नदी है।"
+    splitter = SentenceSplitter(language="en", keep_white_spaces=keep_white_spaces)
+
+    assert splitter.split_sentences(text) == [{"sentence": text, "start": 0, "end": len(text)}]
 
 
 def test_split_sentences_performance() -> None:

@@ -267,6 +267,8 @@ Converts files to FileContent objects.
 **Parameters:**
 
 - **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+  For a ByteStream, the file name is taken from `meta["file_name"]`, or else from the base name of
+  `meta["file_path"]`.
 - **extra** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional extra information to attach to the FileContent objects. Can be used to store provider-specific
   information.
   To avoid serialization issues, values should be JSON serializable.

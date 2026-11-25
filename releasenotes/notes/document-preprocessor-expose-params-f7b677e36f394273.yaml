@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    ``DocumentPreprocessor`` now exposes the ``DocumentSplitter`` parameter ``skip_empty_documents`` and the
+    ``DocumentCleaner`` parameters ``strip_whitespaces``, ``replace_regexes`` and ``min_content_length``.
+    Set ``skip_empty_documents=False`` to keep documents with empty content, for example scanned PDF pages that a
+    downstream ``LLMDocumentContentExtractor`` can process. This has no effect with ``split_by="sentence"`` or
+    ``respect_sentence_boundary=True``. The defaults match the wrapped components, so existing pipelines and
+    serialized configurations behave as before.
