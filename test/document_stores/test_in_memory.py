@@ -426,6 +426,22 @@ class TestMemoryDocumentStore(
         self.assert_documents_are_equal(equal_result, docs)
         self.assert_documents_are_equal(in_result, docs)
 
+    def test_filter_documents_range_skips_heterogeneous_metadata_types(
+        self, document_store: InMemoryDocumentStore
+    ) -> None:
+        # Kept here rather than in FilterDocumentsTest: integrations such as Qdrant already skip
+        # type-mismatched documents, and the shared suite should not require FilterError.
+        docs = [
+            Document(id="1", content="numeric", meta={"score": -1}),
+            Document(id="2", content="string", meta={"score": "hello"}),
+            Document(id="3", content="list", meta={"score": [1, 2]}),
+        ]
+        document_store.write_documents(docs)
+
+        result = document_store.filter_documents(filters={"field": "meta.score", "operator": "<", "value": 0})
+
+        self.assert_documents_are_equal(result, [docs[0]])
+
     def test_filter_documents_with_strict_datetime_comparison(self) -> None:
         store = InMemoryDocumentStore(strict_datetime_comparison=True)
         document = Document(content="doc", meta={"date": "2025-02-03T12:45:46Z"})

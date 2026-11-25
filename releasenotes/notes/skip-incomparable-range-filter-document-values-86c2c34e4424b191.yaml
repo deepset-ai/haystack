@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Range filters (``>``, ``>=``, ``<``, ``<=``) on ``InMemoryDocumentStore`` and other code that uses
+    ``document_matches_filter`` no longer fail the whole query when a document stores a type-incompatible
+    value, such as a non-date string or a list, in the filtered field. Those documents are skipped. Invalid
+    filter values, such as a non-date string or a list used as the filter value, still raise ``FilterError``.
+upgrade:
+  - |
+    If you relied on ``FilterError`` being raised when a stored metadata value could not be compared with a
+    range filter, catch that by validating document metadata instead. The filter now skips those documents
+    and returns the comparable matches.

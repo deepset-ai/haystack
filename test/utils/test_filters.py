@@ -49,6 +49,18 @@ document_matches_filter_data = [
         id="== operator with None filter value",
     ),
     pytest.param(
+        {"field": "meta.stage", "operator": "==", "value": None},
+        Document(meta={"other": 1}),
+        True,
+        id="== operator with None filter value and missing Document key",
+    ),
+    pytest.param(
+        {"field": "meta.stage", "operator": "==", "value": None},
+        Document(meta={"stage": None}),
+        True,
+        id="== operator with None filter value and explicit None Document value",
+    ),
+    pytest.param(
         {"field": "meta.user.age", "operator": "==", "value": 30},
         Document(meta={"user": {"age": 30}}),
         True,
@@ -801,6 +813,23 @@ def test_document_matches_filter_raises_filter_error_for_datetime_and_numeric_va
 
     with pytest.raises(FilterError, match="Can't compare a datetime with a non-datetime value using operators"):
         document_matches_filter(filters, Document(meta={"date": datetime(2025, 1, 1)}))
+
+
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+@pytest.mark.parametrize("document_value", ["hello", [1, 2], {"a": 1}])
+def test_document_matches_filter_skips_incomparable_document_value_in_range_filters(operator, document_value):
+    # A type-mismatched *document* value must not raise FilterError and fail the whole query.
+    # Invalid *filter* values (for example a non-date string or a list) still raise, covered above.
+    filters = {"field": "meta.score", "operator": operator, "value": 0}
+
+    assert document_matches_filter(filters, Document(meta={"score": document_value})) is False
+
+
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+def test_document_matches_filter_skips_non_date_document_string_for_date_range_filter(operator):
+    filters = {"field": "meta.date", "operator": operator, "value": "2024-01-01"}
+
+    assert document_matches_filter(filters, Document(meta={"date": "hello"})) is False
 
 
 def test_dotted_field_with_unknown_root_is_treated_as_missing():

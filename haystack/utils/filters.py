@@ -136,11 +136,14 @@ def _prepare_ordering_comparison(
         The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
         the other is timezone-aware; otherwise it is `True`.
     """
-    if isinstance(value, str) or isinstance(filter_value, str):
-        if not isinstance(value, datetime):
-            value = _parse_date(value)
-        if not isinstance(filter_value, datetime):
-            filter_value = _parse_date(filter_value)
+    # Parse date strings. A non-date string filter is invalid. A non-date string document is just incomparable.
+    if isinstance(filter_value, str):
+        filter_value = _parse_date(filter_value)
+    if isinstance(value, str):
+        parsed = _try_parse_date(value)
+        if parsed is None:
+            return value, filter_value, False
+        value = parsed
 
     if isinstance(value, datetime) and isinstance(filter_value, datetime):
         if strict_datetime_comparison and (value.tzinfo is None) != (filter_value.tzinfo is None):
@@ -156,17 +159,57 @@ def _prepare_ordering_comparison(
     return value, filter_value, True
 
 
-def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
+def _try_parse_date(value: Any) -> datetime | None:
+    """Parse `value` with the same rules as `_parse_date`, returning None on failure."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        try:
+            return dateutil.parser.parse(value, default=datetime(1, 1, 1))
+        except (ValueError, TypeError):
+            return None
+
+
+def _comparable_ordering_values(
+    value: Any, filter_value: Any, strict_datetime_comparison: bool
+) -> tuple[Any, Any] | None:
+    """
+    Return normalized values for a range comparison, or None if this document cannot be compared.
+
+    Invalid *filter* values still raise ``FilterError``. Incomparable *document* values (a non-date string, a list,
+    or another type that cannot be ordered against the filter) return ``None`` so the document is skipped instead of
+    failing the whole query.
+    """
     if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
+        return None
+
+    # A non-date string on the document side is not comparable to a non-string filter. Only attempt date parsing
+    # for document strings when the filter is a datetime or a date string (handled in `_prepare_ordering_comparison`).
+    if isinstance(value, str) and not isinstance(filter_value, (str, datetime)):
+        return None
 
     value, filter_value, comparable = _prepare_ordering_comparison(
         value=value, filter_value=filter_value, strict_datetime_comparison=strict_datetime_comparison
     )
     if not comparable:
+        return None
+    return value, filter_value
+
+
+def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
+    comparable = _comparable_ordering_values(
+        value=value, filter_value=filter_value, strict_datetime_comparison=strict_datetime_comparison
+    )
+    if comparable is None:
         return False
-    return value > filter_value
+    value, filter_value = comparable
+    try:
+        return value > filter_value
+    except TypeError:
+        return False
 
 
 def _parse_date(value: str) -> datetime:
@@ -208,42 +251,42 @@ def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple
 
 
 def _greater_than_equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
-    if value is None or filter_value is None:
-        # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
-
-    value, filter_value, comparable = _prepare_ordering_comparison(
+    comparable = _comparable_ordering_values(
         value=value, filter_value=filter_value, strict_datetime_comparison=strict_datetime_comparison
     )
-    if not comparable:
+    if comparable is None:
         return False
-    return value >= filter_value
+    value, filter_value = comparable
+    try:
+        return value >= filter_value
+    except TypeError:
+        return False
 
 
 def _less_than(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
-    if value is None or filter_value is None:
-        # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
-
-    value, filter_value, comparable = _prepare_ordering_comparison(
+    comparable = _comparable_ordering_values(
         value=value, filter_value=filter_value, strict_datetime_comparison=strict_datetime_comparison
     )
-    if not comparable:
+    if comparable is None:
         return False
-    return value < filter_value
+    value, filter_value = comparable
+    try:
+        return value < filter_value
+    except TypeError:
+        return False
 
 
 def _less_than_equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
-    if value is None or filter_value is None:
-        # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
-
-    value, filter_value, comparable = _prepare_ordering_comparison(
+    comparable = _comparable_ordering_values(
         value=value, filter_value=filter_value, strict_datetime_comparison=strict_datetime_comparison
     )
-    if not comparable:
+    if comparable is None:
         return False
-    return value <= filter_value
+    value, filter_value = comparable
+    try:
+        return value <= filter_value
+    except TypeError:
+        return False
 
 
 def _in(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
