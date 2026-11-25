@@ -243,6 +243,7 @@ def test_from_dict_without_top_k_defaults_to_none():
     "top_k, expected_score",
     [
         # relevant "a" at rank 1 and "b" at rank 3, out of 2 relevant documents
+        # always divided by R=2, not min(R, k), as in trec_eval map_cut
         (1, (1 / 1) / 2),
         (2, (1 / 1) / 2),
         (3, (1 / 1 + 2 / 3) / 2),
