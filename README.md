@@ -74,7 +74,7 @@
 | haystack/components/generators/chat/\_\_init\_\_.py                        |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/\_rate\_limit\_headers.py              |       47 |        1 |     98% |        64 |
 | haystack/components/generators/chat/azure.py                               |       86 |        3 |     97% |220, 376, 379 |
-| haystack/components/generators/chat/azure\_responses.py                    |       46 |        1 |     98% |       282 |
+| haystack/components/generators/chat/azure\_responses.py                    |       51 |        1 |     98% |       292 |
 | haystack/components/generators/chat/fallback.py                            |      102 |        0 |    100% |           |
 | haystack/components/generators/chat/llm.py                                 |       40 |        1 |     98% |       123 |
 | haystack/components/generators/chat/mock.py                                |      154 |        0 |    100% |           |
@@ -279,7 +279,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **18969** |  **655** | **97%** |           |
+| **TOTAL**                                                                  | **18974** |  **655** | **97%** |           |
 
 
 ## Setup coverage badge
