@@ -418,7 +418,8 @@ Writes documents into the store.
 - **policy** (<code>DuplicatePolicy</code>) – How to handle documents whose `id` already exists in the store:
 - `NONE` (default): treated as `FAIL`.
 - `OVERWRITE`: replace the existing document.
-- `SKIP`: keep the existing document and skip the new one.
+- `SKIP`: keep the existing document and skip the new one. An `id` repeated within
+  `documents` is written once.
 - `FAIL`: raise `DuplicateDocumentError`.
 
 **Returns:**
@@ -428,7 +429,8 @@ Writes documents into the store.
 **Raises:**
 
 - <code>ValueError</code> – When input is not valid.
-- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists.
+- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists or is repeated
+  within `documents`.
 
 #### write_documents_async
 
@@ -448,7 +450,8 @@ Asynchronous methods are only supported for HTTP connections.
 - **policy** (<code>DuplicatePolicy</code>) – How to handle documents whose `id` already exists in the store:
 - `NONE` (default): treated as `FAIL`.
 - `OVERWRITE`: replace the existing document.
-- `SKIP`: keep the existing document and skip the new one.
+- `SKIP`: keep the existing document and skip the new one. An `id` repeated within
+  `documents` is written once.
 - `FAIL`: raise `DuplicateDocumentError`.
 
 **Returns:**
@@ -458,7 +461,8 @@ Asynchronous methods are only supported for HTTP connections.
 **Raises:**
 
 - <code>ValueError</code> – When input is not valid.
-- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists.
+- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists or is repeated
+  within `documents`.
 
 #### delete_documents
 

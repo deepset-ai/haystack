@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 from unittest.mock import patch
 
 import pytest
@@ -87,6 +88,9 @@ class TestDocumentPreprocessor:
                 "remove_regex": None,
                 "unicode_normalization": None,
                 "ascii_only": False,
+                "strip_whitespaces": False,
+                "replace_regexes": None,
+                "min_content_length": 0,
                 "split_by": "word",
                 "split_length": 3,
                 "split_overlap": 1,
@@ -97,10 +101,47 @@ class TestDocumentPreprocessor:
                 "use_split_rules": True,
                 "extend_abbreviations": True,
                 "tokenizer_encoding": "o200k_base",
+                "skip_empty_documents": True,
             },
             "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
         }
         assert preprocessor.to_dict() == expected
+
+    def test_serialization_round_trip_keeps_passthrough_params(self) -> None:
+        preprocessor = DocumentPreprocessor(
+            skip_empty_documents=False, strip_whitespaces=True, replace_regexes={"foo": "bar"}, min_content_length=5
+        )
+        restored = DocumentPreprocessor.from_dict(preprocessor.to_dict())
+
+        splitter = restored.pipeline.get_component("splitter")
+        cleaner = restored.pipeline.get_component("cleaner")
+        assert isinstance(splitter, DocumentSplitter)
+        assert isinstance(cleaner, DocumentCleaner)
+        assert splitter.skip_empty_documents is False
+        assert cleaner.strip_whitespaces is True
+        assert cleaner.replace_regexes == {"foo": "bar"}
+        assert cleaner.min_content_length == 5
+
+    def test_from_dict_without_passthrough_params_uses_defaults(self, preprocessor: DocumentPreprocessor) -> None:
+        data = preprocessor.to_dict()
+        for key in ("skip_empty_documents", "strip_whitespaces", "replace_regexes", "min_content_length"):
+            del data["init_parameters"][key]
+
+        restored = DocumentPreprocessor.from_dict(data)
+
+        assert restored.skip_empty_documents is True
+        assert restored.strip_whitespaces is False
+        assert restored.replace_regexes is None
+        assert restored.min_content_length == 0
+
+    def test_exposes_all_wrapped_component_params(self) -> None:
+        exposed = set(inspect.signature(DocumentPreprocessor.__init__).parameters)
+        assert set(inspect.signature(DocumentSplitter.__init__).parameters) <= exposed
+        assert set(inspect.signature(DocumentCleaner.__init__).parameters) <= exposed
+
+    def test_init_rejects_negative_min_content_length(self) -> None:
+        with pytest.raises(ValueError, match="min_content_length must be greater than or equal to 0."):
+            DocumentPreprocessor(min_content_length=-1)
 
     def test_init_token(self) -> None:
         preprocessor = DocumentPreprocessor(split_by="token", split_length=10, tokenizer_encoding="cl100k_base")
@@ -134,6 +175,36 @@ class TestDocumentPreprocessor:
             assert doc.content.strip() == doc.content
             assert len(doc.content.split()) <= 3  # Split length of 3 words
             assert doc.id is not None
+
+    def test_run_skips_empty_document_by_default(self) -> None:
+        assert DocumentPreprocessor().run(documents=[Document(content="")])["documents"] == []
+
+    def test_run_keeps_empty_document_when_skipping_disabled(self) -> None:
+        preprocessor = DocumentPreprocessor(skip_empty_documents=False)
+        result = preprocessor.run(documents=[Document(content="", meta={"file_path": "scan.pdf"})])
+
+        assert [doc.content for doc in result["documents"]] == [""]
+        assert result["documents"][0].meta["file_path"] == "scan.pdf"
+
+    def test_run_min_content_length_drops_short_document(self) -> None:
+        preprocessor = DocumentPreprocessor(min_content_length=5)
+        result = preprocessor.run(documents=[Document(content="abc"), Document(content="long enough")])
+
+        assert [doc.content for doc in result["documents"]] == ["long enough"]
+
+    def test_run_replace_regexes_replaces_matches(self) -> None:
+        preprocessor = DocumentPreprocessor(replace_regexes={"foo": "bar"})
+        result = preprocessor.run(documents=[Document(content="foo")])
+
+        assert [doc.content for doc in result["documents"]] == ["bar"]
+
+    def test_run_strip_whitespaces_strips_content(self) -> None:
+        preprocessor = DocumentPreprocessor(
+            remove_empty_lines=False, remove_extra_whitespaces=False, strip_whitespaces=True
+        )
+        result = preprocessor.run(documents=[Document(content="  some text  ")])
+
+        assert [doc.content for doc in result["documents"]] == ["some text"]
 
     @pytest.mark.integration
     def test_run_token(self) -> None:

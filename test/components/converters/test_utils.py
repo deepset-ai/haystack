@@ -38,6 +38,21 @@ def test_normalize_metadata_list_of_right_size():
     assert normalize_metadata([{"a": 1}, {"b": 2}, {"c": 3}], sources_count=3) == [{"a": 1}, {"b": 2}, {"c": 3}]
 
 
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        pytest.param([{"tags": ["original"]}, {"tags": ["original"]}], id="distinct_dicts"),
+        pytest.param([{"tags": ["original"]}] * 2, id="repeated_dict"),
+    ],
+)
+def test_normalize_metadata_list_returns_independent_copies(metadata):
+    result = normalize_metadata(metadata, sources_count=2)
+    result[0]["tags"].append("updated")
+
+    assert result == [{"tags": ["original", "updated"]}, {"tags": ["original"]}]
+    assert metadata == [{"tags": ["original"]}, {"tags": ["original"]}]
+
+
 def test_normalize_metadata_list_of_wrong_size():
     with pytest.raises(ValueError, match="The length of the metadata list must match the number of sources."):
         normalize_metadata([{"a": 1}], sources_count=3)

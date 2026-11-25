@@ -112,6 +112,15 @@ _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
 }
 
 
+class _StateInputOmitted:
+    """
+    Sentinel used as the default for optional Agent state input sockets.
+
+    When the pipeline supplies this default, the Agent excludes the corresponding
+    key from its run inputs. Explicitly provided values, including `None`, are preserved.
+    """
+
+
 def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
@@ -567,7 +576,7 @@ class Agent:
             output_types[param] = config["type"]
             # Run-metadata keys are populated by the Agent itself and exposed as outputs only, not inputs.
             if param not in self._run_method_params and param not in _RUN_METADATA_STATE_KEYS:
-                component.set_input_type(self, name=param, type=config["type"], default=None)
+                component.set_input_type(self, name=param, type=config["type"], default=_StateInputOmitted)
         component.set_output_types(self, **output_types)
 
         # --- Prompt builders ---
@@ -925,8 +934,9 @@ class Agent:
               `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
               the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
               meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
-            - Any additional keys defined in the `state_schema`.
+            - Additional keys from `state_schema` passed as inputs or set during the run.
         """
+        kwargs = {key: value for key, value in kwargs.items() if value is not _StateInputOmitted}
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         self.warm_up()
         # warm up tools passed at runtime
@@ -1021,8 +1031,9 @@ class Agent:
               `messages` whose `tool_call_result.origin.tool_name` matches it, which may not be `last_message` when
               the model called several tools at once), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before
               meeting an exit condition), or a custom reason a hook supplied through the `stop_run` state key.
-            - Any additional keys defined in the `state_schema`.
+            - Additional keys from `state_schema` passed as inputs or set during the run.
         """
+        kwargs = {key: value for key, value in kwargs.items() if value is not _StateInputOmitted}
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
         await self.warm_up_async()
         # warm up tools passed at runtime

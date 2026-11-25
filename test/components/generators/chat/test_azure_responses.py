@@ -450,6 +450,52 @@ class TestComponentLifecycle:
         await component.close_async()
         assert component.async_client is None
 
+    @pytest.mark.parametrize("azure_api_key", [None, ""])
+    def test_warm_up_fails_without_azure_api_key(
+        self, monkeypatch: pytest.MonkeyPatch, azure_api_key: str | None
+    ) -> None:
+        if azure_api_key is None:
+            monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+        else:
+            monkeypatch.setenv("AZURE_OPENAI_API_KEY", azure_api_key)
+        # Must not be picked up by the underlying OpenAI client and sent to the Azure endpoint
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-platform-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+
+        with pytest.raises(ValueError, match="AZURE_OPENAI_API_KEY"):
+            component.warm_up()
+        assert component.client is None
+
+    @pytest.mark.parametrize("azure_api_key", [None, ""])
+    async def test_warm_up_async_fails_without_azure_api_key(
+        self, monkeypatch: pytest.MonkeyPatch, azure_api_key: str | None
+    ) -> None:
+        if azure_api_key is None:
+            monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+        else:
+            monkeypatch.setenv("AZURE_OPENAI_API_KEY", azure_api_key)
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-platform-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+
+        with pytest.raises(ValueError, match="AZURE_OPENAI_API_KEY"):
+            await component.warm_up_async()
+        assert component.async_client is None
+
+    async def test_warm_up_with_token_provider_without_azure_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("OPENAI_API_KEY", "openai-platform-key")
+        component = AzureOpenAIResponsesChatGenerator(
+            api_key=lambda: "ad-token", azure_endpoint="some-non-existing-endpoint"
+        )
+
+        component.warm_up()
+        await component.warm_up_async()
+        # The token provider is used, so the client must not pick up OPENAI_API_KEY
+        assert component.client is not None
+        assert component.async_client is not None
+        assert component.client.api_key != "openai-platform-key"
+        assert component.async_client.api_key != "openai-platform-key"
+
     async def test_close_is_safe_without_warm_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentSplitter`` emitting a chunk longer than ``split_length`` when
+    ``split_by="word"`` is used with ``respect_sentence_boundary=True`` and
+    ``split_overlap`` is greater than zero. Sentences carried into the next chunk as
+    overlap now have to leave room for that chunk's first new sentence; the carry is
+    reduced or dropped when it does not fit, so chunks stay within ``split_length``
+    (a single sentence that is longer than the limit is still emitted whole).

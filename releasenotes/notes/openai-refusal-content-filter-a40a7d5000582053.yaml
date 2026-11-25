@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    ``OpenAIChatGenerator`` and ``OpenAIResponsesChatGenerator`` now set ``finish_reason`` to ``"content_filter"``
+    instead of ``"stop"`` when the model refuses a request, matching how ``AnthropicChatGenerator`` reports refusals.
+    The refusal text is still in ``meta["refusal"]``. As a result, an ``Agent`` without tools now reports
+    ``exit_reason="content_filter"`` instead of ``"text"`` for these replies, so update any routing that relies on it.
+fixes:
+  - |
+    An ``Agent`` with tools using ``OpenAIChatGenerator`` or ``OpenAIResponsesChatGenerator`` now stops after a
+    refusal-only reply with ``exit_reason="content_filter"``. Previously it kept calling the model until
+    ``max_agent_steps``.

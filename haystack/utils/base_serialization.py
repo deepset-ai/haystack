@@ -27,7 +27,9 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     The function handles:
     - Objects with to_dict() methods (e.g. dataclasses)
     - Objects with __dict__ attributes
-    - Dictionaries
+    - Dictionaries. Dicts with non-string keys record one key/value entry per pair under the
+      `entries` keyword, since JSON object keys must be strings and the key types would otherwise
+      be lost; dicts with only string keys keep the `properties` format.
     - Lists, tuples, and sets, including ones holding mixed types. A mixed-type array records one
       schema per position under the JSON Schema `prefixItems` keyword, while a homogeneous array
       keeps the single shared `items` schema.
@@ -50,6 +52,29 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
 
     # Handle dictionary case - iterate through fields
     if isinstance(payload, dict):
+        # JSON object keys must be strings, so a dict with non-string keys cannot round-trip
+        # through the `properties`/`data` mappings below: `json.dump` stringifies the keys, so an
+        # int key comes back as a string and keys that stringify alike collide (e.g. `{1: "a",
+        # "1": "b"}` comes back as `{"1": "b"}`). Serialize such dicts as an explicit list of
+        # key/value entries instead, so every key keeps its own schema and survives a JSON
+        # round-trip. Dicts with only string keys keep the historical `properties` envelope.
+        if any(not isinstance(field, str) for field in payload):
+            entries_schema: list[dict[str, Any]] = []
+            entries_data: list[dict[str, Any]] = []
+            for field, val in payload.items():
+                serialized_key = _serialize_value_with_schema(field)
+                serialized_value = _serialize_value_with_schema(val)
+                entries_schema.append(
+                    {"key": serialized_key["serialization_schema"], "value": serialized_value["serialization_schema"]}
+                )
+                entries_data.append(
+                    {"key": serialized_key["serialized_data"], "value": serialized_value["serialized_data"]}
+                )
+            return {
+                "serialization_schema": {"type": "object", "entries": entries_schema},
+                "serialized_data": entries_data,
+            }
+
         schema: dict[str, Any] = {}
         data: dict[str, Any] = {}
 
@@ -150,13 +175,16 @@ def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[st
             e=error,
         )
 
-    serialized_properties: dict[str, Any] = {}
-    serialized_data: dict[str, Any] = {}
-
+    kept: dict[Any, Any] = {}
     if isinstance(payload, dict):
         for field_name, value in payload.items():
             try:
-                serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
+                # Keys are checked too: a non-string key is serialized with its own schema, so a
+                # key that cannot be serialized drops its field like a failing value does.
+                key = _deepcopy_with_exceptions(field_name)
+                val = _deepcopy_with_exceptions(value)
+                _serialize_value_with_schema(key)
+                _serialize_value_with_schema(val)
             except Exception as field_error:
                 logger.warning(
                     "Failed to serialize the '{field_name}' field of {description}. "
@@ -166,14 +194,9 @@ def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[st
                     e=field_error,
                 )
                 continue
+            kept[key] = val
 
-            serialized_properties[field_name] = serialized_value["serialization_schema"]
-            serialized_data[field_name] = serialized_value["serialized_data"]
-
-    return {
-        "serialization_schema": {"type": "object", "properties": serialized_properties},
-        "serialized_data": serialized_data,
-    }
+    return _serialize_value_with_schema(kept)
 
 
 def _primitive_schema_type(value: Any) -> str:
@@ -202,6 +225,9 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
     For array types, `prefixItems` (one schema per position, emitted for mixed-type arrays) takes
     precedence over `items` (a single shared schema, emitted for homogeneous arrays).
 
+    For objects, `entries` (one schema per key/value pair, emitted for dicts with non-string keys)
+    takes precedence over `properties` (emitted for dicts with only string keys).
+
     :param serialized: The serialized dict with schema and data.
     :returns: The deserialized value in its original form.
     """
@@ -227,6 +253,26 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
+        # Dicts with non-string keys are stored as an explicit list of key/value entries (see
+        # `_serialize_value_with_schema`): each key is deserialized from its own schema, so
+        # int/float/bool/None keys survive the round-trip and keys that stringify alike no
+        # longer collide.
+        entries = schema.get("entries")
+        if entries is not None:
+            if len(entries) != len(data):
+                raise DeserializationError(
+                    f"Invalid object payload: 'entries' declares {len(entries)} key/value pairs "
+                    f"but 'serialized_data' holds {len(data)} entries."
+                )
+            entries_result: dict[Any, Any] = {}
+            for entry_schema, entry_data in zip(entries, data, strict=True):
+                key = _deserialize_value_with_schema(
+                    {"serialization_schema": entry_schema["key"], "serialized_data": entry_data["key"]}
+                )
+                entries_result[key] = _deserialize_value_with_schema(
+                    {"serialization_schema": entry_schema["value"], "serialized_data": entry_data["value"]}
+                )
+            return entries_result
         properties = schema["properties"]
         result: dict[str, Any] = {}
         for field, raw_value in data.items():

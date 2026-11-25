@@ -170,12 +170,17 @@ def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: boo
 
 
 def _parse_date(value: str) -> datetime:
-    """Try parsing the value as an ISO format date, then fall back to dateutil.parser."""
+    """
+    Try parsing the value as an ISO format date, then fall back to dateutil.parser.
+
+    Partial dates (e.g. "2024" or "2024-06") are completed to the start of the period, so "2024" becomes
+    2024-01-01.
+    """
     try:
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         try:
-            return dateutil.parser.parse(value)
+            return dateutil.parser.parse(value, default=datetime(1, 1, 1))
         except (ValueError, TypeError) as exc:
             msg = (
                 "Can't compare strings using operators '>', '>=', '<', '<='. "

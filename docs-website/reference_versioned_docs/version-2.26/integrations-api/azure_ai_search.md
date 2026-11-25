@@ -478,6 +478,9 @@ Returns the documents that match the provided filters.
 Filters should be given as a dictionary supporting filtering by metadata. For details on
 filters, see the [metadata filtering documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
+Azure AI Search pages through results with `$skip`, which is capped at 100,000. If that many documents
+match, a warning is logged and the result may be incomplete; use a narrower filter to retrieve the rest.
+
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\] | None</code>) – the filters to apply to the document list.

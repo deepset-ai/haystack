@@ -142,6 +142,14 @@ Give preference to `print_streaming_chunk` by default. Write a custom callback o
 
 To keep track of your Azure OpenAI rate limits, set `include_rate_limit_headers=True`. The `x-ratelimit-*` headers of the API response, such as `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens`, are then added to the `meta` of each reply under the `rate_limit_headers` key. Headers are only added for successful requests and, when streaming, only to the final reply.
 
+### Content moderation
+
+Azure OpenAI checks prompts and replies with [content filters](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/concepts/content-filter) that you configure on the Azure deployment. There is nothing to set in Haystack.
+
+When the filter blocks a reply, the reply's `finish_reason` is `"content_filter"`, and an [Agent](../agents-1/agent.mdx#exit-reason) using this generator stops with `exit_reason="content_filter"`. When the filter blocks the prompt, Azure rejects the request and the generator raises an error.
+
+For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
+
 ## Usage
 
 ### On its own

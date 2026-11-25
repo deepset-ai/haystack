@@ -9,6 +9,8 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from pydantic_core import to_jsonable_python
+
 from haystack import logging, tracing
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
@@ -93,9 +95,9 @@ def _result_to_string(result: Any) -> str:
     """
     if isinstance(result, str):
         return result
-    serializable = _serializable_value(value=result, use_placeholders=False)
     try:
-        return json.dumps(serializable, ensure_ascii=False)
+        serializable = _serializable_value(value=result, use_placeholders=False)
+        return json.dumps(serializable, ensure_ascii=False, default=to_jsonable_python)
     except Exception as error:
         logger.warning(
             "Tool result is not JSON serializable. Falling back to str conversion. Result: {result}\nError: {err}",

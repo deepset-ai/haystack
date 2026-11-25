@@ -882,7 +882,7 @@ For example, given a page_range=['1-3', '5', '8', '10-12'] the function will ret
 
 **Returns:**
 
-- <code>list\[int\]</code> – An expanded list of page integers
+- <code>list\[int\]</code> – An expanded list of unique page integers, preserving their first-occurrence order
 
 **Raises:**
 
