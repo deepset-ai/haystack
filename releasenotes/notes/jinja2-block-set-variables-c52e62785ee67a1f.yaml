@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``PromptBuilder``, ``ChatPromptBuilder``, ``OutputAdapter``, and ``ConditionalRouter`` no longer treat a variable
+    assigned with a block assignment (``{% set x %}...{% endset %}``) inside an ``if`` or ``for`` block as an input
+    variable. Previously, with the default ``required_variables="*"``, such a template failed at run time with
+    "Missing required input variables", while the equivalent ``{% set x = ... %}`` worked.

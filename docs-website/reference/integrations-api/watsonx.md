@@ -74,8 +74,8 @@ Creates a WatsonxDocumentEmbedder component.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
 - **batch_size** (<code>int</code>) – Number of documents to embed in one API call. Default is 1000.
 - **concurrency_limit** (<code>int</code>) – Number of parallel requests to make. Default is 5.
-- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
-- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
+- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds. When omitted, the IBM SDK uses its default timeout.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests. When omitted, the IBM SDK uses its default retry policy.
 
 #### warm_up
 
@@ -176,8 +176,8 @@ Creates an WatsonxTextEmbedder component.
   If set to `None` (or not provided), the full input text is used, up to the model's maximum token limit.
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
 - **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
-- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
-- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
+- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds. When omitted, the IBM SDK uses its default timeout.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests. When omitted, the IBM SDK uses its default retry policy.
 
 #### warm_up
 
@@ -325,11 +325,6 @@ __init__(
 
 Creates an instance of WatsonxChatGenerator.
 
-Before initializing the component, you can set environment variables:
-
-- `WATSONX_TIMEOUT` to override the default timeout
-- `WATSONX_MAX_RETRIES` to override the default retry count
-
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – IBM Cloud API key for watsonx.ai access.
@@ -352,9 +347,9 @@ Before initializing the component, you can set environment variables:
 - `stop_sequences`: List of sequences where generation should stop
 - `random_seed`: Seed for reproducible results
 - **timeout** (<code>float | None</code>) – Timeout in seconds for API requests.
-  Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
+  When omitted, the IBM SDK uses its default timeout.
 - **max_retries** (<code>int | None</code>) – Maximum number of retry attempts for failed requests.
-  Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
+  When omitted, the IBM SDK uses its default retry policy.
 - **verify** (<code>bool | str | None</code>) – SSL verification setting. Can be:
 - True: Verify SSL certificates (default)
 - False: Skip verification (insecure)

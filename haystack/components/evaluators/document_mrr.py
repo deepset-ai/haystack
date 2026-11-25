@@ -43,7 +43,7 @@ class DocumentMRREvaluator:
     ```
     """
 
-    def __init__(self, document_comparison_field: str = "content") -> None:
+    def __init__(self, document_comparison_field: str = "content", *, top_k: int | None = None) -> None:
         """
         Create a DocumentMRREvaluator component.
 
@@ -54,8 +54,18 @@ class DocumentMRREvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+        :param top_k:
+            If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+            metric at cutoff k (for example, `top_k=10` gives MRR@10). Must be a positive integer.
+            Defaults to `None`, which scores all retrieved documents.
+        :raises ValueError:
+            If `top_k` is not a positive integer or `None`.
         """
+        if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1):
+            msg = f"top_k must be a positive integer or None, got {top_k!r}."
+            raise ValueError(msg)
         self.document_comparison_field = document_comparison_field
+        self.top_k = top_k
 
     def _get_comparison_value(self, doc: Document) -> Any:
         """
@@ -86,7 +96,7 @@ class DocumentMRREvaluator:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_comparison_field=self.document_comparison_field)
+        return default_to_dict(self, document_comparison_field=self.document_comparison_field, top_k=self.top_k)
 
     # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
     @component.output_types(score=float, individual_scores=list[float])
@@ -134,7 +144,7 @@ class DocumentMRREvaluator:
                     "Score will be set to 0."
                 )
 
-            for rank, retrieved_document in enumerate(retrieved):
+            for rank, retrieved_document in enumerate(retrieved[: self.top_k]):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
                     continue

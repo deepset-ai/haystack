@@ -30,7 +30,7 @@ This component enables chat completions using Anthropic models served through Az
 
 Use this generator when your organization standardizes on Azure for model hosting (billing, networking, compliance) but still wants to work against Claude. If you don't need Azure, prefer `AnthropicChatGenerator`.
 
-The default model is `claude-sonnet-4-5`. Other models known to work include `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-opus-4-5`, `claude-opus-4-1`, and `claude-haiku-4-5`. This list is not exhaustive — the actual catalog depends on what is deployed in your Foundry resource. See the [Anthropic model overview](https://docs.anthropic.com/en/docs/about-claude/models) for guidance on picking a model.
+The default model is `claude-sonnet-5-5`. Other models known to work include `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-opus-4-5`, `claude-opus-4-1`, and `claude-haiku-4-5`. This list is not exhaustive — the actual catalog depends on what is deployed in your Foundry resource. See the [Anthropic model overview](https://docs.anthropic.com/en/docs/about-claude/models) for guidance on picking a model.
 
 ### Parameters
 
@@ -47,7 +47,7 @@ The default model is `claude-sonnet-4-5`. Other models known to work include `cl
 - The `resource` init parameter (or the `ANTHROPIC_FOUNDRY_RESOURCE` environment variable) — the short Foundry resource name, used to derive the URL.
 - The `endpoint` init parameter — a full URL, useful for custom domains or non-standard routes.
 
-Once configured, pass any text-generation parameter supported by the Anthropic [Messages API](https://docs.anthropic.com/en/api/messages) through `generation_kwargs`, either at init or per call. Common keys include `system`, `max_tokens`, `temperature`, `top_p`, `top_k`, `stop_sequences`, `metadata`, and `extra_headers`. You can also tune `timeout` and `max_retries` to control client-side resilience.
+Once configured, pass any text-generation parameter supported by the Anthropic [Messages API](https://docs.anthropic.com/en/api/messages) through `generation_kwargs`, either at init or per call. Common keys include `system`, `max_tokens`, `stop_sequences`, `metadata`, and `extra_headers`. You can also tune `timeout` and `max_retries` to control client-side resilience.
 
 The component takes a list of `ChatMessage` objects. `ChatMessage` is a data class that holds a message, a role (`user`, `assistant`, `system`, or `tool`), and optional metadata. Only text input is supported.
 
@@ -141,7 +141,6 @@ from haystack_integrations.components.generators.anthropic import (
 )
 
 generator = AnthropicFoundryChatGenerator(
-    model="claude-sonnet-4-5",
     api_key=Secret.from_env_var("ANTHROPIC_FOUNDRY_API_KEY"),
     resource="my-resource",
 )

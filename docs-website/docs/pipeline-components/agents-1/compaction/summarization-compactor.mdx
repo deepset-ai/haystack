@@ -123,7 +123,7 @@ Make custom instructions explicitly request a shorter result. The compactor reje
 
 ## Failures and partial progress
 
-A summarization round fails when the Chat Generator raises an exception, returns no usable text, or produces a summary that does not make the measured conversation smaller.
+A summarization round fails when the Chat Generator raises an exception, returns no usable text, reports `finish_reason="length"` (the output token limit was reached) or `finish_reason="content_filter"` (a content filter interrupted generation), or produces a summary that does not reduce the measured conversation size.
 
 By default, the compactor logs the failure and stops. If an earlier round succeeded, it returns that partially compacted conversation; if no round succeeded, it returns `None` and leaves the input conversation unchanged. Set `raise_on_failure=True` when the calling application should handle the error instead.
 

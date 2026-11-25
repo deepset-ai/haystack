@@ -1,0 +1,5 @@
+upgrade:
+  - |
+    ``FaithfulnessEvaluator`` now raises a ``ValueError`` when the LLM returns a different number of
+    ``statements`` and ``statement_scores``. Set ``raise_on_failure=False`` to mark these inputs as errors
+    and exclude them from the score instead.

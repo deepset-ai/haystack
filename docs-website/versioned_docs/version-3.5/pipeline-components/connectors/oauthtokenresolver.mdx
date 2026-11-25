@@ -1,0 +1,295 @@
+---
+title: "OAuthTokenResolver"
+id: oauthtokenresolver
+slug: "/oauthtokenresolver"
+description: "Resolves an OAuth access token at pipeline runtime and emits it for downstream components such as the SharePoint and Google Drive retrievers and fetchers."
+hep_available: true
+---
+
+# OAuthTokenResolver
+
+Resolves an OAuth access token at pipeline runtime and emits it for downstream components such as the SharePoint and Google Drive retrievers and fetchers.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the start of a pipeline, feeding `access_token` into downstream components such as [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx) or [`GoogleDriveRetriever`](../retrievers/googledriveretriever.mdx) |
+| **Mandatory init variables** | `token_source`: The strategy that resolves the access token, for example `OAuthRefreshTokenSource` |
+| **Mandatory run variables** | None for config-only sources. `subject_token`: a controller-injected per-request credential, mandatory only when the source requires it (for example `OAuthTokenExchangeSource`) |
+| **Output variables** | `access_token`: A bearer token string |
+| **API reference** | [OAuth](/reference/integrations-oauth) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/oauth |
+| **Package name** | `oauth-haystack` |
+
+</div>
+
+## Overview
+
+`OAuthTokenResolver` resolves an OAuth access token when the pipeline runs and emits it on the `access_token` output socket. Downstream components – such as [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx), [`MSSharePointFetcher`](../fetchers/mssharepointfetcher.mdx), [`GoogleDriveRetriever`](../retrievers/googledriveretriever.mdx), and [`GoogleDriveFetcher`](../fetchers/googledrivefetcher.mdx) – consume the token through a normal connection and never need to know how it was obtained.
+
+The resolver itself is a thin wrapper. The actual work of getting a token is delegated to a pluggable **token source** that decides *where* the token comes from. This separation lets you swap authentication strategies (refresh-token grant, client-credentials grant, per-request token exchange, or a static long-lived token) without changing the rest of your pipeline.
+
+### Token sources
+
+You pass a token source to the resolver through the `token_source` parameter. All sources are importable from `haystack_integrations.utils.oauth`.
+
+| Source | Use it when | Per-request input |
+| --- | --- | --- |
+| `OAuthRefreshTokenSource` | You have a single, fixed identity backed by a stored refresh token and want the source to exchange it for short-lived access tokens and cache them. | None |
+| `OAuthClientCredentialsSource` | Your application calls the downstream service as itself, not as a user. Runs the RFC 6749 client-credentials grant and caches one token per instance until shortly before it expires. | None |
+| `OAuthTokenExchangeSource` | You serve multiple users (or run multiple replicas) and want to exchange an incoming per-request user assertion for a downstream token, with no persistent storage. Implements RFC 8693 token exchange and Microsoft's on-behalf-of flow. | `subject_token` |
+| `EntraAgentOBOTokenSource` | A [Microsoft Entra Agent ID](https://learn.microsoft.com/en-us/entra/agent-id/agent-on-behalf-of-oauth-flow) agent identity calls the downstream service on behalf of the signed-in user. See [Microsoft Entra Agent ID](#microsoft-entra-agent-id). | `subject_token` |
+| `OAuthStaticTokenSource` | Your provider issues a non-expiring token that you manage out of band (for example Slack or Notion). | None |
+
+When the configured source needs a per-request credential (`OAuthTokenExchangeSource` and `EntraAgentOBOTokenSource` set `requires_subject_token = True`), the resolver declares a **mandatory** `subject_token` run input. This is a controller-injected credential – for example an incoming user assertion – not a value chosen by an end user. For config-only sources (`OAuthRefreshTokenSource`, `OAuthClientCredentialsSource`, `OAuthStaticTokenSource`), the resolver declares no run input and acts as a source node.
+
+### Client authentication
+
+`OAuthClientCredentialsSource` and `OAuthTokenExchangeSource` authenticate to the token endpoint in one of two ways:
+
+- `client_secret`: a client secret, passed as a [`Secret`](../../concepts/secret-management.mdx).
+- `client_assertion_source`: a config-only token source whose token is sent as an RFC 7523 client assertion. The source is resolved for every request to the token endpoint that isn't served from the cache, so a short-lived assertion is always fresh.
+
+The two options are mutually exclusive. For certificate or key-pair credentials, use `OAuthPrivateKeyJWTSource` as the `client_assertion_source`. It signs a short-lived JWT with your private key and, if you pass `certificate`, adds the certificate's SHA-256 thumbprint to the `x5t#S256` header. It produces a client assertion, not an access token, so don't pass it to the resolver directly. The private key must be an unencrypted PEM key; passphrase-protected keys and PFX files aren't supported.
+
+:::info[Scopes are provider-specific]
+
+The OAuth scopes you request depend on the downstream service. For Microsoft Graph, that means scopes such as `https://graph.microsoft.com/Files.Read.All`; for Google Drive, scopes such as `https://www.googleapis.com/auth/drive.readonly`. Always consult your identity provider's documentation for the exact scope values.
+
+:::
+
+### Installation
+
+Install the OAuth integration with:
+
+```shell
+pip install oauth-haystack
+```
+
+Signing client assertions with `OAuthPrivateKeyJWTSource`, or configuring `EntraAgentOBOTokenSource` with a certificate, needs the `jwt` extra:
+
+```shell
+pip install "oauth-haystack[jwt]"
+```
+
+## Usage
+
+### On its own
+
+Resolve a token with a stored refresh token using `OAuthRefreshTokenSource`. The refresh token is read from an environment variable through the [Secret API](../../concepts/secret-management.mdx):
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+
+resolver = OAuthTokenResolver(
+    token_source=OAuthRefreshTokenSource(
+        token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        client_id="aaa-bbb-ccc",
+        refresh_token=Secret.from_env_var("MS_REFRESH_TOKEN"),
+        scopes=[
+            "https://graph.microsoft.com/Files.Read.All",
+            "offline_access",
+        ],
+    ),
+)
+
+access_token = resolver.run()["access_token"]
+```
+
+For a provider that issues long-lived, non-expiring tokens, use `OAuthStaticTokenSource` instead:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthStaticTokenSource
+
+resolver = OAuthTokenResolver(
+    token_source=OAuthStaticTokenSource(token=Secret.from_env_var("SERVICE_TOKEN")),
+)
+
+access_token = resolver.run()["access_token"]
+```
+
+For multi-user backends, use `OAuthTokenExchangeSource`. The resolver then requires a per-request `subject_token`:
+
+```python
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthTokenExchangeSource
+
+resolver = OAuthTokenResolver(
+    token_source=OAuthTokenExchangeSource(
+        token_url="https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token",
+        client_id="aaa-bbb-ccc",
+        subject_token_param="assertion",
+        grant_type="urn:ietf:params:oauth:grant-type:jwt-bearer",
+        scopes=["https://graph.microsoft.com/Files.Read.All"],
+        extra_token_params={"requested_token_use": "on_behalf_of"},
+    ),
+)
+
+# `subject_token` is the incoming per-request user assertion, injected by your application.
+access_token = resolver.run(subject_token="<incoming-user-assertion>")["access_token"]
+```
+
+For a token that belongs to your application rather than a user, use `OAuthClientCredentialsSource`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthClientCredentialsSource
+
+resolver = OAuthTokenResolver(
+    token_source=OAuthClientCredentialsSource(
+        token_url="https://idp.example.com/oauth2/token",
+        client_id="my-service",
+        client_secret=Secret.from_env_var("OAUTH_CLIENT_SECRET"),
+        scopes=["api.read"],
+    ),
+)
+
+access_token = resolver.run()["access_token"]
+```
+
+To authenticate with a private key instead of a client secret, pass an `OAuthPrivateKeyJWTSource` as the `client_assertion_source`. This works the same way for `OAuthTokenExchangeSource` and requires the `jwt` extra:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import (
+    OAuthClientCredentialsSource,
+    OAuthPrivateKeyJWTSource,
+)
+
+token_url = "https://idp.example.com/oauth2/token"
+resolver = OAuthTokenResolver(
+    token_source=OAuthClientCredentialsSource(
+        token_url=token_url,
+        client_id="my-service",
+        client_assertion_source=OAuthPrivateKeyJWTSource(
+            client_id="my-service",
+            audience=token_url,
+            private_key=Secret.from_env_var("OAUTH_PRIVATE_KEY"),
+        ),
+        scopes=["api.read"],
+    ),
+)
+
+access_token = resolver.run()["access_token"]
+```
+
+### In a pipeline
+
+In a pipeline, connect the resolver's `access_token` output to the `access_token` input of one or more downstream components. The example below wires the resolver into a [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx) so that searching SharePoint requires only a query at runtime:
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+from haystack_integrations.components.retrievers.microsoft_sharepoint import (
+    MSSharePointRetriever,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=OAuthRefreshTokenSource(
+            token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            client_id="aaa-bbb-ccc",
+            refresh_token=Secret.from_env_var("MS_REFRESH_TOKEN"),
+            scopes=[
+                "https://graph.microsoft.com/Files.Read.All",
+                "https://graph.microsoft.com/Sites.Read.All",
+                "offline_access",
+            ],
+        ),
+    ),
+)
+pipeline.add_component("retriever", MSSharePointRetriever(top_k=5))
+pipeline.connect("resolver.access_token", "retriever.access_token")
+
+result = pipeline.run({"retriever": {"query": "quarterly roadmap"}})
+documents = result["retriever"]["documents"]
+```
+
+A single `access_token` output can be connected to several downstream inputs. For a full retrieve-then-fetch pipeline that feeds the same token to both a retriever and a fetcher, see the [`MSSharePointFetcher`](../fetchers/mssharepointfetcher.mdx) and [`GoogleDriveFetcher`](../fetchers/googledrivefetcher.mdx) pages.
+
+### Microsoft Entra Agent ID
+
+With [Microsoft Entra Agent ID](https://learn.microsoft.com/en-us/entra/agent-id/agent-on-behalf-of-oauth-flow), an agent calls downstream services such as Microsoft Graph as the signed-in user, under its own agent identity. `EntraAgentOBOTokenSource` implements this on-behalf-of flow. It takes the user's token as the per-request `subject_token` and sends up to two requests to the tenant's token endpoint:
+
+1. The agent identity blueprint authenticates with its own credential and gets an intermediate token for the agent identity. This token is cached until shortly before it expires and shared across users.
+2. The agent identity exchanges that token and the user's token for an access token to the requested resource. The result is cached per user token.
+
+Configure exactly one credential for the blueprint:
+
+- `client_secret`: the simplest option, but Microsoft advises against client secrets in production.
+- `certificate` and `private_key`: both PEM-encoded. Requires the `jwt` extra.
+- `client_assertion_source`: any other config-only token source that yields a client assertion for the blueprint, for example a managed identity token registered as a federated identity credential of the blueprint.
+
+Microsoft Entra also expects the following:
+
+- The user's token must be issued for the blueprint, meaning its `aud` claim is the blueprint's client ID. A token for another resource, such as Microsoft Graph, is rejected with `AADSTS50013`.
+- An administrator must grant the agent identity the requested delegated permissions, either directly or as inheritable permissions on the blueprint. An agent identity can't ask the user for consent. Without these permissions, the exchange fails with `AADSTS82014`.
+- An access token is valid for a single resource, so use one resolver per downstream service.
+
+The following pipeline searches the signed-in user's SharePoint and OneDrive files as the agent identity:
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import EntraAgentOBOTokenSource
+from haystack_integrations.components.retrievers.microsoft_sharepoint import (
+    MSSharePointRetriever,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=EntraAgentOBOTokenSource(
+            tenant_id="<tenant-id>",
+            blueprint_client_id="<blueprint-client-id>",
+            agent_identity_client_id="<agent-identity-client-id>",
+            scopes=["https://graph.microsoft.com/.default"],
+            client_secret=Secret.from_env_var("ENTRA_BLUEPRINT_CLIENT_SECRET"),
+        ),
+    ),
+)
+pipeline.add_component("retriever", MSSharePointRetriever(top_k=5))
+pipeline.connect("resolver.access_token", "retriever.access_token")
+
+# `user_token` is the signed-in user's access token for the blueprint, injected by your application.
+result = pipeline.run(
+    {
+        "resolver": {"subject_token": user_token},
+        "retriever": {"query": "travel policy"},
+    },
+)
+documents = result["retriever"]["documents"]
+```
+
+To authenticate the blueprint with a certificate, replace `client_secret` with `certificate` and `private_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.utils.oauth import EntraAgentOBOTokenSource
+
+token_source = EntraAgentOBOTokenSource(
+    tenant_id="<tenant-id>",
+    blueprint_client_id="<blueprint-client-id>",
+    agent_identity_client_id="<agent-identity-client-id>",
+    scopes=["https://graph.microsoft.com/.default"],
+    certificate=Secret.from_env_var("ENTRA_BLUEPRINT_CERTIFICATE"),
+    private_key=Secret.from_env_var("ENTRA_BLUEPRINT_PRIVATE_KEY"),
+)
+```
+
+For sovereign clouds, set `authority` to the cloud's Microsoft Entra host and `token_exchange_audience` to its token-exchange audience, for example `api://AzureADTokenExchangeUSGov` for the US Government cloud or `api://AzureADTokenExchangeChina` for the China cloud.
+
+`EntraAgentOBOTokenSource` is a preconfigured combination of `OAuthTokenExchangeSource`, `OAuthClientCredentialsSource`, and, for certificates, `OAuthPrivateKeyJWTSource`. To run a similar two-step flow with another identity provider, compose these sources directly through `client_assertion_source`.

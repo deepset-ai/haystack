@@ -13,6 +13,11 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat._rate_limit_headers import (
+    _attach_rate_limit_headers,
+    _build_http_client,
+    _reset_rate_limit_headers,
+)
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
@@ -39,7 +44,6 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +51,9 @@ _INCOMPLETE_REASON_MAPPING: dict[str, FinishReason] = {
     "max_output_tokens": "length",
     "content_filter": "content_filter",
 }
+
+# Summary parts read as separate markdown sections, each usually opening with a bold title
+_REASONING_SEPARATOR = "\n\n"
 
 
 def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishReason:
@@ -61,6 +68,14 @@ def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishRe
             return finish_reason
     if any(output.type == "function_call" for output in response.output):
         return "tool_calls"
+    # A refusal completes the response normally, so report it as "content_filter" like other providers' refusals
+    if any(
+        isinstance(content, ResponseOutputRefusal)
+        for output in response.output
+        if output.type == "message"
+        for content in output.content
+    ):
+        return "content_filter"
     return "stop"
 
 
@@ -135,6 +150,7 @@ class OpenAIResponsesChatGenerator:
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
@@ -218,6 +234,11 @@ class OpenAIResponsesChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
         """
         self.api_key = api_key
@@ -231,6 +252,7 @@ class OpenAIResponsesChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
@@ -256,7 +278,9 @@ class OpenAIResponsesChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -269,7 +293,9 @@ class OpenAIResponsesChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -343,6 +369,7 @@ class OpenAIResponsesChatGenerator:
             tools=serialized_tools,
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
@@ -435,6 +462,7 @@ class OpenAIResponsesChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
 
@@ -446,6 +474,7 @@ class OpenAIResponsesChatGenerator:
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
             response_output = [_convert_response_to_chat_message(responses)]
+        _attach_rate_limit_headers(response_output, enabled=self.include_rate_limit_headers)
         return {"replies": response_output}
 
     @component.output_types(replies=list[ChatMessage])
@@ -512,6 +541,7 @@ class OpenAIResponsesChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.async_client.responses, openai_endpoint)
         responses = await openai_endpoint_method(**api_args)
 
@@ -524,6 +554,7 @@ class OpenAIResponsesChatGenerator:
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
             response_output = [_convert_response_to_chat_message(responses)]
+        _attach_rate_limit_headers(response_output, enabled=self.include_rate_limit_headers)
         return {"replies": response_output}
 
     def _prepare_api_call(  # noqa: PLR0913
@@ -669,12 +700,27 @@ def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningConte
 
     texts = []
     for item in items:
-        text = "\n".join(part["text"] for part in item.get("summary") or [])
+        text = _REASONING_SEPARATOR.join(part["text"] for part in item.get("summary") or [] if part["text"])
         if not text:
-            text = "\n".join(part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text")
+            text = _REASONING_SEPARATOR.join(
+                part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text" and part["text"]
+            )
         if text:
             texts.append(text)
-    return ReasoningContent(reasoning_text="\n".join(texts), extra={"reasoning_items": items})
+    return ReasoningContent(reasoning_text=_REASONING_SEPARATOR.join(texts), extra={"reasoning_items": items})
+
+
+def _starts_new_reasoning_segment(
+    output_index: int, extra: dict[str, Any], previous_chunks: list[StreamingChunk]
+) -> bool:
+    """Whether a reasoning delta follows streamed reasoning text from another reasoning item or part."""
+    for previous_chunk in reversed(previous_chunks):
+        if previous_chunk.reasoning and previous_chunk.reasoning.reasoning_text:
+            previous_extra = previous_chunk.reasoning.extra
+            return previous_chunk.index != output_index or any(
+                previous_extra.get(key) != extra.get(key) for key in ("summary_index", "content_index")
+            )
+    return False
 
 
 def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str, Any]]:
@@ -853,18 +899,14 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             content="",
             component_info=component_info,
             index=chunk.output_index,
-            start=not any(c.meta.get("refusal") for c in previous_chunks if c.index == chunk.output_index),
+            start=not any(c.meta.get("refusal") for c in reversed(previous_chunks) if c.index == chunk.output_index),
             meta={**chunk.to_dict(), "refusal": chunk.delta, "received_at": datetime.now().isoformat()},
         )
 
     elif chunk.type == "response.output_text.delta":
-        # Start is determined by checking if this is the first text delta event of a new output_index
-        # 1) Check if all previous chunks have different output_index
-        # 2) If any chunks do have the same output_index, check if they have content
-        # If none of them have content, this is the start of a new text output
-        start = all(c.index != chunk.output_index for c in previous_chunks) or all(
-            c.content == "" for c in previous_chunks if c.index == chunk.output_index
-        )
+        # A text output starts when no earlier chunk with the same output_index has content.
+        # Scanning backwards stops at the previous text delta.
+        start = all(c.content == "" for c in reversed(previous_chunks) if c.index == chunk.output_index)
         return StreamingChunk(
             content=chunk.delta,
             component_info=component_info,
@@ -878,7 +920,13 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
         extra.pop("delta")
-        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
+        delta = chunk.delta
+        # Separate parts and items as _reasoning_content_from_items does, so the stream matches the final message
+        if delta and _starts_new_reasoning_segment(
+            output_index=chunk.output_index, extra=extra, previous_chunks=previous_chunks
+        ):
+            delta = _REASONING_SEPARATOR + delta
+        reasoning = ReasoningContent(reasoning_text=delta, extra=extra)
         return StreamingChunk(
             content="",
             component_info=component_info,
@@ -1010,9 +1058,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         # The API rejects reasoning input without an id, so items without one are dropped
         if reasoning_id:
             reasoning_extra.update({"id": reasoning_id, "type": "reasoning", "output_index": index})
-            # No done event supplied the text, so rebuild the summary from the streamed deltas
+            # No done event supplied the text, so rebuild the summary from the streamed deltas.
+            # A later item's first delta starts with the separator to the previous item, which the final join re-adds.
             if not reasoning_extra.get("summary") and not reasoning_extra.get("content"):
-                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks)
+                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks).removeprefix(
+                    _REASONING_SEPARATOR
+                )
                 reasoning_extra["summary"] = (
                     [{"text": reasoning_text, "type": "summary_text"}] if reasoning_text else []
                 )

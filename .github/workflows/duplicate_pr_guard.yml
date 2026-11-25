@@ -1,0 +1,107 @@
+name: Duplicate PR guard
+
+# Close a newly opened community PR when another open PR already targets the
+# same linked issue, pointing the author to the existing PR.
+#
+# Uses pull_request_target so it can comment on and close fork PRs; this is safe
+# because the workflow never checks out or executes PR code.
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  # The comment is posted on the PR itself, which counts as a pull request (not
+  # an issue) for token scopes, so this needs pull-requests: write. issues: write
+  # alone yields "Resource not accessible by integration" on the comment. The
+  # same scope covers closing the PR.
+  pull-requests: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            // Team members are exempt. author_association is unreliable for this
+            // (private org members appear as CONTRIBUTOR/NONE in the payload), so
+            // fall back to the effective repository permission. The association
+            // check still short-circuits the common case without an API call.
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
+
+            if (pr.user?.type === "Bot") return;
+            if (["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association)) return;
+            if (await isTeamMember(pr.user.login)) return;
+
+            // Find other open PRs linked to the same issue(s) in this repository.
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        number
+                        repository { nameWithOwner }
+                        closedByPullRequestsReferences(first: 20, includeClosedPrs: false) {
+                          nodes { number state }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { owner, repo, number: pr.number },
+            );
+            const linkedIssues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+              (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
+            );
+            const duplicates = [];
+            for (const issue of linkedIssues) {
+              const others = issue.closedByPullRequestsReferences.nodes.filter(
+                (other) => other.number !== pr.number && other.state === "OPEN",
+              );
+              if (others.length) {
+                const list = others.map((o) => `#${o.number}`).join(", ");
+                duplicates.push(`- Issue #${issue.number} is already being addressed by ${list}.`);
+              }
+            }
+            if (!duplicates.length) return;
+
+            // Explain the closure, then close the PR.
+            const body = [
+              "<!-- duplicate-pr-guard -->",
+              `Hi @${pr.user.login}, thanks for your interest in contributing to Haystack! :pray:`,
+              "",
+              "We're closing this pull request because the issue it links already has an open PR:",
+              "",
+              ...duplicates,
+              "",
+              "To keep the review queue manageable, we review one PR per issue. If you think " +
+                "your approach has something to add, please leave a comment on the existing PR " +
+                "so we can discuss it there. Before picking up an issue, please check whether a " +
+                "PR is already linked to it.",
+              "",
+              "Thanks for understanding!",
+              "",
+              "_This is an automated message to help us keep the review queue healthy._",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: pr.number, body,
+            });
+            await github.rest.pulls.update({
+              owner, repo, pull_number: pr.number, state: "closed",
+            });
