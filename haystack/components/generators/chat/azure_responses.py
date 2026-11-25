@@ -108,7 +108,8 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         """
         Initialize the AzureOpenAIResponsesChatGenerator component.
 
-        :param api_key: The API key to use for authentication. Can be:
+        :param api_key: The API key to use for authentication. Defaults to the `AZURE_OPENAI_API_KEY` environment
+            variable. If no key resolves, `warm_up()` raises a `ValueError`. Can be:
             - A `Secret` object containing the API key.
             - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
             - A function that returns an Azure Active Directory token.
@@ -189,6 +190,15 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             http_client_kwargs=http_client_kwargs,
             include_rate_limit_headers=include_rate_limit_headers,
         )
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        kwargs = super(AzureOpenAIResponsesChatGenerator, self)._client_kwargs()  # noqa: UP008
+        # The OpenAI client falls back to OPENAI_API_KEY when api_key is None, which would send it to Azure.
+        if not kwargs["api_key"]:
+            raise ValueError(
+                "No Azure OpenAI API key found. Pass `api_key` or set the `AZURE_OPENAI_API_KEY` environment variable."
+            )
+        return kwargs
 
     def to_dict(self) -> dict[str, Any]:
         """
