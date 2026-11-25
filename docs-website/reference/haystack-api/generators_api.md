@@ -365,7 +365,8 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
 
 **Parameters:**
 
-- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Can be:
+- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Defaults to the `AZURE_OPENAI_API_KEY` environment
+  variable. If no key resolves, `warm_up()` raises a `ValueError`. Can be:
 - A `Secret` object containing the API key.
 - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
 - A function that returns an Azure Active Directory token.
