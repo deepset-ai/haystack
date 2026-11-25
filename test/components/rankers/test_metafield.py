@@ -354,6 +354,33 @@ class TestMetaFieldRanker:
         assert [doc.id for doc in output["documents"]] == expected_ids
 
     @pytest.mark.parametrize(
+        ("missing_meta", "expected_ids"),
+        [("bottom", ["3", "5", "1", "4", "2"]), ("top", ["2", "3", "5", "1", "4"]), ("drop", ["3", "5", "1", "4"])],
+    )
+    @pytest.mark.parametrize(
+        ("ratings", "meta_value_type"), [((3, float("nan"), 1, 4, 2), None), (("3", "nan", "1", "4", "2"), "float")]
+    )
+    def test_nan_meta_value_is_handled_as_missing_meta(self, ratings, meta_value_type, missing_meta, expected_ids):
+        ranker = MetaFieldRanker(
+            meta_field="rating",
+            weight=1.0,
+            sort_order="ascending",
+            meta_value_type=meta_value_type,
+            missing_meta=missing_meta,
+        )
+        docs_before = [
+            Document(id=str(i), content="abc", meta={"rating": rating}) for i, rating in enumerate(ratings, start=1)
+        ]
+        output = ranker.run(documents=docs_before)
+        assert [doc.id for doc in output["documents"]] == expected_ids
+
+    def test_all_nan_meta_values_are_handled_as_missing_meta(self):
+        ranker = MetaFieldRanker(meta_field="rating", missing_meta="drop")
+        docs = [Document(id="a", content="a", meta={"rating": float("nan")})]
+
+        assert ranker.run(documents=docs)["documents"] == []
+
+    @pytest.mark.parametrize(
         ("meta", "init_missing_meta", "run_missing_meta", "expected_ids"),
         [
             ({}, "drop", None, []),

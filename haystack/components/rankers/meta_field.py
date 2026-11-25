@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import replace
@@ -72,7 +73,8 @@ class MetaFieldRanker:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
+            What to do with documents that are missing the sorting metadata field or whose value
+            for it is `None` or NaN.
             Possible values are:
                 - 'drop' will drop the documents entirely.
                 - 'top' will place the documents at the top of the metadata-sorted list
@@ -202,7 +204,8 @@ class MetaFieldRanker:
             Possible values are `descending` (default) and `ascending`.
             If not provided, the sort_order provided at initialization time is used.
         :param missing_meta:
-            What to do with documents that are missing the sorting metadata field or whose value for it is `None`.
+            What to do with documents that are missing the sorting metadata field or whose value
+            for it is `None` or NaN.
             Possible values are:
             - 'drop' will drop the documents entirely.
             - 'top' will place the documents at the top of the metadata-sorted list
@@ -254,9 +257,20 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": deduplicated_documents[:top_k]}
 
-        # A None value can't be sorted against real values, so it is handled like a missing field
-        docs_with_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
-        docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is None]
+        # A None or NaN value can't be sorted against real values, so it is handled like a missing field.
+        # NaN is checked after parsing, since meta_value_type="float" turns the string "nan" into NaN.
+        docs_with_meta_value = [doc for doc in deduplicated_documents if doc.meta.get(self.meta_field) is not None]
+        parsed_meta_values = self._parse_meta(
+            docs_with_meta_field=docs_with_meta_value, meta_value_type=meta_value_type
+        )
+        parsed_meta_and_docs = [
+            (value, doc)
+            for value, doc in zip(parsed_meta_values, docs_with_meta_value, strict=True)
+            if not (isinstance(value, float) and math.isnan(value))
+        ]
+        docs_with_meta_field = [doc for _, doc in parsed_meta_and_docs]
+        sortable_doc_ids = {doc.id for doc in docs_with_meta_field}
+        docs_missing_meta_field = [doc for doc in deduplicated_documents if doc.id not in sortable_doc_ids]
 
         if len(docs_with_meta_field) == 0:
             logger.warning(
@@ -296,14 +310,10 @@ class MetaFieldRanker:
                     warning_start=warning_start,
                 )
 
-        # If meta_value_type is provided try to parse the meta values
-        parsed_meta = self._parse_meta(docs_with_meta_field=docs_with_meta_field, meta_value_type=meta_value_type)
-        tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field, strict=True))
-
         # Sort the documents by self.meta_field
         reverse = sort_order == "descending"
         try:
-            tuple_sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
+            tuple_sorted_by_meta = sorted(parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
             # Keep the original order if the meta values can't be compared (e.g. int and str),
             # but still place the Documents missing the meta field as set by missing_meta
