@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``EvaluationRunResult.aggregated_report``, ``detailed_report`` and ``comparative_detailed_report`` with
+    ``output_format="csv"`` now write the CSV file as UTF-8. Previously the file used the locale encoding, so on Windows
+    a report with text outside the ANSI code page (e.g. Japanese or Cyrillic questions) was left half-written and an
+    error message was returned instead, and accented characters were written as cp1252.

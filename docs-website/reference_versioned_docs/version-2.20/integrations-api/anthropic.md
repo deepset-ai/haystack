@@ -34,7 +34,6 @@ from haystack.dataclasses import ChatMessage
 generator = AnthropicChatGenerator(
     generation_kwargs={
         "max_tokens": 1000,
-        "temperature": 0.7,
     },
 )
 
@@ -73,6 +72,7 @@ SUPPORTED_MODELS: list[str] = [
     "claude-opus-4-7",
     "claude-opus-4-6",
     "claude-opus-4-5-20251101",
+    "claude-sonnet-5-5",
     "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5-20250929",
@@ -89,7 +89,7 @@ https://platform.claude.com/docs/en/about-claude/models/overview for the full li
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-    model: str = "claude-sonnet-4-5",
+    model: str = "claude-sonnet-5-5",
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
@@ -97,7 +97,8 @@ __init__(
     anthropic_server_tools: list[dict[str, Any]] | None = None,
     *,
     timeout: float | None = None,
-    max_retries: int | None = None
+    max_retries: int | None = None,
+    tools_strict: bool = False
 ) -> None
 ```
 
@@ -128,9 +129,20 @@ Supported generation_kwargs parameters are:
 - `top_k`: The top_k value to use for top-k sampling.
 - `extra_headers`: A dictionary of extra headers to be passed to the model (i.e. for beta features).
 - `thinking`: A dictionary of thinking parameters to be passed to the model.
-  The `budget_tokens` passed for thinking should be less than `max_tokens`.
-  For more details and supported models, see: [Anthropic Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
+  For more details and supported models, see: [Anthropic Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking)
+- `adaptive_thinking_effort`: Shortcut to enable adaptive thinking at the given effort level
+  (e.g. `"high"`). Pass `"disabled"` to turn thinking off. Models that reject this, such as
+  `claude-sonnet-5-5`, turn thinking off with `"thinking": {"type": "between_tools"}` instead.
+  Supported effort levels and thinking types vary by model, see
+  [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) and [Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking).
 - `output_config`: A dictionary of output configuration options to be passed to the model.
+- `cache_control`: A dictionary of cache control options to be passed to the model.
+  See [Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+  for more details on cache control options.
+  To enable automatic prompt caching, pass `{"cache_control": {"type": "ephemeral"}}`.
+- `cache_control_ttl`: Shortcut to set the cache `ttl` (e.g. `"5m"` or `"1h"`) without building the
+  `cache_control` dict yourself. It is merged into `cache_control`, overriding any `ttl` set there,
+  and `type` defaults to `"ephemeral"` if not set.
 - **ignore_tools_thinking_messages** (<code>bool</code>) – Anthropic's approach to tools (function calling) resolution involves a
   "chain of thought" messages before returning the actual function names and parameters in a message. If
   `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
@@ -146,6 +158,9 @@ Supported generation_kwargs parameters are:
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
+- **tools_strict** (<code>bool</code>) – Whether to enable strict tool use. If `True`, each tool is sent with `strict: true`, so the model's tool
+  calls are guaranteed to match the tool's `parameters` schema. The schema must stay within what strict
+  tool use supports. See [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use).
 
 #### warm_up
 
@@ -273,11 +288,11 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 
 Bases: <code>AnthropicChatGenerator</code>
 
-Enables text generation using Anthropic's Claude models via Azure Foundry.
+Enables text generation using Anthropic's Claude models via Microsoft Foundry.
 
-A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Azure Foundry.
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Microsoft Foundry.
 
-To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Foundry enabled
+To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Microsoft Foundry enabled
 and the desired Anthropic model deployed in your Foundry resource.
 
 For more details, refer to the [Anthropic Foundry documentation](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/lib/foundry.md).
@@ -297,7 +312,7 @@ from haystack.utils import Secret
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
 client = AnthropicFoundryChatGenerator(
-    model="claude-sonnet-4-5",
+    model="claude-sonnet-5-5",
     api_key=Secret.from_env_var("ANTHROPIC_FOUNDRY_API_KEY"),
     resource="my-resource",
 )
@@ -309,8 +324,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-5-5', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic
@@ -327,6 +343,7 @@ SUPPORTED_MODELS: list[str] = [
     "claude-opus-4-7",
     "claude-opus-4-6",
     "claude-opus-4-5",
+    "claude-sonnet-5-5",
     "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5",
@@ -336,7 +353,7 @@ SUPPORTED_MODELS: list[str] = [
 ```
 
 A non-exhaustive list of chat models supported by this component.
-The actual availability depends on your Azure Foundry resource configuration.
+The actual availability depends on your Microsoft Foundry resource configuration.
 
 #### __init__
 
@@ -348,7 +365,7 @@ __init__(
     ),
     resource: str | None = None,
     endpoint: str | None = None,
-    model: str = "claude-sonnet-4-5",
+    model: str = "claude-sonnet-5-5",
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
@@ -356,7 +373,8 @@ __init__(
     anthropic_server_tools: list[dict[str, Any]] | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
-    azure_ad_token_provider: Callable[[], str] | None = None
+    azure_ad_token_provider: Callable[[], str] | None = None,
+    tools_strict: bool = False
 ) -> None
 ```
 
@@ -410,6 +428,9 @@ Creates an instance of AnthropicFoundryChatGenerator.
   Can be used instead of `api_key` for enhanced security.
   See [Azure Identity documentation](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/overview)
   for more details.
+- **tools_strict** (<code>bool</code>) – Whether to enable strict tool use. If `True`, each tool is sent with `strict: true`, so the model's tool
+  calls are guaranteed to match the tool's `parameters` schema. The schema must stay within what strict
+  tool use supports. See [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use).
 
 #### warm_up
 
@@ -483,7 +504,7 @@ from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AnthropicVertexChatGenerator(
-            model="claude-sonnet-4-5@20250929",
+            model="claude-sonnet-5-5",
             project_id="your-project-id", region="your-region"
         )
 response = client.run(messages)
@@ -494,8 +515,9 @@ print(response)
 >> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
 >> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
 >> communicate in natural languages like English, Spanish, or Chinese.")],
->> _name=None, _meta={'model': 'claude-sonnet-4-5@20250929', 'index': 0, 'finish_reason': 'end_turn',
->> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+>> _name=None, _meta={'model': 'claude-sonnet-5-5', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 64, 'cache_read_input_tokens': 0,
+>> 'cache_creation_input_tokens': 0, ...}})]}
 ```
 
 For more details on supported models and their capabilities, refer to the Anthropic
@@ -515,6 +537,7 @@ SUPPORTED_MODELS: list[str] = [
     "claude-opus-4-7",
     "claude-opus-4-6",
     "claude-opus-4-5@20251101",
+    "claude-sonnet-5-5",
     "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5@20250929",
@@ -532,7 +555,7 @@ https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-
 __init__(
     region: str,
     project_id: str,
-    model: str = "claude-sonnet-4-5@20250929",
+    model: str = "claude-sonnet-5-5",
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
@@ -540,7 +563,8 @@ __init__(
     anthropic_server_tools: list[dict[str, Any]] | None = None,
     *,
     timeout: float | None = None,
-    max_retries: int | None = None
+    max_retries: int | None = None,
+    tools_strict: bool = False
 ) -> None
 ```
 
@@ -586,6 +610,9 @@ Supported generation_kwargs parameters are:
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
+- **tools_strict** (<code>bool</code>) – Whether to enable strict tool use. If `True`, each tool is sent with `strict: true`, so the model's tool
+  calls are guaranteed to match the tool's `parameters` schema. The schema must stay within what strict
+  tool use supports. See [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use).
 
 #### warm_up
 
@@ -646,7 +673,7 @@ Usage example:
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.token_counters.anthropic import AnthropicTokenCounter
 
-counter = AnthropicTokenCounter(model="claude-sonnet-4-5")
+counter = AnthropicTokenCounter(model="claude-sonnet-5-5")
 messages = [
     ChatMessage.from_system("You are a helpful assistant."),
     ChatMessage.from_user("How many tokens is this?"),

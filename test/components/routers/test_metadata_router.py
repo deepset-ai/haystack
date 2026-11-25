@@ -246,6 +246,20 @@ class TestMetadataRouter:
         }
         assert router.output_type == list[Document]
 
+    def test_from_dict_does_not_mutate_caller_data(self):
+        router = MetadataRouter(
+            rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=list[Document]
+        )
+        data = router.to_dict()
+        serialized_type = data["init_parameters"]["output_type"]
+        assert isinstance(serialized_type, str)
+
+        MetadataRouter.from_dict(data)
+
+        assert data["init_parameters"]["output_type"] == serialized_type
+        # A second deserialization of the same dict must succeed
+        MetadataRouter.from_dict(data)
+
     def test_metadata_router_in_pipeline(self, in_memory_doc_store):
         p = Pipeline()
         docs = [

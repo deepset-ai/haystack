@@ -19,6 +19,27 @@ from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_MARKUP_COMPATIBILITY_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+# A text box keeps its paragraphs here, nested under the drawing inside a run.
+_TEXT_BOX_CONTENT_TAG = f"{{{_WORD_NS}}}txbxContent"
+# Word writes a text box twice inside `mc:AlternateContent`: a `wps:txbx` under
+# `mc:Choice` and the same text as a VML text box under `mc:Fallback`.
+_FALLBACK_TAG = f"{{{_MARKUP_COMPATIBILITY_NS}}}Fallback"
+_RUN_TAG = f"{{{_WORD_NS}}}r"
+_HYPERLINK_TAG = f"{{{_WORD_NS}}}hyperlink"
+_CONTENT_CONTROL_TAG = f"{{{_WORD_NS}}}sdt"
+_CONTENT_CONTROL_CONTENT_TAG = f"{{{_WORD_NS}}}sdtContent"
+_PLACEHOLDER_TAG = f"{{{_WORD_NS}}}showingPlcHdr"
+# Runs a paragraph shows can sit inside these wrappers, which python-docx's `Paragraph.text`
+# and `iter_inner_content()` do not enter: a tracked insertion, the new place of moved
+# text, a smart tag, a custom XML element and a simple field such as a page number.
+# A tracked deletion (`w:del`) and the old place of moved text (`w:moveFrom`) are not
+# shown, so they are left out.
+_RUN_CONTAINER_TAGS = frozenset(
+    f"{{{_WORD_NS}}}{name}" for name in ("ins", "moveTo", "smartTag", "customXml", "fldSimple")
+)
+
 # A Markdown table row ends at a line break and its columns are separated by pipes, so
 # neither can survive inside a cell.
 _MARKDOWN_CELL_BREAK_PATTERN = re.compile(r"\s*(?:\r\n|\r|\n)\s*")
@@ -251,6 +272,7 @@ class DOCXToDocument:
                 else:
                     para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
+                elements.extend(self._extract_text_boxes(element, document))
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
                 table_str = (
@@ -260,6 +282,34 @@ class DOCXToDocument:
                 )
                 elements.append(table_str)
 
+        return elements
+
+    def _extract_text_boxes(self, element: Any, document: "DocxDocument") -> list[str]:
+        """
+        Extracts the text of any text box anchored to a paragraph.
+
+        A text box holds its own paragraphs and tables under `w:txbxContent`, nested in
+        the drawing inside a run, so the anchoring paragraph's text never reaches them.
+
+        :param element: The `w:p` element to look under.
+        :param document: The DOCX Document object.
+        :returns: List of strings, one per paragraph or table found inside a text box.
+        """
+        elements = []
+        for text_box in element.iter(_TEXT_BOX_CONTENT_TAG):
+            # Skip the `mc:Fallback` copy, or the same text is emitted twice.
+            if any(ancestor.tag == _FALLBACK_TAG for ancestor in text_box.iterancestors()):
+                continue
+            for child in text_box:
+                if child.tag.endswith("p"):
+                    elements.append(self._process_links_in_paragraph(Paragraph(child, document)))
+                elif child.tag.endswith("tbl"):
+                    table = docx.table.Table(child, document)
+                    elements.append(
+                        self._table_to_markdown(table)
+                        if self.table_format == DOCXTableFormat.MARKDOWN
+                        else self._table_to_csv(table)
+                    )
         return elements
 
     def _process_paragraph_with_page_breaks(self, paragraph: "Paragraph") -> str:
@@ -294,22 +344,58 @@ class DOCXToDocument:
         :param paragraph: The DOCX paragraph to process.
         :returns: A string with links formatted according to the specified format.
         """
-        if self.link_format == DOCXLinkFormat.NONE:
-            return paragraph.text
         text = ""
-        # Iterate over all hyperlinks and other content in the paragraph
-        # https://python-docx.readthedocs.io/en/latest/api/text.html#docx.text.paragraph.Paragraph.iter_inner_content
-        for content in paragraph.iter_inner_content():
-            if isinstance(content, Run):
+        for content in self._inline_content(paragraph._p, paragraph):
+            if isinstance(content, Run) or self.link_format == DOCXLinkFormat.NONE:
                 text += content.text
-            elif isinstance(content, Hyperlink):
+            else:
+                # Use `.url` instead of `.address` so a URL fragment stored
+                # separately by Word (in `w:anchor`) is not dropped.
                 if self.link_format == DOCXLinkFormat.MARKDOWN:
-                    formatted_link = f"[{content.text}]({content.address})"
+                    formatted_link = f"[{content.text}]({content.url})"
                 else:  # PLAIN format
-                    formatted_link = f"{content.text} ({content.address})"
+                    formatted_link = f"{content.text} ({content.url})"
                 text += formatted_link
 
         return text
+
+    @staticmethod
+    def _shows_placeholder(content_control: Any) -> bool:
+        """
+        Tells whether a content control still shows its placeholder prompt.
+
+        :param content_control: The `w:sdt` element.
+        :returns: True if its properties hold `w:showingPlcHdr` and the flag is not turned off.
+        """
+        properties = content_control.find(f"{{{_WORD_NS}}}sdtPr")
+        flag = properties.find(_PLACEHOLDER_TAG) if properties is not None else None
+        return flag is not None and flag.get(f"{{{_WORD_NS}}}val", "true").lower() not in ("0", "false", "off")
+
+    def _inline_content(self, element: Any, paragraph: "Paragraph") -> list["Run | Hyperlink"]:
+        """
+        Lists the runs and hyperlinks a paragraph shows, in reading order.
+
+        Unlike `Paragraph.iter_inner_content()`, this also enters tracked insertions, moved
+        text, smart tags, custom XML, simple fields and inline content controls. A content
+        control that still shows its placeholder prompt is skipped, as its text is not
+        part of the document.
+
+        :param element: The `w:p` element, or a wrapper inside it.
+        :param paragraph: The paragraph the runs belong to.
+        :returns: List of `Run` and `Hyperlink` objects.
+        """
+        content: list[Run | Hyperlink] = []
+        for child in element:
+            if child.tag == _RUN_TAG:
+                content.append(Run(child, paragraph))
+            elif child.tag == _HYPERLINK_TAG:
+                content.append(Hyperlink(child, paragraph))
+            elif child.tag in _RUN_CONTAINER_TAGS:
+                content.extend(self._inline_content(child, paragraph))
+            elif child.tag == _CONTENT_CONTROL_TAG and not self._shows_placeholder(child):
+                for control_content in child.iterchildren(_CONTENT_CONTROL_CONTENT_TAG):
+                    content.extend(self._inline_content(control_content, paragraph))
+        return content
 
     @staticmethod
     def _escape_markdown_cell(text: str) -> str:

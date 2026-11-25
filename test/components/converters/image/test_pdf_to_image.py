@@ -56,6 +56,13 @@ class TestPDFToImageContent:
         assert results["image_contents"][2].meta["page_number"] == 3
         assert results["image_contents"][3].meta["page_number"] == 4
 
+    def test_run_with_duplicate_page_range(self) -> None:
+        converter = PDFToImageContent(page_range=[1, 1])
+        results = converter.run(sources=["./test/test_files/pdf/sample_pdf_1.pdf"])
+
+        assert len(results["image_contents"]) == 1
+        assert results["image_contents"][0].meta["page_number"] == 1
+
     def test_run_with_no_sources(self) -> None:
         converter = PDFToImageContent()
         results = converter.run(sources=[])

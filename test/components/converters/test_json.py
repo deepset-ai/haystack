@@ -83,6 +83,17 @@ def test_init_without_jq_schema_and_missing_dependency(jq_import):
     assert converter._meta_fields is None
 
 
+@pytest.mark.parametrize("extra_meta_fields", ["author", "**"])
+def test_init_rejects_non_star_string_extra_meta_fields(extra_meta_fields):
+    with pytest.raises(ValueError, match="Invalid extra_meta_fields value"):
+        JSONConverter(content_key="title", extra_meta_fields=extra_meta_fields)
+
+
+def test_init_accepts_star_literal_extra_meta_fields():
+    converter = JSONConverter(content_key="title", extra_meta_fields="*")
+    assert converter._meta_fields == "*"
+
+
 @patch("haystack.components.converters.json.jq_import")
 def test_init_with_jq_schema_and_missing_dependency(jq_import):
     jq_import.check.side_effect = ImportError
@@ -128,6 +139,15 @@ def test_from_dict():
     assert converter._jq_schema == ".laureates[]"
     assert converter._content_key == "motivation"
     assert converter._meta_fields == ["firstname", "surname"]
+
+
+def test_from_dict_rejects_non_star_string_extra_meta_fields():
+    data = {
+        "type": "haystack.components.converters.json.JSONConverter",
+        "init_parameters": {"content_key": "title", "extra_meta_fields": "author"},
+    }
+    with pytest.raises(ValueError, match="Invalid extra_meta_fields value 'author'"):
+        JSONConverter.from_dict(data)
 
 
 def test_run(tmpdir):

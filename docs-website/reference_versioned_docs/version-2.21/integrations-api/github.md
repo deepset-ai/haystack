@@ -116,7 +116,8 @@ Process GitHub file operations.
 
 **Raises:**
 
-- <code>ValueError</code> – If command is not a valid Command enum value
+- <code>ValueError</code> – If command is not a valid Command enum value, or if repo is not in owner/repo format or
+  contains characters other than letters, digits, `.`, `_` and `-`
 
 #### to_dict
 
@@ -308,6 +309,106 @@ Process a GitHub issue URL and return documents.
 **Returns:**
 
 - <code>dict</code> – Dictionary containing list of documents
+
+## haystack_integrations.components.connectors.github.pr_checkout
+
+### GitHubPRCheckout
+
+Checks out a pull request's head commit and returns its diff with line numbers.
+
+The head commit is fetched with `git` into `checkout_dir`, relative to the working directory, so an Agent can read
+the code around the change with other tools. The output text holds:
+
+- the repository's guideline files (such as AGENTS.md) from the base branch;
+- the diff of every changed file, with the new-file line number on every line.
+
+Requires the `git` command line tool, version 2.31 or later, on the `PATH`. `warm_up` raises a `RuntimeError` if
+it is missing or older.
+
+### Usage example
+
+```python
+from haystack_integrations.components.connectors.github import GitHubPRCheckout
+
+checkout = GitHubPRCheckout()
+checkout.warm_up()
+result = checkout.run(repo="owner/repository", pull_number=123)
+print(result["text"])
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    github_token: Secret | None = Secret.from_env_var(
+        "GITHUB_TOKEN", strict=False
+    ),
+    checkout_dir: str = "repo",
+    guideline_files: list[str] | None = None,
+    excluded_files: list[str] | None = None,
+    max_diff_chars: int = 100000,
+    raise_on_failure: bool = True
+) -> None
+```
+
+Initialize the component.
+
+**Parameters:**
+
+- **github_token** (<code>Secret | None</code>) – GitHub token for the API and for fetching the code. Without a token, only public
+  repositories can be read.
+- **checkout_dir** (<code>str</code>) – Directory, relative to the working directory, that the head commit is checked out into.
+  An earlier checkout by this component is reused for the same commit and replaced for another one. Any
+  other non-empty directory is left untouched, and the checkout fails.
+- **guideline_files** (<code>list\[str\] | None</code>) – Files read from the root of the base branch and returned before the diff.
+  Defaults to `AGENTS.md`, `CLAUDE.md` and `CONTRIBUTING.md`.
+- **excluded_files** (<code>list\[str\] | None</code>) – `fnmatch` patterns of changed files whose diff is left out, such as lockfiles.
+  Defaults to common lockfiles and minified files.
+- **max_diff_chars** (<code>int</code>) – Maximum number of characters of diff to return. Files past the limit are listed by name.
+- **raise_on_failure** (<code>bool</code>) – If True, errors from the GitHub API raise. If False, the error message is returned
+  as the `text` output.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Check that `git` is installed and resolve the GitHub token.
+
+**Raises:**
+
+- <code>RuntimeError</code> – If the `git` command line tool is not on the `PATH` or is older than 2.31.
+
+#### run
+
+```python
+run(
+    repo: str, pull_number: int, files: list[str] | None = None
+) -> dict[str, str]
+```
+
+Check out the head commit of a pull request and return its guidelines and line-numbered diff.
+
+**Parameters:**
+
+- **repo** (<code>str</code>) – The repository as `owner/repo`.
+- **pull_number** (<code>int</code>) – The pull request number.
+- **files** (<code>list\[str\] | None</code>) – Paths of changed files to show the diff of, such as files left out of an earlier call. If set,
+  the guidelines are not returned and `excluded_files` does not apply.
+
+**Returns:**
+
+- <code>dict\[str, str\]</code> – A dictionary with:
+- `text`: the checkout result, the guidelines unless `files` is set, the diff of every file within
+  `max_diff_chars`, and the files left out of the diff. If checking out the code fails, `text` says so
+  and still holds the rest.
+- `head_sha`: the head commit, or an empty string if a GitHub API error is returned as `text`.
+
+**Raises:**
+
+- <code>requests.HTTPError</code> – If a GitHub API request fails and `raise_on_failure` is True.
 
 ## haystack_integrations.components.connectors.github.pr_creator
 

@@ -1,0 +1,164 @@
+---
+title: "OpenAIDecisionsImageRouter"
+id: openaidecisionsimagerouter
+slug: "/openaidecisionsimagerouter"
+description: "Routes an image to one of the configured label outputs using the OpenAI Decisions API."
+hep_available: false
+---
+
+# OpenAIDecisionsImageRouter
+
+Routes an image to one of the configured label outputs using the OpenAI Decisions API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory init variables** | `labels`: The labels to route between <br /> <br />`api_key`: The OpenAI API key. Can be set with the `OPENAI_API_KEY` env var. |
+| **Mandatory run variables** | `image`: The [ImageContent](/reference/data-classes-api#imagecontent) to route |
+| **Optional run variables** | `text`: Additional context for the image |
+| **Output variables** | `<label>`: The image on the output named after the picked label. <br /> <br />`low_confidence`: The image when confidence is below `min_confidence`. Only available when a threshold is configured. <br /> <br />`refused`: The image when the model declines to classify it. Always available. |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/openai_decisions_image_router.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`OpenAIDecisionsImageRouter` takes an [ImageContent](/reference/data-classes-api#imagecontent) and returns the image
+on one of the configured label outputs.
+An [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) model selects the label by answering a
+single `choice` question.
+
+Pass `labels` as a list of names, or as a dict of label to description to tell the model what each label means. Use
+`instructions` to define how the model should choose between the labels.
+
+You can pass optional `text` alongside the image to provide context for the decision.
+
+Every output image includes the answer in `meta["openai_decisions"]`: `type`, `choice`, `confidence`, and `probabilities`
+for a choice, or `{"type": "refusal"}` for a refusal.
+
+When you set `min_confidence`, the component gets an extra `low_confidence` output. Images whose answer has a
+`confidence` below the threshold go there instead, so you can send them to a fallback such as another model or human
+review.
+
+If the model declines to answer, the image goes to `refused`, regardless of the confidence threshold. API errors
+propagate to the caller.
+
+Labels must be between 2 and 255 unique, non-empty strings. `low_confidence` and `refused` are reserved output names.
+
+### Authentication
+
+The component reads the API key from `OPENAI_API_KEY` by default. You can also pass a `Secret` through the `api_key`
+constructor parameter.
+
+## Usage
+
+Set `OPENAI_API_KEY` before running these examples. The component supports both `run()` and `run_async()`.
+
+### On its own
+
+```python
+from haystack.components.routers import OpenAIDecisionsImageRouter
+from haystack.dataclasses import ImageContent
+
+router = OpenAIDecisionsImageRouter(
+    labels={
+        "fruit": "Photographs of fruit",
+        "logo": "Company logos",
+    },
+)
+image = ImageContent.from_file_path(file_path="apple.jpg")
+result = router.run(image=image)
+# >> {"fruit": <ImageContent>}
+```
+
+### In a pipeline
+
+This pipeline routes a photo of an exercise to a specialized tutor. Math exercises go to an Agent with a calculator tool;
+humanities exercises go to an Agent that can search course materials. The selected Agent receives the image and
+explains the solution.
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.routers import OpenAIDecisionsImageRouter
+from haystack.dataclasses import ImageContent
+from haystack.tools import tool
+
+
+@tool
+def calculator(expression: str) -> str:
+    """Evaluate a mathematical expression."""
+    ...
+
+
+@tool
+def search_course_materials(query: str) -> str:
+    """Search course materials for relevant background information."""
+    ...
+
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "router",
+    OpenAIDecisionsImageRouter(
+        labels={
+            "math": "Mathematics exercises.",
+            "humanities": "History, literature, and philosophy exercises.",
+        },
+        instructions="Choose the tutor for this exercise.",
+    ),
+)
+template = """
+{% message role="user" %}
+Help me solve this exercise, explaining each step.
+{{ image | templatize_part }}
+{% endmessage %}
+"""
+pipeline.add_component(
+    "math_prompt_builder",
+    ChatPromptBuilder(template=template, required_variables=["image"]),
+)
+pipeline.add_component(
+    "humanities_prompt_builder",
+    ChatPromptBuilder(template=template, required_variables=["image"]),
+)
+pipeline.add_component(
+    "math_tutor",
+    Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=[calculator],
+        system_prompt=(
+            "You are a mathematics tutor. Use the calculator for arithmetic "
+            "and explain the reasoning behind the solution."
+        ),
+    ),
+)
+pipeline.add_component(
+    "humanities_tutor",
+    Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=[search_course_materials],
+        system_prompt=(
+            "You are a humanities tutor. Search the course materials for relevant "
+            "background and use it to explain the answer."
+        ),
+    ),
+)
+pipeline.connect("router.math", "math_prompt_builder.image")
+pipeline.connect("router.humanities", "humanities_prompt_builder.image")
+pipeline.connect("math_prompt_builder.prompt", "math_tutor.messages")
+pipeline.connect("humanities_prompt_builder.prompt", "humanities_tutor.messages")
+
+result = pipeline.run(
+    {"router": {"image": ImageContent.from_file_path(file_path="exercise.jpg")}}
+)
+for agent_name in ("math_tutor", "humanities_tutor"):
+    if agent_name in result:
+        print(f"{agent_name}: {result[agent_name]['last_message'].text}")
+```

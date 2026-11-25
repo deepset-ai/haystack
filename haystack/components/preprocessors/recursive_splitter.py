@@ -65,6 +65,7 @@ class RecursiveDocumentSplitter:
         split_unit: Literal["word", "char", "token"] = "word",
         separators: list[str] | None = None,
         sentence_splitter_params: dict[str, Any] | None = None,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initializes a RecursiveDocumentSplitter.
@@ -74,7 +75,7 @@ class RecursiveDocumentSplitter:
         :param split_overlap: The number of overlapping units (words, characters, or tokens, per
             `split_unit`) between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
-            If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
+            If "token" is selected, the text will be split into tokens using tiktoken (see `tokenizer_encoding`).
             Special-token strings in document content are encoded as ordinary text.
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
@@ -85,9 +86,11 @@ class RecursiveDocumentSplitter:
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
             The chunks keep the whitespace between sentences whether `keep_white_spaces` is True or False; it only
             changes the rules the tokenizer uses to decide where a sentence ends.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_unit="token"`. Defaults to `"o200k_base"`
+            (current OpenAI models). Only used when `split_unit="token"`.
 
-        :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
-                            if any separator is not a string.
+        :raises ValueError: If `split_unit` is not one of "word", "char", or "token", if the overlap is greater than or
+                            equal to the chunk size, if the overlap is negative, or if any separator is not a string.
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
@@ -98,6 +101,7 @@ class RecursiveDocumentSplitter:
         self.sentence_splitter_params = (
             {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
         )
+        self.tokenizer_encoding = tokenizer_encoding
         self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
         self._is_warmed_up = False
 
@@ -111,7 +115,7 @@ class RecursiveDocumentSplitter:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
         if self.split_units == "token":
             tiktoken_imports.check()
-            self.tiktoken_tokenizer = tiktoken.get_encoding("o200k_base")
+            self.tiktoken_tokenizer = tiktoken.get_encoding(self.tokenizer_encoding)
         self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -128,9 +132,12 @@ class RecursiveDocumentSplitter:
             split_unit=self.split_units,
             separators=self.separators,
             sentence_splitter_params=self.sentence_splitter_params,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
     def _check_params(self) -> None:
+        if self.split_units not in ("word", "char", "token"):
+            raise ValueError(f"split_unit '{self.split_units}' is not recognized. Choose one of: word, char, token.")
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
@@ -282,14 +289,18 @@ class RecursiveDocumentSplitter:
         :returns:
             The `(start, end)` character offsets of each chunk with the overlap applied, in the concatenated `chunks`.
         """
-        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only spaces has no words and
+        # The words of every chunk, as offsets into the concatenated chunks. A chunk of only whitespace has no words and
         # joins the chunk before it (or after it, at the start of the text).
         words: list[tuple[int, int]] = []
         chunk_word_ends: list[int] = []
         chunk_starts: list[int] = []
         offset = 0
         for chunk in chunks:
-            chunk_words = [(offset + match.start(), offset + match.end()) for match in re.finditer(r"[^ ]+", chunk)]
+            chunk_words = [
+                (offset + match.start(), offset + match.end())
+                for match in re.finditer(r"[^ ]+", chunk)
+                if match.group().strip()
+            ]
             if chunk_words:
                 words.extend(chunk_words)
                 chunk_word_ends.append(len(words))
@@ -329,7 +340,8 @@ class RecursiveDocumentSplitter:
         :returns: The length of the text in the specified units.
         """
         if self.split_units == "word":
-            words = [word for word in text.split(" ") if word]
+            # like _fall_back_to_fixed_chunking, don't count whitespace-only pieces such as "\f" as words
+            words = [word for word in text.split(" ") if word.strip()]
             return len(words)
         if self.split_units == "char":
             return len(text)

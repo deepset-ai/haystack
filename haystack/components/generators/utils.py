@@ -197,6 +197,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         meta["logprobs"] = logprobs
 
+    refusal = "".join(chunk.meta.get("refusal", "") for chunk in chunks)
+    if refusal:
+        meta["refusal"] = refusal
+
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
 
 

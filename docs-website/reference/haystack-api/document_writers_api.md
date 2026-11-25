@@ -126,7 +126,6 @@ but can be used with `await` in async code.
 **Raises:**
 
 - <code>ValueError</code> – If the specified document store is not found.
-- <code>TypeError</code> – If the specified document store does not implement `write_documents_async`.
 
 #### close
 

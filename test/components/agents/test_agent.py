@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import threading
+import time
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from typing import Any
@@ -34,7 +35,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool, SearchableToolset, Tool, warm_up_tools, warm_up_tools_async
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -88,6 +89,50 @@ def weather_tool():
         description="Provides weather information for a given location.",
         parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
         function=weather_function,
+    )
+
+
+@pytest.fixture
+def uppercase_weather_tool():
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=weather_function,
+        outputs_to_string={"source": "weather", "handler": str.upper},
+    )
+
+
+@pytest.fixture
+def failing_handler_weather_tool():
+    def slow_paris_weather_function(location: str) -> dict[str, Any]:
+        # Paris finishes after Berlin's handler has raised
+        if location == "Paris":
+            time.sleep(0.1)
+        return weather_function(location)
+
+    def failing_handler(value: str) -> str:
+        raise ValueError("cannot format weather")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=slow_paris_weather_function,
+        outputs_to_string={"source": "weather", "handler": failing_handler},
+    )
+
+
+@pytest.fixture
+def failing_tool():
+    def failing_function(location: str) -> dict[str, str]:
+        raise RuntimeError("weather service unavailable")
+
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+        function=failing_function,
     )
 
 
@@ -233,6 +278,7 @@ class TestAgentInit:
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
             "context_tokens": {"type": int, "handler": replace_values},
+            "max_agent_steps": {"type": int, "handler": replace_values},
         }
 
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
@@ -254,7 +300,7 @@ class TestAgentInit:
             agent.__haystack_input__._sockets_dict.keys()
         )
         # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
-        for internal_key in ("continue_run", "context_tokens"):
+        for internal_key in ("continue_run", "context_tokens", "max_agent_steps"):
             assert internal_key not in agent.__haystack_input__._sockets_dict
             assert internal_key not in agent.__haystack_output__._sockets_dict
 
@@ -339,6 +385,7 @@ class TestAgentSerialization:
                         "tools": None,
                         "tools_strict": False,
                         "http_client_kwargs": None,
+                        "include_rate_limit_headers": False,
                     },
                 },
                 "tools": [
@@ -620,6 +667,50 @@ class TestAgentClone:
         assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
 
 
+class TestAgentTelemetry:
+    def test_get_telemetry_data(self, weather_tool, component_tool):
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, Toolset([component_tool])])
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {
+                "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                "model": chat_generator.model,
+            },
+            "tools": {
+                "count": 2,
+                "tools": [
+                    {"type": "haystack.tools.tool.Tool", "name": "weather_tool"},
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "name": "parrot",
+                        "component": "haystack.components.builders.prompt_builder.PromptBuilder",
+                    },
+                ],
+                "toolset_types": {"haystack.tools.toolset.Toolset": 1},
+            },
+        }
+
+    def test_get_telemetry_data_without_tools(self):
+        agent = Agent(chat_generator=MockChatGenerator("Hello"))
+
+        assert agent._get_telemetry_data() == {
+            "chat_generator": {"type": "haystack.components.generators.chat.mock.MockChatGenerator"},
+            "tools": {"count": 0, "tools": [], "toolset_types": {}},
+        }
+
+    def test_get_telemetry_data_reports_searchable_toolset_catalog(self, weather_tool):
+        # below the search threshold a SearchableToolset is a passthrough exposing its whole catalog
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=SearchableToolset(catalog=[weather_tool]))
+        agent.warm_up()
+
+        assert agent._get_telemetry_data()["tools"] == {
+            "count": 1,
+            "tools": [{"type": "haystack.tools.tool.Tool", "name": "weather_tool"}],
+            "toolset_types": {"haystack.tools.searchable_toolset.SearchableToolset": 1},
+        }
+
+
 class TestGetModelExitReason:
     @pytest.mark.parametrize(
         ("message", "expected"),
@@ -716,6 +807,57 @@ class TestAgentRun:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
+
+    @pytest.mark.parametrize("pass_tools_at", ["init", "run"])
+    def test_run_warns_when_inputs_from_state_key_missing_from_state_schema(self, pass_tools_at):
+        tool = Tool(
+            name="recall",
+            description="Recall memories for a user.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda user_id=None, session_id=None: user_id,
+            inputs_from_state={"user_id": "user_id", "session_id": "session_id"},
+        )
+        # Only `session_id` is declared, so only `user_id` should warn
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[tool] if pass_tools_at == "init" else [],
+            state_schema={"session_id": {"type": str}},
+        )
+
+        with pytest.warns(FutureWarning) as record:
+            agent.run([ChatMessage.from_user("Hi")], tools=[tool] if pass_tools_at == "run" else None)
+
+        messages = [str(w.message) for w in record if issubclass(w.category, FutureWarning)]
+        assert len(messages) == 1
+        assert "Tool 'recall' reads state key 'user_id' through `inputs_from_state`" in messages[0]
+
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    def test_run_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        output = pipeline.run(data={"agent": inputs})["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("state_inputs", [{}, {"top_k": None}, {"top_k": 0}], ids=["omitted", "none", "zero"])
+    async def test_run_async_in_pipeline_returns_state_input_only_when_provided(self, state_inputs):
+        agent = Agent(chat_generator=MockChatGenerator("Done"), state_schema={"top_k": {"type": int | None}})
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        inputs = {"messages": [ChatMessage.from_user("Search")], **state_inputs}
+        result = await pipeline.run_async(data={"agent": inputs})
+        output = result["agent"]
+
+        if "top_k" in state_inputs:
+            assert output["top_k"] == state_inputs["top_k"]
+        else:
+            assert "top_k" not in output
 
     @pytest.mark.asyncio
     async def test_generation_kwargs(self, monkeypatch):
@@ -826,7 +968,7 @@ class TestAgentRun:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
@@ -946,7 +1088,7 @@ class TestAgentStreaming:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        chat_generator = OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         streaming_callback_called = False
 
@@ -1373,6 +1515,10 @@ class TestAgentTracing:
                     "type": "int",
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
+                "max_agent_steps": {
+                    "type": "int",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
             },
             "haystack.agent.input": {
                 "messages": [ChatMessage.from_user("What's the weather in Paris?")],
@@ -1447,9 +1593,97 @@ class TestAgentTracing:
             "haystack.tool.description": "Provides weather information for a given location.",
             "haystack.agent.step.tool.input": {"location": "Berlin"},
             "haystack.agent.step.tool.output": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+            "haystack.agent.step.tool.result": '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}',
         }
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
+
+    def test_tracing_span_tool_result_uses_outputs_to_string(self, spying_tracer, uppercase_weather_tool):
+        """The tool span records the result the LLM sees, after the `outputs_to_string` handler ran."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_tool_result_uses_outputs_to_string(
+        self, spying_tracer, uppercase_weather_tool
+    ):
+        """The async path also records the `outputs_to_string` result on each tool span."""
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[uppercase_weather_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert {
+            (span.tags["haystack.agent.step.tool.output"]["weather"], span.tags["haystack.agent.step.tool.result"])
+            for span in tool_spans
+        } == {("mostly sunny", "MOSTLY SUNNY"), ("mostly cloudy", "MOSTLY CLOUDY")}
+
+    def test_tracing_span_run_with_failing_outputs_to_string_handler(self, spying_tracer, failing_handler_weather_tool):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_outputs_to_string_handler(
+        self, spying_tracer, failing_handler_weather_tool
+    ):
+        agent = Agent(
+            chat_generator=_parallel_tool_calling_generator(),
+            tools=[failing_handler_weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(ValueError, match="cannot format weather"):
+            await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert "haystack.agent.step.tool.output" in span.tags
+            assert "haystack.agent.step.tool.result" not in span.tags
+        assert spying_tracer.current_span() is None
+
+    def test_tracing_span_run_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_tracing_span_run_async_with_failing_tool_call(self, spying_tracer, failing_tool):
+        agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[failing_tool])
+
+        await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        for span in tool_spans:
+            assert span.tags["haystack.tool.error"] is True
+            assert "weather service unavailable" in span.tags["haystack.agent.step.tool.output"]["error"]
 
     def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""
@@ -1922,21 +2156,23 @@ class _TrackingTool(Tool):
     was_warmed_up: bool = False
 
     def warm_up(self) -> None:
-        super().warm_up()
         self.was_warmed_up = True
 
 
 class _TrackingToolset(Toolset):
     was_warmed_up: bool = False
+    was_warmed_up_async: bool = False
 
     def warm_up(self) -> None:
-        super().warm_up()
+        warm_up_tools(tools=self.tools)
         self.was_warmed_up = True
 
+    async def warm_up_async(self) -> None:
+        await warm_up_tools_async(tools=self.tools)
+        self.was_warmed_up_async = True
 
-class TestAgentWarmUp:
-    """Tests that Agent.warm_up() correctly warms up tools and toolsets."""
 
+class TestComponentLifecycle:
     def _make_tracking_tool(self, name: str = "test_tool") -> _TrackingTool:
         return _TrackingTool(
             name=name,
@@ -1945,23 +2181,9 @@ class TestAgentWarmUp:
             function=lambda: "result",
         )
 
-    def _make_tracking_toolset(self, tools: list[Tool]) -> _TrackingToolset:
-        return _TrackingToolset(tools)
-
-    def test_warm_up_multiple_tools(self):
-        tool1 = self._make_tracking_tool("tool1")
-        tool2 = self._make_tracking_tool("tool2")
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool1, tool2])
-
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-        agent.warm_up()
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-
     def test_warm_up_toolset(self):
         inner_tool = self._make_tracking_tool()
-        toolset = self._make_tracking_toolset([inner_tool])
+        toolset = _TrackingToolset([inner_tool])
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
 
         assert not toolset.was_warmed_up
@@ -1969,47 +2191,15 @@ class TestAgentWarmUp:
         assert toolset.was_warmed_up
 
     def test_warm_up_mixed_list_of_tools_and_toolsets(self):
-        tool1 = self._make_tracking_tool("standalone_tool1")
-        tool2 = self._make_tracking_tool("standalone_tool2")
-        tool3 = self._make_tracking_tool("toolset_tool1")
-        toolset1 = self._make_tracking_toolset([tool3])
-        tool4 = self._make_tracking_tool("toolset_tool2")
-        toolset2 = self._make_tracking_toolset([tool4])
+        standalone_tool = self._make_tracking_tool("standalone")
+        toolset = _TrackingToolset([self._make_tracking_tool("child")])
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[standalone_tool, toolset])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool1, toolset1, tool2, toolset2])
-
-        assert not tool1.was_warmed_up
-        assert not tool2.was_warmed_up
-        assert not toolset1.was_warmed_up
-        assert not toolset2.was_warmed_up
+        assert not standalone_tool.was_warmed_up
+        assert not toolset.was_warmed_up
         agent.warm_up()
-        assert tool1.was_warmed_up
-        assert tool2.was_warmed_up
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
-
-    def test_warm_up_rewarms_tools_on_every_call(self, monkeypatch):
-        call_count = {"n": 0}
-        tool = Tool(
-            name="counting_tool",
-            description="A tool that counts warm_up calls",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "test",
-        )
-        original = tool.warm_up
-
-        def counting_warm_up():
-            original()
-            call_count["n"] += 1
-
-        monkeypatch.setattr(tool, "warm_up", counting_warm_up)
-
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[tool])
-        agent.warm_up()
-        agent.warm_up()
-        agent.warm_up()
-
-        assert call_count["n"] == 3
+        assert standalone_tool.was_warmed_up
+        assert toolset.was_warmed_up
 
     @pytest.mark.parametrize(
         "initial_tools",
@@ -2105,14 +2295,55 @@ class TestAgentWarmUp:
         assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
         assert result["last_message"].text == "done"
 
-    def test_run_warms_up_per_run_toolset(self):
+    def test_run_warms_empty_toolset_before_selection_by_name(self):
+        actual_tool = self._make_tracking_tool("get_time")
+
+        class LazyToolset(Toolset):
+            def warm_up(self):
+                self.tools = [actual_tool]
+
+        toolset = LazyToolset([])
+        generator = MockChatGenerator(
+            [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})]), "done"]
+        )
+        agent = Agent(chat_generator=generator, tools=toolset)
+
+        result = agent.run(messages=[ChatMessage.from_user("What time is it?")], tools=["get_time"])
+
+        assert toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "result"
+        assert result["last_message"].text == "done"
+
+    @pytest.mark.asyncio
+    async def test_run_async_warms_empty_toolset_before_selection_by_name(self):
+        actual_tool = self._make_tracking_tool("get_time")
+
+        class LazyToolset(Toolset):
+            async def warm_up_async(self):
+                self.tools = [actual_tool]
+
+        toolset = LazyToolset([])
+        generator = MockChatGenerator(
+            [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})]), "done"]
+        )
+        agent = Agent(chat_generator=generator, tools=toolset)
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("What time is it?")], tools=["get_time"])
+
+        assert toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "result"
+        assert result["last_message"].text == "done"
+
+    def test_run_warms_up_but_does_not_close_per_run_toolset(self, monkeypatch):
         """Per-run tools passed to run() are not covered by Agent.warm_up() and must be warmed up at run time."""
         init_tool = self._make_tracking_tool("init_tool")
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=Toolset([init_tool]))
         agent.warm_up()
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
-        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        per_run_toolset = _TrackingToolset([per_run_tool])
+        toolset_close = MagicMock()
+        monkeypatch.setattr(per_run_toolset, "close", toolset_close, raising=False)
         assert not per_run_toolset.was_warmed_up
         assert not per_run_tool.was_warmed_up
 
@@ -2120,6 +2351,8 @@ class TestAgentWarmUp:
 
         assert per_run_toolset.was_warmed_up
         assert per_run_tool.was_warmed_up
+        agent.close()
+        toolset_close.assert_not_called()
 
     def test_run_warms_up_per_run_list_of_tools_and_toolsets(self):
         """A per-run list of Tools and Toolsets must be warmed up at run time."""
@@ -2129,7 +2362,7 @@ class TestAgentWarmUp:
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
         toolset_tool = self._make_tracking_tool("toolset_tool")
-        per_run_toolset = self._make_tracking_toolset([toolset_tool])
+        per_run_toolset = _TrackingToolset([toolset_tool])
 
         per_run_tools: list[Tool | Toolset] = [per_run_tool, per_run_toolset]
         agent.run(messages=[ChatMessage.from_user("hi")], tools=per_run_tools)
@@ -2139,86 +2372,118 @@ class TestAgentWarmUp:
         assert toolset_tool.was_warmed_up
 
     @pytest.mark.asyncio
-    async def test_run_async_warms_up_per_run_toolset(self):
+    async def test_run_async_warms_up_but_does_not_close_per_run_toolset(self, monkeypatch):
         """The async run path must also warm up per-run tools."""
         init_tool = self._make_tracking_tool("init_tool")
         agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=Toolset([init_tool]))
         agent.warm_up()
 
         per_run_tool = self._make_tracking_tool("per_run_tool")
-        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        per_run_toolset = _TrackingToolset([per_run_tool])
+        toolset_close_async = AsyncMock()
+        monkeypatch.setattr(per_run_toolset, "close_async", toolset_close_async, raising=False)
 
         await agent.run_async(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
 
-        assert per_run_toolset.was_warmed_up
+        assert per_run_toolset.was_warmed_up_async
         assert per_run_tool.was_warmed_up
+        assert not per_run_toolset.was_warmed_up
+        await agent.close_async()
+        toolset_close_async.assert_not_called()
 
-
-class TestComponentLifecycle:
-    def test_warm_up_delegates_to_chat_generator(self, weather_tool, monkeypatch):
+    def test_warm_up_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        warm_up_mock = MagicMock()
-        monkeypatch.setattr(chat_generator, "warm_up", warm_up_mock)
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool], system_prompt="This is a system prompt.")
 
         agent.warm_up()
-        warm_up_mock.assert_called_once()
+        generator_warm_up.assert_called_once_with()
+        tool.warm_up.assert_called_once_with()
 
-        warm_up_mock.reset_mock()
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
-        assert warm_up_mock.call_count == 2
+        agent.warm_up()
+        assert generator_warm_up.call_count == 2
+        assert tool.warm_up.call_count == 2
+
+    def test_run_warms_up_tools_and_chat_generator(self, monkeypatch, weather_tool):
+        chat_generator = MockChatGenerator("Hello")
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool_warm_up = MagicMock()
+        monkeypatch.setattr(weather_tool, "warm_up", tool_warm_up, raising=False)
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+        agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+
+        generator_warm_up.assert_called_with()
+        tool_warm_up.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_warm_up_async_delegates_to_chat_generator(self, monkeypatch):
+    async def test_warm_up_async_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        warm_up_async_mock = AsyncMock()
-        warm_up_mock = MagicMock()
-        monkeypatch.setattr(chat_generator, "warm_up_async", warm_up_async_mock, raising=False)
-        monkeypatch.setattr(chat_generator, "warm_up", warm_up_mock)
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_warm_up_async = AsyncMock()
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up_async", generator_warm_up_async, raising=False)
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock(), warm_up_async=AsyncMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.warm_up_async()
-        warm_up_async_mock.assert_awaited_once()
-        warm_up_mock.assert_not_called()
+        generator_warm_up_async.assert_awaited_once_with()
+        generator_warm_up.assert_not_called()
+        tool.warm_up_async.assert_awaited_once_with()
+        tool.warm_up.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_warm_up_async_falls_back_to_sync_warm_up(self, monkeypatch):
         chat_generator = MockChatGeneratorWithoutRunAsync()
-        warm_up_mock = MagicMock()
-        monkeypatch.setattr(chat_generator, "warm_up", warm_up_mock, raising=False)
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_warm_up = MagicMock()
+        monkeypatch.setattr(chat_generator, "warm_up", generator_warm_up, raising=False)
+        tool = MagicMock(spec=Tool, warm_up=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.warm_up_async()
-        warm_up_mock.assert_called_once()
+        generator_warm_up.assert_called_once_with()
+        tool.warm_up.assert_called_once_with()
 
-    def test_close_delegates_to_chat_generator(self, monkeypatch):
+    def test_close_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        close_mock = MagicMock()
-        monkeypatch.setattr(chat_generator, "close", close_mock, raising=False)
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         agent.close()
-        close_mock.assert_called_once()
+        generator_close.assert_called_once_with()
+        tool.close.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_close_async_delegates_to_chat_generator(self, monkeypatch):
+    async def test_close_async_delegates_to_tools_and_chat_generator(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        close_async_mock = AsyncMock()
-        monkeypatch.setattr(chat_generator, "close_async", close_async_mock, raising=False)
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        generator_close_async = AsyncMock()
+        monkeypatch.setattr(chat_generator, "close_async", generator_close_async, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock(), close_async=AsyncMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.close_async()
-        close_async_mock.assert_awaited_once()
+        generator_close_async.assert_awaited_once_with()
+        generator_close.assert_not_called()
+        tool.close_async.assert_awaited_once_with()
+        tool.close.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_close_async_falls_back_to_sync_close(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")
-        close_mock = MagicMock()
-        monkeypatch.setattr(chat_generator, "close", close_mock, raising=False)
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        generator_close = MagicMock()
+        monkeypatch.setattr(chat_generator, "close", generator_close, raising=False)
+        tool = MagicMock(spec=Tool, close=MagicMock())
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
         await agent.close_async()
-        close_mock.assert_called_once()
+        generator_close.assert_called_once_with()
+        tool.close.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
-        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[])
+    async def test_lifecycle_is_safe_when_tools_and_chat_generator_lack_methods(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])
         agent.warm_up()
         await agent.warm_up_async()
         agent.close()

@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.preprocessors._page_numbers import _leading_page_breaks
 
 
 @component
@@ -31,8 +32,8 @@ class HierarchicalDocumentSplitter:
     # >> Document(id=8dc.., content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['39d..', 'e23..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
     # >> Document(id=f19.., content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
     # >> Document(id=52c.., content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
-    # >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    # >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
+    # >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 10}),
+    # >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 22})]}
     ```
     """  # noqa: E501
 
@@ -40,14 +41,20 @@ class HierarchicalDocumentSplitter:
         self,
         block_sizes: set[int],
         split_overlap: int = 0,
-        split_by: Literal["word", "sentence", "page", "passage"] = "word",
+        split_by: Literal["word", "sentence", "page", "passage", "token"] = "word",
+        *,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initialize HierarchicalDocumentSplitter.
 
         :param block_sizes: Set of block sizes to split the document into. The blocks are split in descending order.
         :param split_overlap: The number of overlapping units for each split.
-        :param split_by: The unit for splitting your documents.
+        :param split_by: The unit for splitting your documents: `word`, `sentence`, `page`, `passage`, or `token`.
+            `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that block sizes
+            match an LLM's context budget.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to `"o200k_base"`
+            (current OpenAI models). Only used when `split_by="token"`.
         :raises ValueError: If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
             greater than or equal to the smallest value in `block_sizes`.
         """
@@ -69,7 +76,15 @@ class HierarchicalDocumentSplitter:
         self.splitters: dict[int, DocumentSplitter] = {}
         self.split_overlap = split_overlap
         self.split_by = split_by
+        self.tokenizer_encoding = tokenizer_encoding
         self._build_block_sizes()
+
+    def warm_up(self) -> None:
+        """
+        Warm up the splitters by loading the sentence tokenizer or the tiktoken encoding they need.
+        """
+        for splitter in self.splitters.values():
+            splitter.warm_up()
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -87,7 +102,10 @@ class HierarchicalDocumentSplitter:
     def _build_block_sizes(self) -> None:
         for block_size in self.block_sizes:
             self.splitters[block_size] = DocumentSplitter(
-                split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by
+                split_length=block_size,
+                split_overlap=self.split_overlap,
+                split_by=self.split_by,
+                tokenizer_encoding=self.tokenizer_encoding,
             )
 
     @staticmethod
@@ -121,8 +139,14 @@ class HierarchicalDocumentSplitter:
                 if len(child_docs) == 1:
                     next_level_nodes.append(doc)
                     continue
+                # the splitter counts pages and offsets from the start of `doc`, not of the original document
+                is_root = doc.meta["__level"] == 0
+                page_offset = 0 if is_root else doc.meta["page_number"] - 1 - _leading_page_breaks(doc.content or "")
+                idx_offset = 0 if is_root else doc.meta["split_idx_start"]
                 for child_doc in child_docs:
                     child_doc = self._add_meta_data(child_doc)
+                    child_doc.meta["page_number"] += page_offset
+                    child_doc.meta["split_idx_start"] += idx_offset
                     child_doc.meta["__level"] = doc.meta["__level"] + 1
                     child_doc.meta["__block_size"] = block
                     child_doc.meta["__parent_id"] = doc.id
@@ -141,7 +165,11 @@ class HierarchicalDocumentSplitter:
                 Serialized dictionary representation of the component.
         """
         return default_to_dict(
-            self, block_sizes=self.block_sizes, split_overlap=self.split_overlap, split_by=self.split_by
+            self,
+            block_sizes=self.block_sizes,
+            split_overlap=self.split_overlap,
+            split_by=self.split_by,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
 
     @classmethod

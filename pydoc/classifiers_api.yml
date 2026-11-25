@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/classifiers]
+    modules: ["openai_decisions_document_classifier"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Classifiers
+  id: classifiers-api
+  description: Classifiers answer questions about documents and store the answers in their metadata.
+  filename: classifiers_api.md

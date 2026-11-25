@@ -3,6 +3,7 @@ title: "SolrEmbeddingRetriever"
 id: solrembeddingretriever
 slug: "/solrembeddingretriever"
 description: "An embedding-based Retriever compatible with the Solr Document Store."
+hep_available: true
 ---
 
 # SolrEmbeddingRetriever
@@ -42,7 +43,7 @@ The Retriever also has a `run_async` method, which uses the Document Store's asy
 To start using Solr with Haystack, install the package with:
 
 ```shell
-pip install solr-haystack
+pip install solr-haystack sentence-transformers-haystack
 ```
 
 ### On its own
@@ -69,7 +70,7 @@ This example indexes documents with their embeddings and then embeds the query b
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )

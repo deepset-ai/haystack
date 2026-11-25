@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 from haystack.utils.misc import _guess_mime_type
@@ -41,7 +41,7 @@ class ByteStream:
         mime_type: str | None = None,
         meta: dict[str, Any] | None = None,
         guess_mime_type: bool = False,
-    ) -> "ByteStream":
+    ) -> Self:
         """
         Create a ByteStream from the contents read from a file.
 
@@ -58,7 +58,7 @@ class ByteStream:
     @classmethod
     def from_string(
         cls, text: str, encoding: str = "utf-8", mime_type: str | None = None, meta: dict[str, Any] | None = None
-    ) -> "ByteStream":
+    ) -> Self:
         """
         Create a ByteStream encoding a string.
 
@@ -113,12 +113,12 @@ class ByteStream:
         return {"data": f"Binary data ({len(self.data)} bytes)", "meta": self.meta, "mime_type": self.mime_type}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ByteStream":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Create a ByteStream from a dictionary representation.
 
         :param data: A dictionary with keys 'data', 'meta', and 'mime_type'.
 
-        :returns: A ByteStream instance.
+        :returns: An instance of this class.
         """
-        return ByteStream(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))
+        return cls(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))

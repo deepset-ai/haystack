@@ -1,0 +1,169 @@
+---
+title: "TypeSafeRanker"
+id: typesaferanker
+slug: "/typesaferanker"
+description: "Ranks documents by their relevance to a query with a TypeSafe System One model, such as Jev."
+hep_available: true
+---
+
+# TypeSafeRanker
+
+Ranks documents by their relevance to a query with a TypeSafe System One model, such as Jev.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | `api_key`: The TypeSafe API key. Can be set with the `TYPESAFE_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A query string <br /> <br />`documents`: A list of document objects |
+| **Output variables** | `documents`: A list of document objects, most relevant first <br /> <br />`meta`: A dictionary with the model used and usage information |
+| **API reference** | [TypeSafe](/reference/integrations-typesafe) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/typesafe |
+| **Package name** | `typesafe-haystack` |
+
+</div>
+
+## Overview
+
+`TypeSafeRanker` scores each document's relevance to a query with a [TypeSafe](https://typesafe.ai) System One model and returns the documents sorted from most to least relevant. System One models such as Jev don't generate text. They answer typed questions and return calibrated probabilities.
+
+For each document, the ranker asks a single `score` question. The model sees the query and the document as a JSON object, `{"query": ..., "passage": {"text": ...}}`, and rates the passage on the ordered levels in `criteria`. The document's `score` is the model's expected level divided by the highest level, so it ranges from 0 to 1. The raw answer is stored under `meta["typesafe"]["relevance"]`, next to any answers a [`TypeSafeDocumentClassifier`](../classifiers/typesafedocumentclassifier.mdx) wrote to the same field. You can change the field name with `metadata_field`.
+
+You can change how relevance is judged with `instructions`, the question the model answers, and `criteria`, the relevance levels from least to most relevant. Both can refer to the `query` and the `passage`. To show the model metadata fields next to the text, such as a title, list them in `meta_fields_to_embed`. They are sent as separate keys in the passage. To limit how much text is sent, set `max_chars`.
+
+Documents whose request failed are ranked after every scored document, with the reason in `meta["ranking_error"]`. To raise the first error instead, set `raise_on_failure=True`.
+
+Each document is sent as its own request, so latency and token usage grow with the number of documents. Place the ranker after a Retriever with a small `top_k`, and use `max_workers` to set how many requests run at once, in both `run` and `run_async`.
+
+### Authentication
+
+The component reads the API key from the `TYPESAFE_API_KEY` environment variable by default. You can also pass it at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+ranker = TypeSafeRanker(api_key=Secret.from_token("<your-api-key>"))
+```
+
+### Running models locally with Ollaya
+
+The component works with any server that implements the TypeSafe API, such as [Ollaya](https://ollaya.dev), which runs open decision models on your own machine. Set `api_base_url` to the server and `model` to one of its models. Ollaya accepts any non-empty API key unless it is configured with one.
+
+```shell
+docker run -d --name ollaya -p 11435:11435 -v ollaya:/home/ollaya/.ollaya ghcr.io/ollaya-dev/ollaya
+docker exec ollaya ollaya pull laya:en
+```
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+ranker = TypeSafeRanker(
+    model="laya:en",
+    api_key=Secret.from_token("local"),
+    api_base_url="http://localhost:11435",
+)
+```
+
+## Usage
+
+Install the `typesafe-haystack` package to use the `TypeSafeRanker`:
+
+```shell
+pip install typesafe-haystack
+```
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+ranker = TypeSafeRanker(top_k=2)
+result = ranker.run(
+    query="How do I reset my password?",
+    documents=[
+        Document(content="Our offices are closed on public holidays."),
+        Document(content="Click 'Forgot password' on the login page to reset it."),
+    ],
+)
+for document in result["documents"]:
+    print(f"{document.score:.2f}", document.content)
+# >> ... Click 'Forgot password' on the login page to reset it.
+# >> ... Our offices are closed on public holidays.
+```
+
+### Customizing the relevance levels
+
+The following ranker judges product descriptions against a shopper's request on three levels, and shows the model each document's `category` next to its text:
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+ranker = TypeSafeRanker(
+    instructions="Does the product in `passage` match what the shopper asks for in `query`?",
+    criteria=[
+        "The product is something else.",
+        "The product is in the right category but misses a requirement in the query.",
+        "The product meets every requirement in the query.",
+    ],
+    meta_fields_to_embed=["category"],
+)
+result = ranker.run(
+    query="Waterproof hiking boots",
+    documents=[
+        Document(
+            content="Leather boots with a waterproof membrane.",
+            meta={"category": "hiking"},
+        ),
+        Document(
+            content="Lightweight mesh trail runners.", meta={"category": "hiking"}
+        ),
+        Document(
+            content="Insulated waterproof jacket.", meta={"category": "outerwear"}
+        ),
+    ],
+)
+print(result["documents"][0].content)
+# >> Leather boots with a waterproof membrane.
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.typesafe import TypeSafeRanker
+
+docs = [
+    Document(content="Paris is the capital of France."),
+    Document(content="France borders Spain, Italy, and Germany."),
+    Document(content="Berlin is the capital of Germany."),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = TypeSafeRanker()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "What is the capital of France?"
+result = document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 1},
+    },
+)
+
+print(result["ranker"]["documents"][0].content)
+# >> Paris is the capital of France.
+```

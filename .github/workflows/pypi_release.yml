@@ -1,11 +1,16 @@
 name: Project release on PyPi
 
 on:
+  # Pushing a tag triggers a Haystack release
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
       # We must not release versions tagged with -rc0 suffix
       - "!v[0-9]+.[0-9]+.[0-9]-rc0"
+  # Publish nightlies daily at midnight UTC or on manual dispatch
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
 env:
   HATCH_VERSION: "1.16.5"
@@ -25,6 +30,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Tag push: checkout the release tag
+          # Schedule/manual dispatch: checkout main for a nightly
+          ref: ${{ github.event_name == 'push' && github.ref || 'main' }}
+
+      # Reads VERSION.txt, strips any -rcN suffix, and appends .devYYYYMMDDHHMMSS
+      # (e.g. 2.25.0.dev20250217000000) so each run gets a unique, PEP 440–valid pre-release version.
+      - name: Set nightly version
+        if: github.event_name != 'push'
+        run: |
+          BASE_VERSION=$(sed 's/-rc[0-9]*$//' VERSION.txt)
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          NIGHTLY_VERSION="${BASE_VERSION}.dev${TIMESTAMP}"
+          echo "${NIGHTLY_VERSION}" > VERSION.txt
+          echo "Building haystack-ai version: ${NIGHTLY_VERSION}"
 
       - name: Install Hatch
         run: |
@@ -35,4 +54,4 @@ jobs:
         run: hatch build
 
       - name: Publish on PyPi
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

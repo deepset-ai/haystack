@@ -7,7 +7,7 @@ import mimetypes
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 from urllib.parse import unquote, urlparse
 
 import filetype
@@ -98,11 +98,11 @@ class FileContent:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FileContent":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Create an FileContent from a dictionary.
         """
-        return FileContent(**data)
+        return cls(**data)
 
     @classmethod
     def from_file_path(

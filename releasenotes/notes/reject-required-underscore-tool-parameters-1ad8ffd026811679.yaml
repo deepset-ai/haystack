@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and the ``@tool`` decorator now raise ``ValueError`` when a required
+    parameter name starts with an underscore, such as ``_tenant``, and that parameter is not listed in
+    ``inputs_from_state``. Those names are not exposed to the LLM, so a tool created without the value
+    could not be called. Provide the parameter through ``inputs_from_state`` or give it a default.
+    Underscore-prefixed parameters that already have a default stay omitted from the schema.

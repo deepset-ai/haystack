@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``TiktokenCounter`` no longer raises ``ValueError`` when message or tool content contains literal
+    special-token strings such as ``<|endoftext|>``. They are now encoded as ordinary text and counted,
+    consistent with ``DocumentSplitter`` and ``RecursiveDocumentSplitter``.

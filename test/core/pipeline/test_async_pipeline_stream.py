@@ -100,6 +100,34 @@ async def test_stream_yields_chunks_and_returns_result():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("with_runtime_callback", [False, True])
+async def test_stream_reused_input_keeps_concurrent_handles_isolated(with_runtime_callback):
+    seen = []
+
+    async def runtime_callback(chunk: StreamingChunk) -> None:
+        seen.append(chunk.content)
+
+    pipeline = Pipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2))
+    component_inputs: dict[str, Any] = {"prompt": "hi"}
+    if with_runtime_callback:
+        component_inputs["streaming_callback"] = runtime_callback
+    expected_inputs = component_inputs.copy()
+    data = {"streamer": component_inputs}
+    handles = [pipeline.stream(data=data) for _ in range(2)]
+
+    async def consume(handle):
+        return [chunk.content async for chunk in handle]
+
+    chunks = await asyncio.gather(*(consume(handle) for handle in handles))
+
+    assert chunks == [["s0", "s1"], ["s0", "s1"]]
+    assert [handle.result for handle in handles] == [{"streamer": {"reply": "s-final"}}] * 2
+    assert data == {"streamer": expected_inputs}
+    assert seen == (["s0", "s1"] * 2 if with_runtime_callback else [])
+
+
+@pytest.mark.asyncio
 async def test_stream_yields_chunks_with_flat_input():
     pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3))

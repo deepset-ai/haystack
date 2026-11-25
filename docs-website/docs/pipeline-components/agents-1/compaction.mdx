@@ -18,7 +18,7 @@ Context compaction separates three responsibilities:
 | Responsibility | Abstraction | Purpose |
 | --- | --- | --- |
 | Decide when to compact | [`CompactionHook`](compaction/compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
-| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx), [`SummarizationCompactor`](compaction/summarization-compactor.mdx), and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
+| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx), [`SummarizationCompactor`](compaction/summarization-compactor.mdx), [`ToolResultOffloadCompactor`](compaction/tool-result-offload-compactor.mdx), and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
 | Measure the conversation | [`TokenCounter`](../../token-counters.mdx) protocol | Estimates the size of messages and tool schemas before they are sent to a model. |
 
 This separation lets you combine a standard trigger with different compaction strategies and token counters. For example, a local sliding window can remove old history without making an additional model call, while a summarization compactor can condense the same history with an LLM.
@@ -74,6 +74,7 @@ Compactors receive the current messages, a target token count, and the same toke
 | --- | --- | --- |
 | [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions and latest user task, keeps complete historical turns while they fit, and trims the current task's own Agent steps only when that is not enough. | Fast and local, but discarded information is not summarized. |
 | [`SummarizationCompactor`](compaction/summarization-compactor.mdx) | Progressively replaces historical turns and current-task steps with LLM-generated summaries, then combines older summaries only as needed. | Preserves a condensed record of earlier work, but adds model cost and latency and remains lossy. |
+| [`ToolResultOffloadCompactor`](compaction/tool-result-offload-compactor.mdx) | Stores eligible older tool results and leaves compact, retrievable references in their place. | Keeps fresh results inline and preserves access to old output, but requires a result store and a retrieval tool. |
 | [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while preserving tool-call/result structure. | Retains the shape of the run and recent results, but removes the content of pruned results. |
 
 ## Combining compaction strategies
@@ -110,6 +111,8 @@ agent = Agent(
 ```
 
 If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes historical turns and then, if needed, the current task's oldest Agent steps. A result the pruning compactor already replaced with a placeholder stays with the historical turn it belongs to, so its tool call keeps an answer. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
+
+The same applies when a summarization compactor runs before a sliding window: the sliding window keeps the summary it leaves when it fits, and removes it together with the history around it when it doesn't.
 
 ### Creating a custom compactor
 
@@ -148,6 +151,27 @@ The `target_tokens` value is a goal rather than a guarantee. When the target con
 
 `compact_async()` calls `compact()` by default. Override it when compaction performs I/O, such as calling an LLM, so asynchronous Agent runs are not blocked. Use `to_dict()` to serialize constructor settings. The protocol's default `from_dict()` handles plain constructor values; override it when serialized values must be reconstructed first, such as a `Secret` or nested component.
 
+## Messages added by hooks
+
+`SlidingWindowCompactor` and `SummarizationCompactor` treat the latest user message as the current task and keep it. Messages that compaction added itself, such as omission notes and summaries, don't count, and neither do user messages marked with `meta={"system_reminder": True}`. Haystack's hooks mark every user message they add this way:
+
+- the reminders [`StepBudgetReminderHook`](./step-budget-reminder.mdx) adds,
+- the correction [`StructuredOutputHook`](./structured-output.mdx) sends when a reply doesn't match the schema,
+- the message [`ConfirmationHook`](./human-in-the-loop.mdx) adds when the user modifies a tool call's arguments.
+
+`SlidingWindowCompactor` also keeps these reminders, and removes one only together with the model's reply to it. See [How the sliding window is selected](compaction/sliding-window-compactor.mdx#how-the-sliding-window-is-selected).
+
+If your own hook adds a user message, mark it the same way so compaction doesn't mistake it for the user's task:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+reminder = ChatMessage.from_user(
+    "<system-reminder>\nCite a source URL for every claim.\n</system-reminder>",
+    meta={"system_reminder": True},
+)
+```
+
 ## Token counters
 
 The default `ApproximateTokenCounter` estimates tokens from text length and needs no extra dependency. You can configure another built-in or custom [`TokenCounter`](../../token-counters.mdx) when you need a model- or provider-specific estimate.
@@ -156,7 +180,7 @@ Token counters can also include tool schemas and non-text content in the estimat
 
 ## Context compaction and tool result offloading
 
-[Tool result offloading](./tool-result-offloading.mdx) solves an adjacent problem: it writes large tool results to a store and leaves a pointer in the conversation. The two approaches work well together — offloading keeps individual results small as they arrive, while compaction bounds the conversation as a whole.
+[Tool result offloading](./tool-result-offloading.mdx) writes large tool results to a store and leaves a pointer in the conversation. Use [`ToolResultOffloadCompactor`](compaction/tool-result-offload-compactor.mdx) to defer that work until context pressure triggers compaction, or use `ToolResultOffloadHook` to offload selected results immediately as they arrive.
 
 An offloaded result is represented by a reference to the stored content. If a compactor removes or rewrites that message, the model loses the reference it needs to read the content again.
 

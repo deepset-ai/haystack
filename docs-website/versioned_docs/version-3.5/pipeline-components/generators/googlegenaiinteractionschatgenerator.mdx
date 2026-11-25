@@ -1,0 +1,279 @@
+---
+title: "GoogleGenAIInteractionsChatGenerator"
+id: googlegenaiinteractionschatgenerator
+slug: "/googlegenaiinteractionschatgenerator"
+description: "This component enables chat completion using Google Gemini models through the Gemini Interactions API."
+---
+
+# GoogleGenAIInteractionsChatGenerator
+
+This component enables chat completion using Google Gemini models through the Gemini Interactions API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Google API key. Can be set with `GOOGLE_API_KEY` or `GEMINI_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat or a plain string |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects containing the generated responses |
+| **API reference** | [Google GenAI](/reference/integrations-google-genai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
+| **Package name** | `google-genai-haystack` |
+
+</div>
+
+## Overview
+
+`GoogleGenAIInteractionsChatGenerator` generates chat completions with Gemini models through the [Gemini Interactions API](https://aistudio.google.com/docs/interactions-overview), Google's successor to the `generateContent` API used by [`GoogleGenAIChatGenerator`](googlegenaichatgenerator.mdx). Some models and quotas, such as the free tier of newer Flash models, are only available through the Interactions API.
+
+Both components ship in the same package and take the same init parameters, except that `GoogleGenAIInteractionsChatGenerator` has no `safety_settings` parameter: you pass it through `generation_kwargs` instead.
+
+The component supports Gemini 2.5 and newer models, such as `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-pro-preview`, `gemini-2.5-pro`, and `gemini-2.5-flash`. For the full list, see the [Interactions API documentation](https://aistudio.google.com/docs/interactions-overview#supported-models-agents).
+
+Like other Haystack Chat Generators, the component is stateless: every call sends the full chat history to the API. If a string is passed instead of a list of `ChatMessage` objects, it's converted into a single user message. A leading system message becomes the system instruction of the interaction. Server-side conversation state through `previous_interaction_id` isn't supported.
+
+:::note
+By default, the Interactions API stores interactions on Google's servers (1 day on the free tier, 55 days on paid tiers). To opt out, pass `generation_kwargs={"store": False}`.
+:::
+
+### Authentication
+
+The component works with both the Gemini Developer API and Vertex AI.
+
+For the Gemini Developer API, get an API key from [Google AI Studio](https://aistudio.google.com/) and set it as the `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable. Alternatively, pass it at initialization with a [`Secret`](../../concepts/secret-management.mdx):
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    api_key=Secret.from_token("<your-api-key>")
+)
+```
+
+For Vertex AI, set `api="vertex"` and use either an API key or Application Default Credentials. With Application Default Credentials, also set your project and location:
+
+```python
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+# Using Application Default Credentials (requires gcloud auth setup)
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    api="vertex",
+    vertex_ai_project="my-project",
+    vertex_ai_location="us-central1",
+)
+```
+
+### Parameters
+
+`generation_kwargs` are passed as-is to the Interactions API, for example `generation_config` (with `temperature`, `max_output_tokens`, `thinking_level`, `thinking_summaries`, or `tool_choice`), `safety_settings`, `store`, or `service_tier`. For all options, see the [Interactions API reference](https://aistudio.google.com/api-reference/interactions-api).
+
+You can set `generation_kwargs` at initialization and at runtime. Runtime values take precedence and are merged key by key over the init ones, and `generation_config` is merged key by key as well. For example, a runtime `generation_config={"temperature": 0.2}` keeps the `thinking_level` set at initialization.
+
+### Thinking and Reasoning
+
+Gemini models think before they answer. To control how much, set `thinking_level` in `generation_config`. To receive summaries of the model's thoughts, set `thinking_summaries` to `"auto"`. The summaries are available in the `reasoning` field of the reply:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    generation_kwargs={
+        "generation_config": {"thinking_level": "low", "thinking_summaries": "auto"}
+    },
+)
+
+reply = chat_generator.run(
+    messages=[ChatMessage.from_user("Is 1,000,003 a prime number?")]
+)["replies"][0]
+print(reply.reasoning.reasoning_text)
+print(reply.text)
+```
+
+In multi-turn conversations with tools, the Interactions API requires the model's thoughts to be sent back exactly as received. The component keeps them in `reply.reasoning.extra["thought_steps"]` and sends them back automatically, so pass previous replies back into the chat history unchanged. An [`Agent`](../agents-1/agent.mdx) does this for you.
+
+### Tool Support
+
+`GoogleGenAIInteractionsChatGenerator` supports function calling through the `tools` parameter, which accepts a list of `Tool` objects, a `Toolset`, or a mix of both. Tools passed to `run()` replace the ones set at initialization. For more details, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+You can also pass built-in Google tools, such as Google Search, in the Interactions API format through `generation_kwargs["tools"]`. They are sent along with your Haystack tools. Combining built-in tools with Haystack tools requires Gemini 3 or newer. The model uses the results of built-in tools in its answer, but the steps they produce aren't converted into reply content. The component keeps them in the reply's `meta["raw_steps_for_builtin_tools"]` and sends them back on later turns, so pass previous replies back into the chat history unchanged.
+
+```python
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    generation_kwargs={"tools": [{"type": "google_search"}]}
+)
+```
+
+### Structured Output
+
+To get a JSON reply that follows a schema, pass a Pydantic model or a JSON schema as `response_format` in `generation_kwargs`. A `response_format` already in the Interactions API format is passed through unchanged. See Google's [structured output documentation](https://aistudio.google.com/docs/structured-output) for details.
+
+```python
+from pydantic import BaseModel
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+
+class City(BaseModel):
+    name: str
+    country: str
+    population: int
+
+
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    generation_kwargs={"response_format": City}
+)
+response = chat_generator.run(messages=[ChatMessage.from_user("Tell me about Paris")])
+print(response["replies"][0].text)
+# >> '{"name": "Paris", "country": "France", "population": 2102650}'
+```
+
+### Multimodal Inputs
+
+User messages can contain images as `ImageContent` and files as `FileContent`. A `FileContent` with an `image/`, `audio/`, or `video/` MIME type is sent as the matching media type, and any other MIME type is sent as a document. The API supports documents such as PDF, CSV, and Office files and rejects unsupported MIME types.
+
+Tool results can contain text and images.
+
+```python
+from haystack.dataclasses import ChatMessage, FileContent
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator()
+
+paper = FileContent.from_url("https://arxiv.org/pdf/2309.08632")
+message = ChatMessage.from_user(
+    content_parts=[paper, "Summarize this paper in one sentence."]
+)
+
+print(chat_generator.run(messages=[message])["replies"][0].text)
+```
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator(
+    streaming_callback=print_streaming_chunk
+)
+chat_generator.run(messages=[ChatMessage.from_user("Write a haiku about the sea.")])
+```
+
+`run_async()` accepts both sync and async callbacks. See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more about how `StreamingChunk` works and how to write a custom callback.
+
+### Reply Metadata
+
+The `meta` of each reply contains:
+
+- `model`: The model name.
+- `interaction_id`: The ID of the interaction.
+- `status`: The interaction status, such as `completed` or `requires_action`.
+- `finish_reason`: The status mapped to a Haystack finish reason: `completed` becomes `stop`, or `tool_calls` if the reply contains tool calls; `requires_action` becomes `tool_calls`; `incomplete` and `budget_exceeded` become `length`.
+- `usage`: Token counts in `prompt_tokens`, `completion_tokens`, and `total_tokens`, plus `thoughts_token_count`, `cached_content_token_count`, and `tool_use_prompt_token_count` when the API reports them.
+- `raw_steps_for_builtin_tools`: Only present if built-in tools ran in this turn. All steps of the turn, exactly as received, so that the component can send them back on later turns.
+
+If an interaction ends with status `failed`, the component raises a `RuntimeError`.
+
+## Usage
+
+To start using this integration, install the package with:
+
+```shell
+pip install google-genai-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+chat_generator = GoogleGenAIInteractionsChatGenerator()
+
+response = chat_generator.run(
+    messages=[ChatMessage.from_user("What's the capital of France?")]
+)
+print(response["replies"][0].text)
+# >> The capital of France is Paris.
+```
+
+### With an Agent
+
+Pass the generator and your tools to an [`Agent`](../agents-1/agent.mdx). It lets the model prepare tool calls, executes them, and feeds the results back until a final answer is ready:
+
+```python
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+
+@tool
+def weather(city: str) -> str:
+    """Get the weather for a city."""
+    return f"The weather in {city} is sunny and 25°C."
+
+
+agent = Agent(chat_generator=GoogleGenAIInteractionsChatGenerator(), tools=[weather])
+
+result = agent.run(messages=[ChatMessage.from_user("What's the weather in Paris?")])
+print(result["last_message"].text)
+# >> The weather in Paris is sunny and 25°C.
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIInteractionsChatGenerator,
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", GoogleGenAIInteractionsChatGenerator())
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about the history of {{city}}"),
+]
+
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template": messages,
+            "template_variables": {"city": "Rome"},
+        }
+    }
+)
+print(result["llm"]["replies"][0].text)
+```

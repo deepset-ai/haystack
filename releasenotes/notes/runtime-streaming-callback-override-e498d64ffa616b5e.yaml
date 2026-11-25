@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Runtime streaming callbacks now correctly override initialization callbacks,
+    avoiding errors and warnings caused by unused callbacks. Callback selection
+    also correctly handles callable objects that evaluate to false.

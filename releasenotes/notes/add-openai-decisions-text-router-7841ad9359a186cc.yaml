@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add ``OpenAIDecisionsTextRouter`` to route text to named categories using the
+    OpenAI Decisions API.

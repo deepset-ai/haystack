@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``PPTXToDocument`` now extracts text from grouped shapes and tables, which were
+    previously skipped. Tables are included in the document content as CSV.

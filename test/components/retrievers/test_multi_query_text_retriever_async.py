@@ -71,6 +71,35 @@ class TestMultiQueryTextRetrieverAsync:
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
+    async def test_run_async_sorts_unscored_documents_after_negative_scores(self):
+        documents = [
+            Document(content="unscored", id="none"),
+            Document(content="negative", id="negative", score=-0.2),
+            Document(content="zero", id="zero", score=0.0),
+            Document(content="positive", id="positive", score=0.4),
+        ]
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(
+                self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, Any]:
+                return {"documents": documents}
+
+        retriever = MultiQueryTextRetriever(retriever=MockRetriever())
+
+        result = await retriever.run_async(queries=["query"])
+
+        assert [doc.id for doc in result["documents"]] == ["positive", "zero", "negative", "none"]
+
+    @pytest.mark.asyncio
     async def test_run_async_deduplication(self):
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
         # doc3 intentionally uses the duplicate id "doc1" to simulate deduplication across multiple queries

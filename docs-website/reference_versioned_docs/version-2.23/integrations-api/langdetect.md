@@ -97,10 +97,10 @@ sets the metadata value to "unmatched".
 
 Routes text strings to different output connections based on their language.
 
-Provide a list of languages during initialization. If the document's text doesn't match any of the
-specified languages, the metadata value is set to "unmatched".
+Provide a list of languages during initialization. If the text doesn't match any of the
+specified languages, it is routed to the unmatched output.
 For routing documents based on their language, use the DocumentLanguageClassifier component,
-followed by the MetaDataRouter.
+followed by the MetadataRouter.
 
 ### Usage example
 
@@ -147,7 +147,7 @@ run(text: str) -> dict[str, str]
 
 Routes the text strings to different output connections based on their language.
 
-If the document's text doesn't match any of the specified languages, the metadata value is set to "unmatched".
+If the text doesn't match any of the specified languages, it is routed to the unmatched output.
 
 **Parameters:**
 

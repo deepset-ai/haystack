@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Document, default_from_dict
 from haystack.components.evaluators.document_map import DocumentMAPEvaluator
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 def test_to_dict():
@@ -13,7 +16,7 @@ def test_to_dict():
     data = evaluator.to_dict()
     assert data == {
         "type": "haystack.components.evaluators.document_map.DocumentMAPEvaluator",
-        "init_parameters": {"document_comparison_field": "content"},
+        "init_parameters": {"document_comparison_field": "content", "top_k": None},
     }
 
 
@@ -48,6 +51,26 @@ def test_run_with_meta_comparison():
         ],
     )
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
+def test_run_with_empty_comparison_values_does_not_match(caplog):
+    evaluator = DocumentMAPEvaluator(document_comparison_field="meta.file_id")
+    with caplog.at_level(logging.WARNING):
+        result = evaluator.run(
+            ground_truth_documents=[
+                [Document(content="Strasbourg", meta={"file_id": ""})],
+                [Document(content="Paris", meta={"file_id": "a"})],
+                # The empty value must not count as a relevant document, otherwise the score would be 0.5
+                [Document(content="Lyon", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+            ],
+            retrieved_documents=[
+                [Document(content="pasta", meta={"file_id": ""})],
+                [Document(content="pasta", meta={"file_id": ""}), Document(content="Paris", meta={"file_id": "a"})],
+                [Document(content="Paris", meta={"file_id": "a"})],
+            ],
+        )
+    assert result == {"individual_scores": [0.0, 0.5, 1.0], "score": 0.5}
+    assert "none of them contain a valid comparison value" in caplog.text
 
 
 def test_run_with_nested_meta_comparison():
@@ -172,3 +195,76 @@ def test_run_with_different_lengths():
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
         )
+
+
+def test_run_with_empty_inputs():
+    evaluator = DocumentMAPEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+
+@pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
+def test_init_with_invalid_top_k_raises(top_k):
+    with pytest.raises(ValueError, match="top_k must be a positive integer or None"):
+        DocumentMAPEvaluator(top_k=top_k)
+
+
+def test_init_with_zero_top_k_error_message():
+    with pytest.raises(ValueError, match=r"^top_k must be a positive integer or None, got 0\.$"):
+        DocumentMAPEvaluator(top_k=0)
+
+
+def test_top_k_serialization_round_trip():
+    evaluator = DocumentMAPEvaluator(document_comparison_field="id", top_k=3)
+    data = component_to_dict(evaluator, name="evaluator")
+    assert data["init_parameters"]["top_k"] == 3
+    restored = component_from_dict(DocumentMAPEvaluator, data, name="evaluator")
+    assert restored.top_k == 3
+    assert restored.document_comparison_field == evaluator.document_comparison_field
+
+
+def test_from_dict_without_top_k_defaults_to_none():
+    data = {
+        "type": f"{DocumentMAPEvaluator.__module__}.DocumentMAPEvaluator",
+        "init_parameters": {"document_comparison_field": "id"},
+    }
+    restored = component_from_dict(DocumentMAPEvaluator, data, name="evaluator")
+    assert restored.top_k is None
+
+
+@pytest.mark.parametrize(
+    "top_k, expected_score",
+    [
+        # relevant "a" at rank 1 and "b" at rank 3, out of 2 relevant documents
+        # always divided by R=2, not min(R, k), as in trec_eval map_cut
+        (1, (1 / 1) / 2),
+        (2, (1 / 1) / 2),
+        (3, (1 / 1 + 2 / 3) / 2),
+        (None, (1 / 1 + 2 / 3) / 2),
+    ],
+)
+def test_run_with_top_k_only_credits_relevant_documents_within_cutoff(top_k, expected_score):
+    evaluator = DocumentMAPEvaluator(top_k=top_k)
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="a"), Document(content="b")]],
+        retrieved_documents=[[Document(content="a"), Document(content="x"), Document(content="b")]],
+    )
+    assert result["individual_scores"] == [pytest.approx(expected_score)]
+
+
+def test_run_with_top_k_larger_than_retrieved_documents_matches_no_cutoff():
+    ground_truth_documents = [[Document(content="a"), Document(content="b")], [Document(content="c")]]
+    retrieved_documents = [
+        [Document(content="b"), Document(content="x")],
+        [Document(content="y"), Document(content="c")],
+    ]
+    with_cutoff = DocumentMAPEvaluator(top_k=10).run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    without_cutoff = DocumentMAPEvaluator().run(
+        ground_truth_documents=ground_truth_documents, retrieved_documents=retrieved_documents
+    )
+    assert with_cutoff == without_cutoff

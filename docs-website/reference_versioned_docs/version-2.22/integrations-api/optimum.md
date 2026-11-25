@@ -176,6 +176,9 @@ Create a OptimumDocumentEmbedder component.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the model.
   In case of duplication, these kwargs override `model`, `onnx_execution_provider`
   and `token` initialization parameters.
+  A `session_options` dict is turned into an `onnxruntime.SessionOptions` with those attributes set,
+  for example `{"session_options": {"intra_op_num_threads": 1}}` to limit the threads each inference
+  call uses.
 
 - **working_dir** (<code>str | None</code>) – The directory to use for storing intermediate files
   generated during model optimization/quantization. Required
@@ -339,6 +342,9 @@ Create a OptimumTextEmbedder component.
 - **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the model.
   In case of duplication, these kwargs override `model`, `onnx_execution_provider`
   and `token` initialization parameters.
+  A `session_options` dict is turned into an `onnxruntime.SessionOptions` with those attributes set,
+  for example `{"session_options": {"intra_op_num_threads": 1}}` to limit the threads each inference
+  call uses.
 
 - **working_dir** (<code>str | None</code>) – The directory to use for storing intermediate files
   generated during model optimization/quantization. Required

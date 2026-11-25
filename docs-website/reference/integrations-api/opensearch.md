@@ -909,6 +909,182 @@ result = await retriever.run_async(query="Python, active")
 ```
 ````
 
+## haystack_integrations.components.retrievers.opensearch.multivector_retriever
+
+### OpenSearchMultivectorEmbeddingRetriever
+
+Retrieves documents from the OpenSearchDocumentStore using multivector embeddings.
+
+Documents are ranked using OpenSearch's `lateInteractionScore` with `innerproduct` similarity.
+Documents without multivector embeddings are excluded. Requires OpenSearch 3.3 or later.
+Direct retrieval scans the filtered documents and can be computationally expensive on large collections.
+To limit MaxSim scoring to a smaller set of candidates, use `OpenSearchEmbeddingRetriever` with
+`return_embedding=True` on the Document Store, followed by `MaxSimRanker`.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+from haystack_integrations.components.retrievers.opensearch import OpenSearchMultivectorEmbeddingRetriever
+
+store = OpenSearchDocumentStore(hosts="http://localhost:9200", multivector_embedding_dim=2)
+store.write_documents([
+    Document(id="solar", content="Solar energy.", multivector_embedding=[[1.0, 0.0], [0.0, 1.0]]),
+    Document(id="wind", content="Wind energy.", multivector_embedding=[[0.5, 0.0]]),
+])
+retriever = OpenSearchMultivectorEmbeddingRetriever(document_store=store, top_k=1)
+result = retriever.run(query_multivector_embedding=[[1.0, 0.0], [0.0, 1.0]])
+print(result["documents"][0].id, result["documents"][0].score)
+# >> solar 4.0
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    document_store: OpenSearchDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+    raise_on_failure: bool = True
+) -> None
+```
+
+Create the OpenSearchMultivectorEmbeddingRetriever component.
+
+**Parameters:**
+
+- **document_store** (<code>OpenSearchDocumentStore</code>) – An instance of OpenSearchDocumentStore with `multivector_embedding_dim` configured.
+  Its `return_embedding` setting controls whether embeddings are returned.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied when fetching documents from the Document Store.
+  Filters restrict the documents scored by OpenSearch.
+- **top_k** (<code>int</code>) – Maximum number of documents to return. Must be greater than zero.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied. Possible options:
+- `merge`: Runtime filters are merged with initialization filters.
+- `replace`: Runtime filters replace initialization filters. Use this policy to change the filtering scope.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise retrieval errors. If False, logs a warning and returns an empty list.
+
+**Raises:**
+
+- <code>TypeError</code> – `document_store` is not an instance of `OpenSearchDocumentStore`.
+- <code>ValueError</code> – Multivector support is disabled, `top_k` is not positive, or the filter policy is invalid.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> OpenSearchMultivectorEmbeddingRetriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>OpenSearchMultivectorEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
+#### run
+
+```python
+run(
+    query_multivector_embedding: list[list[float]],
+    *,
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    document_store: OpenSearchDocumentStore | None = None
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents using multivector embeddings.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – Multivector embedding of the query. Must be non-empty and match
+  the Document Store's per-vector dimension.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied when fetching documents from the Document Store.
+  The way runtime filters are applied depends on the `filter_policy` selected when initializing the Retriever.
+- **top_k** (<code>int | None</code>) – Maximum number of documents to return. Must be greater than zero.
+  If None, the initialization value is used.
+- **document_store** (<code>OpenSearchDocumentStore | None</code>) – Optional instance of OpenSearchDocumentStore to use with the Retriever.
+  If None, the Document Store provided at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary with key "documents" containing the retrieved Documents.
+- documents: List of Documents sorted by descending native OpenSearch score.
+
+**Raises:**
+
+- <code>ValueError</code> – The runtime document store is invalid, or `raise_on_failure` is True and the embedding,
+  multivector configuration, or `top_k` is invalid.
+
+#### run_async
+
+```python
+run_async(
+    query_multivector_embedding: list[list[float]],
+    *,
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    document_store: OpenSearchDocumentStore | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously retrieve documents using multivector embeddings.
+
+**Parameters:**
+
+- **query_multivector_embedding** (<code>list\[list\[float\]\]</code>) – Multivector embedding of the query. Must be non-empty and match
+  the Document Store's per-vector dimension.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied when fetching documents from the Document Store.
+  The way runtime filters are applied depends on the `filter_policy` selected when initializing the Retriever.
+- **top_k** (<code>int | None</code>) – Maximum number of documents to return. Must be greater than zero.
+  If None, the initialization value is used.
+- **document_store** (<code>OpenSearchDocumentStore | None</code>) – Optional instance of OpenSearchDocumentStore to use with the Retriever.
+  If None, the Document Store provided at initialization is used.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary with key "documents" containing the retrieved Documents.
+- documents: List of Documents sorted by descending native OpenSearch score.
+
+**Raises:**
+
+- <code>ValueError</code> – The runtime document store is invalid, or `raise_on_failure` is True and the embedding,
+  multivector configuration, or `top_k` is invalid.
+
 ## haystack_integrations.components.retrievers.opensearch.open_search_hybrid_retriever
 
 ### OpenSearchHybridRetriever
@@ -1302,6 +1478,7 @@ __init__(
     verify_certs: bool | None = None,
     timeout: int | None = None,
     nested_fields: list[str] | Literal["*"] | None = None,
+    multivector_embedding_dim: int | None = None,
     **kwargs: Any
 ) -> None
 ```
@@ -1319,8 +1496,8 @@ For more information on connection parameters, see the [official OpenSearch docu
 - **index** (<code>str</code>) – Name of index in OpenSearch, if it doesn't exist it will be created. Defaults to "default"
 - **max_chunk_bytes** (<code>int</code>) – Maximum size of the requests in bytes. Defaults to 100MB
 - **embedding_dim** (<code>int</code>) – Dimension of the embeddings. Defaults to 768
-- **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. This parameter also applies to the
-  `filter_documents` and `filter_documents_async` methods.
+- **return_embedding** (<code>bool</code>) – Whether to return `embedding` and `multivector_embedding` on retrieved Documents. This also applies to
+  `filter_documents` and `filter_documents_async`.
 - **method** (<code>dict\[str, Any\] | None</code>) – The method definition of the underlying configuration of the approximate k-NN algorithm. Please
   see the [official OpenSearch docs](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions)
   for more information. Defaults to None
@@ -1347,8 +1524,14 @@ For more information on connection parameters, see the [official OpenSearch docu
   the first `write_documents` batch.
   When the index already exists, nested fields are discovered from the live mapping.
   Defaults to None (no nested support).
+- **multivector_embedding_dim** (<code>int | None</code>) – Dimension of each vector in a multivector embedding. Set to enable
+  multivector support.
 - \*\***kwargs** (<code>Any</code>) – Optional arguments that `OpenSearch` takes. For the full list of supported kwargs,
   see the [official OpenSearch reference](https://opensearch-project.github.io/opensearch-py/api-ref/clients/opensearch_client.html)
+
+**Raises:**
+
+- <code>ValueError</code> – `multivector_embedding_dim` is not positive or the multivector mapping is incompatible.
 
 #### create_index
 
@@ -1446,6 +1629,10 @@ refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filt
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
+  `content` is an analyzed text field, so filters on it with `==`, `!=`, `in` and `not in` don't test exact
+  equality: they match documents whose content contains the value as a phrase, that is, the same words in the
+  same order and next to each other, ignoring case and punctuation. For example, `==` with the value
+  `"Foo Document"` matches a document with the content `"A foo document."`, and `!=` excludes it.
 
 **Returns:**
 
@@ -1465,6 +1652,10 @@ refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filt
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
+  `content` is an analyzed text field, so filters on it with `==`, `!=`, `in` and `not in` don't test exact
+  equality: they match documents whose content contains the value as a phrase, that is, the same words in the
+  same order and next to each other, ignoring case and punctuation. For example, `==` with the value
+  `"Foo Document"` matches a document with the content `"A foo document."`, and `!=` excludes it.
 
 **Returns:**
 
@@ -1626,7 +1817,9 @@ Deletes all documents that match the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they can select documents whose
+  content only contains the value. See `filter_documents` for details.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the delete by query after the request
   completes so that subsequent reads (e.g. count_documents) see the update. If False, no refresh is
   performed (better for bulk deletes). For more details, see the
@@ -1647,7 +1840,9 @@ Asynchronously deletes all documents that match the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they can select documents whose
+  content only contains the value. See `filter_documents` for details.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the delete by query after the request
   completes so that subsequent reads see the update. If False, no refresh is performed. For more details,
   see the [OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
@@ -1669,7 +1864,9 @@ Updates the metadata of all documents that match the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they can select documents whose
+  content only contains the value. See `filter_documents` for details.
 - **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the update by query after the request
   completes. If False, no refresh is performed. For more details, see the
@@ -1692,7 +1889,9 @@ Asynchronously updates the metadata of all documents that match the provided fil
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
-  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they can select documents whose
+  content only contains the value. See `filter_documents` for details.
 - **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the update by query after the request
   completes. If False, no refresh is performed. For more details, see the

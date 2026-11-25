@@ -88,7 +88,9 @@ Invoke chat completion via LiteLLM.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – Input messages as ChatMessage instances.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Override the streaming callback for this call.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Override generation parameters for this call.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters for this call. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – Override tools for this call.
 
 **Returns:**
@@ -114,7 +116,9 @@ Async version of run(). Invoke chat completion via LiteLLM.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – Input messages as ChatMessage instances.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Override the streaming callback for this call.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Override generation parameters for this call.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters for this call. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – Override tools for this call.
 
 **Returns:**

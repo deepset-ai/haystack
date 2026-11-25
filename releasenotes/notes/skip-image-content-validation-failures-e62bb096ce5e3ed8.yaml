@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``ImageContent.from_file_path()`` now raises a ``ValueError`` naming the file when it cannot be converted to an
+    image, for example because it does not exist or is not an image. Previously it raised an unhelpful
+    ``IndexError: list index out of range``.

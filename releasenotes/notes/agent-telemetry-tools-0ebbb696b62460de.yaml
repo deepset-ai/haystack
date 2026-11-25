@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    When an ``Agent`` runs inside a ``Pipeline``, the anonymous pipeline telemetry event now also reports the
+    chat generator class and its tools: the number of tools, the class and name of each tool, the component
+    wrapped by each ``ComponentTool``, and the classes of any ``Toolset`` objects.

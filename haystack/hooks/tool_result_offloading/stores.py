@@ -73,7 +73,8 @@ class FileSystemToolResultStore(ToolResultStore):
         if isinstance(content, bytes):
             path.write_bytes(content)
         else:
-            path.write_text(content, encoding="utf-8")
+            # Without `newline=""`, Windows writes "\n" as "\r\n" and `read` returns different text.
+            path.write_text(content, encoding="utf-8", newline="")
         return str(path)
 
     def read(self, reference: str) -> str | bytes:

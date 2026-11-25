@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and the ``@tool`` decorator now leave ``*args`` and ``**kwargs`` out of the Tool's
+    parameters schema. Before, they were added as required parameters under their own names, such as ``args`` and
+    ``kwargs``, and the LLM was asked to fill them. A value the LLM sent for ``*args`` made the tool call fail with
+    ``ToolInvocationError``, and a value for ``**kwargs`` reached the function nested under the parameter's name. An
+    untyped ``*args`` or ``**kwargs`` no longer raises a missing type hint ``ValueError``.

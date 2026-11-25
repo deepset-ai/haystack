@@ -1,0 +1,4 @@
+fixes:
+  - |
+    ``ByteStream.from_dict()`` now preserves subclasses when deserializing a
+    dictionary, instead of always returning a ``ByteStream`` instance.

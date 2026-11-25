@@ -1,0 +1,107 @@
+---
+title: "MariaDBDocumentStore"
+id: mariadbdocumentstore
+slug: "/mariadbdocumentstore"
+---
+
+# MariaDBDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [MariaDB](/reference/integrations-mariadb)                                                       |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mariadb/ |
+
+</div>
+
+MariaDB 11.7+ introduces a native `VECTOR` datatype with MHNSW indexing, enabling efficient vector similarity search directly in the database without any extensions.
+
+For more information, see the [MariaDB Vector documentation](https://mariadb.com/kb/en/vector/).
+
+MariaDB Document Store supports embedding retrieval, keyword retrieval, and metadata filtering.
+
+## Installation
+
+To quickly set up a MariaDB 11.7 instance, you can use Docker:
+
+```shell
+docker run -d -p 3306:3306 \
+  -e MARIADB_ROOT_PASSWORD=secret \
+  -e MARIADB_DATABASE=haystack \
+  -e MARIADB_USER=haystack \
+  -e MARIADB_PASSWORD=secret \
+  mariadb:11.7
+```
+
+The `mariadb` connector is a C extension built from source, so it needs the MariaDB Connector/C system library (`mariadb_config`):
+
+```shell
+# Ubuntu / Debian
+sudo apt-get install -y libmariadb-dev
+
+# macOS
+brew install mariadb-connector-c
+```
+
+To use MariaDB with Haystack, install the `mariadb-haystack` integration:
+
+```shell
+pip install mariadb-haystack
+```
+
+## Usage
+
+### Credentials
+
+Set the database credentials as environment variables:
+
+```shell
+export MARIADB_USER=haystack
+export MARIADB_PASSWORD=secret
+```
+
+## Initialization
+
+Initialize a `MariaDBDocumentStore` object and write documents to it:
+
+```python
+import os
+from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
+from haystack import Document
+
+os.environ["MARIADB_USER"] = "haystack"
+os.environ["MARIADB_PASSWORD"] = "secret"
+
+document_store = MariaDBDocumentStore(
+    port=3306,
+    database="haystack",
+    embedding_dimension=768,
+    distance="cosine",
+)
+
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.1] * 768),
+        Document(content="This is second", embedding=[0.3] * 768),
+    ],
+)
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see our [API docs](/reference/integrations-mariadb#mariadbdocumentstore).
+
+:::note[Table creation parameters]
+
+The `embedding_dimension`, `distance`, and `create_vector_index` parameters are only applied when the table is first created (or when `recreate_table=True`). Changing them later has no effect on an existing table.
+
+Setting `create_vector_index=True` at table creation enables a MHNSW vector index for fast approximate nearest neighbor search. However, this requires **every document to have a non-null embedding** — documents without embeddings will cause an error on write.
+
+:::
+
+To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx)).
+
+### Supported Retrievers
+
+- [`MariaDBEmbeddingRetriever`](../pipeline-components/retrievers/mariadbembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding.
+- [`MariaDBKeywordRetriever`](../pipeline-components/retrievers/mariadbkeywordretriever.mdx): A keyword-based Retriever that fetches documents matching a query using MariaDB's full-text search.

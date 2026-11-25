@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    ``HTMLToDocument`` now defaults to ``encoding=None``, delegating HTML encoding detection to Trafilatura.
+    Set ``encoding="utf-8"`` to retain explicit UTF-8 decoding.
+  - |
+    Previously, ``HTMLToDocument`` used the ``encoding`` value in a source ByteStream's metadata to decode its content,
+    overriding the converter's encoding setting. This metadata no longer affects decoding. If you relied on it,
+    pass the encoding to the converter instead, for example ``HTMLToDocument(encoding="latin-1")``.
+enhancements:
+  - |
+    ``HTMLToDocument`` now uses Trafilatura's encoding detection instead of assuming UTF-8, allowing non-UTF-8 sources
+    to be converted without manually specifying their encoding. If conversion produces incorrect characters,
+    install ``trafilatura[all]`` for additional encoding detection support, or set the converter's ``encoding``
+    explicitly.

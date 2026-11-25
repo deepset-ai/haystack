@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``ListJoiner.from_dict`` mutating the caller's ``data`` in place: the serialized ``list_type_``
+    string was replaced with the deserialized type, so a second ``from_dict`` call on the same dictionary
+    failed and the dictionary could no longer be dumped to JSON or YAML. ``from_dict`` now works on a copy
+    and the caller's data is left untouched.

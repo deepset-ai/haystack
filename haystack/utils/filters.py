@@ -91,8 +91,7 @@ def _parse_iso_date(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
-        # Python 3.10's fromisoformat rejects valid ISO 8601 spellings that later versions accept,
-        # most notably a trailing "Z".
+        # fromisoformat still rejects some valid ISO 8601 spellings, such as "24:00" for end-of-day midnight.
         try:
             return dateutil.parser.isoparse(value)
         except (ValueError, OverflowError):
@@ -151,6 +150,9 @@ def _prepare_ordering_comparison(
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    if isinstance(value, datetime) != isinstance(filter_value, datetime):
+        msg = "Can't compare a datetime with a non-datetime value using operators '>', '>=', '<', '<='"
+        raise FilterError(msg)
     return value, filter_value, True
 
 
@@ -168,12 +170,17 @@ def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: boo
 
 
 def _parse_date(value: str) -> datetime:
-    """Try parsing the value as an ISO format date, then fall back to dateutil.parser."""
+    """
+    Try parsing the value as an ISO format date, then fall back to dateutil.parser.
+
+    Partial dates (e.g. "2024" or "2024-06") are completed to the start of the period, so "2024" becomes
+    2024-01-01.
+    """
     try:
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         try:
-            return dateutil.parser.parse(value)
+            return dateutil.parser.parse(value, default=datetime(1, 1, 1))
         except (ValueError, TypeError) as exc:
             msg = (
                 "Can't compare strings using operators '>', '>=', '<', '<='. "

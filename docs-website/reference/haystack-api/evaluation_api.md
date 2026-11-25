@@ -84,6 +84,8 @@ comparative_detailed_report(
     keep_columns: list[str] | None = None,
     output_format: Literal["json", "csv", "df"] = "json",
     csv_file: str | None = None,
+    *,
+    align_on: str | None = None
 ) -> Union[str, DataFrame, None]
 ```
 
@@ -95,6 +97,12 @@ Generates a report with detailed scores for each metric from two evaluation runs
 - **keep_columns** (<code>list\[str\] | None</code>) – List of common column names to keep from the inputs of the evaluation runs to compare.
 - **output_format** (<code>Literal['json', 'csv', 'df']</code>) – The output format for the report, "json", "csv", or "df", default to "json".
 - **csv_file** (<code>str | None</code>) – Filepath to save CSV output if `output_format` is "csv", must be provided.
+- **align_on** (<code>str | None</code>) – Name of an input column that identifies each row, such as a question ID or the question
+  itself. If set, rows of the two runs are matched by this column instead of by position, so runs that
+  evaluated the same questions in a different order are compared correctly. Values must match exactly.
+  Repeated values are paired in the order they appear. Rows without a match are kept, with `None` for the
+  other run, and rows only in `other` are added at the end. If not set, rows are matched by position and a
+  warning is logged when the runs have a different number of rows.
 
 **Returns:**
 
@@ -105,4 +113,5 @@ Generates a report with detailed scores for each metric from two evaluation runs
 
 - <code>TypeError</code> – If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
   dictionaries.
-- <code>ValueError</code> – If the `other` parameter is missing required attributes.
+- <code>ValueError</code> – If the `other` parameter is missing required attributes, or if `align_on` is not an input
+  column of both runs.
