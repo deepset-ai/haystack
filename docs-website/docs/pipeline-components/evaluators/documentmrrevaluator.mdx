@@ -29,6 +29,8 @@ You can use the `DocumentMRREvaluator` component to evaluate documents retrieved
 
 To initialize a `DocumentMRREvaluator`, there are no parameters required.
 
+To compute the metric at a cutoff (MRR@k), set the optional `top_k` parameter. Only the first `top_k` retrieved documents of each question are scored. For example, `DocumentMRREvaluator(top_k=10)` returns MRR@10. This way, you can retrieve documents once and compute the metric for several cutoffs. By default, `top_k` is `None` and all retrieved documents are scored.
+
 ## Usage
 
 ### On its own

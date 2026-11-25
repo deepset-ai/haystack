@@ -12,8 +12,9 @@ slug: "/caching-api"
 
 Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
-If matching documents are found, they are returned as "hits". If not found in the cache, the items
-are returned as "misses".
+If matching fresh documents are found, they are returned as "hits".
+If no matching documents are found, or all matching documents have expired,
+the items are returned as "misses".
 
 ### Usage example
 
@@ -38,7 +39,13 @@ assert results == {"hits": [documents[0], documents[2]], "misses": ["https://exa
 #### __init__
 
 ```python
-__init__(document_store: DocumentStore, cache_field: str) -> None
+__init__(
+    document_store: DocumentStore,
+    cache_field: str,
+    *,
+    ttl: float | timedelta | None = None,
+    time_field: str = "cached_at"
+) -> None
 ```
 
 Creates a CacheChecker component.
@@ -48,6 +55,15 @@ Creates a CacheChecker component.
 - **document_store** (<code>DocumentStore</code>) – Document Store to check for the presence of specific documents.
 - **cache_field** (<code>str</code>) – Name of the document's metadata field
   to check for cache hits.
+- **ttl** (<code>float | timedelta | None</code>) – Time-to-live for cache entries, as a `timedelta` or a number of seconds. Must be positive,
+  otherwise a `ValueError` is raised.
+  If set, a matching document only counts as a hit if the timestamp in `time_field` is not older than `ttl`.
+  Documents with a missing, expired or future timestamp are returned as misses.
+  If `None`, cache entries never expire.
+- **time_field** (<code>str</code>) – Name of the document's metadata field holding the cache timestamp (a `meta.` prefix is ignored).
+  Must contain a `datetime` or an ISO 8601 string when `ttl` is set.
+  Timezone-aware values are recommended. Malformed values are not handled by the component;
+  the Document Store decides (for example, `InMemoryDocumentStore` raises a `FilterError`).
 
 #### to_dict
 
@@ -67,15 +83,15 @@ Serializes the component to a dictionary.
 from_dict(data: dict[str, Any]) -> CacheChecker
 ```
 
-Deserializes the component from a dictionary.
+Deserialize the component from a dictionary.
 
 **Parameters:**
 
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary containing the component type and initialization parameters.
 
 **Returns:**
 
-- <code>CacheChecker</code> – Deserialized component.
+- <code>CacheChecker</code> – A CacheChecker instance reconstructed from the dictionary.
 
 #### run
 
@@ -92,8 +108,8 @@ Checks if any document associated with the specified cache field is already pres
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary with two keys:
-- `hits` - Documents that matched with at least one of the items.
-- `misses` - Items that were not present in any documents.
+- `hits` - Documents matching the requested items and satisfying the TTL filter, if configured.
+- `misses` - Items with no matching documents or whose matching documents are all expired.
 
 #### run_async
 
@@ -110,8 +126,8 @@ Asynchronously checks if any document associated with the specified cache field 
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary with two keys:
-- `hits` - Documents that matched with at least one of the items.
-- `misses` - Items that were not present in any documents.
+- `hits` - Documents matching the requested items and satisfying the TTL filter, if configured.
+- `misses` - Items with no matching documents or whose matching documents are all expired.
 
 #### close
 
