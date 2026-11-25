@@ -1,6 +1,5 @@
 ---
 fixes:
   - |
-    Pipeline connection errors now display complete ``Callable`` signatures, including
-    parameter types, empty parameter lists, ellipses, and ``None`` return types. This makes
-    incompatible callbacks distinguishable instead of displaying both as ``Callable[, str]``.
+    Pipeline connection errors now show full ``Callable`` signatures,
+    for example ``Callable[[int], str]`` instead of ``Callable[, str]``.
