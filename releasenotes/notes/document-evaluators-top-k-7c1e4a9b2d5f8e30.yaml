@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    ``DocumentRecallEvaluator``, ``DocumentMRREvaluator``, ``DocumentMAPEvaluator``, and ``DocumentNDCGEvaluator``
+    have a new optional ``top_k`` parameter to compute metrics at a cutoff, such as Recall@5 or NDCG@10, without
+    re-running retrieval. By default, all retrieved documents are scored, as before.
