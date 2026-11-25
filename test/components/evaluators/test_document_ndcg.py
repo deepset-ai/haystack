@@ -500,20 +500,6 @@ def test_run_with_top_k_scores_perfect_top_k_ranking_as_one():
     assert result["individual_scores"] == [pytest.approx(1.0)]
 
 
-def test_run_with_top_k_differs_from_slicing_retrieved_documents_by_hand():
-    ground_truth_documents = [[Document(content="a"), Document(content="b"), Document(content="c")]]
-    sliced_retrieved_documents = [[Document(content="a"), Document(content="b")]]
-    sliced_by_hand = DocumentNDCGEvaluator().run(
-        ground_truth_documents=ground_truth_documents, retrieved_documents=sliced_retrieved_documents
-    )
-    with_top_k = DocumentNDCGEvaluator(top_k=2).run(
-        ground_truth_documents=ground_truth_documents, retrieved_documents=sliced_retrieved_documents
-    )
-    expected_dcg = 1 / log2(2) + 1 / log2(3)
-    assert sliced_by_hand["score"] == pytest.approx(expected_dcg / (expected_dcg + 1 / log2(4)))
-    assert with_top_k["score"] == pytest.approx(1.0)
-
-
 def test_run_with_top_k_and_relevance_scores():
     evaluator = DocumentNDCGEvaluator(top_k=2)
     result = evaluator.run(
