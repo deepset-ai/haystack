@@ -190,6 +190,24 @@ class TestDocumentCleaner:
         assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
         assert result.content == text
 
+    def test_remove_repeated_substrings_breaks_ties_deterministically(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        # Every middle page starts with eight different phrases of the same length, separated by page-specific words,
+        # so all of them are equally long candidates for the header. The rest of each page is unique, so there is no
+        # footer. The phrase that comes first must win, whatever order the set of candidates is iterated in.
+        tied_phrases = [f"{letter * 3} {letter * 3} {letter * 3}" for letter in "ABCDEFGH"]
+
+        def page(i: int) -> str:
+            header = " ".join(f"{phrase} p{i}" for phrase in tied_phrases)
+            body = " ".join(f"w{i}x{j}" for j in range(80))
+            return f"{header} {body}"
+
+        pages = ["First page", page(1), page(2), page(3), "Last page"]
+        result = cleaner.run(documents=[Document(content="\f".join(pages))])["documents"][0]
+        assert result.content == "\f".join(p.replace(tied_phrases[0], "") for p in pages)
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [
