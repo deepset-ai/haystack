@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import math
 import os
 
@@ -9,6 +10,7 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import FaithfulnessEvaluator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils.auth import Secret
@@ -331,6 +333,28 @@ class TestFaithfulnessEvaluator:
             ValueError,
             match=r"^FaithfulnessEvaluator expected one score per statement, but received 2 statements and 1 scores\.$",
         ):
+            component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
+
+    @pytest.mark.parametrize(
+        "reply",
+        [{"statements": None, "statement_scores": []}, {"statements": ["a"], "statement_scores": None}],
+        ids=["statements-null", "scores-null"],
+    )
+    def test_run_non_list_values_raise_on_failure_false(self, reply):
+        generator = MockChatGenerator(responses=[json.dumps(reply), '{"statements": ["c"], "statement_scores": [1]}'])
+        component = FaithfulnessEvaluator(chat_generator=generator, raise_on_failure=False)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]], predicted_answers=["a1", "a2"])
+
+        assert results["results"][0]["status"] == "error"
+        assert math.isnan(results["results"][0]["score"])
+        assert results["score"] == 1
+
+    def test_run_non_list_values_raise_on_failure_true(self):
+        generator = MockChatGenerator(responses='{"statements": null, "statement_scores": []}')
+        component = FaithfulnessEvaluator(chat_generator=generator, raise_on_failure=True)
+
+        with pytest.raises(ValueError, match="expected `statements` and `statement_scores` to be lists"):
             component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
 
     def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
