@@ -216,8 +216,10 @@ class CSVToDocument:
 
         The first occurrence keeps its name; later duplicates get a numeric
         suffix (``name_1``, ``name_2``, ...), skipping any candidate name
-        that is already present in the header.
+        that is already present anywhere in the original header or has
+        already been assigned to an earlier column.
         """
+        taken = set(fieldnames)
         seen: set[str] = set()
         counts: dict[str, int] = {}
         deduped: list[str] = []
@@ -229,7 +231,7 @@ class CSVToDocument:
                 continue
             suffix = counts[name]
             candidate = f"{name}_{suffix}"
-            while candidate in seen:
+            while candidate in taken or candidate in seen:
                 suffix += 1
                 candidate = f"{name}_{suffix}"
             counts[name] = suffix + 1

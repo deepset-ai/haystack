@@ -317,6 +317,19 @@ class TestCSVToDocument:
         assert documents[0].meta["text_1"] == "kept"
         assert documents[0].meta["text_2"] == "two"
 
+    def test_row_mode_duplicate_header_before_existing_suffixed_name(self):
+        # The suffixed column comes after the duplicate: the duplicate "text" must
+        # skip "text_1" (already present later in the header) and become "text_2".
+        source = ByteStream(data=b"text,text,text_1\r\nA,B,C\r\n", meta={"file_path": "collide_after.csv"})
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "A"
+        assert documents[0].meta["text_2"] == "B"
+        assert documents[0].meta["text_1"] == "C"
+
     def test_file_mode_duplicate_headers_keep_raw_content(self):
         source = ByteStream(data=b"text,text,author\r\nFIRST,SECOND,Ada\r\n", meta={"file_path": "dupes.csv"})
         converter = CSVToDocument(conversion_mode="file")
