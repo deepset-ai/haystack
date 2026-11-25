@@ -17,6 +17,20 @@ You will want to ensure that a CUDA enabled GPU is being engaged when Haystack i
 
 We only collect _anonymous_ usage statistics of Haystack pipeline components. Read more about telemetry in Haystack or how you can opt out on the [Telemetry](telemetry.mdx) page.
 
+### How can I control progress bars?
+
+Set the `HAYSTACK_PROGRESS_BARS` environment variable to override the `progress_bar` setting for `OpenAIDocumentEmbedder`, `AzureOpenAIDocumentEmbedder`, `MarkdownToDocument`, `LLMEvaluator`, `FaithfulnessEvaluator`, and `ContextRelevanceEvaluator`:
+
+```python
+import os
+
+os.environ["HAYSTACK_PROGRESS_BARS"] = "false"
+```
+
+Use `0`, `false`, `no`, or `off` to hide progress bars, and `1`, `true`, `yes`, or `on` to show them. Values are case-insensitive and ignore surrounding whitespace. An unset, empty, or unrecognized value uses the component's configured `progress_bar` setting.
+
+The variable is read when a component runs, so changes apply to subsequent runs, including asynchronous runs. It overrides the setting without changing the component's stored or serialized configuration.
+
 ### How can I ask my questions around Haystack?
 
 For general questions, we recommend joining the [Haystack Discord ](https://discord.com/invite/xYvH6drSmA)or using [GitHub discussions](https://github.com/deepset-ai/haystack/discussions), where the community and maintainers can help. You can also explore [tutorials](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling) and [examples](https://haystack.deepset.ai/cookbook/tools_support) on website to find more info.
