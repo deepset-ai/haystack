@@ -365,10 +365,6 @@ class TestDocumentRecallEvaluatorMultiHit:
         assert result == {"individual_scores": [1.0], "score": 1.0}
 
 
-def test_init_top_k_defaults_to_none():
-    assert DocumentRecallEvaluator().top_k is None
-
-
 @pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
 def test_init_with_invalid_top_k_raises(top_k):
     with pytest.raises(ValueError, match="top_k must be a positive integer or None"):

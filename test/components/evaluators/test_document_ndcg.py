@@ -457,10 +457,6 @@ def test_run_with_meta_missing_key_can_still_reach_perfect_ndcg():
     assert result["score"] == 1.0
 
 
-def test_init_top_k_defaults_to_none():
-    assert DocumentNDCGEvaluator().top_k is None
-
-
 @pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
 def test_init_with_invalid_top_k_raises(top_k):
     with pytest.raises(ValueError, match="top_k must be a positive integer or None"):

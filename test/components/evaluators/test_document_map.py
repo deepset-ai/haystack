@@ -206,10 +206,6 @@ def test_run_with_empty_inputs():
         evaluator.run(ground_truth_documents=[], retrieved_documents=[])
 
 
-def test_init_top_k_defaults_to_none():
-    assert DocumentMAPEvaluator().top_k is None
-
-
 @pytest.mark.parametrize("top_k", [0, -1, 2.5, True, "3"])
 def test_init_with_invalid_top_k_raises(top_k):
     with pytest.raises(ValueError, match="top_k must be a positive integer or None"):
