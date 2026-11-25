@@ -149,10 +149,17 @@ class DocumentRecallEvaluator:
 
         unique_retrievals = self._unique_comparison_values(retrieved_documents)
         if not unique_retrievals:
-            logger.warning(
-                "There are no retrieved documents or none of them contain a valid comparison value. "
-                "Score will be set to 0."
-            )
+            if self.top_k is None:
+                logger.warning(
+                    "There are no retrieved documents or none of them contain a valid comparison value. "
+                    "Score will be set to 0."
+                )
+            else:
+                logger.warning(
+                    "There are no retrieved documents or none of the first {top_k} contain a valid comparison "
+                    "value. Score will be set to 0.",
+                    top_k=self.top_k,
+                )
 
         return unique_truths, unique_retrievals
 

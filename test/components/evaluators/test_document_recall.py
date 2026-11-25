@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Any
 
 import pytest
@@ -453,3 +454,14 @@ def test_run_with_top_k_and_meta_comparison():
         ],
     )
     assert result["individual_scores"] == [0.0]
+
+
+def test_run_with_top_k_warns_when_no_valid_comparison_value_within_cutoff(caplog):
+    evaluator = DocumentRecallEvaluator(document_comparison_field="meta.file_id", top_k=1)
+    with caplog.at_level(logging.WARNING):
+        result = evaluator.run(
+            ground_truth_documents=[[Document(content="chunk", meta={"file_id": "f1"})]],
+            retrieved_documents=[[Document(content="other"), Document(content="chunk", meta={"file_id": "f1"})]],
+        )
+    assert result["individual_scores"] == [0.0]
+    assert "none of the first 1 contain a valid comparison value" in caplog.text
