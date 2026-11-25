@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Equality and membership filters on scalar metadata values in ``InMemoryDocumentStore`` and
+    ``MetadataRouter`` now distinguish booleans from numbers. Previously, ``False`` matched
+    ``0`` or ``0.0``, and ``True`` matched ``1`` or ``1.0``.
+upgrade:
+  - |
+    If a filter relies on a boolean to select a numeric field or vice versa, use the type stored
+    in the metadata. To match both ``True`` and ``1`` in a mixed field, use an ``in`` filter with
+    ``[True, 1]``.

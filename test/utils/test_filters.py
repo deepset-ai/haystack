@@ -654,6 +654,34 @@ def test_document_matches_filter(filters, document, expected_result):
 
 
 @pytest.mark.parametrize(
+    "operator,document_value,filter_value,expected_result",
+    [
+        ("==", 0, False, False),
+        ("==", False, 0, False),
+        ("==", 1, True, False),
+        ("==", True, 1, False),
+        ("==", 0.0, False, False),
+        ("==", False, 0.0, False),
+        ("==", 1.0, True, False),
+        ("==", True, 1.0, False),
+        ("==", False, False, True),
+        ("==", True, True, True),
+        ("==", True, False, False),
+        ("==", 1, 1.0, True),
+        ("!=", False, 0, True),
+        ("in", 1, [True], False),
+        ("not in", True, [1.0], True),
+        ("in", True, [1, True], True),
+    ],
+)
+def test_document_matches_filter_boolean_and_numeric_values(operator, document_value, filter_value, expected_result):
+    document = Document(meta={"stage": document_value})
+    filters = {"field": "meta.stage", "operator": operator, "value": filter_value}
+
+    assert document_matches_filter(filters, document) is expected_result
+
+
+@pytest.mark.parametrize(
     "operator,expected_result",
     [
         ("==", False),

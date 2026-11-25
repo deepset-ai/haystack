@@ -46,6 +46,8 @@ The available comparison operators may vary depending on the specific Document S
 
 \-`value`: takes a single value or (in the case of "in" and “not in”) a list of values.
 
+When `InMemoryDocumentStore` or `MetadataRouter` compares scalar metadata values, the `==`, `!=`, `in`, and `not in` operators distinguish booleans from numbers. For example, a filter for `meta.active == True` excludes documents where `meta.active` is `1` or `1.0`.
+
 #### Example
 
 Here is an example of a simple filter in the form of a dictionary. The filter selects documents classified as “article” in the `type` meta field of the document:

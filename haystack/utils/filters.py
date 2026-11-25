@@ -58,6 +58,9 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
+    # Python booleans compare equal to 0 and 1, but metadata filters distinguish them.
+    if isinstance(value, bool) or isinstance(filter_value, bool):
+        return value is filter_value
     if value == filter_value:
         return True
     return _dates_are_equal(value=value, filter_value=filter_value, strict=strict_datetime_comparison)
