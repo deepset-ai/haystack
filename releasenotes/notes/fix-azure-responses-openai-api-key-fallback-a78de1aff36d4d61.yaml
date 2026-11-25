@@ -1,9 +1,5 @@
 ---
 fixes:
   - |
-    ``AzureOpenAIResponsesChatGenerator`` no longer sends the ``OPENAI_API_KEY`` environment variable to the Azure
-    endpoint when no Azure API key is set. Previously, if ``api_key`` resolved to nothing (for example because
-    ``AZURE_OPENAI_API_KEY`` was not set), the underlying OpenAI client fell back to ``OPENAI_API_KEY``: if it was
-    set, it was sent to Azure; otherwise the client raised an error asking for ``OPENAI_API_KEY``.
-    Now ``warm_up()`` and ``warm_up_async()`` raise a ``ValueError`` asking for ``api_key`` or
-    ``AZURE_OPENAI_API_KEY``.
+    ``AzureOpenAIResponsesChatGenerator`` no longer falls back to ``OPENAI_API_KEY`` when no Azure API key is set.
+    ``warm_up()`` and ``warm_up_async()`` now raise a ``ValueError`` asking for ``api_key`` or ``AZURE_OPENAI_API_KEY``.
