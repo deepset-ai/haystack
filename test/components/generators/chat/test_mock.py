@@ -207,13 +207,7 @@ class TestMockChatGenerator:
 
     @pytest.mark.parametrize("reply_text", ["\n\nhello there", "  indented reply\n", "   "])
     def test_streamed_chunks_join_back_into_the_reply(self, reply_text: str) -> None:
-        r"""Chunks must concatenate to the reply that run() returns (#13810).
-
-        The stream split on ``\S+\s*`` dropped leading whitespace and streamed a
-        whitespace-only reply as nothing at all, so tests asserting on streamed
-        text saw different content than the returned reply. Real generators
-        stream the text unchanged.
-        """
+        """Chunks must concatenate to the reply that run() returns."""
 
         chunks: list[StreamingChunk] = []
         result = MockChatGenerator(reply_text).run([ChatMessage.from_user("hi")], streaming_callback=chunks.append)
