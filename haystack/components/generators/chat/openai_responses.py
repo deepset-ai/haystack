@@ -44,6 +44,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -155,10 +156,6 @@ class OpenAIResponsesChatGenerator:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
-        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-        environment variables to override the `timeout` and `max_retries` parameters respectively
-        in the OpenAI client.
-
         :param api_key: The OpenAI API key.
             You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
             during initialization.
@@ -218,9 +215,11 @@ class OpenAIResponsesChatGenerator:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param tools:
             The tools that the model can use to prepare calls. This parameter can accept either a
             mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
@@ -262,6 +261,7 @@ class OpenAIResponsesChatGenerator:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
         return {
             "api_key": resolved_api_key,
