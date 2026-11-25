@@ -34,7 +34,7 @@ __init__(
     model: str = "nomic-embed-text",
     url: str = "http://localhost:11434",
     generation_kwargs: dict[str, Any] | None = None,
-    timeout: int = 120,
+    timeout: float = 120,
     keep_alive: float | str | None = None,
     prefix: str = "",
     suffix: str = "",
@@ -55,7 +55,7 @@ Create a new OllamaDocumentEmbedder instance.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Ollama generation endpoint, such as temperature, top_p, and others.
   See the available arguments in
   [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- **timeout** (<code>int</code>) – The number of seconds before throwing a timeout error from the Ollama API.
+- **timeout** (<code>float</code>) – The number of seconds before throwing a timeout error from the Ollama API.
 - **keep_alive** (<code>float | str | None</code>) – The option that controls how long the model will stay loaded into memory following the request.
   If not set, it will use the default value from the Ollama (5 minutes).
   The value can be set to:
@@ -175,7 +175,7 @@ __init__(
     model: str = "nomic-embed-text",
     url: str = "http://localhost:11434",
     generation_kwargs: dict[str, Any] | None = None,
-    timeout: int = 120,
+    timeout: float = 120,
     keep_alive: float | str | None = None,
     dimensions: int | None = None,
 ) -> None
@@ -190,7 +190,7 @@ Create a new OllamaTextEmbedder instance.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Ollama generation endpoint, such as temperature,
   top_p, and others. See the available arguments in
   [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- **timeout** (<code>int</code>) – The number of seconds before throwing a timeout error from the Ollama API.
+- **timeout** (<code>float</code>) – The number of seconds before throwing a timeout error from the Ollama API.
 - **keep_alive** (<code>float | str | None</code>) – The option that controls how long the model will stay loaded into memory following the request.
   If not set, it will use the default value from the Ollama (5 minutes).
   The value can be set to:
@@ -306,7 +306,7 @@ __init__(
     model: str = "qwen3:0.6b",
     url: str = "http://localhost:11434",
     generation_kwargs: dict[str, Any] | None = None,
-    timeout: int = 120,
+    timeout: float = 120,
     max_retries: int = 0,
     keep_alive: float | str | None = None,
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
@@ -325,7 +325,7 @@ Create a new OllamaChatGenerator instance.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Ollama generation endpoint, such as temperature,
   top_p, and others. See the available arguments in
   [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- **timeout** (<code>int</code>) – The number of seconds before throwing a timeout error from the Ollama API.
+- **timeout** (<code>float</code>) – The number of seconds before throwing a timeout error from the Ollama API.
 - **max_retries** (<code>int</code>) – Maximum number of retries to attempt for failed requests (HTTP 429, 5xx, connection/timeout errors).
   Uses exponential backoff between attempts. Set to 0 (default) to disable retries.
 - **think** (<code>bool | Literal['low', 'medium', 'high']</code>) – If True, the model will "think" before producing a response.

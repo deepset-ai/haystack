@@ -761,10 +761,12 @@ def _convert_chat_completion_to_chat_message(
                 )
 
     logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    # A refusal arrives with finish_reason "stop", so report it as "content_filter" like other providers' refusals
+    finish_reason = "content_filter" if message.refusal and choice.finish_reason == "stop" else choice.finish_reason
     meta = {
         "model": completion.model,
         "index": choice.index,
-        "finish_reason": choice.finish_reason,
+        "finish_reason": finish_reason,
         "usage": _serialize_object(completion.usage),
     }
     if logprobs:
@@ -879,6 +881,11 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and choice.delta.content:
         content = choice.delta.content
 
+    finish_reason = finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None
+    # A refusal streamed in earlier chunks ends with finish_reason "stop", so report it as "content_filter"
+    if finish_reason == "stop" and any(c.meta.get("refusal") for c in previous_chunks):
+        finish_reason = "content_filter"
+
     return StreamingChunk(
         content=content,
         component_info=component_info,
@@ -886,6 +893,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
-        finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+        finish_reason=finish_reason,
         meta=meta,
     )
