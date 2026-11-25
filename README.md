@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                   |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                        |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                        |      401 |        2 |     99% |  219, 823 |
+| haystack/components/agents/agent.py                                        |      409 |        2 |     99% |  220, 843 |
 | haystack/components/agents/state/\_\_init\_\_.py                           |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                  |       77 |        2 |     97% |    76, 80 |
 | haystack/components/agents/state/state\_utils.py                           |       18 |        0 |    100% |           |
@@ -279,7 +279,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **19000** |  **657** | **97%** |           |
+| **TOTAL**                                                                  | **19008** |  **657** | **97%** |           |
 
 
 ## Setup coverage badge
