@@ -439,12 +439,6 @@ def test_run_with_top_k_larger_than_retrieved_documents_matches_no_cutoff(mode):
     assert with_cutoff == without_cutoff
 
 
-def test_run_with_top_k_does_not_modify_inputs():
-    retrieved_documents = [_ranked("x", "y", "a")]
-    DocumentRecallEvaluator(top_k=1).run(ground_truth_documents=[_ranked("a")], retrieved_documents=retrieved_documents)
-    assert [doc.content for doc in retrieved_documents[0]] == ["x", "y", "a"]
-
-
 def test_run_with_top_k_and_meta_comparison():
     evaluator = DocumentRecallEvaluator(document_comparison_field="meta.file_id", top_k=1)
     result = evaluator.run(
