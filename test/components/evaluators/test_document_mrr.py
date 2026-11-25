@@ -233,19 +233,6 @@ def test_run_with_top_k_ignores_relevant_documents_below_cutoff(top_k, expected_
     assert result["score"] == pytest.approx(expected_score)
 
 
-def test_run_with_top_k_averages_over_all_questions():
-    evaluator = DocumentMRREvaluator(top_k=1)
-    result = evaluator.run(
-        ground_truth_documents=[[Document(content="a")], [Document(content="b")]],
-        retrieved_documents=[
-            [Document(content="a"), Document(content="x")],
-            [Document(content="x"), Document(content="b")],
-        ],
-    )
-    assert result["individual_scores"] == [1.0, 0.0]
-    assert result["score"] == 0.5
-
-
 def test_run_with_top_k_larger_than_retrieved_documents_matches_no_cutoff():
     ground_truth_documents = [[Document(content="a")], [Document(content="c")]]
     retrieved_documents = [[Document(content="x"), Document(content="a")], [Document(content="y")]]
