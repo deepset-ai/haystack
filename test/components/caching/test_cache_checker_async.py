@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
@@ -13,12 +14,22 @@ from haystack.testing.factory import document_store_class
 
 class TestCacheCheckerAsync:
     @pytest.mark.asyncio
-    async def test_run_async_invalid_docstore(self):
-        mocked_docstore_class = document_store_class("MockedDocumentStore")
+    async def test_run_async_sync_only_docstore(self):
+        documents = [Document(content="doc1", meta={"url": "https://example.com/1"})]
+
+        def filter_documents(self, filters=None):
+            if not filters:
+                return documents
+            return [doc for doc in documents if doc.meta["url"] == filters["value"]]
+
+        mocked_docstore_class = document_store_class(
+            "MockedDocumentStore", extra_fields={"filter_documents": filter_documents}
+        )
         checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
 
-        with pytest.raises(TypeError, match="does not provide async support"):
-            await checker.run_async(items=["https://example.com/1"])
+        result = await checker.run_async(items=["https://example.com/1", "https://example.com/5"])
+
+        assert result == {"hits": [documents[0]], "misses": ["https://example.com/5"]}
 
     @pytest.mark.asyncio
     async def test_run_async(self, in_memory_doc_store):
@@ -73,3 +84,51 @@ class TestCacheCheckerAsync:
         checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
         await checker.close_async()
         assert nonclosable_document_store.mock_calls == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_fresh_hit(self, in_memory_doc_store):
+        fresh_doc = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) - timedelta(minutes=5)}
+        )
+        in_memory_doc_store.write_documents([fresh_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [fresh_doc], "misses": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_expired_is_miss(self, in_memory_doc_store):
+        stale_doc = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) - timedelta(hours=2)}
+        )
+        in_memory_doc_store.write_documents([stale_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_missing_time_field_is_miss(self, in_memory_doc_store):
+        undated_doc = Document(content="doc1", meta={"url": "https://example.com/1"})
+        in_memory_doc_store.write_documents([undated_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_ttl_future_timestamp_is_miss(self, in_memory_doc_store):
+        future_doc = Document(
+            content="doc1", meta={"url": "https://example.com/1", "cached_at": datetime.now(UTC) + timedelta(hours=1)}
+        )
+        in_memory_doc_store.write_documents([future_doc])
+        checker = CacheChecker(in_memory_doc_store, cache_field="url", ttl=timedelta(hours=1))
+        results = await checker.run_async(items=["https://example.com/1"])
+        assert results == {"hits": [], "misses": ["https://example.com/1"]}
+
+    @pytest.mark.asyncio
+    async def test_run_async_filters_syntax_with_ttl(self):
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=[])
+        checker = CacheChecker(document_store=mock_store, cache_field="url", ttl=timedelta(hours=1))
+        await checker.run_async(items=["https://example.com/1"])
+        filters = mock_store.filter_documents_async.await_args.kwargs["filters"]
+        assert filters["operator"] == "AND"
+        assert len(filters["conditions"]) == 3

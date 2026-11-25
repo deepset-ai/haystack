@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    ``LLMRanker`` fallback warnings for an empty query, a chat generation failure and a response parsing failure
+    now consistently say the deduplicated input documents are returned unranked, so the fallback order isn't
+    mistaken for a ranking.

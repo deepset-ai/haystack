@@ -1,0 +1,147 @@
+---
+title: "SummarizationCompactor"
+id: summarization-compactor
+slug: "/summarization-compactor"
+description: "Use SummarizationCompactor to progressively replace older Agent context with LLM-generated summaries."
+---
+
+# SummarizationCompactor
+
+`SummarizationCompactor` reduces an Agent's context by progressively replacing older conversation turns and Agent steps with LLM-generated summaries. Unlike strategies that discard content, it preserves a condensed account of earlier objectives, decisions, completed work, identifiers, and unresolved work.
+
+:::warning[Experimental]
+
+`SummarizationCompactor` is experimental and may change without a deprecation cycle. Summarization is lossy, and its quality depends on the Chat Generator and instructions you configure.
+:::
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Used by** | [`CompactionHook`](compaction-hook.mdx) |
+| **Mandatory init variables** | `chat_generator`: The Chat Generator that writes conversation summaries |
+| **Import path** | `haystack.hooks.compaction.SummarizationCompactor` |
+| **API reference** | [Hooks](/reference/hooks-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/summarization.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Create a separate Chat Generator for summaries and pass the compactor to a `CompactionHook`:
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+
+summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+
+compaction_hook = CompactionHook(
+    compactor=SummarizationCompactor(
+        chat_generator=summary_generator,
+        min_keep_steps=2,
+        approximate_summary_tokens=1_024,
+    ),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+```
+
+Register `compaction_hook` under the Agent's `before_llm` [hook point](../hooks.mdx). `CompactionHook` decides when to compact and derives the target from `context_window` and `compact_to`. `SummarizationCompactor` decides which part of the conversation to summarize.
+
+## How progressive summarization works
+
+The compactor divides the conversation into two regions:
+
+- **History** starts after the leading system messages and ends before the latest real user message.
+- **Current task** starts with the latest real user message and continues to the end.
+
+It always spends history before the current task. Each round uses the first applicable tier below and selects only enough of its oldest content to reach the target:
+
+1. **Historical turns:** Summarize complete historical user turns, oldest first.
+2. **Historical summaries:** Once no complete historical turns remain, combine the oldest historical summaries. At least two summaries are selected so a model call never merely rewrites one summary.
+3. **Current-task steps:** Summarize the oldest eligible Agent steps while preserving the `min_keep_steps` newest steps. An Agent step contains an assistant message and all immediately following tool results.
+4. **Current-task summaries:** When no more steps may be summarized, combine the oldest summaries already created for the current task.
+
+After each successful model call, the resulting summary replaces the selected messages. If the measured conversation is still above the target, the compactor plans another round.
+
+Leading system messages and the latest user message are always retained.
+
+## Summary prompt
+
+The default instruction asks the model to produce terse sections for:
+
+- Objective
+- Decisions and constraints
+- Work completed
+- Identifiers
+- Unresolved work
+
+Only the messages being replaced are sent to the summary generator. The latest request and other retained messages stay in the conversation but are not included in that model call. For example, a selected portion containing an earlier summary, attachments, and a tool interaction is rendered as:
+
+```text
+<conversation_to_summarize>
+[conversation_summary]
+The user asked for an analysis of the Q3 report. The report was downloaded but has not yet been reviewed.
+[user] Review the report and compare it with this chart.
+[user] <file: q3-report.pdf, application/pdf>
+[assistant -> tool_call id=call_1] web_search({"query": "Q3 industry benchmarks"})
+[tool:web_search id=call_1] Saved the benchmark chart: <image: image/png, file_path=/tmp/q3-benchmarks.png>
+</conversation_to_summarize>
+```
+
+Existing summaries are labelled so the model can merge them with newer information, while matching IDs connect tool calls to their results. Attachment contents are not sent to the summary generator and cannot be recovered after compaction; only their identifying details appear in the `<image: ...>` and `<file: ...>` placeholders.
+
+Set `summary_instruction` to replace the default instruction entirely:
+
+```python
+compactor = SummarizationCompactor(
+    chat_generator=summary_generator,
+    summary_instruction=(
+        "Write a concise project handoff. Preserve decisions, file paths, commands, errors, and remaining work."
+    ),
+)
+```
+
+Make custom instructions explicitly request a shorter result. The compactor rejects a generated summary when replacing the selected messages with it does not reduce the measured conversation size.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `chat_generator` | No default | The Chat Generator used to write summaries. Configure generation settings on this object. |
+| `min_keep_steps` | `1` | The minimum number of complete recent Agent steps to preserve, even if retaining them prevents further compaction. Set it to `0` to make every completed step eligible. |
+| `approximate_summary_tokens` | `1024` | The expected size of a generated summary. This is a planning estimate, not a model output limit. A higher value selects more context per round; a lower value keeps more context but can require another round. |
+| `summary_instruction` | Structured default instruction | The complete system instruction sent to the summary generator. It replaces the default rather than being appended to it. |
+| `raise_on_failure` | `False` | Raise summary-generation and validation failures instead of logging them and preserving the last successful compaction. |
+
+`min_keep_steps` cannot be negative, and `approximate_summary_tokens` must be positive.
+
+## Failures and partial progress
+
+A summarization round fails when the Chat Generator raises an exception, returns no usable text, or produces a summary that does not make the measured conversation smaller.
+
+By default, the compactor logs the failure and stops. If an earlier round succeeded, it returns that partially compacted conversation; if no round succeeded, it returns `None` and leaves the input conversation unchanged. Set `raise_on_failure=True` when the calling application should handle the error instead.
+
+The compactor implements both synchronous and asynchronous compaction. `compact_async()` uses the Chat Generator's asynchronous execution path, so asynchronous Agent runs do not block on synchronous summary generation. Warm-up and close operations are also delegated to the summary generator when it implements them.
+
+## Compaction metadata
+
+Every generated summary is a user message wrapped in `<conversation_summary>` tags. Its `context_compaction` metadata records:
+
+- `strategy`: `"summarization"`
+- `summarized_messages`: The number of messages directly replaced by that summary
+
+## Compaction floor
+
+The smallest conversation this strategy can produce contains:
+
+- The leading system messages
+- At most one historical summary
+- The latest user message
+- At most one current-task summary
+- The `min_keep_steps` newest Agent steps
+
+Once only this protected context remains, the compactor cannot reduce the conversation further. A compaction call at this floor returns `None`.

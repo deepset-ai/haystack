@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``ToolResultOffloadHook`` and ``ToolResultOffloadCompactor`` no longer stop the Agent run when a
+    ``ToolResultStore`` write fails, for example when ``FileSystemToolResultStore`` rejects a key containing ``..``
+    or the disk is full. The result stays in the conversation, a warning naming the tool and the store is logged,
+    and the remaining results are still offloaded. If one part of a result with several content blocks fails to
+    write, the whole result stays in the conversation.

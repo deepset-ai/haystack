@@ -141,19 +141,3 @@ Serializes the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> AmazonTextractConverter
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>AmazonTextractConverter</code> – The deserialized component.

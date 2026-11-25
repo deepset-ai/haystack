@@ -1,0 +1,130 @@
+---
+title: "AmazonS3VectorsEmbeddingRetriever"
+id: amazons3vectorsembeddingretriever
+slug: "/amazons3vectorsembeddingretriever"
+description: "Retrieve documents from Amazon S3 Vectors using dense embeddings and optional metadata filters."
+---
+
+# AmazonS3VectorsEmbeddingRetriever
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a Text Embedder in a semantic search or RAG pipeline |
+| **Mandatory init variables** | `document_store`: An [AmazonS3VectorsDocumentStore](../../document-stores/amazons3vectorsdocumentstore.mdx) |
+| **Optional init variables** | `filters`: Metadata filters to apply. <br /><br />`top_k`: Maximum number of results (default: `10`). <br /><br />`filter_policy`: How runtime filters combine with initialization filters (default: `FilterPolicy.REPLACE`). |
+| **Mandatory run variables** | `query_embedding`: A list of floats representing the query |
+| **Optional run variables** | `filters`: Runtime metadata filters, applied according to `filter_policy`. <br /><br />`top_k`: Overrides the maximum number of results set at initialization. |
+| **Output variables** | `documents`: A list of matching [Documents](/reference/data-classes-api#document) with scores, content, and metadata; embeddings are not returned |
+| **API reference** | [Amazon S3 Vectors](/reference/integrations-amazon-s3-vectors) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_s3_vectors |
+| **Package name** | `amazon-s3-vectors-haystack` |
+
+</div>
+
+## Overview
+
+`AmazonS3VectorsEmbeddingRetriever` performs approximate nearest-neighbor search in an Amazon S3 vector index. Use a Document Embedder when indexing text and a matching Text Embedder for queries. Both must use the same embedding model and produce vectors matching the index dimension.
+
+Use `top_k` to set the maximum number of results (default: 10, maximum: 10,000) and `filters` to narrow the search. Both can be set at initialization or at run time; `filter_policy` controls how runtime filters combine with initialization filters. Approximate searches can return fewer than `top_k` documents.
+
+## Installation
+
+```shell
+pip install amazon-s3-vectors-haystack
+```
+
+## Usage
+
+Configure AWS credentials and the region on the Document Store as described in its [Authentication](../../document-stores/amazons3vectorsdocumentstore.mdx#authentication) section; the Retriever uses that configuration.
+
+### On its own
+
+This example indexes two documents with illustrative vectors and retrieves the closest one:
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.amazon_s3_vectors import (
+    AmazonS3VectorsEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.amazon_s3_vectors import (
+    AmazonS3VectorsDocumentStore,
+)
+
+document_store = AmazonS3VectorsDocumentStore(
+    vector_bucket_name="haystack-docs-example",
+    index_name="standalone-search",
+    dimension=3,
+    region_name="us-east-1",
+)
+document_store.write_documents(
+    [
+        Document(id="first", content="First document", embedding=[1.0, 0.0, 0.0]),
+        Document(id="second", content="Second document", embedding=[0.0, 1.0, 0.0]),
+    ]
+)
+retriever = AmazonS3VectorsEmbeddingRetriever(document_store=document_store, top_k=1)
+result = retriever.run(query_embedding=[1.0, 0.0, 0.0])
+print(result["documents"][0].content)
+# >> First document
+retriever.close()
+```
+
+### In a Pipeline
+
+Install Sentence Transformers for this example:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack_integrations.components.retrievers.amazon_s3_vectors import (
+    AmazonS3VectorsEmbeddingRetriever,
+)
+from haystack_integrations.document_stores.amazon_s3_vectors import (
+    AmazonS3VectorsDocumentStore,
+)
+
+model = "sentence-transformers/all-MiniLM-L6-v2"
+document_store = AmazonS3VectorsDocumentStore(
+    vector_bucket_name="haystack-docs-example",
+    index_name="semantic-search",
+    dimension=384,
+    region_name="us-east-1",
+)
+documents = [
+    Document(
+        id="languages",
+        content="There are over 7,000 languages spoken around the world today.",
+    ),
+    Document(id="elephants", content="Elephants can recognize themselves in mirrors."),
+    Document(id="waves", content="Bioluminescent waves can be seen in the Maldives."),
+]
+document_embedder = SentenceTransformersDocumentEmbedder(model=model)
+embedded = document_embedder.run(documents=documents)
+document_store.write_documents(embedded["documents"])
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder", SentenceTransformersTextEmbedder(model=model)
+)
+query_pipeline.add_component(
+    "retriever",
+    AmazonS3VectorsEmbeddingRetriever(document_store=document_store, top_k=1),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run(
+    {"text_embedder": {"text": "How many languages are there?"}}
+)
+print(result["retriever"]["documents"][0].content)
+# >> There are over 7,000 languages spoken around the world today.
+document_store.close()
+```

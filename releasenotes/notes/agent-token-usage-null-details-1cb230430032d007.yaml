@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``Agent`` losing token counts in ``token_usage`` when a later LLM call reports a usage field as ``null``,
+    for example ``prompt_tokens_details`` reported on one call and ``null`` on the next.
+    A ``null`` value now counts as not reported, so the totals no longer depend on the order of the calls.

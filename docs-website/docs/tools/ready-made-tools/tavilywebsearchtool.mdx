@@ -80,7 +80,7 @@ from haystack_integrations.tools.tavily import TavilyWebSearchTool
 web_search = TavilyWebSearchTool(top_k=5, search_params={"search_depth": "advanced"})
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5-mini"),
+    chat_generator=OpenAIChatGenerator(),
     tools=[web_search],
 )
 

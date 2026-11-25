@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` no longer includes the optional closing sequence of an ATX header in the
+    ``header`` and ``parent_headers`` metadata. For example, ``## Install ##`` now produces the header
+    ``Install`` instead of ``Install ##``. The chunk content is unchanged.

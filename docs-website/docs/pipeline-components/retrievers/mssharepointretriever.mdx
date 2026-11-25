@@ -3,6 +3,7 @@ title: "MSSharePointRetriever"
 id: mssharepointretriever
 slug: "/mssharepointretriever"
 description: "Retrieves content from Microsoft SharePoint and OneDrive via the Microsoft Search (Graph) API."
+hep_available: true
 ---
 
 # MSSharePointRetriever
@@ -31,7 +32,7 @@ The retriever does **not** download or convert the underlying files – it only 
 
 ### Authentication
 
-The retriever takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All`, plus `Sites.Read.All` for site and list scoping); the Search API supports delegated permissions only. Typically you wire the token from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+The retriever takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All`, plus `Sites.Read.All` for site and list scoping); the Search API supports delegated permissions only. Typically you wire the token from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally. To call Microsoft Graph as a [Microsoft Entra Agent ID](../connectors/oauthtokenresolver.mdx#microsoft-entra-agent-id) agent identity on behalf of the signed-in user, use `EntraAgentOBOTokenSource` as the resolver's token source.
 
 ### Scoping and filtering the search
 

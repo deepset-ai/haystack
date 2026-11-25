@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable, Iterable
 from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
 
 from haystack.dataclasses import ChatMessage
 
@@ -62,9 +62,8 @@ def _resolve_parameter_types(target: Callable, *, include_extras: bool = False) 
             # TypeError is raised for objects that cannot carry annotations, NameError for names that are not
             # importable at runtime. Either way we fall back to the unresolved annotations.
             hints = {}
-        # Non-string annotations are kept as they are written: on Python 3.10 `get_type_hints` widens the annotation
-        # of a parameter defaulting to `None` into an optional. This was changed in Python 3.11, see
-        # https://docs.python.org/3/whatsnew/3.11.html#typing.
+        # Non-string annotations are kept as they are written: with `include_extras=False`, `get_type_hints` strips
+        # `Annotated` metadata, which would drop markers such as `Variadic` from annotations that need no resolving.
         return {
             name: hints.get(name, param.annotation) if isinstance(param.annotation, str) else param.annotation
             for name, param in parameters.items()
@@ -76,7 +75,7 @@ def _type_name(type_: Any) -> str:
     """
     Util methods to get a nice readable representation of a type.
 
-    Handles Optional and Literal in a special way to make it more readable.
+    Handles Optional, Literal, and Callable in a special way to make them more readable.
     """
     # Literal args are strings, so we wrap them in quotes to make it clear
     if isinstance(type_, str):
@@ -102,6 +101,16 @@ def _type_name(type_: Any) -> str:
         name = "Optional"
 
     if args:
+        if get_origin(type_) is Callable:
+            parameters, return_type = args
+            if isinstance(parameters, list):
+                parameters_str = f"[{', '.join(_type_name(parameter) for parameter in parameters)}]"
+            elif parameters is Ellipsis:
+                parameters_str = "..."
+            else:
+                parameters_str = _type_name(parameters)
+            return f"{name}[{parameters_str}, {_type_name(return_type)}]"
+
         args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
         return f"{name}[{args_str}]"
 
@@ -166,8 +175,24 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
 
+    # A Literal stands for its values: each one must match the receiver, either by its type or, when the receiver is
+    # a Union, as a member of one of its Literal arguments. Literal receivers are matched by membership below.
+    if sender_origin is Literal and receiver_origin is not Literal:
+        if receiver_origin is Union:
+            return all(
+                any(_strict_types_are_compatible(Literal[value], union_arg) for union_arg in receiver_args)
+                for value in sender_args
+            )
+        return all(_strict_types_are_compatible(type(value), receiver) for value in sender_args)
+
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)
+
+    # Union and Literal arguments are unordered sets: match them by membership, not by position
+    if sender_origin is receiver_origin is Union:
+        return all(_strict_types_are_compatible(union_arg, receiver) for union_arg in sender_args)
+    if sender_origin is receiver_origin is Literal:
+        return all(value in receiver_args for value in sender_args)
 
     # Special case to allow list[T] -> Iterable[T] and list[T] -> Iterable[Any]
     if sender_origin is list and receiver_origin is Iterable:

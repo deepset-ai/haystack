@@ -5,6 +5,7 @@
 import base64
 import logging
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -23,6 +24,17 @@ def test_file_content_init(base64_pdf_string):
     assert file_content.filename == "test.pdf"
     assert file_content.extra == {"key": "value"}
     assert file_content.validation
+
+
+def test_file_content_subclass_from_dict(base64_pdf_string):
+    @dataclass
+    class MyFile(FileContent):
+        pass
+
+    file_content = MyFile(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+    result = MyFile.from_dict(file_content.to_dict())
+    assert type(result) is MyFile
+    assert result == file_content
 
 
 def test_file_content_to_dict(base64_pdf_string):

@@ -421,7 +421,7 @@ class SuperComponent(_SuperComponent):
 
     ```python
     from haystack import Pipeline, SuperComponent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.builders import ChatPromptBuilder
     from haystack.components.retrievers import InMemoryBM25Retriever
     from haystack.dataclasses.chat_message import ChatMessage
@@ -453,7 +453,7 @@ class SuperComponent(_SuperComponent):
     pipeline = Pipeline()
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", prompt_builder)
-    pipeline.add_component("llm", OpenAIChatGenerator())
+    pipeline.add_component("llm", OpenAIResponsesChatGenerator())
     pipeline.connect("retriever.documents", "prompt_builder.documents")
     pipeline.connect("prompt_builder.prompt", "llm.messages")
 

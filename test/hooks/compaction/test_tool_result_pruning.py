@@ -10,96 +10,16 @@ from haystack.hooks.compaction.tool_result_pruning import _DEFAULT_PLACEHOLDER
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.hooks.tool_result_offloading import AlwaysOffload, FileSystemToolResultStore, ToolResultOffloadHook
 from haystack.token_counters import ApproximateTokenCounter
-from test.hooks.compaction.helpers import FakeCounter, make_state, tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, conversation, make_state, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
 COUNTER = FakeCounter(chars_per_token=1)
 
 
-def _conversation(*results: str) -> list[ChatMessage]:
-    messages = [ChatMessage.from_user("task")]
-    for index, result in enumerate(results):
-        call_id = f"c{index}"
-        messages.extend([tool_call(call_id), tool_result(result, call_id=call_id)])
-    return messages
-
-
 class TestToolResultPruningCompactor:
-    def test_stops_pruning_after_reaching_target(self):
-        # Conversation with seven messages: one user message followed by three tool-call/result pairs.
-        messages = _conversation("a" * 400, "b" * 400, "c" * 400)
-        compactor = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0)
-        # We pre-calculated the target token count to just be enough to only remove the oldest tool result based on the
-        # count from the FakeCounter.
-        target_tokens = 1041
-        compacted = compactor.compact(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
-        assert compacted is not None
-        assert compacted[2].tool_call_result is not None
-        assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
-        assert compacted[4:] == messages[4:]
-        # Ensure compaction returns new messages instead of changing the input.
-        original_results = [messages[index].tool_call_result for index in (2, 4, 6)]
-        assert all(tool_call_result is not None for tool_call_result in original_results)
-        assert [tool_call_result.result for tool_call_result in original_results if tool_call_result is not None] == [
-            "a" * 400,
-            "b" * 400,
-            "c" * 400,
-        ]
-
-    def test_prunes_multiple_results_in_one_call(self):
-        messages = _conversation("a" * 400, "b" * 400, "newest")
-        compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
-            messages=messages, target_tokens=1, token_counter=COUNTER
-        )
-        assert compacted is not None
-        for index in (2, 4):
-            tool_call_result = compacted[index].tool_call_result
-            assert tool_call_result is not None
-            assert tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
-        assert compacted[5:] == messages[5:]
-
-    def test_keeps_min_keep_steps(self):
-        # Three tool-calling steps, with three parallel results in the middle step.
-        messages = [
-            ChatMessage.from_user("task"),
-            tool_call("old"),
-            tool_result("old" * 200, call_id="old"),
-            tool_call("parallel-1", "parallel-2", "parallel-3"),
-            tool_result("first" * 200, call_id="parallel-1"),
-            tool_result("second" * 200, call_id="parallel-2"),
-            tool_result("third" * 200, call_id="parallel-3"),
-            tool_call("newest"),
-            tool_result("newest" * 200, call_id="newest"),
-        ]
-        # Keeping two steps protects the complete parallel step and the newest step, leaving only `old` eligible.
-        compacted = ToolResultPruningCompactor(min_keep_steps=2, min_tokens=0).compact(
-            messages=messages, target_tokens=1, token_counter=COUNTER
-        )
-        assert compacted is not None
-        assert compacted[2] != messages[2]
-        assert compacted[3:] == messages[3:]
-
-    def test_returns_none_when_the_conversation_already_fits(self):
-        messages = _conversation("a" * 400, "b" * 400)
-        assert (
-            ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
-                messages=messages, target_tokens=COUNTER.count(messages=messages), token_counter=COUNTER
-            )
-            is None
-        )
-
-    def test_returns_none_when_all_steps_are_protected(self):
-        messages = _conversation("only result")
-        assert (
-            ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
-                messages=messages, target_tokens=1, token_counter=COUNTER
-            )
-            is None
-        )
-
     def test_returns_none_when_the_placeholder_would_not_save_tokens(self):
-        messages = _conversation("short", "newest")
+        messages = conversation("short", "newest")
         compactor = ToolResultPruningCompactor(
             min_keep_steps=1, min_tokens=0, placeholder="a placeholder much longer than the result"
         )
@@ -124,7 +44,7 @@ class TestToolResultPruningCompactor:
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "image_generator")
 
     def test_skips_results_below_min_tokens(self):
-        messages = _conversation("small", "newest")
+        messages = conversation("small", "newest")
         compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=200).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )

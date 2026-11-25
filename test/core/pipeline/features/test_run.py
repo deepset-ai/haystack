@@ -1124,7 +1124,7 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("fourth_addition", 1): {"add": None, "value": 11},
                     ("second_addition", 1): {"add": None, "value": 3},
-                    ("sum", 1): {"values": AnyOrder([3, 3, 5])},
+                    ("sum", 1): {"values": [3, 5, 3]},
                     ("third_addition", 1): {"add": None, "value": 1},
                 },
             )
@@ -2352,6 +2352,8 @@ def that_has_an_answer_joiner_variadic_component():
     query = "What's Natural Language Processing?"
     reply1 = "This is a test answer"
     reply2 = "This is a second test answer"
+    answer1 = GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]})
+    answer2 = GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]})
 
     return (
         pipeline,
@@ -2361,14 +2363,7 @@ def that_has_an_answer_joiner_variadic_component():
                     "answer_builder_1": {"query": query, "replies": [reply1]},
                     "answer_builder_2": {"query": query, "replies": [reply2]},
                 },
-                expected_outputs={
-                    "answer_joiner": {
-                        "answers": [
-                            GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]}),
-                            GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]}),
-                        ]
-                    }
-                },
+                expected_outputs={"answer_joiner": {"answers": [answer1, answer2]}},
                 expected_component_calls={
                     ("answer_builder_1", 1): {
                         "documents": None,
@@ -2388,13 +2383,7 @@ def that_has_an_answer_joiner_variadic_component():
                         "reference_pattern": None,
                         "replies": [reply2],
                     },
-                    ("answer_joiner", 1): {
-                        "answers": [
-                            [GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]})],
-                            [GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]})],
-                        ],
-                        "top_k": None,
-                    },
+                    ("answer_joiner", 1): {"answers": [[answer1], [answer2]], "top_k": None},
                 },
             )
         ],
@@ -2729,6 +2718,11 @@ def that_has_variadic_component_that_receives_a_conditional_input():
         Document(id="1", content=" sentences. Like this one"),
         Document(id="2", content=" or this one. Or even this other one."),
     ]
+    cleaned_docs = [
+        Document(id="0", content="This document has so many"),
+        Document(id="1", content="sentences. Like this one"),
+        Document(id="2", content="or this one. Or even this other one."),
+    ]
 
     return pipe, [
         PipelineRunData(
@@ -2743,7 +2737,7 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                         )
                     ]
                 },
-                "document_joiner": {"documents": expected_docs},
+                "document_joiner": {"documents": cleaned_docs},
             },
             expected_component_calls={
                 ("comma_splitter", 1): {
@@ -2765,17 +2759,7 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                     ]
                 },
                 ("document_cleaner", 1): {"documents": expected_docs},
-                ("document_joiner", 1): {
-                    "documents": [
-                        expected_docs,
-                        [
-                            Document(id="0", content="This document has so many"),
-                            Document(id="1", content="sentences. Like this one"),
-                            Document(id="2", content="or this one. Or even this other one."),
-                        ],
-                    ],
-                    "top_k": None,
-                },
+                ("document_joiner", 1): {"documents": [cleaned_docs, expected_docs], "top_k": None},
                 ("noop2", 1): {"documents": [document]},
                 ("noop3", 1): {"documents": [document]},
             },
@@ -2788,11 +2772,11 @@ def that_has_variadic_component_that_receives_a_conditional_input():
             expected_outputs={
                 "document_joiner": {
                     "documents": [
-                        *expected_docs,
-                        Document(id="3", content="This document has so many"),
-                        Document(id="4", content=" sentences. Like this one"),
-                        Document(id="5", content=" or this one. Or even this other one."),
                         document,
+                        *cleaned_docs,
+                        Document(id="3", content="This document has so many"),
+                        Document(id="4", content="sentences. Like this one"),
+                        Document(id="5", content="or this one. Or even this other one."),
                     ]
                 }
             },
@@ -2809,21 +2793,19 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                 },
                 ("document_joiner", 1): {
                     "documents": [
+                        [document, document],
+                        [
+                            *cleaned_docs,
+                            Document(id="3", content="This document has so many"),
+                            Document(id="4", content="sentences. Like this one"),
+                            Document(id="5", content="or this one. Or even this other one."),
+                        ],
                         [
                             *expected_docs,
                             Document(id="3", content="This document has so many"),
                             Document(id="4", content=" sentences. Like this one"),
                             Document(id="5", content=" or this one. Or even this other one."),
                         ],
-                        [
-                            Document(id="0", content="This document has so many"),
-                            Document(id="1", content="sentences. Like this one"),
-                            Document(id="2", content="or this one. Or even this other one."),
-                            Document(id="3", content="This document has so many"),
-                            Document(id="4", content="sentences. Like this one"),
-                            Document(id="5", content="or this one. Or even this other one."),
-                        ],
-                        [document, document],
                     ],
                     "top_k": None,
                 },
@@ -2833,17 +2815,6 @@ def that_has_variadic_component_that_receives_a_conditional_input():
             },
         ),
     ]
-
-
-class AnyOrder:  # noqa: PLW1641 # Object does not implement `__hash__` method but it's ok
-    """List wrapper with order-insensitive equality"""
-
-    def __init__(self, items, key=None):
-        self.items = items
-        self.key = key
-
-    def __eq__(self, other):
-        return isinstance(other, list) and sorted(self.items, key=self.key) == sorted(other, key=self.key)
 
 
 @given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
@@ -2866,9 +2837,7 @@ def that_has_a_string_variadic_component():
                 inputs={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}},
                 expected_outputs={
                     "string_joiner": {
-                        "strings": AnyOrder(
-                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
-                        )
+                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
                     }
                 },
                 expected_component_calls={
@@ -2879,9 +2848,7 @@ def that_has_a_string_variadic_component():
                     },
                     ("prompt_builder_2", 1): {"query": "What's is life?", "template": None, "template_variables": None},
                     ("string_joiner", 1): {
-                        "strings": AnyOrder(
-                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
-                        )
+                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
                     },
                 },
             )
@@ -4368,20 +4335,10 @@ some,header,row
     pipe.connect("splitter.documents", "a_joiner.documents")
 
     expected_pre_split_docs = [
-        Document(content="Some test content", meta={"file_type": "json"}),
         Document(content=txt_data, meta={"file_type": "txt"}),
+        Document(content="Some test content", meta={"file_type": "json"}),
     ]
     expected_splits_docs = [
-        Document(
-            content="Some test content",
-            meta={
-                "file_type": "json",
-                "source_id": "7eead7200d4ecead81a174a1da6512d8955f3a23acdc3f8431885d4793a63a74",
-                "page_number": 1,
-                "split_id": 0,
-                "split_idx_start": 0,
-            },
-        ),
         Document(
             content="Text file content ",
             meta={
@@ -4402,6 +4359,16 @@ some,header,row
                 "split_idx_start": 18,
             },
         ),
+        Document(
+            content="Some test content",
+            meta={
+                "file_type": "json",
+                "source_id": "7eead7200d4ecead81a174a1da6512d8955f3a23acdc3f8431885d4793a63a74",
+                "page_number": 1,
+                "split_id": 0,
+                "split_idx_start": 0,
+            },
+        ),
     ]
     expected_csv_docs = [Document(content=csv_data, meta={"file_type": "csv"})]
 
@@ -4417,16 +4384,11 @@ some,header,row
                     ("txt_converter", 1): {"sources": [sources[1]], "meta": None},
                     ("json_converter", 1): {"sources": [sources[2]], "meta": None},
                     ("b_joiner", 1): {
-                        "documents": AnyOrder(
-                            [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]], key=lambda d: d[0].id
-                        ),
+                        "documents": [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]],
                         "top_k": None,
                     },
                     ("splitter", 1): {"documents": expected_pre_split_docs},
-                    ("a_joiner", 1): {
-                        "documents": AnyOrder([expected_csv_docs, expected_splits_docs], key=lambda d: d[0].id),
-                        "top_k": None,
-                    },
+                    ("a_joiner", 1): {"documents": [expected_csv_docs, expected_splits_docs], "top_k": None},
                 },
             )
         ],
@@ -4509,11 +4471,7 @@ def pipeline_that_converts_files_with_three_joiners():
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
                 expected_outputs={
-                    "DocumentJoiner_2": {
-                        "documents": AnyOrder(
-                            [expected_html_doc_aft_splitter, expected_txt_doc_aft_splitter], key=lambda d: d.content
-                        )
-                    }
+                    "DocumentJoiner_2": {"documents": [expected_txt_doc_aft_splitter, expected_html_doc_aft_splitter]}
                 },
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
@@ -4522,10 +4480,7 @@ def pipeline_that_converts_files_with_three_joiners():
                     ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
                     ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
                     ("DocumentJoiner_2", 1): {
-                        "documents": AnyOrder(
-                            [[expected_html_doc_aft_splitter], [expected_txt_doc_aft_splitter]],
-                            key=lambda d: d[0].content,
-                        ),
+                        "documents": [[expected_txt_doc_aft_splitter], [expected_html_doc_aft_splitter]],
                         "top_k": None,
                     },
                     ("splitter", 1): {"documents": [expected_txt_doc]},
@@ -4956,9 +4911,7 @@ def pipeline_that_converts_files_with_three_auto_joiners():
                     ("router", 1): {"sources": sources, "meta": None},
                     ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
                     ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
-                    ("writer", 1): {
-                        "documents": AnyOrder([expected_txt_document, expected_html_document], key=lambda d: d.content)
-                    },
+                    ("writer", 1): {"documents": [expected_txt_document, expected_html_document]},
                     ("splitter", 1): {"documents": [Document(content=txt_data, meta={"file_type": "txt"})]},
                     ("page_splitter", 1): {"documents": [Document(content="Some content", meta={"file_type": "html"})]},
                 },

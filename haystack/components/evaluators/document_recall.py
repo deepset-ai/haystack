@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import component, default_to_dict, logging
 from haystack.dataclasses import Document
+from haystack.utils.misc import _make_metadata_value_hashable
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,11 @@ class DocumentRecallEvaluator:
     """
 
     def __init__(
-        self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"
+        self,
+        mode: str | RecallMode = RecallMode.SINGLE_HIT,
+        document_comparison_field: str = "content",
+        *,
+        top_k: int | None = None,
     ) -> None:
         """
         Create a DocumentRecallEvaluator component.
@@ -83,12 +88,23 @@ class DocumentRecallEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
+        :param top_k:
+            If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+            metric at cutoff k (for example, `top_k=5` gives Recall@5). Must be a positive integer.
+            Defaults to `None`, which scores all retrieved documents.
+        :raises ValueError:
+            If `top_k` is not a positive integer or `None`.
         """
+        if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1):
+            msg = f"top_k must be a positive integer or None, got {top_k!r}."
+            raise ValueError(msg)
         if isinstance(mode, str):
             mode = RecallMode.from_str(mode)
 
         self.mode = mode
         self.document_comparison_field = document_comparison_field
+        self.top_k = top_k
 
     def _get_comparison_value(self, doc: Document) -> Any:
         """
@@ -105,7 +121,7 @@ class DocumentRecallEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -133,10 +149,17 @@ class DocumentRecallEvaluator:
 
         unique_retrievals = self._unique_comparison_values(retrieved_documents)
         if not unique_retrievals:
-            logger.warning(
-                "There are no retrieved documents or none of them contain a valid comparison value. "
-                "Score will be set to 0."
-            )
+            if self.top_k is None:
+                logger.warning(
+                    "There are no retrieved documents or none of them contain a valid comparison value. "
+                    "Score will be set to 0."
+                )
+            else:
+                logger.warning(
+                    "There are no retrieved documents or none of the first {top_k} contain a valid comparison "
+                    "value. Score will be set to 0.",
+                    top_k=self.top_k,
+                )
 
         return unique_truths, unique_retrievals
 
@@ -172,6 +195,10 @@ class DocumentRecallEvaluator:
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
                 documents retrieved. If the mode is `single_hit`, the individual scores are 0 or 1.
         """
+        if len(ground_truth_documents) == 0 or len(retrieved_documents) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
@@ -181,7 +208,10 @@ class DocumentRecallEvaluator:
         elif self.mode == RecallMode.MULTI_HIT:
             mode_function = self._recall_multi_hit
 
-        scores = [mode_function(gt, ret) for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=True)]
+        scores = [
+            mode_function(gt, ret[: self.top_k])
+            for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=True)
+        ]
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
 
@@ -192,4 +222,6 @@ class DocumentRecallEvaluator:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, mode=str(self.mode), document_comparison_field=self.document_comparison_field)
+        return default_to_dict(
+            self, mode=str(self.mode), document_comparison_field=self.document_comparison_field, top_k=self.top_k
+        )

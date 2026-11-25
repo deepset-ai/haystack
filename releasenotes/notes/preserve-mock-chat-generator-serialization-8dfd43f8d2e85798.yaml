@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``MockChatGenerator.from_dict()`` now preserves the supplied serialized
+    configuration, so the same dictionary can be loaded more than once when
+    using predefined responses, a response function, or a streaming callback.

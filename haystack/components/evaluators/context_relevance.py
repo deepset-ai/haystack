@@ -135,7 +135,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
-            Whether to raise an exception if the API call fails.
+            If True, the component raises an exception when the chat generator call fails or its response isn't valid
+            JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -219,14 +220,24 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             The updated dictionary containing final scores and tracking metrics.
         """
         for idx, res in enumerate(result["results"]):
-            if res is None:
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
-                continue
-            res["status"] = "evaluated"
-            if len(res["relevant_statements"]) > 0:
-                res["score"] = 1
-            else:
-                res["score"] = 0
+            if res is not None:
+                statements = res["relevant_statements"]
+                if isinstance(statements, list):
+                    res["score"] = 1 if statements else 0
+                    res["status"] = "evaluated"
+                    continue
+
+                value_type = type(statements).__name__
+                if self.raise_on_failure:
+                    msg = f"Input {idx}: expected `relevant_statements` to be a list, got {value_type}."
+                    raise ValueError(msg)
+                logger.warning(
+                    "Input {idx}: expected `relevant_statements` to be a list, got {value_type}.",
+                    idx=idx,
+                    value_type=value_type,
+                )
+
+            result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
 
         # calculate average context relevance score over all queries
         scores = [res["score"] for res in result["results"]]

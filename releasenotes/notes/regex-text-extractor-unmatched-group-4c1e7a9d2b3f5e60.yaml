@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``RegexTextExtractor`` now returns an empty string instead of ``None`` when the pattern matches
+    but its first capture group does not take part in the match, for example the other side of an
+    alternation such as ``Score: (\d+)|N/A`` or an optional group.

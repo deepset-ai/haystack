@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Fix ``MSGToDocument`` incorrectly including Cc and Bcc recipients in the To line.
+    To, Cc and Bcc now use transport headers when available, falling back to
+    Outlook recipients when headers are missing or blank.

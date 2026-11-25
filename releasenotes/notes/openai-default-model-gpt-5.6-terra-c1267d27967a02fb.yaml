@@ -1,0 +1,18 @@
+---
+upgrade:
+  - |
+    The default model of ``OpenAIChatGenerator`` and ``OpenAIResponsesChatGenerator`` changed from ``gpt-5-mini`` to
+    ``gpt-5.6-terra``, the replacement OpenAI recommends. OpenAI shuts down ``gpt-5-mini`` on December 11, 2026.
+    ``LLMEvaluator``, ``ContextRelevanceEvaluator``, and ``FaithfulnessEvaluator`` use the new default too.
+
+    Pipelines serialized before this change store ``model: gpt-5-mini`` and keep using it. Update the ``model`` value
+    in their YAML before December 11, 2026. To keep ``gpt-5-mini`` until then, pass it explicitly:
+    ``OpenAIChatGenerator(model="gpt-5-mini")``.
+fixes:
+  - |
+    ``OpenAIChatGenerator`` now works with tools on ``gpt-5.6`` models, ``gpt-6-sol``, and ``gpt-6-luna``.
+    Over the Chat Completions API, these models accept tools only with ``reasoning_effort="none"`` and returned
+    HTTP 400 when tools were sent without it. When a request to one of these models includes tools and
+    ``generation_kwargs`` doesn't set ``reasoning_effort``, ``OpenAIChatGenerator`` now sends
+    ``reasoning_effort="none"``, so these requests run without reasoning.
+    To combine reasoning with tools, use ``OpenAIResponsesChatGenerator``.

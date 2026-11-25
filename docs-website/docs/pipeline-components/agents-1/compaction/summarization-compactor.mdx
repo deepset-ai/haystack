@@ -58,6 +58,8 @@ The compactor divides the conversation into two regions:
 - **History** starts after the leading system messages and ends before the latest real user message.
 - **Current task** starts with the latest real user message and continues to the end.
 
+A real user message is one that compaction didn't add and that isn't [marked as a system reminder](../compaction.mdx#messages-added-by-hooks).
+
 It always spends history before the current task. Each round uses the first applicable tier below and selects only enough of its oldest content to reach the target:
 
 1. **Historical turns:** Summarize complete historical user turns, oldest first.
@@ -121,7 +123,7 @@ Make custom instructions explicitly request a shorter result. The compactor reje
 
 ## Failures and partial progress
 
-A summarization round fails when the Chat Generator raises an exception, returns no usable text, or produces a summary that does not make the measured conversation smaller.
+A summarization round fails when the Chat Generator raises an exception, returns no usable text, reports `finish_reason="length"` (the output token limit was reached) or `finish_reason="content_filter"` (a content filter interrupted generation), or produces a summary that does not reduce the measured conversation size.
 
 By default, the compactor logs the failure and stops. If an earlier round succeeded, it returns that partially compacted conversation; if no round succeeded, it returns `None` and leaves the input conversation unchanged. Set `raise_on_failure=True` when the calling application should handle the error instead.
 

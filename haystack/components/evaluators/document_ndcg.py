@@ -6,6 +6,7 @@ from math import log2
 from typing import Any
 
 from haystack import Document, component, default_to_dict
+from haystack.utils.misc import _make_metadata_value_hashable
 
 
 @component
@@ -34,7 +35,7 @@ class DocumentNDCGEvaluator:
     ```
     """
 
-    def __init__(self, document_comparison_field: str = "content") -> None:
+    def __init__(self, document_comparison_field: str = "content", *, top_k: int | None = None) -> None:
         """
         Create a DocumentNDCGEvaluator component.
 
@@ -45,8 +46,20 @@ class DocumentNDCGEvaluator:
             - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
               (e.g. `"meta.file_id"`, `"meta.page_number"`)
               Nested keys are supported (e.g. `"meta.source.url"`).
+              Values may also be lists or dictionaries.
+        :param top_k:
+            If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+            metric at cutoff k (for example, `top_k=10` gives NDCG@10). The ideal DCG is also cut at `top_k`,
+            so a perfect ranking of the first `top_k` documents scores 1.0. Must be a positive integer.
+            Defaults to `None`, which scores all retrieved documents.
+        :raises ValueError:
+            If `top_k` is not a positive integer or `None`.
         """
+        if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1):
+            msg = f"top_k must be a positive integer or None, got {top_k!r}."
+            raise ValueError(msg)
         self.document_comparison_field = document_comparison_field
+        self.top_k = top_k
 
     def _get_comparison_value(self, doc: Document) -> Any:
         """
@@ -63,7 +76,7 @@ class DocumentNDCGEvaluator:
                 if not isinstance(value, dict) or part not in value:
                     return None
                 value = value[part]
-            return value
+            return _make_metadata_value_hashable(value)
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -74,15 +87,15 @@ class DocumentNDCGEvaluator:
         """
         Map each ground truth comparison value to its relevance score.
 
-        Documents whose comparison value cannot be determined (e.g. missing meta key) are skipped,
-        since they can never be matched during retrieval either. Documents that share a comparison
+        Documents whose comparison value is missing (e.g. missing meta key) or empty are skipped,
+        since they can't identify a relevant document. Documents that share a comparison
         value are collapsed to a single entry keeping the highest relevance, so `calculate_dcg` and
         `calculate_idcg` credit the same unique relevant set with the same scores.
         """
         relevant_value_to_score: dict[Any, float] = {}
         for doc in gt_docs:
             value = self._get_comparison_value(doc)
-            if value is None:
+            if value in ("", None):
                 continue
             relevance = doc.score if doc.score is not None else 1.0
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
@@ -95,7 +108,7 @@ class DocumentNDCGEvaluator:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_comparison_field=self.document_comparison_field)
+        return default_to_dict(self, document_comparison_field=self.document_comparison_field, top_k=self.top_k)
 
     @component.output_types(score=float, individual_scores=list[float])
     def run(
@@ -162,6 +175,8 @@ class DocumentNDCGEvaluator:
         """
         Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
+        If `top_k` is set, only the first `top_k` retrieved documents are used.
+
         :param gt_docs:
             The ground truth documents.
         :param ret_docs:
@@ -175,7 +190,7 @@ class DocumentNDCGEvaluator:
 
         # Credit each relevant value at most once by popping it when first matched. A duplicate
         # retrieval of the same document then finds nothing, so it cannot inflate DCG past IDCG.
-        for i, doc in enumerate(ret_docs):
+        for i, doc in enumerate(ret_docs[: self.top_k]):
             value = self._get_comparison_value(doc)
             if value is not None and value in relevant_value_to_score:
                 dcg += relevant_value_to_score.pop(value) / log2(i + 2)  # i + 2 because i is 0-indexed
@@ -185,7 +200,10 @@ class DocumentNDCGEvaluator:
         """
         Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-        Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+        If `top_k` is set, only the `top_k` most relevant ground truth documents are used, matching the cutoff
+        applied to the retrieved documents in `calculate_dcg`.
+
+        Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
         are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
         a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
         credits each relevant value at most once. Including duplicates or unmatchable documents here
@@ -199,6 +217,6 @@ class DocumentNDCGEvaluator:
         relevant_value_to_score = self._build_relevance_map(gt_docs)
 
         idcg = 0.0
-        for i, relevance in enumerate(sorted(relevant_value_to_score.values(), reverse=True)):
+        for i, relevance in enumerate(sorted(relevant_value_to_score.values(), reverse=True)[: self.top_k]):
             idcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return idcg

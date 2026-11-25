@@ -41,12 +41,12 @@ class LostInTheMiddleRanker:
         """
         Initialize the LostInTheMiddleRanker.
 
-        If 'word_count_threshold' is specified, this ranker includes all documents up until the point where adding
-        another document would exceed the 'word_count_threshold'. The last document that causes the threshold to
-        be breached will be included in the resulting list of documents, but all subsequent documents will be
-        discarded.
-
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold:
+            The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+            reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+            filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+            in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+            Words are counted using `str.split()`, not model tokens.
         :param top_k: The maximum number of documents to return.
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
@@ -71,7 +71,12 @@ class LostInTheMiddleRanker:
 
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold:
+            The cumulative word count threshold used to select documents before applying the lost-in-the-middle
+            reordering. Documents are considered in their original relevance order, after deduplication and `top_k`
+            filtering. The document that causes the cumulative word count to reach or exceed the threshold is included
+            in full, so the final word count may exceed the threshold. All subsequent documents are excluded.
+            Words are counted using `str.split()`, not model tokens.
         :returns:
             A dictionary with the following keys:
             - `documents`: Reranked list of Documents

@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add a ``tokenizer_encoding`` parameter to ``RecursiveDocumentSplitter`` to choose the tiktoken encoding used
+    when ``split_unit="token"``, as in ``DocumentSplitter``. It defaults to ``"o200k_base"``, the encoding used
+    until now. Set it to match your model, for example ``"cl100k_base"`` for OpenAI's ``text-embedding-3`` models,
+    so that chunks fit the model's token limit.

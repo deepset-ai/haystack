@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+from collections.abc import Callable as ABCCallable
 from enum import Enum
 from functools import partial
 from inspect import Parameter
@@ -11,12 +12,14 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    Concatenate,
     Dict,
     Iterable,
     List,
     Literal,
     Mapping,
     Optional,
+    ParamSpec,
     Sequence,
     Set,
     Tuple,
@@ -180,6 +183,24 @@ def generate_strict_asymmetric_cases():
         [
             pytest.param(bool, int, id="different-primitives"),
             pytest.param((Literal["a", "b"]), (Literal["a", "b", "c"]), id="sending-subset-literal"),
+            pytest.param((Literal["b", "c"]), (Literal["a", "b", "c"]), id="sending-non-prefix-subset-literal"),
+            pytest.param(Literal["a", "b"], str, id="string-literal-to-str"),
+            pytest.param(Literal[1, 2], int, id="int-literal-to-int"),
+            pytest.param(Literal[Enum1.TEST1], Enum1, id="enum-literal-to-enum"),
+            pytest.param(Literal["a"], str | None, id="string-literal-to-optional-str-pep604"),
+            pytest.param(Literal["a"], Optional[str], id="string-literal-to-optional-str"),
+            pytest.param(Literal[1, "a"], Union[int, str], id="mixed-literal-to-typing-union-of-value-types"),
+            pytest.param(Literal[None], str | None, id="none-literal-to-optional-str"),
+            pytest.param(Literal[1, "a"], int | str, id="mixed-literal-to-union-of-value-types"),
+            pytest.param(Literal["a", 1], Literal["a"] | int, id="mixed-literal-to-union-of-literal-and-type"),
+            pytest.param(list[Literal["a"]], list[str], id="list-of-string-literal-to-list-of-str"),
+            pytest.param((Optional[str]), (Union[int, str, None]), id="union-to-superset-union-in-other-order"),
+            pytest.param(str | None, str | int | None, id="union-to-superset-union-in-other-order-pep604"),
+            pytest.param(
+                list[Path | ByteStream],
+                list[str | Path | ByteStream],
+                id="list-of-union-to-list-of-superset-union-pep604",
+            ),
             pytest.param(int, int | str, id="primitive-to-union-pep604"),
             pytest.param(str, str | int | float, id="primitive-to-multi-union-pep604"),
         ]
@@ -441,6 +462,29 @@ def test_type_name(type_, repr_):
     assert _type_name(type_) == repr_
 
 
+@pytest.mark.parametrize("callable_type", [Callable, ABCCallable])
+@pytest.mark.parametrize(
+    "parameters,return_type,expected",
+    [
+        ([int, str], bool, "Callable[[int, str], bool]"),
+        ([], str, "Callable[[], str]"),
+        (Ellipsis, str, "Callable[..., str]"),
+        ([str], None, "Callable[[str], None]"),
+        ([list[int]], dict[str, int], "Callable[[list[int]], dict[str, int]]"),
+        ([Callable[[int], str]], bool, "Callable[[Callable[[int], str]], bool]"),
+    ],
+)
+def test_type_name_preserves_callable_signature(callable_type, parameters, return_type, expected):
+    assert _type_name(callable_type[parameters, return_type]) == expected
+
+
+@pytest.mark.parametrize("callable_type", [Callable, ABCCallable])
+def test_type_name_preserves_callable_parameter_specification(callable_type):
+    parameters = ParamSpec("parameters")
+    assert _type_name(callable_type[parameters, str]) == "Callable[parameters, str]"
+    assert _type_name(callable_type[Concatenate[int, parameters], str]) == "Callable[Concatenate[int, parameters], str]"
+
+
 if sys.version_info < (3, 14):
 
     @pytest.mark.parametrize(
@@ -544,7 +588,11 @@ incompatible_type_cases = [
     pytest.param((List[Class1]), (List[Class2]), id="different-lists-of-classes"),
     pytest.param((list[Class1]), (list[Class2]), id="different-lists-of-classes"),
     pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
+    pytest.param((Literal["a", "x"]), (Literal["a", "b", "c"]), id="partially-overlapping-literals"),
     pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
+    pytest.param(Literal["a"], int, id="string-literal-to-different-primitive"),
+    pytest.param(Literal[1, "a"], int, id="mixed-literal-to-type-of-some-values"),
+    pytest.param(Literal["a", "x"], Literal["a"] | int, id="literal-partially-matching-union-of-literal-and-type"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
     ),
@@ -650,9 +698,9 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
 @pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
-        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
+        pytest.param((Union[(int, float)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-        pytest.param((int | bool), (int | str), id="partially-overlapping-unions-with-primitives-pep604"),
+        pytest.param((int | float), (int | str), id="partially-overlapping-unions-with-primitives-pep604"),
         pytest.param((int | Class1), (int | Class2), id="partially-overlapping-unions-with-classes-pep604"),
     ],
 )
@@ -1022,6 +1070,9 @@ class TestConversion:
 
         assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
         assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a"], receiver=list[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a", "b"], receiver=List[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=Literal["a"], receiver=list[int]) == (False, None)
 
         assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (
             True,

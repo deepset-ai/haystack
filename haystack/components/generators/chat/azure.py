@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat._rate_limit_headers import _build_http_client
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
     ToolsType,
@@ -18,10 +19,8 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
-    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -29,7 +28,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Generates text using OpenAI's models on Azure.
 
-    It works with the gpt-4 - type models and supports streaming responses
+    It works with OpenAI's GPT models deployed on Azure and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -53,7 +52,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     client = AzureOpenAIChatGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+        azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
     response = client.run(messages)
     print(response)
     ```
@@ -64,7 +63,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
          enabling computers to understand, interpret, and generate human language in a way that is useful.")],
          _name=None,
-         _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```
@@ -127,6 +126,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -155,6 +155,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param generation_kwargs: Other parameters to use for the model. These parameters are sent directly to
             the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
             Some of the supported parameters:
+            - `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+                when streaming. Set `{"include_usage": False}` to disable requesting token usage.
             - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
                 including visible output tokens and reasoning tokens.
             - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
@@ -192,6 +194,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -228,13 +235,13 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
         self.tools = tools
         self.tools_strict = tools_strict
 
         self.client: AzureOpenAI | None = None
         self.async_client: AsyncAzureOpenAI | None = None
-        self._tools_warmed_up = False
 
     def _client_kwargs(self) -> dict[str, Any]:
         timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -260,20 +267,16 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             "azure_ad_token_provider": self.azure_ad_token_provider,
         }
 
-    def _warm_up_tools(self) -> None:
-        if not self._tools_warmed_up:
-            warm_up_tools(self.tools)
-            self._tools_warmed_up = True
-
     def warm_up(self) -> None:
         """
-        Warm up the tools and initialize the synchronous Azure OpenAI client.
+        Initialize the synchronous Azure OpenAI client.
         """
-        self._warm_up_tools()
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.client = AzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -281,13 +284,14 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
-        Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+        Initialize the asynchronous Azure OpenAI client on the serving event loop.
         """
-        self._warm_up_tools()
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.async_client = AsyncAzureOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -353,6 +357,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             tools_strict=self.tools_strict,
             azure_ad_token_provider=azure_ad_token_provider_name,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod

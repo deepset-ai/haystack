@@ -1,0 +1,21 @@
+---
+upgrade:
+  - |
+    ``TextCleaner`` now runs one pass over each text per pattern in ``remove_regexps``, so cleaning with a long list
+    of patterns is slower than before. If you pass many patterns that use no backreferences, group names or inline
+    flags, you can keep the previous single-pass behavior by joining them yourself, for example
+    ``remove_regexps=["|".join(patterns)]``.
+    Patterns that overlap can also give a different result, because each pattern now sees the text left by the
+    patterns before it. For example, ``["bc", "ab"]`` on ``"abc"`` used to return ``"c"`` and now returns ``"a"``.
+    A global inline flag at the start of the first pattern, such as ``(?s)`` or ``(?m)``, used to apply to every
+    pattern and now applies only to that pattern. If your other patterns relied on it, add the flag to each of them.
+    For example, with ``[r"(?s)<!--.*?-->", "a.b"]`` the second pattern used to match ``"a\nb"`` and no longer does.
+    A pattern that refers to a group defined in another pattern, such as ``r"b\1"`` in ``["(a)", r"b\1"]``, used to
+    be accepted without ever matching and now raises ``re.error`` when the component is created. Remove or fix such
+    patterns before upgrading.
+fixes:
+  - |
+    ``TextCleaner`` now applies each pattern in ``remove_regexps`` on its own instead of joining them into a single
+    regular expression. Previously, a backreference such as ``\1`` in any pattern after the first pointed at another
+    pattern's group, two patterns using the same group name raised ``re.error``, and a global inline flag such as
+    ``(?m)`` was rejected unless it was in the first pattern.

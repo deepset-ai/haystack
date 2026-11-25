@@ -3,6 +3,7 @@ title: "MistralTextEmbedder"
 id: mistraltextembedder
 slug: "/mistraltextembedder"
 description: "This component transforms a string into a vector using the Mistral API and models. Use it for embedding retrieval to transform your query into an embedding."
+hep_available: true
 ---
 
 # MistralTextEmbedder
@@ -29,7 +30,7 @@ Use `MistralTextEmbedder` to embed a simple string (such as a query) into a vect
 
 `MistralTextEmbedder` transforms a string into a vector that captures its semantics using a Mistral embedding model.
 
-The component currently supports the `mistral-embed` embedding model. The list of all supported models can be found in Mistral’s [embedding models documentation](https://docs.mistral.ai/platform/endpoints/#embedding-models).
+The component supports the `mistral-embed` (default) and `codestral-embed` embedding models. The list of all supported models can be found in Mistral’s [models documentation](https://docs.mistral.ai/models).
 
 To start using this integration with Haystack, install it with:
 
@@ -38,21 +39,6 @@ pip install mistral-haystack
 ```
 
 `MistralTextEmbedder` needs a Mistral API key to work. It uses a `MISTRAL_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
-
-```python
-embedder = MistralTextEmbedder(
-    api_key=Secret.from_token("<your-api-key>"),
-    model="mistral-embed",
-)
-```
-
-## Usage
-
-### On its own
-
-Remember to set the`MISTRAL_API_KEY` as an environment variable first or pass it in directly.
-
-Here is how you can use the component on its own:
 
 ```python
 from haystack.utils import Secret
@@ -64,20 +50,35 @@ embedder = MistralTextEmbedder(
     api_key=Secret.from_token("<your-api-key>"),
     model="mistral-embed",
 )
+```
 
-result = embedder.run(text="How can I ise the Mistral embedding models with Haystack?")
+## Usage
 
-print(result["embedding"])
-# [-0.0015687942504882812, 0.052154541015625, 0.037109375...]
+### On its own
+
+Set `MISTRAL_API_KEY` in your environment before running this example.
+
+```python
+from haystack_integrations.components.embedders.mistral.text_embedder import (
+    MistralTextEmbedder,
+)
+
+embedder = MistralTextEmbedder(model="mistral-embed")
+
+result = embedder.run(text="How can I use the Mistral embedding models with Haystack?")
+
+print(len(result["embedding"]))
+# >> 1024
 ```
 
 ### In a pipeline
 
 Below is an example of the `MistralTextEmbedder` in a document search pipeline. We are building this pipeline on top of an `InMemoryDocumentStore` where we index the contents of two URLs.
 
+Set `MISTRAL_API_KEY` and `OPENAI_API_KEY` in your environment before running the pipeline.
+
 ```python
-from haystack import Document, Pipeline
-from haystack.utils import Secret
+from haystack import Pipeline
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.converters import HTMLToDocument
@@ -116,7 +117,7 @@ indexing.run(
     data={
         "fetcher": {
             "urls": [
-                "https://docs.mistral.ai/self-deployment/cloudflare/",
+                "https://docs.mistral.ai/inference/deployment/local-deployment/cloudflare",
                 "https://docs.mistral.ai/platform/endpoints/",
             ],
         },
@@ -141,10 +142,7 @@ prompt_builder = ChatPromptBuilder(
     template=prompt_template,
     required_variables={"query", "documents"},
 )
-llm = OpenAIChatGenerator(
-    model="gpt-4o-mini",
-    api_key=Secret.from_token("<your-api-key>"),
-)
+llm = OpenAIChatGenerator()
 
 doc_search = Pipeline()
 doc_search.add_component("text_embedder", text_embedder)

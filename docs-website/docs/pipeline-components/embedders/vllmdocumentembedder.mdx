@@ -3,6 +3,7 @@ title: "VLLMDocumentEmbedder"
 id: vllmdocumentembedder
 slug: "/vllmdocumentembedder"
 description: "This component computes the embeddings of a list of documents using models served with vLLM."
+hep_available: true
 ---
 
 # VLLMDocumentEmbedder
@@ -100,7 +101,7 @@ pip install vllm-haystack
 
 ### Starting the vLLM server
 
-Before using this component, start a vLLM server with an embedding model:
+[Install vLLM](https://docs.vllm.ai/en/stable/getting_started/installation/), then start a server with an embedding model:
 
 ```bash
 vllm serve google/embeddinggemma-300m

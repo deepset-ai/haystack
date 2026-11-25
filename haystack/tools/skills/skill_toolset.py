@@ -33,14 +33,14 @@ class SkillToolset(Toolset):
     <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SkillToolset
     from haystack.skill_stores.file_system import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
     skills_toolset = SkillToolset(store)
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+    agent = Agent(chat_generator=OpenAIResponsesChatGenerator(), tools=skills_toolset)
     result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
     ```
 
@@ -102,6 +102,13 @@ class SkillToolset(Toolset):
         self._skills = self._store.list_skills()
         self._load_skill_tool.description = self._load_skill_description()
         self._is_warmed_up = True
+
+    def close(self) -> None:
+        """Close the skill store and invalidate the cached catalog."""
+        if hasattr(self._store, "close"):
+            self._store.close()
+        self._skills = {}
+        self._is_warmed_up = False
 
     def add(self, tool: Tool) -> None:
         """Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store."""

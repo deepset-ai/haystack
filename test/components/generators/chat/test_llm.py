@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.agents.agent import Agent
+from haystack.components.agents.agent import _INTERNAL_STATE_KEYS, Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.branch import BranchJoiner
@@ -71,6 +71,22 @@ class MockChatGenerator:
         return {"replies": [ChatMessage.from_assistant("Async reply")]}
 
 
+@component
+class FinishReasonChatGenerator:
+    """A mock chat generator that replies with a fixed `finish_reason` in the message meta."""
+
+    def __init__(self, finish_reason: str) -> None:
+        self.finish_reason = finish_reason
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Reply", meta={"finish_reason": self.finish_reason})]}
+
+    @component.output_types(replies=list[ChatMessage])
+    async def run_async(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Reply", meta={"finish_reason": self.finish_reason})]}
+
+
 class TestLLM:
     class TestInit:
         USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
@@ -96,6 +112,7 @@ class TestLLM:
                 "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
                 "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
                 "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
+                "exit_reason": OutputSocket(name="exit_reason", type=str, receivers=[]),
             }
 
         def test_detects_no_tools_support(self) -> None:
@@ -255,6 +272,7 @@ class TestLLM:
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             result = llm.run(query="What is 2+2?")
             assert result["last_message"].text == "Sync reply"
+            assert _INTERNAL_STATE_KEYS.keys().isdisjoint(result)
             user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
             assert any("What is 2+2?" in m.text for m in user_messages)
 
@@ -265,6 +283,28 @@ class TestLLM:
             assert result["last_message"].text == "Sync reply"
             user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
             assert any("Question: What is 2+2?" in m.text for m in user_messages)
+
+        @pytest.mark.parametrize(
+            ("finish_reason", "expected_exit_reason"),
+            [("stop", "text"), ("length", "length"), ("content_filter", "content_filter")],
+        )
+        def test_run_returns_exit_reason(self, finish_reason: str, expected_exit_reason: str) -> None:
+
+            llm = LLM(chat_generator=FinishReasonChatGenerator(finish_reason=finish_reason))
+            result = llm.run(messages=[ChatMessage.from_user("Hi")])
+            assert result["exit_reason"] == expected_exit_reason
+            assert result.keys() == {"messages", "last_message", "token_usage", "exit_reason"}
+
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            ("finish_reason", "expected_exit_reason"),
+            [("stop", "text"), ("length", "length"), ("content_filter", "content_filter")],
+        )
+        async def test_run_async_returns_exit_reason(self, finish_reason: str, expected_exit_reason: str) -> None:
+
+            llm = LLM(chat_generator=FinishReasonChatGenerator(finish_reason=finish_reason))
+            result = await llm.run_async(messages=[ChatMessage.from_user("Hi")])
+            assert result["exit_reason"] == expected_exit_reason
 
         @pytest.mark.asyncio
         async def test_run_async_accepts_messages_via_kwargs(self) -> None:

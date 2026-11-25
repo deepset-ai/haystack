@@ -38,6 +38,34 @@ class TestMarkdownToDocument:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
 
+    def test_run_preserves_markdown_table_by_default(self):
+        source = ByteStream(data=b"| A | B |\n| --- | --- |\n| one | two |")
+        converter = MarkdownToDocument()
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "| A | B |\n| --- | --- |\n| one | two |"
+
+    def test_run_keeps_table_cells_apart_on_a_single_line(self):
+        converter = MarkdownToDocument(table_to_single_line=True)
+        source = ByteStream(
+            b"Team:\n\n| Name | Role |\n| --- | --- |\n| Ada | Engineer |\n| Grace | Admiral |\n\nThat is all.\n"
+        )
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "Team:\n\nName Role Ada Engineer Grace Admiral\n\nThat is all."
+
+    def test_run_keeps_consecutive_tables_apart(self):
+        source = ByteStream(
+            data=(b"| A | B |\n| --- | --- |\n| one | two |\n\n| C | D |\n| --- | --- |\n| three | four |")
+        )
+        converter = MarkdownToDocument(table_to_single_line=True)
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert documents[0].content == "A B one two\n\nC D three four"
+
     def test_run_with_store_full_path_false(self, test_files_path):
         """
         Test if the component runs correctly with store_full_path=False
@@ -111,6 +139,28 @@ class TestMarkdownToDocument:
         assert document.meta["source"] == "earnings_call"
         assert document.meta["tags"] == ["guidance"]
         assert document.meta["file_path"] == "aapl.md"
+
+    @pytest.mark.parametrize("line_ending", ["\n", "\r\n"], ids=["lf", "crlf"])
+    def test_run_extracts_empty_frontmatter_without_consuming_body(self, line_ending):
+        markdown = (
+            f"---{line_ending}"
+            f"---{line_ending}"
+            f"# Important heading{line_ending}"
+            f"{line_ending}"
+            f"Summary: evidence must be preserved.{line_ending}"
+            f"{line_ending}"
+            f"---{line_ending}"
+            f"{line_ending}"
+            f"Tail."
+        )
+        bytestream = ByteStream(data=markdown.encode())
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        output = converter.run(sources=[bytestream])
+        document = output["documents"][0]
+
+        assert document.content == "Important heading\n\nSummary: evidence must be preserved.\n\nTail."
+        assert document.meta == {}
 
     def test_run_keeps_frontmatter_as_content_by_default(self):
         bytestream = ByteStream(data=b"---\nticker: AAPL\n---\n# Thesis\n")

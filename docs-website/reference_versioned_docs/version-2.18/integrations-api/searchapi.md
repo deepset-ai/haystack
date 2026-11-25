@@ -26,6 +26,15 @@ assert results["documents"]
 assert results["links"]
 ```
 
+SearchApi's AI answer engines are supported through `search_params`. With `{"engine": "google_ai_mode"}`,
+`{"engine": "chatgpt"}`, `{"engine": "gemini"}` or `{"engine": "bing_copilot"}`, the first document holds the
+synthesized answer as Markdown. The following documents and `links` hold the reference links it cites and,
+for `google_ai_mode` and `chatgpt`, the web results the engine retrieved.
+
+With the default `google` engine, an AI overview included in the response becomes the first document, with
+`meta["type"] == "ai_answer"`, followed by the answer box, knowledge graph, organic results and answered
+related questions.
+
 #### __init__
 
 ```python
@@ -45,8 +54,9 @@ Initialize the SearchApiWebSearch component.
 - **top_k** (<code>int | None</code>) – Number of documents to return.
 - **allowed_domains** (<code>list\[str\] | None</code>) – List of domains to limit the search to.
 - **search_params** (<code>dict\[str, Any\] | None</code>) – Additional parameters passed to the SearchApi API.
-  For example, you can set 'num' to 100 to increase the number of search results.
-  See the [SearchApi website](https://www.searchapi.io/) for more details.
+  For example, you can set `gl` and `hl` to localize results, or `page` to fetch further results.
+  See the [SearchApi documentation](https://www.searchapi.io/docs/google) for the parameters each
+  engine supports.
 
 The default search engine is Google, however, users can change it by setting the `engine`
 parameter in the `search_params`.
@@ -62,22 +72,6 @@ Serializes the component to a dictionary.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SearchApiWebSearch
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SearchApiWebSearch</code> – The deserialized component.
 
 #### run
 

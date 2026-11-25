@@ -1,0 +1,25 @@
+---
+upgrade:
+  - |
+    ``ChatMessage.from_openai_dict_format`` now raises a ``ValueError`` for content parts it can't convert:
+    images referenced by a URL such as ``https://example.com/image.png`` (only images embedded as base64 data URLs,
+    like ``data:image/png;base64,...``, are supported), files referenced by ``file_id``, and other part types such as
+    ``input_audio``.
+    Previously, such messages were accepted because the whole list was stored as a single text, and
+    ``ChatMessage.to_openai_dict_format`` sent that list back unchanged, so forwarding them to OpenAI worked by
+    accident. You're affected if the OpenAI messages you convert contain any of these parts.
+    To keep sending images by URL, download them and build the message yourself, for example
+    ``ChatMessage.from_user(content_parts=["Describe this image", ImageContent.from_url(url)])``.
+    Send files inline as base64 ``file_data`` instead of referencing them by ``file_id``.
+    Extra keys on content parts, such as ``cache_control``, are no longer passed through, so prompt caching through
+    OpenRouter or LiteLLM stops for these messages.
+fixes:
+  - |
+    ``ChatMessage.from_openai_dict_format`` now converts messages whose ``content`` is a list of content parts.
+    Previously, the whole list was stored in a single ``TextContent``, so ``ChatMessage.text`` returned a list instead
+    of a string. In user messages, ``text`` parts now become ``TextContent``, ``image_url`` parts with base64 data
+    URLs become ``ImageContent``, and ``file`` parts with inline ``file_data`` become ``FileContent``.
+    In system, developer, and assistant messages, ``text`` parts are joined with a newline into a single text.
+    An assistant's refusal, given as a ``refusal`` part or as the ``refusal`` field, is stored in
+    ``ChatMessage.meta["refusal"]`` instead of the text, and ``ChatMessage.to_openai_dict_format`` sends it back.
+    ``content`` that is neither a string nor a list now raises a ``ValueError`` instead of being stored as text.

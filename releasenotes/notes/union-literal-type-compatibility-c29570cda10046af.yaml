@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``Pipeline.connect`` now accepts a ``Union`` output connected to a ``Union`` input when each member of the output
+    fits a member of the input, in any order. For example, ``str | None`` connects to ``str | int | None``, and
+    ``list[Path | ByteStream]`` connects to the ``list[str | Path | ByteStream]`` input of converters such as
+    ``TextFileToDocument``. Before, the members were compared by position, and these connections raised
+    ``PipelineConnectError``. ``Literal`` types are matched the same way: ``Literal["b", "c"]`` now connects to
+    ``Literal["a", "b", "c"]``.

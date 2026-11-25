@@ -3,6 +3,7 @@ title: "MSSharePointFetcher"
 id: mssharepointfetcher
 slug: "/mssharepointfetcher"
 description: "Fetches the full content of Microsoft SharePoint and OneDrive items via the Microsoft Graph API and returns it as ByteStreams."
+hep_available: true
 ---
 
 # MSSharePointFetcher
@@ -39,7 +40,7 @@ Because the output is a list of `ByteStream`s of mixed types, the typical next s
 
 ### Authentication
 
-The fetcher takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All` for files and `Sites.Read.All` for list items and pages). Typically you wire it from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+The fetcher takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All` for files and `Sites.Read.All` for list items and pages). Typically you wire it from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally. To call Microsoft Graph as a [Microsoft Entra Agent ID](../connectors/oauthtokenresolver.mdx#microsoft-entra-agent-id) agent identity on behalf of the signed-in user, use `EntraAgentOBOTokenSource` as the resolver's token source.
 
 ### Error handling and concurrency
 

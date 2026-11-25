@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils.async_utils import _call_with_async_fallback
 
 
 @component
@@ -13,8 +16,9 @@ class CacheChecker:
     """
     Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
-    If matching documents are found, they are returned as "hits". If not found in the cache, the items
-    are returned as "misses".
+    If matching fresh documents are found, they are returned as "hits".
+    If no matching documents are found, or all matching documents have expired,
+    the items are returned as "misses".
 
     ### Usage example
 
@@ -37,7 +41,14 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        cache_field: str,
+        *,
+        ttl: float | timedelta | None = None,
+        time_field: str = "cached_at",
+    ) -> None:
         """
         Creates a CacheChecker component.
 
@@ -46,9 +57,39 @@ class CacheChecker:
         :param cache_field:
             Name of the document's metadata field
             to check for cache hits.
+        :param ttl:
+            Time-to-live for cache entries, as a `timedelta` or a number of seconds. Must be positive,
+            otherwise a `ValueError` is raised.
+            If set, a matching document only counts as a hit if the timestamp in `time_field` is not older than `ttl`.
+            Documents with a missing, expired or future timestamp are returned as misses.
+            If `None`, cache entries never expire.
+        :param time_field:
+            Name of the document's metadata field holding the cache timestamp (a `meta.` prefix is ignored).
+            Must contain a `datetime` or an ISO 8601 string when `ttl` is set.
+            Timezone-aware values are recommended. Malformed values are not handled by the component;
+            the Document Store decides (for example, `InMemoryDocumentStore` raises a `FilterError`).
         """
+        if ttl is not None:
+            if isinstance(ttl, bool):
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
+
+            if isinstance(ttl, (int, float)):
+                if not math.isfinite(ttl) or ttl <= 0:
+                    raise ValueError("ttl must be a positive number of seconds.")
+
+                ttl = timedelta(seconds=ttl)
+
+            elif isinstance(ttl, timedelta):
+                if ttl <= timedelta(0):
+                    raise ValueError("ttl must be a positive timedelta.")
+
+            else:
+                raise ValueError("ttl must be None, a positive number of seconds, or a positive timedelta.")
+
         self.document_store = document_store
         self.cache_field = cache_field
+        self.ttl = ttl
+        self.time_field = time_field.removeprefix("meta.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -57,19 +98,46 @@ class CacheChecker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store, cache_field=self.cache_field)
+        return default_to_dict(
+            self,
+            document_store=self.document_store,
+            cache_field=self.cache_field,
+            ttl=self.ttl.total_seconds() if self.ttl is not None else None,
+            time_field=self.time_field,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
         """
-        Deserializes the component from a dictionary.
+        Deserialize the component from a dictionary.
 
         :param data:
-            Dictionary to deserialize from.
+            Dictionary containing the component type and initialization parameters.
         :returns:
-            Deserialized component.
+            A CacheChecker instance reconstructed from the dictionary.
         """
+
         return default_from_dict(cls, data)
+
+    def _build_filters(self, item: Any, now: datetime | None = None) -> dict[str, Any]:
+        cache_filter = {"field": self.cache_field, "operator": "==", "value": item}
+
+        if self.ttl is None:
+            return cache_filter
+
+        if now is None:
+            now = datetime.now(UTC)
+
+        cutoff = now - self.ttl
+
+        return {
+            "operator": "AND",
+            "conditions": [
+                cache_filter,
+                {"field": self.time_field, "operator": ">=", "value": cutoff.isoformat()},
+                {"field": self.time_field, "operator": "<=", "value": now.isoformat()},
+            ],
+        }
 
     @component.output_types(hits=list[Document], misses=list)
     def run(self, items: list[Any]) -> dict[str, Any]:
@@ -80,19 +148,21 @@ class CacheChecker:
             Values to be checked against the cache field.
         :return:
             A dictionary with two keys:
-            - `hits` - Documents that matched with at least one of the items.
-            - `misses` - Items that were not present in any documents.
+            - `hits` - Documents matching the requested items and satisfying the TTL filter, if configured.
+            - `misses` - Items with no matching documents or whose matching documents are all expired.
         """
         found_documents = []
         misses = []
-
+        now = datetime.now(UTC) if self.ttl is not None else None
         for item in items:
-            filters = {"field": self.cache_field, "operator": "==", "value": item}
+            filters = self._build_filters(item, now)
+
             found = self.document_store.filter_documents(filters=filters)
             if found:
                 found_documents.extend(found)
             else:
                 misses.append(item)
+
         return {"hits": found_documents, "misses": misses}
 
     @component.output_types(hits=list[Document], misses=list)
@@ -104,22 +174,21 @@ class CacheChecker:
             Values to be checked against the cache field.
         :return:
             A dictionary with two keys:
-            - `hits` - Documents that matched with at least one of the items.
-            - `misses` - Items that were not present in any documents.
+            - `hits` - Documents matching the requested items and satisfying the TTL filter, if configured.
+            - `misses` - Items with no matching documents or whose matching documents are all expired.
         """
         found_documents = []
         misses = []
-
-        if not hasattr(self.document_store, "filter_documents_async"):
-            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
+        now = datetime.now(UTC) if self.ttl is not None else None
 
         for item in items:
-            filters = {"field": self.cache_field, "operator": "==", "value": item}
-            found = await self.document_store.filter_documents_async(filters=filters)
+            filters = self._build_filters(item, now)
+            found = await _call_with_async_fallback(self.document_store, "filter_documents", filters=filters)
             if found:
                 found_documents.extend(found)
             else:
                 misses.append(item)
+
         return {"hits": found_documents, "misses": misses}
 
     def close(self) -> None:

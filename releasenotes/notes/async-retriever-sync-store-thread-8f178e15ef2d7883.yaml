@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``FilterRetriever``, ``AutoMergingRetriever``, ``SentenceWindowRetriever``, ``CacheChecker`` and ``DocumentWriter`` now work with document stores that implement only the synchronous API. Their ``run_async`` methods use the store's async method when it exists and otherwise run the synchronous one in a worker thread, instead of failing on the missing async method.

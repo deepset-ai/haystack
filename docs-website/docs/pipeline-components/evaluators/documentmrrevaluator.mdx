@@ -3,6 +3,7 @@ title: "DocumentMRREvaluator"
 id: documentmrrevaluator
 slug: "/documentmrrevaluator"
 description: "The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called mean reciprocal rank (MRR)."
+hep_available: false
 ---
 
 # DocumentMRREvaluator
@@ -27,6 +28,8 @@ The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines u
 You can use the `DocumentMRREvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher mean reciprocal rank is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
 
 To initialize a `DocumentMRREvaluator`, there are no parameters required.
+
+To compute the metric at a cutoff (MRR@k), set the optional `top_k` parameter. Only the first `top_k` retrieved documents of each question are scored. For example, `DocumentMRREvaluator(top_k=10)` returns MRR@10. This way, you can retrieve documents once and compute the metric for several cutoffs. By default, `top_k` is `None` and all retrieved documents are scored.
 
 ## Usage
 

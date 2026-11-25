@@ -13,6 +13,7 @@ from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
+    from torch.nn import Identity
     from transformers import AutoConfig
 
 
@@ -65,15 +66,20 @@ class SASEvaluator:
         :param model:
             SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
             model.
+            Cross Encoder models must return exactly one score per pair.
         :param batch_size:
-            Number of prediction-label pairs to encode at once.
+            Number of prediction-label pairs to encode at once. Must be a positive integer.
         :param device:
             The device on which the model is loaded. If `None`, the default device is automatically selected.
         :param token:
             The Hugging Face token for HTTP bearer authorization.
             You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :raises ValueError:
+            If `batch_size` is not a positive integer.
         """
         sas_import.check()
+        if not isinstance(batch_size, int) or batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer, but got {batch_size!r}")
 
         self._model = model
         self._batch_size = batch_size
@@ -107,12 +113,15 @@ class SASEvaluator:
     def warm_up(self) -> None:
         """
         Initializes the component.
+
+        :raises ValueError:
+            If the Cross Encoder model has more than one output label.
         """
         if self._similarity_model:
             return
 
         token = self._token.resolve_value() if self._token else None
-        config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
+        config = AutoConfig.from_pretrained(self._model, token=token)
         cross_encoder_used = False
         if config.architectures:
             cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
@@ -120,7 +129,15 @@ class SASEvaluator:
         # Based on the Model string we can load either Bi-Encoders or Cross Encoders.
         # Similarity computation changes for both approaches
         if cross_encoder_used:
-            self._similarity_model = CrossEncoder(self._model, device=device, token=token)
+            cross_encoder = CrossEncoder(self._model, device=device, token=token)
+            if cross_encoder.num_labels != 1:
+                msg = (
+                    f"SASEvaluator requires a Cross Encoder with exactly one output score, but '{self._model}' "
+                    f"has {cross_encoder.num_labels} labels. Use a single-score Cross Encoder or a Bi-Encoder "
+                    "(SentenceTransformer) model."
+                )
+                raise ValueError(msg)
+            self._similarity_model = cross_encoder
         else:
             self._similarity_model = SentenceTransformer(self._model, device=device, token=token)
 
@@ -140,6 +157,9 @@ class SASEvaluator:
             A dictionary with the following outputs:
                 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
                 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+        :raises ValueError:
+            If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
+            has more than one output label.
         """
         if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
@@ -160,9 +180,8 @@ class SASEvaluator:
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
 
-            # All Cross Encoders do not return a set of logits scores that are normalized
-            # We normalize scores if they are larger than 1
-            if (similarity_scores > 1).any():
+            # Cross Encoders with an Identity activation return raw logits, so we apply a sigmoid to map them to [0, 1]
+            if isinstance(self._similarity_model.activation_fn, Identity):
                 similarity_scores = expit(similarity_scores)
 
             # Convert scores to list of floats from numpy array

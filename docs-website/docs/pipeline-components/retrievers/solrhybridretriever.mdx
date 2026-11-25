@@ -3,6 +3,7 @@ title: "SolrHybridRetriever"
 id: solrhybridretriever
 slug: "/solrhybridretriever"
 description: "This is a SuperComponent that implements a Hybrid Retriever in a single component, relying on Apache Solr as the backend Document Store."
+hep_available: true
 ---
 
 # SolrHybridRetriever
@@ -41,7 +42,7 @@ The component automatically handles:
 ### Setup and Installation
 
 ```shell
-pip install solr-haystack
+pip install solr-haystack sentence-transformers-haystack
 ```
 
 ### Optional Parameters
@@ -67,7 +68,7 @@ This example indexes documents with their embeddings and then runs hybrid retrie
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )

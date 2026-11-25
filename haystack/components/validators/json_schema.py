@@ -39,7 +39,7 @@ class JsonSchemaValidator:
 
     ```python
     from haystack import Pipeline
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
     from haystack import component
@@ -55,7 +55,9 @@ class JsonSchemaValidator:
 
 
     p = Pipeline()
-    p.add_component("llm", OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component(
+        "llm", OpenAIResponsesChatGenerator(generation_kwargs={"text": {"format": {"type": "json_object"}}})
+    )
     p.add_component("schema_validator", JsonSchemaValidator())
     p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
@@ -119,6 +121,9 @@ class JsonSchemaValidator:
         If it does, the message is passed along the "validated" output. If it does not, the message is passed along
         the "validation_error" output.
 
+        Schemas declaring an array type validate the complete array, including its item and length constraints.
+        Other schemas retain per-item validation for lists, including OpenAI function-call lists.
+
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
             that is validated.
         :param json_schema: A dictionary representing the [JSON schema](https://json-schema.org/)
@@ -164,12 +169,20 @@ class JsonSchemaValidator:
         else:
             validation_schema = json_schema
         try:
-            last_message_json = [last_message_json] if not isinstance(last_message_json, list) else last_message_json
-            for content in last_message_json:
-                if using_openai_schema:
-                    validate(instance=content["function"]["arguments"], schema=validation_schema)
-                else:
-                    validate(instance=content, schema=validation_schema)
+            if using_openai_schema:
+                calls = last_message_json if isinstance(last_message_json, list) else [last_message_json]
+                for call in calls:
+                    validate(instance=call["function"]["arguments"], schema=validation_schema)
+            else:
+                schema_type = json_schema.get("type")
+                validates_array = schema_type == "array" or (isinstance(schema_type, list) and "array" in schema_type)
+                instances = (
+                    last_message_json
+                    if isinstance(last_message_json, list) and not validates_array
+                    else [last_message_json]
+                )
+                for instance in instances:
+                    validate(instance=instance, schema=validation_schema)
 
             return {"validated": [last_message]}
         except ValidationError as e:
@@ -189,7 +202,7 @@ class JsonSchemaValidator:
         error_message: str,
         error_path: str,
         error_schema_path: str,
-        json_schema: dict[str, Any],
+        json_schema: dict[str, Any] | bool,
         failing_json: str,
     ) -> str:
         """

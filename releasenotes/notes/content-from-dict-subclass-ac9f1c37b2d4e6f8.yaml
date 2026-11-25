@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``ImageContent.from_dict``, ``FileContent.from_dict`` and ``TextContent.from_dict``
+    now build the calling class instead of the base class, so a subclass survives a
+    ``to_dict`` / ``from_dict`` round trip. This matches the behaviour of
+    ``ByteStream.from_dict``.

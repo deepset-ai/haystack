@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from collections.abc import Iterable
-from typing import Any
+import re
+from collections.abc import Callable, Iterable
+from typing import Any, Literal
 from unittest.mock import patch
 
 import pytest
@@ -29,7 +30,7 @@ from haystack.core.serialization import DeserializationCallbacks
 from haystack.core.type_utils import ConversionStrategy
 from haystack.dataclasses import ChatMessage
 from haystack.testing.factory import component_class
-from haystack.testing.sample_components import AddFixedValue, Double, Greet
+from haystack.testing.sample_components import AddFixedValue, Double, Greet, Hello, StringJoiner
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -1506,7 +1507,7 @@ class TestPipelineBase:
             ),
             # Lazy variadic socket
             (
-                {"lazy": InputSocket("lazy", Variadic[int])},
+                {"lazy": InputSocket("lazy", Variadic[int], senders=["comp1", "comp2"])},
                 {
                     "lazy": [
                         {"sender": "comp1", "value": 42},
@@ -1514,15 +1515,29 @@ class TestPipelineBase:
                         {"sender": None, "value": 33},  # User input
                     ]
                 },
-                {"lazy": [42, 24, 33]},  # Takes all valid inputs
+                {"lazy": [33, 42, 24]},  # Takes all valid inputs, user input first
                 {"lazy": [{"sender": None, "value": 33}]},  # User input remains
+            ),
+            # Lazy variadic socket with several values from the same sender
+            (
+                {"lazy": InputSocket("lazy", Variadic[int], senders=["comp1", "comp2"])},
+                {
+                    "lazy": [
+                        {"sender": "comp2", "value": 1},
+                        {"sender": "comp1", "value": 2},
+                        {"sender": "comp2", "value": 3},
+                        {"sender": "comp1", "value": 4},
+                    ]
+                },
+                {"lazy": [2, 4, 1, 3]},  # Connection order, and each sender's values in the order they were written
+                {},  # All inputs consumed
             ),
             # Mixed socket types
             (
                 {
                     "regular": InputSocket("regular", int),
                     "greedy": InputSocket("greedy", GreedyVariadic[int]),
-                    "lazy": InputSocket("lazy", Variadic[int]),
+                    "lazy": InputSocket("lazy", Variadic[int], senders=["comp3", "comp4"]),
                 },
                 {
                     "regular": [{"sender": "comp1", "value": 42}, {"sender": None, "value": 24}],
@@ -1551,6 +1566,7 @@ class TestPipelineBase:
             "regular-with-user-input",
             "greedy-variadic",
             "lazy-variadic",
+            "lazy-variadic-same-sender",
             "mixed-sockets",
             "no-output-filtering",
         ],
@@ -1820,6 +1836,26 @@ class TestPipelineBaseFromDict:
                 "mandatory": True,
             },
         )
+
+    def test_to_dict_from_dict_round_trip_keeps_variadic_connection_order(self):
+        pipe = Pipeline()
+        pipe.add_component("hello_a", Hello())
+        pipe.add_component("hello_b", Hello())
+        pipe.add_component("joiner", StringJoiner())
+        # Connected in the opposite order to add_component(), which is the order graph.edges lists the connections in
+        pipe.connect("hello_b.output", "joiner.input_str")
+        pipe.connect("hello_a.output", "joiner.input_str")
+
+        data = pipe.to_dict()
+        reloaded = Pipeline.from_dict(data)
+
+        assert data["connections"] == [
+            {"sender": "hello_b.output", "receiver": "joiner.input_str"},
+            {"sender": "hello_a.output", "receiver": "joiner.input_str"},
+        ]
+        assert reloaded.graph.nodes["joiner"]["input_sockets"]["input_str"].senders == ["hello_b", "hello_a"]
+        inputs = {"hello_a": {"word": "a"}, "hello_b": {"word": "b"}}
+        assert reloaded.run(inputs) == pipe.run(inputs) == {"joiner": {"output": "Hello, b! Hello, a!"}}
 
     # TODO: Remove this, this should be a component test.
     # The pipeline can't handle this in any case nor way.
@@ -2170,6 +2206,16 @@ class TestPipelineConnect:
         assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
+    def test_connect_cross_socket_edge(self):
+        sender = component_class("Sender", output_types={"x": list[int], "y": list[int]})()
+        receiver = component_class("Receiver", input_types={"x": list[int], "y": list[int]})()
+        pipe = PipelineBase().add_components({"a": sender, "b": receiver})
+        pipe.connect("a.x", "b.x")
+        pipe.connect("a.y", "b.y")
+        pipe.connect("a.x", "b.y")
+
+        assert set(pipe.graph.edges) == {("a", "b", "x/x"), ("a", "b", "y/y"), ("a", "b", "x/y")}
+
     def test_connect_with_sender_component_name(self):
         comp1 = component_class("Comp1", output_types={"value": int})()
         comp2 = component_class("Comp2", input_types={"value": int})()
@@ -2247,6 +2293,22 @@ class TestPipelineConnect:
         with pytest.raises(PipelineConnectError):
             pipe.connect("comp1", "comp2")
 
+    def test_connect_error_displays_incompatible_callable_parameters(self):
+        producer = component_class(name="Producer", output_types={"callback": Callable[[int], str]})()
+        consumer = component_class(name="Consumer", input_types={"callback": Callable[[str], str]})()
+        pipe = Pipeline()
+        pipe.add_component(name="producer", instance=producer)
+        pipe.add_component(name="consumer", instance=consumer)
+
+        expected = (
+            "Cannot connect 'producer.callback' with 'consumer.callback': "
+            "their declared input and output types do not match.\n"
+            "'producer':\n - callback: Callable[[int], str]\n"
+            "'consumer':\n - callback: Callable[[str], str] (available)"
+        )
+        with pytest.raises(PipelineConnectError, match=re.escape(expected)):
+            pipe.connect(sender="producer.callback", receiver="consumer.callback")
+
     def test_connect_with_multiple_sender_connections_with_same_type_and_differing_name(self):
         comp1 = component_class("Comp1", output_types={"val1": int, "val2": int})()
         comp2 = component_class("Comp2", input_types={"value": int})()
@@ -2274,6 +2336,16 @@ class TestPipelineConnect:
         pipe.connect("producer.items", "consumer.sources")
         assert list(pipe.graph.edges) == [("producer", "consumer", "items/sources")]
         assert pipe.graph["producer"]["consumer"]["items/sources"]["conversion_strategy"] is None
+
+    def test_connect_literal_output_to_str_input(self):
+        producer = component_class("Producer", output_types={"label": Literal["positive", "negative"]})()
+        consumer = component_class("Consumer", input_types={"text": str})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        pipe.connect("producer.label", "consumer.text")
+        assert list(pipe.graph.edges) == [("producer", "consumer", "label/text")]
+        assert pipe.graph["producer"]["consumer"]["label/text"]["conversion_strategy"] is None
 
     def test_connect_list_output_to_list_or_iterable_input_is_ambiguous(self):
         producer = component_class("Producer", output_types={"value": list[str]})()

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Simplify ChatMessage serialization and OpenAI format conversion for improved readability and maintainability.

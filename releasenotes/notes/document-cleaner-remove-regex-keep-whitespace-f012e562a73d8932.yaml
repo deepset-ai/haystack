@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentCleaner`` removing indentation and newlines at the start and end of every page when
+    ``remove_regex`` was set, even on pages where the regex matched nothing. Pages without a match are now left
+    unchanged, which preserves Markdown and code content when ``remove_extra_whitespaces``, ``remove_empty_lines``
+    and ``strip_whitespaces`` are disabled. Pages where the regex matches are still stripped as before.

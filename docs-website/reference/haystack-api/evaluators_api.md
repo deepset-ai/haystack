@@ -160,7 +160,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -276,7 +277,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentMAPEvaluator component.
@@ -289,6 +292,15 @@ Create a DocumentMAPEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives MAP@10). Average precision is still divided by the
+  number of relevant documents, so relevant documents ranked below `top_k` count as missed.
+  Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -365,7 +377,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentMRREvaluator component.
@@ -378,6 +392,13 @@ Create a DocumentMRREvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives MRR@10). Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -446,7 +467,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentNDCGEvaluator component.
@@ -459,6 +482,15 @@ Create a DocumentNDCGEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives NDCG@10). The ideal DCG is also cut at `top_k`,
+  so a perfect ranking of the first `top_k` documents scores 1.0. Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -526,6 +558,8 @@ calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float
 
 Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
+If `top_k` is set, only the first `top_k` retrieved documents are used.
+
 **Parameters:**
 
 - **gt_docs** (<code>list\[Document\]</code>) – The ground truth documents.
@@ -544,7 +578,10 @@ calculate_idcg(gt_docs: list[Document]) -> float
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+If `top_k` is set, only the `top_k` most relevant ground truth documents are used, matching the cutoff
+applied to the retrieved documents in `calculate_dcg`.
+
+Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
 are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
 a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
 credits each relevant value at most once. Including duplicates or unmatchable documents here
@@ -610,6 +647,8 @@ print(result["score"])
 __init__(
     mode: str | RecallMode = RecallMode.SINGLE_HIT,
     document_comparison_field: str = "content",
+    *,
+    top_k: int | None = None
 ) -> None
 ```
 
@@ -624,6 +663,14 @@ Create a DocumentRecallEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+  Values may also be lists or dictionaries.
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=5` gives Recall@5). Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### run
 
@@ -738,7 +785,9 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 ```
 
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
+  a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
@@ -879,7 +928,8 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   `outputs` parameters.
   Each example is a dictionary with keys "inputs" and "outputs"
   They contain the input and output as dictionaries respectively.
-- **raise_on_failure** (<code>bool</code>) – If True, the component will raise an exception on an unsuccessful API call.
+- **raise_on_failure** (<code>bool</code>) – If True, the component raises an exception when the chat generator call fails or its response isn't valid
+  JSON with the expected keys. If False, it logs a warning and sets the result for that input to `None`.
 - **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
 - **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
   In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -966,8 +1016,9 @@ Run the LLM evaluator.
 
 **Raises:**
 
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### run_async
 
@@ -993,8 +1044,9 @@ Run the LLM evaluator asynchronously
 **Raises:**
 
 - <code>TypeError</code> – If the chat generator does not support async execution.
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### prepare_template
 
@@ -1070,6 +1122,7 @@ Validate the input parameters.
 
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
+  If the received input lists are empty
 
 ## sas_evaluator
 
@@ -1127,10 +1180,15 @@ Creates a new instance of SASEvaluator.
 
 - **model** (<code>str</code>) – SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
   model.
-- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once.
+  Cross Encoder models must return exactly one score per pair.
+- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once. Must be a positive integer.
 - **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically selected.
 - **token** (<code>Secret</code>) – The Hugging Face token for HTTP bearer authorization.
   You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+
+**Raises:**
+
+- <code>ValueError</code> – If `batch_size` is not a positive integer.
 
 #### to_dict
 
@@ -1168,6 +1226,10 @@ warm_up() -> None
 
 Initializes the component.
 
+**Raises:**
+
+- <code>ValueError</code> – If the Cross Encoder model has more than one output label.
+
 #### run
 
 ```python
@@ -1191,3 +1253,8 @@ and a list of ground truth answers. Both must be list of strings of same length.
 - <code>dict\[str, float | list\[float\]\]</code> – A dictionary with the following outputs:
   - `score`: Mean SAS score over all the predictions/ground-truth pairs.
   - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+
+**Raises:**
+
+- <code>ValueError</code> – If the inputs have different lengths, the predicted answers contain `None`, or a Cross Encoder model
+  has more than one output label.

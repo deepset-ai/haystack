@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import math
 import os
 
@@ -9,6 +10,7 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils.auth import Secret
@@ -269,6 +271,26 @@ class TestContextRelevanceEvaluator:
         assert all(math.isnan(score) for score in results["individual_scores"])
         assert [result["status"] for result in results["results"]] == ["error", "error"]
 
+    @pytest.mark.parametrize("statements", [None, "unexpected"])
+    def test_run_invalid_statements_value_raise_on_failure_false(self, statements):
+        generator = MockChatGenerator(
+            responses=[json.dumps({"relevant_statements": statements}), '{"relevant_statements": ["c2"]}']
+        )
+        component = ContextRelevanceEvaluator(chat_generator=generator, raise_on_failure=False)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]])
+
+        assert results["results"][0]["status"] == "error"
+        assert math.isnan(results["results"][0]["score"])
+        assert results["score"] == 1
+
+    def test_run_invalid_statements_value_raise_on_failure_true(self):
+        generator = MockChatGenerator(responses='{"relevant_statements": null}')
+        component = ContextRelevanceEvaluator(chat_generator=generator, raise_on_failure=True)
+
+        with pytest.raises(ValueError, match="expected `relevant_statements` to be a list"):
+            component.run(questions=["q1"], contexts=[["c1"]])
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -278,7 +300,9 @@ class TestContextRelevanceEvaluator:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = ContextRelevanceEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = evaluator.run(questions=questions, contexts=contexts)
 
         required_fields = {"results"}
@@ -366,7 +390,9 @@ class TestContextRelevanceEvaluatorAsync:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        evaluator = ContextRelevanceEvaluator(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_effort": "none"})
+        )
         result = await evaluator.run_async(questions=questions, contexts=contexts)
 
         required_fields = {"results"}

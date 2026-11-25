@@ -3,6 +3,7 @@ title: "DocumentRecallEvaluator"
 id: documentrecallevaluator
 slug: "/documentrecallevaluator"
 description: "The `DocumentRecallEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks how many of the ground truth documents were retrieved. This metric is called recall."
+hep_available: false
 ---
 
 # DocumentRecallEvaluator
@@ -32,6 +33,8 @@ When initializing a `DocumentRecallEvaluator`, you can set the `mode` parameter 
 `RecallMode.SINGLE_HIT` means that _any_ of the ground truth documents need to be retrieved to count as a correct retrieval with a recall score of 1. A single retrieved document can achieve the full score.
 
 `RecallMode.MULTI_HIT` means that _all_ of the ground truth documents need to be retrieved to count as a correct retrieval with a recall score of 1. The number of retrieved documents must be at least the number of ground truth documents to achieve the full score.
+
+To compute the metric at a cutoff (Recall@k), set the optional `top_k` parameter. Only the first `top_k` retrieved documents of each question are scored. For example, `DocumentRecallEvaluator(top_k=5)` returns Recall@5. This way, you can retrieve documents once and compute the metric for several cutoffs. By default, `top_k` is `None` and all retrieved documents are scored.
 
 ## Usage
 

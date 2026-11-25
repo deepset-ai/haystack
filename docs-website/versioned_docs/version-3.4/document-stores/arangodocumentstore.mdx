@@ -1,0 +1,116 @@
+---
+title: "ArangoDocumentStore"
+id: arangodocumentstore
+slug: "/arangodocumentstore"
+description: "Use the ArangoDB multi-model database with Haystack for embedding retrieval and GraphRAG workloads."
+---
+
+# ArangoDocumentStore
+
+Use the ArangoDB multi-model database with Haystack for embedding retrieval and GraphRAG workloads.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [ArangoDB](/reference/integrations-arangodb) |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/arangodb |
+
+</div>
+
+ArangoDB is a multi-model database that combines documents, graphs, and key-value data in a single engine. The `ArangoDocumentStore` stores documents in an ArangoDB collection and runs vector similarity search using AQL (ArangoDB Query Language) vector functions. Because documents and their relationships live in the same database, ArangoDB is a good fit for GraphRAG pipelines that combine semantic search with graph traversal.
+
+Vector search requires **ArangoDB 3.12 or later** with the vector index feature enabled (the `--vector-index` startup flag).
+
+For more information, see the [ArangoDB documentation](https://docs.arangodb.com/).
+
+## Installation
+
+Run ArangoDB with Docker, enabling the vector index and setting a root password:
+
+```shell
+docker run -d -p 8529:8529 \
+  -e ARANGO_ROOT_PASSWORD=test-password \
+  arangodb:3.12 arangod --vector-index
+```
+
+Install the Haystack integration:
+
+```shell
+pip install arangodb-haystack
+```
+
+## Usage
+
+The store reads its credentials from the `ARANGO_USERNAME` and `ARANGO_PASSWORD` environment variables by default. `ARANGO_USERNAME` falls back to `root` if it is not set, so you typically only need to provide the password:
+
+```shell
+export ARANGO_PASSWORD=test-password
+```
+
+Initialize the document store and write documents:
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.arangodb import ArangoDocumentStore
+
+document_store = ArangoDocumentStore(
+    host="http://localhost:8529",
+    database="haystack",
+    collection_name="documents",
+    embedding_dimension=768,
+    recreate_collection=True,
+)
+
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+        ),
+    ],
+)
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-arangodb#arangodocumentstore).
+
+To compute real embeddings for your documents, use a Document Embedder such as the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx). The embedding dimension produced by the embedder must match the `embedding_dimension` configured on the store.
+
+### Authentication
+
+Credentials are passed as Haystack [`Secret`](../concepts/secret-management.mdx) objects. By default they are read from environment variables, but you can also pass them explicitly:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.document_stores.arangodb import ArangoDocumentStore
+
+document_store = ArangoDocumentStore(
+    host="http://localhost:8529",
+    database="haystack",
+    username=Secret.from_env_var("ARANGO_USERNAME", strict=False),
+    password=Secret.from_env_var("ARANGO_PASSWORD"),
+)
+```
+
+### Similarity Functions
+
+`ArangoDocumentStore` supports three similarity functions for vector search, configured at initialization with the `similarity_function` parameter:
+
+- `"cosine"` (default): cosine similarity, best for normalized embeddings.
+- `"dot_product"`: dot product, useful when embedding magnitude carries meaning.
+- `"l2"`: Euclidean (L2) distance.
+
+```python
+document_store = ArangoDocumentStore(
+    host="http://localhost:8529",
+    embedding_dimension=768,
+    similarity_function="dot_product",
+)
+```
+
+### Supported Retrievers
+
+- [`ArangoEmbeddingRetriever`](../pipeline-components/retrievers/arangoembeddingretriever.mdx): Retrieves documents from the `ArangoDocumentStore` based on vector similarity using ArangoDB's AQL vector functions.

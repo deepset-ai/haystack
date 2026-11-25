@@ -1,0 +1,21 @@
+---
+upgrade:
+  - |
+    Components with a ``Variadic`` input, or a ``list`` input connected to several senders, now receive the values
+    in the order the senders were connected with ``Pipeline.connect()``. Before, ``Pipeline.run()`` passed them in the
+    order the senders ran, so the results of order-dependent components such as ``DocumentJoiner`` with ``weights``
+    can change: connect the senders in the order you want the values to arrive.
+
+    If you load pipelines from YAML, check the order of your ``connections`` entries. Pipelines saved before this
+    release list ``connections`` grouped by sender, not in the order they were made, and the order of the entries
+    now decides the order in which a socket receives its values. For example, if ``embedding_retriever`` is listed
+    before ``bm25_retriever`` in ``connections``, ``DocumentJoiner`` now applies ``weights[0]`` to the embedding
+    retriever, where before it could apply it to the BM25 retriever. Reorder the entries that feed a ``Variadic``
+    or multi-sender ``list`` socket so the senders come in the order you expect.
+fixes:
+  - |
+    ``Pipeline.run_async()`` passed the values of a ``Variadic`` input, or a ``list`` input connected to several
+    senders, in the order the senders finished, which could change between runs, so ``DocumentJoiner`` could apply
+    its ``weights`` to the wrong retriever. Values now arrive in connection order, as in ``Pipeline.run()``, with
+    pipeline inputs passed directly to such a socket first. ``Pipeline.to_dict()`` now saves connections in the order
+    they were made, so a pipeline loaded with ``Pipeline.from_dict()`` keeps the same order.

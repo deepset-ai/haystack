@@ -14,7 +14,7 @@ Bases: <code>OpenAIChatGenerator</code>
 
 Generates text using OpenAI's models on Azure.
 
-It works with the gpt-4 - type models and supports streaming responses
+It works with OpenAI's GPT models deployed on Azure and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -40,7 +40,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
+    azure_deployment="<this is a model name, e.g. gpt-5.6-luna>")
 response = client.run(messages)
 print(response)
 ```
@@ -51,7 +51,7 @@ print(response)
     "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
      enabling computers to understand, interpret, and generate human language in a way that is useful.")],
      _name=None,
-     _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-5.6-luna', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
 }
 ```
@@ -125,7 +125,8 @@ __init__(
     azure_ad_token_provider: (
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -157,6 +158,8 @@ Initialize the Azure OpenAI Chat Generator component.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are sent directly to
   the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
@@ -191,6 +194,10 @@ Initialize the Azure OpenAI Chat Generator component.
   every request.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -198,7 +205,7 @@ Initialize the Azure OpenAI Chat Generator component.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous Azure OpenAI client.
+Initialize the synchronous Azure OpenAI client.
 
 #### warm_up_async
 
@@ -206,7 +213,7 @@ Warm up the tools and initialize the synchronous Azure OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+Initialize the asynchronous Azure OpenAI client on the serving event loop.
 
 #### close
 
@@ -349,7 +356,8 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -357,7 +365,8 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
 
 **Parameters:**
 
-- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Can be:
+- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Defaults to the `AZURE_OPENAI_API_KEY` environment
+  variable. If no key resolves, `warm_up()` raises a `ValueError`. Can be:
 - A `Secret` object containing the API key.
 - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
 - A function that returns an Azure Active Directory token.
@@ -408,6 +417,10 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### to_dict
 
@@ -607,10 +620,10 @@ without tool usage. It processes messages and returns a single response from the
 
 ```python
 from haystack.components.generators.chat import LLM
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
 llm = LLM(
-    chat_generator=OpenAIChatGenerator(),
+    chat_generator=OpenAIResponsesChatGenerator(),
     system_prompt="You are a helpful translation assistant.",
     user_prompt="Summarize the following document: {{ document }}",
     required_variables=["document"],
@@ -713,6 +726,10 @@ Process messages and generate a response from the language model.
 - "last_message": The last message exchanged during the LLM's run.
 - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
   chat generator did not return usage data.
+- "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+  cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+  filter). Taken from the chat generator's `finish_reason`.
 
 #### run_async
 
@@ -747,6 +764,10 @@ Asynchronously process messages and generate a response from the language model.
 - "last_message": The last message exchanged during the LLM's run.
 - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
   chat generator did not return usage data.
+- "exit_reason": Why the model stopped generating, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply), `"length"` (the reply was
+  cut off by the token limit) or `"content_filter"` (the reply was cut off by the provider's content
+  filter). Taken from the chat generator's `finish_reason`.
 
 ## chat/mock
 
@@ -938,7 +959,7 @@ replacement.
 
 Completes chats using OpenAI's large language models (LLMs).
 
-It works with the gpt-4 and gpt-5 series models and supports streaming responses
+It works with OpenAI's GPT models through the Chat Completions API and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -972,7 +993,7 @@ Output:
         that focuses on enabling computers to understand, interpret, and generate human language in
         a way that is meaningful and useful.")],
      _name=None,
-     _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-5.6-terra', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
     ]
 }
@@ -982,22 +1003,25 @@ Output:
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-5",
-    "gpt-5.1",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.4",
     "gpt-5.2",
     "gpt-5.2-pro",
-    "gpt-5.4",
+    "gpt-5.1",
+    "gpt-5",
     "gpt-5-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
     "gpt-4.1",
     "gpt-4.1-mini",
-    "gpt-4.1-nano",
     "gpt-4o",
     "gpt-4o-mini",
-    "gpt-4-turbo",
-    "gpt-4",
-    "gpt-3.5-turbo",
 ]
 
 ```
@@ -1010,7 +1034,7 @@ See https://developers.openai.com/api/docs/models for the full list and snapshot
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "gpt-5-mini",
+    model: str = "gpt-5.6-terra",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -1020,10 +1044,12 @@ __init__(
     tools: ToolsType | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None,
+    *,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
-Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
+Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
 
 Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
 environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -1045,8 +1071,14 @@ in the OpenAI client.
   the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
   more details.
   Some of the supported parameters:
+- `stream_options`: Options for streaming responses. Defaults to `{"include_usage": True}`
+  when streaming. Set `{"include_usage": False}` to disable requesting token usage.
 - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
   including visible output tokens and reasoning tokens.
+- `reasoning_effort`: How much effort a reasoning model spends on reasoning, for example `"none"`,
+  `"low"`, or `"high"`. Over Chat Completions, gpt-5.6, gpt-6-sol, and gpt-6-luna models accept tools
+  only with `"none"`, so when you pass tools to these models without setting `reasoning_effort`, the
+  component sends `"none"`. To combine reasoning with tools, use `OpenAIResponsesChatGenerator`.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
   Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -1080,6 +1112,10 @@ in the OpenAI client.
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -1087,7 +1123,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1095,7 +1131,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 
@@ -1221,7 +1257,7 @@ but can be used with `await` in async code.
 
 Completes chats using OpenAI's Responses API.
 
-It works with the gpt-4 and o-series models and supports streaming responses
+It works with OpenAI's GPT and o-series models and supports streaming responses
 from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
 format in input and output.
 
@@ -1250,26 +1286,27 @@ print(response)
 
 ```python
 SUPPORTED_MODELS: list[str] = [
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-5",
-    "gpt-5.1",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.4",
     "gpt-5.2",
     "gpt-5.2-pro",
-    "gpt-5.4",
+    "gpt-5.1",
+    "gpt-5",
     "gpt-5-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
     "gpt-4.1",
     "gpt-4.1-mini",
-    "gpt-4.1-nano",
     "gpt-4o",
     "gpt-4o-mini",
-    "o1",
-    "o1-mini",
-    "o1-pro",
     "o3",
-    "o3-mini",
     "o3-pro",
-    "o4-mini",
 ]
 
 ```
@@ -1283,7 +1320,7 @@ See https://platform.openai.com/docs/models for the full list and snapshot IDs.
 __init__(
     *,
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-    model: str = "gpt-5-mini",
+    model: str = "gpt-5.6-terra",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -1292,11 +1329,12 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
-Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
+Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
 Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
 environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -1345,6 +1383,8 @@ in the OpenAI client.
   - `generate_summary`: Whether to generate a summary of the reasoning.
   - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+    If a provider returns the raw reasoning as `reasoning_text` content instead,
+    it is mapped to `ReasoningContent.reasoning_text` when no summary is returned.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
 - `include`: Specify additional output data to include in the model response. Supported values are:
   - web_search_call.action.sources: Include the sources of the web search tool call.
@@ -1372,6 +1412,10 @@ in the OpenAI client.
   are strict by default.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -1379,7 +1423,7 @@ in the OpenAI client.
 warm_up() -> None
 ```
 
-Warm up the tools and initialize the synchronous OpenAI client.
+Initialize the synchronous OpenAI client.
 
 #### warm_up_async
 
@@ -1387,7 +1431,7 @@ Warm up the tools and initialize the synchronous OpenAI client.
 warm_up_async() -> None
 ```
 
-Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+Initialize the asynchronous OpenAI client on the serving event loop.
 
 #### close
 

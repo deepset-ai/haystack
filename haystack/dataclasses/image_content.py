@@ -6,7 +6,7 @@ import base64
 from dataclasses import asdict, dataclass, field
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import filetype
 
@@ -53,6 +53,8 @@ FORMAT_TO_MIME = {
 MIME_TO_FORMAT = {v: k for k, v in FORMAT_TO_MIME.items()}
 # Adding some common MIME types that are not in the PIL mapping
 MIME_TO_FORMAT["image/jpg"] = "JPEG"
+# BMP and DIB share a MIME type. Prefer BMP for standard .bmp files.
+MIME_TO_FORMAT["image/bmp"] = "BMP"
 
 IMAGE_MIME_TYPES = set(MIME_TO_FORMAT.keys())
 
@@ -156,11 +158,11 @@ class ImageContent:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ImageContent":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         """
         Create an ImageContent from a dictionary.
         """
-        return ImageContent(**data)
+        return cls(**data)
 
     @classmethod
     def from_file_path(
@@ -191,12 +193,18 @@ class ImageContent:
 
         :returns:
             An ImageContent object.
+
+        :raises ValueError:
+            If the file cannot be read or converted to an image, for example because it does not exist or is not
+            an image.
         """
         # to avoid a circular import
         from haystack.components.converters.image import ImageFileToImageContent
 
         converter = ImageFileToImageContent(size=size, detail=detail)
         result = converter.run(sources=[file_path], meta=[meta] if meta else None)
+        if not result["image_contents"]:
+            raise ValueError(f"Could not convert {file_path} to an image. See the logged warning for details.")
         return result["image_contents"][0]
 
     @classmethod

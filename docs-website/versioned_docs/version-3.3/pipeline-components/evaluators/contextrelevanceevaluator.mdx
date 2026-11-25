@@ -3,6 +3,7 @@ title: "ContextRelevanceEvaluator"
 id: contextrelevanceevaluator
 slug: "/contextrelevanceevaluator"
 description: "The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are relevant to a question. It does not require ground truth labels."
+hep_available: false
 ---
 
 # ContextRelevanceEvaluator
@@ -34,7 +35,7 @@ If you are not initializing the Evaluator with your own Chat Generator other tha
 
 Two optional initialization parameters are:
 
-- `raise_on_failure`: If True, raise an exception on an unsuccessful API call.
+- `raise_on_failure`: If True, raise an exception when the chat generator call fails or its response isn't valid JSON with the expected keys. If False, log a warning and set the result for that input to `None`.
 - `progress_bar`: Whether to show a progress bar during the evaluation.
 
 `ContextRelevanceEvaluator` has an optional `examples` parameter that can be used to pass few-shot examples conforming to the expected input and output format of `ContextRelevanceEvaluator`. These examples are included in the prompt that is sent to the LLM. Examples, therefore, increase the number of tokens of the prompt and make each request more costly. Adding examples is helpful if you want to improve the quality of the evaluation at the cost of more tokens.
