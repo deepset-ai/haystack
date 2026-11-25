@@ -123,6 +123,7 @@ class JsonSchemaValidator:
 
         Schemas declaring an array type validate the complete array, including its item and length constraints.
         Other schemas retain per-item validation for lists, including OpenAI function-call lists.
+        Malformed function-call objects are returned through the "validation_error" output.
 
         :param messages: A list of ChatMessage instances to be validated. The last message in this list is the one
             that is validated.
@@ -172,6 +173,14 @@ class JsonSchemaValidator:
             if using_openai_schema:
                 calls = last_message_json if isinstance(last_message_json, list) else [last_message_json]
                 for call in calls:
+                    if (
+                        not isinstance(call, dict)
+                        or not isinstance(call.get("function"), dict)
+                        or "arguments" not in call["function"]
+                    ):
+                        raise ValidationError(  # noqa: TRY301 - use the existing validation recovery handler
+                            "Expected a function call object with a 'function' object containing 'arguments'."
+                        )
                     validate(instance=call["function"]["arguments"], schema=validation_schema)
             else:
                 schema_type = json_schema.get("type")
