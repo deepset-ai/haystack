@@ -417,10 +417,19 @@ class DOCXToDocument:
         """
         Returns a table cell's text with links formatted like links in body paragraphs.
 
+        A table nested in the cell is read too, one nested cell per line, so its text is not lost.
+
         :param cell: The DOCX table cell.
         :returns: The cell's paragraphs joined by newlines, as `cell.text` joins them.
         """
-        return "\n".join(self._process_links_in_paragraph(paragraph) for paragraph in cell.paragraphs)
+        lines = []
+        for child in cell._tc:
+            if child.tag.endswith("}p"):
+                lines.append(self._process_links_in_paragraph(Paragraph(child, cell)))
+            elif child.tag.endswith("}tbl"):
+                nested_table = docx.table.Table(child, cell)
+                lines.extend(self._cell_text(_Cell(tc, nested_table)) for tr in child.tr_lst for tc in tr.tc_lst)
+        return "\n".join(lines)
 
     def _table_to_markdown(self, table: "Table") -> str:
         """

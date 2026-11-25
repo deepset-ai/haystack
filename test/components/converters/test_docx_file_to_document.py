@@ -710,3 +710,23 @@ class TestDOCXToDocument:
         content = converter.run(sources=[path])["documents"][0].content
 
         assert expected_link in content
+
+    @pytest.mark.parametrize(
+        ("table_format", "expected_row"),
+        [("csv", 'Contact,"Asha\nasha@example.com"'), ("markdown", "| Contact | Asha asha@example.com |")],
+    )
+    def test_run_reads_a_table_nested_in_a_table_cell(self, tmp_path, table_format, expected_row):
+        """The text of a table nested in a cell is kept, one nested cell per line."""
+        doc = docx.Document()
+        outer = doc.add_table(rows=1, cols=2)
+        outer.cell(0, 0).text = "Contact"
+        nested = outer.cell(0, 1).add_table(rows=2, cols=1)
+        nested.cell(0, 0).text = "Asha"
+        nested.cell(1, 0).text = "asha@example.com"
+        path = tmp_path / "nested_table.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format=table_format).run(sources=[path])["documents"][0].content
+
+        assert "asha@example.com" in content
+        assert expected_row in content

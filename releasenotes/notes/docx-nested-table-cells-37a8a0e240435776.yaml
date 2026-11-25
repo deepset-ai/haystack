@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``DOCXToDocument`` now keeps the text of a table nested inside a table cell. Before, only the cell's own
+    paragraphs were read, so the nested table's content was dropped from the Document without any error.
