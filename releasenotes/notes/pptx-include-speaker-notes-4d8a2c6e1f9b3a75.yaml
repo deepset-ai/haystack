@@ -2,13 +2,5 @@
 enhancements:
   - |
     Added the ``include_speaker_notes`` init parameter to ``PPTXToDocument``.
-    When set to ``True``, the speaker notes of each slide are added after the text of that slide, on the same page,
-    so information that is only in the notes can be retrieved. Links in the notes follow ``link_format``.
-    The default is ``False``, so the output of existing pipelines does not change.
-
-    .. code:: python
-
-      from haystack.components.converters import PPTXToDocument
-
-      converter = PPTXToDocument(include_speaker_notes=True)
-      documents = converter.run(sources=["presentation.pptx"])["documents"]
+    When ``True``, each slide's speaker notes are appended after its text.
+    Defaults to ``False``, so existing pipelines are unaffected.

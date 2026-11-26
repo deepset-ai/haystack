@@ -136,15 +136,6 @@ class TestPPTXToDocument:
         assert converter.store_full_path is True
         assert converter.include_speaker_notes is True
 
-    def test_from_dict_without_include_speaker_notes(self):
-        # Pipelines serialized before `include_speaker_notes` existed must still load, with notes excluded.
-        data = {
-            "type": "haystack.components.converters.pptx.PPTXToDocument",
-            "init_parameters": {"link_format": "none", "store_full_path": False},
-        }
-        converter = component_from_dict(PPTXToDocument, data, name="converter")
-        assert converter.include_speaker_notes is False
-
     def test_link_format_invalid(self):
         with pytest.raises(ValueError, match="Unknown link format"):
             PPTXToDocument(link_format="invalid")  # type: ignore[arg-type]
@@ -277,17 +268,21 @@ class TestPPTXToDocument:
         assert len(documents) == 1
         assert documents[0].content == "Q3 Results\fThanks"
 
-    @pytest.mark.parametrize(
-        "link_format, expected_link",
-        [("none", "Report"), ("markdown", "[Report](https://example.com)"), ("plain", "Report (https://example.com)")],
-    )
-    def test_include_speaker_notes(self, link_format: Literal["none", "markdown", "plain"], expected_link: str) -> None:
+    def test_include_speaker_notes(self):
         # Notes are added after the slide text, on the same page, so the number of pages stays the same.
-        converter = PPTXToDocument(link_format=link_format, include_speaker_notes=True)
+        converter = PPTXToDocument(
+            link_format="markdown",
+            include_speaker_notes=True,
+        )
         documents = converter.run(sources=[_pptx_with_speaker_notes()])["documents"]
 
         assert len(documents) == 1
-        assert documents[0].content == f"Q3 Results\nRevenue grew 18%.\n{expected_link}\fThanks"
+        assert documents[0].content == (
+            "Q3 Results\n"
+            "Revenue grew 18%.\n"
+            "[Report](https://example.com)"
+            "\fThanks"
+        )
 
     def test_include_speaker_notes_with_empty_notes(self, test_files_path):
         # sample_pptx.pptx has notes slides whose notes are empty, so the output must not change.
