@@ -793,6 +793,8 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     response_output = meta.pop("output")
+    # the API echoes the full tool definitions; kept, they repeat in every message of the chat history
+    meta.pop("tools", None)
     annotations, annotation_offsets = _extract_annotations(output=response_output)
     if annotations:
         meta["annotations"] = annotations
@@ -1026,7 +1028,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     response_with_usage = next(
         (response for response in reversed(responses) if response.get("usage") is not None), None
     )
-    final_response = (response_with_usage or responses[-1]).copy() if responses else {}
+    # without the echoed tools, like the non-streaming meta
+    final_response = (
+        {key: value for key, value in (response_with_usage or responses[-1]).items() if key != "tools"}
+        if responses
+        else {}
+    )
     response_output = final_response.pop("output", [])
     annotations, annotation_offsets = _extract_annotations(output=response_output)
     if annotations:

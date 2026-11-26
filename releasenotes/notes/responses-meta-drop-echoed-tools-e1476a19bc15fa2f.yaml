@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator`` no longer copy the ``tools`` field of
+    the Responses API reply into the ``meta`` of the returned ``ChatMessage``. The API echoes back every tool
+    definition it was sent, and because each reply is kept in the chat history, an Agent with many tools carried
+    the full tool list in every assistant message. In one measured Agent trace this was 86% of its size.
+    If you read ``reply.meta["tools"]``, use the tools you passed to the generator instead.
+    Streaming chunks still contain the full API response in ``meta["response"]``.
