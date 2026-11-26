@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Agents now stop on refusal-only replies instead of repeating model requests
+    until the step limit. The original refusal metadata is preserved.
+upgrade:
+  - |
+    Replies with a non-empty string in ``ChatMessage.meta["refusal"]`` and no
+    tool calls now produce ``exit_reason="content_filter"``, including runs without
+    tools that previously reported ``"text"``. Route these refusals through the
+    existing ``content_filter`` branch rather than the normal text-answer branch.
