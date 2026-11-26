@@ -141,7 +141,7 @@ def _prepare_ordering_comparison(
     :returns:
         A tuple containing the normalized value, normalized filter value, and whether the values are comparable.
         The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
-        the other is timezone-aware; otherwise it is `True`.
+        the other is timezone-aware, or when exactly one of the values is a boolean; otherwise it is `True`.
     """
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
@@ -160,6 +160,8 @@ def _prepare_ordering_comparison(
     if isinstance(value, datetime) != isinstance(filter_value, datetime):
         msg = "Can't compare a datetime with a non-datetime value using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    if isinstance(value, _BOOL_TYPES) != isinstance(filter_value, _BOOL_TYPES):
+        return value, filter_value, False
     return value, filter_value, True
 
 

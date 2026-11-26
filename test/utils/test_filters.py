@@ -679,6 +679,12 @@ def test_document_matches_filter(filters, document, expected_result):
         ("==", np.True_, 1, False),
         ("==", 1, np.True_, False),
         ("in", np.True_, [True], True),
+        (">", True, 0, False),
+        (">=", 1, True, False),
+        ("<", False, 1, False),
+        ("<=", 0.0, False, False),
+        (">", np.True_, 0, False),
+        (">", True, False, True),
     ],
 )
 def test_document_matches_filter_boolean_and_numeric_values(operator, document_value, filter_value, expected_result):
