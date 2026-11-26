@@ -530,6 +530,10 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
             InMemoryDocumentStore(bm25_algorithm="invalid")  # type: ignore[arg-type]
 
+    def test_invalid_embedding_similarity_function(self):
+        with pytest.raises(ValueError, match="Embedding similarity function 'Cosine' is not supported"):
+            InMemoryDocumentStore(embedding_similarity_function="Cosine")  # type: ignore[arg-type]
+
     def test_write_documents(self, document_store):
         docs = [Document(id="1")]
         assert document_store.write_documents(docs) == 1

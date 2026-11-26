@@ -147,6 +147,7 @@ class InMemoryDocumentStore:
             If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
             If `False` (the default), the timezone from the aware datetime is copied to the naive one before
             comparing.
+        :raises ValueError: If `bm25_algorithm` or `embedding_similarity_function` is not supported.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -174,6 +175,8 @@ class InMemoryDocumentStore:
         self.bm25_algorithm = bm25_algorithm
         self.bm25_algorithm_inst = self._dispatch_bm25()
         self.bm25_parameters = bm25_parameters or {}
+        if embedding_similarity_function not in ("dot_product", "cosine"):
+            raise ValueError(f"Embedding similarity function '{embedding_similarity_function}' is not supported.")
         self.embedding_similarity_function = embedding_similarity_function
 
         # keep track of whether we own the executor if we created it we must also clean it up
