@@ -49,6 +49,7 @@ __init__(
     model: str = "openai/gpt-4o",
     streaming_callback: StreamingCallbackT | None = None,
     api_base_url: str | None = None,
+    timeout: float | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None
 ) -> None
@@ -65,6 +66,7 @@ Create a LiteLLMChatGenerator instance.
 - **model** (<code>str</code>) – The model name in LiteLLM format (provider/model-name).
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function invoked with each new StreamingChunk.
 - **api_base_url** (<code>str | None</code>) – Custom API base URL (e.g. for a self-hosted LiteLLM proxy).
+- **timeout** (<code>float | None</code>) – Timeout in seconds for API requests. When omitted, LiteLLM uses its default timeout.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters passed to litellm.completion().
   See https://docs.litellm.ai/docs/completion/input for details.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool / Toolset objects the model can prepare calls for.
