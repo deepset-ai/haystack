@@ -117,13 +117,25 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert "".join(doc.content or "" for doc in docs) == text
         assert [doc.meta["split_idx_start"] for doc in docs] == [0, 9]
 
-    def test_split_by_word_double_space_unchanged(self):
-        # A run of spaces still produces the same units as str.split(" ") does.
-        text = "a  b c d e f"
-        splitter = DocumentSplitter(split_by="word", split_length=3)
+    def test_split_by_word_mixed_cjk_and_latin_no_spaces(self):
+        # Mixed CJK and Latin text without spaces counts the same for both splitters: each
+        # CJK character and each Latin run is one word.
+        text = "使用Haystack构建RAG系统"
+        splitter = DocumentSplitter(split_by="word", split_length=7)
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
-        assert [doc.content for doc in docs] == ["a  b ", "c d e ", "f"]
+        assert [doc.content for doc in docs] == ["使用Haystack构建RAG系", "统"]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 16]
+
+    def test_split_by_word_cjk_punctuation_stays_attached(self):
+        # CJK punctuation stays attached to the CJK character before it, so a full stop
+        # never ends up as a chunk on its own.
+        text = "检索增强生成。再把它们交给模型。"
+        splitter = DocumentSplitter(split_by="word", split_length=5)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["检索增强生", "成。再把它们", "交给模型。"]
         assert "".join(doc.content or "" for doc in docs) == text
 
     def test_concatenate_sentences_based_on_word_amount_cjk(self):

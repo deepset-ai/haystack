@@ -29,12 +29,9 @@ CUSTOM_MIMETYPES = {
 
 logger = logging.getLogger(__name__)
 
-# Unicode ranges for scripts written without spaces between words. Characters in these ranges are
-# tokenized one per token by the BM25 tokenizer, so bare-term queries for individual characters or
-# short words can match, while every other script keeps the usual word-based behaviour. The kana
-# ranges intentionally exclude punctuation such as the katakana middle dot (・) so it does not
-# become a token on its own. The word splitters use only the Han and kana ranges: Korean separates
-# words with spaces, so Hangul does not need per-character handling.
+# Unicode ranges for Han and kana letters, the scripts written without spaces between words.
+# The kana ranges intentionally exclude punctuation such as the katakana middle dot (・) so it does not
+# become a token on its own.
 _CJK_HAN_KANA_CHAR_CLASS = (
     r"\u3041-\u3096"  # Hiragana letters (excludes combining marks and kana iteration marks)
     r"\u30a1-\u30fa\u30fc"  # Katakana letters + prolonged sound mark, excludes ・ middle dot

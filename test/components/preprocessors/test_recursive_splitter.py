@@ -677,11 +677,12 @@ def test_chunk_length_counts_cjk_characters_as_words():
     assert splitter._chunk_length("检索增强") == 4
     assert splitter._chunk_length("hello world") == 2
     assert splitter._chunk_length("hello 检索 world") == 4
+    assert splitter._chunk_length("使用Haystack构建RAG系统") == 8
 
 
 def test_run_cjk_document_splits_by_word():
     # Each CJK character counts as one word, so a spaceless Chinese document splits into
-    # chunks of split_length characters instead of coming back as one chunk.
+    # chunks of split_length characters.
     text = "检索增强生成" * 20  # 120 characters
     splitter = RecursiveDocumentSplitter(split_length=50, split_unit="word")
     chunks = splitter.run([Document(content=text)])["documents"]
@@ -704,11 +705,24 @@ def test_run_mixed_cjk_and_latin_word_unit():
     assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 9, 19, 29]
 
 
-def test_run_word_unit_latin_text_unchanged():
-    text = "one two three four five six"
-    splitter = RecursiveDocumentSplitter(split_length=2, separators=[" "], split_unit="word")
+def test_run_mixed_cjk_and_latin_no_spaces_word_unit():
+    # Mixed CJK and Latin text without spaces counts the same as DocumentSplitter: each
+    # CJK character and each Latin run is one word.
+    text = "使用Haystack构建RAG系统"
+    splitter = RecursiveDocumentSplitter(split_length=7, separators=[" "], split_unit="word")
     chunks = splitter.run([Document(content=text)])["documents"]
-    assert [chunk.content for chunk in chunks] == ["one two ", "three four ", "five six"]
+    assert [chunk.content for chunk in chunks] == ["使用Haystack构建RAG系", "统"]
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 16]
+
+
+def test_run_cjk_punctuation_stays_attached_word_unit():
+    # CJK punctuation stays attached to the CJK character before it, so a full stop
+    # never ends up as a chunk on its own.
+    text = "检索增强生成。再把它们交给模型。"
+    splitter = RecursiveDocumentSplitter(split_length=5, separators=[" "], split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert [chunk.content for chunk in chunks] == ["检索增强生", "成。再把它们", "交给模型。"]
     assert "".join(chunk.content or "" for chunk in chunks) == text
 
 
