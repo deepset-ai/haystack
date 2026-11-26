@@ -14,6 +14,7 @@ from haystack.token_counters.types import TokenCounter
 from haystack.tools import ToolsType, flatten_tools_or_toolsets
 from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 
 class OpenAITokenCounter(TokenCounter):
@@ -56,7 +57,9 @@ class OpenAITokenCounter(TokenCounter):
         :param api_base_url: An optional base URL for the OpenAI API.
         :param organization: Your OpenAI organization ID.
         :param timeout: Timeout for OpenAI client calls. If unset, uses `OPENAI_TIMEOUT` or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries: Maximum retries for OpenAI client calls. If unset, uses `OPENAI_MAX_RETRIES` or 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param http_client_kwargs: Keyword arguments used to configure the underlying HTTPX client.
         """
         self.api_key = api_key
@@ -78,6 +81,7 @@ class OpenAITokenCounter(TokenCounter):
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
         # https://github.com/openai/openai-python/blob/main/httpx2.md
         http_client = init_http_client(self.http_client_kwargs, async_client=False)

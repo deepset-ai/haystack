@@ -233,6 +233,9 @@ Return the number of documents matching the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – Haystack metadata filters.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they also select documents whose
+  content contains the value within longer text. See `filter_documents` for details.
 
 **Returns:**
 
@@ -290,6 +293,9 @@ Delete all documents matching the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – Haystack metadata filters.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they also select documents whose
+  content contains the value within longer text. See `filter_documents` for details.
 
 **Returns:**
 
@@ -306,6 +312,9 @@ Update metadata fields for documents matching the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – Haystack metadata filters.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  Filters on `content` match the value as a phrase, not exact equality, so they also select documents whose
+  content contains the value within longer text. See `filter_documents` for details.
 - **meta** (<code>dict\[str, Any\]</code>) – Metadata values to merge into the matched documents.
 
 **Returns:**
@@ -339,6 +348,17 @@ Retrieve documents matching the provided filters.
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\] | None</code>) – Haystack metadata filters.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+  When the content field is indexed as text (`indexing: index`), filters on `content` with `==`, `!=`, `in`
+  and `not in` don't test exact equality: they match documents whose content contains the value as a phrase,
+  that is, the same words in the same order and next to each other, ignoring case and punctuation. For
+  example, `==` with the value `"Foo Document"` matches a document with the content `"A foo document."`, and
+  `!=` excludes it.
+  Filters on `content` are useful to select documents containing a phrase; for relevance-ranked text search,
+  use a retriever.
+  Filters that compare a field with `None`, or use `>`, `>=`, `<` or `<=` with an ISO-formatted date, are
+  evaluated in Python instead of in Vespa. Then `content` filters test exact equality, while
+  `count_documents_by_filter`, `delete_by_filter` and `update_by_filter` still match them as a phrase.
 
 **Returns:**
 

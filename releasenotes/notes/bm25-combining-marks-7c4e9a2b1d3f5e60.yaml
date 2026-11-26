@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed the default ``bm25_tokenization_regex`` of ``InMemoryDocumentStore`` splitting words in scripts that use
+    combining marks, such as Hindi, Bengali, Tamil, Sinhala, Arabic and Hebrew. These words are now kept whole.
+    Pipelines serialized before this change keep their saved regex.

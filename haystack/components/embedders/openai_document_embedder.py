@@ -14,6 +14,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,6 @@ class OpenAIDocumentEmbedder:
         """
         Creates an OpenAIDocumentEmbedder component.
 
-        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-        environment variables to override the `timeout` and `max_retries` parameters respectively
-        in the OpenAI client.
-
         :param api_key:
             The OpenAI API key.
             You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
@@ -96,9 +93,11 @@ class OpenAIDocumentEmbedder:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
@@ -134,6 +133,7 @@ class OpenAIDocumentEmbedder:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_key": self.api_key.resolve_value(),
             "organization": self.organization,

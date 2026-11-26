@@ -851,6 +851,7 @@ Deserialize this component from a dictionary.
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
 Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
+Header prefixes may be followed by spaces or tabs before the header text.
 
 This component processes text documents by:
 

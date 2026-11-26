@@ -58,7 +58,32 @@ _CJK_CHAR_CLASS = (
     r"\uff66-\uff9f"  # Halfwidth Katakana
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
-_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
+
+# Unicode ranges for the combining marks (vowel signs, viramas, diacritics) of scripts that separate words with
+# spaces. Python's `\w` does not match combining marks, so without these the default regex would cut words such as
+# Tamil "தமிழ்" into fragments. Thai, Lao, Khmer and Myanmar are left out on purpose: they do not put spaces
+# between words, so joining their marks would turn whole phrases into one token.
+_COMBINING_MARK_CHAR_CLASS = (
+    r"\u0300-\u036f"  # Combining Diacritical Marks (decomposed Latin, Greek, Cyrillic)
+    r"\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7"  # Hebrew points and cantillation marks
+    r"\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed"  # Arabic harakat
+    r"\u0900-\u0963"  # Devanagari (Hindi, Marathi, Nepali), stops before the danda
+    r"\u0981-\u09e3"  # Bengali
+    r"\u0a01-\u0a75"  # Gurmukhi (Punjabi)
+    r"\u0a81-\u0ae3"  # Gujarati
+    r"\u0b01-\u0b63"  # Oriya
+    r"\u0b82-\u0bd7"  # Tamil
+    r"\u0c00-\u0c63"  # Telugu
+    r"\u0c81-\u0c83\u0c85-\u0ce3"  # Kannada, excludes the siddham sign
+    r"\u0d00-\u0d4e\u0d57\u0d62\u0d63"  # Malayalam
+    r"\u0d81-\u0df3"  # Sinhala
+    r"\u200c\u200d"  # Zero-width non-joiner and joiner, used inside Sinhala and Indic words (ශ්‍රී)
+)
+_WORD_CHAR = rf"[^\W{_CJK_CHAR_CLASS}]"
+# A word starts with a word character, then any mix of word characters and combining marks. CJK: one char per token.
+_DEFAULT_BM25_TOKENIZATION_REGEX = (
+    rf"{_WORD_CHAR}+(?:[{_COMBINING_MARK_CHAR_CLASS}]+{_WORD_CHAR}*)*|[{_CJK_CHAR_CLASS}]"
+)
 
 
 @dataclass
@@ -125,7 +150,8 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex:
             The regular expression used to tokenize the text for BM25 retrieval. The default groups word
             characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
-            Text is lowercased and NFC-normalized before tokenization.
+            Text is lowercased and NFC-normalized before tokenization. Combining marks (such as the vowel signs of
+            Sinhala, Tamil or Devanagari) stay part of the word.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`

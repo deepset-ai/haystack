@@ -23,7 +23,9 @@ with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conve
 
 logger = logging.getLogger(__name__)
 
-_FRONTMATTER_PATTERN = re.compile(r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n)---[ \t]*(?:\r?\n|$)", re.DOTALL)
+_FRONTMATTER_PATTERN = re.compile(
+    r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)^---[ \t]*(?:\r?\n|$)", re.DOTALL | re.MULTILINE
+)
 
 
 def _render_table_cell_open(tokens: list[Any], idx: int, _options: Any, _env: Any) -> str:

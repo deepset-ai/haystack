@@ -468,7 +468,7 @@ Create a NvidiaRanker component.
   Use it to prepend the text with an instruction, as required by reranking models like `bge`.
 - **document_prefix** (<code>str</code>) – A string to add at the beginning of each document before ranking. You can use it to prepend the document
   with an instruction, as required by embedding models like `bge`.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed with the document.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed with the document. Missing fields and `None` values are skipped.
 - **embedding_separator** (<code>str</code>) – Separator to concatenate metadata fields to the document.
 - **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
   or set to 60 by default.
