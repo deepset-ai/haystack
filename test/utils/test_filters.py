@@ -4,6 +4,7 @@
 
 from datetime import UTC, datetime
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -672,6 +673,12 @@ def test_document_matches_filter(filters, document, expected_result):
         ("in", 1, [True], False),
         ("not in", True, [1.0], True),
         ("in", True, [1, True], True),
+        ("==", np.True_, True, True),
+        ("==", True, np.True_, True),
+        ("==", np.False_, False, True),
+        ("==", np.True_, 1, False),
+        ("==", 1, np.True_, False),
+        ("in", np.True_, [True], True),
     ],
 )
 def test_document_matches_filter_boolean_and_numeric_values(operator, document_value, filter_value, expected_result):

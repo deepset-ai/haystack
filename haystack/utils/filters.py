@@ -7,9 +7,14 @@ from datetime import datetime
 from typing import Any
 
 import dateutil.parser
+import numpy as np
 
 from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
+
+# Booleans compare equal to 0 and 1 in Python, but metadata filters treat them as distinct types.
+# np.bool_ is not a bool subclass, so it is listed explicitly.
+_BOOL_TYPES = (bool, np.bool_)
 
 
 def document_matches_filter(
@@ -58,9 +63,8 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
-    # Python booleans compare equal to 0 and 1, but metadata filters distinguish them.
-    if isinstance(value, bool) or isinstance(filter_value, bool):
-        return value is filter_value
+    if isinstance(value, _BOOL_TYPES) != isinstance(filter_value, _BOOL_TYPES):
+        return False
     if value == filter_value:
         return True
     return _dates_are_equal(value=value, filter_value=filter_value, strict=strict_datetime_comparison)
