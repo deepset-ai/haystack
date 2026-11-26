@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    Metadata filters in ``InMemoryDocumentStore``, ``MetadataRouter`` and ``document_matches_filter``
+    no longer treat booleans as numbers. ``False`` no longer matches ``0``, ``True`` no longer
+    matches ``1``, and ordering operators such as ``>`` no longer compare a boolean with a number.
+    If a filter relied on this, filter with the type stored in the metadata, or use ``in`` with both
+    values, for example ``[True, 1]``.
