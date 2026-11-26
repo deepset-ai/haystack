@@ -69,14 +69,17 @@ def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> Non
 
     :raises RuntimeError: If writing an output value into the state fails.
     """
-    if not isinstance(result, dict):
-        return
-
     for state_key, config in (tool.outputs_to_state or {}).items():
         source_key = config.get("source", None)
-        if source_key and source_key not in result:
+        if source_key:
+            if not isinstance(result, dict) or source_key not in result:
+                continue
+            output_value = result[source_key]
+        elif result is None:
+            # A tool that returns nothing leaves the state key untouched.
             continue
-        output_value = result.get(source_key) if source_key else result
+        else:
+            output_value = result
         try:
             state.set(state_key, output_value, handler_override=config.get("handler"))
         except Exception as e:

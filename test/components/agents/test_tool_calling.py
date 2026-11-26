@@ -89,6 +89,17 @@ def async_weather_tool():
 
 
 @pytest.fixture
+def whole_result_tool():
+    return Tool(
+        name="whole_result_tool",
+        description="Stores its whole result in state.",
+        parameters={"type": "object", "properties": {}},
+        function=lambda: [0, 1, 2],
+        outputs_to_state={"value": {}},
+    )
+
+
+@pytest.fixture
 def weather_tool_with_outputs_to_state():
     return Tool(
         name="weather_tool",
@@ -872,9 +883,9 @@ class TestUtilities:
 
         assert _result_to_string(BrokenToDict()) == "broken"
 
-    def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
+    def test_merge_tool_outputs_result_not_a_dict(self, weather_tool_with_outputs_to_state):
         state = State(schema={"weather": {"type": str}})
-        _merge_tool_outputs_into_state(tool=weather_tool, result="test", state=state)
+        _merge_tool_outputs_into_state(tool=weather_tool_with_outputs_to_state, result="test", state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_empty_dict(self, weather_tool):
@@ -916,6 +927,31 @@ class TestUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
+
+    @pytest.mark.parametrize(("result", "state_type"), [([0, 1, 2], list[int]), ("sunny", str)], ids=["list", "str"])
+    def test_merge_tool_outputs_non_dict_result_without_source(self, whole_result_tool, result, state_type):
+        state = State(schema={"value": {"type": state_type}})
+        _merge_tool_outputs_into_state(tool=whole_result_tool, result=result, state=state)
+        assert state.data == {"value": result}
+
+    def test_merge_tool_outputs_non_dict_result_without_source_uses_handler(self):
+        tool = Tool(
+            name="whole_result_tool",
+            description="Stores the sum of its result in state.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: [0, 1, 2],
+            outputs_to_state={"total": {"handler": lambda current, new: (current or 0) + sum(new)}},
+        )
+        state = State(schema={"total": {"type": int}})
+        _merge_tool_outputs_into_state(tool=tool, result=[0, 1, 2], state=state)
+        _merge_tool_outputs_into_state(tool=tool, result=[3], state=state)
+        assert state.data == {"total": 6}
+
+    def test_merge_tool_outputs_none_result_without_source_leaves_state_unchanged(self, whole_result_tool):
+        state = State(schema={"value": {"type": list[str]}})
+        state.set("value", ["kept"])
+        _merge_tool_outputs_into_state(tool=whole_result_tool, result=None, state=state)
+        assert state.data == {"value": ["kept"]}
 
     def test_merge_tool_outputs_source_key_absent_does_not_corrupt_list_state(self):
         """

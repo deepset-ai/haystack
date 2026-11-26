@@ -242,7 +242,7 @@ The `outputs_to_state` parameter maps tool output keys to state keys. Each entry
 ```python
 {
     "state_key": {
-        "source": "tool_output_key",  # which key to read from the tool's return dict; omit to store the entire dict
+        "source": "tool_output_key",  # which key to read from the tool's return dict; omit to store the whole result
         "handler": some_func,  # override the schema's merge handler for this mapping only
     },
 }
@@ -299,7 +299,7 @@ print(f"Last query: {result['last_query']}")
 
 [Hooks](./hooks.mdx) can read these keys with `state.data.get(...)`.
 
-If you omit `source`, the entire tool result dict is stored under the state key:
+If you omit `source`, the whole tool result is stored under the state key, whatever its type (for example a `dict`, a `list[Document]`, or a `str`). A tool that returns `None` leaves the state key unchanged:
 
 ```python
 from haystack.components.agents import Agent

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``outputs_to_state`` entries without a ``source`` now write the whole tool result to the ``Agent``'s ``State``
+    when the tool returns something other than a ``dict``, such as a ``list[Document]`` or a ``str``. Previously
+    these results were silently dropped. A tool that returns ``None`` still leaves the state key unchanged.
