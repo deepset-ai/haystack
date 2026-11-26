@@ -5,5 +5,7 @@ upgrade:
     the Responses API reply into the ``meta`` of the returned ``ChatMessage``. The API echoes back every tool
     definition it was sent, and because each reply is kept in the chat history, an Agent with many tools carried
     the full tool list in every assistant message. In one measured Agent trace this was 86% of its size.
-    If you read ``reply.meta["tools"]``, use the tools you passed to the generator instead.
-    Streaming chunks still contain the full API response in ``meta["response"]``.
+    No information is lost: the field only repeats the tools you passed to the generator. In an Agent trace they are
+    still recorded once per run in the ``haystack.agent.tools`` tag of the ``haystack.agent.run`` span, and on every
+    step in the ``haystack.agent.step.llm.input`` tag. If you read ``reply.meta["tools"]``, use the tools you passed
+    to the generator instead. Streaming chunks still contain the full API response in ``meta["response"]``.
