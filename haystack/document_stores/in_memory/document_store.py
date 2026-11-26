@@ -59,42 +59,30 @@ _CJK_CHAR_CLASS = (
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
 
-
-def _combining_mark_char_class() -> str:
-    r"""
-    Build a regex character class body that matches every combining mark (Unicode categories Mn, Mc and Me).
-
-    Python's `re` does not count combining marks as word characters, so `\w` alone cuts words apart in every
-    script that writes vowels and other signs as marks. For example, Sinhala "ජනාධිපති" becomes "ජන", "ධ", "පත",
-    and Tamil, Devanagari, Bengali and fully vowelled Arabic or Hebrew break the same way. The marks of all modern
-    scripts are in the Basic Multilingual Plane, so only that plane is scanned. The kana voicing marks
-    (U+3099-U+309A) are left out so kana keeps its one-token-per-character behaviour.
-    """
-    ranges = []
-    start = None
-    for code_point in range(0x10001):
-        is_mark = (
-            code_point < 0x10000
-            and unicodedata.category(chr(code_point)).startswith("M")
-            and not 0x3099 <= code_point <= 0x309A
-        )
-        if is_mark and start is None:
-            start = code_point
-        elif not is_mark and start is not None:
-            end = code_point - 1
-            ranges.append(rf"\u{start:04x}" if start == end else rf"\u{start:04x}-\u{end:04x}")
-            start = None
-    return "".join(ranges)
-
-
-_COMBINING_MARK_CHAR_CLASS = _combining_mark_char_class()
-# A word starts with a word character and continues with word characters and combining marks, so a mark with no base
-# character is not a token. Zero-width joiners and non-joiners (U+200C, U+200D) may join two parts of one word, as in
-# Sinhala conjuncts such as "ශ්‍රී". CJK characters are still one token each.
-_WORD_START = rf"[^\W{_CJK_CHAR_CLASS}]"
-_WORD_CHAR = rf"{_WORD_START}|[{_COMBINING_MARK_CHAR_CLASS}]"
+# Unicode ranges for the combining marks (vowel signs, viramas, diacritics) of scripts that separate words with
+# spaces. Python's `\w` does not match combining marks, so without these the default regex would cut words such as
+# Tamil "தமிழ்" into fragments. Thai, Lao, Khmer and Myanmar are left out on purpose: they do not put spaces
+# between words, so joining their marks would turn whole phrases into one token.
+_COMBINING_MARK_CHAR_CLASS = (
+    r"\u0300-\u036f"  # Combining Diacritical Marks (decomposed Latin, Greek, Cyrillic)
+    r"\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7"  # Hebrew points and cantillation marks
+    r"\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed"  # Arabic harakat
+    r"\u0900-\u0963"  # Devanagari (Hindi, Marathi, Nepali), stops before the danda
+    r"\u0981-\u09e3"  # Bengali
+    r"\u0a01-\u0a75"  # Gurmukhi (Punjabi)
+    r"\u0a81-\u0ae3"  # Gujarati
+    r"\u0b01-\u0b63"  # Oriya
+    r"\u0b82-\u0bd7"  # Tamil
+    r"\u0c00-\u0c63"  # Telugu
+    r"\u0c81-\u0c83\u0c85-\u0ce3"  # Kannada, excludes the siddham sign
+    r"\u0d00-\u0d4e\u0d57\u0d62\u0d63"  # Malayalam
+    r"\u0d81-\u0df3"  # Sinhala
+    r"\u200c\u200d"  # Zero-width non-joiner and joiner, used inside Sinhala and Indic words (ශ්‍රී)
+)
+_WORD_CHAR = rf"[^\W{_CJK_CHAR_CLASS}]"
+# A word starts with a word character, then any mix of word characters and combining marks. CJK: one char per token.
 _DEFAULT_BM25_TOKENIZATION_REGEX = (
-    rf"{_WORD_START}(?:{_WORD_CHAR})*(?:[\u200c\u200d](?:{_WORD_CHAR})+)*|[{_CJK_CHAR_CLASS}]"
+    rf"{_WORD_CHAR}+(?:[{_COMBINING_MARK_CHAR_CLASS}]+{_WORD_CHAR}*)*|[{_CJK_CHAR_CLASS}]"
 )
 
 
@@ -145,7 +133,7 @@ class InMemoryDocumentStore:
 
     def __init__(
         self,
-        bm25_tokenization_regex: str | None = _DEFAULT_BM25_TOKENIZATION_REGEX,
+        bm25_tokenization_regex: str = _DEFAULT_BM25_TOKENIZATION_REGEX,
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
@@ -163,9 +151,7 @@ class InMemoryDocumentStore:
             The regular expression used to tokenize the text for BM25 retrieval. The default groups word
             characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
             Text is lowercased and NFC-normalized before tokenization. Combining marks (such as the vowel signs of
-            Sinhala, Tamil or Devanagari) stay part of the word. `None` also selects the default. The default is
-            serialized as `None`, because it is built from the running Python's Unicode data and is several kilobytes
-            long.
+            Sinhala, Tamil or Devanagari) stay part of the word.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -188,8 +174,6 @@ class InMemoryDocumentStore:
             If `False` (the default), the timezone from the aware datetime is copied to the naive one before
             comparing.
         """
-        if bm25_tokenization_regex is None:
-            bm25_tokenization_regex = _DEFAULT_BM25_TOKENIZATION_REGEX
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
 
@@ -470,12 +454,7 @@ class InMemoryDocumentStore:
         """
         return default_to_dict(
             self,
-            # The default is stored as None: it is long and depends on the Python version's Unicode data.
-            bm25_tokenization_regex=(
-                None
-                if self.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
-                else self.bm25_tokenization_regex
-            ),
+            bm25_tokenization_regex=self.bm25_tokenization_regex,
             bm25_algorithm=self.bm25_algorithm,
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,

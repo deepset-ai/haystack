@@ -441,7 +441,7 @@ class TestMemoryDocumentStore(
         assert data == {
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
-                "bm25_tokenization_regex": None,
+                "bm25_tokenization_regex": _DEFAULT_BM25_TOKENIZATION_REGEX,
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
@@ -476,21 +476,6 @@ class TestMemoryDocumentStore(
                 "strict_datetime_comparison": True,
             },
         }
-
-    def test_to_dict_from_dict_round_trip_keeps_default_tokenizer(self):
-        # The default regex is long and depends on the Python version's Unicode data, so it is saved as None and
-        # rebuilt on load.
-        store = InMemoryDocumentStore()
-        data = store.to_dict()
-        assert data["init_parameters"]["bm25_tokenization_regex"] is None
-
-        loaded = InMemoryDocumentStore.from_dict(data)
-        assert loaded.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
-        assert loaded._tokenize_bm25("ජනාධිපතිවරයා ගියේය") == ["ජනාධිපතිවරයා", "ගියේය"]
-
-    def test_init_with_none_regex_uses_default(self):
-        store = InMemoryDocumentStore(bm25_tokenization_regex=None)
-        assert store.bm25_tokenization_regex == _DEFAULT_BM25_TOKENIZATION_REGEX
 
     @patch("haystack.document_stores.in_memory.document_store.re")
     def test_from_dict(self, mock_regex):
