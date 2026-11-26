@@ -20,6 +20,7 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -777,6 +778,32 @@ def _convert_chat_completion_to_chat_message(
     return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
 
+def _resolve_tool_call_index(
+    tool_call: ChoiceDeltaToolCall, previous_chunks: list[StreamingChunk], current: list[ToolCallDelta]
+) -> int:
+    """
+    Returns the index of a streamed tool call delta.
+
+    OpenAI always sends `index`. Some OpenAI-compatible servers do not: Gemini's OpenAI-compatible endpoint and
+    Mistral send each tool call whole with only an `id`. For those, a delta with an id not seen yet starts a new
+    tool call and a delta without an id continues the latest one.
+
+    :param tool_call: The tool call delta from the OpenAI API.
+    :param previous_chunks: The StreamingChunks received so far.
+    :param current: The ToolCallDeltas already built from the current chunk.
+    :returns: The index of the tool call.
+    """
+    if tool_call.index is not None:
+        return tool_call.index
+    seen = [tc for c in previous_chunks for tc in (c.tool_calls or [])] + current
+    if not seen:
+        return 0
+    last = max(tc.index for tc in seen)
+    if tool_call.id and tool_call.id not in {tc.id for tc in seen if tc.id}:
+        return last + 1
+    return last
+
+
 def _convert_chat_completion_chunk_to_streaming_chunk(
     chunk: ChatCompletionChunk, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
@@ -818,12 +845,14 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
 
     # create a list of ToolCallDelta objects from the tool calls
     if choice.delta and choice.delta.tool_calls:
-        tool_calls_deltas = []
+        tool_calls_deltas: list[ToolCallDelta] = []
         for tool_call in choice.delta.tool_calls:
             function = tool_call.function
             tool_calls_deltas.append(
                 ToolCallDelta(
-                    index=tool_call.index,
+                    index=_resolve_tool_call_index(
+                        tool_call=tool_call, previous_chunks=previous_chunks, current=tool_calls_deltas
+                    ),
                     id=tool_call.id,
                     tool_name=function.name if function else None,
                     arguments=function.arguments if function and function.arguments else None,

@@ -143,8 +143,9 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 if tool_call.index not in tool_call_data:
                     tool_call_data[tool_call.index] = {"id": "", "name": "", "arguments": ""}
 
-                # Save the ID if present
-                if tool_call.id is not None:
+                # Save the ID if present. Some providers (e.g. Alibaba Cloud Model Studio) send an empty id on the
+                # later chunks of a tool call, which must not overwrite the id from the first chunk.
+                if tool_call.id:
                     tool_call_data[tool_call.index]["id"] = tool_call.id
 
                 if tool_call.tool_name is not None:

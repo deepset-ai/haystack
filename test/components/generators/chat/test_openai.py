@@ -46,7 +46,7 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_to_chat_message,
     _make_schema_strict,
 )
-from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
@@ -1949,6 +1949,143 @@ class TestChatCompletionChunkConversion:
             )
             assert stream_chunk == haystack_chunk
             previous_chunks.append(stream_chunk)
+
+    @staticmethod
+    def _stream(raw_chunks: list[dict[str, Any]]) -> ChatMessage:
+        # The OpenAI SDK builds stream chunks without validation, so a field the server omitted (like a tool call
+        # `index`) arrives as None; ChatCompletionChunk.construct does the same.
+        previous_chunks: list[StreamingChunk] = []
+        for raw in raw_chunks:
+            previous_chunks.append(
+                _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=ChatCompletionChunk.construct(**raw), previous_chunks=previous_chunks
+                )
+            )
+        return _convert_streaming_chunks_to_chat_message(chunks=previous_chunks)
+
+    def test_tool_calls_without_index_stay_separate(self) -> None:
+        # Recorded from Gemini's OpenAI-compatible endpoint (pydantic-ai cassette
+        # test_compatible_api_gemini_3_tool_call_thought_signature[True]): two parallel calls, each whole in its own
+        # chunk, and no `index` on either.
+        base = {
+            "id": "3tXOasW2I-2KmtkPrtulEA",
+            "object": "chat.completion.chunk",
+            "created": 1791940062,
+            "model": "gemini-3.1-flash-lite",
+        }
+        message = self._stream(
+            [
+                {
+                    **base,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "tool_calls": [
+                                    {
+                                        "id": "call_108766",
+                                        "type": "function",
+                                        "function": {"name": "get_weather", "arguments": '{"city":"Taipei"}'},
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+                {
+                    **base,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "tool_calls": [
+                                    {
+                                        "id": "call_108772",
+                                        "type": "function",
+                                        "function": {"name": "get_weather", "arguments": '{"city":"Kaohsiung"}'},
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+                {**base, "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": "stop"}]},
+            ]
+        )
+        assert message.tool_calls == [
+            ToolCall(id="call_108766", tool_name="get_weather", arguments={"city": "Taipei"}),
+            ToolCall(id="call_108772", tool_name="get_weather", arguments={"city": "Kaohsiung"}),
+        ]
+
+    def test_empty_tool_call_id_on_later_chunks_keeps_the_first_id(self) -> None:
+        # Recorded from Alibaba Cloud Model Studio, qwen3-max (vercel/ai fixture alibaba-tool-call.chunks.txt): the
+        # chunks after the first one repeat `"id": ""`.
+        base = {
+            "id": "chatcmpl-8e243c57-23b3-9db2-a02e-e3c53929c368",
+            "object": "chat.completion.chunk",
+            "created": 1770764938,
+            "model": "qwen3-max",
+        }
+        message = self._stream(
+            [
+                {
+                    **base,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "tool_calls": [
+                                    {
+                                        "index": 0,
+                                        "id": "call_eee11723464a4b9eb8cee71d",
+                                        "type": "function",
+                                        "function": {"name": "weather", "arguments": ""},
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+                {
+                    **base,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "tool_calls": [
+                                    {
+                                        "index": 0,
+                                        "id": "",
+                                        "type": "function",
+                                        "function": {"arguments": '{"location": "San Francisco'},
+                                    }
+                                ]
+                            },
+                        }
+                    ],
+                },
+                {
+                    **base,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "tool_calls": [
+                                    {"index": 0, "id": "", "type": "function", "function": {"arguments": '"}'}}
+                                ]
+                            },
+                        }
+                    ],
+                },
+                {**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]},
+            ]
+        )
+        assert message.tool_calls == [
+            ToolCall(id="call_eee11723464a4b9eb8cee71d", tool_name="weather", arguments={"location": "San Francisco"})
+        ]
 
     def test_convert_chat_completion_chunk_with_empty_tool_calls(self) -> None:
 
