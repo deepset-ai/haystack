@@ -3,5 +3,6 @@ fixes:
   - |
     ``MetaFieldRanker`` now handles a NaN value of ``meta_field`` like a missing value and applies ``missing_meta``
     to that document. Before, one NaN value left the documents unsorted: ``[3, nan, 1, 4, 2]`` in ascending
-    order came back as ``[3, nan, 1, 2, 4]``. This also covers strings such as ``"nan"`` that
-    ``meta_value_type="float"`` parses to NaN, as in metadata read by ``CSVToDocument`` in row mode.
+    order came back as ``[3, nan, 1, 2, 4]``. This also covers NumPy floats such as ``np.float32`` and strings
+    such as ``"nan"`` that ``meta_value_type="float"`` parses to NaN, as in metadata read by ``CSVToDocument`` in
+    row mode.

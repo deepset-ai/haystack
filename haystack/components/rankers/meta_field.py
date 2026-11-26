@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+import numbers
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import replace
@@ -266,7 +267,7 @@ class MetaFieldRanker:
         parsed_meta_and_docs = [
             (value, doc)
             for value, doc in zip(parsed_meta_values, docs_with_meta_value, strict=True)
-            if not (isinstance(value, float) and math.isnan(value))
+            if not (isinstance(value, numbers.Real) and math.isnan(value))
         ]
         docs_with_meta_field = [doc for _, doc in parsed_meta_and_docs]
         sortable_doc_ids = {doc.id for doc in docs_with_meta_field}

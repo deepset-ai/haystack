@@ -4,6 +4,7 @@
 
 import logging
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -373,6 +374,16 @@ class TestMetaFieldRanker:
         ]
         output = ranker.run(documents=docs_before)
         assert [doc.id for doc in output["documents"]] == expected_ids
+
+    @pytest.mark.parametrize("nan", [np.float64("nan"), np.float32("nan"), np.float16("nan")])
+    def test_numpy_nan_meta_value_is_handled_as_missing_meta(self, nan):
+        ranker = MetaFieldRanker(meta_field="rating", weight=1.0, sort_order="ascending", missing_meta="bottom")
+        docs_before = [
+            Document(id=str(i), content="abc", meta={"rating": rating})
+            for i, rating in enumerate((3, nan, 1, 4, 2), start=1)
+        ]
+        output = ranker.run(documents=docs_before)
+        assert [doc.id for doc in output["documents"]] == ["3", "5", "1", "4", "2"]
 
     def test_all_nan_meta_values_are_handled_as_missing_meta(self):
         ranker = MetaFieldRanker(meta_field="rating", missing_meta="drop")
