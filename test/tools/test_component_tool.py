@@ -22,6 +22,7 @@ from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGen
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
+from haystack.utils import Secret
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 # Component and Model Definitions
@@ -251,6 +252,18 @@ class TestComponentTool:
         tool = ComponentTool(component=DualModeComponent())
         assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
         assert "unexpected" in caplog.text
+
+    @pytest.mark.parametrize("access_token", ["tok", Secret.from_token("tok")])
+    def test_inputs_from_state_reach_run_unconverted(self, access_token):
+        @component
+        class Fetcher:
+            @component.output_types(access_token=str | Secret)
+            def run(self, query: str, access_token: str | Secret) -> dict[str, str | Secret]:
+                return {"access_token": access_token}
+
+        tool = ComponentTool(component=Fetcher(), inputs_from_state={"token": "access_token"})
+
+        assert tool.invoke(query="q", access_token=access_token) == {"access_token": access_token}
 
     def test_custom_parameters_allow_mandatory_input_from_state(self):
         parameters = {"type": "object", "properties": {}}

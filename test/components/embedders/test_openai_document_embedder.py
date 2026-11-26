@@ -237,7 +237,7 @@ class TestOpenAIDocumentEmbedder:
         with patch.object(
             embedder.client.embeddings,
             "create",
-            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+            side_effect=APIError(message="Mocked error", request=Mock(headers={}), body=None),
         ):
             embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
 
@@ -265,7 +265,7 @@ class TestOpenAIDocumentEmbedder:
             embedder.client.embeddings,
             "create",
             side_effect=[
-                APIError(message="Mocked error", request=Mock(), body=None),  # First call fails
+                APIError(message="Mocked error", request=Mock(headers={}), body=None),  # First call fails
                 successful_response,  # Second call succeeds
             ],
         ):
@@ -282,7 +282,7 @@ class TestOpenAIDocumentEmbedder:
         with patch.object(
             embedder.client.embeddings,
             "create",
-            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+            side_effect=APIError(message="Mocked error", request=Mock(headers={}), body=None),
         ):
             with pytest.raises(APIError, match="Mocked error"):
                 embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)

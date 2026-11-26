@@ -337,6 +337,10 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             component.validate_input_parameters(expected={"questions": list[str]}, received={"questions": str})
 
+        # Received inputs are empty lists
+        with pytest.raises(ValueError, match="non-empty input lists"):
+            component.validate_input_parameters(expected={"questions": list[str]}, received={"questions": []})
+
     def test_invalid_outputs(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(

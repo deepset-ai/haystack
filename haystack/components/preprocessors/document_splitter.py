@@ -84,7 +84,8 @@ class DocumentSplitter:
             - `sentence` for splitting by NLTK sentence tokenizer
             - `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
 
-        :param split_length: The maximum number of units in each split.
+        :param split_length: The maximum number of units in each split. When splitting by word with
+            `respect_sentence_boundary=True`, a single sentence longer than this limit is kept whole in its own split.
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
             than the threshold, it's attached to the previous split.
@@ -574,7 +575,9 @@ class DocumentSplitter:
 
                 # Get the number of sentences that overlap with the next chunk
                 num_sentences_to_keep = DocumentSplitter._number_of_sentences_to_keep(
-                    sentences=current_chunk, split_length=split_length, split_overlap=split_overlap
+                    sentences=current_chunk,
+                    split_overlap=split_overlap,
+                    overlap_word_budget=split_length - next_sentence_word_count,
                 )
                 # Set up information for the new chunk
                 if num_sentences_to_keep > 0:
@@ -602,13 +605,13 @@ class DocumentSplitter:
         return text_splits, split_start_page_numbers, split_start_indices
 
     @staticmethod
-    def _number_of_sentences_to_keep(sentences: list[str], split_length: int, split_overlap: int) -> int:
+    def _number_of_sentences_to_keep(sentences: list[str], split_overlap: int, overlap_word_budget: int) -> int:
         """
-        Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
+        Returns the number of sentences to keep in the next chunk based on `split_overlap` and `overlap_word_budget`.
 
         :param sentences: The list of sentences to split.
-        :param split_length: The maximum number of words in each split.
         :param split_overlap: The number of overlapping words in each split.
+        :param overlap_word_budget: The space left for overlap after accounting for the next sentence, in words.
         :returns: The number of sentences to keep in the next chunk.
         """
         # If the split_overlap is 0, we don't need to keep any sentences
@@ -620,8 +623,7 @@ class DocumentSplitter:
         # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
         for sent in reversed(sentences[1:]):
             num_words += len(sent.split())
-            # If the number of words is larger than the split_length then don't add any more sentences
-            if num_words > split_length:
+            if num_words > overlap_word_budget:
                 break
             num_sentences_to_keep += 1
             if num_words >= split_overlap:

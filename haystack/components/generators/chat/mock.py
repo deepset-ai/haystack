@@ -284,7 +284,10 @@ class MockChatGenerator:
         chunks: list[StreamingChunk] = []
 
         # Stream the text content word by word in content block 0.
-        parts = re.findall(r"\S+\s*", reply.text) if reply.text else []
+        # Leading whitespace belongs to the first chunk, and whitespace-only text
+        # streams as one chunk: the chunks must join back into the reply that run()
+        # returns (real generators do not trim).
+        parts = re.findall(r"\s*\S+\s*|\s+", reply.text) if reply.text else []
         for idx, part in enumerate(parts):
             chunks.append(
                 StreamingChunk(

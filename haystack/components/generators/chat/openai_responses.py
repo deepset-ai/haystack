@@ -44,6 +44,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,9 @@ _INCOMPLETE_REASON_MAPPING: dict[str, FinishReason] = {
     "max_output_tokens": "length",
     "content_filter": "content_filter",
 }
+
+# Summary parts read as separate markdown sections, each usually opening with a bold title
+_REASONING_SEPARATOR = "\n\n"
 
 
 def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishReason:
@@ -65,6 +69,14 @@ def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishRe
             return finish_reason
     if any(output.type == "function_call" for output in response.output):
         return "tool_calls"
+    # A refusal completes the response normally, so report it as "content_filter" like other providers' refusals
+    if any(
+        isinstance(content, ResponseOutputRefusal)
+        for output in response.output
+        if output.type == "message"
+        for content in output.content
+    ):
+        return "content_filter"
     return "stop"
 
 
@@ -144,10 +156,6 @@ class OpenAIResponsesChatGenerator:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
-        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-        environment variables to override the `timeout` and `max_retries` parameters respectively
-        in the OpenAI client.
-
         :param api_key: The OpenAI API key.
             You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
             during initialization.
@@ -207,9 +215,11 @@ class OpenAIResponsesChatGenerator:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param tools:
             The tools that the model can use to prepare calls. This parameter can accept either a
             mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
@@ -251,6 +261,7 @@ class OpenAIResponsesChatGenerator:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
         return {
             "api_key": resolved_api_key,
@@ -689,12 +700,27 @@ def _reasoning_content_from_items(items: list[dict[str, Any]]) -> ReasoningConte
 
     texts = []
     for item in items:
-        text = "\n".join(part["text"] for part in item.get("summary") or [])
+        text = _REASONING_SEPARATOR.join(part["text"] for part in item.get("summary") or [] if part["text"])
         if not text:
-            text = "\n".join(part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text")
+            text = _REASONING_SEPARATOR.join(
+                part["text"] for part in item.get("content") or [] if part["type"] == "reasoning_text" and part["text"]
+            )
         if text:
             texts.append(text)
-    return ReasoningContent(reasoning_text="\n".join(texts), extra={"reasoning_items": items})
+    return ReasoningContent(reasoning_text=_REASONING_SEPARATOR.join(texts), extra={"reasoning_items": items})
+
+
+def _starts_new_reasoning_segment(
+    output_index: int, extra: dict[str, Any], previous_chunks: list[StreamingChunk]
+) -> bool:
+    """Whether a reasoning delta follows streamed reasoning text from another reasoning item or part."""
+    for previous_chunk in reversed(previous_chunks):
+        if previous_chunk.reasoning and previous_chunk.reasoning.reasoning_text:
+            previous_extra = previous_chunk.reasoning.extra
+            return previous_chunk.index != output_index or any(
+                previous_extra.get(key) != extra.get(key) for key in ("summary_index", "content_index")
+            )
+    return False
 
 
 def _reasoning_items_from_content(reasoning: ReasoningContent) -> list[dict[str, Any]]:
@@ -894,7 +920,13 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
         extra.pop("delta")
-        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
+        delta = chunk.delta
+        # Separate parts and items as _reasoning_content_from_items does, so the stream matches the final message
+        if delta and _starts_new_reasoning_segment(
+            output_index=chunk.output_index, extra=extra, previous_chunks=previous_chunks
+        ):
+            delta = _REASONING_SEPARATOR + delta
+        reasoning = ReasoningContent(reasoning_text=delta, extra=extra)
         return StreamingChunk(
             content="",
             component_info=component_info,
@@ -1026,9 +1058,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         # The API rejects reasoning input without an id, so items without one are dropped
         if reasoning_id:
             reasoning_extra.update({"id": reasoning_id, "type": "reasoning", "output_index": index})
-            # No done event supplied the text, so rebuild the summary from the streamed deltas
+            # No done event supplied the text, so rebuild the summary from the streamed deltas.
+            # A later item's first delta starts with the separator to the previous item, which the final join re-adds.
             if not reasoning_extra.get("summary") and not reasoning_extra.get("content"):
-                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks)
+                reasoning_text = "".join(item_chunk.reasoning_text for item_chunk in item_chunks).removeprefix(
+                    _REASONING_SEPARATOR
+                )
                 reasoning_extra["summary"] = (
                     [{"text": reasoning_text, "type": "summary_text"}] if reasoning_text else []
                 )

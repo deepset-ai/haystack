@@ -75,7 +75,7 @@ def _type_name(type_: Any) -> str:
     """
     Util methods to get a nice readable representation of a type.
 
-    Handles Optional and Literal in a special way to make it more readable.
+    Handles Optional, Literal, and Callable in a special way to make them more readable.
     """
     # Literal args are strings, so we wrap them in quotes to make it clear
     if isinstance(type_, str):
@@ -101,6 +101,16 @@ def _type_name(type_: Any) -> str:
         name = "Optional"
 
     if args:
+        if get_origin(type_) is Callable:
+            parameters, return_type = args
+            if isinstance(parameters, list):
+                parameters_str = f"[{', '.join(_type_name(parameter) for parameter in parameters)}]"
+            elif parameters is Ellipsis:
+                parameters_str = "..."
+            else:
+                parameters_str = _type_name(parameters)
+            return f"{name}[{parameters_str}, {_type_name(return_type)}]"
+
         args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
         return f"{name}[{args_str}]"
 
@@ -164,6 +174,16 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     # Special case to reject bare-Union types
     if (sender_origin is Union and not sender_args) or (receiver_origin is Union and not receiver_args):
         return False
+
+    # A Literal stands for its values: each one must match the receiver, either by its type or, when the receiver is
+    # a Union, as a member of one of its Literal arguments. Literal receivers are matched by membership below.
+    if sender_origin is Literal and receiver_origin is not Literal:
+        if receiver_origin is Union:
+            return all(
+                any(_strict_types_are_compatible(Literal[value], union_arg) for union_arg in receiver_args)
+                for value in sender_args
+            )
+        return all(_strict_types_are_compatible(type(value), receiver) for value in sender_args)
 
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in receiver_args)

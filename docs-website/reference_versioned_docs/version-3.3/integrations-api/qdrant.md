@@ -604,6 +604,7 @@ __init__(
     group_size: int | None = None,
     rrf_k: int | None = None,
     rrf_weights: list[float] | None = None,
+    prefetch_limit: int | None = None,
 ) -> None
 ```
 
@@ -631,6 +632,8 @@ Create a QdrantHybridRetriever component.
 - **rrf_weights** (<code>list\[float\] | None</code>) – Per-prefetch weights for RRF fusion — `[sparse_weight, dense_weight]`.
   See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
   Requires Qdrant server >= 1.17.0.
+- **prefetch_limit** (<code>int | None</code>) – Maximum number of candidates that each prefetch (sparse and dense) passes to RRF fusion.
+  If `None`, defaults to `2 * top_k`. With `group_by`, `None` leaves the limit to Qdrant.
 
 **Raises:**
 
@@ -694,6 +697,7 @@ run(
     group_size: int | None = None,
     rrf_k: int | None = None,
     rrf_weights: list[float] | None = None,
+    prefetch_limit: int | None = None,
 ) -> dict[str, list[Document]]
 ```
 
@@ -723,6 +727,7 @@ Run the Hybrid Retriever on the given input data.
 - **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
   See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
   Requires Qdrant server >= 1.17.0.
+- **prefetch_limit** (<code>int | None</code>) – Override the init-time `prefetch_limit` for this run.
 
 **Returns:**
 
@@ -746,6 +751,7 @@ run_async(
     group_size: int | None = None,
     rrf_k: int | None = None,
     rrf_weights: list[float] | None = None,
+    prefetch_limit: int | None = None,
 ) -> dict[str, list[Document]]
 ```
 
@@ -775,6 +781,7 @@ Asynchronously run the Hybrid Retriever on the given input data.
 - **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
   See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
   Requires Qdrant server >= 1.17.0.
+- **prefetch_limit** (<code>int | None</code>) – Override the init-time `prefetch_limit` for this run.
 
 **Returns:**
 
@@ -1356,6 +1363,7 @@ Returns the number of unique values for each specified metadata field among docu
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - **metadata_fields** (<code>list\[str\]</code>) – List of metadata field keys (inside `meta`) to count unique values for.
+  Field names can include or omit the "meta." prefix.
 
 **Returns:**
 
@@ -1383,6 +1391,7 @@ Only documents that match the filters are considered.
 - **filters** (<code>dict\[str, Any\]</code>) – The filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - **metadata_fields** (<code>list\[str\]</code>) – List of metadata field keys (inside `meta`) to count unique values for.
+  Field names can include or omit the "meta." prefix.
 
 **Returns:**
 
