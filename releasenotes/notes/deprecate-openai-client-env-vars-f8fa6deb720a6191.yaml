@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    Using ``OPENAI_TIMEOUT`` and ``OPENAI_MAX_RETRIES`` to configure Haystack's OpenAI
+    and Azure OpenAI components is deprecated. Starting with Haystack 3.7, the components
+    will ignore these variables. Pass ``timeout`` and ``max_retries`` explicitly to the
+    component constructor to preserve your settings.
