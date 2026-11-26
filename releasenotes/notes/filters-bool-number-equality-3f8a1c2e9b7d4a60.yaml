@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Metadata filters no longer treat a boolean and a number as equal. Because ``bool`` is a subclass of ``int``
+    in Python, a filter on ``False`` used to match documents with the value ``0`` (and ``True`` matched ``1``),
+    for the ``==``, ``!=``, ``in`` and ``not in`` operators, for example in ``InMemoryDocumentStore``.

@@ -654,6 +654,32 @@ def test_document_matches_filter(filters, document, expected_result):
 
 
 @pytest.mark.parametrize(
+    "operator, filter_value, document_value, expected_result",
+    [
+        # bool is a subclass of int, but a boolean and a number are different metadata values
+        ("==", False, 0, False),
+        ("==", 0, False, False),
+        ("==", True, 1, False),
+        ("==", 1, True, False),
+        ("==", 1.0, True, False),
+        ("!=", False, 0, True),
+        ("in", [False], 0, False),
+        ("in", [1, 2], True, False),
+        ("not in", [0], False, True),
+        # Same-type comparisons keep working
+        ("==", False, False, True),
+        ("==", 1, 1.0, True),
+        ("in", [True], True, True),
+    ],
+)
+def test_document_matches_filter_does_not_conflate_bool_and_number(
+    operator, filter_value, document_value, expected_result
+):
+    filters = {"field": "meta.v", "operator": operator, "value": filter_value}
+    assert document_matches_filter(filters, Document(meta={"v": document_value})) == expected_result
+
+
+@pytest.mark.parametrize(
     "operator,expected_result",
     [
         ("==", False),
