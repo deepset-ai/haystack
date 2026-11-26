@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``DOCXToDocument`` no longer drops the text of a table nested inside a table cell. The nested
+    table now appears in the outer cell, one line per row, with its cells separated by `` | ``.
