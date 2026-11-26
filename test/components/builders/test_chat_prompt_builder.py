@@ -1063,6 +1063,12 @@ The number is {{ x }}!
         res = builder.run(existing_documents=None)
         assert res["prompt"][0].text == "The number is 0!"
 
+    def test_variables_correct_with_self_referencing_assignment(self):
+        template = [ChatMessage.from_user("{% set documents = documents[:3] %}{{ documents }}")]
+        builder = ChatPromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["documents"]
+        assert builder.required_variables == "*"
+
     def test_variables_correct_with_tuple_assignment(self):
         template = """{% message role="user" %}
 {% if name is not none -%}
