@@ -172,6 +172,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
                   each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        :raises ValueError:
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is True, also if the chat generator call fails, its reply isn't valid JSON with the
+            expected keys, `statements` or `statement_scores` is not a list, or the numbers of statements and
+            statement scores differ.
         """
         result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
@@ -196,6 +201,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
                   each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        :raises ValueError:
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is True, also if the chat generator call fails, its reply isn't valid JSON with the
+            expected keys, `statements` or `statement_scores` is not a list, or the numbers of statements and
+            statement scores differ.
         """
         result = await super(FaithfulnessEvaluator, self).run_async(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
