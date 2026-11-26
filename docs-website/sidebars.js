@@ -192,6 +192,7 @@ export default {
               items: [
                 'pipeline-components/agents-1/agent-pack/advanced-rag-agent',
                 'pipeline-components/agents-1/agent-pack/deep-research-agent',
+                'pipeline-components/agents-1/agent-pack/harness-optimizer-agent',
               ],
             },
           ],
