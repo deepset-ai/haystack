@@ -685,9 +685,9 @@ Initialize the compactor.
 - **summary_instruction** (<code>str</code>) – The prompt instructions for how to summarize a portion of the conversation.
   The default instructions ask for a summary with fixed sections covering the objective, decisions and
   constraints, completed work, exact identifiers, and unresolved work.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails or returns a summary that
-  does not shrink the conversation. By default the failure is logged and any successful partial compaction
-  is returned.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails, returns an incomplete
+  summary (finish reason `length` or `content_filter`), or returns a summary that does not shrink the
+  conversation. By default the failure is logged and any successful partial compaction is returned.
 
 **Raises:**
 

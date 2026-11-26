@@ -277,7 +277,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentMAPEvaluator component.
@@ -290,6 +292,15 @@ Create a DocumentMAPEvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives MAP@10). Average precision is still divided by the
+  number of relevant documents, so relevant documents ranked below `top_k` count as missed.
+  Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -366,7 +377,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentMRREvaluator component.
@@ -379,6 +392,13 @@ Create a DocumentMRREvaluator component.
 - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives MRR@10). Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -447,7 +467,9 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content') -> None
+__init__(
+    document_comparison_field: str = "content", *, top_k: int | None = None
+) -> None
 ```
 
 Create a DocumentNDCGEvaluator component.
@@ -461,6 +483,14 @@ Create a DocumentNDCGEvaluator component.
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
   Values may also be lists or dictionaries.
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=10` gives NDCG@10). The ideal DCG is also cut at `top_k`,
+  so a perfect ranking of the first `top_k` documents scores 1.0. Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### to_dict
 
@@ -528,6 +558,8 @@ calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float
 
 Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
+If `top_k` is set, only the first `top_k` retrieved documents are used.
+
 **Parameters:**
 
 - **gt_docs** (<code>list\[Document\]</code>) – The ground truth documents.
@@ -545,6 +577,9 @@ calculate_idcg(gt_docs: list[Document]) -> float
 ```
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
+
+If `top_k` is set, only the `top_k` most relevant ground truth documents are used, matching the cutoff
+applied to the retrieved documents in `calculate_dcg`.
 
 Ground truth documents whose comparison value is missing (e.g. missing meta key) or empty
 are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
@@ -612,6 +647,8 @@ print(result["score"])
 __init__(
     mode: str | RecallMode = RecallMode.SINGLE_HIT,
     document_comparison_field: str = "content",
+    *,
+    top_k: int | None = None
 ) -> None
 ```
 
@@ -627,6 +664,13 @@ Create a DocumentRecallEvaluator component.
   (e.g. `"meta.file_id"`, `"meta.page_number"`)
   Nested keys are supported (e.g. `"meta.source.url"`).
   Values may also be lists or dictionaries.
+- **top_k** (<code>int | None</code>) – If set, only the first `top_k` retrieved documents of each question are scored, which gives the
+  metric at cutoff k (for example, `top_k=5` gives Recall@5). Must be a positive integer.
+  Defaults to `None`, which scores all retrieved documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not a positive integer or `None`.
 
 #### run
 
@@ -972,8 +1016,9 @@ Run the LLM evaluator.
 
 **Raises:**
 
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### run_async
 
@@ -999,8 +1044,9 @@ Run the LLM evaluator asynchronously
 **Raises:**
 
 - <code>TypeError</code> – If the chat generator does not support async execution.
-- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
-  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>ValueError</code> – If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+  If `raise_on_failure` is set to True, also if the output is not a valid JSON or doesn't contain the
+  expected keys.
 
 #### prepare_template
 
@@ -1076,6 +1122,7 @@ Validate the input parameters.
 
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
+  If the received input lists are empty
 
 ## sas_evaluator
 

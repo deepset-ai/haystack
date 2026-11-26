@@ -1,0 +1,125 @@
+---
+title: "Guardrails"
+id: guardrails
+slug: "/guardrails"
+description: "An overview of the guardrails Haystack offers for pipelines and Agents: content moderation, PII, budgets, step limits, tool approval, and output validation."
+---
+
+# Guardrails
+
+Guardrails help keep your pipelines and Agents within limits you set: what content goes in and out of the model, how much a run spends, how long it runs, which tools it may call without approval, and what it returns. This page lists guardrails Haystack offers, what each guards against, and where it plugs in.
+
+A guardrail commonly plugs in at one of these places:
+
+- **Provider setting**: The model provider checks the request and the reply. You turn it on in the chat generator.
+- **Pipeline component**: Runs as its own step in a pipeline, for example to clean a query or route a message before it reaches a chat generator or an Agent.
+- **Agent hook**: Runs inside an [`Agent`](../pipeline-components/agents-1/agent.mdx)'s run loop. Pass it to the Agent's `hooks` parameter. See [Hooks](../pipeline-components/agents-1/hooks.mdx).
+
+## Guardrails for pipelines
+
+These guardrails can be used in a pipeline, whether it calls a chat generator directly or runs an Agent.
+
+| Guardrail | Guards against | Plugs in as | Learn more |
+| --- | --- | --- | --- |
+| Provider moderation | Harmful content in the prompt or the reply | Provider setting | [Content moderation by the provider](#content-moderation-by-the-provider) |
+| `LLMMessagesRouter` with a guard model | Harmful content, checked by a model you choose | Pipeline component | [LLMMessagesRouter](../pipeline-components/routers/llmmessagesrouter.mdx) |
+| `PresidioTextCleaner`, `PresidioDocumentCleaner` | PII reaching the model or the index | Pipeline component | [PresidioTextCleaner](../pipeline-components/preprocessors/presidiotextcleaner.mdx), [PresidioDocumentCleaner](../pipeline-components/preprocessors/presidiodocumentcleaner.mdx) |
+| `PresidioEntityExtractor` | PII you need to detect and act on yourself | Pipeline component | [PresidioEntityExtractor](../pipeline-components/extractors/presidioentityextractor.mdx) |
+
+### Content moderation by the provider
+
+Several model providers check prompts and replies for harmful content. When a provider blocks a reply, most of the chat generators listed below set the reply's `finish_reason` to `"content_filter"`. The reply may hold partial text. In a pipeline, read it from the reply's `meta`:
+
+```python
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = OpenAIResponsesChatGenerator(model="gpt-6-luna")
+result = generator.run(messages=[ChatMessage.from_user("Your question here")])
+reply = result["replies"][0]
+if reply.meta.get("finish_reason") == "content_filter":
+    print("The provider blocked this reply.")
+```
+
+By default, an Agent stops on a blocked reply and returns `exit_reason="content_filter"`:
+
+```python
+from haystack.components.agents import Agent
+
+agent = Agent(chat_generator=generator)
+result = agent.run(messages=[ChatMessage.from_user("Your question here")])
+if result["exit_reason"] == "content_filter":
+    print("The provider blocked this reply.")
+```
+
+These examples use `OpenAIResponsesChatGenerator`, so they need the `OPENAI_API_KEY` environment variable. With another provider from the table below, swap in its chat generator and set that provider's credentials instead.
+
+| Provider | Built-in moderation | How to turn it on |
+| --- | --- | --- |
+| Amazon Bedrock | Guardrails | [`guardrail_config` init parameter](../pipeline-components/generators/amazonbedrockchatgenerator.mdx#content-moderation) |
+| Google Gemini | Safety settings | [`safety_settings` init parameter](../pipeline-components/generators/googlegenaichatgenerator.mdx#content-moderation) |
+| Mistral | Guardrails, safety system prompt | [`guardrails` in `extra_body`, `safe_prompt` in `generation_kwargs`](../pipeline-components/generators/mistralchatgenerator.mdx#content-moderation) |
+| Azure OpenAI | Content filters | Configured on the Azure deployment, see [AzureOpenAIChatGenerator](../pipeline-components/generators/azureopenaichatgenerator.mdx#content-moderation) and [AzureOpenAIResponsesChatGenerator](../pipeline-components/generators/azureopenairesponseschatgenerator.mdx#content-moderation) |
+| Anthropic | The model refuses on its own | Nothing to set, see [AnthropicChatGenerator](../pipeline-components/generators/anthropicchatgenerator.mdx#content-moderation) |
+| Cohere | Safety modes | [`safety_mode` in `generation_kwargs`](../pipeline-components/generators/coherechatgenerator.mdx#content-moderation) |
+
+### Content moderation with a guard model
+
+To moderate content with a model you choose, put an [`LLMMessagesRouter`](../pipeline-components/routers/llmmessagesrouter.mdx) with a guard model, such as Llama Guard, Granite Guardian, ShieldGemma, or NemoGuard, in front of a chat generator or an Agent. The router can send safe messages on and route unsafe ones to a separate output. This is useful for self-hosted models, or to apply one moderation policy across several providers.
+
+### PII
+
+The [Presidio integration](https://haystack.deepset.ai/integrations/presidio) finds and replaces personally identifiable information (PII), such as names, emails, and phone numbers:
+
+- [`PresidioTextCleaner`](../pipeline-components/preprocessors/presidiotextcleaner.mdx) replaces PII in strings, for example in a user query before it reaches the model.
+- [`PresidioDocumentCleaner`](../pipeline-components/preprocessors/presidiodocumentcleaner.mdx) replaces PII in documents, for example before you index them.
+- [`PresidioEntityExtractor`](../pipeline-components/extractors/presidioentityextractor.mdx) finds PII and returns the entities, so you can decide what to do with them.
+
+All three take a `score_threshold` that sets how confident Presidio must be before it treats text as PII.
+
+## Guardrails for Agents
+
+These guardrails are specific to the Agent.
+
+| Guardrail | Guards against | Plugs in as | Learn more |
+| --- | --- | --- | --- |
+| `max_agent_steps` | A run that loops without finishing | `Agent` init parameter | [Agent](../pipeline-components/agents-1/agent.mdx#parameters) |
+| `stop_run` state key | A condition you check in your own hook | State key, set from your own hook (for example in `before_llm`) | [Stopping a run from a hook](#stopping-a-run-from-a-hook) |
+| `TokenBudgetHook` | A run using more tokens than you want to pay for | Agent hook (`before_llm`) | [Token Budget](../pipeline-components/agents-1/token-budget.mdx) |
+| `StepBudgetReminderHook` | The Agent hitting `max_agent_steps` before it answers | Agent hook (`before_llm`) | [Step Budget Reminder](../pipeline-components/agents-1/step-budget-reminder.mdx) |
+| `ConfirmationHook` | Tools running without a human's approval | Agent hook (`before_tool`) | [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) |
+| `StructuredOutputHook` | A final reply that doesn't match a Pydantic model or JSON schema | Agent hook (`on_exit`) | [Structured Output](../pipeline-components/agents-1/structured-output.mdx) |
+
+### Budgets and step limits
+
+[`TokenBudgetHook`](../pipeline-components/agents-1/token-budget.mdx) stops the run before the next LLM call once the run has used `max_total_tokens`. The run ends with `exit_reason="token_budget_exceeded"`.
+
+[`max_agent_steps`](../pipeline-components/agents-1/agent.mdx#parameters) caps the number of LLM and tool call iterations. It defaults to `100`. When the Agent reaches it, the run ends with `exit_reason="max_agent_steps"`. Two hooks help the Agent still return an answer:
+
+- [`StepBudgetReminderHook`](../pipeline-components/agents-1/step-budget-reminder.mdx) tells the model how many steps it has left, so it can wrap up in time.
+- [`BackupAnswerHook`](../pipeline-components/agents-1/backup-answer.mdx) writes a final answer with its own chat generator when the run stops at the limit.
+
+### Stopping a run from a hook
+
+A hook can stop the run by setting the `stop_run` state key. The Agent reads it before each LLM call and returns its value as the `exit_reason`. Use it for checks that no ready-made hook covers. This hook stops the run once the Agent has called the `search` tool five times:
+
+```python
+from haystack.components.agents.state import State
+from haystack.hooks import hook
+
+
+@hook
+def limit_searches(state: State) -> None:
+    if state.get("tool_call_counts", {}).get("search", 0) >= 5:
+        state.set("stop_run", "search_limit_reached")
+```
+
+Register it with `hooks={"before_llm": [limit_searches]}`. See [State keys for hooks](../pipeline-components/agents-1/hooks.mdx#state-keys-for-hooks).
+
+### Tool approval
+
+[`ConfirmationHook`](../pipeline-components/agents-1/human-in-the-loop.mdx) lets a human confirm, modify, or reject a tool call before it runs. A policy decides when to ask: `AlwaysAskPolicy` asks on every call, `AskOncePolicy` asks once per tool and set of arguments, and `NeverAskPolicy` never asks. You set a strategy per tool, so you can require approval only for risky tools such as `send_email`.
+
+### Output validation
+
+[`StructuredOutputHook`](../pipeline-components/agents-1/structured-output.mdx) parses the Agent's final reply as JSON and validates it against a Pydantic model or a JSON schema. When the reply is invalid, the hook sends the error back to the model and asks it to fix the reply, up to `max_retries` times.

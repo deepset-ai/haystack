@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``PDFToImageContent`` processing pages more than once when page ranges contain duplicate or overlapping selections.
+    Page selection order is preserved.

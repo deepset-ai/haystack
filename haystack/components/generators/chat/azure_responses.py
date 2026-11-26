@@ -108,7 +108,8 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         """
         Initialize the AzureOpenAIResponsesChatGenerator component.
 
-        :param api_key: The API key to use for authentication. Can be:
+        :param api_key: The API key to use for authentication. Defaults to the `AZURE_OPENAI_API_KEY` environment
+            variable. If no key resolves, `warm_up()` raises a `ValueError`. Can be:
             - A `Secret` object containing the API key.
             - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
             - A function that returns an Azure Active Directory token.
@@ -121,8 +122,10 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             as an argument.
         :param timeout: Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries: Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param generation_kwargs: Other parameters to use for the model. These parameters are sent
            directly to the OpenAI endpoint.
            See OpenAI [documentation](https://platform.openai.com/docs/api-reference/responses) for
@@ -189,6 +192,15 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             http_client_kwargs=http_client_kwargs,
             include_rate_limit_headers=include_rate_limit_headers,
         )
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        kwargs = super(AzureOpenAIResponsesChatGenerator, self)._client_kwargs()  # noqa: UP008
+        # The OpenAI client falls back to OPENAI_API_KEY when api_key is None, which would send it to Azure.
+        if not kwargs["api_key"]:
+            raise ValueError(
+                "No Azure OpenAI API key found. Pass `api_key` or set the `AZURE_OPENAI_API_KEY` environment variable."
+            )
+        return kwargs
 
     def to_dict(self) -> dict[str, Any]:
         """

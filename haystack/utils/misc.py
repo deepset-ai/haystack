@@ -4,7 +4,9 @@
 
 import json
 import mimetypes
+import os
 import tempfile
+import warnings
 from collections import defaultdict
 from dataclasses import replace
 from math import inf
@@ -54,7 +56,7 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
 
     :param page_range: List of page numbers and ranges
     :returns:
-        An expanded list of page integers
+        An expanded list of unique page integers, preserving their first-occurrence order
     :raises ValueError:
         If any element is not a valid integer or a range string in the format `'start-end'`.
 
@@ -90,7 +92,7 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
     if not expanded_page_range:
         raise ValueError("No valid page numbers or ranges found in the input list")
 
-    return expanded_page_range
+    return list(dict.fromkeys(expanded_page_range))
 
 
 @overload
@@ -275,3 +277,16 @@ def _normalize_metadata_field_name(metadata_field: str) -> str:
     Normalizes a metadata field name by removing the "meta." prefix if present.
     """
     return metadata_field[5:] if metadata_field.startswith("meta.") else metadata_field
+
+
+def _warn_if_using_openai_env_vars(*, timeout: float | None, max_retries: int | None) -> None:
+    if (timeout is None and "OPENAI_TIMEOUT" in os.environ) or (
+        max_retries is None and "OPENAI_MAX_RETRIES" in os.environ
+    ):
+        warnings.warn(
+            "Using `OPENAI_TIMEOUT` or `OPENAI_MAX_RETRIES` to configure this component is deprecated. "
+            "Starting with Haystack 3.7, the component will ignore these environment variables. "
+            "Pass `timeout` and `max_retries` explicitly to the component constructor instead.",
+            FutureWarning,
+            stacklevel=2,
+        )

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``AzureOpenAIResponsesChatGenerator`` no longer falls back to ``OPENAI_API_KEY`` when no Azure API key is set.
+    ``warm_up()`` and ``warm_up_async()`` now raise a ``ValueError`` asking for ``api_key`` or ``AZURE_OPENAI_API_KEY``.

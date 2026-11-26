@@ -85,6 +85,56 @@ For more details on working with tools, see the [Tool](../../tools/tool.mdx) and
 
 This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
+### Content moderation
+
+Mistral offers two built-in options.
+
+[Guardrails](https://docs.mistral.ai/capabilities/guardrailing) check the request with Mistral's moderation model and block it when a category score crosses your threshold. Pass them in `extra_body` in `generation_kwargs`:
+
+```python
+from haystack_integrations.components.generators.mistral import MistralChatGenerator
+
+generator = MistralChatGenerator(
+    generation_kwargs={
+        "extra_body": {
+            "guardrails": [
+                {
+                    "block_on_error": True,
+                    "moderation_llm_v2": {
+                        "custom_category_thresholds": {"sexual": 0.1, "selfharm": 0.1},
+                        "ignore_other_categories": False,
+                        "action": "block",
+                    },
+                },
+            ],
+        },
+    },
+)
+```
+
+Guardrails check only the request, before it reaches the model. When a guardrail blocks a request, the generator raises an `openai.PermissionDeniedError` instead of returning a reply. An Agent using this generator raises the same error, rather than stopping with `exit_reason="content_filter"`. The error's `body["guardrails"]` lists, for each guardrail, the action it took and each category's `score` and whether it was `violated`:
+
+```python
+import openai
+
+from haystack.dataclasses import ChatMessage
+
+try:
+    result = generator.run(messages=[ChatMessage.from_user("Your question here")])
+except openai.PermissionDeniedError as e:
+    print(e.body["guardrails"])
+```
+
+Guardrails don't work with streaming. If you set a `streaming_callback`, Mistral rejects every request that has guardrails with an `openai.BadRequestError`.
+
+The safety system prompt adds a system prompt in front of the conversation that steers the model away from harmful replies. Turn it on with `safe_prompt` in `generation_kwargs`:
+
+```python
+generator = MistralChatGenerator(generation_kwargs={"safe_prompt": True})
+```
+
+`safe_prompt` guides the model but doesn't block content. For other guardrails, see [Guardrails](../../concepts/guardrails.mdx).
+
 ## Usage
 
 Install the `mistral-haystack` package to use the  `MistralChatGenerator`:

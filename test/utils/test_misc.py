@@ -187,6 +187,9 @@ class TestExpandPageRange:
     def test_mixed_integers_and_range_strings(self):
         assert expand_page_range([1, "3-5", 7]) == [1, 3, 4, 5, 7]
 
+    def test_duplicate_pages_are_removed_preserving_order(self):
+        assert expand_page_range(["3-5", 1, "4-6", 3]) == [3, 4, 5, 1, 6]
+
     def test_empty_input_raises_value_error(self):
         with pytest.raises(ValueError, match="No valid page numbers"):
             expand_page_range([])

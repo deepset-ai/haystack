@@ -11,6 +11,7 @@ from openai.types.image import Image
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +62,11 @@ class OpenAIImageGenerator:
         :param timeout:
             Timeout for OpenAI Client calls. If not set, it is inferred from the `OPENAI_TIMEOUT` environment variable
             or set to 30.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
@@ -92,6 +95,7 @@ class OpenAIImageGenerator:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_key": self.api_key.resolve_value(),
             "organization": self.organization,
