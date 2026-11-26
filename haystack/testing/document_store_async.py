@@ -325,6 +325,35 @@ class CountUniqueMetadataByFilterAsyncTest:
         )
         assert counts == {"status": 2, "year": 1}
 
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_count_unique_metadata_by_filter_async_distinct_types(document_store: AsyncDocumentStore):
+        """
+        Test count_unique_metadata_by_filter_async() doesn't collapse values that share equality in Python.
+
+        Example: the int 1, the float 1.0, the str "1" and the bool True must be counted as distinct.
+        This matches get_metadata_field_unique_values_async() so the two APIs agree on uniqueness.
+        """
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": "1"}),
+            Document(content="Doc 3", meta={"priority": 1.0}),
+            Document(content="Doc 4", meta={"priority": True}),
+            Document(content="Doc 5", meta={"priority": 1}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
+            filters={}, metadata_fields=["priority"]
+        )
+        assert counts == {"priority": 4}
+
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="priority", size=100
+        )
+        assert total_count == counts["priority"]
+        assert len(values) == 4
+
 
 class DeleteByFilterAsyncTest:
     """
