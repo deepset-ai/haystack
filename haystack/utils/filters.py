@@ -4,6 +4,7 @@
 
 from dataclasses import fields
 from datetime import datetime
+from numbers import Real
 from typing import Any
 
 import dateutil.parser
@@ -140,9 +141,12 @@ def _prepare_ordering_comparison(
 
     :returns:
         A tuple containing the normalized value, normalized filter value, and whether the values are comparable.
-        The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
-        the other is timezone-aware, or when exactly one of the values is a boolean; otherwise it is `True`.
+        String fields do not match integer or floating-point bounds. Booleans do not match numbers.
+        In strict datetime mode, timezone-naive and timezone-aware dates are also incomparable.
     """
+    if isinstance(value, str) and isinstance(filter_value, Real) and not isinstance(filter_value, _BOOL_TYPES):
+        return value, filter_value, False
+
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
             value = _parse_date(value)

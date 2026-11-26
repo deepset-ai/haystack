@@ -407,6 +407,18 @@ class TestMemoryDocumentStore(
             ),
         ]
 
+    @pytest.mark.parametrize(("operator", "bound"), [(">", 1), (">=", 5.0), ("<", 6), ("<=", 5.0)])
+    def test_numeric_range_filters_skip_string_fields(
+        self, document_store: InMemoryDocumentStore, operator: str, bound: int | float
+    ) -> None:
+        string_doc = Document(meta={"v": "5"})
+        numeric_doc = Document(meta={"v": 5})
+        document_store.write_documents([string_doc, numeric_doc])
+
+        matches = document_store.filter_documents(filters={"field": "meta.v", "operator": operator, "value": bound})
+
+        assert matches == [numeric_doc]
+
     def test_filter_documents_date_equality_with_equivalent_iso_formats(
         self, document_store: InMemoryDocumentStore
     ) -> None:

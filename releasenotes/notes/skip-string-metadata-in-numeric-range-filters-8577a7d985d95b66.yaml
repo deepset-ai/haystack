@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Range filters with an integer or floating-point bound in ``InMemoryDocumentStore``
+    and ``MetadataRouter`` now skip string field values. Previously, encountering a string
+    could interrupt filtering before the remaining documents were evaluated.
