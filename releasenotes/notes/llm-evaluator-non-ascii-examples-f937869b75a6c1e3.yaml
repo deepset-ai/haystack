@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``LLMEvaluator`` and the evaluators built on it, such as ``FaithfulnessEvaluator``, now keep non-ASCII text
+    in few-shot examples readable in the prompt. Previously, characters such as Korean or accented letters
+    were sent to the LLM as ``\uXXXX`` escapes.
