@@ -243,7 +243,12 @@ class SummarizationCompactor(Compactor):
         self.raise_on_failure = raise_on_failure
 
     def compact(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> list[ChatMessage] | None:
         """
         Return a progressively summarized conversation, or None when no useful reduction is possible.
@@ -251,6 +256,7 @@ class SummarizationCompactor(Compactor):
         :param messages: The conversation to compact, ordered oldest to newest.
         :param target_tokens: The token budget the compacted messages should aim to fit.
         :param token_counter: The counter used both to plan compaction and verify generated summaries.
+        :param run_context: Not used by this compactor.
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
         compacted = messages
@@ -282,7 +288,12 @@ class SummarizationCompactor(Compactor):
         return compacted if summarized else None
 
     async def compact_async(
-        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+        self,
+        messages: list[ChatMessage],
+        target_tokens: int,
+        token_counter: TokenCounter,
+        *,
+        run_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> list[ChatMessage] | None:
         """
         Asynchronously return a progressively summarized conversation.
@@ -290,6 +301,7 @@ class SummarizationCompactor(Compactor):
         :param messages: The conversation to compact, ordered oldest to newest.
         :param target_tokens: The token budget the compacted messages should aim to fit.
         :param token_counter: The counter used both to plan compaction and verify generated summaries.
+        :param run_context: Not used by this compactor.
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
         compacted = messages

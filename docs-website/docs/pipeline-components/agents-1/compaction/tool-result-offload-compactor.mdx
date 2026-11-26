@@ -134,7 +134,18 @@ Without such a tool the offloaded output is gone from the Agent's reach, which m
 
 Use `ToolResultOffloadCompactor` when fresh results should remain directly available and offloading should happen only as the context fills. Use [`ToolResultOffloadHook`](../tool-result-offloading.mdx) when selected outputs should always be offloaded immediately, including on short Agent runs.
 
-The hook supports per-tool `OffloadPolicy` configuration and request-scoped store overrides through `hook_context`. The compactor always writes to the store it was created with and does not read a store from `hook_context`, so in a multi-user server create an Agent per run with its own compactor and store.
+Only the hook supports per-tool `OffloadPolicy` configuration. Both read a per-run store from the Agent's `hook_context` under `RESULT_STORE_CONTEXT_KEY`, so a single Agent can serve several users with each run's results kept in its own store:
+
+```python
+from haystack.hooks.tool_result_offloading import RESULT_STORE_CONTEXT_KEY
+
+result = agent.run(
+    messages=[ChatMessage.from_user("...")],
+    hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store},
+)
+```
+
+With both registered, the hook and the compactor write to the same per-run store, so one read tool scoped to it resolves every reference. See [Per-run stores via `hook_context`](../tool-result-offloading.mdx#per-run-stores-via-hook_context) for details.
 
 Both use the same `ToolResultStore` abstraction, reference format, and `tool_result_offloaded` metadata, so a tool that reads references back handles them the same way regardless of when offloading happened.
 

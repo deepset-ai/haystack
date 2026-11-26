@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
+import warnings
+from collections.abc import Callable
 from typing import Any
 
 from haystack import logging, tracing
@@ -22,6 +25,19 @@ from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
 logger = logging.getLogger(__name__)
+
+
+def _accepts_run_context(method: Callable[..., Any]) -> bool:
+    """
+    Check whether a compactor method takes a `run_context` keyword, either by name or through `**kwargs`.
+
+    :param method: The bound `compact` or `compact_async` method to inspect.
+    :returns: True when `run_context` can be passed to `method`.
+    """
+    return any(
+        parameter.name == "run_context" or parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in inspect.signature(method).parameters.values()
+    )
 
 
 def _estimated_context_tokens(
@@ -86,6 +102,9 @@ class CompactionHook:
 
     Compaction is lossy by nature, so the Agent works from a shorter record of the run afterwards. What survives is up
     to the compactor.
+
+    The `hook_context` passed to the Agent's `run` or `run_async` reaches the compactor as its `run_context`, which
+    is how `ToolResultOffloadCompactor` receives a per-run store.
     """
 
     allowed_hook_points = ("before_llm",)
@@ -123,6 +142,25 @@ class CompactionHook:
                 f"the conversation over the trigger after compacting, so it would be attempted again every step."
             )
         self.compactor = compactor
+        # A compactor method that does not take `run_context` is called without it.
+        self._compact_takes_run_context = _accepts_run_context(compactor.compact)
+        # The protocol's default `compact_async` forwards `run_context` to `compact`, so it can only pass it on when
+        # `compact` takes it.
+        self._uses_default_compact_async = getattr(type(compactor), "compact_async", None) is Compactor.compact_async
+        self._compact_async_takes_run_context = (
+            self._compact_takes_run_context
+            if self._uses_default_compact_async
+            else _accepts_run_context(compactor.compact_async)
+        )
+        if not (self._compact_takes_run_context and self._compact_async_takes_run_context):
+            warnings.warn(
+                f"{type(compactor).__name__}.compact or compact_async does not accept the keyword-only `run_context` "
+                f"parameter, so it is called without it and does not receive the Agent's `hook_context`. "
+                f"`run_context` will be required in a future release. Add "
+                f"`*, run_context: dict[str, Any] | None = None` to both methods.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.context_window = context_window
         self.compact_at = compact_at
         self.compact_to = compact_to
@@ -142,9 +180,17 @@ class CompactionHook:
         if target is None:
             return
         target_tokens, estimated_overhead = target
-        compacted = self.compactor.compact(
-            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
-        )
+        if self._compact_takes_run_context:
+            compacted = self.compactor.compact(
+                messages=messages,
+                target_tokens=target_tokens,
+                token_counter=self.token_counter,
+                run_context=state.data.get("hook_context"),
+            )
+        else:
+            compacted = self.compactor.compact(
+                messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+            )
         self._apply(
             state=state,
             compacted=compacted,
@@ -168,9 +214,22 @@ class CompactionHook:
         if target is None:
             return
         target_tokens, estimated_overhead = target
-        compacted = await self.compactor.compact_async(
-            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
-        )
+        if self._compact_async_takes_run_context:
+            compacted = await self.compactor.compact_async(
+                messages=messages,
+                target_tokens=target_tokens,
+                token_counter=self.token_counter,
+                run_context=state.data.get("hook_context"),
+            )
+        elif self._uses_default_compact_async:
+            # The default `compact_async` would pass `run_context` to `compact`, so call `compact` directly as it does.
+            compacted = self.compactor.compact(
+                messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+            )
+        else:
+            compacted = await self.compactor.compact_async(
+                messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+            )
         self._apply(
             state=state,
             compacted=compacted,
