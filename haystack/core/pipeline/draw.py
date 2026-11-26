@@ -4,9 +4,9 @@
 
 import base64
 import colorsys
+import html
 import json
 import random
-import re
 import zlib
 from typing import Any
 
@@ -24,16 +24,6 @@ logger = logging.getLogger(__name__)
 # with a component name.
 _INPUT_NODE = object()
 _OUTPUT_NODE = object()
-
-# Characters a Mermaid ID can safely be made of. Others, such as a space or a parenthesis, break the diagram.
-_MERMAID_ID_PATTERN = re.compile(r"[A-Za-z0-9_]+")
-# Words Mermaid reads as keywords rather than as IDs, plus `i` and `o`, the IDs of the input and output nodes.
-_RESERVED_MERMAID_IDS = frozenset(
-    {"end", "graph", "flowchart", "subgraph", "style", "linkStyle", "class", "classDef", "i", "o"}
-)
-# Class names a SuperComponent class must not reuse: `component` is the class of every other component and `default`
-# styles every node.
-_RESERVED_MERMAID_CLASS_NAMES = _RESERVED_MERMAID_IDS | {"component", "default"}
 
 
 def generate_color_variations(n: int, base_color: str | None = "#3498DB", variation_range: float = 0.4) -> list[str]:
@@ -104,30 +94,6 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
             graph.add_edge(node, _OUTPUT_NODE, label=out_socket.name, conn_type=_type_name(out_socket.type))
 
     return graph
-
-
-def _to_mermaid_ids(names: list[str], reserved: frozenset[str] = _RESERVED_MERMAID_IDS) -> dict[str, str]:
-    """
-    Map each name to a unique ID that Mermaid can parse.
-
-    A name that is already a valid ID is used as is. Any other name, such as one with a space or the keyword `end`,
-    gets an ID with the unsafe characters replaced by `_` and a numeric suffix added.
-
-    :param names: The names to map.
-    :param reserved: IDs that must not be used, such as Mermaid keywords.
-    """
-    ids = {name: name for name in names if _MERMAID_ID_PATTERN.fullmatch(name) and name not in reserved}
-    taken = set(ids.values()) | reserved
-    for name in names:
-        if name in ids:
-            continue
-        base = re.sub(r"[^A-Za-z0-9_]", "_", name)
-        suffix = 1
-        while f"{base}_{suffix}" in taken:
-            suffix += 1
-        ids[name] = f"{base}_{suffix}"
-        taken.add(ids[name])
-    return ids
 
 
 ARROWTAIL_MANDATORY = "--"
@@ -408,42 +374,28 @@ def _to_mermaid_text(
         for comp, sockets in sockets.items()
     }
 
-    # Create node definitions
+    super_component_mapping = super_component_mapping or {}
+    super_component_names = sorted(set(super_component_mapping.values()))
+    # A SuperComponent named "default" would otherwise change the style of every node.
+    super_component_classes = {name: f"sc_{index}" for index, name in enumerate(super_component_names)}
+    super_component_colors = generate_color_variations(n=len(super_component_names))
+    style_definitions = [
+        f"classDef {super_component_classes[name]} fill:{color},color:white;"
+        for name, color in zip(super_component_names, super_component_colors, strict=True)
+    ]
+
     states = {}
-    super_component_components = super_component_mapping.keys() if super_component_mapping else {}
-
-    # color variations for super components
-    super_component_colors = {}
-    super_component_classes: dict[str, str] = {}
-    if super_component_components:
-        unique_super_components = set(super_component_mapping.values())  # type:ignore
-        color_variations = generate_color_variations(n=len(unique_super_components))
-        super_component_colors = dict(zip(unique_super_components, color_variations, strict=True))
-        # sorted, so the same names always get the same IDs
-        super_component_classes = _to_mermaid_ids(
-            names=sorted(super_component_colors), reserved=_RESERVED_MERMAID_CLASS_NAMES
-        )
-
-    # Generate style definitions for each super component
-    style_definitions = []
-    for super_comp, color in super_component_colors.items():
-        style_definitions.append(f"classDef {super_component_classes[super_comp]} fill:{color},color:white;")
-
-    # Not every component name is a valid Mermaid ID: a name like "my retriever" would break the diagram
-    node_ids = _to_mermaid_ids(names=[comp for comp in graph.nodes if comp not in (_INPUT_NODE, _OUTPUT_NODE)])
-
-    for comp, data in graph.nodes(data=True):
+    for i, (comp, data) in enumerate(graph.nodes(data=True)):
         if comp in (_INPUT_NODE, _OUTPUT_NODE):
             continue
 
-        # styling based on whether the component is a SuperComponent
-        if comp in super_component_components:
-            super_component_name = super_component_mapping[comp]  # type:ignore
-            style = super_component_classes[super_component_name]
-        else:
-            style = "component"
-        node_def = f'{node_ids[comp]}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
-        states[comp] = node_def
+        style = (
+            super_component_classes[super_component_mapping[comp]] if comp in super_component_mapping else "component"
+        )
+        states[comp] = (
+            f'node_{i}["<b>{html.escape(comp)}</b><br><small><i>'
+            f'{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'
+        )
 
     connections_list = []
     for from_comp, to_comp, conn_data in graph.edges(data=True):
@@ -466,11 +418,10 @@ def _to_mermaid_text(
 
     # Create legend
     legend_nodes = []
-    if super_component_colors:
+    if super_component_names:
         legend_nodes.append("subgraph Legend")
-        for super_comp in super_component_colors:
-            legend_id = f"legend_{super_component_classes[super_comp]}"
-            legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_component_classes[super_comp]}')
+        for index, name in enumerate(super_component_names):
+            legend_nodes.append(f'legend_{index}["{html.escape(name)}"]:::{super_component_classes[name]}')
         legend_nodes.append("end")
         connections += "\n" + "\n".join(legend_nodes)
 
