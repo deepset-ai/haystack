@@ -111,6 +111,8 @@ Tool(
 
 `create_tool_from_function` is the functional equivalent of `@tool` — useful when you’re working with a function you can’t decorate directly (e.g. a method from a library). It accepts the same optional parameters as `@tool` and generates the JSON schema in the same way.
 
+Both helpers reject positional-only parameters (those before `/` in a function signature) with a `ValueError`, because tools pass arguments by keyword. To expose such a function, wrap it in a typed function that accepts keyword arguments and forwards them positionally.
+
 ```python
 from typing import Annotated, Literal
 from haystack.tools import create_tool_from_function

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and ``@tool`` now reject positional-only
+    parameters when creating a tool, instead of generating a schema whose
+    named arguments fail during invocation.
+upgrade:
+  - |
+    If a function has positional-only parameters (before ``/`` in its signature),
+    expose it through a typed wrapper that accepts keyword arguments and forwards
+    them positionally. Tool creation now raises ``ValueError`` for these signatures.
