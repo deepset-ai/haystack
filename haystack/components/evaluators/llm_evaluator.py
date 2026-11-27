@@ -409,7 +409,10 @@ class LLMEvaluator:
 
         examples_section = "\n".join(
             [
-                "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
+                "Inputs:\n"
+                + json.dumps(example["inputs"], ensure_ascii=False)
+                + "\nOutputs:\n"
+                + json.dumps(example["outputs"], ensure_ascii=False)
                 for example in self.examples
             ]
         )
@@ -417,7 +420,7 @@ class LLMEvaluator:
             f"Instructions:\n"
             f"{self.instructions}\n\n"
             f"Generate the response in JSON format with the following keys:\n"
-            f"{json.dumps(self.outputs)}\n"
+            f"{json.dumps(self.outputs, ensure_ascii=False)}\n"
             f"Consider the instructions and the examples below to determine those values.\n\n"
             f"Examples:\n"
             f"{examples_section}\n\n"

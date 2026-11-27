@@ -311,6 +311,18 @@ class TestLLMEvaluator:
             '\n{"score": 0}\n\nInputs:\n{"predicted_answers": {{ predicted_answers }}}\nOutputs:\n'
         )
 
+    def test_prepare_template_keeps_non_ascii_examples_readable(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "여권용 사진이 필요해요."}, "outputs": {"score": 1}}],
+        )
+        template = component.prepare_template()
+        assert '{"predicted_answers": "여권용 사진이 필요해요."}' in template
+        assert "\\u" not in template
+
     def test_invalid_input_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
