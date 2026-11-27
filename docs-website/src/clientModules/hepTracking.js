@@ -192,7 +192,7 @@ function fireView(element, pathname) {
     const key = 'badge';
     if (!firedViews.has(key)) {
       firedViews.add(key);
-      push({event: 'hep_badge_view', component_name: element.dataset.component});
+      push({event: 'hep_badge_view', component_name: element.dataset.component, docs_version: getVersion(pathname)});
     }
     return;
   }
