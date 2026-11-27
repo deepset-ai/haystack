@@ -143,6 +143,15 @@ def _prepare_ordering_comparison(
         The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
         the other is timezone-aware, or when exactly one of the values is a boolean; otherwise it is `True`.
     """
+    if isinstance(filter_value, list):
+        msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
+        raise FilterError(msg)
+
+    if isinstance(value, str) and not isinstance(filter_value, (str, datetime)):
+        # Document holds a string while filtering by a non-string, non-datetime value (e.g. a number):
+        # treat this document as non-matching instead of crashing mixed-type stores.
+        return value, filter_value, False
+
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
             value = _parse_date(value)
@@ -154,9 +163,6 @@ def _prepare_ordering_comparison(
             return value, filter_value, False
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
 
-    if isinstance(filter_value, list):
-        msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
-        raise FilterError(msg)
     if isinstance(value, datetime) != isinstance(filter_value, datetime):
         msg = "Can't compare a datetime with a non-datetime value using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
