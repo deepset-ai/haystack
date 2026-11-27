@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MultiRetriever.run()`` and ``run_async()`` now warm up only the retrievers
+    selected by ``active_retrievers``, so an inactive backend's initialization
+    cannot fail or delay the selected route. Explicit ``warm_up()`` and
+    ``warm_up_async()`` calls continue to warm all configured retrievers.
