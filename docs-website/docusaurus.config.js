@@ -104,7 +104,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     ],
   ],
 
+  clientModules: [require.resolve('./src/clientModules/hepTracking.js')],
+
   plugins: [
+    require.resolve('./plugins/hepTrackingDataPlugin'),
     function gtmNoscriptPlugin() {
       return {
         name: "gtm-noscript",
