@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    ``FaithfulnessEvaluator`` now raises a ``ValueError`` when the LLM returns a ``statements`` or
+    ``statement_scores`` value that is not a list and ``raise_on_failure=True``, which is the default. Before, some
+    of these replies were scored, for example ``"statements": ""`` with ``"statement_scores": []`` scored 0.
+    To mark such inputs as failed and exclude them from the score instead, set ``raise_on_failure=False``.
+fixes:
+  - |
+    ``FaithfulnessEvaluator`` no longer stops with a ``TypeError`` when the LLM returns a ``statements`` or
+    ``statement_scores`` value that is not a list, for example ``null``. It now raises a ``ValueError`` when
+    ``raise_on_failure=True``. Otherwise, it marks the input as failed and excludes it from the score.

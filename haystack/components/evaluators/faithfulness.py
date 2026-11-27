@@ -123,8 +123,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
             If True, the component raises an exception when the chat generator call fails or its response isn't valid
-            JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
-            a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
+            JSON with the expected keys, `statements` or `statement_scores` is not a list, or the numbers of
+            statements and statement scores differ. If False, it logs a warning, marks the result for that input as
+            `error` with a NaN score, and excludes it from the mean.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -171,6 +172,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
                   each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        :raises ValueError:
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is True, also if the chat generator call fails, its reply isn't valid JSON with the
+            expected keys, `statements` or `statement_scores` is not a list, or the numbers of statements and
+            statement scores differ.
         """
         result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
@@ -195,6 +201,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
                   each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        :raises ValueError:
+            If the received inputs are missing, are not lists, have different lengths, or are empty lists.
+            If `raise_on_failure` is True, also if the chat generator call fails, its reply isn't valid JSON with the
+            expected keys, `statements` or `statement_scores` is not a list, or the numbers of statements and
+            statement scores differ.
         """
         result = await super(FaithfulnessEvaluator, self).run_async(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
@@ -215,6 +226,17 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):
+            if res is not None and not (
+                isinstance(res["statements"], list) and isinstance(res["statement_scores"], list)
+            ):
+                message = (
+                    "FaithfulnessEvaluator expected `statements` and `statement_scores` to be lists, but received "
+                    f"{type(res['statements']).__name__} and {type(res['statement_scores']).__name__}."
+                )
+                if self.raise_on_failure:
+                    raise ValueError(message)
+                logger.warning("{error} Setting the result for this input to an error.", error=message)
+                res = None
             if res is not None and len(res["statements"]) != len(res["statement_scores"]):
                 message = (
                     "FaithfulnessEvaluator expected one score per statement, but received "
