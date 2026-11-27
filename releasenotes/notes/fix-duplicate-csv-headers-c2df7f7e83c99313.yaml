@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Fixed silent data loss in ``CSVToDocument`` row mode when a CSV file
+    contains duplicate column names. Previously, values from earlier
+    duplicated columns were overwritten and lost. Duplicate columns are now
+    renamed deterministically (for example, a second ``text`` column becomes
+    ``text_1``) so every value is preserved in the resulting Documents.
+upgrade:
+  - |
+    When a CSV file contains duplicate columns, ``CSVToDocument`` in row mode
+    now uses the first column for ``content_column`` instead of the last one.
+    Previously the last duplicated column won; now the first keeps the
+    original name and later duplicates are renamed (for example, a second
+    ``text`` column becomes ``text_1``).

@@ -286,3 +286,59 @@ class TestCSVToDocument:
 
         assert len(docs) == 1
         assert docs[0].content == "Name,City\r\nJosé,München\r\n"
+
+    def test_row_mode_duplicate_headers_preserve_all_values(self):
+        source = ByteStream(data=b"text,text,author\r\nFIRST,SECOND,Ada\r\n", meta={"file_path": "dupes.csv"})
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "FIRST"
+        assert documents[0].meta["text_1"] == "SECOND"
+        assert documents[0].meta["author"] == "Ada"
+
+    def test_row_mode_triple_duplicate_headers_get_incrementing_suffixes(self):
+        source = ByteStream(data=b"text,text,text\r\none,two,three\r\n", meta={"file_path": "triple.csv"})
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "one"
+        assert documents[0].meta["text_1"] == "two"
+        assert documents[0].meta["text_2"] == "three"
+
+    def test_row_mode_duplicate_header_rename_skips_existing_names(self):
+        # The header already contains "text_1", so the duplicate "text" must become "text_2".
+        source = ByteStream(data=b"text,text_1,text\r\none,kept,two\r\n", meta={"file_path": "collide.csv"})
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "one"
+        assert documents[0].meta["text_1"] == "kept"
+        assert documents[0].meta["text_2"] == "two"
+
+    def test_row_mode_duplicate_header_before_existing_suffixed_name(self):
+        # The suffixed column comes after the duplicate: the duplicate "text" must
+        # skip "text_1" (already present later in the header) and become "text_2".
+        source = ByteStream(data=b"text,text,text_1\r\nA,B,C\r\n", meta={"file_path": "collide_after.csv"})
+        converter = CSVToDocument(conversion_mode="row")
+
+        documents = converter.run(sources=[source], content_column="text")["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "A"
+        assert documents[0].meta["text_2"] == "B"
+        assert documents[0].meta["text_1"] == "C"
+
+    def test_file_mode_duplicate_headers_keep_raw_content(self):
+        source = ByteStream(data=b"text,text,author\r\nFIRST,SECOND,Ada\r\n", meta={"file_path": "dupes.csv"})
+        converter = CSVToDocument(conversion_mode="file")
+
+        documents = converter.run(sources=[source])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "text,text,author\r\nFIRST,SECOND,Ada\r\n"
