@@ -1537,3 +1537,35 @@ class TestSecondarySplitByTokenIntegration:
         assert {doc.meta["header"] for doc in docs} == {"Install", "Usage"}
         assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
         assert docs[-1].meta["page_number"] == 2
+
+
+@pytest.mark.parametrize("secondary_split", [None, "line", "word"])
+def test_page_number_none_in_metadata(secondary_split):
+    doc = Document(
+        content="# Intro\nSome text.\n## Details\nMore text.",
+        meta={"page_number": None, "source": "test"},
+    )
+    splitter = MarkdownHeaderSplitter(secondary_split=secondary_split)
+    chunks = splitter.run(documents=[doc])["documents"]
+
+    assert len(chunks) == 2
+    assert chunks[0].meta["page_number"] == 1
+    assert chunks[0].meta["header"] == "Intro"
+    assert chunks[0].meta["source"] == "test"
+    assert chunks[1].meta["page_number"] == 1
+    assert chunks[1].meta["header"] == "Details"
+    assert chunks[1].meta["source"] == "test"
+
+
+@pytest.mark.parametrize("keep_headers", [True, False])
+@pytest.mark.parametrize("secondary_split", [None, "line"])
+def test_header_directly_following_page_break(keep_headers, secondary_split):
+    doc = Document(content="# A\ntext\n\f## B\nmore")
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split=secondary_split)
+    chunks = splitter.run(documents=[doc])["documents"]
+
+    assert len(chunks) == 2
+    assert chunks[0].meta["header"] == "A"
+    assert chunks[0].meta["page_number"] == 1
+    assert chunks[1].meta["header"] == "B"
+    assert chunks[1].meta["page_number"] == 2
