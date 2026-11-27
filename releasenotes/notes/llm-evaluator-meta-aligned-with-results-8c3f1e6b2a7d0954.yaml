@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``LLMEvaluator`` now returns one ``meta`` entry per input, in the same order as ``results``. Previously,
+    metadata was appended only for replies that had metadata, so after a chat generator error or a reply
+    without metadata, ``meta[i]`` could belong to a different input than ``results[i]``. Those inputs now get
+    an empty dictionary, so code that reads ``meta`` entries must accept empty dictionaries; pair ``meta``
+    with ``results`` by position. ``meta`` is still ``None`` when no reply had metadata.
+    This also applies to ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator``.
