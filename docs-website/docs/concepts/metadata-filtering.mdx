@@ -49,6 +49,9 @@ The available comparison operators may vary depending on the specific Document S
 When `InMemoryDocumentStore` or `MetadataRouter` compares scalar metadata values, the `==`, `!=`, `in`, and `not in` operators distinguish booleans from numbers. For example, a filter for `meta.active == True` excludes documents where `meta.active` is `1` or `1.0`.
 When comparing entire lists or dictionaries, Python equality applies to their contents, so `[True]` still matches `[1]`.
 
+With an integer or floating-point bound, range filters in `InMemoryDocumentStore` and `MetadataRouter` skip string fields.
+For example, `meta.price > 1` matches the number `5` and skips the string `"5"`.
+
 #### Example
 
 Here is an example of a simple filter in the form of a dictionary. The filter selects documents classified as “article” in the `type` meta field of the document:
