@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import contextlib
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from typing import Any, ClassVar, cast
 
@@ -108,11 +107,21 @@ class PipelineStreamHandle:
         Cancel the underlying pipeline task.
 
         Bounded by `_CLEANUP_TIMEOUT_SECONDS` so that components cannot block cleanup indefinitely.
+        Cancellation of the caller is not suppressed: an expired request deadline must still raise
+        in the task that called `aclose()`.
         """
         if not self._task.done():
             self._task.cancel()
-            with contextlib.suppress(BaseException):
-                await asyncio.wait_for(self._task, timeout=self._CLEANUP_TIMEOUT_SECONDS)
+            try:
+                # `asyncio.wait()` does not raise failures from the pipeline task, so cleanup
+                # errors stay suppressed here and are surfaced by `result` instead. Cancellation
+                # of this caller, unlike the pipeline task's outcome, must propagate.
+                _, pending = await asyncio.wait({self._task}, timeout=self._CLEANUP_TIMEOUT_SECONDS)
+                if pending:
+                    self._task.cancel()
+            finally:
+                if self._task.done() and not self._task.cancelled():
+                    self._task.exception()
 
 
 class Pipeline(PipelineBase):
