@@ -60,6 +60,11 @@ Creates a CSVToDocument component.
 - **delimiter** (<code>str</code>) – CSV delimiter used when parsing in row mode (passed to `csv.DictReader`).
 - **quotechar** (<code>str</code>) – CSV quote character used when parsing in row mode (passed to `csv.DictReader`).
 
+**Raises:**
+
+- <code>ValueError</code> – If `conversion_mode` is neither `"file"` nor `"row"`, or if `delimiter` or `quotechar`
+  has a length other than one character.
+
 #### run
 
 ```python
