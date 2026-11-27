@@ -35,9 +35,13 @@ The remaining columns become metadata, and `meta["row_number"]` records the zero
 
 ## Usage
 
+The following examples assume that `sample.csv` exists in your working directory.
+
 ### On its own
 
 ```python
+from datetime import datetime
+
 from haystack.components.converters.csv import CSVToDocument
 
 converter = CSVToDocument()
@@ -75,5 +79,5 @@ pipeline.connect("converter", "cleaner")
 pipeline.connect("cleaner", "splitter")
 pipeline.connect("splitter", "writer")
 
-pipeline.run({"converter": {"sources": file_names}})
+pipeline.run({"converter": {"sources": ["sample.csv"]}})
 ```

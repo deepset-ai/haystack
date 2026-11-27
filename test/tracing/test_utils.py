@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from haystack import Document
+from haystack.dataclasses import ByteStream
 from haystack.tracing import utils
 from haystack.tracing.utils import _serializable_value
 
@@ -119,3 +120,11 @@ class TestTypeCoercion:
         coerced_value = utils.coerce_tag_value(raw_value)
 
         assert coerced_value == expected_tag_value
+
+    def test_document_blob_is_replaced_with_placeholder(self) -> None:
+        doc = Document(id="1", content="text", blob=ByteStream(data=b"\x00" * 1024, mime_type="image/png"))
+
+        coerced_value = utils.coerce_tag_value([doc])
+
+        assert isinstance(coerced_value, str)
+        assert '"blob": {"data": "Binary data (1024 bytes)", "meta": {}, "mime_type": "image/png"}' in coerced_value

@@ -4,6 +4,7 @@
 
 from datetime import UTC, datetime
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -651,6 +652,46 @@ document_matches_filter_data = [
 @pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filters, document, expected_result):
     assert document_matches_filter(filters, document) == expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,document_value,filter_value,expected_result",
+    [
+        ("==", 0, False, False),
+        ("==", False, 0, False),
+        ("==", 1, True, False),
+        ("==", True, 1, False),
+        ("==", 0.0, False, False),
+        ("==", False, 0.0, False),
+        ("==", 1.0, True, False),
+        ("==", True, 1.0, False),
+        ("==", False, False, True),
+        ("==", True, True, True),
+        ("==", True, False, False),
+        ("==", 1, 1.0, True),
+        ("!=", False, 0, True),
+        ("in", 1, [True], False),
+        ("not in", True, [1.0], True),
+        ("in", True, [1, True], True),
+        ("==", np.True_, True, True),
+        ("==", True, np.True_, True),
+        ("==", np.False_, False, True),
+        ("==", np.True_, 1, False),
+        ("==", 1, np.True_, False),
+        ("in", np.True_, [True], True),
+        (">", True, 0, False),
+        (">=", 1, True, False),
+        ("<", False, 1, False),
+        ("<=", 0.0, False, False),
+        (">", np.True_, 0, False),
+        (">", True, False, True),
+    ],
+)
+def test_document_matches_filter_boolean_and_numeric_values(operator, document_value, filter_value, expected_result):
+    document = Document(meta={"stage": document_value})
+    filters = {"field": "meta.stage", "operator": operator, "value": filter_value}
+
+    assert document_matches_filter(filters, document) is expected_result
 
 
 @pytest.mark.parametrize(

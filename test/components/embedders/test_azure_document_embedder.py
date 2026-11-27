@@ -242,7 +242,7 @@ class TestAzureOpenAIDocumentEmbedder:
         with patch.object(
             embedder.client.embeddings,
             "create",
-            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+            side_effect=APIError(message="Mocked error", request=Mock(headers={}), body=None),
         ):
             embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=32)
 
@@ -262,7 +262,7 @@ class TestAzureOpenAIDocumentEmbedder:
         with patch.object(
             embedder.client.embeddings,
             "create",
-            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+            side_effect=APIError(message="Mocked error", request=Mock(headers={}), body=None),
         ):
             with pytest.raises(APIError, match="Mocked error"):
                 embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)

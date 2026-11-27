@@ -44,6 +44,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -155,10 +156,6 @@ class OpenAIResponsesChatGenerator:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
 
-        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-        environment variables to override the `timeout` and `max_retries` parameters respectively
-        in the OpenAI client.
-
         :param api_key: The OpenAI API key.
             You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
             during initialization.
@@ -218,9 +215,11 @@ class OpenAIResponsesChatGenerator:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param tools:
             The tools that the model can use to prepare calls. This parameter can accept either a
             mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
@@ -262,6 +261,7 @@ class OpenAIResponsesChatGenerator:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
         return {
             "api_key": resolved_api_key,
@@ -793,6 +793,8 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     response_output = meta.pop("output")
+    # the API echoes the full tool definitions; kept, they repeat in every message of the chat history
+    meta.pop("tools", None)
     annotations, annotation_offsets = _extract_annotations(output=response_output)
     if annotations:
         meta["annotations"] = annotations
@@ -1026,7 +1028,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     response_with_usage = next(
         (response for response in reversed(responses) if response.get("usage") is not None), None
     )
-    final_response = (response_with_usage or responses[-1]).copy() if responses else {}
+    # without the echoed tools, like the non-streaming meta
+    final_response = (
+        {key: value for key, value in (response_with_usage or responses[-1]).items() if key != "tools"}
+        if responses
+        else {}
+    )
     response_output = final_response.pop("output", [])
     annotations, annotation_offsets = _extract_annotations(output=response_output)
     if annotations:

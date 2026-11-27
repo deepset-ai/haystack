@@ -21,6 +21,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 
 @component
@@ -150,8 +151,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             as an argument.
         :param timeout: Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries: Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param generation_kwargs: Other parameters to use for the model. These parameters are sent directly to
             the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
             Some of the supported parameters:
@@ -248,6 +251,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         resolved_azure_endpoint = (
             self.azure_endpoint.resolve_value() if isinstance(self.azure_endpoint, Secret) else self.azure_endpoint
         )

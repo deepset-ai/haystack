@@ -101,8 +101,10 @@ Creates an OpenAIDecisionsDocumentClassifier.
 - **metadata_field** (<code>str</code>) – Name of the metadata field the answers are written to.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_workers** (<code>int</code>) – Maximum number of worker threads in `run` and of concurrent requests in `run_async`. Must be at least 1.
 - **raise_on_failure** (<code>bool</code>) – If `True`, the first failed request raises its error. If `False`, documents whose request failed are
   returned in `failed_documents`.
