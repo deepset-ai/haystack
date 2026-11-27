@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``FallbackChatGenerator.warm_up()`` and ``warm_up_async()`` no longer abort when one of the wrapped chat
+    generators fails to warm up, for example because its API key environment variable is not set. The failure is
+    logged as a warning and the remaining generators can still answer. The error is raised only if every generator
+    fails to warm up.
+    When every generator fails to warm up, ``run()`` and ``run_async()`` raise the usual ``RuntimeError`` listing the
+    failed generators, and they log the warm-up failure at debug level because the failing generator is logged again
+    in the fallback loop.

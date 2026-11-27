@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
@@ -315,6 +316,87 @@ class TestComponentLifecycle:
         await fallback.warm_up_async()
         for gen in gens:
             gen.warm_up.assert_called_once()
+
+    def test_run_skips_generator_that_fails_to_warm_up(self) -> None:
+        failing = Mock(spec=["run", "warm_up"])
+        failing.warm_up.side_effect = ValueError("None of the following authentication environment variables are set")
+        failing.run.side_effect = RuntimeError("not warmed up")
+        fallback = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="local"), failing])  # type: ignore[list-item]
+        result = fallback.run(messages=[ChatMessage.from_user("hi")])
+        assert result["replies"][0].text == "local"
+        assert result["meta"]["successful_chat_generator_index"] == 0
+
+    def test_run_uses_next_generator_when_first_fails_to_warm_up(self) -> None:
+        failing = Mock(spec=["run", "warm_up"])
+        failing.warm_up.side_effect = ValueError("missing key")
+        failing.run.side_effect = RuntimeError("not warmed up")
+        fallback = FallbackChatGenerator(chat_generators=[failing, _DummySuccessGen(text="backup")])  # type: ignore[list-item]
+        result = fallback.run(messages=[ChatMessage.from_user("hi")])
+        assert result["replies"][0].text == "backup"
+        assert result["meta"]["successful_chat_generator_index"] == 1
+
+    async def test_run_async_skips_generator_that_fails_to_warm_up(self) -> None:
+        failing = Mock(spec=["run", "warm_up_async"])
+        failing.warm_up_async = AsyncMock(side_effect=ValueError("missing key"))
+        failing.run.side_effect = RuntimeError("not warmed up")
+        fallback = FallbackChatGenerator(chat_generators=[failing, _DummySuccessGen(text="backup")])  # type: ignore[list-item]
+        result = await fallback.run_async(messages=[ChatMessage.from_user("hi")])
+        assert result["replies"][0].text == "backup"
+
+    def test_warm_up_raises_when_every_generator_fails(self) -> None:
+        gens = [Mock(spec=["run", "warm_up"]) for _ in range(2)]
+        for gen in gens:
+            gen.warm_up.side_effect = ValueError("missing key")
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="missing key"):
+            fallback.warm_up()
+
+    async def test_warm_up_async_raises_when_every_generator_fails(self) -> None:
+        gens = [Mock(spec=["run", "warm_up_async"]) for _ in range(2)]
+        for gen in gens:
+            gen.warm_up_async = AsyncMock(side_effect=ValueError("missing key"))
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="missing key"):
+            await fallback.warm_up_async()
+
+    def test_run_raises_runtime_error_when_every_generator_fails_to_warm_up(self) -> None:
+        gens = [Mock(spec=["run", "warm_up"]) for _ in range(2)]
+        for gen in gens:
+            gen.warm_up.side_effect = ValueError("missing key")
+            gen.run.side_effect = RuntimeError("not warmed up")
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        with pytest.raises(RuntimeError, match="All 2 chat generators failed"):
+            fallback.run(messages=[ChatMessage.from_user("hi")])
+
+    async def test_run_async_raises_runtime_error_when_every_generator_fails_to_warm_up(self) -> None:
+        gens = [Mock(spec=["run", "warm_up_async"]) for _ in range(2)]
+        for gen in gens:
+            gen.warm_up_async = AsyncMock(side_effect=ValueError("missing key"))
+            gen.run.side_effect = RuntimeError("not warmed up")
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        with pytest.raises(RuntimeError, match="All 2 chat generators failed"):
+            await fallback.run_async(messages=[ChatMessage.from_user("hi")])
+
+    def test_run_does_not_warn_about_an_unused_generator_that_fails_to_warm_up(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        failing = Mock(spec=["run", "warm_up"])
+        failing.warm_up.side_effect = ValueError("missing key")
+        fallback = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="local"), failing])  # type: ignore[list-item]
+        with caplog.at_level(logging.WARNING):
+            for _ in range(3):
+                fallback.run(messages=[ChatMessage.from_user("hi")])
+        assert "failed to warm up" not in caplog.text
+
+    def test_explicit_warm_up_still_warns_about_a_generator_that_fails_to_warm_up(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        failing = Mock(spec=["run", "warm_up"])
+        failing.warm_up.side_effect = ValueError("missing key")
+        fallback = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="local"), failing])  # type: ignore[list-item]
+        with caplog.at_level(logging.WARNING):
+            fallback.warm_up()
+        assert "failed to warm up" in caplog.text
 
     def test_close_delegates_to_every_generator(self) -> None:
 

@@ -87,18 +87,65 @@ class FallbackChatGenerator:
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
-        """Warm up all underlying chat generators."""
+        """
+        Warm up the underlying chat generators.
+
+        A generator that fails to warm up (for example, because its API key is not set) is skipped with a warning,
+        so that the remaining generators can still serve requests. The error is raised only if every generator fails.
+        """
+        self._raise_if_all_failed(self._warm_up_chat_generators())
+
+    def _warm_up_chat_generators(self, *, quiet: bool = False) -> list[Exception]:
+        """
+        Warm up every chat generator and return the errors of the ones that failed, without raising.
+
+        :param quiet: Log failures at debug level, for the per-request warm-up in `run()`, where the generator
+            that did not warm up fails again in the fallback loop and is logged there.
+        """
+        errors: list[Exception] = []
         for gen in self.chat_generators:
             if hasattr(gen, "warm_up"):
-                gen.warm_up()
+                try:
+                    gen.warm_up()
+                except Exception as e:  # a failing child must not block the others
+                    self._record_warm_up_failure(gen, e, errors, quiet=quiet)
+        return errors
 
     async def warm_up_async(self) -> None:
-        """Warm up all underlying chat generators on the serving event loop."""
+        """
+        Warm up the underlying chat generators on the serving event loop.
+
+        A generator that fails to warm up is skipped with a warning, so that the remaining generators can still
+        serve requests. The error is raised only if every generator fails.
+        """
+        self._raise_if_all_failed(await self._warm_up_chat_generators_async())
+
+    async def _warm_up_chat_generators_async(self, *, quiet: bool = False) -> list[Exception]:
+        """Async variant of `_warm_up_chat_generators`."""
+        errors: list[Exception] = []
         for gen in self.chat_generators:
-            if hasattr(gen, "warm_up_async"):
-                await gen.warm_up_async()
-            elif hasattr(gen, "warm_up"):
-                gen.warm_up()
+            try:
+                if hasattr(gen, "warm_up_async"):
+                    await gen.warm_up_async()
+                elif hasattr(gen, "warm_up"):
+                    gen.warm_up()
+            except Exception as e:  # a failing child must not block the others
+                self._record_warm_up_failure(gen, e, errors, quiet=quiet)
+        return errors
+
+    @staticmethod
+    def _record_warm_up_failure(gen: Any, error: Exception, errors: list[Exception], *, quiet: bool = False) -> None:
+        log = logger.debug if quiet else logger.warning
+        log(
+            "ChatGenerator {chat_generator} failed to warm up and may be skipped at run time: {error}",
+            chat_generator=gen.__class__.__name__,
+            error=error,
+        )
+        errors.append(error)
+
+    def _raise_if_all_failed(self, errors: list[Exception]) -> None:
+        if errors and len(errors) == len(self.chat_generators):
+            raise errors[-1]
 
     def close(self) -> None:
         """Release the underlying chat generators' resources."""
@@ -169,7 +216,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        self.warm_up()
+        self._warm_up_chat_generators(quiet=True)
 
         messages = _normalize_messages(messages=messages)
 
@@ -226,7 +273,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        await self.warm_up_async()
+        await self._warm_up_chat_generators_async(quiet=True)
 
         messages = _normalize_messages(messages=messages)
 
