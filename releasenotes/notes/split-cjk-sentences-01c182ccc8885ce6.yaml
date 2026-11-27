@@ -1,0 +1,20 @@
+---
+enhancements:
+  - |
+    ``DocumentSplitter`` and ``RecursiveDocumentSplitter`` now split Chinese and Japanese text into sentences at the
+    full-width sentence terminators ``。``, ``！``, ``？`` and ``．``. Before, a Chinese or Japanese document was one
+    sentence, because these languages put no space after a sentence. A terminator followed by a closing quote or
+    bracket is not a split point, and neither is a ``．`` next to a digit, as in ``３．５``. This works with every
+    ``language`` setting.
+
+    .. code-block:: python
+
+        from haystack import Document
+        from haystack.components.preprocessors import DocumentSplitter
+
+        splitter = DocumentSplitter(split_by="sentence", split_length=1)
+        splitter.warm_up()
+
+        result = splitter.run(documents=[Document(content="我今天去了银行。利息是多少？")])
+        print([doc.content for doc in result["documents"]])
+        # >> ["我今天去了银行。", "利息是多少？"]
