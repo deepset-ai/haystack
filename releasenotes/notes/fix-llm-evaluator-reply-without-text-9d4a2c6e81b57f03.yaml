@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LLMEvaluator`` (and so ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator``) no longer crashes with an
+    ``AttributeError`` when the chat generator returns a reply without text, for example when the model refuses or the
+    content is filtered. The reply is now handled like any other reply that can't be parsed: the result for that
+    input is ``None`` with ``raise_on_failure=False``, and a ``ValueError`` is raised with ``raise_on_failure=True``.
