@@ -69,6 +69,9 @@ class CSVToDocument:
             CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
         :param quotechar:
             CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
+        :raises ValueError:
+            If ``conversion_mode`` is neither ``"file"`` nor ``"row"``, or if ``delimiter`` or ``quotechar``
+            has a length other than one character.
         """
         if conversion_mode not in ("file", "row"):
             raise ValueError("CSVToDocument: conversion_mode must be one of 'file' or 'row'.")
