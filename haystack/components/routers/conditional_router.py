@@ -4,8 +4,8 @@
 
 import ast
 import contextlib
-from collections.abc import Callable, Collection, Iterable, Mapping
-from typing import Annotated, Any, Literal, NotRequired, TypedDict, get_args, get_origin
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Literal, NotRequired, TypedDict, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
@@ -573,90 +573,74 @@ class ConditionalRouter:
 
     def _output_matches_type(self, value: Any, expected_type: Any) -> bool:  # noqa: PLR0911
         """
-        Check whether `value` matches the `expected_type` annotation.
-
-        Supports `Any`, `Literal`, `Annotated`, unions, fixed-length and variadic tuples, mappings,
-        and collections or iterables with type arguments. Other typing constructs are rejected.
-
-        `Annotated` is validated against its underlying type, but serializing an `Annotated` output
-        type is not yet supported by `serialize_type`.
+        Checks whether `value` type matches the `expected_type`.
         """
+        # Handle Any type
         if expected_type is Any:
             return True
 
+        # Get the origin type (List, Dict, etc) and type arguments
         origin = get_origin(expected_type)
         args = get_args(expected_type)
 
-        # `Annotated[T, ...]` carries runtime-neutral metadata; validate against T.
-        if origin is Annotated:
-            return self._output_matches_type(value, args[0])
+        # Handle basic types (int, str, etc)
+        if origin is None:
+            return isinstance(value, expected_type)
 
-        # `Literal[...]` matches a value and its exact type (so `True` does not match `Literal[1]`).
+        # Handle Literal types; the exact type is compared
         if origin is Literal:
             return any(type(value) is type(allowed) and value == allowed for allowed in args)
 
-        # Unions (including Optional and PEP 604 syntax) match when any member matches.
+        # Handle annotations without type arguments (bare typing.List, typing.Tuple, etc)
+        if isinstance(origin, type) and not args:
+            return isinstance(value, origin)
+
+        # Handle tuples before Sequence, since tuples are sequences
+        if origin is tuple:
+            return self._tuple_matches_type(value, args)
+
+        # Handle set and frozenset
+        if isinstance(origin, type) and issubclass(origin, (set, frozenset)):
+            return isinstance(value, origin) and all(self._output_matches_type(item, args[0]) for item in value)
+
+        # Handle Sequence types (List, Tuple, etc)
+        if isinstance(origin, type) and issubclass(origin, Sequence):
+            if isinstance(value, (str, bytes)):
+                return False
+            if not isinstance(value, Sequence):
+                return False
+            # Empty sequence is valid
+            if not value:
+                return True
+            # Check each element against the sequence's type parameter
+            return all(self._output_matches_type(item, args[0]) for item in value)
+
+        # Handle Mapping types (Dict, etc)
+        if isinstance(origin, type) and issubclass(origin, Mapping):
+            if not isinstance(value, Mapping):
+                return False
+            # Empty mapping is valid
+            if not value:
+                return True
+            key_type, value_type = args
+            # Check all keys and values match their respective types
+            return all(
+                self._output_matches_type(k, key_type) and self._output_matches_type(v, value_type)
+                for k, v in value.items()
+            )
+
+        # Handle Union types (including Optional and X | Y syntax)
         if _is_union_type(origin):
             return any(self._output_matches_type(value, arg) for arg in args)
 
-        if origin is tuple:
-            return self._tuple_matches_type(value, args, expected_type)
-
-        if isinstance(origin, type) and issubclass(origin, Mapping):
-            return self._mapping_matches_type(value, args)
-
-        if isinstance(origin, type) and issubclass(origin, (Collection, Iterable)):
-            return self._items_match_type(value, origin, args)
-
-        if origin is None:
-            try:
-                return isinstance(value, expected_type)
-            except TypeError:
-                # Forward references and other typing-only objects can't be checked at runtime.
-                return False
-
         return False
 
-    def _tuple_matches_type(self, value: Any, args: tuple[Any, ...], expected_type: Any) -> bool:
-        """Validate fixed-length tuples position by position and variadic tuples item by item."""
-        if not isinstance(value, tuple):
+    def _tuple_matches_type(self, value: Any, args: tuple[Any, ...]) -> bool:
+        """Validate a fixed-length tuple position by position and a variadic tuple item by item."""
+        if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
             return False
-        if not args:
-            # `tuple` and `typing.Tuple` accept any tuple; `tuple[()]` accepts only an empty tuple.
-            return getattr(expected_type, "__args__", None) is None or not value
         if len(args) == 2 and args[1] is Ellipsis:
             return all(self._output_matches_type(item, args[0]) for item in value)
         if len(value) != len(args):
             return False
         return all(self._output_matches_type(item, arg) for item, arg in zip(value, args, strict=True))
-
-    def _mapping_matches_type(self, value: Any, args: tuple[Any, ...]) -> bool:
-        """Validate a mapping's keys and values; a bare `Mapping` has no type arguments to check."""
-        if not isinstance(value, Mapping):
-            return False
-        if not args:
-            return True
-        if len(args) == 1:
-            # One-argument mappings such as `Counter[str]` only declare their key type.
-            return all(self._output_matches_type(key, args[0]) for key in value)
-        if len(args) != 2:
-            return False
-        key_type, value_type = args
-        return all(
-            self._output_matches_type(key, key_type) and self._output_matches_type(item, value_type)
-            for key, item in value.items()
-        )
-
-    def _items_match_type(self, value: Any, origin: type, args: tuple[Any, ...]) -> bool:
-        """
-        Validate the items of a collection or iterable.
-
-        Strings and bytes are scalars here, not collections of characters. Non-collection
-        iterables (e.g. generators) are accepted without item validation so that checking a
-        one-shot iterator does not consume it.
-        """
-        if isinstance(value, (str, bytes)) or not isinstance(value, origin):
-            return False
-        if not args or not isinstance(value, Collection):
-            return True
-        return all(self._output_matches_type(item, args[0]) for item in value)

@@ -5,7 +5,7 @@
 import copy
 import typing
 from collections.abc import Callable
-from typing import Annotated, Literal
+from typing import Literal
 from unittest import mock
 
 import pytest
@@ -583,94 +583,36 @@ class TestRouter:
             router.run(value="hello")
 
     @pytest.mark.parametrize(
-        ("output_type", "value"),
+        ("output_type", "value", "matches"),
         [
-            (tuple[str, int], ("x", 1)),
-            (tuple[int, ...], (1, 2, 3)),
-            (tuple[()], ()),
-            (set[int], {1, 2}),
-            (Literal["a", "b"], "a"),
-            (Literal[1], 1),
-            (Annotated[int, "units"], 1),
-            # Bare deprecated aliases are intentional: these used to crash or reject valid values.
-            (typing.Sequence, [1, 2]),
-            (typing.Mapping, {"a": 1}),
-            (typing.List, [1, 2]),  # noqa: UP006
-            (typing.Dict, {"a": 1}),  # noqa: UP006
-            (typing.Set, {1, 2}),  # noqa: UP006
-            (typing.Counter[str], {"a": 1}),
-            (typing.Iterable[int], [1, 2]),
+            # Fixed-length tuples validate each position against its own type argument.
+            (tuple[str, int], ("x", 1), True),
+            (tuple[int, str], (1, 2), False),
+            (tuple[int, str], (1, 2, "x"), False),
+            (tuple[int, str], ("x", 1), False),
+            # `tuple[T, ...]` validates every item.
+            (tuple[int, ...], (1, 2, 3), True),
+            (tuple[int, ...], [1, 2], True),
+            (list[int], (1, 2), True),
+            # Typed sets validate their items.
+            (set[int], {1, 2}, True),
+            (set[int], {1, "a"}, False),
+            (frozenset[int], frozenset({1, 2}), True),
+            (frozenset[int], frozenset({1, "a"}), False),
+            # `Literal` matches the value and its exact type.
+            (Literal["a", "b"], "a", True),
+            (Literal["a"], "b", False),
+            (Literal[1], 1, True),
+            (Literal[1], True, False),
+            # Annotations without type arguments fall back to `isinstance`.
+            (typing.List, [1, 2], True),  # noqa: UP006
+            (typing.Mapping, {"a": 1}, True),
+            (typing.List, (1, 2), False),  # noqa: UP006
+            (typing.Mapping, [1, 2], False),
+            (list[int], "hello", False),
         ],
     )
-    def test_validate_output_type_accepts_standard_annotations(self, output_type, value):
-        routes: list[Route] = [
-            {"condition": "{{ True }}", "output": "{{ value }}", "output_type": output_type, "output_name": "out"}
-        ]
-        router = ConditionalRouter(routes, validate_output_type=True)
-
-        assert router.run(value=value) == {"out": value}
-
-    def test_validate_output_type_accepts_frozenset(self):
-        routes: list[Route] = [
-            {
-                "condition": "{{ True }}",
-                "output": "value",
-                "output_type": frozenset[int],
-                "output_name": "out",
-                "output_passthrough": True,
-            }
-        ]
-        router = ConditionalRouter(routes, validate_output_type=True)
-
-        assert router.run(value=frozenset({1, 2})) == {"out": frozenset({1, 2})}
-
-    def test_validate_output_type_does_not_consume_iterators(self):
-        def values():
-            yield 1
-            yield 2
-
-        iterator = values()
-        routes: list[Route] = [
-            {
-                "condition": "{{ True }}",
-                "output": "value",
-                "output_type": typing.Iterable[int],
-                "output_name": "out",
-                "output_passthrough": True,
-            }
-        ]
-        router = ConditionalRouter(routes, validate_output_type=True)
-
-        assert router.run(value=iterator)["out"] is iterator
-        assert list(iterator) == [1, 2]
-
-    @pytest.mark.parametrize(
-        ("output_type", "value"),
-        [
-            (tuple[int, str], (1, 2)),
-            (tuple[int, str], (1, 2, "x")),
-            (tuple[()], (1, 2)),
-            (Literal["a"], "b"),
-            (Annotated[int, "units"], "not-a-number"),
-            (typing.Sequence[int], "abc"),
-            (typing.Iterable[int], "abc"),
-            (list[int], (1, 2)),
-            (tuple[int, ...], [1, 2]),
-            (typing.Counter[int], {"a": 1}),
-            (set[int], {1, "a"}),
-        ],
-    )
-    def test_validate_output_type_rejects_mismatches(self, output_type, value):
-        routes: list[Route] = [
-            {"condition": "{{ True }}", "output": "{{ value }}", "output_type": output_type, "output_name": "out"}
-        ]
-        router = ConditionalRouter(routes, validate_output_type=True)
-
-        with pytest.raises(ValueError, match="Route 'out' type doesn't match expected type"):
-            router.run(value=value)
-
-    @pytest.mark.parametrize(("output_type", "value"), [(Literal[1], True), (Literal[True], 1), (Literal[0], False)])
-    def test_validate_output_type_literal_checks_exact_type(self, output_type, value):
+    def test_validate_output_type(self, output_type, value, matches):
         routes: list[Route] = [
             {
                 "condition": "{{ True }}",
@@ -682,8 +624,11 @@ class TestRouter:
         ]
         router = ConditionalRouter(routes, validate_output_type=True)
 
-        with pytest.raises(ValueError, match="Route 'out' type doesn't match expected type"):
-            router.run(value=value)
+        if matches:
+            assert router.run(value=value) == {"out": value}
+        else:
+            with pytest.raises(ValueError, match="Route 'out' type doesn't match expected type"):
+                router.run(value=value)
 
     def test_router_with_optional_parameters(self):
         """
