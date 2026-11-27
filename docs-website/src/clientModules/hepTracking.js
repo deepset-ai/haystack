@@ -8,13 +8,23 @@ import globalData from '@generated/globalData';
 // Placement-level tracking for Haystack Enterprise Platform (HEP) CTAs.
 // Events go to the GTM dataLayer; GTM/GA4 configuration lives outside this repo.
 
+// Every link to these hosts is a CTA.
 const CTA_HOSTS = new Set([
-  'deepset.ai',
-  'www.deepset.ai',
   'cloud.deepset.ai',
   'docs.cloud.deepset.ai',
   'landing.deepset.ai',
 ]);
+
+// The marketing site also hosts unrelated pages (privacy, imprint, careers, blog...), so only HEP pages count.
+const MARKETING_HOSTS = new Set(['deepset.ai', 'www.deepset.ai']);
+
+function isMarketingProductPath(path) {
+  return (
+    path === '/haystack-platform' ||
+    path.startsWith('/haystack-platform/') ||
+    /\/haystack-enterprise(-starter)?$/.test(path)
+  );
+}
 
 // haystack.deepset.ai mostly hosts tutorials and cookbooks, so only its enterprise posts count as CTAs.
 const HAYSTACK_SITE_HOST = 'haystack.deepset.ai';
@@ -88,8 +98,7 @@ function getCtaType(url) {
   }
   if (/\/haystack-enterprise(-starter)?$/.test(path)) {
     return 'enterprise_support';
-  }
-  return 'other';
+  }  return 'other';
 }
 
 function getCtaLocation(anchor, pathname) {
@@ -124,6 +133,7 @@ function toCtaUrl(anchor) {
   }
   const isCta =
     CTA_HOSTS.has(url.hostname) ||
+    (MARKETING_HOSTS.has(url.hostname) && isMarketingProductPath(url.pathname.replace(/\/+$/, ''))) ||
     (url.hostname === HAYSTACK_SITE_HOST && HAYSTACK_SITE_ENTERPRISE_PATH.test(url.pathname));
   return isCta ? url : null;
 }
