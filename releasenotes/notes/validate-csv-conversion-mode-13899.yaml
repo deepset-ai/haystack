@@ -1,3 +1,4 @@
 ---
 fixes:
-  - "CSVToDocument now raises a ValueError when initialized with an unsupported conversion_mode."
+  - |
+    ``CSVToDocument`` now raises a ``ValueError`` when initialized with an unsupported ``conversion_mode``.
