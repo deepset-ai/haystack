@@ -367,11 +367,7 @@ class DocumentCleaner:
         intersection = reduce(set.intersection, seqs_ngrams)
 
         # Set order depends on hash randomization, so break ties by position to keep the result stable across runs.
+        # Every common ngram is a substring of the first sequence, so find() always finds it.
         first_sequence = sequences[0]
-
-        def _position(ngram: str) -> int:
-            position = first_sequence.find(ngram)
-            return position if position >= 0 else len(first_sequence)
-
-        longest = max(intersection, key=lambda ngram: (len(ngram), -_position(ngram)), default="")
+        longest = max(intersection, key=lambda ngram: (len(ngram), -first_sequence.find(ngram)), default="")
         return longest if longest.strip() else ""
