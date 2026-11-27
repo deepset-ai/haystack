@@ -423,8 +423,7 @@ class ConditionalRouter:
             `output_passthrough` is `True` and the variable named in `output` is not found in kwargs.
         """
         for route in self.routes:
-            # Evaluated on its own so that every error in the condition, including the ValueError `ast.literal_eval`
-            # raises for a condition that doesn't render to a literal, is reported as a RouteConditionException.
+            # Separate try so all condition errors, including ValueError, raise RouteConditionException.
             try:
                 t = self._env.from_string(route["condition"])
                 rendered = t.render(**kwargs)

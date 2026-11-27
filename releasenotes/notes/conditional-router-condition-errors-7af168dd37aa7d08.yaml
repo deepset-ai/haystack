@@ -2,7 +2,3 @@
 fixes:
   - |
     ``ConditionalRouter`` now raises ``RouteConditionException`` for every error in a route's ``condition``.
-    Previously, a condition that rendered to a bare word such as ``hello`` raised a ``ValueError`` from
-    ``ast.literal_eval`` ("malformed node or string") without naming the route, while other condition errors raised
-    ``RouteConditionException``. ``ValueError`` is still raised for output type validation failures and missing
-    passthrough variables.
