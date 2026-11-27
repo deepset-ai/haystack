@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    CSV files are now always detected as ``text/csv``. On Windows machines with Excel installed,
+    the system registry maps ``.csv`` to ``application/vnd.ms-excel``, so ``FileTypeRouter``,
+    ``DocumentTypeRouter`` and ``MultiFileConverter`` sent CSV files to ``unclassified`` instead of
+    ``CSVToDocument``.
