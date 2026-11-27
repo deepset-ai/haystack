@@ -710,3 +710,74 @@ class TestDOCXToDocument:
         content = converter.run(sources=[path])["documents"][0].content
 
         assert expected_link in content
+
+    @pytest.mark.parametrize(
+        ("table_format", "expected_row"),
+        [
+            ("csv", 'Contact,"Name | Asha\nEmail | asha@example.com"'),
+            ("markdown", r"| Contact | Name \| Asha Email \| asha@example.com |"),
+        ],
+    )
+    def test_run_reads_a_table_nested_in_a_table_cell(self, tmp_path, table_format, expected_row):
+        """A table nested in a cell is read in place, one line per nested row."""
+        doc = docx.Document()
+        outer = doc.add_table(rows=1, cols=2)
+        outer.cell(0, 0).text = "Contact"
+        nested = outer.cell(0, 1).add_table(rows=2, cols=2)
+        nested.cell(0, 0).text = "Name"
+        nested.cell(0, 1).text = "Asha"
+        nested.cell(1, 0).text = "Email"
+        nested.cell(1, 1).text = "asha@example.com"
+        path = tmp_path / "nested_table.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format=table_format).run(sources=[path])["documents"][0].content
+
+        assert expected_row in content
+
+    def test_run_reads_a_table_nested_two_levels_deep(self, tmp_path):
+        doc = docx.Document()
+        nested = doc.add_table(rows=1, cols=1).cell(0, 0).add_table(rows=1, cols=2)
+        nested.cell(0, 0).text = "Address"
+        nested.cell(0, 1).add_table(rows=1, cols=1).cell(0, 0).text = "Dresden"
+        path = tmp_path / "deeply_nested_table.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format="csv").run(sources=[path])["documents"][0].content
+
+        assert content == "Address | Dresden"
+
+    def test_run_reads_a_merged_cell_of_a_nested_table_once(self, tmp_path):
+        doc = docx.Document()
+        nested = doc.add_table(rows=1, cols=1).cell(0, 0).add_table(rows=3, cols=2)
+        nested.cell(0, 0).merge(nested.cell(0, 1)).text = "Header"
+        nested.cell(1, 0).merge(nested.cell(2, 0)).text = "Side"
+        nested.cell(1, 1).text = "a"
+        nested.cell(2, 1).text = "b"
+        path = tmp_path / "nested_merged_table.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(table_format="csv").run(sources=[path])["documents"][0].content
+
+        assert content == '"Header\nSide | a\nb"'
+
+    def test_run_formats_a_link_in_a_nested_table(self, tmp_path):
+        doc = docx.Document()
+        paragraph = doc.add_table(rows=1, cols=1).cell(0, 0).add_table(rows=1, cols=1).cell(0, 0).paragraphs[0]
+        relationship_id = paragraph.part.relate_to(
+            "https://example.com/reference", RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+        )
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), relationship_id)
+        run = OxmlElement("w:r")
+        text = OxmlElement("w:t")
+        text.text = "docs"
+        run.append(text)
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
+        path = tmp_path / "nested_table_with_link.docx"
+        doc.save(str(path))
+
+        content = DOCXToDocument(link_format="markdown").run(sources=[path])["documents"][0].content
+
+        assert "[docs](https://example.com/reference)" in content

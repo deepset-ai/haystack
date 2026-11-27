@@ -417,10 +417,45 @@ class DOCXToDocument:
         """
         Returns a table cell's text with links formatted like links in body paragraphs.
 
+        A table nested in the cell is read in place, one line per nested row, because
+        `cell.paragraphs` holds only the cell's direct paragraphs.
+
         :param cell: The DOCX table cell.
         :returns: The cell's paragraphs joined by newlines, as `cell.text` joins them.
         """
-        return "\n".join(self._process_links_in_paragraph(paragraph) for paragraph in cell.paragraphs)
+        lines: list[str] = []
+        for item in cell.iter_inner_content():
+            if isinstance(item, Paragraph):
+                lines.append(self._process_links_in_paragraph(item))
+            else:
+                lines.extend(self._nested_table_lines(item))
+        return "\n".join(lines)
+
+    def _nested_table_lines(self, table: "Table") -> list[str]:
+        """
+        Returns one line per row of a table nested in a cell, its cells separated by " | ".
+
+        A merged cell is listed under every row and column it spans, so it is read once.
+
+        :param table: The nested DOCX table.
+        :returns: The non-empty row lines.
+        """
+        # The set holds the cell elements themselves, which keeps each lxml proxy alive and
+        # so its identity stable while the table is read.
+        seen_cells: set[Any] = set()
+        lines = []
+        for row in table.rows:
+            texts = []
+            for cell in row.cells:
+                if cell._tc in seen_cells:
+                    continue
+                seen_cells.add(cell._tc)
+                text = " ".join(self._cell_text(cell).split())
+                if text:
+                    texts.append(text)
+            if texts:
+                lines.append(" | ".join(texts))
+        return lines
 
     def _table_to_markdown(self, table: "Table") -> str:
         """
