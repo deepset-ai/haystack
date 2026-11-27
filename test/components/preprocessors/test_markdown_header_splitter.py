@@ -986,6 +986,24 @@ def test_secondary_split_with_threshold():
     assert split_docs[2].meta["split_id"] == 2
 
 
+def test_code_fence_comments_and_page_breaks_across_multiple_sections():
+    text = (
+        "# Install\nRun:\n```bash\n# install deps\npip install haystack-ai\n```\n\f\n"
+        "## Configure\nSet the key.\n```python\n# set the key\nos.environ['KEY'] = 'x'\n```\n"
+        "## Run\nStart it.\n\f\n"
+        "# Deploy\nShip it.\n```bash\n# build image\ndocker build .\n```\n"
+    )
+
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.meta["header"] for doc in docs] == ["Install", "Configure", "Run", "Deploy"]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2, 2, 3]
+    assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2, 3]
+    assert docs[0].content == text[: text.index("## Configure")]
+    assert docs[3].content == text[text.index("# Deploy") :]
+    assert "".join(doc.content or "" for doc in docs) == text
+
+
 def test_page_break_handling_in_secondary_split():
     text = "# Header\nFirst page\f Second page\f Third page"
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)
