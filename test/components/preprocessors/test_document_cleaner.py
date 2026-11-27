@@ -194,9 +194,7 @@ class TestDocumentCleaner:
         cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
         )
-        # Every middle page starts with eight different phrases of the same length, separated by page-specific words,
-        # so all of them are equally long candidates for the header. The rest of each page is unique, so there is no
-        # footer. The phrase that comes first must win, whatever order the set of candidates is iterated in.
+        # Eight equally long header candidates; the one that appears first must win regardless of set order.
         tied_phrases = [f"{letter * 3} {letter * 3} {letter * 3}" for letter in "ABCDEFGH"]
 
         def page(i: int) -> str:

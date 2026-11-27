@@ -1,7 +1,5 @@
 ---
 fixes:
   - |
-    Fixed ``DocumentCleaner`` with ``remove_repeated_substrings=True`` picking a different header or footer from run
-    to run. When several repeated substrings were equally long, the one removed depended on Python's hash
-    randomization, so the same document could be cleaned differently, and get a different ID, in separate runs.
-    Ties are now broken by picking the substring that appears first on the page.
+    ``DocumentCleaner`` with ``remove_repeated_substrings=True`` now removes the same header or footer on every run
+    when several repeated substrings are equally long.

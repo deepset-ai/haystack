@@ -366,8 +366,7 @@ class DocumentCleaner:
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
 
-        # Iterating a set of strings follows hash randomization, so break ties between equally long ngrams by their
-        # position in the first sequence. Otherwise the removed header or footer could change between Python runs.
+        # Set order depends on hash randomization, so break ties by position to keep the result stable across runs.
         first_sequence = sequences[0]
 
         def _position(ngram: str) -> int:
