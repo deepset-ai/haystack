@@ -853,3 +853,9 @@ def test_dotted_field_with_unknown_root_is_treated_as_missing():
     assert document_matches_filter({"field": "typo.x", "operator": "!=", "value": 1}, document) is True
     not_filter = {"operator": "NOT", "conditions": [{"field": "typo.x", "operator": "==", "value": 1}]}
     assert document_matches_filter(not_filter, document) is True
+
+
+@pytest.mark.parametrize("operator", [">", ">=", "<", "<="])
+def test_document_matches_filter_string_document_value_vs_numeric_filter(operator):
+    non_numeric_doc = Document(meta={"v": "abc"})
+    assert document_matches_filter({"field": "meta.v", "operator": operator, "value": 5}, non_numeric_doc) is False
