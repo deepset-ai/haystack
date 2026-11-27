@@ -366,5 +366,8 @@ class DocumentCleaner:
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
 
-        longest = max(intersection, key=len, default="")
+        # Set order depends on hash randomization, so break ties by position to keep the result stable across runs.
+        # Every common ngram is a substring of the first sequence, so find() always finds it.
+        first_sequence = sequences[0]
+        longest = max(intersection, key=lambda ngram: (len(ngram), -first_sequence.find(ngram)), default="")
         return longest if longest.strip() else ""

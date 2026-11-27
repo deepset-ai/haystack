@@ -190,6 +190,23 @@ class TestDocumentCleaner:
         assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
         assert result.content == text
 
+    @pytest.mark.parametrize("position", ["header", "footer"])
+    def test_remove_repeated_substrings_breaks_ties_deterministically(self, position):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        # Eight equally long candidates; the one that appears first must win regardless of set order.
+        tied_phrases = [f"{letter * 3} {letter * 3} {letter * 3}" for letter in "ABCDEFGH"]
+
+        def page(i: int) -> str:
+            repeated = " ".join(f"{phrase} p{i}" for phrase in tied_phrases)
+            body = " ".join(f"w{i}x{j}" for j in range(80))
+            return f"{repeated} {body}" if position == "header" else f"{body} {repeated}"
+
+        pages = ["First page", page(1), page(2), page(3), "Last page"]
+        result = cleaner.run(documents=[Document(content="\f".join(pages))])["documents"][0]
+        assert result.content == "\f".join(p.replace(tied_phrases[0], "") for p in pages)
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [

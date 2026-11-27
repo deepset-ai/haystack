@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``DocumentCleaner`` with ``remove_repeated_substrings=True`` now removes the same header or footer on every run
+    when several repeated substrings are equally long.
