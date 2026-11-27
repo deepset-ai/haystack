@@ -25,10 +25,9 @@ on:
       - reopened
       - synchronize
 
+# API keys are set only on the steps that run integration tests, after a separate step has installed the
+# dependencies, so that package installs and third-party actions can't read them.
 env:
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
   PYTHON_VERSION: "3.11"
   # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
   # See [tool.mypy] in pyproject.toml.
@@ -237,7 +236,14 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - name: Create test environment
+        run: hatch env create test
+
       - name: Run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
         run: hatch run test:integration-only-fast
 
   integration-tests-macos:
@@ -271,7 +277,14 @@ jobs:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
+      - name: Create test environment
+        run: hatch env create test
+
       - name: Run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
         run: hatch run test:integration-only-fast
 
   integration-tests-windows:
@@ -299,7 +312,14 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - name: Create test environment
+        run: hatch env create test
+
       - name: Run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
         run: hatch run test:integration-only-fast
 
   notify-slack-on-failure:

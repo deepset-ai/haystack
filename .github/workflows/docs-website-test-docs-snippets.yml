@@ -22,12 +22,6 @@ jobs:
   test-docs-snippets:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-      AZURE_OPENAI_AD_TOKEN: ${{ secrets.AZURE_OPENAI_AD_TOKEN }}
-      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-      HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - name: Checkout
@@ -53,10 +47,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests toml --uploaded-prior-to=P1D
 
-      - name: Run snippet tests (verbose)
+      - name: Install snippet test dependencies
         shell: bash
         run: |
+          hatch env create test
           hatch -e test env run -- pip install huggingface-api-haystack # required by LLMMessagesRouter docstring example
+
+      # API keys are set only on this step so that package installs and third-party actions can't read them.
+      - name: Run snippet tests (verbose)
+        shell: bash
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_AD_TOKEN: ${{ secrets.AZURE_OPENAI_AD_TOKEN }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
           hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
 
   notify-slack-on-failure:
