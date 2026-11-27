@@ -126,7 +126,7 @@
 | haystack/components/retrievers/types/\_\_init\_\_.py                       |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                           |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
-| haystack/components/routers/conditional\_router.py                         |      178 |        8 |     96% |483-484, 520, 538, 580, 598, 608, 620 |
+| haystack/components/routers/conditional\_router.py                         |      182 |        8 |     96% |488-489, 525, 543, 585, 603, 613, 625 |
 | haystack/components/routers/document\_length\_router.py                    |       15 |        0 |    100% |           |
 | haystack/components/routers/document\_type\_router.py                      |       48 |        0 |    100% |           |
 | haystack/components/routers/file\_type\_router.py                          |       78 |        6 |     92% |   197-202 |
@@ -279,7 +279,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **19070** |  **609** | **97%** |           |
+| **TOTAL**                                                                  | **19074** |  **609** | **97%** |           |
 
 
 ## Setup coverage badge
