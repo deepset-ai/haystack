@@ -1,4 +1,9 @@
 ---
+upgrade:
+  - |
+    Metadata filters no longer treat a boolean and a number as equal. If your documents store flags as ``0`` and
+    ``1``, a filter on ``True`` or ``False`` stops matching them: filter on the stored value instead (for example
+    ``{"field": "meta.flag", "operator": "==", "value": 1}``), or store the flags as ``True`` and ``False``.
 fixes:
   - |
     Metadata filters no longer treat a boolean and a number as equal. Because ``bool`` is a subclass of ``int``
