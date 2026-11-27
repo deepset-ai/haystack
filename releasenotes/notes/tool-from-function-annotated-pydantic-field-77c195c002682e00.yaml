@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``create_tool_from_function`` and ``@tool`` no longer fail when a parameter is annotated with a Pydantic
+    ``Field``, for example ``Annotated[int, Field(ge=1)]``. Only a string in the ``Annotated`` metadata is used
+    as the description. ``Field`` constraints and descriptions now appear in the tool schema.
