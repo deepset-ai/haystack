@@ -1,0 +1,235 @@
+---
+title: "Harness Optimizer Agent"
+id: harness-optimizer-agent
+slug: "/harness-optimizer-agent"
+description: "A harness optimizer agent: it reads a pipeline or Agent configuration as YAML together with its evaluation results, and edits it into the next candidate to measure."
+---
+
+# Harness Optimizer Agent
+
+A harness optimizer agent: it reads the YAML of a Haystack [`Pipeline`](../../../concepts/pipelines.mdx) or [`Agent`](../agent.mdx) together with the results of evaluating it, and edits that YAML into the next candidate to measure. Run in a loop, it tunes prompts, models, parameters, hooks, and tools against a fixed evaluation set.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `evaluator`: A `HarnessEvaluator` that measures candidates |
+| **Entry points**             | `create_harness_optimizer_agent`: Builds the optimizer `Agent`<br />`propose_candidate`: Runs one optimizer turn and returns a `ProposalResult` |
+| **Output variables**         | `ProposalResult.candidate`: The submitted `CandidateConfiguration`, or `None` if the optimizer finished or ran out of steps<br />`ProposalResult.finish_reason`: Why the optimizer ended the search, if it called `finish`<br />`ProposalResult.validation_failures`: Drafts that failed validation during the turn |
+| **API reference**            | [Agent Pack](/reference/integrations-agent-pack) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack/src/haystack_integrations/agent_pack/optimization |
+| **Package name**             | `agent-pack-haystack` |
+
+</div>
+
+:::warning
+Part of [Agent Pack](../agent-pack.mdx), which is experimental for the moment. Its APIs and agent architectures can change in any release, without following the usual deprecation policy.
+:::
+
+## When to use this agent
+
+Use the harness optimizer when you have a working pipeline or agent, a labelled evaluation set, and a way to score the results, and you want to improve cost, latency, or quality through measured experiments rather than by hand.
+
+Typical use cases include:
+
+- Cutting the cost or latency of a pipeline without losing quality, for example by finding a cheaper model or a smaller prompt that still passes your quality gate.
+- Improving retrieval quality by tuning a retrieval pipeline's prompts, limits, and structure.
+- Tuning an [`Agent`](../agent.mdx)'s system prompt, model, and tools against a fixed set of tasks.
+
+It's less useful when:
+
+- You have no evaluation set. The optimizer only knows what the evaluator measures, so a weak or tiny evaluation set produces configurations that overfit it.
+- Each evaluation is expensive and your budget is only a handful of runs. Every candidate costs a full pass over the evaluation set.
+
+## Installation
+
+```shell
+pip install agent-pack-haystack
+```
+
+To let the optimizer search the public Haystack documentation (`documentation_tools=True`), also install the MCP integration:
+
+```shell
+pip install "mcp-haystack>=1.2.0"
+```
+
+The default optimizer LLM is an OpenAI model, so set `OPENAI_API_KEY` in the environment. The evaluation set and the configuration you optimize bring their own requirements.
+
+## How it works
+
+The optimizer is a single Haystack [`Agent`](../agent.mdx) that produces one candidate per turn. The experiment itself, which is the loop of proposing, measuring, and recording, is yours to run, and `propose_candidate` is the building block for one turn of it.
+
+Every turn follows the same cycle:
+
+1. **Start from a base.** `propose_candidate` loads the YAML of the reference, or of an earlier candidate you pass as `base_id`, into an editable draft.
+2. **Read the results.** The optimizer sees the objectives, the model prices, the reference measurement, and a summary of every candidate measured so far, with the most recent outcomes shown in full.
+3. **Edit.** It changes the YAML through its editing tools.
+4. **Validate.** `validate_config` loads the YAML as the expected `Agent` or `Pipeline` and runs the evaluator's `validate`. Validation constructs the configuration but doesn't run it.
+5. **Submit.** `submit_candidate` ends the turn and returns the candidate with the hypothesis it tests. Your code then measures it and feeds the outcome into the next turn.
+
+The agent can instead call `finish` with the reasons nothing worth measuring remains, which ends the experiment early.
+
+Unvalidated, duplicate, and unchanged configurations are never submitted, so they don't spend an evaluation.
+
+### The optimizer's tools
+
+| Tool | What it does |
+| --- | --- |
+| `read_config` | Returns the draft YAML and its revision. |
+| `edit_config` | Replaces one exact block of text that occurs once in the YAML. Every edit names the latest revision, so an edit made against stale YAML is rejected. |
+| `validate_config` | Loads the draft as the expected configuration and runs the evaluator's checks. Any edit clears validation. |
+| `submit_candidate` | Submits a validated revision with a rationale and ends the turn. Rejects revisions that weren't validated and configurations already measured. |
+| `restore_candidate` | Resets the draft to an earlier candidate, or to `"reference"`, to branch from it. |
+| `inspect_component` | Shows an installed component's constructor, docstrings, `run` signature, and serialization code. |
+| `finish` | Ends the experiment, recording why. |
+| Documentation search | Read-only search over the public Haystack documentation. Only with `documentation_tools=True`. |
+
+The optimizer's system prompt also tells it which Haystack version and integrations are installed, so it only proposes configurations that can actually be imported.
+
+### Evaluators
+
+The optimizer doesn't know how to measure a configuration. An evaluator does, and any object that follows the `HarnessEvaluator` protocol works:
+
+- `evaluate(target, eval_cases)` and `evaluate_async(...)` measure a target and return `EvalMetrics`.
+- `validate(target)` raises `ValueError` if a candidate isn't something the evaluator can measure.
+- `to_dict()` and `from_dict()` serialize the evaluator, which lets the optimizer agent be serialized.
+
+`EvalMetrics` carries the per-case `durations`, token `model_usage` by model, `all_tokens_reported`, one record per evaluated case in `eval_cases`, and a `details` dictionary with the scores. Each evaluator documents its own `details` keys.
+
+Agent Pack ships `RetrievalHarnessEvaluator`, which poses each question to a retrieval pipeline and scores the returned documents. The pipeline must expose an unconnected `query` input, exactly one unconnected `documents` output, and no other unconnected mandatory inputs. Its `details` include `mean_recall_at_k`, `mean_precision_at_k`, `mean_retrieved`, `component_output_sizes`, and `warnings`. For other targets, such as an `Agent`, implement the protocol yourself.
+
+## Usage
+
+The example below optimizes a retrieval pipeline for cost while keeping recall within two points of the reference.
+
+```python
+from haystack import Pipeline
+from haystack_integrations.agent_pack.evaluation import (
+    ModelPrice,
+    RetrievalEvalCase,
+    RetrievalHarnessEvaluator,
+    cost_of_model_usage,
+)
+from haystack_integrations.agent_pack.optimization import (
+    CandidateOutcome,
+    OptimizationObjectives,
+    create_harness_optimizer_agent,
+    propose_candidate,
+)
+from haystack_integrations.agent_pack.optimization.utils import dump_pipeline, load_pipeline
+
+reference: Pipeline = ...  # your pipeline with a `query` input and a `documents` output
+eval_cases = [
+    RetrievalEvalCase(question="...", evidence={"<document id>": "<quote that answers it>"}),
+    ...,
+]
+
+evaluator = RetrievalHarnessEvaluator(k=10)
+prices = {"gpt-5.4": ModelPrice(input_cost_per_million=..., output_cost_per_million=...)}
+objectives = OptimizationObjectives(quality_metric="mean_recall_at_k", max_quality_loss=0.02, primary="cost")
+
+baseline = evaluator.evaluate(target=reference, eval_cases=eval_cases)
+reference_yaml = dump_pipeline(reference)
+
+# The loader decides what shape a candidate must keep. Use `load_pipeline` for a Pipeline.
+optimizer = create_harness_optimizer_agent(evaluator=evaluator, loader=load_pipeline)
+
+history: list[CandidateOutcome] = []
+candidates: dict[str, str] = {}  # candidate ID -> YAML
+best_id, best_key = None, objectives.sort_key(baseline, cost_of_model_usage(baseline.model_usage, prices))
+budget = 10
+
+for remaining in range(budget, 0, -1):
+    proposal = propose_candidate(
+        optimizer_agent=optimizer,
+        reference=reference,
+        reference_yaml=reference_yaml,
+        prices=prices,
+        objectives=objectives,
+        baseline=baseline,
+        history=history,
+        remaining_evaluations=remaining,
+        candidates=candidates,
+        base_id=best_id,  # each turn edits the best candidate measured so far
+    )
+    candidate = proposal.candidate
+    if candidate is None:
+        print("Optimizer finished:", proposal.finish_reason)
+        break
+
+    candidates[candidate.candidate_id] = candidate.yaml
+    metrics = evaluator.evaluate(target=load_pipeline(candidate.yaml), eval_cases=eval_cases)
+    cost = cost_of_model_usage(metrics.model_usage, prices)
+    gate_failures = objectives.find_failed_gates(metrics, baseline)
+    history.append(
+        CandidateOutcome(
+            candidate_id=candidate.candidate_id,
+            parent_id=candidate.parent_id,
+            rationale=candidate.rationale,
+            diff=candidate.diff,
+            metrics=metrics,
+            cost=cost,
+            gate_failures=gate_failures,
+        )
+    )
+    key = objectives.sort_key(metrics, cost)
+    if not gate_failures and key < best_key:
+        best_id, best_key = candidate.candidate_id, key
+
+print("Best candidate YAML:\n", candidates.get(best_id, reference_yaml))
+```
+
+`propose_candidate` doesn't measure anything. Measuring each candidate, recording a `CandidateOutcome` for it (including measurement failures), and choosing the base for the next turn are your responsibility, which keeps the experiment's budget, stopping rules, and evaluation under your control.
+
+### Objectives
+
+`OptimizationObjectives` states what counts as quality and how candidates are ranked:
+
+- `quality_metric` is the key in `EvalMetrics.details` treated as quality, where higher is better.
+- `max_quality_loss` is how far below the reference's quality a candidate may fall and still clear the gates. Defaults to `0.0`.
+- `primary` is what candidates are ranked by among those that clear the gates. `"cost"` and `"duration"` are minimized, where duration is the median of `EvalMetrics.durations`. `"quality"` is maximized, with cost breaking ties. Defaults to `"cost"`.
+
+`find_failed_gates(metrics, baseline)` reports a candidate as failing if its quality falls below the floor (`quality_below_floor:<floor>`) or if any model call reported no token usage (`usage_incomplete`), which usually means a component failed without raising. `sort_key(metrics, cost)` turns a measurement into a key you can compare.
+
+Costs come from `cost_of_model_usage` and the `ModelPrice` entries you pass, keyed by the model identifiers in `EvalMetrics.model_usage`. It returns `None` when a model has no known price. It charges every input token at full price, so it overstates the cost of providers that discount cached tokens.
+
+## Configuration
+
+`create_harness_optimizer_agent` takes only keyword arguments. `evaluator` is required.
+
+- `evaluator` is the `HarnessEvaluator` candidates are measured with. `validate_config` runs its `validate` on every draft, and it must implement `to_dict` and `from_dict`.
+- `loader` builds a configuration from YAML and decides what shape a candidate must keep. Defaults to `load_agent`, which requires a pipeline with exactly one component named `agent` that is an `Agent`. Pass `load_pipeline` to optimize a Pipeline that isn't a single Agent.
+- `llm` is the LLM that reasons about the results and edits the configuration. Defaults to `OpenAIResponsesChatGenerator("gpt-5.6-terra")` with low reasoning effort.
+- `system_prompt` overrides the pre-made system prompt. The description of the installed Haystack version and integrations is appended either way.
+- `additional_instructions` is guidance appended to the system prompt about what a good configuration looks like for your harness, for example which metadata fields the corpus carries.
+- `max_agent_steps` is the maximum number of agent steps to produce one candidate. Defaults to `24`.
+- `documentation_tools` gives the agent read-only search over the public Haystack documentation, so it can look up a component's parameters and serialized shape. Requires `mcp-haystack>=1.2.0` and network access to the documentation server. Defaults to `False`.
+
+`propose_candidate` takes the optimizer, the reference and its YAML, the model `prices`, the `objectives`, the `baseline`, and the `history`, plus a few optional arguments:
+
+- `remaining_evaluations` is the budget shown to the optimizer, including the current turn. When `None`, it's presented as unknown.
+- `candidates` maps the ID of every earlier candidate to its YAML. The optimizer can restore any of them and can't submit one again.
+- `base_id` is the candidate this turn's edits start from. `None` starts from the reference, and an ID not in `candidates` raises `ValueError`.
+- `history_digest_window` is how many of the most recent outcomes are shown in full. Defaults to `1`.
+
+### Further customization
+
+To change anything else, such as adding tools or [hooks](../hooks.mdx), use [`clone()`](../agent.mdx#cloning-and-modifying-an-agent) on the returned agent. Unpack the existing values to keep the built-in tools:
+
+```python
+optimizer = create_harness_optimizer_agent(evaluator=evaluator, loader=load_pipeline)
+
+customized = optimizer.clone(tools=[*optimizer.tools, my_tool])
+```
+
+Keep the `state_schema` and exit conditions as they are, because the editing tools rely on them.
+
+## Context management
+
+An optimization run produces a lot of text: the YAML, every diff, and every measurement. `propose_candidate` keeps this manageable and cache-friendly by sending three messages, ordered from the most to the least stable:
+
+1. **Experiment setup.** The objectives, model prices, the reference's tools, and the reference measurement. Identical every turn, so it's served from the prompt cache. Until the first candidate is measured, the reference is shown eval case by eval case, and afterwards as a summary.
+2. **Outcomes so far.** An append-only digest of earlier candidates, so each turn only adds one entry.
+3. **Current turn.** The remaining budget, the most recent outcome in full, and the draft YAML, shown verbatim because the editing tools match against that exact text.
+
+The editing tools share the turn's draft through the agent's [`State`](../state.mdx) rather than through the conversation, and the draft and known configurations are passed to `agent.run(...)` at the start of each turn.
