@@ -168,7 +168,8 @@ function handleClick(event) {
     event: 'hep_cta_click',
     cta_location: getCtaLocation(anchor, pathname),
     cta_type: getCtaType(url),
-    link_url: url.href,
+    // Drop query and hash: HubSpot appends visitor IDs (__hstc, __hssc, __hsfp) that must not reach GA4.
+    link_url: `${url.origin}${url.pathname}`,
     docs_version: docsVersion,
     page_path: pathname,
   });
