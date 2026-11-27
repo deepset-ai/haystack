@@ -926,9 +926,14 @@ class InMemoryDocumentStore:
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises ValueError: if top_k is negative or filters have invalid syntax.
+        :raises ValueError: if the query embedding is empty or invalid, `top_k` is negative, or filters have invalid
+            syntax.
         """
-        if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
+        if (
+            len(query_embedding) == 0
+            or isinstance(query_embedding[0], bool)
+            or not isinstance(query_embedding[0], (int, float))
+        ):
             raise ValueError("query_embedding should be a non-empty list of floats.")
         if top_k < 0:
             raise ValueError(f"top_k must be greater than or equal to 0, but got {top_k}")
@@ -989,6 +994,8 @@ class InMemoryDocumentStore:
         """
 
         query_embedding = np.array(embedding)
+        if np.issubdtype(query_embedding.dtype, np.integer):
+            query_embedding = query_embedding.astype(float)
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(a=query_embedding, axis=0)
 
@@ -1001,6 +1008,8 @@ class InMemoryDocumentStore:
                     "Please make sure that the Documents have been embedded with the same model."
                 ) from e
             raise e
+        if np.issubdtype(document_embeddings.dtype, np.integer):
+            document_embeddings = document_embeddings.astype(float)
         if document_embeddings.ndim == 1:
             document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 

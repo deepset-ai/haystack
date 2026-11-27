@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``InMemoryDocumentStore.embedding_retrieval`` and ``InMemoryEmbeddingRetriever`` now accept embeddings with integer
+    values, such as ``[1, 0, 0, 0]`` or int8-quantized embeddings, instead of raising a ``ValueError``. Cosine similarity
+    no longer fails when document embeddings contain integer values.

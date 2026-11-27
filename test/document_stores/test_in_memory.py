@@ -797,6 +797,40 @@ class TestMemoryDocumentStore(
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
+    @pytest.mark.parametrize("similarity_function", ["dot_product", "cosine"])
+    def test_embedding_retrieval_with_integer_query_and_document_embeddings(self, similarity_function):
+        docstore = InMemoryDocumentStore(embedding_similarity_function=similarity_function)
+        docstore.write_documents(
+            [Document(content="first", embedding=[1, 0, 0, 0]), Document(content="second", embedding=[0, 1, 0, 0])]
+        )
+
+        results = docstore.embedding_retrieval(query_embedding=[1, 0, 0, 0])
+
+        assert [document.content for document in results] == ["first", "second"]
+        assert [document.score for document in results] == [1.0, 0.0]
+
+    @pytest.mark.parametrize(
+        ("query_embedding", "document_embeddings"),
+        [
+            ([1.0, 0.0, 0.0, 0.0], [[1, 0, 0, 0], [0, 1, 0, 0]]),
+            ([1, 0, 0, 0], [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]),
+            ([1, 0.0, 0, 0.0], [[1, 0.0, 0, 0], [0.0, 1, 0, 0.0]]),
+        ],
+    )
+    def test_embedding_retrieval_with_mixed_integer_and_float_embeddings(self, query_embedding, document_embeddings):
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [
+                Document(content="first", embedding=document_embeddings[0]),
+                Document(content="second", embedding=document_embeddings[1]),
+            ]
+        )
+
+        results = docstore.embedding_retrieval(query_embedding=query_embedding)
+
+        assert [document.content for document in results] == ["first", "second"]
+        assert [document.score for document in results] == [1.0, 0.0]
+
     def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
         # A zero embedding has no direction; normalizing it must not divide by zero and
         # produce NaN cosine scores, which would silently corrupt ranking.
@@ -814,6 +848,8 @@ class TestMemoryDocumentStore(
             in_memory_doc_store.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
+        with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[True, False, False, False])
 
     @pytest.mark.parametrize("top_k", [-1, -5])
     def test_embedding_retrieval_with_negative_top_k_raises(

@@ -157,6 +157,18 @@ class TestMemoryEmbeddingRetriever:
         retriever = self._retriever_with_docs()
         assert retriever.run(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=0) == {"documents": []}
 
+    def test_run_accepts_integer_embeddings(self):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [Document(content="first", embedding=[1, 0, 0, 0]), Document(content="second", embedding=[0, 1, 0, 0])]
+        )
+        retriever = InMemoryEmbeddingRetriever(ds)
+
+        result = retriever.run(query_embedding=[1, 0, 0, 0])
+
+        assert [document.content for document in result["documents"]] == ["first", "second"]
+        assert [document.score for document in result["documents"]] == [1.0, 0.0]
+
     def test_run_with_negative_top_k_raises(self):
         # Regression: a negative top_k was used as a negative slice, silently dropping the last documents
         retriever = self._retriever_with_docs()
