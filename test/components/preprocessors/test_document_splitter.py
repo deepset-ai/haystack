@@ -96,6 +96,74 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[1].meta["split_id"] == 1
         assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
 
+    def test_split_by_word_cjk_document(self):
+        # Each CJK character counts as one word, so a spaceless Chinese document splits into
+        # chunks of split_length characters.
+        text = "检索增强生成" * 20  # 120 characters
+        splitter = DocumentSplitter(split_by="word", split_length=50)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == [text[0:50], text[50:100], text[100:120]]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 50, 100]
+
+    def test_split_by_word_mixed_cjk_and_latin(self):
+        text = "hello 检索 world"
+        splitter = DocumentSplitter(split_by="word", split_length=3)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["hello 检索 ", "world"]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 9]
+
+    def test_split_by_word_mixed_cjk_and_latin_no_spaces(self):
+        # Mixed CJK and Latin text without spaces counts the same for both splitters: each
+        # CJK character and each Latin run is one word.
+        text = "使用Haystack构建RAG系统"
+        splitter = DocumentSplitter(split_by="word", split_length=7)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["使用Haystack构建RAG系", "统"]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 16]
+
+    def test_split_by_word_cjk_punctuation_stays_attached(self):
+        # CJK punctuation stays attached to the CJK character before it, so a full stop
+        # never ends up as a chunk on its own.
+        text = "检索增强生成。再把它们交给模型。"
+        splitter = DocumentSplitter(split_by="word", split_length=5)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == ["检索增强生", "成。再把它们", "交给模型。"]
+        assert "".join(doc.content or "" for doc in docs) == text
+
+    def test_concatenate_sentences_based_on_word_amount_cjk(self):
+        # Each sentence counts its CJK characters as words, so two long sentences do not fit
+        # into one chunk of split_length=10 words the way two one-word sentences would.
+        sentences = ["检索增强生成先从文档库中找出相关段落，", "再把它们交给语言模型。"]
+        text_splits, splits_pages, splits_start_idxs = DocumentSplitter._concatenate_sentences_based_on_word_amount(
+            sentences=sentences, split_length=10, split_overlap=0
+        )
+        assert text_splits == sentences
+        assert splits_pages == [1, 1]
+        assert splits_start_idxs == [0, len(sentences[0])]
+
+    def test_split_by_word_respect_sentence_boundary_newlines(self):
+        # Newlines separate words when counting, as len(text.split()) does, so a sentence
+        # containing newlines does not swallow the next sentence into its chunk.
+        text = "Item one\nitem two\nitem three\nitem four. Next sentence has five words. Last one here."
+        splitter = DocumentSplitter(split_by="word", split_length=10, respect_sentence_boundary=True)
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert [doc.content for doc in docs] == [
+            "Item one\nitem two\nitem three\nitem four. ",
+            "Next sentence has five words. Last one here.",
+        ]
+        assert "".join(doc.content or "" for doc in docs) == text
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, text.index("Next sentence")]
+
     def test_split_by_word_with_threshold(self):
         splitter = DocumentSplitter(split_by="word", split_length=15, split_threshold=10)
         result = splitter.run(

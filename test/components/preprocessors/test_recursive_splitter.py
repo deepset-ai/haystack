@@ -672,6 +672,68 @@ def test_run_fallback_to_word_chunking_by_default_length_too_short():
         assert splitter._chunk_length(chunk.content) <= 2
 
 
+def test_chunk_length_counts_cjk_characters_as_words():
+    splitter = RecursiveDocumentSplitter(split_length=10)
+    assert splitter._chunk_length("检索增强") == 4
+    assert splitter._chunk_length("hello world") == 2
+    assert splitter._chunk_length("hello 检索 world") == 4
+    assert splitter._chunk_length("使用Haystack构建RAG系统") == 8
+
+
+def test_run_cjk_document_splits_by_word():
+    # Each CJK character counts as one word, so a spaceless Chinese document splits into
+    # chunks of split_length characters.
+    text = "检索增强生成" * 20  # 120 characters
+    splitter = RecursiveDocumentSplitter(split_length=50, split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert [chunk.content for chunk in chunks] == [text[0:50], text[50:100], text[100:120]]
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+    assert [chunk.meta["split_id"] for chunk in chunks] == [0, 1, 2]
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 50, 100]
+    for chunk in chunks:
+        assert chunk.content is not None
+        assert splitter._chunk_length(chunk.content) <= 50
+
+
+def test_run_mixed_cjk_and_latin_word_unit():
+    text = "aa bb cc " + "检索增强生成" * 5  # 9 Latin characters + 30 CJK characters
+    splitter = RecursiveDocumentSplitter(split_length=10, separators=[" "], split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    cjk = "检索增强生成" * 5
+    assert [chunk.content for chunk in chunks] == ["aa bb cc ", cjk[0:10], cjk[10:20], cjk[20:30]]
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 9, 19, 29]
+
+
+def test_run_mixed_cjk_and_latin_no_spaces_word_unit():
+    # Mixed CJK and Latin text without spaces counts the same as DocumentSplitter: each
+    # CJK character and each Latin run is one word.
+    text = "使用Haystack构建RAG系统"
+    splitter = RecursiveDocumentSplitter(split_length=7, separators=[" "], split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert [chunk.content for chunk in chunks] == ["使用Haystack构建RAG系", "统"]
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 16]
+
+
+def test_run_cjk_punctuation_stays_attached_word_unit():
+    # CJK punctuation stays attached to the CJK character before it, so a full stop
+    # never ends up as a chunk on its own.
+    text = "检索增强生成。再把它们交给模型。"
+    splitter = RecursiveDocumentSplitter(split_length=5, separators=[" "], split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert [chunk.content for chunk in chunks] == ["检索增强生", "成。再把它们", "交给模型。"]
+    assert "".join(chunk.content or "" for chunk in chunks) == text
+
+
+def test_run_word_overlap_cjk_document():
+    text = "检索增强生成" * 4  # 24 characters
+    splitter = RecursiveDocumentSplitter(split_length=10, split_overlap=2, separators=[" "], split_unit="word")
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert [chunk.content for chunk in chunks] == [text[0:10], text[8:18], text[16:24]]
+    assert [chunk.meta["split_idx_start"] for chunk in chunks] == [0, 8, 16]
+
+
 def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
     """Test that RecursiveDocumentSplitter works correctly with custom sentence tokenizer and overlap"""
     splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=10, separators=["sentence"], split_unit="char")
