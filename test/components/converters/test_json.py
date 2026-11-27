@@ -120,6 +120,7 @@ def test_to_dict():
             "jq_schema": ".laureates[]",
             "extra_meta_fields": {"firstname", "surname"},
             "store_full_path": False,
+            "encoding": "utf-8-sig",
         },
     }
 
@@ -132,6 +133,7 @@ def test_from_dict():
             "jq_schema": ".laureates[]",
             "extra_meta_fields": ["firstname", "surname"],
             "store_full_path": True,
+            "encoding": "latin-1",
         },
     }
     converter = JSONConverter.from_dict(data)
@@ -139,6 +141,7 @@ def test_from_dict():
     assert converter._jq_schema == ".laureates[]"
     assert converter._content_key == "motivation"
     assert converter._meta_fields == ["firstname", "surname"]
+    assert converter.encoding == "latin-1"
 
 
 def test_from_dict_rejects_non_star_string_extra_meta_fields():
@@ -277,6 +280,41 @@ def test_run_with_bad_encoding(tmpdir, caplog):
         f"Failed to extract text from {test_file}. Skipping it. Error: 'utf-8' codec can't decode byte"
     )
     assert result == {"documents": []}
+
+
+def test_run_with_encoding_from_init(tmpdir):
+    test_file = Path(tmpdir / "test_file.json")
+    test_file.write_text(json.dumps({"text": "café"}), encoding="utf-16")
+
+    documents = JSONConverter(content_key="text", encoding="utf-16").run(sources=[test_file])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "café"
+
+
+def test_run_with_encoding_from_bytestream_meta():
+    bytestream = ByteStream(
+        data='{"text": "café"}'.encode("utf-16"),
+        meta={"encoding": "utf-16"},
+    )
+
+    documents = JSONConverter(content_key="text").run(sources=[bytestream])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "café"
+
+
+def test_run_bytestream_meta_encoding_overrides_init():
+    bytestream = ByteStream(
+        data='{"text": "café"}'.encode("latin-1"),
+        meta={"encoding": "latin-1"},
+    )
+    converter = JSONConverter(content_key="text", encoding="utf-16")
+
+    documents = converter.run(sources=[bytestream])["documents"]
+
+    assert len(documents) == 1
+    assert documents[0].content == "café"
 
 
 def test_run_with_malformed_json_and_content_key(tmpdir, caplog):
