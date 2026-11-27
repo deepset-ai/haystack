@@ -22,7 +22,7 @@
 | haystack/components/classifiers/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/classifiers/openai\_decisions\_document\_classifier.py |      124 |        0 |    100% |           |
 | haystack/components/converters/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
-| haystack/components/converters/csv.py                                      |       87 |        4 |     95% |162-163, 190-191 |
+| haystack/components/converters/csv.py                                      |       89 |        4 |     96% |168-169, 196-197 |
 | haystack/components/converters/docx.py                                     |      193 |        1 |     99% |       267 |
 | haystack/components/converters/file\_to\_file\_content.py                  |       39 |        0 |    100% |           |
 | haystack/components/converters/html.py                                     |       54 |        0 |    100% |           |
@@ -279,7 +279,7 @@
 | haystack/utils/type\_serialization.py                                      |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                          |        4 |        0 |    100% |           |
 | haystack/version.py                                                        |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                  | **19074** |  **609** | **97%** |           |
+| **TOTAL**                                                                  | **19076** |  **609** | **97%** |           |
 
 
 ## Setup coverage badge
