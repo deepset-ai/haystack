@@ -342,6 +342,42 @@ def test_load_from_disk_rejects_invalid_documents_before_replacing_shared_index(
     assert [doc.id for doc in store.bm25_retrieval("keep")] == ["current"]
 
 
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["delete", "overwrite"])
+def test_bm25_okapi_removing_all_tokens_keeps_empty_documents_searchable(
+    shared: bool, operation: Literal["delete", "overwrite"]
+) -> None:
+    writer = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=shared)
+    reader = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", index=writer.index) if shared else writer
+    reference = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+    documents = [Document(id=str(i), content="word " * length) for i, length in enumerate([5, 4, 5, 5, 5, 5])]
+    expected_ids = {"empty"}
+
+    try:
+        writer.write_documents(documents=[*documents, Document(id="empty", content="")])
+        if operation == "delete":
+            writer.delete_documents(document_ids=[doc.id for doc in documents])
+        else:
+            writer.write_documents(
+                documents=[Document(id=doc.id, content="") for doc in documents], policy=DuplicatePolicy.OVERWRITE
+            )
+            expected_ids.update(doc.id for doc in documents)
+
+        results = reader.bm25_retrieval(query="word")
+        assert {doc.id: doc.score for doc in results} == dict.fromkeys(expected_ids, 0.0)
+
+        writer.write_documents(
+            documents=[Document(id="new", content="word word extra"), Document(id="other", content="extra")]
+        )
+        reference.write_documents(documents=writer.filter_documents())
+        expected_scores = {doc.id: doc.score for doc in reference.bm25_retrieval(query="word")}
+        assert {doc.id: doc.score for doc in reader.bm25_retrieval(query="word")} == pytest.approx(expected_scores)
+    finally:
+        writer.shutdown()
+        reader.shutdown()
+        reference.shutdown()
+
+
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
     UpdateByFilterAsyncTest,
@@ -1320,7 +1356,7 @@ class TestMemoryDocumentStore(
             ]
         )
         # Average should be (2 + 3 + 1) / 3 = 2.0
-        assert in_memory_doc_store._avg_doc_len == pytest.approx(2.0)
+        assert in_memory_doc_store._avg_doc_len == 2.0
 
     def test_bm25_avg_doc_len_after_delete(self, in_memory_doc_store):
         """Average document length should remain correct after deletion."""
@@ -1330,10 +1366,10 @@ class TestMemoryDocumentStore(
                 Document(content="foo bar baz", id="d2"),  # 3 tokens
             ]
         )
-        assert in_memory_doc_store._avg_doc_len == pytest.approx(2.5)
+        assert in_memory_doc_store._avg_doc_len == 2.5
         in_memory_doc_store.delete_documents(["d1"])
         # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
-        assert in_memory_doc_store._avg_doc_len == pytest.approx(3.0)
+        assert in_memory_doc_store._avg_doc_len == 3.0
 
     def test_bm25_okapi_scores_do_not_depend_on_deleted_documents(self):
         active_documents = [
@@ -1373,7 +1409,7 @@ class TestMemoryDocumentStore(
         mixed_scores = {doc.id: doc.score for doc in mixed_store.bm25_retrieval(query="python", top_k=3)}
 
         assert mixed_scores == pytest.approx(text_scores)
-        assert mixed_store._avg_doc_len == pytest.approx(text_store._avg_doc_len)
+        assert mixed_store._avg_doc_len == text_store._avg_doc_len
 
     def test_bm25_avg_doc_len_with_documents_without_content(self):
         store = InMemoryDocumentStore(shared=False)
@@ -1384,14 +1420,14 @@ class TestMemoryDocumentStore(
                 Document(id="image", embedding=[0.1, 0.2]),
             ]
         )
-        assert store._avg_doc_len == pytest.approx(2.5)
+        assert store._avg_doc_len == 2.5
 
         store.delete_documents(["image"])
-        assert store._avg_doc_len == pytest.approx(2.5)
+        assert store._avg_doc_len == 2.5
 
         # Overwriting a text document with one without content removes it from the statistics
         store.write_documents([Document(id="d1", embedding=[0.1, 0.2])], policy=DuplicatePolicy.OVERWRITE)
-        assert store._avg_doc_len == pytest.approx(3.0)
+        assert store._avg_doc_len == 3.0
 
 
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
@@ -1426,7 +1462,7 @@ class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
             for storage in (
                 in_memory_module._STORAGES,
                 in_memory_module._BM25_STATS_STORAGES,
-                in_memory_module._AVERAGE_DOC_LEN_STORAGES,
+                in_memory_module._TOTAL_DOC_LEN_STORAGES,
                 in_memory_module._FREQ_VOCAB_FOR_IDF_STORAGES,
             ):
                 storage.pop(index, None)
