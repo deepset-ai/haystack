@@ -5,8 +5,10 @@
 import json
 import logging
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
+import pydantic
 import pytest
 
 from haystack import component
@@ -28,6 +30,11 @@ from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_value_with_schema
+
+
+class _Event(pydantic.BaseModel):
+    happened_at: datetime
+
 
 _EMPTY_OBJECT_PAYLOAD = {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}}
 
@@ -184,6 +191,32 @@ def test_resume_from_snapshot_file_preserves_non_string_dict_keys(tmp_path, monk
 
     resumed = pipeline.run(data={}, pipeline_snapshot=load_pipeline_snapshot(snapshot_files[0]))
     assert resumed == {"sink": {"v": {1: "a", 2: "b"}}}
+
+
+def test_breakpoint_with_pydantic_model_with_datetime_field_saves_resumable_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+    @component
+    class Echo:
+        @component.output_types(v=_Event)
+        def run(self, v: _Event) -> dict[str, _Event]:
+            return {"v": v}
+
+    pipeline = Pipeline()
+    pipeline.add_component("echo", Echo())
+
+    event = _Event(happened_at=datetime(2024, 1, 2, 3, 4, 5))
+    break_point = Breakpoint(component_name="echo", visit_count=0, snapshot_file_path=str(tmp_path))
+
+    # json.dump of the snapshot used to raise TypeError here instead of BreakpointException
+    with pytest.raises(BreakpointException):
+        pipeline.run(data={"echo": {"v": event}}, break_point=break_point)
+
+    snapshot_files = list(tmp_path.glob("echo_*.json"))
+    assert len(snapshot_files) == 1
+
+    resumed = pipeline.run(data={}, pipeline_snapshot=load_pipeline_snapshot(snapshot_files[0]))
+    assert resumed == {"echo": {"v": event}}
 
 
 @component
