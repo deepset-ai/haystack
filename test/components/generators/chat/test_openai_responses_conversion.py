@@ -596,20 +596,6 @@ class TestConversionToStreamingChunks:
                 "metadata": {},
                 "model": "gpt-5-mini-2025-08-07",
                 "object": "response",
-                "tools": [
-                    {
-                        "name": "weather",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {"city": {"type": "string"}},
-                            "required": ["city"],
-                            "additionalProperties": False,
-                        },
-                        "strict": False,
-                        "type": "function",
-                        "description": "useful to determine the weather in a given location",
-                    }
-                ],
                 "top_p": 1.0,
                 "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
                 "usage": {
@@ -1807,6 +1793,26 @@ class TestResponseToChatMessage:
             "annotations": [citation],
             "annotation_offsets": [0],
         }
+
+    def test_convert_response_drops_echoed_tools_from_meta(self) -> None:
+        response = Response.model_construct(
+            id="resp_1",
+            status="completed",
+            output=[],
+            tools=[
+                FunctionTool(
+                    name="weather",
+                    parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                    strict=False,
+                    type="function",
+                    description="useful to determine the weather in a given location",
+                )
+            ],
+        )
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.meta == {"id": "resp_1", "status": "completed", "finish_reason": "stop"}
 
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]

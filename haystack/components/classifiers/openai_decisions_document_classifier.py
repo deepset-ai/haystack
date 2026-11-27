@@ -14,6 +14,7 @@ from openai.types.decision_create_params import Question
 
 from haystack import Document, component, logging
 from haystack.utils import Secret
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,11 @@ class OpenAIDecisionsDocumentClassifier:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_workers:
             Maximum number of worker threads in `run` and of concurrent requests in `run_async`. Must be at least 1.
         :param raise_on_failure:
@@ -171,6 +174,7 @@ class OpenAIDecisionsDocumentClassifier:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_key": self.api_key.resolve_value(),
             "base_url": self.api_base_url,

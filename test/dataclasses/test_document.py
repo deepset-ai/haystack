@@ -257,6 +257,21 @@ def test_to_dict_with_colliding_meta_keys():
     }
 
 
+def test_to_trace_dict_replaces_blob_data_with_placeholder():
+    doc = Document(content="text", blob=ByteStream(data=b"%PDF-1.7", mime_type="application/pdf"), meta={"a": 1})
+
+    trace_dict = doc._to_trace_dict()
+
+    assert trace_dict["blob"] == {"data": "Binary data (8 bytes)", "meta": {}, "mime_type": "application/pdf"}
+    assert trace_dict == {**doc.to_dict(), "blob": trace_dict["blob"]}
+
+
+def test_to_trace_dict_without_blob_matches_to_dict():
+    doc = Document(content="text", meta={"a": 1})
+
+    assert doc._to_trace_dict() == doc.to_dict()
+
+
 def test_from_dict():
     assert Document.from_dict({}) == Document()
 

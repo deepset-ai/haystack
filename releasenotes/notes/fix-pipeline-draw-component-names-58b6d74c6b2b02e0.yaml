@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``Pipeline.draw()`` and ``Pipeline.show()`` now display component names containing spaces, parentheses,
+    or quotes, Mermaid keywords such as ``end`` and ``graph``, and names such as ``input`` and ``output``.
+    Expanded SuperComponents also keep their own styles and legend entries when names overlap.

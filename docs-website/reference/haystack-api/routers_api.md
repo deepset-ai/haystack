@@ -991,8 +991,10 @@ Creates an OpenAIDecisionsImageRouter.
   output. If `None`, every non-refused image goes to a label output.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 
 **Raises:**
 
@@ -1141,8 +1143,10 @@ Creates an OpenAIDecisionsTextRouter.
   output. If `None`, every non-refused text goes to a label output.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 
 **Raises:**
 
