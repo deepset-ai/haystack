@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+import typing
 from collections.abc import Callable
+from typing import Literal
 from unittest import mock
 
 import pytest
@@ -592,6 +594,54 @@ class TestRouter:
         # A plain string should NOT pass as list[str]
         with pytest.raises(ValueError, match="Route 'result' type doesn't match expected type"):
             router.run(value="hello")
+
+    @pytest.mark.parametrize(
+        ("output_type", "value", "matches"),
+        [
+            # Fixed-length tuples validate each position against its own type argument.
+            (tuple[str, int], ("x", 1), True),
+            (tuple[int, str], (1, 2), False),
+            (tuple[int, str], (1, 2, "x"), False),
+            (tuple[int, str], ("x", 1), False),
+            # `tuple[T, ...]` validates every item.
+            (tuple[int, ...], (1, 2, 3), True),
+            (tuple[int, ...], [1, 2], True),
+            (list[int], (1, 2), True),
+            # Typed sets validate their items.
+            (set[int], {1, 2}, True),
+            (set[int], {1, "a"}, False),
+            (frozenset[int], frozenset({1, 2}), True),
+            (frozenset[int], frozenset({1, "a"}), False),
+            # `Literal` matches the value and its exact type.
+            (Literal["a", "b"], "a", True),
+            (Literal["a"], "b", False),
+            (Literal[1], 1, True),
+            (Literal[1], True, False),
+            # Annotations without type arguments fall back to `isinstance`.
+            (typing.List, [1, 2], True),  # noqa: UP006
+            (typing.Mapping, {"a": 1}, True),
+            (typing.List, (1, 2), False),  # noqa: UP006
+            (typing.Mapping, [1, 2], False),
+            (list[int], "hello", False),
+        ],
+    )
+    def test_validate_output_type(self, output_type, value, matches):
+        routes: list[Route] = [
+            {
+                "condition": "{{ True }}",
+                "output": "value",
+                "output_type": output_type,
+                "output_name": "out",
+                "output_passthrough": True,
+            }
+        ]
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        if matches:
+            assert router.run(value=value) == {"out": value}
+        else:
+            with pytest.raises(ValueError, match="Route 'out' type doesn't match expected type"):
+                router.run(value=value)
 
     def test_router_with_optional_parameters(self):
         """

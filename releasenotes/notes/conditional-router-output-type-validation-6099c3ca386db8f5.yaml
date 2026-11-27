@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``ConditionalRouter`` output type validation with ``validate_output_type=True``: fixed-length tuples are
+    checked position by position, and typed ``set``/``frozenset``, ``Literal`` and bare annotations are supported.

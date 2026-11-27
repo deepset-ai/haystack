@@ -5,7 +5,7 @@
 import ast
 import contextlib
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, NotRequired, TypedDict, get_args, get_origin
+from typing import Any, Literal, NotRequired, TypedDict, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
@@ -576,7 +576,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type) -> bool:  # noqa: PLR0911
+    def _output_matches_type(self, value: Any, expected_type: Any) -> bool:  # noqa: PLR0911
         """
         Checks whether `value` type matches the `expected_type`.
         """
@@ -591,6 +591,22 @@ class ConditionalRouter:
         # Handle basic types (int, str, etc)
         if origin is None:
             return isinstance(value, expected_type)
+
+        # Handle Literal types; the exact type is compared
+        if origin is Literal:
+            return any(type(value) is type(allowed) and value == allowed for allowed in args)
+
+        # Handle annotations without type arguments (bare typing.List, typing.Tuple, etc)
+        if isinstance(origin, type) and not args:
+            return isinstance(value, origin)
+
+        # Handle tuples before Sequence, since tuples are sequences
+        if origin is tuple:
+            return self._tuple_matches_type(value, args)
+
+        # Handle set and frozenset
+        if isinstance(origin, type) and issubclass(origin, (set, frozenset)):
+            return isinstance(value, origin) and all(self._output_matches_type(item, args[0]) for item in value)
 
         # Handle Sequence types (List, Tuple, etc)
         if isinstance(origin, type) and issubclass(origin, Sequence):
@@ -623,3 +639,13 @@ class ConditionalRouter:
             return any(self._output_matches_type(value, arg) for arg in args)
 
         return False
+
+    def _tuple_matches_type(self, value: Any, args: tuple[Any, ...]) -> bool:
+        """Validate a fixed-length tuple position by position and a variadic tuple item by item."""
+        if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+            return False
+        if len(args) == 2 and args[1] is Ellipsis:
+            return all(self._output_matches_type(item, args[0]) for item in value)
+        if len(value) != len(args):
+            return False
+        return all(self._output_matches_type(item, arg) for item, arg in zip(value, args, strict=True))
