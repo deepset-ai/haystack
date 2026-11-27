@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``JSONConverter`` now accepts an ``encoding`` init parameter (default
+    ``"utf-8-sig"``) and honours ``ByteStream.meta["encoding"]`` per source,
+    matching ``CSVToDocument``, ``TextFileToDocument``, and ``MarkdownToDocument``.
+    Previously it always decoded with ``utf-8-sig``, so UTF-16 / Windows-1252
+    JSON sources were silently skipped even when the correct encoding was set on
+    the ``ByteStream``. ``MultiFileConverter`` now also passes its ``encoding``
+    through to ``JSONConverter``.

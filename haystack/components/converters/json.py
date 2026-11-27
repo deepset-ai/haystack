@@ -23,6 +23,11 @@ class JSONConverter:
     """
     Converts one or more JSON files into a text document.
 
+    By default, it uses UTF-8 encoding (`utf-8-sig`, which also strips a byte order mark if
+    present) when converting files but you can also set a custom encoding.
+    If the encoding is specified in the metadata of a source ByteStream, it overrides the
+    component's encoding.
+
     ### Usage examples
 
     ```python
@@ -95,6 +100,7 @@ class JSONConverter:
         content_key: str | None = None,
         extra_meta_fields: set[str] | Literal["*"] | None = None,
         store_full_path: bool = False,
+        encoding: str = "utf-8-sig",
     ) -> None:
         """
         Creates a JSONConverter component.
@@ -134,6 +140,10 @@ class JSONConverter:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param encoding:
+            The encoding of the JSON files to convert.
+            If the encoding is specified in the metadata of a source ByteStream,
+            it overrides this value.
         :raises ValueError:
             If neither `jq_schema` nor `content_key` is set, or if `extra_meta_fields` is a string other than `"*"`.
         """
@@ -153,6 +163,7 @@ class JSONConverter:
         self._content_key = content_key
         self._meta_fields = extra_meta_fields
         self._store_full_path = store_full_path
+        self.encoding = encoding
 
         if self._compiled_filter is None and self._content_key is None:
             msg = "No `jq_schema` nor `content_key` specified. Set either or both to extract data."
@@ -171,6 +182,7 @@ class JSONConverter:
             content_key=self._content_key,
             extra_meta_fields=self._meta_fields,
             store_full_path=self._store_full_path,
+            encoding=self.encoding,
         )
 
     @classmethod
@@ -190,13 +202,15 @@ class JSONConverter:
         Utility function to extract text and metadata from a JSON file.
 
         :param source:
-            UTF-8 byte stream.
+            Byte stream. Encoding is taken from ``source.meta["encoding"]`` when set,
+            otherwise from the component's ``encoding`` init parameter.
         :returns:
             Collection of text and metadata dict tuples, each corresponding
             to a different document.
         """
         try:
-            file_content = source.data.decode("utf-8-sig")
+            encoding = source.meta.get("encoding", self.encoding)
+            file_content = source.data.decode(encoding)
         except UnicodeError as exc:
             logger.warning(
                 "Failed to extract text from {source}. Skipping it. Error: {error}",
