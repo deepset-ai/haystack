@@ -380,8 +380,11 @@ filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 Filter documents by metadata without vector search.
 
 This method retrieves documents based on metadata filters without performing vector similarity search.
-Since Valkey Search requires vector queries, this method uses a dummy vector internally and removes
-the similarity scores from results.
+It runs a filter-only search, so every matching document is returned.
+
+Filter-only searches require Valkey Search 1.1.0 or later. From Valkey Search 1.2.0, the server stops
+collecting matches after `search.max-nonvector-search-results-fetched` (100000 by default); raise that
+server setting to filter larger result sets.
 
 **Parameters:**
 
@@ -398,7 +401,8 @@ the similarity scores from results.
 
 **Raises:**
 
-- <code>ValkeyDocumentStoreError</code> – If there's an error filtering documents.
+- <code>ValkeyDocumentStoreError</code> – If there's an error filtering documents, or if the matches reach the
+  server's `search.max-nonvector-search-results-fetched` limit, so the result could be incomplete.
 
 Example:
 
@@ -423,8 +427,12 @@ filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
 Asynchronously filter documents by metadata without vector search.
 
 This is the async version of filter_documents(). It retrieves documents based on metadata filters
-without performing vector similarity search. Since Valkey Search requires vector queries, this method
-uses a dummy vector internally and removes the similarity scores from results.
+without performing vector similarity search. It runs a filter-only search, so every matching document
+is returned.
+
+Filter-only searches require Valkey Search 1.1.0 or later. From Valkey Search 1.2.0, the server stops
+collecting matches after `search.max-nonvector-search-results-fetched` (100000 by default); raise that
+server setting to filter larger result sets.
 
 **Parameters:**
 
@@ -441,7 +449,8 @@ uses a dummy vector internally and removes the similarity scores from results.
 
 **Raises:**
 
-- <code>ValkeyDocumentStoreError</code> – If there's an error filtering documents.
+- <code>ValkeyDocumentStoreError</code> – If there's an error filtering documents, or if the matches reach the
+  server's `search.max-nonvector-search-results-fetched` limit, so the result could be incomplete.
 
 Example:
 

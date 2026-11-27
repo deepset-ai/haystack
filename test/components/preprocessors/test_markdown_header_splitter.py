@@ -53,6 +53,56 @@ def sample_text_with_page_breaks():
 
 
 # Basic splitting and structure
+@pytest.mark.parametrize("separator", [" ", "\t", " \t", "\t "])
+def test_whitespace_after_header_prefix(separator):
+    text = f"#{separator}Root\nRoot body.\n##{separator}Child\nChild body."
+    split_docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in split_docs] == [
+        f"#{separator}Root\nRoot body.\n",
+        f"##{separator}Child\nChild body.",
+    ]
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in split_docs] == [
+        ("Root", []),
+        ("Child", ["Root"]),
+    ]
+
+
+@pytest.mark.parametrize("text", ["#No separator", "#######\tToo deep", "#\vVertical tab", "#\u00a0Non-breaking space"])
+def test_non_atx_header_prefix_is_not_split(text):
+    document = Document(content=text)
+    split_docs = MarkdownHeaderSplitter().run(documents=[document])["documents"]
+
+    assert len(split_docs) == 1
+    assert split_docs[0].content == text
+    assert split_docs[0].meta == {"source_id": document.id, "page_number": 1, "split_id": 0}
+
+
+@pytest.mark.parametrize("keep_headers", [True, False])
+def test_tab_separated_headers_preserve_metadata_with_secondary_splitting(keep_headers):
+    text = "##\tParent\n###\tChild\none two three four five six"
+    document = Document(content=text)
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split="word", split_length=3)
+    split_docs = splitter.run(documents=[document])["documents"]
+
+    first_content = "##\tParent\n###\tChild\none two three " if keep_headers else "\none two three "
+    # split_idx_start is relative to the original document, so without headers the first split starts after them
+    first_start = text.index(first_content)
+    assert [doc.content for doc in split_docs] == [first_content, "four five six"]
+    for split_id, doc in enumerate(split_docs):
+        assert doc.meta == {
+            "source_id": document.id,
+            "page_number": 1,
+            "split_id": split_id,
+            "header": "Child",
+            "parent_headers": ["Parent"],
+            "split_idx_start": first_start if split_id == 0 else first_start + len(first_content),
+        }
+    assert "".join(doc.content or "" for doc in split_docs) == (
+        text if keep_headers else "\none two three four five six"
+    )
+
+
 def test_basic_split(sample_text):
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content=sample_text)]

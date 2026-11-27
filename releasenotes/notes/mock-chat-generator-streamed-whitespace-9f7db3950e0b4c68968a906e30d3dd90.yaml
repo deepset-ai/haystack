@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``MockChatGenerator`` streaming now splits the reply so the streamed chunks join back into the
+    text that ``run()`` returns: leading whitespace is kept with the first chunk, and a
+    ``MockChatGenerator`` streaming now keeps leading whitespace and whitespace-only replies,
+    so the streamed chunks join back into the reply that ``run()`` returns.

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    ``Agent`` no longer stops the run when a tool returns an object whose ``to_dict`` fails.
+    The result is now converted with ``str()`` and a warning is logged.

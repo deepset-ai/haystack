@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +101,10 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param timeout: The timeout for `AzureOpenAI` client calls, in seconds.
             If not set, defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
             If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param default_headers: Default headers to send to the AzureOpenAI client.
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
@@ -157,6 +160,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_version": self.api_version,
             "azure_endpoint": self.azure_endpoint,

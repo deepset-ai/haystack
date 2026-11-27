@@ -91,8 +91,10 @@ Creates an AzureOpenAIDocumentEmbedder component.
 - **timeout** (<code>float | None</code>) – The timeout for `AzureOpenAI` client calls, in seconds.
   If not set, defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact AzureOpenAI after an internal error.
   If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **default_headers** (<code>dict\[str, str\] | None</code>) – Default headers to send to the AzureOpenAI client.
 - **azure_ad_token_provider** (<code>AzureADTokenProvider | None</code>) – A function that returns an Azure Active Directory token, will be invoked on
   every request.
@@ -240,8 +242,10 @@ Creates an AzureOpenAITextEmbedder component.
 - **timeout** (<code>float | None</code>) – The timeout for `AzureOpenAI` client calls, in seconds.
   If not set, defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact AzureOpenAI after an internal error.
   If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or to 5 retries.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
 - **default_headers** (<code>dict\[str, str\] | None</code>) – Default headers to send to the AzureOpenAI client.
@@ -636,10 +640,6 @@ __init__(
 
 Creates an OpenAIDocumentEmbedder component.
 
-Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-environment variables to override the `timeout` and `max_retries` parameters respectively
-in the OpenAI client.
-
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – The OpenAI API key.
@@ -661,8 +661,10 @@ in the OpenAI client.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
@@ -812,10 +814,6 @@ __init__(
 
 Creates an OpenAITextEmbedder component.
 
-Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-environment variables to override the `timeout` and `max_retries` parameters respectively
-in the OpenAI client.
-
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – The OpenAI API key.
@@ -833,8 +831,10 @@ in the OpenAI client.
 - **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 

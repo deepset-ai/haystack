@@ -2048,6 +2048,7 @@ class TestChatCompletionChunkConversion:
 
         assert message.text is None
         assert message.meta["refusal"] == "I cannot help with that."
+        assert message.meta["finish_reason"] == "content_filter"
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 
@@ -2087,7 +2088,13 @@ class TestChatCompletionChunkConversion:
         completion = ChatCompletion(id="test", created=0, model="test", object="chat.completion", choices=[choice])
         message = _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
         assert message.text is None
-        assert message.meta == {"model": "test", "index": 0, "finish_reason": "stop", "usage": None, "refusal": refusal}
+        assert message.meta == {
+            "model": "test",
+            "index": 0,
+            "finish_reason": "content_filter",
+            "usage": None,
+            "refusal": refusal,
+        }
 
     @pytest.mark.parametrize("arguments", ["", None])
     def test_convert_chat_completion_with_zero_argument_tool_call(self, arguments: str | None) -> None:

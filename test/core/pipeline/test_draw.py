@@ -10,6 +10,7 @@ import pytest
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.draw import _to_mermaid_image, _to_mermaid_text, _validate_image_response
+from haystack.core.super_component import SuperComponent
 from haystack.testing.sample_components import AddFixedValue, Double
 
 
@@ -95,13 +96,52 @@ def test_to_mermaid_text():
 
 graph TD;
 
-comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (int | None)</li></ul></i></small>"]:::component -- "result -> value<br><small><i>int</i></small>" --> comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component
-comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (int | None)</li></ul></i></small>"]:::component
+node_0["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (int | None)</li></ul></i></small>"]:::component -- "result -> value<br><small><i>int</i></small>" --> node_1["<b>comp2</b><br><small><i>Double</i></small>"]:::component
+node_1["<b>comp2</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> node_0["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (int | None)</li></ul></i></small>"]:::component
 
 classDef component text-align:center;
 
 """  # noqa: E501
     )
+
+
+@pytest.mark.parametrize(
+    ("name", "label"),
+    [
+        ("input", "input"),
+        ("output", "output"),
+        ("i", "i"),
+        ("o", "o"),
+        ("end", "end"),
+        ('step "A"', "step &quot;A&quot;"),
+    ],
+)
+def test_to_mermaid_text_displays_component_names_as_labels(name, label):
+    pipe = Pipeline()
+    pipe.add_component(name, Double())
+
+    text = _to_mermaid_text(pipe.graph, {})
+
+    assert f'node_0["<b>{label}</b>' in text
+
+
+def test_super_component_named_default_gets_its_own_mermaid_class():
+    """
+    When a SuperComponent is named "default", its legend entry should still read "default".
+    In Mermaid, assigning a color to the class "default" can change the color of every node.
+    The renderer therefore defines a separate class for the group's color and uses it in the legend.
+    """
+    inner = Pipeline()
+    inner.add_component("double", Double())
+    pipe = Pipeline()
+    pipe.add_component("default", SuperComponent(pipeline=inner))
+
+    graph, super_component_mapping = pipe._merge_super_component_pipelines()
+    text = _to_mermaid_text(graph, {}, super_component_mapping=super_component_mapping)
+
+    assert "classDef default " not in text
+    assert "classDef sc_0 fill:" in text
+    assert 'legend_0["default"]:::sc_0' in text
 
 
 def test_to_mermaid_text_does_not_edit_graph():

@@ -11,7 +11,7 @@ from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
-from haystack.components.routers.conditional_router import NoRouteSelectedException, Route
+from haystack.components.routers.conditional_router import NoRouteSelectedException, Route, RouteConditionException
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import _deserialization_context
 from haystack.dataclasses import ChatMessage
@@ -229,6 +229,19 @@ class TestRouter:
         kwargs = {"streams": [1, 2, 3], "query": "test"}
         with pytest.raises(NoRouteSelectedException):
             router.run(**kwargs)
+
+    @pytest.mark.parametrize("query", ["hello", "hello world"])
+    def test_router_raises_route_condition_exception_if_condition_is_not_a_literal(self, query):
+        """
+        A condition that renders to something other than a Python literal raises RouteConditionException.
+
+        "hello" makes `ast.literal_eval` raise a ValueError and "hello world" a SyntaxError; both are condition errors.
+        """
+        router = ConditionalRouter(
+            routes=[{"condition": "{{query}}", "output": "{{query}}", "output_type": str, "output_name": "query"}]
+        )
+        with pytest.raises(RouteConditionException, match="Error evaluating condition for route"):
+            router.run(query=query)
 
     def test_router_raises_value_error_if_route_not_dictionary(self):
         """

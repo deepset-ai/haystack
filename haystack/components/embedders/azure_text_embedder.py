@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders import OpenAITextEmbedder
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 
 @component
@@ -81,8 +82,10 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         :param timeout: The timeout for `AzureOpenAI` client calls, in seconds.
             If not set, defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
             If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or to 5 retries.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
@@ -133,6 +136,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_version": self.api_version,
             "azure_endpoint": self.azure_endpoint,

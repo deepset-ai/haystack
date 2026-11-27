@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pipeline connection errors now show full ``Callable`` signatures,
+    for example ``Callable[[int], str]`` instead of ``Callable[, str]``.

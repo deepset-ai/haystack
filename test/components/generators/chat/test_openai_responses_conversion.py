@@ -327,7 +327,7 @@ class TestConversionToStreamingChunks:
 
         assert len(message.reasonings) == 1
         assert message.reasoning is not None
-        assert message.reasoning.reasoning_text == ("Thinking rs_z\nThinking rs_a" if include_summary else "")
+        assert message.reasoning.reasoning_text == ("Thinking rs_z\n\nThinking rs_a" if include_summary else "")
         assert [item["id"] for item in message.reasoning.extra["reasoning_items"]] == ["rs_z", "rs_a"]
         assert [item["output_index"] for item in message.reasoning.extra["reasoning_items"]] == [0, 2]
         assert [call.id for call in message.tool_calls] == ["fc_rs_z", "fc_rs_a"]
@@ -490,6 +490,77 @@ class TestConversionToStreamingChunks:
         assert message.reasoning is not None
         assert message.reasoning.reasoning_text == "Thinking."
 
+    @pytest.mark.parametrize("include_done_events", [False, True])
+    @pytest.mark.parametrize("part_type", ["summary_text", "reasoning_text"])
+    def test_streamed_reasoning_text_matches_final_reasoning_text(
+        self, part_type: Literal["summary_text", "reasoning_text"], include_done_events: bool
+    ) -> None:
+        # rs_a has two parts and rs_b has no text, so the stream must separate parts and skip the empty item
+        items = [(0, "rs_a", ["Thinking about A.", "**Next** step."]), (1, "rs_b", []), (2, "rs_c", ["About C."])]
+        events: list[ResponseStreamEvent] = []
+        for output_index, item_id, parts in items:
+            events.append(
+                ResponseOutputItemAddedEvent(
+                    item=ResponseReasoningItem(id=item_id, summary=[], type="reasoning", status="in_progress"),
+                    output_index=output_index,
+                    sequence_number=len(events),
+                    type="response.output_item.added",
+                )
+            )
+            for part_index, text in enumerate(parts):
+                for delta in (text[:5], text[5:]):
+                    if part_type == "summary_text":
+                        events.append(
+                            ResponseReasoningSummaryTextDeltaEvent(
+                                delta=delta,
+                                item_id=item_id,
+                                output_index=output_index,
+                                sequence_number=len(events),
+                                summary_index=part_index,
+                                type="response.reasoning_summary_text.delta",
+                            )
+                        )
+                    else:
+                        events.append(
+                            ResponseReasoningTextDeltaEvent(
+                                content_index=part_index,
+                                delta=delta,
+                                item_id=item_id,
+                                output_index=output_index,
+                                sequence_number=len(events),
+                                type="response.reasoning_text.delta",
+                            )
+                        )
+            if include_done_events:
+                events.append(
+                    ResponseOutputItemDoneEvent(
+                        item=ResponseReasoningItem(
+                            id=item_id,
+                            summary=[Summary(text=text, type="summary_text") for text in parts]
+                            if part_type == "summary_text"
+                            else [],
+                            content=[Content(text=text, type="reasoning_text") for text in parts]
+                            if part_type == "reasoning_text"
+                            else None,
+                            type="reasoning",
+                            status="completed",
+                        ),
+                        output_index=output_index,
+                        sequence_number=len(events),
+                        type="response.output_item.done",
+                    )
+                )
+
+        chunks: list[StreamingChunk] = []
+        for event in events:
+            chunks.append(_convert_response_chunk_to_streaming_chunk(event, previous_chunks=chunks))
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        streamed_reasoning = "".join(chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning)
+        assert streamed_reasoning == "Thinking about A.\n\n**Next** step.\n\nAbout C."
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == streamed_reasoning
+
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
     ) -> None:
@@ -525,20 +596,6 @@ class TestConversionToStreamingChunks:
                 "metadata": {},
                 "model": "gpt-5-mini-2025-08-07",
                 "object": "response",
-                "tools": [
-                    {
-                        "name": "weather",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {"city": {"type": "string"}},
-                            "required": ["city"],
-                            "additionalProperties": False,
-                        },
-                        "strict": False,
-                        "type": "function",
-                        "description": "useful to determine the weather in a given location",
-                    }
-                ],
                 "top_p": 1.0,
                 "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
                 "usage": {
@@ -1297,6 +1354,7 @@ class TestConversionToStreamingChunks:
 
         assert message.text is None
         assert message.meta["refusal"] == "I cannot help."
+        assert message.meta["finish_reason"] == "content_filter"
 
     def test_convert_only_function_call(self) -> None:
 
@@ -1671,7 +1729,7 @@ class TestResponseToChatMessage:
 
         assert len(message.reasonings) == 1
         assert message.reasoning is not None
-        assert message.reasoning.reasoning_text == ("first\nsecond" if include_summary else "second")
+        assert message.reasoning.reasoning_text == ("first\n\nsecond" if include_summary else "second")
         assert message.reasoning.extra == {
             "reasoning_items": [{**response.output[index].to_dict(), "output_index": index} for index in (0, 2)]
         }
@@ -1736,6 +1794,26 @@ class TestResponseToChatMessage:
             "annotation_offsets": [0],
         }
 
+    def test_convert_response_drops_echoed_tools_from_meta(self) -> None:
+        response = Response.model_construct(
+            id="resp_1",
+            status="completed",
+            output=[],
+            tools=[
+                FunctionTool(
+                    name="weather",
+                    parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                    strict=False,
+                    type="function",
+                    description="useful to determine the weather in a given location",
+                )
+            ],
+        )
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.meta == {"id": "resp_1", "status": "completed", "finish_reason": "stop"}
+
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
@@ -1777,7 +1855,7 @@ class TestResponseToChatMessage:
                     Content(text="First step.", type="reasoning_text"),
                     Content(text="Second step.", type="reasoning_text"),
                 ],
-                "First step.\nSecond step.",
+                "First step.\n\nSecond step.",
             ),
             (
                 [Summary(text="Summary.", type="summary_text")],
@@ -1820,6 +1898,7 @@ class TestResponseToChatMessage:
         message = _convert_response_to_chat_message(response)
         assert message.text is None
         assert message.meta["refusal"] == "I cannot help."
+        assert message.meta["finish_reason"] == "content_filter"
 
     def test_convert_system_message(self) -> None:
 

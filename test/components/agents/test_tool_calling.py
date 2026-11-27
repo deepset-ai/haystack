@@ -863,6 +863,15 @@ class TestUtilities:
 
         assert _result_to_string(Unsupported()) == "unsupported"
 
+        class BrokenToDict:
+            def to_dict(self):
+                raise ValueError("boom")
+
+            def __str__(self):
+                return "broken"
+
+        assert _result_to_string(BrokenToDict()) == "broken"
+
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
         _merge_tool_outputs_into_state(tool=weather_tool, result="test", state=state)
