@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add experimental ``ToolLoopDetectionHook`` in ``haystack.hooks.loop_detection`` to detect repetitive tool-calling loops (exact repeats, alternating ping-pong cycles, and consecutive tool errors) during ``Agent`` runs, inject a ``<system-reminder>`` warning to encourage recovery, and stop the run with ``exit_reason="tool_loop_detected"`` if the loop persists.
