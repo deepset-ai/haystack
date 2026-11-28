@@ -237,10 +237,20 @@ class TestCacheChecker:
             "operator": "AND",
             "conditions": [
                 {"field": "url", "operator": "==", "value": "https://example.com/1"},
-                {"field": "cached_at", "operator": ">=", "value": (now - timedelta(hours=1)).isoformat()},
-                {"field": "cached_at", "operator": "<=", "value": now.isoformat()},
+                {"field": "meta.cached_at", "operator": ">=", "value": (now - timedelta(hours=1)).isoformat()},
+                {"field": "meta.cached_at", "operator": "<=", "value": now.isoformat()},
             ],
         }
+
+    def test_build_filters_with_ttl_and_meta_prefixed_time_field(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        checker = CacheChecker(
+            mocked_docstore_class(), cache_field="url", ttl=timedelta(hours=1), time_field="meta.cached_at"
+        )
+        now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+        time_conditions = checker._build_filters("https://example.com/1", now)["conditions"][1:]
+        assert [condition["field"] for condition in time_conditions] == ["meta.cached_at", "meta.cached_at"]
 
     def test_run_with_ttl_stale_and_fresh_copies(self, in_memory_doc_store):
         url = "https://example.com/1"
