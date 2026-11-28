@@ -16,6 +16,10 @@ The component accepts PDF file paths and Haystack ByteStream objects, runs OpenD
 returns Haystack Document objects. It can also extract images to a persistent directory and return one image
 Document per extracted file.
 
+With `output_format="json"`, the Document content is Markdown with pages separated by form feeds (`\f`), so
+`DocumentSplitter` can compute page numbers, and the PDF metadata from the OpenDataLoader JSON output is added to
+`Document.meta`. Set `raw_json=True` to get the raw JSON string as content instead.
+
 Java 11 or newer must be installed and available on PATH.
 
 ### Usage example
@@ -42,7 +46,10 @@ __init__(
     output_format: OutputFormat = "markdown",
     convert_kwargs: dict[str, Any] | None = None,
     extract_images: bool = False,
-    image_output_dir: str | Path | None = None
+    image_output_dir: str | Path | None = None,
+    skip_failed_pdfs: bool = False,
+    raw_json: bool = False,
+    include_layout: bool = False
 ) -> None
 ```
 
@@ -50,13 +57,26 @@ Initialize the OpenDataLoader converter.
 
 **Parameters:**
 
-- **output_format** (<code>OutputFormat</code>) – Format OpenDataLoader should produce.
+- **output_format** (<code>OutputFormat</code>) – Format OpenDataLoader should produce. With `"json"`, the Document content is Markdown
+  with pages separated by `\f`, and `Document.meta` gets the PDF's `title`, `author`, `creation_date`,
+  `modification_date` (ISO 8601 when the PDF date can be parsed, otherwise as found in the PDF), and
+  `page_count`. Fields missing from the PDF are omitted. User-provided metadata takes precedence on key
+  conflicts.
 - **convert_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional arguments passed to `opendataloader_pdf.convert`. See the
   [OpenDataLoader PDF Python options](https://opendataloader.org/docs/quick-start-python#convert-options).
   The `image_output` and `image_dir` arguments are managed by this component; supplied values are ignored.
+  With `output_format="json"`, passing `markdown_page_separator` replaces the default `\f` page separator.
 - **extract_images** (<code>bool</code>) – Whether to extract images and return them through the `image_documents` output.
 - **image_output_dir** (<code>str | Path | None</code>) – Persistent root directory for extracted image files. Each `run()` stores its images
   in a unique subdirectory of this directory. Required when `extract_images` is `True`.
+- **skip_failed_pdfs** (<code>bool</code>) – Re-run failing batches in halves until bad PDFs are identified and skipped with a
+  warning. Each bad PDF adds extra Java runs.
+- **raw_json** (<code>bool</code>) – If `True` with `output_format="json"`, store the raw OpenDataLoader JSON string in
+  `Document.content` and add no PDF metadata. Has no effect with other output formats.
+- **include_layout** (<code>bool</code>) – If `True` with `output_format="json"`, add a `layout` list to `Document.meta` with one
+  entry per positioned element in reading order: `type`, `page_number`, `bounding_box`, and
+  `heading_level` for headings. The list covers the whole PDF and is copied to every chunk when the Document
+  is split, so it can be large for long PDFs. Has no effect with other output formats or with `raw_json`.
 
 **Raises:**
 
@@ -110,4 +130,5 @@ Convert PDF sources into Haystack Documents.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – Dictionary containing the converted text Documents and image Documents. Each image Document has the
-  persistent extracted image path in its `file_path` metadata field.
+  persistent extracted image path in its `file_path` metadata field. With `skip_failed_pdfs=True`, PDFs
+  that fail individual conversion are omitted from both outputs.

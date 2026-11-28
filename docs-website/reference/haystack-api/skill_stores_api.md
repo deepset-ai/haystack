@@ -24,6 +24,8 @@ skills/
 The skill catalog is built by reading the frontmatter of each `SKILL.md` on `warm_up`; bodies and bundled files
 are read lazily when the agent calls the corresponding tool.
 
+`SKILL.md` and bundled text files are read as UTF-8. A leading byte order mark (BOM) is ignored.
+
 #### __init__
 
 ```python

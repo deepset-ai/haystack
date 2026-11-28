@@ -21,6 +21,8 @@ A dataclass for managing document statistics for BM25 retrieval.
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
+Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
+
 #### __init__
 
 ```python
@@ -46,7 +48,8 @@ Initializes the DocumentStore.
 
 - **bm25_tokenization_regex** (<code>str</code>) – The regular expression used to tokenize the text for BM25 retrieval. The default groups word
   characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
-  Text is lowercased and NFC-normalized before tokenization.
+  Text is lowercased and NFC-normalized before tokenization. Combining marks (such as the vowel signs of
+  Sinhala, Tamil or Devanagari) stay part of the word.
 - **bm25_algorithm** (<code>Literal['BM25Okapi', 'BM25L', 'BM25Plus']</code>) – The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
 - **bm25_parameters** (<code>dict | None</code>) – Parameters for BM25 implementation in a dictionary format.
   For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -130,6 +133,9 @@ load_from_disk(path: str) -> InMemoryDocumentStore
 ```
 
 Load the database and its data from disk as a JSON file.
+
+With `shared=True`, the saved documents replace all documents in the index, including for other
+instances sharing it.
 
 **Parameters:**
 

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    ``MarkdownHeaderSplitter`` is now faster on large documents with many headings, code blocks, or page breaks.

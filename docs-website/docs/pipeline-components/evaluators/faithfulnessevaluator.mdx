@@ -8,6 +8,8 @@ hep_available: false
 
 # FaithfulnessEvaluator
 
+## Overview
+
 The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer can be inferred from the provided contexts. It does not require ground truth labels. This metric is called faithfulness, sometimes also referred to as groundedness or hallucination.
 
 <div className="key-value-table">
@@ -33,7 +35,7 @@ If you are not initializing the Evaluator with your own Chat Generator other tha
 
 Two other optional initialization parameters are:
 
-- `raise_on_failure`: If True, raise an exception when the chat generator call fails or its response isn't valid JSON with the expected keys. If False, log a warning and set the result for that input to `None`.
+- `raise_on_failure`: If True, raise an exception when the chat generator call fails, its response isn't valid JSON with the expected keys, or the numbers of `statements` and `statement_scores` differ. If False, log a warning and return `status="error"` with a NaN score for the failed input. Failed inputs are excluded from the overall mean; if all inputs fail, the overall score is NaN.
 - `progress_bar`:  Whether to show a progress bar during the evaluation.
 
 `FaithfulnessEvaluator` has an optional `examples` parameter that can be used to pass few-shot examples conforming to the expected input and output format of `FaithfulnessEvaluator`. These examples are included in the prompt that is sent to the LLM. Examples, therefore, increase the number of tokens of the prompt and make each request more costly. Adding examples is helpful if you want to improve the quality of the evaluation at the cost of more tokens.

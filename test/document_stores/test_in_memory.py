@@ -4,10 +4,14 @@
 
 import asyncio
 import gc
+import json
 import logging
 import math
 import tempfile
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, wait
+from pathlib import Path
+from threading import Event
 from typing import Literal, cast
 from unittest.mock import patch
 
@@ -44,6 +48,298 @@ from haystack.testing.document_store_async import (
     UpdateByFilterAsyncTest,
     WriteDocumentsAsyncTest,
 )
+
+
+@pytest.fixture
+def paused_text() -> tuple[str, Event, Event]:
+    # Pause a real write during content normalization without replacing any document-store methods.
+    tokenizing, resume = Event(), Event()
+
+    class PausedText(str):
+        __slots__ = ()
+
+        def lower(self) -> str:
+            tokenizing.set()
+            assert resume.wait(timeout=5)
+            return super().lower()
+
+    return PausedText("alpha"), tokenizing, resume
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["overwrite", "delete", "clear"])
+def test_concurrent_mutations_keep_bm25_consistent(
+    shared: bool, operation: Literal["overwrite", "delete", "clear"], paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+    fresh_store = InMemoryDocumentStore(shared=False)
+
+    def mutate() -> None:
+        if operation == "overwrite":
+            second_store.write_documents([Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE)
+        elif operation == "delete":
+            second_store.delete_documents(["same"])
+        else:
+            second_store.delete_all_documents()
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(
+                first_store.write_documents, [Document(id="same", content=content)], DuplicatePolicy.OVERWRITE
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(mutate)
+                wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+            second.result(timeout=5)
+
+        if operation != "overwrite":
+            assert first_store.filter_documents() == []
+            first_store.write_documents([Document(id="replacement", content="beta")])
+
+        current = first_store.filter_documents()
+        fresh_store.write_documents(current)
+        expected_scores = {doc.id: doc.score for doc in fresh_store.bm25_retrieval(query="beta")}
+
+        for store in (first_store, second_store):
+            assert [doc.content for doc in store.filter_documents()] == ["beta"]
+            assert {doc.id: doc.score for doc in store.bm25_retrieval(query="beta")} == pytest.approx(expected_scores)
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+        fresh_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_bm25_read_waits_for_complete_document_write(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    writer = InMemoryDocumentStore(shared=shared)
+    reader = InMemoryDocumentStore(index=writer.index) if shared else writer
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            write = executor.submit(writer.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                read = executor.submit(reader.bm25_retrieval, "alpha")
+                wait([read], timeout=0.2)
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert [(doc.id, doc.content) for doc in read.result(timeout=5)] == [("same", "alpha")]
+    finally:
+        writer.shutdown()
+        reader.shutdown()
+
+
+def test_reads_wait_for_complete_document_write(paused_text: tuple[str, Event, Event], tmp_path: Path) -> None:
+    content, tokenizing, resume = paused_text
+    store = InMemoryDocumentStore(shared=False)
+    store.write_documents([Document(id="old", content="beta", meta={"kind": "a", "n": 1}, embedding=[0.1, 0.2])])
+    filters = {"field": "meta.kind", "operator": "==", "value": "a"}
+    readers = {
+        "filter_documents": lambda: store.filter_documents(filters=filters),
+        "embedding_retrieval": lambda: store.embedding_retrieval(query_embedding=[0.1, 0.2], filters=filters),
+        "count_documents_by_filter": lambda: store.count_documents_by_filter(filters=filters),
+        "count_unique_metadata_by_filter": lambda: store.count_unique_metadata_by_filter(
+            filters=filters, metadata_fields=["kind"]
+        ),
+        "get_metadata_fields_info": store.get_metadata_fields_info,
+        "get_metadata_field_min_max": lambda: store.get_metadata_field_min_max(metadata_field="n"),
+        "get_metadata_field_unique_values": lambda: store.get_metadata_field_unique_values(metadata_field="kind"),
+        "save_to_disk": lambda: store.save_to_disk(str(tmp_path / "store.json")),
+    }
+    try:
+        with ThreadPoolExecutor(max_workers=len(readers) + 1) as executor:
+            write = executor.submit(
+                store.write_documents,
+                [Document(id="new", content=content, meta={"kind": "a", "n": 2}, embedding=[0.1, 0.2])],
+            )
+            try:
+                assert tokenizing.wait(timeout=5)
+                reads = {name: executor.submit(reader) for name, reader in readers.items()}
+                wait(reads.values(), timeout=0.2)
+                finished_during_write = [name for name, read in reads.items() if read.done()]
+            finally:
+                resume.set()
+            assert write.result(timeout=5) == 1
+            assert finished_during_write == []
+            for read in reads.values():
+                read.result(timeout=5)
+            assert reads["count_documents_by_filter"].result() == 2
+    finally:
+        store.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shared", [False, True])
+async def test_concurrent_async_overwrites_keep_bm25_consistent(
+    shared: bool, paused_text: tuple[str, Event, Event]
+) -> None:
+    content, tokenizing, resume = paused_text
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_store = InMemoryDocumentStore(shared=shared, async_executor=executor)
+        second_store = InMemoryDocumentStore(index=first_store.index) if shared else first_store
+        try:
+            first = asyncio.create_task(
+                first_store.write_documents_async(
+                    [Document(id="same", content=content)], policy=DuplicatePolicy.OVERWRITE
+                )
+            )
+            try:
+                assert await asyncio.to_thread(tokenizing.wait, 5)
+                second = asyncio.create_task(
+                    second_store.write_documents_async(
+                        [Document(id="same", content="beta")], policy=DuplicatePolicy.OVERWRITE
+                    )
+                )
+                await asyncio.wait([second], timeout=0.2)
+            finally:
+                resume.set()
+            assert await asyncio.gather(first, second) == [1, 1]
+            result = await first_store.bm25_retrieval_async(query="beta")
+            assert [(doc.id, doc.content) for doc in result] == [("same", "beta")]
+        finally:
+            first_store.shutdown()
+            second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_independent_indexes_do_not_block_each_other(shared: bool, paused_text: tuple[str, Event, Event]) -> None:
+    content, tokenizing, resume = paused_text
+    first_store = InMemoryDocumentStore(shared=shared)
+    second_store = InMemoryDocumentStore() if shared else InMemoryDocumentStore(index=first_store.index, shared=False)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(first_store.write_documents, [Document(id="same", content=content)])
+            try:
+                assert tokenizing.wait(timeout=5)
+                second = executor.submit(second_store.write_documents, [Document(id="same", content="beta")])
+                assert second.result(timeout=2) == 1
+                assert [doc.content for doc in second_store.bm25_retrieval(query="beta")] == ["beta"]
+            finally:
+                resume.set()
+            assert first.result(timeout=5) == 1
+    finally:
+        first_store.shutdown()
+        second_store.shutdown()
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("operation", ["delete", "update"])
+def test_filter_mutation_does_not_clobber_a_concurrent_overwrite(
+    shared: bool, operation: Literal["delete", "update"]
+) -> None:
+    store = InMemoryDocumentStore(shared=shared)
+    other = InMemoryDocumentStore(index=store.index) if shared else store
+    store.write_documents([Document(id="same", content="alpha", meta={"kind": "old"})])
+    matching, resume = Event(), Event()
+    original_matches = in_memory_module.document_matches_filter
+
+    def paused_matches(**kwargs):
+        matching.set()
+        assert resume.wait(timeout=5)
+        return original_matches(**kwargs)
+
+    def mutate() -> int:
+        filters = {"field": "meta.kind", "operator": "==", "value": "old"}
+        if operation == "delete":
+            return store.delete_by_filter(filters=filters)
+        return store.update_by_filter(filters=filters, meta={"updated": True})
+
+    try:
+        with patch.object(in_memory_module, "document_matches_filter", paused_matches):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                mutation = executor.submit(mutate)
+                try:
+                    assert matching.wait(timeout=5)
+                    overwrite = executor.submit(
+                        other.write_documents,
+                        [Document(id="same", content="beta", meta={"kind": "new"})],
+                        DuplicatePolicy.OVERWRITE,
+                    )
+                    wait([overwrite], timeout=0.2)
+                finally:
+                    resume.set()
+                assert mutation.result(timeout=5) == 1
+                assert overwrite.result(timeout=5) == 1
+
+        assert [(doc.content, doc.meta) for doc in store.filter_documents()] == [("beta", {"kind": "new"})]
+        assert [doc.content for doc in store.bm25_retrieval(query="beta")] == ["beta"]
+    finally:
+        store.shutdown()
+        other.shutdown()
+
+
+def test_update_by_filter_does_not_mutate_original_documents_or_other_stores() -> None:
+    doc = Document(content="hello", meta={"status": "draft", "source": "test"})
+    docs = [doc]
+
+    store_a = InMemoryDocumentStore()
+    store_b = InMemoryDocumentStore()
+
+    try:
+        store_a.write_documents(docs)
+        store_b.write_documents(docs)
+
+        updated_count = store_a.update_by_filter(
+            filters={"field": "meta.status", "operator": "==", "value": "draft"}, meta={"status": "published"}
+        )
+
+        assert updated_count == 1
+        assert store_a.filter_documents()[0].meta == {"status": "published", "source": "test"}
+        assert doc.meta == {"status": "draft", "source": "test"}
+        assert store_b.filter_documents()[0].meta == {"status": "draft", "source": "test"}
+    finally:
+        store_a.shutdown()
+        store_b.shutdown()
+
+
+@pytest.mark.parametrize("empty_snapshot", [False, True])
+def test_load_from_disk_restores_snapshot(tmp_path: Path, empty_snapshot: bool) -> None:
+    store = InMemoryDocumentStore(shared=True)
+    saved_documents = (
+        [] if empty_snapshot else [Document(id="first", content="alpha beta"), Document(id="second", content="gamma")]
+    )
+    store.write_documents(saved_documents)
+    path = str(tmp_path / "snapshot.json")
+    store.save_to_disk(path)
+
+    store.write_documents(
+        [Document(id="first", content="changed"), Document(id="later", content="beta beta delta")],
+        policy=DuplicatePolicy.OVERWRITE,
+    )
+    store.delete_documents(["second"])
+    loaded = InMemoryDocumentStore.load_from_disk(path)
+
+    assert loaded.filter_documents() == saved_documents
+    reference = InMemoryDocumentStore(shared=False)
+    reference.write_documents(saved_documents)
+    for query in ("alpha", "beta", "gamma", "delta"):
+        assert loaded.bm25_retrieval(query) == reference.bm25_retrieval(query)
+    assert store.filter_documents() == saved_documents
+    assert store.bm25_retrieval("beta") == reference.bm25_retrieval("beta")
+
+
+def test_load_from_disk_rejects_invalid_documents_before_replacing_shared_index(tmp_path: Path) -> None:
+    store = InMemoryDocumentStore(shared=True)
+    documents = [Document(id="current", content="keep this document")]
+    store.write_documents(documents)
+    path = tmp_path / "snapshot.json"
+    store.save_to_disk(str(path))
+    data = json.loads(path.read_text())
+    data["documents"] = [{"id": "valid", "content": "snapshot"}, {"id": "invalid", "content": 1}]
+    path.write_text(json.dumps(data))
+
+    with pytest.raises(ValueError, match="The `content` field must be a string or None\\."):
+        InMemoryDocumentStore.load_from_disk(str(path))
+
+    assert store.filter_documents() == documents
+    assert [doc.id for doc in store.bm25_retrieval("keep")] == ["current"]
 
 
 class TestMemoryDocumentStore(
@@ -938,6 +1234,45 @@ class TestMemoryDocumentStore(
         nfd = unicodedata.normalize("NFD", nfc)
         assert nfd != nfc
         assert tokenize(nfd) == tokenize(nfc) == ["\uc11c", "\uc6b8", "\uc740"]
+
+    def test_bm25_tokenization_keeps_combining_marks(self, in_memory_doc_store):
+        tokenize = in_memory_doc_store._tokenize_bm25
+
+        # Vowel signs are combining marks, which `\w` does not match, so words in these scripts used to be cut
+        # into fragments (Sinhala "ජනාධිපතිවරයා" became "ජන", "ධ", "පත", "වරය").
+        sinhala = "ජනාධිපතිවරයා පාර්ලිමේන්තුවට ගියේය."
+        assert tokenize(sinhala) == ["ජනාධිපතිවරයා", "පාර්ලිමේන්තුවට", "ගියේය"]
+        assert tokenize("தமிழ் மொழி") == ["தமிழ்", "மொழி"]
+        assert tokenize("বাংলা ভাষা") == ["বাংলা", "ভাষা"]
+        assert tokenize("كَتَبَ الطَّالِبُ") == ["كَتَبَ", "الطَّالِبُ"]
+
+        # The danda (।, ॥) is punctuation, so it still separates words.
+        hindi = "भारत की राजधानी नई दिल्ली है। ठीक है॥"
+        assert tokenize(hindi) == ["भारत", "की", "राजधानी", "नई", "दिल्ली", "है", "ठीक", "है"]
+
+        # A zero-width joiner inside a word (Sinhala "ශ්‍රී") keeps the word whole, and is not a token alone.
+        assert tokenize("ශ්\u200dරී ලංකාව") == ["ශ්\u200dරී", "ලංකාව"]
+        assert tokenize("a \u200d b") == ["a", "b"]
+
+        # Decomposed Latin letters stay whole too.
+        assert tokenize("cafe\u0301") == ["café"]
+        # A combining mark with no base character is not a token on its own.
+        assert tokenize("a \u0301 b") == ["a", "b"]
+
+    def test_bm25_retrieval_with_combining_mark_script_query(self, in_memory_doc_store):
+        # With words cut into fragments, the Tamil query "தமிழ்" (Tamil) also matched "தம்பி" (younger brother)
+        # and "மகிழ்ச்சியாக" (happily), which only share fragments with it. Only the document with the word
+        # itself should match.
+        tamil = "தமிழ் மொழி இலங்கையில் பேசப்படுகிறது."
+        docs = [
+            Document(content=tamil),
+            Document(content="தம்பி மழையில் நனைந்தான்."),
+            Document(content="அவன் மிகவும் மகிழ்ச்சியாக இருந்தான்."),
+        ]
+        in_memory_doc_store.write_documents(docs)
+
+        results = in_memory_doc_store.bm25_retrieval(query="தமிழ்", top_k=3)
+        assert [doc.content for doc in results] == [tamil]
 
     def test_bm25_retrieval_with_single_char_query(self, in_memory_doc_store):
         docs = [

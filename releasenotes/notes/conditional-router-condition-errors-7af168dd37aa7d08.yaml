@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ``ConditionalRouter`` now raises ``RouteConditionException`` for every error in a route's ``condition``.

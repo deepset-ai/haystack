@@ -4,6 +4,7 @@
 
 from datetime import UTC, datetime
 
+import numpy as np
 import pytest
 
 from haystack import Document
@@ -223,6 +224,19 @@ document_matches_filter_data = [
         id=">= operator with equal datetime in different ISO 8601 format",
     ),
     pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": ">=", "value": "1969"},
+        Document(meta={"date": "1969-01-01"}),
+        True,
+        id=">= operator with partial year filter value matches start of the year",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07"},
+        Document(meta={"date": "1969-07-01"}),
+        True,
+        id=">= operator with partial year-month filter value matches start of the month",
+    ),
+    pytest.param(
         {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40+00:00"},
         Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
         True,
@@ -276,6 +290,13 @@ document_matches_filter_data = [
         Document(meta={"date": "1969-07-21T20:17:40"}),
         False,
         id="< operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        # Partial dates are resolved to the start of the period, not filled from the current date.
+        {"field": "meta.date", "operator": "<", "value": "1969"},
+        Document(meta={"date": "1969-12-31"}),
+        False,
+        id="< operator with partial year filter value excludes same year",
     ),
     pytest.param(
         {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
@@ -631,6 +652,46 @@ document_matches_filter_data = [
 @pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filters, document, expected_result):
     assert document_matches_filter(filters, document) == expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,document_value,filter_value,expected_result",
+    [
+        ("==", 0, False, False),
+        ("==", False, 0, False),
+        ("==", 1, True, False),
+        ("==", True, 1, False),
+        ("==", 0.0, False, False),
+        ("==", False, 0.0, False),
+        ("==", 1.0, True, False),
+        ("==", True, 1.0, False),
+        ("==", False, False, True),
+        ("==", True, True, True),
+        ("==", True, False, False),
+        ("==", 1, 1.0, True),
+        ("!=", False, 0, True),
+        ("in", 1, [True], False),
+        ("not in", True, [1.0], True),
+        ("in", True, [1, True], True),
+        ("==", np.True_, True, True),
+        ("==", True, np.True_, True),
+        ("==", np.False_, False, True),
+        ("==", np.True_, 1, False),
+        ("==", 1, np.True_, False),
+        ("in", np.True_, [True], True),
+        (">", True, 0, False),
+        (">=", 1, True, False),
+        ("<", False, 1, False),
+        ("<=", 0.0, False, False),
+        (">", np.True_, 0, False),
+        (">", True, False, True),
+    ],
+)
+def test_document_matches_filter_boolean_and_numeric_values(operator, document_value, filter_value, expected_result):
+    document = Document(meta={"stage": document_value})
+    filters = {"field": "meta.stage", "operator": operator, "value": filter_value}
+
+    assert document_matches_filter(filters, document) is expected_result
 
 
 @pytest.mark.parametrize(

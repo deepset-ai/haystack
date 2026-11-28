@@ -131,7 +131,9 @@ Initialize the counter.
 - **api_base_url** (<code>str | None</code>) – An optional base URL for the OpenAI API.
 - **organization** (<code>str | None</code>) – Your OpenAI organization ID.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If unset, uses `OPENAI_TIMEOUT` or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum retries for OpenAI client calls. If unset, uses `OPENAI_MAX_RETRIES` or 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments used to configure the underlying HTTPX client.
 
 #### warm_up

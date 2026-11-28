@@ -29,6 +29,8 @@ You can use the `DocumentMAPEvaluator` component to evaluate documents retrieved
 
 To initialize a `DocumentMAPEvaluator`, there are no parameters required.
 
+To compute the metric at a cutoff (MAP@k), set the optional `top_k` parameter. Only the first `top_k` retrieved documents of each question are scored. For example, `DocumentMAPEvaluator(top_k=10)` returns MAP@10. Average precision is still divided by the number of ground truth documents, so relevant documents ranked below the cutoff count as missed. This way, you can retrieve documents once and compute the metric for several cutoffs. By default, `top_k` is `None` and all retrieved documents are scored.
+
 ## Usage
 
 ### On its own

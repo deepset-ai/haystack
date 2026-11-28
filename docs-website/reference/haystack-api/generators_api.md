@@ -125,7 +125,8 @@ __init__(
     azure_ad_token_provider: (
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -152,8 +153,10 @@ Initialize the Azure OpenAI Chat Generator component.
   as an argument.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are sent directly to
   the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
   Some of the supported parameters:
@@ -193,6 +196,10 @@ Initialize the Azure OpenAI Chat Generator component.
   every request.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -351,7 +358,8 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
@@ -359,7 +367,8 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
 
 **Parameters:**
 
-- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Can be:
+- **api_key** (<code>Secret | Callable\[[], str\] | Callable\[[], Awaitable\[str\]\]</code>) – The API key to use for authentication. Defaults to the `AZURE_OPENAI_API_KEY` environment
+  variable. If no key resolves, `warm_up()` raises a `ValueError`. Can be:
 - A `Secret` object containing the API key.
 - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
 - A function that returns an Azure Active Directory token.
@@ -372,8 +381,10 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   as an argument.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are sent
   directly to the OpenAI endpoint.
   See OpenAI [documentation](https://platform.openai.com/docs/api-reference/responses) for
@@ -410,6 +421,10 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### to_dict
 
@@ -1033,14 +1048,12 @@ __init__(
     tools: ToolsType | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None,
+    *,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
 Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
-
-Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-environment variables to override the `timeout` and `max_retries` parameters respectively
-in the OpenAI client.
 
 **Parameters:**
 
@@ -1092,13 +1105,19 @@ in the OpenAI client.
     the `response_format` must be a JSON schema and not a Pydantic model.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - **tools_strict** (<code>bool</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
   the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -1312,15 +1331,12 @@ __init__(
     max_retries: int | None = None,
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
-    http_client_kwargs: dict[str, Any] | None = None
+    http_client_kwargs: dict[str, Any] | None = None,
+    include_rate_limit_headers: bool = False
 ) -> None
 ```
 
 Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5.6-terra by default.
-
-Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-environment variables to override the `timeout` and `max_retries` parameters respectively
-in the OpenAI client.
 
 **Parameters:**
 
@@ -1382,8 +1398,10 @@ in the OpenAI client.
     is enrolled in the zero data retention program).
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **tools** (<code>ToolsType | list\[dict\] | None</code>) – The tools that the model can use to prepare calls. This parameter can accept either a
   mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
   OpenAI/MCP tool definitions.
@@ -1394,6 +1412,10 @@ in the OpenAI client.
   are strict by default.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **include_rate_limit_headers** (<code>bool</code>) – If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+  under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+  The values are passed through as returned by the API. Headers are only added for successful requests
+  and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
 #### warm_up
 
@@ -1586,8 +1608,10 @@ Creates an instance of OpenAIImageGenerator. Unless specified otherwise in `mode
 - **organization** (<code>str | None</code>) – The Organization ID, defaults to `None`.
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI Client calls. If not set, it is inferred from the `OPENAI_TIMEOUT` environment variable
   or set to 30.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **max_retries** (<code>int | None</code>) – Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
   from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+  Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 

@@ -660,6 +660,21 @@ from haystack_integrations.document_stores.weaviate.document_store import (
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
 ```
 
+Usage example with REST and gRPC served on different hosts:
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
+
+document_store = WeaviateDocumentStore(
+    url="https://weaviate.example.com",
+    grpc_host="weaviate.grpc.example.com",
+    grpc_port=443,
+    grpc_secure=True,
+)
+```
+
 #### __init__
 
 ```python
@@ -671,6 +686,7 @@ __init__(
     additional_headers: dict | None = None,
     embedded_options: EmbeddedOptions | None = None,
     additional_config: AdditionalConfig | None = None,
+    grpc_host: str | None = None,
     grpc_port: int = 50051,
     grpc_secure: bool = False
 ) -> None
@@ -715,8 +731,16 @@ overrides it.
 - **embedded_options** (<code>EmbeddedOptions | None</code>) – If set, create an embedded Weaviate cluster inside the client. For a full list of options see
   `weaviate.embedded.EmbeddedOptions`.
 - **additional_config** (<code>AdditionalConfig | None</code>) – Additional and advanced configuration options for weaviate.
+- **grpc_host** (<code>str | None</code>) – The host serving the gRPC API, when it differs from the one in `url`. If `None`, the gRPC
+  connection reuses the host parsed from `url`. Only used for custom, local or Docker
+  deployments: it is ignored, with a warning, when `url` is not set and for Weaviate Cloud URLs,
+  which `weaviate.connect_to_weaviate_cloud` configures on its own.
+  Setting it also changes how `grpc_secure` is interpreted, see below.
 - **grpc_port** (<code>int</code>) – The port to use for the gRPC connection.
-- **grpc_secure** (<code>bool</code>) – Whether to use a secure channel for the underlying gRPC API.
+- **grpc_secure** (<code>bool</code>) – Whether to use a secure channel for the underlying gRPC API. Without `grpc_host` an `https`
+  `url` implies a secure gRPC channel even when this is `False`, because both protocols then
+  share a host. With `grpc_host` set, the two endpoints are independent and this flag alone
+  decides whether the gRPC channel uses TLS.
 
 #### client
 

@@ -7,9 +7,14 @@ from datetime import datetime
 from typing import Any
 
 import dateutil.parser
+import numpy as np
 
 from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
+
+# Booleans compare equal to 0 and 1 in Python, but metadata filters treat them as distinct types.
+# np.bool_ is not a bool subclass, so it is listed explicitly.
+_BOOL_TYPES = (bool, np.bool_)
 
 
 def document_matches_filter(
@@ -58,6 +63,8 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any, strict_datetime_comparison: bool) -> bool:
+    if isinstance(value, _BOOL_TYPES) != isinstance(filter_value, _BOOL_TYPES):
+        return False
     if value == filter_value:
         return True
     return _dates_are_equal(value=value, filter_value=filter_value, strict=strict_datetime_comparison)
@@ -134,7 +141,7 @@ def _prepare_ordering_comparison(
     :returns:
         A tuple containing the normalized value, normalized filter value, and whether the values are comparable.
         The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
-        the other is timezone-aware; otherwise it is `True`.
+        the other is timezone-aware, or when exactly one of the values is a boolean; otherwise it is `True`.
     """
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
@@ -153,6 +160,8 @@ def _prepare_ordering_comparison(
     if isinstance(value, datetime) != isinstance(filter_value, datetime):
         msg = "Can't compare a datetime with a non-datetime value using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    if isinstance(value, _BOOL_TYPES) != isinstance(filter_value, _BOOL_TYPES):
+        return value, filter_value, False
     return value, filter_value, True
 
 
@@ -170,12 +179,17 @@ def _greater_than(value: Any, filter_value: Any, strict_datetime_comparison: boo
 
 
 def _parse_date(value: str) -> datetime:
-    """Try parsing the value as an ISO format date, then fall back to dateutil.parser."""
+    """
+    Try parsing the value as an ISO format date, then fall back to dateutil.parser.
+
+    Partial dates (e.g. "2024" or "2024-06") are completed to the start of the period, so "2024" becomes
+    2024-01-01.
+    """
     try:
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         try:
-            return dateutil.parser.parse(value)
+            return dateutil.parser.parse(value, default=datetime(1, 1, 1))
         except (ValueError, TypeError) as exc:
             msg = (
                 "Can't compare strings using operators '>', '>=', '<', '<='. "

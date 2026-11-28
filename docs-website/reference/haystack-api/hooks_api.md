@@ -1,10 +1,179 @@
 ---
 title: "Hooks"
 id: hooks-api
-description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in context compaction, tool result offloading, structured output parsing, and Human-in-the-Loop tool confirmation."
+description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in context compaction, tool result offloading, structured output parsing, backup answers, and Human-in-the-Loop tool confirmation."
 slug: "/hooks-api"
 ---
 
+
+## backup_answer/hooks
+
+### BackupAnswerHook
+
+Write a final answer when an Agent run stops without one.
+
+The hook runs at the `after_run` hook point. When the run's `exit_reason` is one of `exit_reasons` (by default
+`"max_agent_steps"`), the run ended on a tool call or tool result instead of a text answer. The hook then makes
+one extra call to its own chat generator, with no tools, over the conversation so far and appends the reply to
+`messages`. The Agent's `last_message` is therefore the backup answer.
+
+The backup call's system prompt is rendered from `system_prompt_template`. The conversation's system messages are
+taken out of the conversation and passed to the template as `system_prompt`, so the default prompt asks the model
+to keep following the Agent's instructions on language, tone, persona and formatting. The `exit_reason` is left
+unchanged, so downstream components can tell a backup answer from a normal one.
+
+If the chat generator raises or returns no text, a warning is logged and `messages` is left unchanged, unless
+`raise_on_failure` is set.
+
+The hook's chat generator is warmed up and closed together with the Agent.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.backup_answer import BackupAnswerHook
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(),
+    tools=[web_search],
+    max_agent_steps=10,
+    hooks={"after_run": [BackupAnswerHook(chat_generator=OpenAIResponsesChatGenerator())]},
+)
+
+result = agent.run(messages=[...])
+print(result["exit_reason"])
+# >> max_agent_steps
+print(result["last_message"].text)
+# >> The best-effort answer based on the evidence gathered so far...
+```
+
+#### __init__
+
+```python
+__init__(
+    chat_generator: ChatGenerator,
+    *,
+    system_prompt_template: str = _DEFAULT_SYSTEM_PROMPT_TEMPLATE,
+    exit_reasons: Sequence[str] = ("max_agent_steps",),
+    raise_on_failure: bool = False
+) -> None
+```
+
+Create a backup answer hook.
+
+**Parameters:**
+
+- **chat_generator** (<code>ChatGenerator</code>) – The chat generator that writes the backup answer. It is called without tools.
+- **system_prompt_template** (<code>str</code>) – Jinja2 template for the system prompt of the backup answer call. It can use the
+  `system_prompt` variable, which holds the text of the conversation's system messages joined together and is
+  empty when there are none. Leave the variable out to drop the Agent's system prompt from the backup call.
+  Defaults to a generic prompt that asks for a best-effort final answer from the gathered information and
+  adds the Agent's system prompt as instructions to follow for language, tone, persona and formatting.
+- **exit_reasons** (<code>Sequence\[str\]</code>) – The `exit_reason` values that trigger a backup answer. Defaults to `("max_agent_steps",)`.
+  Add other values, such as `"token_budget_exceeded"` from `TokenBudgetHook`, to also cover those exits.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails or returns no text. By
+  default the failure is logged and `messages` is left unchanged.
+
+**Raises:**
+
+- <code>ValueError</code> – If `system_prompt_template` uses variables other than `system_prompt`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the hook's chat generator. The Agent calls this from its own `warm_up`.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the hook's chat generator asynchronously. The Agent calls this from its own `warm_up_async`.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the hook's chat generator resources. The Agent calls this from its own `close`.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the hook's chat generator resources asynchronously. The Agent calls this from `close_async`.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Append a backup answer to the conversation when the run stopped with one of the configured exit reasons.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state holding the conversation and the `exit_reason`.
+
+**Raises:**
+
+- <code>RuntimeError</code> – If `raise_on_failure` is set and the chat generator returns no text. Errors raised by
+  the chat generator itself are re-raised when `raise_on_failure` is set.
+
+#### run_async
+
+```python
+run_async(state: State) -> None
+```
+
+Append a backup answer to the conversation when the run stopped with one of the configured exit reasons.
+
+Uses the chat generator's `run_async` when it has one, and otherwise runs its `run` in a worker thread.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state holding the conversation and the `exit_reason`.
+
+**Raises:**
+
+- <code>RuntimeError</code> – If `raise_on_failure` is set and the chat generator returns no text. Errors raised by
+  the chat generator itself are re-raised when `raise_on_failure` is set.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> BackupAnswerHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>BackupAnswerHook</code> – The deserialized hook.
 
 ## budget/hooks
 
@@ -516,9 +685,9 @@ Initialize the compactor.
 - **summary_instruction** (<code>str</code>) – The prompt instructions for how to summarize a portion of the conversation.
   The default instructions ask for a summary with fixed sections covering the objective, decisions and
   constraints, completed work, exact identifiers, and unresolved work.
-- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails or returns a summary that
-  does not shrink the conversation. By default the failure is logged and any successful partial compaction
-  is returned.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails, returns an incomplete
+  summary (finish reason `length` or `content_filter`), or returns a summary that does not shrink the
+  conversation. By default the failure is logged and any successful partial compaction is returned.
 
 **Raises:**
 

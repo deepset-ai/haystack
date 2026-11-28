@@ -887,6 +887,21 @@ toolset = MCPToolset(
 )
 ```
 
+Example overriding the descriptions the server gives its tools:
+
+```python
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+
+# Tools listed in tool_descriptions get the given description; the others keep the server's
+toolset = MCPToolset(
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-git"]),
+    tool_names=["git_status", "git_diff", "git_log"],
+    tool_descriptions={
+        "git_diff": "Show unstaged changes. Call this before git_log when reviewing local work.",
+    },
+)
+```
+
 Example using SSE (deprecated):
 
 ```python
@@ -913,6 +928,7 @@ __init__(
     inputs_from_state: dict[str, dict[str, str]] | None = None,
     outputs_to_state: dict[str, dict[str, dict[str, Any]]] | None = None,
     outputs_to_string: dict[str, dict[str, Any]] | None = None,
+    tool_descriptions: dict[str, str] | None = None,
 ) -> None
 ```
 
@@ -944,6 +960,11 @@ Initialize the MCP toolset.
   Tool names should match available tools from the server; a warning is logged for
   unknown tools.
   Example: `{"git_diff": {"source": "diff", "handler": format_diff}}`
+- **tool_descriptions** (<code>dict\[str, str\] | None</code>) – Optional dictionary mapping tool names to the description to use instead of
+  the one the server provides. Tools not in the mapping keep the server's description.
+  Tool names should match available tools from the server; a warning is logged for
+  unknown tools.
+  Example: `{"git_diff": "Show unstaged changes in the repository."}`
 
 **Raises:**
 

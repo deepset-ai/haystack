@@ -97,7 +97,8 @@ Create a Tool instance from a Haystack Agent.
   and when to delegate to it.
 - **parameters** (<code>dict\[str, Any\] | None</code>) – A JSON schema defining the parameters expected by the Tool.
   Will fall back to a schema with the task to delegate as a single user message, plus one string parameter
-  for every other mandatory input of the Agent, if not provided.
+  for every other mandatory input of the Agent, if not provided. Inputs mapped through `inputs_from_state`,
+  including `messages`, are left out of this schema.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
   the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,

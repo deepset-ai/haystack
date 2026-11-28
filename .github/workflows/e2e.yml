@@ -13,9 +13,10 @@ on:
       - "e2e/**/*.py"
       - ".github/workflows/e2e.yml"
 
+# The API key is set only on the step that runs the tests, after a separate step has installed the
+# dependencies, so that package installs and third-party actions can't read it.
 env:
   PYTHON_VERSION: "3.11"
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.16.5"
 
 permissions:
@@ -39,7 +40,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
+      - name: Create test environment
+        run: hatch env create test
+
       - name: Run tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: hatch run test:e2e
 
       - name: Notify Slack on nightly failure

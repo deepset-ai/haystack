@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from bisect import bisect_right
 from copy import deepcopy
 from typing import Literal
 
@@ -19,10 +20,11 @@ class MarkdownHeaderSplitter:
     Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
     Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
+    Header prefixes may be followed by spaces or tabs before the header text.
 
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+    - Optionally applying a secondary split (by word, passage, period, line or token) to each chunk
       (using haystack's DocumentSplitter).
     - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
     """
@@ -33,11 +35,12 @@ class MarkdownHeaderSplitter:
         page_break_character: str = "\f",
         keep_headers: bool = True,
         header_split_levels: list[int] | None = None,
-        secondary_split: Literal["word", "passage", "period", "line"] | None = None,
+        secondary_split: Literal["word", "passage", "period", "line", "token"] | None = None,
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
         skip_empty_documents: bool = True,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initialize the MarkdownHeaderSplitter.
@@ -49,7 +52,9 @@ class MarkdownHeaderSplitter:
             on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
             all levels `[1, 2, 3, 4, 5, 6]`.
         :param secondary_split: Optional secondary split condition after header splitting.
-            Options are None, "word", "passage", "period", "line". Defaults to None.
+            Options are None, "word", "passage", "period", "line", "token". Defaults to None.
+            `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that each chunk fits
+            the token limit of an embedding model or LLM.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
@@ -57,6 +62,8 @@ class MarkdownHeaderSplitter:
         :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
+        :param tokenizer_encoding: The tiktoken encoding to use when `secondary_split="token"`. Defaults to
+            `"o200k_base"` (current OpenAI models). Only used when `secondary_split="token"`.
         """
         if header_split_levels is None:
             header_split_levels = [1, 2, 3, 4, 5, 6]
@@ -77,10 +84,11 @@ class MarkdownHeaderSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.skip_empty_documents = skip_empty_documents
+        self.tokenizer_encoding = tokenizer_encoding
         self.keep_headers = keep_headers
         self.header_split_levels = header_split_levels
         self._header_split_levels_set = set(header_split_levels)
-        self._header_pattern = re.compile(r"(?m)^ {0,3}(#{1,6}) (.+)$")  # ATX-style .md-headers
+        self._header_pattern = re.compile(r"(?m)^ {0,3}(#{1,6})[ \t](.+)$")  # ATX-style .md-headers
         # Optional closing sequence of an ATX header, e.g. the trailing "##" in "## Install ##". It is not part of
         # the header text. Only spaces/tabs may surround it, with an optional carriage return for Windows line endings.
         self._closing_sequence_pattern = re.compile(r"(?:^|[ \t])#+[ \t]*\r?$")
@@ -115,19 +123,18 @@ class MarkdownHeaderSplitter:
                 split_length=self.split_length,
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
+                tokenizer_encoding=self.tokenizer_encoding,
             )
 
     def warm_up(self) -> None:
         """
         Warm up the MarkdownHeaderSplitter.
+
+        Loads the tiktoken encoding when `secondary_split="token"`.
         """
         if self.secondary_split and not self._is_warmed_up:
             self.secondary_splitter.warm_up()
             self._is_warmed_up = True
-
-    def _code_block_spans(self, text: str) -> list[tuple[int, int]]:
-        """Return the (start, end) character spans of all fenced code blocks in text."""
-        return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
 
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """
@@ -139,18 +146,17 @@ class MarkdownHeaderSplitter:
         """
         logger.debug("Splitting text by markdown headers")
 
-        # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python comments) are not
-        # mistaken for Markdown headers.
-        code_spans = self._code_block_spans(text)
-
-        # find headers at the configured levels only, excluding any that fall inside a code block. Content between
-        # skipped headers is absorbed into the preceding chunk's span since end = next_match.start().
-        matches = [
-            m
-            for m in re.finditer(self._header_pattern, text)
-            if len(m.group(1)) in self._header_split_levels_set
-            and not any(start <= m.start() < end for start, end in code_spans)
-        ]
+        # Headers and fenced code blocks both arrive in source order. Each fence only needs to be visited once.
+        code_blocks = self._code_block_pattern.finditer(text)
+        code_block = next(code_blocks, None)
+        matches = []
+        for match in self._header_pattern.finditer(text):
+            if len(match.group(1)) not in self._header_split_levels_set:
+                continue
+            while code_block is not None and code_block.end() <= match.start():
+                code_block = next(code_blocks, None)
+            if code_block is None or match.start() < code_block.start():
+                matches.append(match)
 
         # return unsplit if no headers found
         if not matches:
@@ -273,7 +279,7 @@ class MarkdownHeaderSplitter:
 
         return chunks
 
-    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool]]) -> list[Document]:
+    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool, int]]) -> list[Document]:
         """
         Apply secondary splitting while preserving header metadata and structure.
 
@@ -282,7 +288,7 @@ class MarkdownHeaderSplitter:
         result_docs = []
         current_split_id = 0  # track split_id across all secondary splits from the same parent
 
-        for doc, from_header_split in documents:
+        for doc, from_header_split, source_start_idx in documents:
             if doc.content is None:
                 result_docs.append(doc)
                 continue
@@ -321,8 +327,12 @@ class MarkdownHeaderSplitter:
             page_break_count = 0
 
             for split in secondary_splits:
-                split_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
-                while page_break_count < len(page_break_ends) and page_break_ends[page_break_count] <= split_start_idx:
+                section_relative_start_idx = secondary_content_start_idx + split.meta["split_idx_start"]
+                split.meta["split_idx_start"] = source_start_idx + section_relative_start_idx
+                while (
+                    page_break_count < len(page_break_ends)
+                    and page_break_ends[page_break_count] <= section_relative_start_idx
+                ):
                     page_break_count += 1
 
                 split.meta["page_number"] = (
@@ -347,25 +357,27 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool]]:
+    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool, int]]:
         """
         Split a list of documents by markdown headers, preserving metadata.
 
         Each returned Document is paired with whether it was produced by an actual header split (True) or is a
-        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False).
+        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False), and with
+        the offset in the original document where its content starts.
         """
 
-        result_docs: list[tuple[Document, bool]] = []
+        result_docs: list[tuple[Document, bool, int]] = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             # mypy: doc.content is Optional[str], so we must check for None before passing to splitting method
             if doc.content is None:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
-            docs: list[tuple[Document, bool]] = []
+            docs: list[tuple[Document, bool, int]] = []
 
             document_start_page = doc.meta.get("page_number", 1) if doc.meta else 1
-            total_page_breaks = doc.content.count(self.page_break_character)
+            page_break_ends = [match.end() for match in re.finditer(re.escape(self.page_break_character), doc.content)]
+            total_page_breaks = len(page_break_ends)
             logger.debug(
                 "Processing document with id={doc_id}: starting at page {start_page}, "
                 "contains {page_breaks} page breaks in total",
@@ -377,7 +389,7 @@ class MarkdownHeaderSplitter:
                 meta = deepcopy(doc.meta) if doc.meta else {}
                 chunk_start_page = (
                     document_start_page
-                    + doc.content.count(self.page_break_character, 0, split["source_start_idx"])
+                    + bisect_right(page_break_ends, split["source_start_idx"])
                     # breaks the chunk opens with end the previous page, so its text is on a later one
                     + _leading_page_breaks(split["content"], self.page_break_character)
                 )
@@ -385,7 +397,9 @@ class MarkdownHeaderSplitter:
                 from_header_split = split["from_header_split"]
                 if split["meta"]:
                     meta.update(split["meta"])
-                docs.append((Document(content=split["content"], meta=meta), from_header_split))
+                docs.append(
+                    (Document(content=split["content"], meta=meta), from_header_split, split["source_start_idx"])
+                )
             final_page = document_start_page + total_page_breaks
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {final_page}",
@@ -409,6 +423,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `page_number` with the page the chunk starts on, counting
                   `page_break_character` occurrences in the original document.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
+                - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+                  character offset where the chunk starts in the original document.
                 - All other metadata copied from the original document.
         :raises ValueError: If a document has `None` content.
         :raises TypeError: If a document's content is not a string.
@@ -447,7 +463,7 @@ class MarkdownHeaderSplitter:
             if self.secondary_split:
                 doc_splits = self._apply_secondary_splitting(header_split_docs)
             else:
-                doc_splits = [split_doc for split_doc, _ in header_split_docs]
+                doc_splits = [split_doc for split_doc, _, _ in header_split_docs]
 
             final_docs.extend(doc_splits)
 

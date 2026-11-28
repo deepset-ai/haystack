@@ -31,6 +31,8 @@ If the ground truth documents have scores, a higher NDCG indicates that document
 
 No parameters are required to initialize a `DocumentNDCGEvaluator`.
 
+To compute the metric at a cutoff (NDCG@k), set the optional `top_k` parameter. Only the first `top_k` retrieved documents of each question are scored. For example, `DocumentNDCGEvaluator(top_k=10)` returns NDCG@10. The ideal ranking is cut at `top_k` too, so a perfect ranking of the first `top_k` documents scores 1.0. This way, you can retrieve documents once and compute the metric for several cutoffs. By default, `top_k` is `None` and all retrieved documents are scored.
+
 ## Usage
 
 ### On its own

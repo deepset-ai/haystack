@@ -282,6 +282,7 @@ __init__(
     use_split_rules: bool = True,
     extend_abbreviations: bool = True,
     tokenizer_encoding: str = "o200k_base",
+    skip_empty_documents: bool = True,
     remove_empty_lines: bool = True,
     remove_extra_whitespaces: bool = True,
     remove_repeated_substrings: bool = False,
@@ -289,7 +290,10 @@ __init__(
     remove_substrings: list[str] | None = None,
     remove_regex: str | None = None,
     unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
-    ascii_only: bool = False
+    ascii_only: bool = False,
+    strip_whitespaces: bool = False,
+    replace_regexes: dict[str, str] | None = None,
+    min_content_length: int = 0
 ) -> None
 ```
 
@@ -314,6 +318,10 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
   languages.
 - **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `split_by="token"`. Defaults to
   `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
+- **skip_empty_documents** (<code>bool</code>) – If `True`, skips input documents with empty content. Set to `False` when a
+  downstream component can extract text from non-textual documents, such as `LLMDocumentContentExtractor`.
+  With `False`, text ending in a separator can also produce an empty chunk. Empty documents are still
+  dropped with `split_by="sentence"` or `respect_sentence_boundary=True`.
 
 **Cleaner Parameters**:
 
@@ -325,6 +333,11 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 - **remove_regex** (<code>str | None</code>) – A regex pattern whose matches will be removed from the document content.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text, for example `"NFC"`.
 - **ascii_only** (<code>bool</code>) – If `True`, converts text to ASCII only.
+- **strip_whitespaces** (<code>bool</code>) – If `True`, removes leading and trailing whitespace from the document content.
+- **replace_regexes** (<code>dict\[str, str\] | None</code>) – A dictionary mapping regex patterns to their replacement strings.
+- **min_content_length** (<code>int</code>) – Minimum length of each cleaned chunk after stripping leading and trailing
+  whitespace. Shorter chunks are dropped, including empty documents kept by
+  `skip_empty_documents=False`. A value of `0` keeps all chunks.
 
 #### to_dict
 
@@ -428,7 +441,8 @@ Initialize DocumentSplitter.
 - `line` for splitting each line ("\\n")
 - `sentence` for splitting by NLTK sentence tokenizer
 - `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
-- **split_length** (<code>int</code>) – The maximum number of units in each split.
+- **split_length** (<code>int</code>) – The maximum number of units in each split. When splitting by word with
+  `respect_sentence_boundary=True`, a single sentence longer than this limit is kept whole in its own split.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split has fewer units
   than the threshold, it's attached to the previous split.
@@ -837,11 +851,12 @@ Deserialize this component from a dictionary.
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
 Headers may be indented by up to three spaces, following CommonMark; lines indented further are content.
+Header prefixes may be followed by spaces or tabs before the header text.
 
 This component processes text documents by:
 
 - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-- Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+- Optionally applying a secondary split (by word, passage, period, line or token) to each chunk
   (using haystack's DocumentSplitter).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
@@ -853,11 +868,14 @@ __init__(
     page_break_character: str = "\x0c",
     keep_headers: bool = True,
     header_split_levels: list[int] | None = None,
-    secondary_split: Literal["word", "passage", "period", "line"] | None = None,
+    secondary_split: (
+        Literal["word", "passage", "period", "line", "token"] | None
+    ) = None,
     split_length: int = 200,
     split_overlap: int = 0,
     split_threshold: int = 0,
-    skip_empty_documents: bool = True
+    skip_empty_documents: bool = True,
+    tokenizer_encoding: str = "o200k_base"
 ) -> None
 ```
 
@@ -871,8 +889,10 @@ Initialize the MarkdownHeaderSplitter.
 - **header_split_levels** (<code>list\[int\] | None</code>) – List of header levels (1–6) to split on. For example, `[1, 2]` splits only
   on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
   all levels `[1, 2, 3, 4, 5, 6]`.
-- **secondary_split** (<code>Literal['word', 'passage', 'period', 'line'] | None</code>) – Optional secondary split condition after header splitting.
-  Options are None, "word", "passage", "period", "line". Defaults to None.
+- **secondary_split** (<code>Literal['word', 'passage', 'period', 'line', 'token'] | None</code>) – Optional secondary split condition after header splitting.
+  Options are None, "word", "passage", "period", "line", "token". Defaults to None.
+  `token` splits by token count using tiktoken (requires `pip install tiktoken`), so that each chunk fits
+  the token limit of an embedding model or LLM.
 - **split_length** (<code>int</code>) – The maximum number of units in each split when using secondary splitting. Defaults to 200.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split when using secondary splitting.
   Defaults to 0.
@@ -880,6 +900,8 @@ Initialize the MarkdownHeaderSplitter.
 - **skip_empty_documents** (<code>bool</code>) – Choose whether to skip documents with empty content. Default is True.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
+- **tokenizer_encoding** (<code>str</code>) – The tiktoken encoding to use when `secondary_split="token"`. Defaults to
+  `"o200k_base"` (current OpenAI models). Only used when `secondary_split="token"`.
 
 #### warm_up
 
@@ -888,6 +910,8 @@ warm_up() -> None
 ```
 
 Warm up the MarkdownHeaderSplitter.
+
+Loads the tiktoken encoding when `secondary_split="token"`.
 
 #### run
 
@@ -909,6 +933,8 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `page_number` with the page the chunk starts on, counting
     `page_break_character` occurrences in the original document.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
+  - A metadata field `split_idx_start`, when `secondary_split` is enabled, with the
+    character offset where the chunk starts in the original document.
   - All other metadata copied from the original document.
 
 **Raises:**
@@ -1074,6 +1100,8 @@ Initializes the TextCleaner component.
 **Parameters:**
 
 - **remove_regexps** (<code>list\[str\] | None</code>) – A list of regex patterns to remove matching substrings from the text.
+  The patterns are applied one after another, in list order, and match case-insensitively.
+  To match a part of a pattern case-sensitively, use an inline flag group such as `(?-i:[A-Z]+)`.
 - **convert_to_lowercase** (<code>bool</code>) – If `True`, converts all characters to lowercase.
 - **remove_punctuation** (<code>bool</code>) – If `True`, removes punctuation from the text.
 - **remove_numbers** (<code>bool</code>) – If `True`, removes numerical digits from the text.

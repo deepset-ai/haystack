@@ -51,6 +51,13 @@ document_store.write_documents(
 print(document_store.count_documents())
 ```
 
+:::note[Using Sync and Async APIs]
+
+With `location=":memory:"`, synchronous and asynchronous methods use separate in-memory databases. For example, `count_documents_async()` returns zero after a write made through `write_documents()` on a fresh store. Use one API consistently with an in-memory store.
+
+To share data between synchronous and asynchronous calls, connect to the same Qdrant server via `url` or `host` and keep `recreate_index=False` (the default). With `recreate_index=True`, each client recreates the collection when first initialized, so the first async call can delete documents written through the sync API, or vice versa.
+:::
+
 :::warning[Collections Created Outside Haystack]
 
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
@@ -67,7 +74,7 @@ document_store = QdrantDocumentStore(
     url="https://XXXXXXXXX.us-east4-0.gcp.cloud.qdrant.io:6333",
     index="your_index_name",
     embedding_dim=5,  # based on the embedding model
-    recreate_index=True,  # enable only to recreate the index and not connect to the existing one
+    recreate_index=False,  # keep any existing documents in the collection
     api_key=Secret.from_token("YOUR_TOKEN"),
 )
 
@@ -90,12 +97,20 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 - [`QdrantEmbeddingRetriever`](../pipeline-components/retrievers/qdrantembeddingretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on their dense embeddings (vectors).
 - [`QdrantSparseEmbeddingRetriever`](../pipeline-components/retrievers/qdrantsparseembeddingretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on their sparse embeddings.
 - [`QdrantHybridRetriever`](../pipeline-components/retrievers/qdranthybridretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on both dense and sparse embeddings.
+- [`QdrantMultivectorEmbeddingRetriever`](../pipeline-components/retrievers/qdrantmultivectorembeddingretriever.mdx): Retrieves documents using dot-product MaxSim scoring over their multivector embeddings.
 
 :::note[Sparse Embedding Support]
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
 If you want to use Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+:::
+
+:::note[Multivector Embedding Support]
+
+To enable multivector embeddings, initialize `QdrantDocumentStore` with `multivector_embedding_dim` set to the dimension of each vector produced by your model. Multivector support is disabled by default.
+
+For a collection created without this support, use a new collection and reindex your documents.
 :::
 
 ## Additional References

@@ -732,7 +732,7 @@ class TestSplittingNLTKSentenceSplitter:
     )
     def test_number_of_sentences_to_keep(self, sentences: list[str], expected_num_sentences: int) -> None:
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
-            sentences=sentences, split_length=5, split_overlap=2
+            sentences=sentences, split_overlap=2, overlap_word_budget=5
         )
         assert num_sentences == expected_num_sentences
 
@@ -743,7 +743,7 @@ class TestSplittingNLTKSentenceSplitter:
             " The moon was full.",
         ]
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
-            sentences=sentences, split_length=5, split_overlap=0
+            sentences=sentences, split_overlap=0, overlap_word_budget=5
         )
         assert num_sentences == 0
 
@@ -756,6 +756,24 @@ class TestSplittingNLTKSentenceSplitter:
             "Alpha beta. Gamma delta. Epsilon zeta. ",
             "Epsilon zeta. Eta theta.",
         ]
+
+    @pytest.mark.parametrize(
+        "next_sentence, expected_second_chunk",
+        [
+            pytest.param("Night falls.", "Go. Cold rain. Night falls.", id="full-overlap"),
+            pytest.param("Night falls quickly.", "Cold rain. Night falls quickly.", id="reduced-overlap"),
+            pytest.param("We walk into the woods.", "We walk into the woods.", id="no-overlap"),
+            pytest.param(
+                "We walk into the woods together.", "We walk into the woods together.", id="long-sentence-kept-whole"
+            ),
+        ],
+    )
+    def test_sentence_overlap_respects_split_length(self, next_sentence: str, expected_second_chunk: str) -> None:
+        first_chunk = "Blue sky. Go. Cold rain. "
+        text = first_chunk + next_sentence
+        splitter = DocumentSplitter(split_by="word", split_length=5, split_overlap=3, respect_sentence_boundary=True)
+        documents = splitter.run(documents=[Document(content=text)])["documents"]
+        assert [doc.content for doc in documents] == [first_chunk, expected_second_chunk]
 
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(

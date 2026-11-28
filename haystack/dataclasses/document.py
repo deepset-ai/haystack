@@ -181,6 +181,21 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
             data["meta"] = colliding_meta
         return data
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the Document to a dictionary representation for tracing.
+
+        The binary data of the `blob` field is replaced with a placeholder string to avoid sending large payloads to
+        the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        data = self.to_dict()
+        if self.blob is not None:
+            data["blob"] = self.blob._to_trace_dict()
+        return data
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Document":
         """

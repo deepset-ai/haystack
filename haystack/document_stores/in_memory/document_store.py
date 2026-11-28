@@ -12,8 +12,10 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
+from functools import wraps
 from pathlib import Path
-from typing import Any, Literal
+from threading import RLock
+from typing import Any, Concatenate, Literal, ParamSpec, TypeVar
 
 import numpy as np
 
@@ -56,7 +58,32 @@ _CJK_CHAR_CLASS = (
     r"\uff66-\uff9f"  # Halfwidth Katakana
     r"\uffa0-\uffdc"  # Halfwidth Hangul Jamo
 )
-_DEFAULT_BM25_TOKENIZATION_REGEX = rf"[^\W{_CJK_CHAR_CLASS}]+|[{_CJK_CHAR_CLASS}]"
+
+# Unicode ranges for the combining marks (vowel signs, viramas, diacritics) of scripts that separate words with
+# spaces. Python's `\w` does not match combining marks, so without these the default regex would cut words such as
+# Tamil "தமிழ்" into fragments. Thai, Lao, Khmer and Myanmar are left out on purpose: they do not put spaces
+# between words, so joining their marks would turn whole phrases into one token.
+_COMBINING_MARK_CHAR_CLASS = (
+    r"\u0300-\u036f"  # Combining Diacritical Marks (decomposed Latin, Greek, Cyrillic)
+    r"\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7"  # Hebrew points and cantillation marks
+    r"\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed"  # Arabic harakat
+    r"\u0900-\u0963"  # Devanagari (Hindi, Marathi, Nepali), stops before the danda
+    r"\u0981-\u09e3"  # Bengali
+    r"\u0a01-\u0a75"  # Gurmukhi (Punjabi)
+    r"\u0a81-\u0ae3"  # Gujarati
+    r"\u0b01-\u0b63"  # Oriya
+    r"\u0b82-\u0bd7"  # Tamil
+    r"\u0c00-\u0c63"  # Telugu
+    r"\u0c81-\u0c83\u0c85-\u0ce3"  # Kannada, excludes the siddham sign
+    r"\u0d00-\u0d4e\u0d57\u0d62\u0d63"  # Malayalam
+    r"\u0d81-\u0df3"  # Sinhala
+    r"\u200c\u200d"  # Zero-width non-joiner and joiner, used inside Sinhala and Indic words (ශ්‍රී)
+)
+_WORD_CHAR = rf"[^\W{_CJK_CHAR_CLASS}]"
+# A word starts with a word character, then any mix of word characters and combining marks. CJK: one char per token.
+_DEFAULT_BM25_TOKENIZATION_REGEX = (
+    rf"{_WORD_CHAR}+(?:[{_COMBINING_MARK_CHAR_CLASS}]+{_WORD_CHAR}*)*|[{_CJK_CHAR_CLASS}]"
+)
 
 
 @dataclass
@@ -78,11 +105,30 @@ _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
+# Clearing the documents replaces the data dictionaries, but must preserve the lock shared by existing instances.
+_STORAGE_LOCKS: dict[str, RLock] = {}
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+
+def _synchronized(
+    method: Callable[Concatenate["InMemoryDocumentStore", _P], _T],
+) -> Callable[Concatenate["InMemoryDocumentStore", _P], _T]:
+    @wraps(method)
+    def locked(self: "InMemoryDocumentStore", *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        # Overwrites call delete_documents while holding the same index lock.
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return locked
 
 
 class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
+
+    Reading, writing and deleting documents is thread-safe per index, including across instances that share an index.
     """
 
     def __init__(
@@ -104,7 +150,8 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex:
             The regular expression used to tokenize the text for BM25 retrieval. The default groups word
             characters into word tokens and splits Chinese, Japanese and Korean text into one token per character.
-            Text is lowercased and NFC-normalized before tokenization.
+            Text is lowercased and NFC-normalized before tokenization. Combining marks (such as the vowel signs of
+            Sinhala, Tamil or Devanagari) stay part of the word.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
             For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
@@ -135,13 +182,15 @@ class InMemoryDocumentStore:
         # instance instead of accumulating in the globals.
         self._shared = shared
         self.index = index if index is not None else str(uuid.uuid4())
+        self._lock = _STORAGE_LOCKS.setdefault(self.index, RLock()) if shared else RLock()
 
         if self._shared:
-            if self.index not in _STORAGES:
-                _STORAGES[self.index] = {}
-                _BM25_STATS_STORAGES[self.index] = {}
-                _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
-                _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+            with self._lock:
+                if self.index not in _STORAGES:
+                    _STORAGES[self.index] = {}
+                    _BM25_STATS_STORAGES[self.index] = {}
+                    _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+                    _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
         else:
             self._local_storage: dict[str, Document] = {}
             self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
@@ -427,6 +476,7 @@ class InMemoryDocumentStore:
         """
         return default_from_dict(cls, data)
 
+    @_synchronized
     def save_to_disk(self, path: str) -> None:
         """
         Write the database and its data to disk as a JSON file.
@@ -443,6 +493,9 @@ class InMemoryDocumentStore:
         """
         Load the database and its data from disk as a JSON file.
 
+        With `shared=True`, the saved documents replace all documents in the index, including for other
+        instances sharing it.
+
         :param path: The path to the JSON file.
         :returns: The loaded InMemoryDocumentStore.
         """
@@ -453,11 +506,13 @@ class InMemoryDocumentStore:
             except Exception as e:
                 raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e
 
-            documents = data.pop("documents")
+            # Parse the documents first so an invalid snapshot leaves the index untouched
+            documents = [Document.from_dict(doc) for doc in data.pop("documents")]
             cls_object = default_from_dict(cls, data)
-            cls_object.write_documents(
-                documents=[Document.from_dict(doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
-            )
+            # Hold the index lock so synchronized readers never see a partially restored index
+            with cls_object._lock:
+                cls_object.delete_all_documents()
+                cls_object.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
             return cls_object
 
         raise FileNotFoundError(f"File {path} not found.")
@@ -468,6 +523,7 @@ class InMemoryDocumentStore:
         """
         return len(self.storage.keys())
 
+    @_synchronized
     def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
@@ -493,6 +549,7 @@ class InMemoryDocumentStore:
 
         return docs
 
+    @_synchronized
     def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Refer to the DocumentStore.write_documents() protocol documentation.
@@ -539,6 +596,7 @@ class InMemoryDocumentStore:
             self._avg_doc_len = (len(tokens) + self._avg_doc_len * (n_docs - 1)) / n_docs
         return written_documents
 
+    @_synchronized
     def delete_documents(self, document_ids: list[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
@@ -573,6 +631,7 @@ class InMemoryDocumentStore:
                 "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
             )
 
+    @_synchronized
     def delete_all_documents(self) -> None:
         """
         Deletes all documents in the document store.
@@ -588,6 +647,7 @@ class InMemoryDocumentStore:
             self._local_avg_doc_len = 0.0
             self._local_freq_vocab_for_idf = Counter()
 
+    @_synchronized
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """
         Updates the metadata of all documents that match the provided filters.
@@ -607,10 +667,10 @@ class InMemoryDocumentStore:
             )
         ]
         for doc in matching:
-            doc.meta.update(meta)
-            self.storage[doc.id] = doc
+            self.storage[doc.id] = replace(doc, meta={**doc.meta, **meta})
         return len(matching)
 
+    @_synchronized
     def delete_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Deletes all documents that match the provided filters.
@@ -632,6 +692,7 @@ class InMemoryDocumentStore:
         self.delete_documents(doc_ids)
         return len(doc_ids)
 
+    @_synchronized
     def count_documents_by_filter(self, filters: dict[str, Any]) -> int:
         """
         Returns the number of documents that match the provided filters.
@@ -652,6 +713,7 @@ class InMemoryDocumentStore:
             )
         return len(self.storage)
 
+    @_synchronized
     def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
@@ -689,6 +751,7 @@ class InMemoryDocumentStore:
             result[key] = len(values)
         return result
 
+    @_synchronized
     def get_metadata_fields_info(self) -> dict[str, dict[str, str]]:
         """
         Returns information about the metadata fields present in the stored documents.
@@ -712,6 +775,7 @@ class InMemoryDocumentStore:
                     type_map[key] = "keyword"
         return {k: {"type": v} for k, v in type_map.items()}
 
+    @_synchronized
     def get_metadata_field_min_max(self, metadata_field: str) -> dict[str, Any]:
         """
         Returns the minimum and maximum values for the given metadata field across all documents.
@@ -769,6 +833,7 @@ class InMemoryDocumentStore:
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
+    @_synchronized
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
@@ -841,6 +906,7 @@ class InMemoryDocumentStore:
 
         return return_documents
 
+    @_synchronized
     def embedding_retrieval(
         self,
         query_embedding: list[float],

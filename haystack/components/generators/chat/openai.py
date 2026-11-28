@@ -23,6 +23,11 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat._rate_limit_headers import (
+    _attach_rate_limit_headers,
+    _build_http_client,
+    _reset_rate_limit_headers,
+)
 from haystack.components.generators.utils import (
     _convert_streaming_chunks_to_chat_message,
     _normalize_messages,
@@ -49,7 +54,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
+from haystack.utils.misc import _warn_if_using_openai_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +143,11 @@ class OpenAIChatGenerator:
         tools: ToolsType | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
+        *,
+        include_rate_limit_headers: bool = False,
     ) -> None:
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5.6-terra.
-
-        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
-        environment variables to override the `timeout` and `max_retries` parameters respectively
-        in the OpenAI client.
 
         :param api_key: The OpenAI API key.
             You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
@@ -195,9 +198,11 @@ class OpenAIChatGenerator:
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            Using this environment variable is deprecated. Haystack 3.7 and later will ignore it.
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
@@ -206,6 +211,11 @@ class OpenAIChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param include_rate_limit_headers:
+            If `True`, the `x-ratelimit-*` headers of the HTTP response are added to the `meta` of each reply
+            under the `rate_limit_headers` key, for example `{"x-ratelimit-remaining-requests": "499", ...}`.
+            The values are passed through as returned by the API. Headers are only added for successful requests
+            and, when streaming, only to the final reply (not to intermediate streaming chunks). Disabled by default.
 
         """
         self.api_key = api_key
@@ -219,6 +229,7 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.include_rate_limit_headers = include_rate_limit_headers
         # Check for duplicate tool names
         _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
@@ -230,6 +241,7 @@ class OpenAIChatGenerator:
         max_retries = (
             self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         )
+        _warn_if_using_openai_env_vars(timeout=self.timeout, max_retries=self.max_retries)
         return {
             "api_key": self.api_key.resolve_value(),
             "organization": self.organization,
@@ -245,7 +257,9 @@ class OpenAIChatGenerator:
         if self.client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=False, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -258,7 +272,9 @@ class OpenAIChatGenerator:
         if self.async_client is None:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            http_client = _build_http_client(
+                self.http_client_kwargs, async_client=True, include_rate_limit_headers=self.include_rate_limit_headers
+            )
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
                 **self._client_kwargs(),
@@ -323,6 +339,7 @@ class OpenAIChatGenerator:
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
+            include_rate_limit_headers=self.include_rate_limit_headers,
         )
 
     @classmethod
@@ -398,6 +415,7 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.client is not None  # mypy: client is built by warm_up above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
         chat_completion = openai_endpoint_method(**api_args)
 
@@ -416,10 +434,7 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
-        for message in completions:
-            _check_finish_reason(message.meta)
-
+        self._finalize_replies(completions)
         return {"replies": completions}
 
     @component.output_types(replies=list[ChatMessage])
@@ -483,6 +498,7 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
+        _reset_rate_limit_headers()
         openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
         chat_completion = await openai_endpoint_method(**api_args)
 
@@ -501,11 +517,13 @@ class OpenAIChatGenerator:
                 for choice in chat_completion.choices
             ]
 
-        # before returning, do post-processing of the completions
+        self._finalize_replies(completions)
+        return {"replies": completions}
+
+    def _finalize_replies(self, completions: list[ChatMessage]) -> None:
         for message in completions:
             _check_finish_reason(message.meta)
-
-        return {"replies": completions}
+        _attach_rate_limit_headers(completions, enabled=self.include_rate_limit_headers)
 
     def _convert_chat_completion_to_chat_message(
         self, completion: ChatCompletion | ParsedChatCompletion, choice: Choice
@@ -743,10 +761,12 @@ def _convert_chat_completion_to_chat_message(
                 )
 
     logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    # A refusal arrives with finish_reason "stop", so report it as "content_filter" like other providers' refusals
+    finish_reason = "content_filter" if message.refusal and choice.finish_reason == "stop" else choice.finish_reason
     meta = {
         "model": completion.model,
         "index": choice.index,
-        "finish_reason": choice.finish_reason,
+        "finish_reason": finish_reason,
         "usage": _serialize_object(completion.usage),
     }
     if logprobs:
@@ -861,6 +881,11 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and choice.delta.content:
         content = choice.delta.content
 
+    finish_reason = finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None
+    # A refusal streamed in earlier chunks ends with finish_reason "stop", so report it as "content_filter"
+    if finish_reason == "stop" and any(c.meta.get("refusal") for c in previous_chunks):
+        finish_reason = "content_filter"
+
     return StreamingChunk(
         content=content,
         component_info=component_info,
@@ -868,6 +893,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
-        finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+        finish_reason=finish_reason,
         meta=meta,
     )

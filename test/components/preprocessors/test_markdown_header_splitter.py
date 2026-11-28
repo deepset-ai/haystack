@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 from collections import defaultdict
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 import pytest
 
+import haystack.components.preprocessors.document_splitter as document_splitter_module
 from haystack import Document
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 # Fixtures
@@ -50,6 +53,56 @@ def sample_text_with_page_breaks():
 
 
 # Basic splitting and structure
+@pytest.mark.parametrize("separator", [" ", "\t", " \t", "\t "])
+def test_whitespace_after_header_prefix(separator):
+    text = f"#{separator}Root\nRoot body.\n##{separator}Child\nChild body."
+    split_docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.content for doc in split_docs] == [
+        f"#{separator}Root\nRoot body.\n",
+        f"##{separator}Child\nChild body.",
+    ]
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in split_docs] == [
+        ("Root", []),
+        ("Child", ["Root"]),
+    ]
+
+
+@pytest.mark.parametrize("text", ["#No separator", "#######\tToo deep", "#\vVertical tab", "#\u00a0Non-breaking space"])
+def test_non_atx_header_prefix_is_not_split(text):
+    document = Document(content=text)
+    split_docs = MarkdownHeaderSplitter().run(documents=[document])["documents"]
+
+    assert len(split_docs) == 1
+    assert split_docs[0].content == text
+    assert split_docs[0].meta == {"source_id": document.id, "page_number": 1, "split_id": 0}
+
+
+@pytest.mark.parametrize("keep_headers", [True, False])
+def test_tab_separated_headers_preserve_metadata_with_secondary_splitting(keep_headers):
+    text = "##\tParent\n###\tChild\none two three four five six"
+    document = Document(content=text)
+    splitter = MarkdownHeaderSplitter(keep_headers=keep_headers, secondary_split="word", split_length=3)
+    split_docs = splitter.run(documents=[document])["documents"]
+
+    first_content = "##\tParent\n###\tChild\none two three " if keep_headers else "\none two three "
+    # split_idx_start is relative to the original document, so without headers the first split starts after them
+    first_start = text.index(first_content)
+    assert [doc.content for doc in split_docs] == [first_content, "four five six"]
+    for split_id, doc in enumerate(split_docs):
+        assert doc.meta == {
+            "source_id": document.id,
+            "page_number": 1,
+            "split_id": split_id,
+            "header": "Child",
+            "parent_headers": ["Parent"],
+            "split_idx_start": first_start if split_id == 0 else first_start + len(first_content),
+        }
+    assert "".join(doc.content or "" for doc in split_docs) == (
+        text if keep_headers else "\none two three four five six"
+    )
+
+
 def test_basic_split(sample_text):
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content=sample_text)]
@@ -338,7 +391,7 @@ def test_secondary_splits_have_independent_header_metadata(keep_headers, prefix,
 
     assert [split.content for split in split_docs] == expected_content
     assert "".join(expected_content) == (doc.content if keep_headers else "\n" + body)
-    offset = 0
+    offset = len(prefix + body) - len("".join(expected_content))
     for split_id, (split, content) in enumerate(zip(split_docs, expected_content, strict=True)):
         assert split.meta == {
             "tags": ["docs"],
@@ -828,6 +881,11 @@ def test_secondary_split_with_overlap():
     split_docs = result["documents"]
     assert len(split_docs) == 9
 
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
+
     # Verify exact content and metadata of each split
     # intro (4 docs)
     assert split_docs[0].content == "\nThis is the introduction section with some words "
@@ -883,6 +941,11 @@ def test_secondary_split_with_overlap():
     split_docs = result["documents"]
     assert len(split_docs) == 24
 
+    for split in split_docs:
+        assert split.content is not None
+        start = split.meta["split_idx_start"]
+        assert text[start : start + len(split.content)] == split.content
+
     assert split_docs[0].content is not None
     assert split_docs[0].content.startswith("# Introduction")
     assert all("header" in doc.meta for doc in split_docs)
@@ -921,6 +984,24 @@ def test_secondary_split_with_threshold():
     assert split_docs[1].meta["split_id"] == 1
     assert split_docs[2].content == "word7 word8 word9 word10"  # 4 words (due to threshold, not possible to split 3-1)
     assert split_docs[2].meta["split_id"] == 2
+
+
+def test_code_fence_comments_and_page_breaks_across_multiple_sections():
+    text = (
+        "# Install\nRun:\n```bash\n# install deps\npip install haystack-ai\n```\n\f\n"
+        "## Configure\nSet the key.\n```python\n# set the key\nos.environ['KEY'] = 'x'\n```\n"
+        "## Run\nStart it.\n\f\n"
+        "# Deploy\nShip it.\n```bash\n# build image\ndocker build .\n```\n"
+    )
+
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+    assert [doc.meta["header"] for doc in docs] == ["Install", "Configure", "Run", "Deploy"]
+    assert [doc.meta["page_number"] for doc in docs] == [1, 2, 2, 3]
+    assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2, 3]
+    assert docs[0].content == text[: text.index("## Configure")]
+    assert docs[3].content == text[text.index("# Deploy") :]
+    assert "".join(doc.content or "" for doc in docs) == text
 
 
 def test_page_break_handling_in_secondary_split():
@@ -967,7 +1048,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 2,
         "page_number": 2,
-        "split_idx_start": 0,
+        "split_idx_start": 37,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -977,7 +1058,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 3,
         "page_number": 2,
-        "split_idx_start": 18,
+        "split_idx_start": 55,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -987,7 +1068,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 4,
         "page_number": 2,
-        "split_idx_start": 48,
+        "split_idx_start": 85,
         "header": "Subheader 1.1.1",
         "parent_headers": ["Header 1", "Header 1.1"],
     }
@@ -997,7 +1078,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 5,
         "page_number": 3,
-        "split_idx_start": 0,
+        "split_idx_start": 104,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1007,7 +1088,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 6,
         "page_number": 3,
-        "split_idx_start": 18,
+        "split_idx_start": 122,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1017,7 +1098,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 7,
         "page_number": 3,
-        "split_idx_start": 48,
+        "split_idx_start": 152,
         "header": "Subheader 1.2.1",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1027,7 +1108,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 8,
         "page_number": 4,
-        "split_idx_start": 0,
+        "split_idx_start": 168,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1037,7 +1118,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 9,
         "page_number": 4,
-        "split_idx_start": 28,
+        "split_idx_start": 196,
         "header": "Subheader 1.2.2",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1047,7 +1128,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 10,
         "page_number": 5,
-        "split_idx_start": 0,
+        "split_idx_start": 218,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1057,7 +1138,7 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
         "source_id": ANY,
         "split_id": 11,
         "page_number": 5,
-        "split_idx_start": 28,
+        "split_idx_start": 246,
         "header": "Subheader 1.2.3",
         "parent_headers": ["Header 1", "Header 1.2"],
     }
@@ -1326,3 +1407,151 @@ def test_leading_non_split_header_is_kept_through_a_secondary_split():
     assert first_content is not None
     assert "# Top Level" in first_content
     assert "Top content." in first_content
+
+
+# Secondary split by token
+@pytest.fixture
+def mock_tiktoken_encoding(monkeypatch):
+    """
+    Replace `tiktoken.get_encoding` with a fake whitespace tokenizer, so these tests need no network access.
+
+    Every word is one token, and every token after the first carries the whitespace in front of it, like
+    real BPE tokenizers do. Decoding the tokens of a text gives back exactly that text.
+    """
+
+    def encode_ordinary(text: str) -> list[str]:
+        return [match.group(0) for match in re.finditer(r"\s*\S+|\s+$", text)]
+
+    def decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+        offsets: list[int] = []
+        idx = 0
+        for token in tokens:
+            offsets.append(idx)
+            idx += len(token)
+        return "".join(tokens), offsets
+
+    encoding = Mock()
+    encoding.encode_ordinary.side_effect = encode_ordinary
+    encoding.decode_with_offsets.side_effect = decode_with_offsets
+    get_encoding = Mock(return_value=encoding)
+    monkeypatch.setattr(document_splitter_module.tiktoken, "get_encoding", get_encoding)
+    return get_encoding
+
+
+class TestSecondarySplitByToken:
+    def test_init_passes_settings_to_the_inner_splitter(self):
+        splitter = MarkdownHeaderSplitter(
+            secondary_split="token",
+            split_length=50,
+            split_overlap=10,
+            split_threshold=5,
+            tokenizer_encoding="cl100k_base",
+        )
+
+        inner = splitter.secondary_splitter
+        assert inner.split_by == "token"
+        assert inner.split_length == 50
+        assert inner.split_overlap == 10
+        assert inner.split_threshold == 5
+        assert inner.tokenizer_encoding == "cl100k_base"
+
+    def test_serialization_round_trip(self):
+        splitter = MarkdownHeaderSplitter(
+            secondary_split="token", split_length=100, split_overlap=20, tokenizer_encoding="cl100k_base"
+        )
+
+        restored = component_from_dict(MarkdownHeaderSplitter, component_to_dict(splitter, "splitter"), "splitter")
+
+        assert restored.secondary_split == "token"
+        assert restored.split_length == 100
+        assert restored.split_overlap == 20
+        assert restored.tokenizer_encoding == "cl100k_base"
+        assert restored.secondary_splitter.tokenizer_encoding == "cl100k_base"
+
+    def test_warm_up_loads_the_encoding_once(self, mock_tiktoken_encoding):
+        splitter = MarkdownHeaderSplitter(secondary_split="token", tokenizer_encoding="cl100k_base")
+
+        splitter.warm_up()
+        splitter.warm_up()
+
+        mock_tiktoken_encoding.assert_called_once_with("cl100k_base")
+        assert splitter.secondary_splitter._tiktoken_tokenizer is mock_tiktoken_encoding.return_value
+
+    def test_header_metadata_split_id_and_source_id(self, mock_tiktoken_encoding):
+        text = "# Intro\nOne two three four five.\n## Details\nA b c d e f."
+        source = Document(content=text)
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3)
+
+        docs = splitter.run(documents=[source])["documents"]
+
+        # "#" and "Intro" are tokens too, so the first chunk of a section holds the header and one word
+        assert [doc.content for doc in docs] == [
+            "# Intro\nOne",
+            " two three four",
+            " five.\n",
+            "## Details\nA",
+            " b c d",
+            " e f.",
+        ]
+        assert [doc.meta["header"] for doc in docs] == ["Intro"] * 3 + ["Details"] * 3
+        assert [doc.meta["parent_headers"] for doc in docs] == [[]] * 3 + [["Intro"]] * 3
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2, 3, 4, 5]
+        assert all(doc.meta["source_id"] == source.id for doc in docs)
+
+    def test_keep_headers_false(self, mock_tiktoken_encoding):
+        text = "# Intro\nOne two three four five.\n## Details\nA b c."
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=3, keep_headers=False)
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == ["\nOne two three", " four five.\n", "\nA b c."]
+        assert [doc.meta["header"] for doc in docs] == ["Intro", "Intro", "Details"]
+        assert [doc.meta["parent_headers"] for doc in docs] == [[], [], ["Intro"]]
+
+    def test_page_numbers_across_headers(self, mock_tiktoken_encoding):
+        text = "# One\nAlpha beta.\f\n# Two\nGamma delta epsilon.\f\n# Three\nZeta."
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=2)
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [(doc.content, doc.meta["header"], doc.meta["page_number"]) for doc in docs] == [
+            ("# One", "One", 1),
+            ("\nAlpha beta.", "One", 1),
+            # a chunk that starts with a page break is on the next page, as with the other split types
+            ("\f\n", "One", 2),
+            ("# Two", "Two", 2),
+            ("\nGamma delta", "Two", 2),
+            (" epsilon.\f\n", "Two", 2),
+            ("# Three", "Three", 3),
+            ("\nZeta.", "Three", 3),
+        ]
+
+
+@pytest.mark.integration
+class TestSecondarySplitByTokenIntegration:
+    """Integration test for secondary_split="token" that loads a real tiktoken encoding."""
+
+    def test_run(self):
+        text = (
+            "# Install\n"
+            "Run `pip install haystack-ai` and see https://github.com/deepset-ai/haystack for the source code.\n"
+            "## Usage\n"
+            "Haystack pipelines connect retrievers, rankers and generators.\f"
+            "Token-based chunks keep every piece inside the context budget of the model.\n"
+            "```python\n# a comment, not a header\npipeline.run({'retriever': {'query': 'What is RAG?'}})\n```\n"
+        )
+        splitter = MarkdownHeaderSplitter(secondary_split="token", split_length=10)
+        splitter.warm_up()
+
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        tokenizer = splitter.secondary_splitter._tiktoken_tokenizer
+        assert tokenizer is not None
+        assert len(docs) > 2
+        for doc in docs:
+            assert doc.content
+            assert len(tokenizer.encode_ordinary(doc.content)) <= 10
+        assert "".join(str(doc.content) for doc in docs) == text
+        assert {doc.meta["header"] for doc in docs} == {"Install", "Usage"}
+        assert [doc.meta["split_id"] for doc in docs] == list(range(len(docs)))
+        assert docs[-1].meta["page_number"] == 2

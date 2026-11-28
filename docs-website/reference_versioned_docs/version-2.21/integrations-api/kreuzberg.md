@@ -61,7 +61,8 @@ __init__(
     config_path: str | Path | None = None,
     store_full_path: bool = False,
     batch: bool = True,
-    easyocr_kwargs: dict[str, Any] | None = None
+    easyocr_kwargs: dict[str, Any] | None = None,
+    include_page_structure: bool = True
 ) -> None
 ```
 
@@ -88,6 +89,12 @@ Create a `KreuzbergConverter` component.
   and other EasyOCR-specific options.
   See the [EasyOCR documentation](https://www.jaided.ai/easyocr/documentation/)
   for the full list of supported arguments.
+- **include_page_structure** (<code>bool</code>) – If `True`, the page structure kreuzberg returns when `PageConfig` is set
+  is stored under `meta["pages"]`: per-page byte boundaries, dimensions and
+  blank flags. Its size grows with the page count of the source and it is
+  copied into every Document produced from that source. Set to `False` to
+  leave it out, for example to keep the metadata of chunked or split
+  Documents small. `page_count` is kept either way.
 
 #### to_dict
 

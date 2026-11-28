@@ -6,12 +6,14 @@ import json
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from typing import Annotated, Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
+from pydantic import Field
 
 from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
@@ -20,6 +22,7 @@ from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGen
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
+from haystack.utils import Secret
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 # Component and Model Definitions
@@ -149,6 +152,65 @@ class DocumentProcessor:
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k] if doc.content)}
 
 
+@dataclass
+class Task:
+    """A task with string field annotations, as with `from __future__ import annotations`, and a forward reference."""
+
+    title: "Annotated[str, Field(min_length=1)]"
+    due: "date"
+    assignees: "list[Address]"
+    items: list["OrderItem"]
+
+
+@dataclass
+class OrderItem:
+    """An item of an order."""
+
+    sku: str
+    quantity: int = 1
+
+
+@component
+class TaskPlanner:
+    """A component that summarizes a Task."""
+
+    @component.output_types(summary=str)
+    def run(self, task: Task) -> dict[str, str]:
+        """
+        Summarizes a task.
+
+        :param task: The Task to summarize.
+        :return: A dictionary with the summary of the task.
+        """
+        cities = ", ".join(address.city for address in task.assignees)
+        quantity = sum(item.quantity for item in task.items)
+        return {"summary": f"{task.title} due {task.due.isoformat()}, {cities}, {quantity} items"}
+
+
+@dataclass
+class Category:
+    """A category of a catalog, which refers to itself inside `Annotated` and `X | None`."""
+
+    name: str
+    subcategories: "Annotated[list[Category], Field(max_length=20)]"
+    parent: "Category | None" = None
+
+
+@component
+class CategoryLister:
+    """A component that lists the subcategories of a Category."""
+
+    @component.output_types(names=list[str])
+    def run(self, category: Category) -> dict[str, list[str]]:
+        """
+        Lists the subcategories of a category.
+
+        :param category: The category whose subcategories are listed.
+        :return: A dictionary with the names of the subcategories.
+        """
+        return {"names": [subcategory.name for subcategory in category.subcategories]}
+
+
 def output_handler(old, new):
     """
     Output handler to test serialization.
@@ -190,6 +252,18 @@ class TestComponentTool:
         tool = ComponentTool(component=DualModeComponent())
         assert tool.invoke(text="hi", unexpected=42) == {"reply": "sync:hi"}
         assert "unexpected" in caplog.text
+
+    @pytest.mark.parametrize("access_token", ["tok", Secret.from_token("tok")])
+    def test_inputs_from_state_reach_run_unconverted(self, access_token):
+        @component
+        class Fetcher:
+            @component.output_types(access_token=str | Secret)
+            def run(self, query: str, access_token: str | Secret) -> dict[str, str | Secret]:
+                return {"access_token": access_token}
+
+        tool = ComponentTool(component=Fetcher(), inputs_from_state={"token": "access_token"})
+
+        assert tool.invoke(query="q", access_token=access_token) == {"access_token": access_token}
 
     def test_custom_parameters_allow_mandatory_input_from_state(self):
         parameters = {"type": "object", "properties": {}}
@@ -323,6 +397,99 @@ class TestComponentTool:
         assert isinstance(result, dict)
         assert "info" in result
         assert result["info"] == "Diana lives at 123 Elm Street, Metropolis."
+
+    def test_from_component_with_postponed_dataclass_annotations(self):
+        tool = ComponentTool(component=TaskPlanner())
+
+        assert tool.parameters == {
+            "$defs": {
+                "Address": {
+                    "properties": {
+                        "street": {"description": "Field 'street' of 'Address'.", "type": "string"},
+                        "city": {"description": "Field 'city' of 'Address'.", "type": "string"},
+                    },
+                    "required": ["street", "city"],
+                    "type": "object",
+                },
+                "OrderItem": {
+                    "properties": {
+                        "sku": {"description": "Field 'sku' of 'OrderItem'.", "type": "string"},
+                        "quantity": {
+                            "default": 1,
+                            "description": "Field 'quantity' of 'OrderItem'.",
+                            "type": "integer",
+                        },
+                    },
+                    "required": ["sku"],
+                    "type": "object",
+                },
+                "Task": {
+                    "properties": {
+                        "title": {"description": "Field 'title' of 'Task'.", "minLength": 1, "type": "string"},
+                        "due": {"description": "Field 'due' of 'Task'.", "format": "date", "type": "string"},
+                        "assignees": {
+                            "description": "Field 'assignees' of 'Task'.",
+                            "items": {"$ref": "#/$defs/Address"},
+                            "type": "array",
+                        },
+                        "items": {
+                            "description": "Field 'items' of 'Task'.",
+                            "items": {"$ref": "#/$defs/OrderItem"},
+                            "type": "array",
+                        },
+                    },
+                    "required": ["title", "due", "assignees", "items"],
+                    "type": "object",
+                },
+            },
+            "properties": {"task": {"$ref": "#/$defs/Task", "description": "The Task to summarize."}},
+            "required": ["task"],
+            "type": "object",
+        }
+
+        result = tool.invoke(
+            task={
+                "title": "Ship the release",
+                "due": "2026-11-02",
+                "assignees": [{"street": "Main Street 1", "city": "Berlin"}],
+                "items": [{"sku": "A1", "quantity": 2}, {"sku": "B2"}],
+            }
+        )
+        assert result == {"summary": "Ship the release due 2026-11-02, Berlin, 3 items"}
+
+    def test_from_component_with_recursive_dataclass_in_annotated(self):
+        tool = ComponentTool(component=CategoryLister())
+
+        assert tool.parameters == {
+            "$defs": {
+                "Category": {
+                    "properties": {
+                        "name": {"description": "Field 'name' of 'Category'.", "type": "string"},
+                        "subcategories": {
+                            "description": "Field 'subcategories' of 'Category'.",
+                            "items": {"$ref": "#/$defs/Category"},
+                            "maxItems": 20,
+                            "type": "array",
+                        },
+                        "parent": {
+                            "anyOf": [{"$ref": "#/$defs/Category"}, {"type": "null"}],
+                            "default": None,
+                            "description": "Field 'parent' of 'Category'.",
+                        },
+                    },
+                    "required": ["name", "subcategories"],
+                    "type": "object",
+                }
+            },
+            "properties": {
+                "category": {"$ref": "#/$defs/Category", "description": "The category whose subcategories are listed."}
+            },
+            "required": ["category"],
+            "type": "object",
+        }
+
+        result = tool.invoke(category={"name": "Books", "subcategories": [{"name": "Fiction", "subcategories": []}]})
+        assert result == {"names": ["Fiction"]}
 
     def test_from_component_with_list_of_documents(self):
         tool = ComponentTool(
