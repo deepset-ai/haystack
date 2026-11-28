@@ -115,7 +115,7 @@ _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
 
 class _StateInputOmitted:
     """
-    Sentinel used as the default for optional Agent state input sockets.
+    Sentinel used as the default for optional Agent state and prompt variable input sockets.
 
     When the pipeline supplies this default, the Agent excludes the corresponding
     key from its run inputs. Explicitly provided values, including `None`, are preserved.
@@ -663,7 +663,9 @@ class Agent:
             if required_variables == "*" or (isinstance(required_variables, list) and var_name in required_variables):
                 component.set_input_type(self, name=var_name, type=Any)
             else:
-                component.set_input_type(self, name=var_name, type=Any, default=None)
+                # Use the sentinel so a variable the Pipeline did not provide is left out of the prompt variables,
+                # as when calling `run` directly, instead of being rendered as "None".
+                component.set_input_type(self, name=var_name, type=Any, default=_StateInputOmitted)
 
     def warm_up(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator."""
