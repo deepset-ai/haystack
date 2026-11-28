@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``CacheChecker`` with ``ttl`` now filters on ``meta.<time_field>``. It used the bare field name, which
+    Document Stores such as Qdrant and pgvector do not read as a metadata field, so every cached
+    document was reported as a miss or the query failed.

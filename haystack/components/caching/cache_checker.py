@@ -129,13 +129,16 @@ class CacheChecker:
             now = datetime.now(UTC)
 
         cutoff = now - self.ttl
+        # Document Stores read a field without the `meta.` prefix as a Document attribute or a column,
+        # so the prefix stripped in `__init__` is added back here.
+        time_filter_field = f"meta.{self.time_field}"
 
         return {
             "operator": "AND",
             "conditions": [
                 cache_filter,
-                {"field": self.time_field, "operator": ">=", "value": cutoff.isoformat()},
-                {"field": self.time_field, "operator": "<=", "value": now.isoformat()},
+                {"field": time_filter_field, "operator": ">=", "value": cutoff.isoformat()},
+                {"field": time_filter_field, "operator": "<=", "value": now.isoformat()},
             ],
         }
 
