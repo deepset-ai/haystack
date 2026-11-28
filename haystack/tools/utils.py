@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
+from haystack.utils.misc import _CloseErrors
 
 if TYPE_CHECKING:
     from haystack.tools import ToolsType
@@ -61,14 +62,18 @@ def close_tools(tools: "ToolsType | None" = None) -> None:
 
     For Toolset objects, this delegates to close() if implemented; otherwise,
     it calls close() on each tool that implements it.
+    If closing one item raises, the remaining items are still closed and the first error is re-raised at the end.
 
     :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
+    errors = _CloseErrors()
     for item in _as_tool_sequence(tools):
-        if hasattr(item, "close"):
-            item.close()
-        elif isinstance(item, Toolset):
-            close_tools(tools=item.tools)
+        with errors.capture(type(item).__name__):
+            if hasattr(item, "close"):
+                item.close()
+            elif isinstance(item, Toolset):
+                close_tools(tools=item.tools)
+    errors.raise_first()
 
 
 async def close_tools_async(tools: "ToolsType | None" = None) -> None:
@@ -77,16 +82,20 @@ async def close_tools_async(tools: "ToolsType | None" = None) -> None:
 
     Call close_async() if implemented, otherwise close() if available.
     If a Toolset implements neither method, this function closes its tools.
+    If closing one item raises, the remaining items are still closed and the first error is re-raised at the end.
 
     :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
     """
+    errors = _CloseErrors()
     for item in _as_tool_sequence(tools):
-        if hasattr(item, "close_async"):
-            await item.close_async()
-        elif hasattr(item, "close"):
-            item.close()
-        elif isinstance(item, Toolset):
-            await close_tools_async(tools=item.tools)
+        with errors.capture(type(item).__name__):
+            if hasattr(item, "close_async"):
+                await item.close_async()
+            elif hasattr(item, "close"):
+                item.close()
+            elif isinstance(item, Toolset):
+                await close_tools_async(tools=item.tools)
+    errors.raise_first()
 
 
 def flatten_tools_or_toolsets(tools: "ToolsType | None") -> list[Tool]:

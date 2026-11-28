@@ -56,6 +56,26 @@ class LifecycleSpy:
         return default_from_dict(cls, data)
 
 
+class FailingCloseHook:
+    """Hook whose `close` and `close_async` raise."""
+
+    def run(self, state: State) -> None:
+        pass
+
+    def close(self) -> None:
+        raise RuntimeError("hook close failed")
+
+    async def close_async(self) -> None:
+        raise RuntimeError("hook close failed")
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FailingCloseHook":
+        return default_from_dict(cls, data)
+
+
 class WarmOnlyHook:
     """Hook with a sync `warm_up`/`close` but no async variants."""
 
@@ -139,6 +159,12 @@ class TestCloseHooks:
     def test_skips_hooks_without_close(self):
         close_hooks({"before_llm": [PlainHook()]})  # does not raise
 
+    def test_keeps_closing_after_a_hook_raises(self):
+        spy = LifecycleSpy()
+        with pytest.raises(RuntimeError, match="hook close failed"):
+            close_hooks({"before_llm": [FailingCloseHook()], "on_exit": [spy]})
+        assert spy.closed == 1
+
 
 class TestWarmUpHooksAsync:
     @pytest.mark.asyncio
@@ -168,3 +194,10 @@ class TestCloseHooksAsync:
         hook_obj = WarmOnlyHook()
         await close_hooks_async({"before_llm": [hook_obj]})
         assert hook_obj.closed == 1
+
+    @pytest.mark.asyncio
+    async def test_keeps_closing_after_a_hook_raises(self):
+        spy = LifecycleSpy()
+        with pytest.raises(RuntimeError, match="hook close failed"):
+            await close_hooks_async({"before_llm": [FailingCloseHook()], "on_exit": [spy]})
+        assert spy.closed_async == 1

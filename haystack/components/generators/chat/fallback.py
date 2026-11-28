@@ -14,6 +14,7 @@ from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.misc import _CloseErrors
 
 logger = logging.getLogger(__name__)
 
@@ -102,17 +103,23 @@ class FallbackChatGenerator:
 
     def close(self) -> None:
         """Release the underlying chat generators' resources."""
+        errors = _CloseErrors()
         for gen in self.chat_generators:
-            if hasattr(gen, "close"):
-                gen.close()
+            with errors.capture(type(gen).__name__):
+                if hasattr(gen, "close"):
+                    gen.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """Release the underlying chat generators' async resources."""
+        errors = _CloseErrors()
         for gen in self.chat_generators:
-            if hasattr(gen, "close_async"):
-                await gen.close_async()
-            elif hasattr(gen, "close"):
-                gen.close()
+            with errors.capture(type(gen).__name__):
+                if hasattr(gen, "close_async"):
+                    await gen.close_async()
+                elif hasattr(gen, "close"):
+                    gen.close()
+        errors.raise_first()
 
     def _run_single_sync(
         self,

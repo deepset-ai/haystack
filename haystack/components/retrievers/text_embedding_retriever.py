@@ -10,6 +10,7 @@ from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
 from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.misc import _CloseErrors
 
 
 @component
@@ -91,19 +92,25 @@ class TextEmbeddingRetriever:
         """
         Release the text embedder's and the retriever's resources.
         """
+        errors = _CloseErrors()
         for inner in (self.text_embedder, self.retriever):
-            if hasattr(inner, "close"):
-                inner.close()
+            with errors.capture(type(inner).__name__):
+                if hasattr(inner, "close"):
+                    inner.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """
         Release the text embedder's and the retriever's async resources.
         """
+        errors = _CloseErrors()
         for inner in (self.text_embedder, self.retriever):
-            if hasattr(inner, "close_async"):
-                await inner.close_async()
-            elif hasattr(inner, "close"):
-                inner.close()
+            with errors.capture(type(inner).__name__):
+                if hasattr(inner, "close_async"):
+                    await inner.close_async()
+                elif hasattr(inner, "close"):
+                    inner.close()
+        errors.raise_first()
 
     @component.output_types(documents=list[Document])
     def run(

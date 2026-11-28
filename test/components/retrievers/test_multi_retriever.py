@@ -819,6 +819,25 @@ class TestComponentLifecycle:
         a.close.assert_called_once()
         b.close.assert_called_once()
 
+    def test_close_keeps_going_after_one_raises(self):
+        a = Mock(spec=["run", "close"])
+        a.close.side_effect = RuntimeError("close failed")
+        b = Mock(spec=["run", "close"])
+        component = MultiRetriever(retrievers={"a": a, "b": b})
+        with pytest.raises(RuntimeError, match="close failed"):
+            component.close()
+        b.close.assert_called_once()
+
+    async def test_close_async_keeps_going_after_one_raises(self):
+        a = Mock(spec=["run", "close_async"])
+        a.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        b = Mock(spec=["run", "close_async"])
+        b.close_async = AsyncMock()
+        component = MultiRetriever(retrievers={"a": a, "b": b})
+        with pytest.raises(RuntimeError, match="close failed"):
+            await component.close_async()
+        b.close_async.assert_awaited_once()
+
     async def test_lifecycle_is_safe_when_retrievers_lack_methods(self):
         a = Mock(spec=["run"])
         b = Mock(spec=["run"])

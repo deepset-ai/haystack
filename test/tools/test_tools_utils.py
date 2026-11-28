@@ -247,6 +247,16 @@ class TestCloseTools:
         toolset.close.assert_called_once_with()
         tool.close.assert_not_called()
 
+    def test_keeps_closing_after_an_item_raises(self):
+        failing = Mock(spec=Toolset, tools=[], close=Mock(side_effect=RuntimeError("boom")))
+        tool = Mock(spec=Tool, close=Mock())
+        nested_tool = Mock(spec=Tool, close=Mock())
+        nested_tool.name = "lookup"
+        with pytest.raises(RuntimeError, match="boom"):
+            close_tools([failing, tool, Toolset([nested_tool])])
+        tool.close.assert_called_once_with()
+        nested_tool.close.assert_called_once_with()
+
 
 class TestCloseToolsAsync:
     async def test_ignores_none_and_tools_without_close(self, add_tool):
@@ -266,3 +276,13 @@ class TestCloseToolsAsync:
         await close_tools_async(toolset)
         toolset.close.assert_called_once_with()
         tool.close.assert_not_called()
+
+    async def test_keeps_closing_after_an_item_raises(self):
+        failing = Mock(spec=Toolset, tools=[], close_async=AsyncMock(side_effect=RuntimeError("boom")))
+        tool = Mock(spec=Tool, close=Mock())
+        nested_tool = Mock(spec=Tool, close_async=AsyncMock())
+        nested_tool.name = "lookup"
+        with pytest.raises(RuntimeError, match="boom"):
+            await close_tools_async([failing, tool, Toolset([nested_tool])])
+        tool.close.assert_called_once_with()
+        nested_tool.close_async.assert_awaited_once_with()

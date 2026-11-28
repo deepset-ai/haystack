@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
 
 from haystack import Document
 from haystack.utils.misc import (
+    _CloseErrors,
     _deduplicate_documents,
     _normalize_metadata_field_name,
     _parse_dict_from_json,
@@ -214,3 +217,32 @@ class TestExpandPageRange:
 
     def test_equal_start_end_is_valid(self):
         assert expand_page_range(["3-3"]) == [3]
+
+
+class TestCloseErrors:
+    def test_raise_first_is_a_noop_without_errors(self):
+        errors = _CloseErrors()
+        with errors.capture("a"):
+            pass
+        errors.raise_first()
+
+    def test_keeps_going_and_raises_the_first_error(self, caplog):
+        attempted = []
+        errors = _CloseErrors()
+        for name, error in [("a", RuntimeError("a failed")), ("b", None), ("c", ValueError("c failed"))]:
+            with errors.capture(name):
+                attempted.append(name)
+                if error is not None:
+                    raise error
+        assert attempted == ["a", "b", "c"]
+        with caplog.at_level(logging.WARNING), pytest.raises(RuntimeError, match="a failed"):
+            errors.raise_first()
+        assert "Failed to close a" in caplog.text
+        assert "Failed to close c" in caplog.text
+
+    def test_does_not_swallow_cancellation(self):
+        errors = _CloseErrors()
+        with pytest.raises(asyncio.CancelledError):
+            with errors.capture("a"):
+                raise asyncio.CancelledError
+        errors.raise_first()

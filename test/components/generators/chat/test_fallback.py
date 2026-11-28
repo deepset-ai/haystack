@@ -342,6 +342,25 @@ class TestComponentLifecycle:
         for gen in gens:
             gen.close.assert_called_once()
 
+    def test_close_keeps_going_after_one_raises(self) -> None:
+        first = Mock(spec=["run", "close"])
+        first.close.side_effect = RuntimeError("close failed")
+        second = Mock(spec=["run", "close"])
+        component = FallbackChatGenerator(chat_generators=[first, second])
+        with pytest.raises(RuntimeError, match="close failed"):
+            component.close()
+        second.close.assert_called_once()
+
+    async def test_close_async_keeps_going_after_one_raises(self) -> None:
+        first = Mock(spec=["run", "close_async"])
+        first.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        second = Mock(spec=["run", "close_async"])
+        second.close_async = AsyncMock()
+        component = FallbackChatGenerator(chat_generators=[first, second])
+        with pytest.raises(RuntimeError, match="close failed"):
+            await component.close_async()
+        second.close_async.assert_awaited_once()
+
     async def test_lifecycle_is_safe_when_generators_lack_methods(self) -> None:
 
         gens = [Mock(spec=["run"]) for _ in range(3)]

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Components that own other closeable objects now close all of them even if one raises.
+    Previously the first exception stopped the teardown and left the rest open.
+    This affects ``Agent``, ``MultiRetriever``, ``TextEmbeddingRetriever``, ``MultiQueryEmbeddingRetriever``,
+    ``FallbackChatGenerator``, ``LLMMetadataExtractor``, ``CompactionHook``, ``close_tools`` and ``close_hooks``,
+    and their async variants.
+    Each failure is logged as a warning and the first exception is re-raised once everything has been attempted.

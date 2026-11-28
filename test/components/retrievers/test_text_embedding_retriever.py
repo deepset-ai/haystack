@@ -273,6 +273,25 @@ class TestComponentLifecycle:
         text_embedder.close.assert_called_once()
         retriever.close.assert_called_once()
 
+    def test_close_keeps_going_after_one_raises(self):
+        text_embedder = Mock(spec=["run", "close"])
+        text_embedder.close.side_effect = RuntimeError("close failed")
+        retriever = Mock(spec=["run", "close"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        with pytest.raises(RuntimeError, match="close failed"):
+            component.close()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_keeps_going_after_one_raises(self):
+        text_embedder = Mock(spec=["run", "close_async"])
+        text_embedder.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        with pytest.raises(RuntimeError, match="close failed"):
+            await component.close_async()
+        retriever.close_async.assert_awaited_once()
+
     async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
         text_embedder = Mock(spec=["run"])
         retriever = Mock(spec=["run"])

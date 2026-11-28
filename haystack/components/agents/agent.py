@@ -74,6 +74,7 @@ from haystack.tools import (
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.misc import _CloseErrors
 
 logger = logging.getLogger(__name__)
 
@@ -683,19 +684,29 @@ class Agent:
 
     def close(self) -> None:
         """Release tools, hooks, and chat generator resources."""
-        close_tools(tools=self.tools)
-        close_hooks(self.hooks)
-        if hasattr(self.chat_generator, "close"):
-            self.chat_generator.close()
+        errors = _CloseErrors()
+        with errors.capture("tools"):
+            close_tools(tools=self.tools)
+        with errors.capture("hooks"):
+            close_hooks(self.hooks)
+        with errors.capture("chat generator"):
+            if hasattr(self.chat_generator, "close"):
+                self.chat_generator.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """Release async tools, hooks, and chat generator resources."""
-        await close_tools_async(tools=self.tools)
-        await close_hooks_async(self.hooks)
-        if hasattr(self.chat_generator, "close_async"):
-            await self.chat_generator.close_async()
-        elif hasattr(self.chat_generator, "close"):
-            self.chat_generator.close()
+        errors = _CloseErrors()
+        with errors.capture("tools"):
+            await close_tools_async(tools=self.tools)
+        with errors.capture("hooks"):
+            await close_hooks_async(self.hooks)
+        with errors.capture("chat generator"):
+            if hasattr(self.chat_generator, "close_async"):
+                await self.chat_generator.close_async()
+            elif hasattr(self.chat_generator, "close"):
+                self.chat_generator.close()
+        errors.raise_first()
 
     def clone(self, **overrides: Any) -> "Agent":
         """

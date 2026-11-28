@@ -683,6 +683,27 @@ class TestComponentLifecycle:
         mock_chat_generator.close.assert_called_once()
         extractor.splitter.close.assert_called_once()
 
+    def test_close_keeps_going_after_one_raises(self):
+        chat_generator = Mock(spec=["run", "close"])
+        chat_generator.close.side_effect = RuntimeError("close failed")
+        splitter = Mock(spec=["run", "close"])
+        component = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=chat_generator)
+        component.splitter = splitter
+        with pytest.raises(RuntimeError, match="close failed"):
+            component.close()
+        splitter.close.assert_called_once()
+
+    async def test_close_async_keeps_going_after_one_raises(self):
+        chat_generator = Mock(spec=["run", "close_async"])
+        chat_generator.close_async = AsyncMock(side_effect=RuntimeError("close failed"))
+        splitter = Mock(spec=["run", "close_async"])
+        splitter.close_async = AsyncMock()
+        component = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=chat_generator)
+        component.splitter = splitter
+        with pytest.raises(RuntimeError, match="close failed"):
+            await component.close_async()
+        splitter.close_async.assert_awaited_once()
+
     async def test_lifecycle_is_safe_when_inner_lacks_methods(self):
         mock_chat_generator = Mock(spec=["run"])
         extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)

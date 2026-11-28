@@ -13,7 +13,7 @@ from haystack.core.serialization import component_from_dict, component_to_dict, 
 from haystack.dataclasses import Document
 from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.experimental import _experimental
-from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
+from haystack.utils.misc import _CloseErrors, _deduplicate_documents, _reciprocal_rank_fusion
 
 
 @_experimental
@@ -212,19 +212,25 @@ class MultiRetriever:
         """
         Release the retrievers' resources.
         """
-        for retriever in self.retrievers.values():
-            if hasattr(retriever, "close"):
-                retriever.close()
+        errors = _CloseErrors()
+        for name, retriever in self.retrievers.items():
+            with errors.capture(f"retriever '{name}'"):
+                if hasattr(retriever, "close"):
+                    retriever.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """
         Release the retrievers' async resources.
         """
-        for retriever in self.retrievers.values():
-            if hasattr(retriever, "close_async"):
-                await retriever.close_async()
-            elif hasattr(retriever, "close"):
-                retriever.close()
+        errors = _CloseErrors()
+        for name, retriever in self.retrievers.items():
+            with errors.capture(f"retriever '{name}'"):
+                if hasattr(retriever, "close_async"):
+                    await retriever.close_async()
+                elif hasattr(retriever, "close"):
+                    retriever.close()
+        errors.raise_first()
 
     @component.output_types(documents=list[Document])
     def run(

@@ -20,6 +20,7 @@ from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
+from haystack.utils.misc import _CloseErrors
 
 logger = logging.getLogger(__name__)
 
@@ -297,17 +298,23 @@ class CompactionHook:
 
     def close(self) -> None:
         """Release the token counter's and the compactor's resources."""
+        errors = _CloseErrors()
         for resource in (self.token_counter, self.compactor):
-            if hasattr(resource, "close"):
-                resource.close()
+            with errors.capture(type(resource).__name__):
+                if hasattr(resource, "close"):
+                    resource.close()
+        errors.raise_first()
 
     async def close_async(self) -> None:
         """Release the token counter's and the compactor's async resources."""
+        errors = _CloseErrors()
         for resource in (self.token_counter, self.compactor):
-            if hasattr(resource, "close_async"):
-                await resource.close_async()
-            elif hasattr(resource, "close"):
-                resource.close()
+            with errors.capture(type(resource).__name__):
+                if hasattr(resource, "close_async"):
+                    await resource.close_async()
+                elif hasattr(resource, "close"):
+                    resource.close()
+        errors.raise_first()
 
     def to_dict(self) -> dict[str, Any]:
         """
