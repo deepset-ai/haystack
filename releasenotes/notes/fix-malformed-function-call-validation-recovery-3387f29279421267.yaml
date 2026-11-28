@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``JsonSchemaValidator`` raising ``KeyError`` or ``TypeError`` for malformed
+    function-call objects. Missing ``function`` or ``arguments`` keys and incorrectly
+    typed envelopes now produce a ``validation_error`` recovery message, including
+    when a malformed call appears in a list. Custom error templates are respected.

@@ -5,6 +5,7 @@
 import json
 
 import pytest
+from jsonschema import SchemaError
 
 from haystack import Pipeline, component
 from haystack.components.validators import JsonSchemaValidator
@@ -281,6 +282,80 @@ class TestJsonSchemaValidator:
         result = validator.run([message])
 
         assert result == {"validated": [message]}
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            {},
+            {"function": {}},
+            None,
+            True,
+            42,
+            "call",
+            [None],
+            {"function": None},
+            {"function": []},
+            {"function": 42},
+            {"function": "call"},
+            {"function": True},
+        ],
+    )
+    @pytest.mark.parametrize("in_list", [False, True])
+    def test_malformed_function_call_returns_recovery_message(self, call, in_list):
+        validator = JsonSchemaValidator(
+            json_schema={"name": "collect", "description": "Collect values.", "parameters": True}
+        )
+        content = [{"function": {"arguments": {}}}, call] if in_list else call
+        message = ChatMessage.from_assistant(json.dumps(content))
+
+        result = validator.run(messages=[message])
+
+        assert list(result) == ["validation_error"]
+        assert len(result["validation_error"]) == 1
+        recovery_message = result["validation_error"][0]
+        assert recovery_message.role.value == "user"
+        assert recovery_message.text is not None
+        assert (
+            "Expected a function call object with a 'function' object containing 'arguments'." in recovery_message.text
+        )
+        assert f"Generated JSON: {message.text}" in recovery_message.text
+
+    @pytest.mark.parametrize("runtime_template", [None, "runtime: {failing_json} | {json_schema}"])
+    def test_malformed_function_call_uses_custom_error_template(self, runtime_template):
+        validator = JsonSchemaValidator(
+            json_schema={"name": "collect", "description": "Collect values.", "parameters": True},
+            error_template="init: {failing_json} | {json_schema}",
+        )
+
+        result = validator.run(messages=[ChatMessage.from_assistant("{}")], error_template=runtime_template)
+
+        prefix = "runtime" if runtime_template else "init"
+        assert result == {"validation_error": [ChatMessage.from_user(f"{prefix}: {{}} | True")]}
+
+    def test_invalid_function_parameter_schema_still_raises(self):
+        validator = JsonSchemaValidator(
+            json_schema={"name": "collect", "description": "Collect values.", "parameters": {"type": "invalid"}}
+        )
+
+        with pytest.raises(SchemaError, match="'invalid' is not valid under any of the given schemas"):
+            validator.run(messages=[ChatMessage.from_assistant('{"function": {"arguments": {}}}')])
+
+    @pytest.mark.parametrize("run_async", [False, True])
+    @pytest.mark.asyncio
+    async def test_malformed_function_call_in_pipeline_returns_recovery_message(self, run_async):
+        pipeline = Pipeline()
+        pipeline.add_component(
+            name="validator",
+            instance=JsonSchemaValidator(
+                json_schema={"name": "collect", "description": "Collect values.", "parameters": True},
+                error_template="Invalid call: {failing_json}",
+            ),
+        )
+        data = {"validator": {"messages": [ChatMessage.from_assistant("{}")]}}
+
+        result = await pipeline.run_async(data=data) if run_async else pipeline.run(data=data)
+
+        assert result == {"validator": {"validation_error": [ChatMessage.from_user("Invalid call: {}")]}}
 
     #  Constructs a custom error recovery message when validation fails.
     def test_construct_custom_error_recovery_message(self):
