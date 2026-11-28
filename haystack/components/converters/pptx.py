@@ -22,6 +22,7 @@ with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx.shapes.base import BaseShape
     from pptx.shapes.graphfrm import GraphicFrame
     from pptx.shapes.group import GroupShape
+    from pptx.slide import Slide
     from pptx.table import Table
     from pptx.text.text import _Paragraph, _Run
 
@@ -61,7 +62,11 @@ class PPTXToDocument:
     """
 
     def __init__(
-        self, store_full_path: bool = False, link_format: Literal["markdown", "plain", "none"] = "none"
+        self,
+        store_full_path: bool = False,
+        link_format: Literal["markdown", "plain", "none"] = "none",
+        *,
+        include_speaker_notes: bool = False,
     ) -> None:
         """
         Create a PPTXToDocument component.
@@ -73,6 +78,10 @@ class PPTXToDocument:
             - `"markdown"`: `[text](url)`
             - `"plain"`: `text (url)`
             - `"none"`: Only the text is extracted, link addresses are ignored.
+        :param include_speaker_notes:
+            If True, the speaker notes of each slide are added after the text of that slide, on the same page.
+            Links in the notes are formatted according to `link_format`. Slides without notes are not affected.
+            If False, speaker notes are ignored.
         """
         pptx_import.check()
         if link_format not in ("markdown", "plain", "none"):
@@ -80,6 +89,7 @@ class PPTXToDocument:
             raise ValueError(msg)
         self.link_format = link_format
         self.store_full_path = store_full_path
+        self.include_speaker_notes = include_speaker_notes
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -88,7 +98,12 @@ class PPTXToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, link_format=self.link_format, store_full_path=self.store_full_path)
+        return default_to_dict(
+            self,
+            link_format=self.link_format,
+            store_full_path=self.store_full_path,
+            include_speaker_notes=self.include_speaker_notes,
+        )
 
     def _convert(self, file_content: io.BytesIO) -> str:
         """
@@ -105,8 +120,25 @@ class PPTXToDocument:
                     text_on_slide.append("\n".join(self._process_paragraph(p) for p in shape.text_frame.paragraphs))
                 elif hasattr(shape, "text"):
                     text_on_slide.append(shape.text)
+            if self.include_speaker_notes and (notes := self._extract_speaker_notes(slide)):
+                text_on_slide.append(notes)
             text_all_slides.append("\n".join(text_on_slide))
         return "\f".join(text_all_slides)
+
+    def _extract_speaker_notes(self, slide: "Slide") -> str:
+        """
+        Extracts the speaker notes of a slide.
+
+        :param slide: The PPTX slide to read the notes from.
+        :returns: The text of the speaker notes, or an empty string if the slide has no notes.
+        """
+        # Accessing `slide.notes_slide` creates an empty notes slide if there is none, so check first.
+        if not slide.has_notes_slide:
+            return ""
+        notes_text_frame = slide.notes_slide.notes_text_frame
+        if notes_text_frame is None:
+            return ""
+        return "\n".join(self._process_paragraph(p) for p in notes_text_frame.paragraphs).strip()
 
     def _table_to_csv(self, table: "Table") -> str:
         """

@@ -27,6 +27,8 @@ Convert PPTX files to documents.
 
 The `PPTXToDocument` component converts PPTX files into documents. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
+By default, only the text on the slides is extracted. To also extract the speaker notes, set `include_speaker_notes=True`. The notes of each slide are added after the text of that slide, on the same page.
+
 ## Usage
 
 First, install the`python-pptx` package to start using this converter:

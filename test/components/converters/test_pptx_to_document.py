@@ -14,7 +14,29 @@ from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches
 
 from haystack.components.converters.pptx import PPTXToDocument
+from haystack.core.serialization import component_from_dict
 from haystack.dataclasses import ByteStream
+
+
+def _pptx_with_speaker_notes() -> ByteStream:
+    """
+    Creates a PPTX file with two slides: the first one has speaker notes with a link, the second one has no notes.
+    """
+    presentation = Presentation()
+    first_slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    first_slide.shapes.add_textbox(left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)).text = "Q3 Results"
+    notes = first_slide.notes_slide.notes_text_frame
+    notes.text = "Revenue grew 18%."
+    run = notes.add_paragraph().add_run()
+    run.text = "Report"
+    run.hyperlink.address = "https://example.com"
+
+    second_slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    second_slide.shapes.add_textbox(left=Inches(1), top=Inches(1), width=Inches(6), height=Inches(1)).text = "Thanks"
+
+    source = io.BytesIO()
+    presentation.save(source)
+    return ByteStream(data=source.getvalue())
 
 
 class TestPPTXToDocument:
@@ -89,11 +111,11 @@ class TestPPTXToDocument:
         assert document.meta == {"file_path": "sample_pptx.pptx", "key": "value", "language": "it"}
 
     def test_to_dict(self):
-        converter = PPTXToDocument(link_format="markdown", store_full_path=True)
+        converter = PPTXToDocument(link_format="markdown", store_full_path=True, include_speaker_notes=True)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.pptx.PPTXToDocument",
-            "init_parameters": {"link_format": "markdown", "store_full_path": True},
+            "init_parameters": {"link_format": "markdown", "store_full_path": True, "include_speaker_notes": True},
         }
 
     def test_to_dict_defaults(self):
@@ -101,8 +123,18 @@ class TestPPTXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.pptx.PPTXToDocument",
-            "init_parameters": {"link_format": "none", "store_full_path": False},
+            "init_parameters": {"link_format": "none", "store_full_path": False, "include_speaker_notes": False},
         }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.converters.pptx.PPTXToDocument",
+            "init_parameters": {"link_format": "plain", "store_full_path": True, "include_speaker_notes": True},
+        }
+        converter = component_from_dict(PPTXToDocument, data, name="converter")
+        assert converter.link_format == "plain"
+        assert converter.store_full_path is True
+        assert converter.include_speaker_notes is True
 
     def test_link_format_invalid(self):
         with pytest.raises(ValueError, match="Unknown link format"):
@@ -228,3 +260,34 @@ class TestPPTXToDocument:
             "\n"
             "END OF SLIDE — text after the groups and table"
         )
+
+    def test_speaker_notes_excluded_by_default(self):
+        converter = PPTXToDocument()
+        documents = converter.run(sources=[_pptx_with_speaker_notes()])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == "Q3 Results\fThanks"
+
+    def test_include_speaker_notes(self):
+        # Notes are added after the slide text, on the same page, so the number of pages stays the same.
+        converter = PPTXToDocument(
+            link_format="markdown",
+            include_speaker_notes=True,
+        )
+        documents = converter.run(sources=[_pptx_with_speaker_notes()])["documents"]
+
+        assert len(documents) == 1
+        assert documents[0].content == (
+            "Q3 Results\n"
+            "Revenue grew 18%.\n"
+            "[Report](https://example.com)"
+            "\fThanks"
+        )
+
+    def test_include_speaker_notes_with_empty_notes(self, test_files_path):
+        # sample_pptx.pptx has notes slides whose notes are empty, so the output must not change.
+        source = test_files_path / "pptx" / "sample_pptx.pptx"
+        default_content = PPTXToDocument().run(sources=[source])["documents"][0].content
+        notes_content = PPTXToDocument(include_speaker_notes=True).run(sources=[source])["documents"][0].content
+
+        assert notes_content == default_content

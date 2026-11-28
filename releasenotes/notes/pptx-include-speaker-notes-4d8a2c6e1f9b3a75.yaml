@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added the ``include_speaker_notes`` init parameter to ``PPTXToDocument``.
+    When ``True``, each slide's speaker notes are appended after its text.
+    Defaults to ``False``, so existing pipelines are unaffected.
