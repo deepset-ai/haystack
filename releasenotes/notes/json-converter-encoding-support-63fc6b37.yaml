@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Fix ``JSONConverter`` hardcoding ``utf-8-sig`` encoding and ignoring ``ByteStream.meta["encoding"]``. It now accepts an ``encoding`` parameter in ``__init__`` and respects per-stream encoding metadata.

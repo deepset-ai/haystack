@@ -120,6 +120,7 @@ def test_to_dict():
             "jq_schema": ".laureates[]",
             "extra_meta_fields": {"firstname", "surname"},
             "store_full_path": False,
+            "encoding": "utf-8-sig",
         },
     }
 
@@ -657,3 +658,59 @@ def test_run_utf8_without_bom_is_unchanged(tmp_path: Path) -> None:
 
     assert len(documents) == 1
     assert documents[0].content == "café 日本語"
+
+
+def test_to_dict_with_custom_encoding():
+    converter = JSONConverter(content_key="text", encoding="utf-16")
+    assert converter.to_dict() == {
+        "type": "haystack.components.converters.json.JSONConverter",
+        "init_parameters": {
+            "content_key": "text",
+            "jq_schema": None,
+            "extra_meta_fields": None,
+            "store_full_path": False,
+            "encoding": "utf-16",
+        },
+    }
+
+
+def test_from_dict_with_custom_encoding():
+    data = {
+        "type": "haystack.components.converters.json.JSONConverter",
+        "init_parameters": {"content_key": "text", "encoding": "utf-16"},
+    }
+    converter = JSONConverter.from_dict(data)
+    assert converter.encoding == "utf-16"
+
+
+def test_encoding_init_parameter():
+    bs = ByteStream(data='{"text": "café"}'.encode("utf-16"))
+    converter = JSONConverter(content_key="text", encoding="utf-16")
+    docs = converter.run(sources=[bs])["documents"]
+    assert len(docs) == 1
+    assert docs[0].content == "café"
+
+
+def test_encoding_bytestream_meta_override():
+    bs = ByteStream(data='{"text": "café"}'.encode("utf-16"), meta={"encoding": "utf-16"})
+    converter = JSONConverter(content_key="text")
+    docs = converter.run(sources=[bs])["documents"]
+    assert len(docs) == 1
+    assert docs[0].content == "café"
+
+
+def test_encoding_bytestream_meta_override_windows1252():
+    bs = ByteStream(data='{"text": "café"}'.encode("windows-1252"), meta={"encoding": "windows-1252"})
+    converter = JSONConverter(content_key="text")
+    docs = converter.run(sources=[bs])["documents"]
+    assert len(docs) == 1
+    assert docs[0].content == "café"
+
+
+def test_encoding_invalid_skipped_with_warning(caplog: pytest.LogCaptureFixture):
+    bs = ByteStream(data=b"\xff\xfeinvalid", meta={"encoding": "invalid-encoding-name"})
+    converter = JSONConverter(content_key="text")
+    with caplog.at_level(logging.WARNING):
+        docs = converter.run(sources=[bs])["documents"]
+    assert len(docs) == 0
+    assert "Failed to extract text from" in caplog.text
