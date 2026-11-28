@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``Pipeline.close()`` and ``Pipeline.close_async()`` now close the remaining
+    components if one component's close method raises. Previously the first
+    error aborted the loop and left later components open.
