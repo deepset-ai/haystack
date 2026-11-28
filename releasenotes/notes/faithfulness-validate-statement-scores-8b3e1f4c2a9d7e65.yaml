@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    ``FaithfulnessEvaluator`` now rejects statement scores other than 0 or 1,
+    including fractional scores such as ``0.5``. Update custom examples and
+    judge prompts to use binary statement scores. ``raise_on_failure=False``
+    excludes affected inputs; it does not preserve graded scoring.
+fixes:
+  - |
+    Invalid statement-score values, including strings and ``null``, now follow
+    ``raise_on_failure``: ``True`` raises ``ValueError``; ``False`` marks the
+    input as ``error`` with a NaN score and excludes it from the mean.
+    Float equivalents of 0 and 1 and booleans remain accepted.
