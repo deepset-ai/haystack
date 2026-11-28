@@ -1,0 +1,5 @@
+fixes:
+  - |
+    ``InMemoryDocumentStore`` now raises a ``ValueError`` at init if ``embedding_similarity_function`` is not
+    ``"dot_product"`` or ``"cosine"``. Before, an unsupported value such as ``"Cosine"`` was accepted and embedding
+    retrieval silently returned raw, unscaled dot-product scores.
