@@ -346,6 +346,16 @@ def _comparison_condition(
         msg = f"Unknown comparison operator '{operator}'. Valid operators are: {sorted(COMPARISON_OPERATORS)}"
         raise FilterError(msg)
     filter_value: Any = condition["value"]
-    return COMPARISON_OPERATORS[operator](
-        filter_value=filter_value, value=document_value, strict_datetime_comparison=strict_datetime_comparison
-    )
+    try:
+        return COMPARISON_OPERATORS[operator](
+            filter_value=filter_value, value=document_value, strict_datetime_comparison=strict_datetime_comparison
+        )
+    except FilterError as exc:
+        # Add context so users can find the offending document and field, e.g. when a field
+        # holds values of different types across documents and a range filter cannot compare them.
+        document_id = getattr(document, "id", None)
+        if document_id is not None:
+            msg = f"Error applying filter on field '{field}' to document with id '{document_id}': {exc}"
+        else:
+            msg = f"Error applying filter on field '{field}': {exc}"
+        raise FilterError(msg) from exc

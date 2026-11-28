@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from haystack import Document
+from haystack.dataclasses import ByteStream
 from haystack.errors import FilterError
 from haystack.utils.filters import document_matches_filter
 
@@ -842,6 +843,33 @@ def test_document_matches_filter_raises_filter_error_for_datetime_and_numeric_va
 
     with pytest.raises(FilterError, match="Can't compare a datetime with a non-datetime value using operators"):
         document_matches_filter(filters, Document(meta={"date": datetime(2025, 1, 1)}))
+
+
+def test_document_matches_filter_error_names_document_id_and_field():
+    # A type-mismatched range comparison should say which document and field caused it,
+    # so users can find the offending metadata in a large collection.
+    document = Document(id="doc-1", meta={"score": "hello"})
+    filters = {"field": "meta.score", "operator": "<", "value": 0}
+
+    with pytest.raises(FilterError) as exc_info:
+        document_matches_filter(filters, document)
+
+    message = str(exc_info.value)
+    assert "meta.score" in message
+    assert "doc-1" in message
+    assert "Can't compare strings" in message
+
+
+def test_document_matches_filter_error_names_field_for_bytestream():
+    # ByteStreams have no document id; the error should still name the field.
+    stream_filters = {"field": "meta.score", "operator": ">", "value": 0}
+
+    with pytest.raises(FilterError) as exc_info:
+        document_matches_filter(stream_filters, ByteStream(data=b"data", meta={"score": "hello"}))
+
+    message = str(exc_info.value)
+    assert "meta.score" in message
+    assert "Can't compare strings" in message
 
 
 def test_dotted_field_with_unknown_root_is_treated_as_missing():

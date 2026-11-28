@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``FilterError``s raised while applying a metadata filter now name the field involved and, for
+    ``Document``s, the document id, e.g. when a range filter cannot compare a document's value
+    because a field holds values of different types across documents. This makes it easier to find
+    the offending metadata in a large collection. The comparison behavior itself is unchanged:
+    type-mismatched range comparisons still raise ``FilterError``.
