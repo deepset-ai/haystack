@@ -329,3 +329,19 @@ class TestDocumentTypeRouter:
         assert len(result["text/plain"]) == 1
         assert len(result["application/pdf"]) == 1
         assert len(result["unclassified"]) == 1
+
+
+class TestDocumentTypeRouterMimeNormalization:
+    @pytest.mark.parametrize(
+        ("configured_mime_type", "mime_type"),
+        [("text/plain", "Text/Plain"), ("text/plain", "text/plain; charset=utf-8"), ("Text/Plain", "text/plain")],
+    )
+    def test_matches_normalized_mime_types(self, configured_mime_type: str, mime_type: str) -> None:
+        document = Document(content="Test content", meta={"mime_type": mime_type})
+
+        router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=[configured_mime_type])
+
+        result = router.run(documents=[document])
+
+        assert result[configured_mime_type] == [document]
+        assert "unclassified" not in result

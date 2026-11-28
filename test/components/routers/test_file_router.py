@@ -541,3 +541,26 @@ class TestFileTypeRouter:
         assert "failed" in result
         assert PosixPath("non_existent_file.txt") in result["failed"]
         assert "text/plain" not in result
+
+
+class TestFileTypeRouterMimeNormalization:
+    @pytest.mark.parametrize(
+        ("configured_mime_type", "mime_type"),
+        [("text/plain", "Text/Plain"), ("text/plain", "text/plain; charset=utf-8"), ("Text/Plain", "text/plain")],
+    )
+    def test_matches_normalized_mime_types(self, configured_mime_type: str, mime_type: str) -> None:
+        router = FileTypeRouter(mime_types=[configured_mime_type])
+        source = ByteStream(b"test content", mime_type=mime_type)
+
+        result = router.run(sources=[source])
+
+        assert result[configured_mime_type] == [source]
+        assert "unclassified" not in result
+
+    def test_unrecognized_mime_type_is_unclassified(self) -> None:
+        router = FileTypeRouter(mime_types=["text/plain"])
+        source = ByteStream(b"test content", mime_type="application/x-unknown")
+
+        result = router.run(sources=[source])
+
+        assert result["unclassified"] == [source]
