@@ -152,7 +152,7 @@ class TestCanComponentRun:
     # Comparing the socket value with '!=' errors out on dataframes, so the checks test the sentinel by type
     # instead, which never compares the value at all.
     def test_sockets_with_ambiguous_truth_value(self, basic_component, greedy_variadic_socket, regular_socket):
-        inputs = {"mandatory_input": [{"sender": "previous_component", "value": DataFrame.from_dict([{"value": 42}])}]}
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": DataFrame([{"value": 42}])}]}
 
         assert are_all_sockets_ready(basic_component, inputs, only_check_mandatory=True) is True
         assert any_socket_value_from_predecessor_received(inputs["mandatory_input"]) is True
