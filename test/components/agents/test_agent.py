@@ -859,6 +859,35 @@ class TestAgentRun:
         else:
             assert "top_k" not in output
 
+    @pytest.mark.parametrize("prompt_inputs", [{}, {"topic": "Paris"}], ids=["omitted", "provided"])
+    def test_run_in_pipeline_renders_optional_prompt_variable_like_direct_run(self, prompt_inputs):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Done"),
+            system_prompt="You help {{ name }}.",
+            user_prompt="Tell me about {{ topic | default('anything') }}.",
+            required_variables=["name"],
+        )
+        direct = agent.run(messages=[], name="Ann", **prompt_inputs)
+
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        output = pipeline.run(data={"agent": {"messages": [], "name": "Ann", **prompt_inputs}})["agent"]
+
+        expected = "Tell me about Paris." if prompt_inputs else "Tell me about anything."
+        assert direct["messages"][1].text == expected
+        assert output["messages"][1].text == expected
+
+    @pytest.mark.asyncio
+    async def test_run_async_in_pipeline_leaves_out_omitted_optional_prompt_variable(self):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Done"), user_prompt="Question: {{ question }}", required_variables=None
+        )
+        pipeline = Pipeline()
+        pipeline.add_component("agent", agent)
+        result = await pipeline.run_async(data={"agent": {"messages": []}})
+
+        assert result["agent"]["messages"][0].text == "Question:"
+
     @pytest.mark.asyncio
     async def test_generation_kwargs(self, monkeypatch):
         chat_generator = MockChatGenerator("Hello")

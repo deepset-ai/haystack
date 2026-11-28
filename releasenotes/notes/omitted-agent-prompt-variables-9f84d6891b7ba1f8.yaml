@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a bug where an ``Agent`` or ``LLM`` running in a ``Pipeline`` rendered an omitted optional prompt
+    variable as the text ``None``. Optional variables are the ones left out of ``required_variables``.
+    The prompt is now rendered as it is when the component is called directly: an omitted variable is undefined,
+    so ``{{ topic }}`` renders as an empty string and ``{{ topic | default('anything') }}`` uses its default.
+    An explicitly supplied ``None`` is still passed to the prompt.
