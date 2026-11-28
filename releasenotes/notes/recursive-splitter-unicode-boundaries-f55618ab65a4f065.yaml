@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Preserve Unicode characters when ``RecursiveDocumentSplitter`` splits or overlaps text by token.
+    If a token boundary falls within a character, the splitter moves the cut past that character.
+    This can increase a chunk's length or reduce the overlap.
