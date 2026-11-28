@@ -203,6 +203,10 @@ class SentenceSplitter:
         if self.use_split_rules:
             sentence_spans = SentenceSplitter._apply_split_rules(text, sentence_spans)
 
+        # NLTK ends the last span at the end of the text without its trailing whitespace
+        if self.keep_white_spaces and sentence_spans:
+            sentence_spans[-1] = (sentence_spans[-1][0], len(text))
+
         return [{"sentence": text[start:end], "start": start, "end": end} for start, end in sentence_spans]
 
     @staticmethod

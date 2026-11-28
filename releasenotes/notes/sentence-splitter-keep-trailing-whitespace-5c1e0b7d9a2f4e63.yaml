@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `DocumentSplitter` with `split_by="sentence"` (or `split_by="word"` with `respect_sentence_boundary=True`) no longer
+    drops the whitespace at the end of a text, such as a trailing newline. The chunks now add up to the original text.
+    `RecursiveDocumentSplitter` keeps that trailing whitespace on its last chunk instead of making a chunk of its own.
+upgrade:
+  - |
+    `DocumentSplitter` with `split_by="sentence"` (or `split_by="word"` with `respect_sentence_boundary=True`) and `RecursiveDocumentSplitter` now keep the trailing whitespace of a text on its last chunk. That chunk's content, and therefore its document ID, can differ from before. If you re-index existing documents with `DuplicatePolicy.SKIP`, the old and new versions of the last chunk are both kept; use `DuplicatePolicy.OVERWRITE` or delete the old documents first.

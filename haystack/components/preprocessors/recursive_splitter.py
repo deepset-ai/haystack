@@ -376,7 +376,9 @@ class RecursiveDocumentSplitter:
                 # Leaving it out would glue sentences together, lose page breaks and shift every later chunk's offset.
                 split_bounds = [sentence["start"] for sentence in sentence_with_spans]
                 if split_bounds:
-                    split_bounds.append(sentence_with_spans[-1]["end"])
+                    # the last split stops before the trailing whitespace, which is attached to the last chunk below
+                    last = sentence_with_spans[-1]
+                    split_bounds.append(last["start"] + len(last["sentence"].rstrip()))
                     trailing_text = text[split_bounds[-1] :]
                 splits = [text[start:end] for start, end in zip(split_bounds, split_bounds[1:], strict=False)]
             else:
