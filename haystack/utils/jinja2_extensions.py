@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Sequence
 from typing import Any
 
 from jinja2 import Environment, meta, nodes
@@ -103,6 +104,23 @@ class Jinja2TimeExtension(Extension):
         return nodes.Output([call_method], lineno=lineno)
 
 
+def _assigned_names(target: nodes.Node) -> set[str]:
+    """The names an assignment target binds: one name, or the items of a list or tuple."""
+    if isinstance(target, nodes.Name):
+        return {target.name}
+    if isinstance(target, (nodes.List, nodes.Tuple)):
+        return {item.name for item in target.items if isinstance(item, nodes.Name)}
+
+    return set()
+
+
+def _read_names(parts: nodes.Node | Sequence[nodes.Node]) -> set[str]:
+    """Every name `parts` reads, so an assignment that mentions a name is known to consume it."""
+    children = [parts] if isinstance(parts, nodes.Node) else parts
+
+    return {name.name for child in children for name in child.find_all(nodes.Name) if name.ctx == "load"}
+
+
 def _collect_assigned_variables(ast: nodes.Template) -> set[str]:
     """
     Extract variables assigned within the Jinja2 template AST.
@@ -120,12 +138,13 @@ def _collect_assigned_variables(ast: nodes.Template) -> set[str]:
     ]
 
     for node in assignments:
-        if isinstance(node.target, nodes.Name):
-            assigned_variables.add(node.target.name)
-        elif isinstance(node.target, (nodes.List, nodes.Tuple)):
-            for name_node in node.target.items:
-                if isinstance(name_node, nodes.Name):
-                    assigned_variables.add(name_node.name)
+        targets = _assigned_names(node.target)
+
+        # A name the assignment itself reads is the caller's, not the template's:
+        # `{% set quantity = quantity | default(1) %}` exists to default a value the
+        # caller supplies, so reporting `quantity` as assigned removes it from the
+        # variables the component asks for and the default always wins (#13770).
+        assigned_variables |= targets - _read_names(node.node if isinstance(node, nodes.Assign) else node.body)
 
     return assigned_variables
 
