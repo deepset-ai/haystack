@@ -249,6 +249,55 @@ class TestCore:
         assert args["city"] == "Paris"
         assert args["state"] is state
 
+    def test_inject_state_args_does_not_deepcopy_non_picklable_state_values(self):
+        # Regression: `_inject_state_args` must read live state via `state.data`
+        # (not `state.get`, which deepcopies), so non-picklable values such as
+        # locks, DB connections, open files, or generators survive the hop into
+        # the tool. See AGENTS.md: "Read live Haystack State resources via
+        # state.data.get(...) or state.data[...] - avoids deep-copy bugs".
+        import threading
+
+        lock = threading.Lock()
+
+        def tool_using_lock(resource) -> str:
+            return "ok"
+
+        tool = Tool(
+            name="lock_tool",
+            description="A tool that receives a non-deepcopyable resource from state.",
+            parameters={"type": "object", "properties": {}},
+            function=tool_using_lock,
+            inputs_from_state={"shared": "resource"},
+        )
+        state = State(schema={"shared": {"type": object}}, data={"shared": lock})
+
+        args = _inject_state_args(tool=tool, llm_args={}, state=state)
+
+        # Identity check, not equality: the injected value must be the live object,
+        # not a copy. Before the fix this raised TypeError from deepcopy.
+        assert args["resource"] is lock
+
+    def test_inject_state_args_injects_live_state_value_without_copy(self):
+        # The injected argument must be the same object held in state, so tools
+        # that read large shared structures do not pay a per-call deepcopy.
+        docs = [Document(content="a"), Document(content="b")]
+
+        def tool_using_docs(documents) -> int:
+            return len(documents)
+
+        tool = Tool(
+            name="docs_tool",
+            description="A tool that reads documents from state.",
+            parameters={"type": "object", "properties": {}},
+            function=tool_using_docs,
+            inputs_from_state={"docs": "documents"},
+        )
+        state = State(schema={"docs": {"type": list[Document]}}, data={"docs": docs})
+
+        args = _inject_state_args(tool=tool, llm_args={}, state=state)
+
+        assert args["documents"] is docs
+
 
 class TestRunTool:
     def test_run_with_streaming_callback_finish_reason(self, weather_tool):

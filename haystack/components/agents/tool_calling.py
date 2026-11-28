@@ -317,10 +317,14 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
     final_args = dict(llm_args)
     func_params = _get_func_params(tool)
 
-    # A tool reads from State by name only via an explicit `inputs_from_state` mapping
+    # A tool reads from State by name only via an explicit `inputs_from_state` mapping.
+    # Read through `state.data.get(...)` rather than `state.get(...)`, which deepcopies
+    # (see AGENTS.md: "Read live Haystack State resources via state.data.get(...) ...").
+    # Avoids a per-call deepcopy of the referenced value and lets non-picklable values
+    # (locks, DB connections, open files, generators) survive the hop into the tool.
     for state_key, param_name in (tool.inputs_from_state or {}).items():
         if param_name not in final_args and state.has(state_key):
-            final_args[param_name] = state.get(state_key)
+            final_args[param_name] = state.data.get(state_key)
 
     # We also inject the full State object for any parameter annotated as State
     for param_name, param_type in func_params.items():

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``Agent`` crashing with a ``TypeError`` when a tool declared via
+    ``inputs_from_state`` receives a non-deepcopyable value from ``State``
+    (for example a lock, a database connection, an open file, or a generator).
+    ``_inject_state_args`` now reads state through ``state.data.get(...)``
+    instead of ``state.get(...)``, matching the invariant documented in
+    ``AGENTS.md`` and avoiding a per-call ``deepcopy`` on every tool
+    invocation.
