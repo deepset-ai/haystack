@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import math
 import os
 
@@ -333,6 +334,92 @@ class TestFaithfulnessEvaluator:
         ):
             component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
 
+    @pytest.mark.parametrize(
+        "bad_scores",
+        ['["1", "0"]', "[1, null]", "[5]", "[2]", "[-1]", "[0.5]", "[NaN]", "[Infinity]", "[-Infinity]"],
+        ids=["strings", "null", "5", "2", "-1", "0.5", "nan", "inf", "-inf"],
+    )
+    def test_run_invalid_statement_scores_raise_on_failure_false(self, monkeypatch, caplog, bad_scores):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+        statements = json.dumps([f"s{i}" for i in range(bad_scores.count(",") + 1)])
+
+        def chat_generator_run(self, *args, **kwargs):
+            if "bad answer" in kwargs["messages"][0].text:
+                reply = f'{{"statements": {statements}, "statement_scores": {bad_scores}}}'
+            else:
+                reply = '{"statements": ["Paris is in France."], "statement_scores": [1]}'
+            return {"replies": [ChatMessage.from_assistant(reply)]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.faithfulness"):
+            results = component.run(
+                questions=["q1", "q2"],
+                contexts=[["Paris is in France."], ["c2"]],
+                predicted_answers=["good answer", "bad answer"],
+            )
+
+        assert results["score"] == 1.0
+        assert results["individual_scores"][0] == 1.0
+        assert math.isnan(results["individual_scores"][1])
+        assert results["results"][0]["status"] == "evaluated"
+        assert results["results"][1]["status"] == "error"
+        assert math.isnan(results["results"][1]["score"])
+        assert "expected each statement score to be 0 or 1" in caplog.text
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.parametrize("bad_scores", ['["1"]', "[null]", "[5]", "[2]", "[-1]", "[0.5]", "[NaN]"])
+    def test_run_raises_on_invalid_statement_scores(self, monkeypatch, bad_scores):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        def chat_generator_run(self, *args, **kwargs):
+            reply = f'{{"statements": ["a"], "statement_scores": {bad_scores}}}'
+            return {"replies": [ChatMessage.from_assistant(reply)]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        with pytest.raises(ValueError, match=r"^FaithfulnessEvaluator expected each statement score to be 0 or 1"):
+            component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
+
+    def test_run_all_invalid_statement_scores_returns_nan(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["a"], "statement_scores": [5]}')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]], predicted_answers=["a1", "a2"])
+
+        assert math.isnan(results["score"])
+        assert all(math.isnan(score) for score in results["individual_scores"])
+        assert [result["status"] for result in results["results"]] == ["error", "error"]
+        assert all(result["statement_scores"] == [] for result in results["results"])
+
+    @pytest.mark.parametrize(
+        "score, expected",
+        [("true", 1.0), ("false", 0.0), ("1.0", 1.0), ("0.0", 0.0)],
+        ids=["true", "false", "1.0", "0.0"],
+    )
+    def test_run_accepts_float_and_bool_statement_scores(self, monkeypatch, score, expected):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        def chat_generator_run(self, *args, **kwargs):
+            reply = f'{{"statements": ["a"], "statement_scores": [{score}]}}'
+            return {"replies": [ChatMessage.from_assistant(reply)]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q"], contexts=[["c"]], predicted_answers=["a"])
+
+        assert results["score"] == expected
+        assert results["individual_scores"] == [expected]
+        assert results["results"][0]["status"] == "evaluated"
+
     def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
@@ -437,6 +524,37 @@ class TestFaithfulnessEvaluatorAsync:
         assert results["results"][0]["status"] == "evaluated"
         assert results["results"][1]["status"] == "error"
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("raise_on_failure", [True, False])
+    async def test_run_async_invalid_statement_scores(self, monkeypatch, raise_on_failure):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=raise_on_failure)
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            if "bad answer" in kwargs["messages"][0].text:
+                reply = '{"statements": ["a"], "statement_scores": [0.5]}'
+            else:
+                reply = '{"statements": ["Paris is in France."], "statement_scores": [1]}'
+            return {"replies": [ChatMessage.from_assistant(reply)]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        inputs = {
+            "questions": ["q1", "q2"],
+            "contexts": [["Paris is in France."], ["c2"]],
+            "predicted_answers": ["good answer", "bad answer"],
+        }
+        if raise_on_failure:
+            with pytest.raises(ValueError, match=r"^FaithfulnessEvaluator expected each statement score to be 0 or 1"):
+                await component.run_async(**inputs)
+        else:
+            results = await component.run_async(**inputs)
+            assert results["score"] == 1.0
+            assert [result["status"] for result in results["results"]] == ["evaluated", "error"]
+            assert math.isnan(results["individual_scores"][1])
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(

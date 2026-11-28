@@ -15,6 +15,17 @@ from haystack.utils import deserialize_chatgenerator_inplace
 
 logger = logging.getLogger(__name__)
 
+
+def _is_valid_statement_score(score: Any) -> bool:
+    """
+    Check that a statement score is 0 or 1, as the evaluator's instructions ask for.
+
+    Accept int or float instances equal to 0 or 1, including booleans.
+    Reject strings, None, and other numeric values.
+    """
+    return isinstance(score, (int, float)) and score in (0, 1)
+
+
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
     {
@@ -106,6 +117,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Each example must be a dictionary with keys "inputs" and "outputs".
             "inputs" must be a dictionary with keys "questions", "contexts", and "predicted_answers".
             "outputs" must be a dictionary with "statements" and "statement_scores".
+            Each statement_scores entry must be 0 or 1. Equivalent floats and booleans are accepted; fractional
+            statement scores such as 0.5 are invalid.
             Expected format:
             ```python
             [{
@@ -123,8 +136,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
             If True, the component raises an exception when the chat generator call fails or its response isn't valid
-            JSON with the expected keys, or the numbers of statements and statement scores differ. If False, it logs
-            a warning, marks the result for that input as `error` with a NaN score, and excludes it from the mean.
+            JSON with the expected keys, the numbers of statements and statement scores differ, or a statement score
+            is not 0 or 1. If False, it logs a warning, marks the result for that input as `error` with a NaN score,
+            and excludes it from the mean.
         :param chat_generator:
             a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
@@ -219,6 +233,15 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 message = (
                     "FaithfulnessEvaluator expected one score per statement, but received "
                     f"{len(res['statements'])} statements and {len(res['statement_scores'])} scores."
+                )
+                if self.raise_on_failure:
+                    raise ValueError(message)
+                logger.warning("{error} Setting the result for this input to an error.", error=message)
+                res = None
+            if res is not None and not all(_is_valid_statement_score(s) for s in res["statement_scores"]):
+                message = (
+                    "FaithfulnessEvaluator expected each statement score to be 0 or 1, but received "
+                    f"{res['statement_scores']!r}."
                 )
                 if self.raise_on_failure:
                     raise ValueError(message)
